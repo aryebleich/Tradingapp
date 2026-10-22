@@ -1,0 +1,283 @@
+// /api/alpaca/* - brokerage accounts, trading, portfolio, market data and watchlists.
+import express from 'express';
+import { one, run, now, audit } from '../db.js';
+import { requireUser, rateLimit } from '../auth.js';
+import * as B from '../alpaca/broker.js';
+import * as D from '../alpaca/data.js';
+import { buildOrder, buildReplace } from '../alpaca/trading.js';
+import { connections, tradingFor, requireTrading, saveCred, oauthEnabled, oauthStartUrl } from '../alpaca/connections.js';
+import { sseHandler, streamEnabled } from '../alpaca/stream.js';
+import { syncAlpacaFills } from '../brokers.js';
+
+export const router = express.Router();
+router.use(requireUser);
+const T = req => requireTrading(req.user.id);
+const PAID = ['pro', 'elite'];
+const bad = msg => Object.assign(new Error(msg), { status: 400 });
+const symParam = s => { const v = String(s || '').trim().toUpperCase(); if (!/^[A-Z0-9.\-]{1,21}(\/[A-Z]{3,4})?$/.test(v)) throw bad('Invalid symbol'); return v; };
+
+// Live-money trading is a paid feature; paper, sandbox and simulated trading are free.
+async function liveGate(req, t) {
+  if (t.live && !PAID.includes(req.user.plan) && req.user.role !== 'admin') throw Object.assign(new Error('Live trading needs the Pro plan'), { status: 402 });
+}
+
+// ---------- connection status ----------
+router.get('/status', async (req, res) => {
+  const all = await connections(req.user.id), t = await tradingFor(req.user.id);
+  const b = await one('SELECT account_id, account_number, status, crypto_status, updated_at FROM broker_accounts WHERE user_id = ?', req.user.id);
+  res.json({
+    active: t ? { type: t.type, live: t.live } : null,
+    available: Object.keys(all),
+    broker: { enabled: B.brokerEnabled(), account: b ? { id: b.account_id, number: b.account_number, status: b.status, cryptoStatus: b.crypto_status, step: B.kycStep(b.status), updatedAt: b.updated_at } : null },
+    oauth: { enabled: oauthEnabled(), connected: !!all.oauth },
+    keys: { connected: !!all.keys, live: !!all.keys?.live },
+    data: D.dataEnabled(), stream: streamEnabled(),
+  });
+});
+router.post('/connection', async (req, res) => {
+  const all = await connections(req.user.id);
+  if (!all[req.body.type]) throw bad('That connection is not set up');
+  await run('UPDATE users SET alpaca_conn = ? WHERE id = ?', req.body.type, req.user.id);
+  res.json({ ok: true });
+});
+router.get('/oauth/start', async (req, res) => {
+  if (!oauthEnabled()) throw Object.assign(new Error('Alpaca OAuth is not configured (ALPACA_OAUTH_CLIENT_ID / SECRET)'), { status: 503 });
+  res.json({ url: oauthStartUrl(req.user.id) });
+});
+router.delete('/oauth', async (req, res) => {
+  await run("DELETE FROM credentials WHERE user_id = ? AND provider = 'alpaca_oauth'", req.user.id);
+  res.json({ ok: true });
+});
+
+// ---------- brokerage account (Broker API) ----------
+export async function refreshBrokerAccount(userId) {
+  const b = await one('SELECT * FROM broker_accounts WHERE user_id = ?', userId);
+  if (!b) return null;
+  const a = await B.getAccount(b.account_id);
+  if (a.status !== b.status || a.crypto_status !== b.crypto_status)
+    await run('UPDATE broker_accounts SET status = ?, crypto_status = ?, account_number = ?, updated_at = ? WHERE user_id = ?', a.status, a.crypto_status ?? null, a.account_number, now(), userId);
+  return { previous: b.status, account: a };
+}
+
+router.post('/broker/accounts', async (req, res) => {
+  if (!rateLimit('acct-open:' + req.user.id, 5, 3600e3)) throw Object.assign(new Error('Too many attempts, try again later'), { status: 429 });
+  if (await one('SELECT 1 FROM broker_accounts WHERE user_id = ?', req.user.id)) throw bad('You already have a brokerage account');
+  const body = B.buildAccountRequest(req.body || {}, req.ip);
+  const a = await B.createAccount(body);
+  await run('INSERT INTO broker_accounts (user_id, account_id, account_number, status, crypto_status, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    req.user.id, a.id, a.account_number, a.status, a.crypto_status ?? null, now(), now());
+  await run("UPDATE users SET alpaca_conn = 'broker' WHERE id = ?", req.user.id);
+  await audit(req.user.id, 'broker_account_created', { account: a.account_number, status: a.status }, req.ip);
+  res.json({ id: a.id, accountNumber: a.account_number, status: a.status, step: B.kycStep(a.status) });
+});
+router.get('/broker/account', async (req, res) => {
+  const r = await refreshBrokerAccount(req.user.id);
+  if (!r) return res.json(null);
+  const a = r.account;
+  // Only what the UI needs; the SSN is never sent back to the browser.
+  res.json({
+    id: a.id, accountNumber: a.account_number, status: a.status, cryptoStatus: a.crypto_status, step: B.kycStep(a.status), createdAt: a.created_at,
+    kyc: a.kyc_results ? { reject: a.kyc_results.reject, accept: a.kyc_results.accept, indeterminate: a.kyc_results.indeterminate, summary: a.kyc_results.summary } : null,
+    contact: a.contact, name: a.identity ? `${a.identity.given_name} ${a.identity.family_name}` : null,
+    enabledAssets: a.enabled_assets, agreements: (a.agreements || []).map(g => g.agreement),
+  });
+});
+router.patch('/broker/account', async (req, res) => {
+  const b = await one('SELECT account_id FROM broker_accounts WHERE user_id = ?', req.user.id);
+  if (!b) throw bad('No brokerage account');
+  const f = req.body || {}, contact = {};
+  if (f.email) contact.email_address = String(f.email);
+  if (f.phone) contact.phone_number = String(f.phone);
+  if (f.street) contact.street_address = [String(f.street)];
+  for (const [k, v] of [['unit', 'unit'], ['city', 'city'], ['state', 'state'], ['postalCode', 'postal_code']]) if (f[k]) contact[v] = String(f[k]);
+  if (!Object.keys(contact).length) throw bad('Nothing to update');
+  await B.updateAccount(b.account_id, { contact });
+  await audit(req.user.id, 'broker_account_updated', { fields: Object.keys(contact) }, req.ip);
+  res.json({ ok: true });
+});
+
+const brokerId = async req => {
+  const b = await one('SELECT account_id FROM broker_accounts WHERE user_id = ?', req.user.id);
+  if (!b) throw bad('Open a brokerage account first');
+  return b.account_id;
+};
+router.get('/broker/ach', async (req, res) => res.json(await B.listAch(await brokerId(req))));
+router.post('/broker/ach', async (req, res) => {
+  const f = req.body || {};
+  if (!/^\d{9}$/.test(String(f.routingNumber || ''))) throw bad('Routing number must have 9 digits');
+  if (!/^\d{4,17}$/.test(String(f.accountNumber || ''))) throw bad('Enter a valid bank account number');
+  const r = await B.createAch(await brokerId(req), {
+    account_owner_name: String(f.ownerName || '').trim() || req.user.email, bank_account_type: f.accountType === 'SAVINGS' ? 'SAVINGS' : 'CHECKING',
+    bank_account_number: String(f.accountNumber), bank_routing_number: String(f.routingNumber), nickname: f.nickname || undefined,
+  });
+  await audit(req.user.id, 'ach_linked', { last4: String(f.accountNumber).slice(-4) }, req.ip);
+  res.json(r);
+});
+router.delete('/broker/ach/:id', async (req, res) => { await B.deleteAch(await brokerId(req), req.params.id); res.json({ ok: true }); });
+router.get('/broker/transfers', async (req, res) => res.json(await B.listTransfers(await brokerId(req), { limit: 50 })));
+router.post('/broker/transfers', async (req, res) => {
+  const amount = +req.body.amount, direction = req.body.direction === 'OUTGOING' ? 'OUTGOING' : 'INCOMING';
+  if (!(amount >= 1 && amount <= 50000)) throw bad('Transfers are $1 - $50,000');
+  if (!req.body.relationshipId) throw bad('Pick a linked bank account');
+  const r = await B.createTransfer(await brokerId(req), { transfer_type: 'ach', relationship_id: req.body.relationshipId, amount: amount.toFixed(2), direction, timing: 'immediate' });
+  await audit(req.user.id, 'transfer', { amount, direction }, req.ip);
+  res.json(r);
+});
+router.delete('/broker/transfers/:id', async (req, res) => { await B.cancelTransfer(await brokerId(req), req.params.id); res.json({ ok: true }); });
+
+// ---------- account, configuration, portfolio ----------
+router.get('/account', async (req, res) => {
+  const t = await T(req), a = await t.account();
+  const n = k => (a[k] == null ? null : +a[k]);
+  res.json({
+    connection: { type: t.type, live: t.live }, id: a.id, accountNumber: a.account_number, status: a.status, currency: a.currency,
+    equity: n('equity'), lastEquity: n('last_equity'), cash: n('cash'), buyingPower: n('buying_power'), regtBuyingPower: n('regt_buying_power'),
+    daytradingBuyingPower: n('daytrading_buying_power'), nonMarginableBuyingPower: n('non_marginable_buying_power'), optionsBuyingPower: n('options_buying_power'),
+    longMarketValue: n('long_market_value'), shortMarketValue: n('short_market_value'), initialMargin: n('initial_margin'), maintenanceMargin: n('maintenance_margin'),
+    multiplier: n('multiplier'), sma: n('sma'), daytradeCount: n('daytrade_count'), patternDayTrader: !!a.pattern_day_trader, tradingBlocked: !!a.trading_blocked,
+    shortingEnabled: !!a.shorting_enabled, cryptoStatus: a.crypto_status, optionsLevel: a.options_trading_level ?? a.options_approved_level ?? null,
+  });
+});
+router.get('/account/config', async (req, res) => res.json(await (await T(req)).configurations()));
+router.patch('/account/config', async (req, res) => {
+  const allowed = { dtbp_check: ['both', 'entry', 'exit'], trade_confirm_email: ['all', 'none'], pdt_check: ['both', 'entry', 'exit'], max_margin_multiplier: ['1', '2', '4'] };
+  const body = {};
+  for (const [k, vals] of Object.entries(allowed)) if (req.body[k] !== undefined) { if (!vals.includes(String(req.body[k]))) throw bad(`Bad value for ${k}`); body[k] = String(req.body[k]); }
+  for (const k of ['suspend_trade', 'no_shorting', 'fractional_trading']) if (req.body[k] !== undefined) body[k] = !!req.body[k];
+  if (req.body.max_options_trading_level !== undefined) body.max_options_trading_level = Math.max(0, Math.min(3, Math.trunc(+req.body.max_options_trading_level)));
+  const r = await (await T(req)).updateConfigurations(body);
+  await audit(req.user.id, 'account_config', body, req.ip);
+  res.json(r);
+});
+router.get('/portfolio/history', async (req, res) => {
+  const period = ['1D', '1W', '1M', '3M', '6M', '1A', 'all'].includes(req.query.period) ? req.query.period : '1M';
+  const timeframe = { '1D': '5Min', '1W': '1H', '1M': '1D', '3M': '1D', '6M': '1D', '1A': '1D', all: '1D' }[period];
+  const h = await (await T(req)).portfolioHistory({ period: period === 'all' ? undefined : period, timeframe, extended_hours: period === '1D' ? true : undefined });
+  const points = (h.timestamp || []).map((t, i) => ({ t: t * 1000, equity: h.equity[i], pl: h.profit_loss?.[i], plPct: h.profit_loss_pct?.[i] })).filter(p => p.equity != null);
+  res.json({ period, baseValue: h.base_value, points });
+});
+
+// ---------- orders ----------
+router.get('/orders', async (req, res) => {
+  const status = ['open', 'closed', 'all'].includes(req.query.status) ? req.query.status : 'all';
+  res.json(await (await T(req)).orders({ status, limit: Math.min(+req.query.limit || 100, 500), symbols: req.query.symbols || undefined }));
+});
+router.get('/orders/:id', async (req, res) => res.json(await (await T(req)).order(req.params.id)));
+router.post('/orders', async (req, res) => {
+  const t = await T(req); await liveGate(req, t);
+  if (!rateLimit('order:' + req.user.id, 60, 60e3)) throw Object.assign(new Error('Too many orders in a minute'), { status: 429 });
+  const body = buildOrder(req.body || {});
+  const o = await t.placeOrder(body);
+  await audit(req.user.id, 'alpaca_order', { id: o.id, symbol: o.symbol || 'mleg', side: o.side, type: o.type, class: o.order_class, live: t.live }, req.ip);
+  setTimeout(() => syncAlpacaFills(req.user.id).catch(() => {}), 4000);
+  res.json(o);
+});
+router.patch('/orders/:id', async (req, res) => {
+  const t = await T(req); await liveGate(req, t);
+  const o = await t.replaceOrder(req.params.id, buildReplace(req.body || {}));
+  await audit(req.user.id, 'alpaca_order_replaced', { id: req.params.id, newId: o.id }, req.ip);
+  res.json(o);
+});
+router.delete('/orders/:id', async (req, res) => { await (await T(req)).cancelOrder(req.params.id); res.json({ ok: true }); });
+router.delete('/orders', async (req, res) => {
+  const r = await (await T(req)).cancelAllOrders();
+  await audit(req.user.id, 'alpaca_cancel_all', { count: Array.isArray(r) ? r.length : null }, req.ip);
+  res.json(r || []);
+});
+
+// ---------- positions ----------
+router.get('/positions', async (req, res) => {
+  const ps = await (await T(req)).positions();
+  res.json(ps.map(p => ({
+    symbol: p.symbol, assetClass: p.asset_class, side: p.side, qty: +p.qty, qtyAvailable: +(p.qty_available ?? p.qty), avgEntry: +p.avg_entry_price, price: +p.current_price,
+    marketValue: +p.market_value, costBasis: +p.cost_basis, unrealizedPl: +p.unrealized_pl, unrealizedPlPct: +p.unrealized_plpc * 100,
+    todayPl: +p.unrealized_intraday_pl, todayPlPct: +p.unrealized_intraday_plpc * 100, changeToday: +p.change_today * 100,
+  })));
+});
+router.delete('/positions/:symbol', async (req, res) => {
+  const t = await T(req); await liveGate(req, t);
+  const q = {};
+  if (req.query.qty) { if (!(+req.query.qty > 0)) throw bad('Quantity must be positive'); q.qty = String(+req.query.qty); }
+  else if (req.query.percentage) { const p = +req.query.percentage; if (!(p > 0 && p <= 100)) throw bad('Percentage must be 1-100'); q.percentage = String(p); }
+  const o = await t.closePosition(symParam(req.params.symbol).replace('/', ''), q);
+  await audit(req.user.id, 'position_closed', { symbol: req.params.symbol, ...q }, req.ip);
+  res.json(o);
+});
+router.delete('/positions', async (req, res) => {
+  const t = await T(req); await liveGate(req, t);
+  const r = await t.closeAllPositions(true);
+  await audit(req.user.id, 'positions_closed_all', null, req.ip);
+  res.json(r || []);
+});
+router.post('/positions/:symbol/exercise', async (req, res) => { res.json(await (await T(req)).exerciseOption(symParam(req.params.symbol)) || { ok: true }); });
+
+// ---------- watchlists ----------
+router.get('/watchlists', async (req, res) => res.json(await (await T(req)).watchlists()));
+router.get('/watchlists/:id', async (req, res) => res.json(await (await T(req)).watchlist(req.params.id)));
+router.post('/watchlists', async (req, res) => {
+  const name = String(req.body.name || '').trim().slice(0, 64);
+  if (!name) throw bad('Name the watchlist');
+  res.json(await (await T(req)).createWatchlist(name, (req.body.symbols || []).map(symParam)));
+});
+router.put('/watchlists/:id', async (req, res) => {
+  const body = {};
+  if (req.body.name) body.name = String(req.body.name).trim().slice(0, 64);
+  if (Array.isArray(req.body.symbols)) body.symbols = req.body.symbols.map(symParam);
+  res.json(await (await T(req)).updateWatchlist(req.params.id, body));
+});
+router.delete('/watchlists/:id', async (req, res) => { await (await T(req)).deleteWatchlist(req.params.id); res.json({ ok: true }); });
+router.post('/watchlists/:id/assets', async (req, res) => res.json(await (await T(req)).addToWatchlist(req.params.id, symParam(req.body.symbol))));
+router.delete('/watchlists/:id/assets/:symbol', async (req, res) => res.json(await (await T(req)).removeFromWatchlist(req.params.id, symParam(req.params.symbol))));
+
+// ---------- market info (clock, calendar, assets, corporate actions) ----------
+router.get('/clock', async (req, res) => res.json(await (await T(req)).clock()));
+router.get('/calendar', async (req, res) => {
+  const start = req.query.start || new Date().toISOString().slice(0, 10), end = req.query.end || new Date(Date.now() + 30 * 86400e3).toISOString().slice(0, 10);
+  res.json(await (await T(req)).calendar({ start, end }));
+});
+router.get('/assets/search', async (req, res) => {
+  const q = String(req.query.q || '').trim().toUpperCase();
+  if (q.length < 1) return res.json([]);
+  const cls = req.query.class === 'crypto' ? 'crypto' : 'us_equity';
+  const t = await T(req);
+  // The asset list is large; cache it per class for an hour.
+  const key = t.type + cls;
+  if (!assetCache[key] || now() - assetCache[key].at > 3600e3) assetCache[key] = { at: now(), list: await t.assets({ status: 'active', asset_class: cls }) };
+  const list = assetCache[key].list;
+  const hits = list.filter(a => a.symbol.startsWith(q)).concat(list.filter(a => !a.symbol.startsWith(q) && a.name?.toUpperCase().includes(q))).slice(0, 15);
+  res.json(hits.map(a => ({ symbol: a.symbol, name: a.name, exchange: a.exchange, class: a.class, tradable: a.tradable, fractionable: a.fractionable, shortable: a.shortable })));
+});
+const assetCache = {};
+router.get('/announcements', async (req, res) => {
+  const since = req.query.since || new Date(Date.now() - 30 * 86400e3).toISOString().slice(0, 10), until = req.query.until || new Date(Date.now() + 60 * 86400e3).toISOString().slice(0, 10);
+  const types = String(req.query.types || 'dividend,merger,spinoff,split').split(',').filter(x => ['dividend', 'merger', 'spinoff', 'split'].includes(x));
+  res.json(await (await T(req)).announcements({ ca_types: types, since, until, symbol: req.query.symbol ? symParam(req.query.symbol) : undefined }));
+});
+
+// ---------- market data ----------
+const dataLimit = (req) => { if (!rateLimit('data:' + req.user.id, 240, 60e3)) throw Object.assign(new Error('Too many market data requests'), { status: 429 }); };
+router.get('/data/bars', async (req, res) => { dataLimit(req); res.json(await D.bars(req.query.symbols, { timeframe: req.query.timeframe, start: req.query.start, end: req.query.end, limit: req.query.limit })); });
+router.get('/data/latest', async (req, res) => { dataLimit(req); res.json(await D.latest(req.query.symbols)); });
+router.get('/data/snapshots', async (req, res) => { dataLimit(req); res.json(await D.snapshots(req.query.symbols)); });
+router.get('/data/most-actives', async (req, res) => { dataLimit(req); res.json(await D.mostActives(req.query.by, req.query.top)); });
+router.get('/data/movers', async (req, res) => { dataLimit(req); res.json(await D.movers(req.query.market, req.query.top)); });
+router.get('/data/news', async (req, res) => { dataLimit(req); res.json(await D.news({ symbols: req.query.symbols, limit: req.query.limit })); });
+router.get('/data/options/:underlying', async (req, res) => {
+  dataLimit(req);
+  res.json(await D.optionChain(symParam(req.params.underlying), { expiration: req.query.expiration, type: ['call', 'put'].includes(req.query.type) ? req.query.type : undefined, strikeMin: req.query.strikeMin, strikeMax: req.query.strikeMax }));
+});
+router.get('/data/corporate-actions', async (req, res) => { dataLimit(req); res.json(await D.corporateActions({ symbols: req.query.symbols, start: req.query.start, end: req.query.end })); });
+router.get('/stream', sseHandler);
+
+// Lets users keep their own API keys as before (stored encrypted).
+router.post('/keys', async (req, res) => {
+  const { keyId, secret, live } = req.body || {};
+  if (!keyId || !secret) throw bad('Key id and secret are required');
+  const c = { type: 'keys', k: String(keyId).trim(), s: String(secret).trim(), live: !!live };
+  const { Trading } = await import('../alpaca/trading.js');
+  const a = await new Trading(c).account(); // verifies the keys
+  await saveCred(req.user.id, 'alpaca', { k: c.k, s: c.s, live: c.live });
+  await run("UPDATE users SET alpaca_conn = 'keys' WHERE id = ?", req.user.id);
+  await audit(req.user.id, 'alpaca_connected', { live: c.live }, req.ip);
+  res.json({ ok: true, equity: +a.equity });
+});

@@ -19,6 +19,33 @@ Backtest, paper trade and automate US stock strategies. A multi-user web platfor
 - **Revenue**: monthly plans (Starter free, Pro $29, Elite $99) through Stripe Checkout, plus a **performance fee** (20%, 10% or 5% by plan) charged only on new profit above a high-water mark. The admin page shows MRR, fees due and collected, and deposits.
 - **Debit card deposits**: Stripe Checkout. Credit cards are detected and refunded automatically.
 
+## Alpaca trading (Broker API + Trading API + Market Data)
+
+Everything starts in the **sandbox / paper** environment.
+
+| Area | What's included | Alpaca API |
+|---|---|---|
+| Brokerage accounts | 4-step application (identity, contact, employment and disclosures, agreements). The SSN is sent to Alpaca and never stored. KYC tracking (Submitted → Approved → Active) with automatic status checks and notifications. Contact updates and account settings (PDT/DTBP checks, margin multiplier, shorting, fractional shares, options level, trading kill switch) | Broker API `POST/GET/PATCH /v1/accounts`, `/v1/trading/accounts/{id}/account/configurations` |
+| Funding | Link bank accounts (ACH), deposits and withdrawals, cancel pending transfers | Broker API `/ach_relationships`, `/transfers` |
+| Trading | Market, limit, stop, stop-limit and trailing stop; bracket, OCO and OTO; extended hours; crypto (market, limit, stop-limit); options single-leg and multi-leg spreads (2–4 legs); modify, cancel one or all orders; every order is reviewed before it is sent | Trading API v2 `/v2/orders` (or Broker `/v1/trading/accounts/{id}/orders`) |
+| Portfolio | Balances, buying power (Reg T, day-trading, options), margin, PDT; equity chart for 1D–All, green/red against the period start; positions with live P/L; close full, by quantity or by %; close all; exercise options | `/account`, `/account/portfolio/history`, `/positions` |
+| Market data | Live quotes (WebSocket relayed to the browser), candlestick charts from 1-minute to weekly bars, snapshots, most active, gainers and losers (stocks and crypto), news, option chains with IV and Greeks, corporate actions | `data.alpaca.markets` v2, v1beta1, v1beta3 |
+| Watchlists | Create, rename, delete; add and remove symbols; live prices | `/watchlists` |
+| Market info | Clock, 30-day trading calendar with early closes, dividends, splits, mergers and spinoffs | `/clock`, `/calendar`, `/corporate_actions/announcements` |
+
+**Three ways for a user to connect.** One code path serves all three:
+1. **Open a brokerage account** through the Broker API. Uses HTTP Basic auth with your broker key; trading goes through `/v1/trading/accounts/{id}/…`.
+2. **Connect an existing Alpaca account with OAuth2** (authorization-code flow, `state` checked against CSRF, token stored encrypted). Uses `Authorization: Bearer`.
+3. **Paste Alpaca API keys**. Sent as `APCA-API-KEY-ID` / `APCA-API-SECRET-KEY` headers.
+
+**Setup**
+1. Alpaca dashboard → **Broker API** → sandbox keys → set `BROKER_API_KEY` and `BROKER_API_SECRET`.
+2. Alpaca dashboard → **Trading API (paper)** → keys → set `ALPACA_KEY_ID` and `ALPACA_SECRET`. These are used for market data and the live price stream.
+3. Optional, for OAuth: create an OAuth app with redirect URI `https://YOUR_APP/oauth/alpaca/callback`, then set `ALPACA_OAUTH_CLIENT_ID` and `ALPACA_OAUTH_CLIENT_SECRET`.
+4. Live trading later: set `BROKER_BASE_URL=https://broker-api.alpaca.markets` (production Broker API, requires Alpaca's approval) or use live keys / `ALPACA_OAUTH_ENV=live`. Live trading is limited to the Pro and Elite plans, and the app shows a **LIVE** badge and warning on every order.
+
+Tests run the whole integration against a local mock of Alpaca (`test/mock-alpaca.js`), including the exact auth headers and request bodies. Check the first real sandbox calls in your own environment as well.
+
 ## Professional site extras
 
 - **Public homepage** at `/` with a live demo backtest, features, pricing, FAQ, and **Terms, Privacy, Risk Disclosure and Contact** pages. A support inbox is on the Admin page.
@@ -79,7 +106,7 @@ Prefer Docker? `docker build -t quantpocket . && docker run -p 3000:3000 --env-f
 The code is built for the business model you described. Running that business is regulated, though, and the code cannot get you the licenses:
 
 1. **Performance fees.** Charging people a share of their trading profits, or running strategies on their accounts, generally makes you an investment adviser (SEC or state registration in the US). Performance fees are usually only allowed for "qualified clients".
-2. **Holding deposits.** Taking card payments and moving that money into brokerage accounts is money transmission or custody. The right way is the **Alpaca Broker API**, where Alpaca opens and holds each customer's account and handles funding. The current flow puts card deposits in your Stripe balance and lists them on the admin page for manual transfer. Treat it as a placeholder until you have the Broker API and legal sign-off.
+2. **Holding deposits.** Bank (ACH) deposits and withdrawals for brokerage accounts now go through the **Alpaca Broker API**, where Alpaca holds the money. Debit-card deposits through Stripe still land in *your* Stripe balance and must be transferred by hand (Admin page). Treat card deposits as a placeholder until you have legal sign-off, or turn them off.
 3. **Card networks** limit funding investment accounts with cards. Stripe needs to approve your use case.
 4. **Projected returns** are shown as a statistical range with disclaimers. Do not advertise them as expected or guaranteed returns.
 

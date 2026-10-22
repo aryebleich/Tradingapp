@@ -1,4 +1,5 @@
 // QuantPocket single-page client. Hash routes, no framework.
+import { registerTrading } from './trading.js';
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -64,14 +65,31 @@ function drawChart(canvas, series, { base, compare } = {}) {
 }
 
 // ---------- routing ----------
-const NAV = [['dashboard', 'Portfolio'], ['backtest', 'Backtest'], ['bots', 'Strategies & Bots'], ['quantconnect', 'QuantConnect'], ['schedule', 'Scheduled'], ['text', 'Text & Hotline'], ['tax', 'Taxes'], ['funding', 'Funding & Plans'], ['settings', 'Settings']];
+const NAV = [
+  ['Trading', [['dashboard', 'Portfolio'], ['trade', 'Trade'], ['orders', 'Orders'], ['positions', 'Positions'], ['watchlists', 'Watchlists']]],
+  ['Markets', [['markets', 'Markets & news'], ['options', 'Options chain'], ['calendar', 'Calendar & events']]],
+  ['Strategies', [['backtest', 'Backtest'], ['bots', 'Bots'], ['schedule', 'Scheduled trades'], ['quantconnect', 'QuantConnect']]],
+  ['Account', [['account', 'Brokerage account'], ['funding', 'Plans & billing'], ['tax', 'Taxes'], ['text', 'Text & hotline'], ['settings', 'Settings']]],
+];
 const routes = {};
+// Live streams and timers belong to the page that opened them; they stop on navigation.
+const cleanups = [];
+const onLeave = fn => cleanups.push(fn);
 async function render() {
+  while (cleanups.length) { try { cleanups.pop()(); } catch {} }
   const [route, q] = (location.hash.slice(2) || 'dashboard').split('?');
-  const view = $('#view');
+  // Each render gets a fresh container: requests still in flight from the previous page then
+  // write into a detached element instead of overwriting the page the user moved to.
+  const view = document.createElement('div');
+  $('#view').replaceChildren(view);
   if (!ME && !['login', 'register', 'mfa', 'forgot', 'reset', 'verify'].includes(route)) { location.hash = '#/login'; return; }
-  $('#top').hidden = !ME;
-  if (ME) $('#nav').innerHTML = [...NAV, ...(ME.role === 'admin' ? [['admin', 'Admin']] : [])].map(([k, t]) => `<a href="#/${k}" class="${k === route ? 'on' : ''}">${t}</a>`).join('');
+  $('#top').hidden = !ME; $('#nav').hidden = !ME;
+  $('#nav').classList.remove('open');
+  if (ME) {
+    const groups = ME.role === 'admin' ? [...NAV, ['Owner', [['admin', 'Admin']]]] : NAV;
+    $('#nav').innerHTML = groups.map(([g, items]) => `<div class="grp">${g}</div>` + items.map(([k, t]) => `<a href="#/${k}" class="${k === route ? 'on' : ''}">${t}</a>`).join('')).join('');
+    updateBadge();
+  }
   view.innerHTML = '<p class="mu">Loading…</p>';
   try {
     await (routes[route] || routes.dashboard)(view, new URLSearchParams(q));
@@ -85,6 +103,18 @@ async function render() {
   catch (e) { view.innerHTML = `<div class="card err">${esc(e.message)}</div>`; }
 }
 window.addEventListener('hashchange', render);
+$('#menuBtn').onclick = () => { const n = $('#nav'); n.classList.toggle('open'); $('#menuBtn').setAttribute('aria-expanded', n.classList.contains('open')); };
+// Shows which Alpaca account trading goes to (sandbox, paper or live).
+let badgeAt = 0;
+async function updateBadge(force) {
+  if (!force && Date.now() - badgeAt < 60e3) return;
+  badgeAt = Date.now();
+  const s = await api('/alpaca/status').catch(() => null), b = $('#connBadge');
+  if (!s?.active) { b.textContent = 'No brokerage connected'; b.className = 'pill'; return; }
+  const kind = { broker: 'Brokerage account', oauth: 'Alpaca (OAuth)', keys: 'Alpaca (API keys)' }[s.active.type];
+  b.textContent = `${kind} · ${s.active.live ? 'LIVE' : s.active.type === 'broker' ? 'sandbox' : 'paper'}`;
+  b.className = 'pill' + (s.active.live ? ' warn' : '');
+}
 $('#logout').onclick = async () => { await api('/auth/logout', { body: {} }); ME = null; location.href = '/'; };
 
 const accountSwitch = () => `<div class="seg" id="acctseg">${[['paper', 'Paper'], ['alpaca', 'Alpaca']].map(([k, t]) => `<button class="${state.account === k ? 'on' : ''}" data-a="${k}">${t}</button>`).join('')}</div>`;
@@ -145,7 +175,8 @@ routes.mfa = view => {
 };
 
 // ---------- portfolio ----------
-routes.dashboard = async view => {
+routes.dashboard = async (view, q) => {
+  if (state.account === 'alpaca') return routes.portfolio(view, q, accountSwitch, wireAccountSwitch);
   const a = await api('/account?account=' + state.account).catch(e => ({ error: e.message }));
   if (a.error) {
     view.innerHTML = `<div class="row" style="justify-content:space-between"><h1>Portfolio</h1>${accountSwitch()}</div><div class="card"><p class="err">${esc(a.error)}</p><a href="#/settings">Open Settings</a></div>`;
@@ -464,11 +495,9 @@ routes.settings = async view => {
   const [integ, sessions, log] = await Promise.all([api('/integrations'), api('/auth/sessions'), api('/auth/audit')]);
   view.innerHTML = `<h1>Settings</h1>
   <div class="grid">
-    <form class="card" id="alp"><h2>Alpaca brokerage</h2>
-      <p class="mu">${integ.alpaca.connected ? `Connected (${integ.alpaca.live ? '<b class="warn">live</b>' : 'paper'}) · key ${esc(integ.alpaca.keyHint)}` : 'Create API keys at alpaca.markets. Keys are encrypted on the server.'}</p>
-      <label>API key id<input name="keyId" autocomplete="off"></label><label>Secret key<input name="secret" type="password" autocomplete="off"></label>
-      <label><input type="checkbox" name="live" style="width:auto"> These are LIVE (real money) keys</label>
-      <button>${integ.alpaca.connected ? 'Replace keys' : 'Connect Alpaca'}</button> ${integ.alpaca.connected ? '<button type="button" class="ghost" data-dis="alpaca">Disconnect</button>' : ''}<div class="err"></div></form>
+    <div class="card"><h2>Alpaca brokerage</h2>
+      <p class="mu">Open a brokerage account, connect your Alpaca account with one click, or use API keys.</p>
+      <a href="#/account"><button type="button">Manage brokerage connection</button></a></div>
     <form class="card" id="qcf"><h2>QuantConnect</h2>
       <p class="mu">${integ.quantconnect.connected ? 'Connected as user ' + esc(integ.quantconnect.userId) : 'quantconnect.com → Account → API Access'}</p>
       <label>User id<input name="userId" autocomplete="off"></label><label>API token<input name="token" type="password" autocomplete="off"></label>
@@ -493,7 +522,6 @@ routes.settings = async view => {
   <div class="card tablewrap"><h2>Active sessions</h2><table>${sessions.map(s => `<tr><td>${esc(s.ip)}</td><td>${esc(s.ua.slice(0, 60))}</td><td>${date(s.createdAt)}</td><td>${s.current ? '<span class="pill">this device</span>' : `<button class="small ghost" data-s="${s.id}">Sign out</button>`}</td></tr>`).join('')}</table></div>
   <div class="card tablewrap"><h2>Security log</h2><table>${log.map(l => `<tr><td>${date(l.at)}</td><td>${esc(l.event)}</td><td>${esc(l.ip || '')}</td></tr>`).join('')}</table></div>`;
   const refreshMe = async () => { ME = (await api('/auth/me')).user; };
-  act($('button', $('#alp', view)), async () => { const r = await api('/integrations/alpaca', { body: form($('#alp', view)) }); setTimeout(render, 800); return 'Connected. Equity ' + money(r.equity); });
   act($('button', $('#qcf', view)), async () => { await api('/integrations/quantconnect', { body: form($('#qcf', view)) }); setTimeout(render, 800); return 'Connected'; });
   $$('[data-dis]', view).forEach(b => (b.onclick = async () => { await api('/integrations/' + b.dataset.dis, { method: 'DELETE' }); render(); }));
   if ($('#mfaset', view)) act($('#mfaset', view), async () => {
@@ -536,10 +564,19 @@ routes.admin = async view => {
   $$('[data-m]', view).forEach(b => (b.onclick = async () => { await api('/admin/messages/' + b.dataset.m, { body: {} }); render(); }));
 };
 
+registerTrading(routes, { $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, updateBadge, me: () => ME, state });
+
 (async () => {
   const me = await api('/auth/me').catch(() => ({}));
   ME = me.user;
   if (!ME && me.mfaPending) location.hash = '#/mfa';
   render();
-  window.addEventListener('resize', () => { clearTimeout(window.__rt); window.__rt = setTimeout(() => ['#/dashboard'].includes(location.hash) && render(), 300); });
+  // Redraw the simulator chart only when the width really changes (not on scrollbar or zoom
+  // noise), and only if that page is still showing when the debounce fires.
+  let lastW = innerWidth;
+  window.addEventListener('resize', () => {
+    clearTimeout(window.__rt);
+    const hash = location.hash;
+    window.__rt = setTimeout(() => { if (Math.abs(innerWidth - lastW) > 40 && location.hash === hash && /^#\/(dashboard)?$/.test(hash) && state.account !== 'alpaca') { lastW = innerWidth; render(); } }, 300);
+  });
 })();

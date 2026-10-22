@@ -4,6 +4,8 @@ import { placeOrder, getBars, lastPrice, snapshotEquity, accountSummary, getCred
 import { latestSignal } from './engine.js';
 import { sendSms, sendEmail } from './notify.js';
 import { assessFee } from './fees.js';
+import { tradingFor } from './alpaca/connections.js';
+import { getAccount, brokerEnabled, kycStep } from './alpaca/broker.js';
 
 const DAY = 86400e3;
 
@@ -111,7 +113,7 @@ export async function assessAllFees() {
   const out = [];
   for (const s of await all('SELECT user_id, account FROM fee_state')) {
     try {
-      if (s.account === 'alpaca' && !(await getCred(s.user_id, 'alpaca'))) continue;
+      if (s.account === 'alpaca' && !(await tradingFor(s.user_id))) continue;
       const sum = await accountSummary(s.user_id, s.account);
       out.push({ userId: s.user_id, account: s.account, ...(await assessFee(s.user_id, s.account, sum.equity)) });
     } catch (e) { out.push({ userId: s.user_id, account: s.account, error: e.message }); }
@@ -134,12 +136,29 @@ export async function runDueJobs(t = now()) {
   return out;
 }
 
+// KYC: follow brokerage applications until they are ACTIVE and tell the user when status changes.
+export async function refreshKyc() {
+  if (!brokerEnabled()) return 0;
+  const pending = await all("SELECT * FROM broker_accounts WHERE status NOT IN ('ACTIVE', 'REJECTED', 'ACCOUNT_CLOSED', 'DISABLED')");
+  for (const b of pending) {
+    try {
+      const a = await getAccount(b.account_id);
+      if (a.status === b.status) continue;
+      await run('UPDATE broker_accounts SET status = ?, crypto_status = ?, account_number = ?, updated_at = ? WHERE user_id = ?', a.status, a.crypto_status ?? null, a.account_number, now(), b.user_id);
+      const msg = a.status === 'ACTIVE' ? 'Your brokerage account is approved and ready to trade.' : kycStep(a.status) === 0 ? `Your brokerage application needs attention (status ${a.status}). Open the Account page.` : `Brokerage application update: ${a.status}.`;
+      await notify(b.user_id, msg);
+    } catch (e) { console.warn('kyc refresh', b.user_id, e.message); }
+  }
+  return pending.length;
+}
+
 // Housekeeping: drop expired sessions and import Alpaca fills placed outside the app.
 async function hourly() {
   await run('DELETE FROM sessions WHERE expires_at < ?', now());
   await run('DELETE FROM job_runs WHERE at < ?', now() - 90 * DAY);
-  for (const c of await all("SELECT DISTINCT user_id FROM credentials WHERE provider = 'alpaca'"))
-    await syncAlpacaFills(c.user_id).catch(e => console.warn('alpaca sync', c.user_id, e.message));
+  const users = await all("SELECT user_id FROM credentials WHERE provider IN ('alpaca', 'alpaca_oauth') UNION SELECT user_id FROM broker_accounts");
+  for (const c of users) await syncAlpacaFills(c.user_id).catch(e => console.warn('alpaca sync', c.user_id, e.message));
+  await refreshKyc();
 }
 
 export function startScheduler() {

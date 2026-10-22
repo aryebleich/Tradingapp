@@ -17,13 +17,18 @@ import { buildStrategy } from './src/ai.js';
 import { handleCommand, userByPhone, normalize, HELP } from './src/commands.js';
 import { startScheduler, assessAllFees, runDueJobs, snapshotAll } from './src/scheduler.js';
 import * as N from './src/notify.js';
+import { router as alpacaRouter } from './src/routes/alpaca.js';
+import { oauthCallback, oauthEnabled, tradingFor } from './src/alpaca/connections.js';
+import { brokerEnabled } from './src/alpaca/broker.js';
+import { dataEnabled } from './src/alpaca/data.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_URL = (process.env.PUBLIC_URL || 'http://localhost:3000').replace(/\/$/, '');
 export const app = express();
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
-app.use(compression());
+// Server-Sent Events must not be buffered by compression.
+app.use(compression({ filter: (req, res) => !String(req.headers.accept).includes('text/event-stream') && compression.filter(req, res) }));
 
 // Minimal access log (no query strings: reset/verify tokens live in the URL fragment, but be safe).
 app.use((req, res, next) => {
@@ -173,6 +178,16 @@ app.post('/twilio/voice/confirm', async (req, res) => {
 });
 app.post('/twilio/voice/status', async (req, res) => { calls.delete(req.body.CallSid); res.sendStatus(204); });
 
+// OAuth2 redirect target after the user approves access in Alpaca.
+app.get('/oauth/alpaca/callback', auth.sessionMiddleware, async (req, res) => {
+  try {
+    if (req.query.error) throw new Error(String(req.query.error_description || req.query.error));
+    const userId = await oauthCallback(String(req.query.state || ''), String(req.query.code || ''), req.user?.id);
+    await audit(userId, 'alpaca_oauth_connected', null, req.ip);
+    res.redirect('/app#/account?connected=oauth');
+  } catch (e) { res.redirect('/app#/account?error=' + encodeURIComponent(e.message)); }
+});
+
 // ---------- JSON API ----------
 const api = express.Router();
 // The landing page copy on GitHub Pages calls the public demo endpoints cross-origin (no cookies).
@@ -191,6 +206,7 @@ api.use(auth.csrfGuard);
 // Only API calls look up the session; static files and pages skip the database round trip.
 api.use(auth.sessionMiddleware);
 api.use('/auth', auth.router);
+api.use('/alpaca', alpacaRouter);
 const U = auth.requireUser;
 const wrap = fn => async (req, res) => Promise.resolve(fn(req, res)).catch(e => res.status(400).json({ error: e.message }));
 const acct = req => (req.query.account || req.body?.account) === 'alpaca' ? 'alpaca' : 'paper';
@@ -199,7 +215,7 @@ const needPlan = (req, res, next) => (PAID.includes(req.user.plan) || req.user.r
 
 api.get('/config', async (req, res) => res.json({
   plans: PLANS, presets: PRESETS, twilio: N.twilioEnabled(), stripe: N.stripeEnabled(), ai: !!process.env.ANTHROPIC_API_KEY, email: N.emailEnabled(),
-  marketData: !!process.env.ALPACA_KEY_ID, hotline: process.env.TWILIO_FROM || null,
+  marketData: dataEnabled(), hotline: process.env.TWILIO_FROM || null, broker: brokerEnabled(), oauth: oauthEnabled(),
 }));
 
 // Public, rate-limited demo backtest used by the landing page (also from the GitHub Pages copy).
@@ -261,7 +277,7 @@ api.delete('/strategies/:id', U, async (req, res) => { await run('DELETE FROM st
 api.post('/strategies/:id/deploy', U, wrap(async (req, res) => {
   const target = req.body.account === 'alpaca' ? 'alpaca' : req.body.account === 'paper' ? 'paper' : null;
   if (target === 'alpaca' && !PAID.includes(req.user.plan) && req.user.role !== 'admin') throw new Error('Live bots need the Pro plan');
-  if (target === 'alpaca' && !(await getCred(req.user.id, 'alpaca'))) throw new Error('Connect Alpaca first');
+  if (target === 'alpaca' && !(await tradingFor(req.user.id))) throw new Error('Connect Alpaca first');
   await run('UPDATE strategies SET deployed = ?, last_run = NULL WHERE id = ? AND user_id = ?', target, +req.params.id, req.user.id);
   await audit(req.user.id, target ? 'bot_deployed' : 'bot_stopped', { id: +req.params.id, target }, req.ip);
   res.json({ ok: true });
@@ -440,7 +456,7 @@ api.post('/admin/ledger/:id', U, auth.requireAdmin, wrap(async (req, res) => {
 api.use((req, res) => res.status(404).json({ error: 'Not found' }));
 api.use((err, req, res, _next) => {
   if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'Invalid JSON' });
-  console.error(err);
+  if (!err.status || err.status >= 500) console.error(err);
   res.status(err.status || 400).json({ error: err.expose === false ? 'Something went wrong' : err.message });
 });
 app.use('/api', api);

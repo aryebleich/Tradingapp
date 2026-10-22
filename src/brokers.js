@@ -2,9 +2,9 @@
 import { one, all, run, now, tx } from './db.js';
 import { decrypt } from './crypto.js';
 import { rng } from './engine.js';
+import { tradingFor, requireTrading } from './alpaca/connections.js';
 
-export const DATA = 'https://data.alpaca.markets/v2';
-const TRADE = { paper: 'https://paper-api.alpaca.markets/v2', live: 'https://api.alpaca.markets/v2' };
+export const DATA = (process.env.ALPACA_DATA_URL || 'https://data.alpaca.markets') + '/v2';
 
 export async function getCred(userId, provider) {
   const r = await one('SELECT blob FROM credentials WHERE user_id = ? AND provider = ?', userId, provider);
@@ -140,21 +140,15 @@ export async function lastPrice(symbol, userId) {
   return p;
 }
 
-async function alpaca(c, path, method = 'GET', body) {
-  const r = await fetch(TRADE[c.live ? 'live' : 'paper'] + path, { method, headers: hdr(c), body: body ? JSON.stringify(body) : undefined });
-  const t = await r.text();
-  if (!r.ok) throw new Error(`Alpaca ${r.status}: ${t.slice(0, 200)}`);
-  return t ? JSON.parse(t) : {};
-}
 
 // --- unified account interface; account is 'paper' (built-in sim) or 'alpaca' ---
 
 export async function accountSummary(userId, account) {
   if (account === 'alpaca') {
-    const c = await getCred(userId, 'alpaca'); if (!c) throw new Error('Connect Alpaca in Settings first');
-    const [a, pos] = await Promise.all([alpaca(c, '/account'), alpaca(c, '/positions')]);
+    const t = await requireTrading(userId);
+    const [a, pos] = await Promise.all([t.account(), t.positions()]);
     return {
-      account, live: !!c.live, cash: +a.cash, equity: +a.equity, buyingPower: +a.buying_power, lastEquity: +a.last_equity,
+      account, live: t.live, cash: +a.cash, equity: +a.equity, buyingPower: +a.buying_power, lastEquity: +a.last_equity,
       positions: pos.map(p => ({ symbol: p.symbol, qty: +p.qty, avgPrice: +p.avg_entry_price, price: +p.current_price, value: +p.market_value, pnl: +p.unrealized_pl })),
     };
   }
@@ -193,12 +187,12 @@ export async function placeOrder(userId, account, order, source = 'manual') {
   if (!validSymbol(symbol)) throw new Error('Invalid symbol');
   if (!(Number.isFinite(q) && q > 0) && !(Number.isFinite(n) && n > 0)) throw new Error('Give a quantity or dollar amount');
   if (account === 'alpaca') {
-    const c = await getCred(userId, 'alpaca'); if (!c) throw new Error('Connect Alpaca in Settings first');
+    const t = await requireTrading(userId);
     const body = { symbol, side, type: 'market', time_in_force: 'day', ...(q > 0 ? { qty: String(q) } : { notional: n.toFixed(2) }) };
-    const o = await alpaca(c, '/orders', 'POST', body);
+    const o = await t.placeOrder(body);
     // Usually fills within seconds; anything still open is picked up later by syncAlpacaFills.
     setTimeout(() => syncAlpacaFills(userId).catch(() => {}), 4000);
-    return { id: o.id, status: o.status, symbol, side, broker: 'alpaca', live: !!c.live };
+    return { id: o.id, status: o.status, symbol, side, broker: 'alpaca', live: t.live };
   }
   const price = await lastPrice(symbol, userId);
   const qty = q > 0 ? q : +(n / price).toFixed(6);
@@ -218,13 +212,14 @@ export async function placeOrder(userId, account, order, source = 'manual') {
 // Copies filled Alpaca orders into local fills so tax lots stay complete, including orders that
 // filled later (placed after hours, by bots, or directly in Alpaca).
 export async function syncAlpacaFills(userId) {
-  const c = await getCred(userId, 'alpaca');
-  if (!c) return 0;
-  const orders = await alpaca(c, '/orders?status=closed&limit=200&direction=desc');
+  const t = await tradingFor(userId);
+  if (!t || (t.type === 'broker' && t.conn.status !== 'ACTIVE')) return 0;
+  const orders = await t.orders({ status: 'closed', limit: 200, direction: 'desc', nested: false });
   let added = 0;
   for (const o of orders.reverse()) {
     if (o.status !== 'filled' && !(+o.filled_qty > 0)) continue;
     if (await one('SELECT id FROM fills WHERE broker_order_id = ?', o.id)) continue;
+    if (!o.symbol || o.order_class === 'mleg') continue; // spreads: legs are recorded by Alpaca per contract
     await recordFill(userId, 'alpaca', o.symbol, o.side, +o.filled_qty, +o.filled_avg_price, 'alpaca', { brokerId: o.id, at: Date.parse(o.filled_at) || now() });
     added++;
   }
@@ -233,17 +228,17 @@ export async function syncAlpacaFills(userId) {
 
 export async function listOrders(userId, account) {
   if (account === 'alpaca') {
-    const c = await getCred(userId, 'alpaca'); if (!c) throw new Error('Connect Alpaca in Settings first');
+    const t = await requireTrading(userId);
     syncAlpacaFills(userId).catch(e => console.warn('alpaca sync', e.message));
-    return (await alpaca(c, '/orders?status=all&limit=50')).map(o => ({ id: o.id, symbol: o.symbol, side: o.side, qty: +o.qty || null, notional: +o.notional || null, status: o.status, price: +o.filled_avg_price || null, at: o.submitted_at }));
+    return (await t.orders({ status: 'all', limit: 50, nested: false })).map(o => ({ id: o.id, symbol: o.symbol, side: o.side, qty: +o.qty || null, notional: +o.notional || null, status: o.status, price: +o.filled_avg_price || null, at: o.submitted_at }));
   }
   return (await all("SELECT id, symbol, side, qty, price, source, at FROM fills WHERE user_id = ? AND account = 'paper' ORDER BY id DESC LIMIT 50", userId)).map(f => ({ ...f, status: 'filled' }));
 }
 
 export async function portfolioHistory(userId, account) {
   if (account === 'alpaca') {
-    const c = await getCred(userId, 'alpaca'); if (!c) throw new Error('Connect Alpaca in Settings first');
-    const h = await alpaca(c, '/account/portfolio/history?period=1A&timeframe=1D');
+    const t = await requireTrading(userId);
+    const h = await t.portfolioHistory({ period: '1A', timeframe: '1D' });
     return h.timestamp.map((t, i) => ({ day: new Date(t * 1000).toISOString().slice(0, 10), equity: h.equity[i] })).filter(x => x.equity != null);
   }
   return await all("SELECT day, equity FROM equity_history WHERE user_id = ? AND account = 'paper' ORDER BY day", userId);

@@ -18,8 +18,15 @@ services:
       - { key: DATABASE_URL, sync: false }
       - { key: DATABASE_AUTH_TOKEN, sync: false }
       - { key: PUBLIC_ORIGINS, value: "https://aryebleich.github.io" }
+      - { key: BROKER_API_KEY, sync: false }
+      - { key: BROKER_API_SECRET, sync: false }
+      - { key: BROKER_BASE_URL, value: "https://broker-api.sandbox.alpaca.markets" }
       - { key: ALPACA_KEY_ID, sync: false }
       - { key: ALPACA_SECRET, sync: false }
+      - { key: ALPACA_TRADING_URL, value: "https://paper-api.alpaca.markets" }
+      - { key: ALPACA_OAUTH_CLIENT_ID, sync: false }
+      - { key: ALPACA_OAUTH_CLIENT_SECRET, sync: false }
+      - { key: ALPACA_OAUTH_ENV, value: paper }
       - { key: ANTHROPIC_API_KEY, sync: false }
       - { key: RESEND_API_KEY, sync: false }
       - { key: EMAIL_FROM, sync: false }

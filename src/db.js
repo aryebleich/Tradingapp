@@ -137,6 +137,15 @@ CREATE TABLE IF NOT EXISTS messages (
   status TEXT NOT NULL DEFAULT 'open',
   at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS broker_accounts (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  account_id TEXT NOT NULL UNIQUE,
+  account_number TEXT,
+  status TEXT NOT NULL,
+  crypto_status TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS job_runs (
   k TEXT PRIMARY KEY,
   at INTEGER NOT NULL
@@ -159,6 +168,7 @@ const MIGRATIONS = [
   'ALTER TABLE users ADD COLUMN reset_expires INTEGER',
   'ALTER TABLE users ADD COLUMN verify_hash TEXT',
   'ALTER TABLE users ADD COLUMN phone_code_expires INTEGER',
+  'ALTER TABLE users ADD COLUMN alpaca_conn TEXT',
   'CREATE UNIQUE INDEX IF NOT EXISTS ledger_ref ON ledger (kind, ref) WHERE ref IS NOT NULL',
 ];
 
