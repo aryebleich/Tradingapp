@@ -23,6 +23,9 @@ async function liveGate(req, t) {
 
 // ---------- connection status ----------
 router.get('/status', async (req, res) => {
+  // An application approved while nobody was looking should unlock trading right away.
+  const pending = await one("SELECT status FROM broker_accounts WHERE user_id = ? AND status != 'ACTIVE'", req.user.id);
+  if (pending && B.brokerEnabled()) await refreshBrokerAccount(req.user.id).catch(e => console.warn('kyc refresh', e.message));
   const all = await connections(req.user.id), t = await tradingFor(req.user.id);
   const b = await one('SELECT account_id, account_number, status, crypto_status, updated_at FROM broker_accounts WHERE user_id = ?', req.user.id);
   res.json({

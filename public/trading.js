@@ -98,7 +98,8 @@ function drawCandles(canvas, bars, tipEl) {
   if (tipEl) canvas.onmouseleave = () => (tipEl.hidden = true);
 }
 
-const RANGES = { '1D': ['5Min', 1], '5D': ['15Min', 7], '1M': ['1Hour', 31], '6M': ['1Day', 183], '1Y': ['1Day', 366], '5Y': ['1Week', 1830] };
+// 1D looks back 5 days and keeps only the latest session, so weekends and holidays still show a chart.
+const RANGES = { '1D': ['5Min', 5], '5D': ['15Min', 7], '1M': ['1Hour', 31], '6M': ['1Day', 183], '1Y': ['1Day', 366], '5Y': ['1Week', 1830] };
 
 // =====================================================================
 // Brokerage account: connection, onboarding (KYC), configuration, banking
@@ -317,17 +318,16 @@ async function trade(view, q) {
   const kind = isOption(symbol) ? 'option' : isCrypto(symbol) ? 'crypto' : 'stock';
   view.innerHTML = `<div class="row" style="justify-content:space-between;align-items:center"><h1>Trade</h1>
     <form id="search" class="row" style="flex:0 1 420px"><label style="flex:1">Symbol or company<input name="q" list="symList" placeholder="AAPL, BTC/USD, Apple…" autocomplete="off" value=""></label><datalist id="symList"></datalist><button>Go</button></form></div>
-  <div class="cols">
-    <div>
-      <div class="card"><div class="quote"><h2 style="margin:0">${H.esc(symbol)}</h2><span class="px" id="px">-</span><span id="chg"></span><span class="mu" id="ba"></span><span class="mu" id="assetName"></span></div>
+  <div class="cols tradegrid">
+      <div class="card" id="chartCard"><div class="quote"><h2 style="margin:0">${H.esc(symbol)}</h2><span class="px" id="px">-</span><span id="chg"></span><span class="mu" id="ba"></span><span class="mu" id="assetName"></span></div>
         ${kind === 'option' ? '' : `<div class="chips" id="ranges" style="margin:10px 0">${Object.keys(RANGES).map(r => `<button data-r="${r}" class="${r === range ? 'on' : ''}">${r}</button>`).join('')}</div>
         <div class="chartbox"><canvas id="candles" style="height:340px"></canvas><div class="tip" id="tip" hidden></div></div>`}
       </div>
-      <div class="card"><div class="row" style="justify-content:space-between"><h2>Open orders for ${H.esc(symbol)}</h2><a href="#/orders">All orders →</a></div><div id="symOrders" class="tablewrap"></div></div>
-      ${kind === 'option' ? '' : '<div class="card news"><h2>News</h2><div id="news"><p class="mu">Loading…</p></div></div>'}
-    </div>
-    <div class="card ticket" id="ticket"></div>
-  </div>`;
+      <div class="card ticket" id="ticket"></div>
+      <div class="card" id="ordersCard"><div class="row" style="justify-content:space-between"><h2>Open orders for ${H.esc(symbol)}</h2><a href="#/orders">All orders →</a></div><div id="symOrders" class="tablewrap"></div></div>
+      ${kind === 'option' ? '' : '<div class="card news" id="newsCard"><h2>News</h2><div id="news"><p class="mu">Loading…</p></div></div>'}
+  </div>
+  <div class="actionbar" id="tradeBar" hidden><button class="buy" data-s="buy">Buy</button><button class="sell danger" data-s="sell">Sell</button></div>`;
 
   const sf = H.$('#search', view), dl = H.$('#symList', view);
   let tmr;
@@ -356,7 +356,8 @@ async function trade(view, q) {
     live([symbol], u => { if (u.price != null) showPx(u.price, prevClose); if (u.bid != null) H.$('#ba', view).textContent = `Bid ${fmt(u.bid)} · Ask ${fmt(u.ask)}`; });
     const [tf, days] = RANGES[range];
     A(`/data/bars?symbols=${encodeURIComponent(symbol)}&timeframe=${tf}&start=${new Date(Date.now() - days * 86400e3).toISOString()}`).then(b => {
-      const bars = b[symbol] || [];
+      let bars = b[symbol] || [];
+      if (range === '1D' && bars.length) { const lastDay = bars[bars.length - 1].t.slice(0, 10); bars = bars.filter(x => x.t.slice(0, 10) === lastDay); }
       const draw = () => H.$('#candles', view) && drawCandles(H.$('#candles', view), bars, H.$('#tip', view));
       draw(); onResize(draw);
       if (last == null && bars.length) showPx(bars[bars.length - 1].c, prevClose);
@@ -373,10 +374,17 @@ async function trade(view, q) {
   const loadOrders = async () => {
     const os = await A('/orders?status=open&symbols=' + encodeURIComponent(symbol)).catch(() => []);
     const el = H.$('#symOrders', view); if (!el) return;
-    el.innerHTML = os.length ? ordersTable(os, true) : '<p class="mu">None</p>';
+    el.innerHTML = os.length ? ordersTable(os) : '<p class="mu">None</p>';
     wireOrderActions(el, loadOrders);
   };
   renderTicket(H.$('#ticket', view), symbol, kind, acct, () => last, q, () => setTimeout(loadOrders, 800));
+  // Phones: a Buy/Sell bar stays on screen until the order form itself is visible.
+  const bar = H.$('#tradeBar', view), tk = H.$('#ticket', view);
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver(([e]) => (bar.hidden = e.isIntersecting || innerWidth > 900), { rootMargin: '0px 0px -80px 0px' });
+    io.observe(tk); H.onLeave(() => io.disconnect());
+  }
+  H.$$('button', bar).forEach(b => (b.onclick = () => { H.$(`#sideSeg [data-s=${b.dataset.s}]`, tk)?.click(); tk.scrollIntoView({ behavior: 'smooth', block: 'start' }); }));
   loadOrders();
   every(5000, loadOrders);
 }
@@ -456,7 +464,7 @@ function orderRow(o, sub) {
     <td>${px || '-'}</td><td>${H.esc((o.time_in_force || '').toUpperCase())}</td><td>${H.esc(o.status)}</td>
     <td>${open ? `<button class="small ghost" data-mod="${H.esc(o.id)}" data-type="${H.esc(o.type)}">Modify</button> <button class="small ghost" data-cancel="${H.esc(o.id)}">Cancel</button>` : ''}</td></tr>`;
 }
-function ordersTable(list, compact) {
+function ordersTable(list) {
   const rows = list.map(o => orderRow(o) + (o.legs || []).map(l => orderRow(l, true)).join('')).join('');
   return `<table><tr><th>Submitted</th><th>Symbol</th><th>Side</th><th>Type</th><th class="num">Qty</th><th>Prices</th><th>TIF</th><th>Status</th><th></th></tr>${rows}</table>`;
 }
@@ -481,10 +489,10 @@ async function orders(view, q) {
   if (!s) return;
   const status = q.get('status') || 'open';
   view.innerHTML = `<div class="row" style="justify-content:space-between"><h1>Orders</h1><div class="row">
-    <div class="chips" id="tabs">${[['open', 'Open'], ['closed', 'Filled & closed'], ['all', 'All']].map(([k, t]) => `<button data-k="${k}" class="${k === status ? 'on' : ''}">${t}</button>`).join('')}</div>
+    <div class="chips" id="orderTabs">${[['open', 'Open'], ['closed', 'Filled & closed'], ['all', 'All']].map(([k, t]) => `<button data-k="${k}" class="${k === status ? 'on' : ''}">${t}</button>`).join('')}</div>
     <button class="danger small" id="cancelAll">Cancel all open</button></div></div>
     <div class="card tablewrap" id="list"><p class="mu">Loading…</p></div>`;
-  H.$$('#tabs button', view).forEach(b => (b.onclick = () => (location.hash = '#/orders?status=' + b.dataset.k)));
+  H.$$('#orderTabs button', view).forEach(b => (b.onclick = () => (location.hash = '#/orders?status=' + b.dataset.k)));
   const load = async () => {
     const list = await A('/orders?status=' + status + '&limit=200');
     const el = H.$('#list', view); if (!el) return;
@@ -566,7 +574,7 @@ async function markets(view, q) {
   A('/data/snapshots?symbols=' + encodeURIComponent(OVERVIEW.join(','))).then(sn => { for (const [k, v] of Object.entries(sn)) { prev[k] = v.prevDailyBar?.c; ovSet(k, v.price, v.changePct); } }).catch(e => (H.$('#ov', view).insertAdjacentHTML('afterend', `<p class="err">${H.esc(e.message)}</p>`)));
   live(OVERVIEW, u => u.price != null && ovSet(u.symbol, u.price, prev[u.symbol] ? (u.price / prev[u.symbol] - 1) * 100 : null));
   A('/data/most-actives?top=15&by=' + by).then(d => (H.$('#active', view).innerHTML = `<table><tr><th>Symbol</th><th class="num">Volume</th><th class="num">Trades</th></tr>${(d.most_actives || []).map(a => `<tr><td>${link(a.symbol)}</td><td class="num">${fmt(a.volume, 0)}</td><td class="num">${fmt(a.trade_count, 0)}</td></tr>`).join('')}</table>`)).catch(e => (H.$('#active', view).innerHTML = `<p class="err">${H.esc(e.message)}</p>`));
-  A('/data/movers?top=8&market=' + mk).then(d => (H.$('#movers', view).innerHTML = `<div class="grid" style="gap:10px;grid-template-columns:1fr 1fr">${[['Gainers', d.gainers], ['Losers', d.losers]].map(([t, l]) => `<div><h3>${t}</h3><table>${(l || []).map(m => `<tr><td>${link(m.symbol)}</td><td class="num">${fmt(m.price)}</td><td class="num ${H.cls(m.percent_change)}">${H.pct(m.percent_change)}</td></tr>`).join('')}</table></div>`).join('')}</div>`)).catch(e => (H.$('#movers', view).innerHTML = `<p class="err">${H.esc(e.message)}</p>`));
+  A('/data/movers?top=8&market=' + mk).then(d => (H.$('#movers', view).innerHTML = `<div class="movers">${[['Gainers', d.gainers], ['Losers', d.losers]].map(([t, l]) => `<div><h3>${t}</h3><table><tr><th>Symbol</th><th class="num">Price</th><th class="num">Change</th></tr>${(l || []).map(m => `<tr><td>${link(m.symbol)}</td><td class="num">${fmt(m.price)}</td><td class="num ${H.cls(m.percent_change)}">${H.pct(m.percent_change)}</td></tr>`).join('')}</table></div>`).join('')}</div>`)).catch(e => (H.$('#movers', view).innerHTML = `<p class="err">${H.esc(e.message)}</p>`));
   const loadNews = syms => A('/data/news?limit=25' + (syms ? '&symbols=' + encodeURIComponent(syms) : '')).then(n => (H.$('#news', view).innerHTML = newsHtml(n))).catch(e => (H.$('#news', view).innerHTML = `<p class="err">${H.esc(e.message)}</p>`));
   loadNews();
   H.$('#nf', view).onsubmit = e => { e.preventDefault(); loadNews(H.form(e.target).symbols.replace(/\s/g, '').toUpperCase()); };
@@ -585,7 +593,8 @@ async function options(view, q) {
     <form id="uf" class="row"><label>Underlying<input name="u" value="${H.esc(und)}" style="max-width:120px"></label><label>Expiration<select name="exp" id="exp"><option>Loading…</option></select></label><button>Load</button></form></div>
   <p class="mu" id="spot"></p>
   <div class="cols"><div class="card tablewrap" id="chain"><p class="mu">Loading…</p></div>
-    <div class="card" id="builder"></div></div>`;
+    <div class="card" id="builder"></div></div>
+  <div class="actionbar" id="legBar" hidden><button id="legGo"></button></div>`;
   const legs = [];
   let spot = null;
   A('/data/snapshots?symbols=' + und).then(sn => { spot = sn[und]?.price; if (spot) H.$('#spot', view).innerHTML = `${H.esc(und)} last <b>${fmt(spot)}</b> <span class="${H.cls(sn[und].changePct)}">${H.pct(sn[und].changePct, 2)}</span>. Click a bid to sell or an ask to buy; add 2-4 legs for a spread.`; }).catch(() => {});
@@ -609,7 +618,10 @@ async function options(view, q) {
     <p class="mu" style="font-size:12px">Shaded cells are in the money. Greeks and IV from Alpaca's options data feed.</p>`;
   const byS = Object.fromEntries(chain.contracts.map(c => [c.symbol, c]));
   const drawBuilder = () => {
-    const b = H.$('#builder', view);
+    const b = H.$('#builder', view), lb = H.$('#legBar', view);
+    lb.hidden = !legs.length || innerWidth > 1100;
+    H.$('#legGo', view).textContent = `${legs.length} leg${legs.length === 1 ? '' : 's'} selected · Review order ↓`;
+    H.$('#legGo', view).onclick = () => b.scrollIntoView({ behavior: 'smooth', block: 'start' });
     const net = legs.reduce((a, l) => a + (l.side === 'buy' ? 1 : -1) * l.ratio * ((byS[l.symbol]?.bid + byS[l.symbol]?.ask) / 2 || 0), 0);
     b.innerHTML = `<h2>Order builder</h2>${legs.length ? '' : '<p class="mu">Click a bid or ask in the chain to add a leg.</p>'}
       ${legs.map((l, i) => { const c = byS[l.symbol]; return `<div class="row" style="align-items:center;margin-bottom:6px"><span class="${l.side === 'buy' ? 'pos' : 'neg'}" style="flex:1">${l.side.toUpperCase()} ${l.ratio}× ${c ? `${c.expiration} ${fmt(c.strike)} ${c.type}` : H.esc(l.symbol)}</span><input type="number" min="1" step="1" value="${l.ratio}" data-ratio="${i}" style="width:60px;margin:0"><button class="small ghost" data-rm="${i}">✕</button></div>`; }).join('')}

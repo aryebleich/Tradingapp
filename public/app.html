@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="/icon-512.png">
   <title>QuantPocket</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="/manifest.webmanifest">
@@ -21,8 +24,16 @@
   </header>
   <div id="shell">
     <aside id="nav" hidden></aside>
+    <div id="scrim" hidden></div>
     <main id="view"></main>
   </div>
+  <nav id="tabs" hidden aria-label="Main">
+    <a href="#/dashboard" data-r="dashboard"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>Portfolio</a>
+    <a href="#/trade" data-r="trade"><svg viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></svg>Trade</a>
+    <a href="#/orders" data-r="orders"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Orders</a>
+    <a href="#/positions" data-r="positions"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9v9z"/><path d="M12 3a9 9 0 0 1 9 9h-9z"/></svg>Positions</a>
+    <a href="#" id="moreTab"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>Menu</a>
+  </nav>
   <footer>
     <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/risk">Risk Disclosure</a> · <a href="/contact">Support</a><br>
     Trading involves risk of loss. Backtests and projections are hypothetical and do not guarantee future results.

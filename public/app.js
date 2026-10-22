@@ -83,11 +83,14 @@ async function render() {
   const view = document.createElement('div');
   $('#view').replaceChildren(view);
   if (!ME && !['login', 'register', 'mfa', 'forgot', 'reset', 'verify'].includes(route)) { location.hash = '#/login'; return; }
-  $('#top').hidden = !ME; $('#nav').hidden = !ME;
-  $('#nav').classList.remove('open');
+  $('#top').hidden = !ME; $('#nav').hidden = !ME; $('#tabs').hidden = !ME;
+  setMenu(false);
+  $$('#tabs a[data-r]').forEach(a => a.classList.toggle('on', a.dataset.r === route || (route === '' && a.dataset.r === 'dashboard')));
   if (ME) {
     const groups = ME.role === 'admin' ? [...NAV, ['Owner', [['admin', 'Admin']]]] : NAV;
-    $('#nav').innerHTML = groups.map(([g, items]) => `<div class="grp">${g}</div>` + items.map(([k, t]) => `<a href="#/${k}" class="${k === route ? 'on' : ''}">${t}</a>`).join('')).join('');
+    $('#nav').innerHTML = groups.map(([g, items]) => `<div class="grp">${g}</div>` + items.map(([k, t]) => `<a href="#/${k}" class="${k === route ? 'on' : ''}">${t}</a>`).join('')).join('')
+      + `<div class="grp">${esc(ME.email)}</div><a href="#" id="navLogout">Sign out</a>`;
+    $('#navLogout').onclick = e => { e.preventDefault(); $('#logout').click(); };
     updateBadge();
   }
   view.innerHTML = '<p class="mu">Loading…</p>';
@@ -103,7 +106,33 @@ async function render() {
   catch (e) { view.innerHTML = `<div class="card err">${esc(e.message)}</div>`; }
 }
 window.addEventListener('hashchange', render);
-$('#menuBtn').onclick = () => { const n = $('#nav'); n.classList.toggle('open'); $('#menuBtn').setAttribute('aria-expanded', n.classList.contains('open')); };
+// Phone layout: the sidebar becomes a drawer opened from the header or the bottom "Menu" tab.
+function setMenu(open) {
+  $('#nav').classList.toggle('open', open); $('#scrim').hidden = !open;
+  $('#menuBtn').setAttribute('aria-expanded', open); document.body.classList.toggle('noscroll', open);
+}
+$('#menuBtn').onclick = () => setMenu(!$('#nav').classList.contains('open'));
+$('#moreTab').onclick = e => { e.preventDefault(); setMenu(!$('#nav').classList.contains('open')); };
+$('#scrim').onclick = () => setMenu(false);
+addEventListener('keydown', e => { if (e.key === 'Escape') setMenu(false); });
+
+// On phones, tables render as stacked cards. Each cell gets its column name as a label; a
+// MutationObserver keeps labels on tables that pages re-render (e.g. auto-refreshing orders).
+function labelTables(root) {
+  for (const t of root.querySelectorAll('table:not(.chain):not([data-labeled])')) {
+    const head = [...t.rows].find(r => r.querySelector('th'));
+    if (!head) continue;
+    const names = [];
+    for (const th of head.cells) for (let i = 0; i < (th.colSpan || 1); i++) names.push(th.textContent.trim());
+    for (const r of t.rows) {
+      if (r === head) { r.classList.add('head'); continue; }
+      let i = 0;
+      for (const td of r.cells) { if (names[i]) td.dataset.label = names[i]; i += td.colSpan || 1; }
+    }
+    t.classList.add('stack'); t.dataset.labeled = '1';
+  }
+}
+new MutationObserver(() => labelTables($('#view'))).observe($('#view'), { childList: true, subtree: true });
 // Shows which Alpaca account trading goes to (sandbox, paper or live).
 let badgeAt = 0;
 async function updateBadge(force) {
@@ -112,7 +141,7 @@ async function updateBadge(force) {
   const s = await api('/alpaca/status').catch(() => null), b = $('#connBadge');
   if (!s?.active) { b.textContent = 'No brokerage connected'; b.className = 'pill'; return; }
   const kind = { broker: 'Brokerage account', oauth: 'Alpaca (OAuth)', keys: 'Alpaca (API keys)' }[s.active.type];
-  b.textContent = `${kind} · ${s.active.live ? 'LIVE' : s.active.type === 'broker' ? 'sandbox' : 'paper'}`;
+  b.innerHTML = `<span class="long">${kind} · </span>${s.active.live ? 'LIVE' : s.active.type === 'broker' ? 'Sandbox' : 'Paper'}`;
   b.className = 'pill' + (s.active.live ? ' warn' : '');
 }
 $('#logout').onclick = async () => { await api('/auth/logout', { body: {} }); ME = null; location.href = '/'; };
@@ -519,8 +548,8 @@ routes.settings = async view => {
   <div class="card"><h2>Your data</h2><p class="mu">Download everything we store about you, or permanently delete your account.</p>
     <a href="/api/auth/export"><button type="button" class="ghost">Download my data</button></a>
     <label>Password to delete account<input type="password" id="delpw" autocomplete="current-password"></label><button class="danger" id="delacct">Delete my account</button><div class="err"></div></div>
-  <div class="card tablewrap"><h2>Active sessions</h2><table>${sessions.map(s => `<tr><td>${esc(s.ip)}</td><td>${esc(s.ua.slice(0, 60))}</td><td>${date(s.createdAt)}</td><td>${s.current ? '<span class="pill">this device</span>' : `<button class="small ghost" data-s="${s.id}">Sign out</button>`}</td></tr>`).join('')}</table></div>
-  <div class="card tablewrap"><h2>Security log</h2><table>${log.map(l => `<tr><td>${date(l.at)}</td><td>${esc(l.event)}</td><td>${esc(l.ip || '')}</td></tr>`).join('')}</table></div>`;
+  <div class="card tablewrap"><h2>Active sessions</h2><table><tr><th>IP address</th><th>Device</th><th>Signed in</th><th></th></tr>${sessions.map(s => `<tr><td>${esc(s.ip)}</td><td>${esc(s.ua.slice(0, 60))}</td><td>${date(s.createdAt)}</td><td>${s.current ? '<span class="pill">this device</span>' : `<button class="small ghost" data-s="${s.id}">Sign out</button>`}</td></tr>`).join('')}</table></div>
+  <div class="card tablewrap"><h2>Security log</h2><table><tr><th>When</th><th>Event</th><th>IP address</th></tr>${log.map(l => `<tr><td>${date(l.at)}</td><td>${esc(l.event)}</td><td>${esc(l.ip || '')}</td></tr>`).join('')}</table></div>`;
   const refreshMe = async () => { ME = (await api('/auth/me')).user; };
   act($('button', $('#qcf', view)), async () => { await api('/integrations/quantconnect', { body: form($('#qcf', view)) }); setTimeout(render, 800); return 'Connected'; });
   $$('[data-dis]', view).forEach(b => (b.onclick = async () => { await api('/integrations/' + b.dataset.dis, { method: 'DELETE' }); render(); }));

@@ -121,3 +121,84 @@ label.check input { width: auto; margin: 0; }
 header { flex-wrap: nowrap; }
 #connBadge { min-width: 0; max-width: 42vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 480px) { header .brand span, header .brand { font-size: 17px; } #logout { padding: 7px 10px; } }
+
+/* ---------- Trade page layout: chart, ticket, orders, news ---------- */
+.tradegrid { grid-template-areas: "chart ticket" "orders ticket" "news ticket"; grid-template-rows: auto auto 1fr; }
+.tradegrid > #chartCard { grid-area: chart; } .tradegrid > #ticket { grid-area: ticket; position: sticky; top: 72px; } .tradegrid > #ordersCard { grid-area: orders; } .tradegrid > #newsCard { grid-area: news; }
+@media (max-width: 1100px) { .tradegrid { grid-template-areas: "chart" "ticket" "orders" "news"; grid-template-rows: auto; } .tradegrid > #ticket { position: static; } }
+.cols > .card { margin-bottom: 0; }
+.cols { margin-bottom: 16px; }
+
+/* ---------- bottom tab bar + sticky action bars (phones) ---------- */
+#tabs { display: none; }
+#scrim { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 15; }
+#scrim[hidden] { display: none; }
+body.noscroll { overflow: hidden; }
+.actionbar { display: none; }
+#connBadge .long { display: inline; }
+
+@media (max-width: 900px) {
+  #tabs:not([hidden]) { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; z-index: 25; left: 0; right: 0; bottom: 0;
+    background: var(--card); border-top: 1px solid var(--bd); padding: 4px 4px calc(4px + env(safe-area-inset-bottom)); }
+  #tabs a { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; font-size: 11px; color: var(--mu); text-decoration: none; border-radius: 8px; min-height: 48px; justify-content: center; }
+  #tabs a.on { color: var(--ac); font-weight: 600; }
+  #tabs svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+  .actionbar:not([hidden]) { display: flex; gap: 10px; position: fixed; z-index: 24; left: 0; right: 0; bottom: calc(60px + env(safe-area-inset-bottom)); padding: 10px 16px; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(6px); border-top: 1px solid var(--bd); }
+  .actionbar button { flex: 1; margin: 0; min-height: 46px; font-size: 16px; }
+  .actionbar button.buy { background: var(--gr); }
+  #nav { top: 0; height: 100vh; height: 100dvh; padding-top: calc(14px + env(safe-area-inset-top)); padding-bottom: 90px; width: min(300px, 82vw); }
+  #nav a { padding: 11px 12px; font-size: 15px; }
+  #logout { display: none; }
+  #connBadge .long { display: none; }
+  header { padding: 8px 12px; padding-top: calc(8px + env(safe-area-inset-top)); }
+  footer { padding-bottom: 12px; }
+}
+
+/* ---------- phone sizing: readable inputs (no iOS zoom), finger-sized targets, stacked tables ---------- */
+@media (max-width: 640px) {
+  input, select, textarea { font-size: 16px; }
+  button { min-height: 42px; }
+  button.small, .chips button { min-height: 38px; padding: 6px 12px; }
+  .seg button { min-height: 42px; }
+  h1 { font-size: 22px; } h2 { font-size: 16px; }
+  main { padding: 12px; }
+  .card { padding: 12px; border-radius: 10px; }
+  .stats { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat b { font-size: 17px; }
+  .quote .px { font-size: 26px; }
+  .row > label { flex: 1 1 100%; }
+  .row > label.half, .ticket .row > label { flex: 1 1 40%; }
+  canvas { height: 220px; }
+  #candles { height: 260px !important; }
+  .chips { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 2px; }
+  .chips button { flex: 0 0 auto; }
+  table.stack, table.stack tbody { display: block; }
+  table.stack tr.head { display: none; }
+  table.stack tr { display: block; border: 1px solid var(--bd); border-radius: 10px; padding: 8px 12px; margin-bottom: 10px; background: var(--card); }
+  table.stack tr.sub { margin-left: 14px; }
+  table.stack td { display: flex; justify-content: space-between; align-items: center; gap: 12px; border: 0; padding: 5px 0; white-space: normal; text-align: right; font-size: 15px; }
+  table.stack td.num { text-align: right; }
+  table.stack td::before { content: attr(data-label); color: var(--mu); font-size: 13px; text-align: left; flex-shrink: 0; }
+  table.stack td:not([data-label])::before, table.stack td[data-label=""]::before { content: none; }
+  table.stack td:last-child:has(button) { justify-content: flex-end; flex-wrap: wrap; padding-top: 8px; }
+  table.stack td[colspan] { justify-content: center; }
+  .tablewrap { overflow: visible; }
+  .card.tablewrap:has(table.chain) { overflow-x: auto; }
+  .kv { font-size: 14px; }
+  dialog { padding: 16px; }
+  .hero { margin-top: 10px; }
+}
+@media (max-width: 900px) { #menuBtn { display: none; } }
+@media (max-width: 640px) {
+  .row > .chips, .row > .row { flex: 1 1 100%; min-width: 0; }
+  .row > .chips + button, .row > .row > button { flex: 0 0 auto; }
+  .card.tablewrap:has(> table.stack), .card:has(> .tablewrap > table.stack) > .tablewrap { background: none; border: 0; padding: 0; }
+  .card.tablewrap:has(> table.stack) { box-shadow: none; }
+  table.stack td { justify-content: flex-start; gap: 8px; flex-wrap: wrap; }
+  table.stack td::before { margin-right: auto; }
+  table.stack td:last-child:has(button) { gap: 8px; }
+}
+@media (max-width: 900px) { #nav { z-index: 30; } #scrim { z-index: 29; } }
+.grid { grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); }
+.movers { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); }
