@@ -1,0 +1,14 @@
+{
+  "name": "QuantPocket",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+  "postCreateCommand": "npm ci",
+  "postAttachCommand": "npm run dev",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": { "label": "QuantPocket", "onAutoForward": "openBrowser" }
+  },
+  "containerEnv": { "PUBLIC_URL": "http://localhost:3000" },
+  "customizations": {
+    "codespaces": { "openFiles": ["README.md"] }
+  }
+}

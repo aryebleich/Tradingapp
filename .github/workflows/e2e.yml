@@ -1,0 +1,33 @@
+# Runs the whole app on GitHub: unit and integration tests, then the server with a mock of
+# Alpaca driven by a real Chromium browser (desktop flow, phone flow, phone layout audits).
+# Screenshots are attached to each run under "Artifacts".
+name: Run app (end-to-end)
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Unit and integration tests
+        run: npm test
+      - name: Start the app and run it in a browser
+        run: npm run e2e
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-screenshots
+          path: e2e-output/
+          retention-days: 14

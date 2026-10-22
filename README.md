@@ -1,5 +1,7 @@
 # QuantPocket
 
+[![CI](https://github.com/aryebleich/Tradingapp/actions/workflows/web-ci.yml/badge.svg)](https://github.com/aryebleich/Tradingapp/actions/workflows/web-ci.yml) [![Run app (end-to-end)](https://github.com/aryebleich/Tradingapp/actions/workflows/e2e.yml/badge.svg)](https://github.com/aryebleich/Tradingapp/actions/workflows/e2e.yml)
+
 Backtest, paper trade and automate US stock strategies. A multi-user web platform built with Node 22, Express and SQLite/libSQL.
 
 ## Website features
@@ -53,12 +55,18 @@ Tests run the whole integration against a local mock of Alpaca (`test/mock-alpac
 - **SEO and sharing**: meta and Open Graph tags, social image, `robots.txt`, `sitemap.xml`, an installable app manifest and icon, and a custom 404 page.
 - **Operations**: `/healthz`, gzip, security headers (CSP, HSTS), access log, graceful shutdown, CI tests, and free market data (Yahoo Finance daily) when no Alpaca key is set.
 
+## Run it on GitHub
+
+- **Automatic test run:** every push runs **Run app (end-to-end)** in GitHub Actions. It starts the server, then drives it with a real Chromium browser through the full desktop flow and a phone flow, and checks every page at iPhone 13 and iPhone SE sizes. Screenshots are attached to each run (Actions → the run → *Artifacts*). Start it by hand from Actions → *Run app (end-to-end)* → **Run workflow**.
+- **Use the app inside GitHub (Codespaces):** on the repo page, click **Code → Codespaces → Create codespace on main**. It installs everything, starts the app and opens it in a browser tab. Codespaces includes free monthly hours on personal accounts.
+
 ## Run locally
 
 ```bash
 npm install
 npm start            # http://localhost:3000  (homepage) and /app (the app)
-npm test
+npm test             # unit + integration tests
+npm run e2e          # whole app in a real browser (needs: npx playwright install chromium)
 ```
 
 Locally, the first account you register becomes the **admin**. In production, set `ADMIN_EMAIL` instead. Everything works without keys: emails and SMS codes are printed in the server log, and payment buttons explain what is missing.
