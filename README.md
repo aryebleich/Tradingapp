@@ -42,14 +42,14 @@ Locally, the first account you register becomes the **admin**. In production, se
 |---|---|---|
 | App and API | **Render** free web service | Runs the app at `https://<name>.onrender.com` |
 | Database | **Turso** free plan | Keeps users and trades (Render's free disk is wiped on restart) |
-| Homepage copy | **GitHub Pages** | `https://aryebleich.github.io/tradingapp/` |
+| Homepage copy | **GitHub Pages** | `https://aryebleich.github.io/Tradingapp/` |
 | Keep-awake and jobs | **GitHub Actions** | Wakes the app every 10 minutes and runs bots and scheduled trades |
 | Email (optional) | **Resend** free plan | Password resets and verification |
 
 Steps (the code must be on `main` first, so merge this branch):
 
 1. **Database**: sign up at [turso.tech](https://turso.tech), create a database, and copy its URL (`libsql://…`) and an auth token.
-2. **App**: open [render.com/deploy?repo=https://github.com/aryebleich/tradingapp](https://render.com/deploy?repo=https://github.com/aryebleich/tradingapp). Render reads `render.yaml`. Fill in:
+2. **App**: open [render.com/deploy?repo=https://github.com/aryebleich/Tradingapp](https://render.com/deploy?repo=https://github.com/aryebleich/Tradingapp). Render reads `render.yaml`. Fill in:
    - `DATABASE_URL` and `DATABASE_AUTH_TOKEN` from Turso
    - `ADMIN_EMAIL`: your email
    - `PUBLIC_URL`: the address Render gives you, e.g. `https://quantpocket.onrender.com`
