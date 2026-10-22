@@ -69,6 +69,7 @@ export const publicUser = u => u && ({
 });
 
 export const router = express.Router();
+const DUMMY_HASH = hashSecret('timing-equalizer');
 
 router.post('/register', async (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase();
@@ -95,7 +96,8 @@ router.post('/login', async (req, res) => {
   if (!rateLimit('login:' + req.ip, 20, 15 * 60e3)) return res.status(429).json({ error: 'Too many attempts, try later' });
   const u = await one('SELECT * FROM users WHERE email = ?', email);
   if (u && u.locked_until > now()) return res.status(423).json({ error: 'Account temporarily locked after failed attempts' });
-  if (!u || !verifySecret(String(req.body.password || ''), u.pass_hash)) {
+  // Hash against a dummy when the email is unknown so response time does not reveal registered emails.
+  if (!verifySecret(String(req.body.password || ''), u?.pass_hash || DUMMY_HASH) || !u) {
     if (u) {
       const fails = u.failed_logins + 1;
       await run('UPDATE users SET failed_logins = ?, locked_until = ? WHERE id = ?', fails >= MAX_FAILS ? 0 : fails, fails >= MAX_FAILS ? now() + LOCK_MS : 0, u.id);

@@ -117,3 +117,47 @@ test('public demo, contact, health and cron tick', async () => {
   assert.equal(tick.status, 200);
   assert.equal((await fetch(base + '/no-such-page')).status, 404);
 });
+
+test('fixes: no double execution, deposits, phone code limits, rule validation', async () => {
+  cookie = '';
+  const { one } = await import('../src/db.js');
+  const { runScheduledOrders, runBots } = await import('../src/scheduler.js');
+  await call('/auth/register', { email: 'fix@t.co', password: 'Str0ngPassword' });
+  const u = await one('SELECT id FROM users WHERE email = ?', 'fix@t.co');
+
+  // A paper deposit is a contribution, not profit.
+  await call('/funding/deposit', { account: 'paper', amount: 1000 });
+  const a = (await call('/account?account=paper')).body;
+  assert.equal(a.startCash, 101000);
+  assert.equal(a.equity, 101000);
+
+  // Two schedulers firing at once (in-process timer + cron) must place the order only once.
+  const tue = Date.UTC(2026, 9, 20, 15, 0); // Tuesday 11:00 New York, market open
+  await run("INSERT INTO scheduled_orders (user_id, account, symbol, side, notional, repeat, next_run, created_at) VALUES (?, 'paper', 'SPY', 'buy', 100, 'daily', ?, ?)", u.id, tue - 10 * 86400e3, tue);
+  const ran = await Promise.all([runScheduledOrders(tue), runScheduledOrders(tue)]);
+  assert.equal(ran[0] + ran[1], 1);
+  assert.equal((await one("SELECT COUNT(*) n FROM fills WHERE user_id = ? AND source = 'schedule'", u.id)).n, 1);
+  // Missed runs while asleep are skipped, not replayed: next run is in the future.
+  assert.ok((await one('SELECT next_run FROM scheduled_orders WHERE user_id = ?', u.id)).next_run > tue);
+  // Outside market hours nothing runs.
+  assert.equal(await runScheduledOrders(Date.UTC(2026, 9, 24, 15, 0)), 0); // Saturday
+
+  // Bots: one evaluation per day even when two ticks overlap.
+  await run("INSERT INTO strategies (user_id, name, symbol, entry, exit, size, deployed, created_at) VALUES (?, 'b', 'SPY', 'Close > 0', '', 50, 'paper', ?)", u.id, tue);
+  const close = Date.UTC(2026, 9, 20, 19, 40); // 15:40 New York
+  const bots = await Promise.all([runBots(close), runBots(close)]);
+  assert.equal(bots[0] + bots[1], 1);
+
+  // Strategy rules are validated when saved.
+  assert.match((await call('/strategies', { name: 'x', symbol: 'SPY', entry: 'FOO(3) > 1' })).body.error, /Unknown indicator/);
+  assert.equal((await call('/strategies', { name: 'x', symbol: 'SPY', entry: 'RSI(14) < 30' })).status, 200);
+
+  // Phone codes expire and allow only a few attempts.
+  await call('/phone', { phone: '+17185550000' });
+  for (let i = 0; i < 5; i++) await call('/phone/verify', { code: '000000' });
+  assert.match((await call('/phone/verify', { code: '000000' })).body.error, /Too many attempts/);
+
+  // Bad tickers get a clear message.
+  assert.match((await call('/backtest', { symbol: '../etc', entry: 'Close > 0', exit: '' })).body.error, /Unknown ticker/);
+  assert.match((await call('/orders', { account: 'paper', symbol: 'SPY', side: 'buy', notional: 0.000001 })).body.error, /too small/);
+});

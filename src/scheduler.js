@@ -1,8 +1,8 @@
 // Background jobs: scheduled orders, auto-trading bots, price alerts, equity snapshots, monthly fees.
 import { one, all, run, now } from './db.js';
-import { placeOrder, getBars, lastPrice, snapshotEquity, accountSummary, getCred } from './brokers.js';
+import { placeOrder, getBars, lastPrice, snapshotEquity, accountSummary, getCred, syncAlpacaFills } from './brokers.js';
 import { latestSignal } from './engine.js';
-import { sendSms } from './notify.js';
+import { sendSms, sendEmail } from './notify.js';
 import { assessFee } from './fees.js';
 
 const DAY = 86400e3;
@@ -25,34 +25,55 @@ function nyTime(t = now()) {
 }
 export const marketOpen = (t = now()) => { const n = nyTime(t); return !['Sat', 'Sun'].includes(n.weekday) && n.minutes >= 570 && n.minutes < 960; };
 
+// Text message when the user has a verified phone, otherwise email.
 async function notify(userId, msg) {
-  const u = await one('SELECT phone, phone_verified FROM users WHERE id = ?', userId);
+  const u = await one('SELECT email, email_verified, phone, phone_verified FROM users WHERE id = ?', userId);
   if (u?.phone && u.phone_verified) await sendSms(u.phone, msg).catch(e => console.warn('sms', e.message));
+  else if (u?.email_verified) await sendEmail(u.email, 'QuantPocket: ' + msg.slice(0, 60), msg).catch(e => console.warn('email', e.message));
 }
 
+// Each job is claimed with a conditional UPDATE before it runs, so the in-process timer and the
+// GitHub Actions cron calling /internal/tick at the same moment can never execute it twice.
 export async function runScheduledOrders(t = now()) {
+  if (!marketOpen(t)) return 0; // market orders wait for the regular session
   const due = await all('SELECT * FROM scheduled_orders WHERE active = 1 AND next_run <= ?', t);
+  let ran = 0;
   for (const o of due) {
+    // Skip runs missed while the app was asleep instead of firing them all at once.
+    let next = nextRunAfter(o.next_run, o.repeat);
+    while (next && next <= t) next = nextRunAfter(next, o.repeat);
+    const claim = await run('UPDATE scheduled_orders SET next_run = ?, active = ? WHERE id = ? AND next_run = ? AND active = 1', next ?? o.next_run, next ? 1 : 0, o.id, o.next_run);
+    if (!claim.changes) continue;
+    ran++;
     let result;
     try {
       const r = await placeOrder(o.user_id, o.account, { symbol: o.symbol, side: o.side, qty: o.qty, notional: o.notional }, 'schedule');
       result = `${r.status}${r.price ? ' @ ' + r.price.toFixed(2) : ''}`;
     } catch (e) { result = 'error: ' + e.message; }
-    const next = nextRunAfter(o.next_run, o.repeat);
-    await run('UPDATE scheduled_orders SET last_result = ?, next_run = COALESCE(?, next_run), active = ? WHERE id = ?', result, next, next ? 1 : 0, o.id);
-    notify(o.user_id, `Scheduled ${o.side} ${o.symbol}: ${result}`);
+    await run('UPDATE scheduled_orders SET last_result = ? WHERE id = ?', result, o.id);
+    await notify(o.user_id, `Scheduled ${o.side} ${o.symbol}: ${result}`);
   }
-  return due.length;
+  return ran;
 }
 
-// Bots evaluate their rules once per trading day, shortly before the close (15:45 New York).
+const PAID = ['pro', 'elite'];
+
+// Bots evaluate their rules once per trading day, in the last half hour before the 4 pm close.
 export async function runBots(t = now()) {
   const n = nyTime(t);
   if (['Sat', 'Sun'].includes(n.weekday) || n.minutes < 930 || n.minutes >= 960) return 0;
-  const bots = await all('SELECT * FROM strategies WHERE deployed IS NOT NULL AND (last_run IS NULL OR last_run != ?)', n.day);
+  const bots = await all('SELECT s.*, u.plan, u.role FROM strategies s JOIN users u ON u.id = s.user_id WHERE s.deployed IS NOT NULL AND (s.last_run IS NULL OR s.last_run != ?)', n.day);
+  let ran = 0;
   for (const b of bots) {
+    const claim = await run('UPDATE strategies SET last_run = ? WHERE id = ? AND (last_run IS NULL OR last_run != ?)', n.day, b.id, n.day);
+    if (!claim.changes) continue;
+    ran++;
     let action = 'hold';
     try {
+      if (b.deployed === 'alpaca' && !PAID.includes(b.plan) && b.role !== 'admin') {
+        await run('UPDATE strategies SET deployed = NULL WHERE id = ?', b.id);
+        throw new Error('stopped: live bots need the Pro plan');
+      }
       const bars = await getBars(b.symbol, new Date(t - 3 * 365 * DAY).toISOString().slice(0, 10), b.user_id);
       const sig = latestSignal(bars.closes, b);
       const s = await accountSummary(b.user_id, b.deployed);
@@ -63,10 +84,10 @@ export async function runBots(t = now()) {
         if (notional >= 1) { await placeOrder(b.user_id, b.deployed, { symbol: b.symbol, side: 'buy', notional }, 'bot'); action = `bought $${notional}`; }
       }
     } catch (e) { action = 'error: ' + e.message; }
-    await run('UPDATE strategies SET last_run = ?, last_action = ? WHERE id = ?', n.day, action, b.id);
-    if (action !== 'hold') notify(b.user_id, `Bot "${b.name}" ${b.symbol}: ${action}`);
+    await run('UPDATE strategies SET last_action = ? WHERE id = ?', action, b.id);
+    if (action !== 'hold') await notify(b.user_id, `Bot "${b.name}" ${b.symbol}: ${action}`);
   }
-  return bots.length;
+  return ran;
 }
 
 export async function runAlerts() {
@@ -75,8 +96,8 @@ export async function runAlerts() {
     const px = await lastPrice(a.symbol, a.user_id).catch(() => null);
     if (px == null) continue;
     if ((a.op === 'above' && px >= a.price) || (a.op === 'below' && px <= a.price)) {
-      await run('UPDATE alerts SET active = 0 WHERE id = ?', a.id);
-      notify(a.user_id, `Alert: ${a.symbol} is ${px.toFixed(2)} (${a.op} ${a.price})`);
+      if (!(await run('UPDATE alerts SET active = 0 WHERE id = ? AND active = 1', a.id)).changes) continue;
+      await notify(a.user_id, `Alert: ${a.symbol} is ${px.toFixed(2)} (${a.op} ${a.price})`);
     }
   }
 }
@@ -98,18 +119,35 @@ export async function assessAllFees() {
   return out;
 }
 
-let last = { alerts: 0, snap: '', fees: '' };
+// Once-per-period jobs are claimed in the database, so restarts (common on free hosts) and the
+// cron endpoint running alongside the in-process timer never repeat them.
+const claimOnce = async key => (await run('INSERT OR IGNORE INTO job_runs (k, at) VALUES (?, ?)', key, now())).changes > 0;
+let lastAlerts = 0;
+
+export async function runDueJobs(t = now()) {
+  const n = nyTime(t), out = { orders: await runScheduledOrders(t), bots: await runBots(t) };
+  if (marketOpen(t) && t - lastAlerts > 5 * 60e3) { lastAlerts = t; await runAlerts(); }
+  if (n.minutes >= 965 && !['Sat', 'Sun'].includes(n.weekday) && await claimOnce('snapshot:' + n.day)) await snapshotAll();
+  // Monthly fees on the 1st (days 2-3 cover an app that was asleep), never mid-month after a deploy.
+  if (+n.day.slice(8) <= 3 && n.minutes >= 600 && await claimOnce('fees:' + n.day.slice(0, 7))) out.fees = (await assessAllFees()).length;
+  if (await claimOnce('hourly:' + new Date(t).toISOString().slice(0, 13))) await hourly();
+  return out;
+}
+
+// Housekeeping: drop expired sessions and import Alpaca fills placed outside the app.
+async function hourly() {
+  await run('DELETE FROM sessions WHERE expires_at < ?', now());
+  await run('DELETE FROM job_runs WHERE at < ?', now() - 90 * DAY);
+  for (const c of await all("SELECT DISTINCT user_id FROM credentials WHERE provider = 'alpaca'"))
+    await syncAlpacaFills(c.user_id).catch(e => console.warn('alpaca sync', c.user_id, e.message));
+}
+
 export function startScheduler() {
-  const tick = async () => {
-    try {
-      await runScheduledOrders();
-      await runBots();
-      const t = now(), n = nyTime(t);
-      if (marketOpen(t) && t - last.alerts > 5 * 60e3) { last.alerts = t; await runAlerts(); }
-      if (n.minutes >= 965 && last.snap !== n.day) { last.snap = n.day; await snapshotAll(); }
-      const month = n.day.slice(0, 7);
-      if (n.day.endsWith('-01') && last.fees !== month) { last.fees = month; await assessAllFees(); }
-    } catch (e) { console.error('scheduler', e); }
-  };
-  return setInterval(tick, 30e3);
+  let busy = false;
+  return setInterval(async () => {
+    if (busy) return; // a slow tick (many users) must not overlap with the next one
+    busy = true;
+    try { await runDueJobs(); } catch (e) { console.error('scheduler', e); }
+    busy = false;
+  }, 30e3);
 }

@@ -8,7 +8,9 @@ const TRADE = { paper: 'https://paper-api.alpaca.markets/v2', live: 'https://api
 
 export async function getCred(userId, provider) {
   const r = await one('SELECT blob FROM credentials WHERE user_id = ? AND provider = ?', userId, provider);
-  return r ? decrypt(r.blob) : null;
+  if (!r) return null;
+  // A changed ENCRYPTION_KEY makes stored keys unreadable; treat them as disconnected instead of failing every page.
+  try { return decrypt(r.blob); } catch { console.warn(`credentials for user ${userId}/${provider} cannot be decrypted`); return null; }
 }
 // Fall back to a platform-wide market-data key so demo users can backtest real history.
 async function dataCred(userId) {
@@ -36,69 +38,106 @@ export function syntheticBars(symbol, n = 2520) {
   return { closes, dates, source: 'synthetic' };
 }
 
-const barCache = new Map();
+// Made-up prices are only acceptable in development and tests. In production a data outage
+// must surface as an error instead of silently filling orders at fictional prices.
+const syntheticAllowed = () => process.env.FREE_DATA === 'off' || process.env.NODE_ENV !== 'production';
+const unavailable = () => Object.assign(new Error('Market data is temporarily unavailable. Please try again in a minute.'), { status: 503 });
+const unknownSymbol = symbol => Object.assign(new Error(`Unknown ticker "${symbol}". Use a US stock or ETF symbol like AAPL or SPY.`), { status: 404 });
+export const validSymbol = s => /^[A-Z][A-Z0-9.\-]{0,9}$/.test(s);
 
-// Free daily history (split/dividend adjusted) for users without an Alpaca key.
+// Small bounded cache so a stream of different tickers cannot grow memory without limit.
+function cache(max) {
+  const m = new Map();
+  return {
+    get(k, ttl) { const h = m.get(k); return h && now() - h.at < ttl ? h.v : undefined; },
+    set(k, v) { m.delete(k); m.set(k, { at: now(), v }); if (m.size > max) m.delete(m.keys().next().value); },
+  };
+}
+const barCache = cache(300), quoteCache = cache(500);
+
+// Free daily history (split/dividend adjusted). Returns null on network trouble, throws for unknown tickers.
 async function yahooBars(symbol, start) {
   if (process.env.FREE_DATA === 'off') return null;
   const from = Math.floor(Date.parse(start) / 1000), to = Math.floor(Date.now() / 1000);
-  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${from}&period2=${to}&interval=1d&events=split,div`,
-    { headers: { 'User-Agent': 'Mozilla/5.0 QuantPocket' }, signal: AbortSignal.timeout(8000) });
+  let r;
+  try {
+    r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${from}&period2=${to}&interval=1d&events=split,div`,
+      { headers: { 'User-Agent': 'Mozilla/5.0 QuantPocket' }, signal: AbortSignal.timeout(8000) });
+  } catch { return null; }
+  if (r.status === 404) throw unknownSymbol(symbol);
   if (!r.ok) return null;
-  const res = (await r.json()).chart?.result?.[0];
+  const res = (await r.json().catch(() => ({}))).chart?.result?.[0];
   const ts = res?.timestamp || [], adj = res?.indicators?.adjclose?.[0]?.adjclose || res?.indicators?.quote?.[0]?.close || [];
   const closes = [], dates = [];
   ts.forEach((t, i) => { if (adj[i] != null) { closes.push(+adj[i].toFixed(4)); dates.push(new Date(t * 1000).toISOString().slice(0, 10)); } });
-  return closes.length >= 260 ? { closes, dates, source: 'yahoo' } : null;
+  if (!closes.length) throw unknownSymbol(symbol);
+  if (closes.length < 260) throw new Error(`${symbol} has only ${closes.length} days of history since ${start}; pick an earlier start date.`);
+  return { closes, dates, source: 'yahoo' };
 }
-const quoteCache = new Map();
 async function yahooQuote(symbol) {
   if (process.env.FREE_DATA === 'off') return null;
-  const hit = quoteCache.get(symbol);
-  if (hit && now() - hit.at < 15e3) return hit.p;
-  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol.toUpperCase())}?range=1d&interval=1m`,
-    { headers: { 'User-Agent': 'Mozilla/5.0 QuantPocket' }, signal: AbortSignal.timeout(5000) });
+  let r;
+  try {
+    r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=1m`,
+      { headers: { 'User-Agent': 'Mozilla/5.0 QuantPocket' }, signal: AbortSignal.timeout(5000) });
+  } catch { return null; }
+  if (r.status === 404) throw unknownSymbol(symbol);
   if (!r.ok) return null;
-  const p = (await r.json()).chart?.result?.[0]?.meta?.regularMarketPrice;
-  if (p) quoteCache.set(symbol, { at: now(), p });
-  return p || null;
+  return (await r.json().catch(() => ({}))).chart?.result?.[0]?.meta?.regularMarketPrice || null;
 }
 
-export async function getBars(symbol, start, userId) {
-  symbol = symbol.toUpperCase();
-  const key = symbol + start;
-  const hit = barCache.get(key);
-  if (hit && now() - hit.at < 3600e3) return hit.v;
-  const c = await dataCred(userId);
-  if (!c) {
-    const v = await yahooBars(symbol, start).catch(() => null) || syntheticBars(symbol);
-    barCache.set(key, { at: now(), v });
-    return v;
-  }
+async function alpacaBars(c, symbol, start) {
   const closes = [], dates = []; let tok = '';
   do {
-    const r = await fetch(`${DATA}/stocks/${encodeURIComponent(symbol)}/bars?timeframe=1Day&start=${start}&limit=10000&adjustment=all&feed=iex${tok ? '&page_token=' + tok : ''}`, { headers: hdr(c) });
-    if (!r.ok) throw new Error(`${symbol}: ${r.status} ${(await r.text()).slice(0, 120)}`);
+    const r = await fetch(`${DATA}/stocks/${encodeURIComponent(symbol)}/bars?timeframe=1Day&start=${start}&limit=10000&adjustment=all&feed=iex${tok ? '&page_token=' + tok : ''}`, { headers: hdr(c), signal: AbortSignal.timeout(15000) });
+    if (!r.ok) throw new Error(`Alpaca data ${r.status}`);
     const d = await r.json();
     for (const b of d.bars || []) { closes.push(b.c); dates.push(b.t.slice(0, 10)); }
     tok = d.next_page_token || '';
   } while (tok);
-  if (closes.length < 260) throw new Error(`${symbol}: only ${closes.length} daily bars available`);
-  const v = { closes, dates, source: 'alpaca' };
-  barCache.set(key, { at: now(), v });
+  if (!closes.length) throw unknownSymbol(symbol);
+  if (closes.length < 260) throw new Error(`${symbol} has only ${closes.length} days of history since ${start}; pick an earlier start date.`);
+  return { closes, dates, source: 'alpaca' };
+}
+
+// Daily closes from the user's Alpaca key, the platform key, or free Yahoo data, in that order.
+export async function getBars(symbol, start, userId) {
+  symbol = String(symbol || '').trim().toUpperCase();
+  if (!validSymbol(symbol)) throw unknownSymbol(symbol);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || isNaN(Date.parse(start)) || Date.parse(start) > Date.now() - 400 * 86400e3)
+    throw new Error('Pick a start date at least about 1.5 years in the past (YYYY-MM-DD).');
+  const key = symbol + start, hit = barCache.get(key, 3600e3);
+  if (hit) return hit;
+  let v;
+  const c = await dataCred(userId);
+  if (c) {
+    try { v = await alpacaBars(c, symbol, start); }
+    catch (e) { if (e.status === 404 || /history since/.test(e.message)) throw e; console.warn('alpaca bars, falling back:', e.message); }
+  }
+  v ||= await yahooBars(symbol, start);
+  if (!v) { if (!syntheticAllowed()) throw unavailable(); v = syntheticBars(symbol); }
+  barCache.set(key, v);
   return v;
 }
 
 export async function lastPrice(symbol, userId) {
+  symbol = String(symbol || '').trim().toUpperCase();
+  if (!validSymbol(symbol)) throw unknownSymbol(symbol);
+  const hit = quoteCache.get(symbol, 15e3);
+  if (hit) return hit;
+  let p = null;
   const c = await dataCred(userId);
-  if (!c) {
-    const q = await yahooQuote(symbol).catch(() => null);
-    if (q) return q;
-    const b = await getBars(symbol, new Date(Date.now() - 400 * 86400e3).toISOString().slice(0, 10), null); return b.closes[b.closes.length - 1];
+  if (c) {
+    const r = await fetch(`${DATA}/stocks/${encodeURIComponent(symbol)}/trades/latest?feed=iex`, { headers: hdr(c), signal: AbortSignal.timeout(8000) }).catch(() => null);
+    if (r?.ok) p = (await r.json()).trade?.p || null;
   }
-  const r = await fetch(`${DATA}/stocks/${encodeURIComponent(symbol.toUpperCase())}/trades/latest?feed=iex`, { headers: hdr(c) });
-  if (!r.ok) throw new Error(`Quote ${symbol}: ${r.status}`);
-  return (await r.json()).trade.p;
+  p ||= await yahooQuote(symbol);
+  if (!p) {
+    if (!syntheticAllowed()) throw unavailable();
+    const b = syntheticBars(symbol); p = b.closes[b.closes.length - 1];
+  }
+  quoteCache.set(symbol, p);
+  return p;
 }
 
 async function alpaca(c, path, method = 'GET', body) {
@@ -129,56 +168,73 @@ export async function accountSummary(userId, account) {
   return { account, live: false, cash: acct.cash, equity, buyingPower: acct.cash, startCash: acct.start_cash, positions: priced };
 }
 
-// Records a fill and updates the average-cost position; used by both paper and broker paths.
-export async function recordFill(userId, account, symbol, side, qty, price, source, brokerId = null) {
+// Records a fill and updates the average-cost position inside one transaction. `check` runs first
+// in the same transaction, so two simultaneous paper orders cannot both spend the same cash.
+export async function recordFill(userId, account, symbol, side, qty, price, source, { brokerId = null, check, at = now() } = {}) {
   await tx(async ({ one, run }) => {
+    if (check) await check(one);
+    if (brokerId && await one('SELECT id FROM fills WHERE broker_order_id = ?', brokerId)) return;
     const p = await one('SELECT * FROM positions WHERE user_id = ? AND account = ? AND symbol = ?', userId, account, symbol);
     const cur = p?.qty || 0, avg = p?.avg_price || 0;
-    const nq = side === 'buy' ? cur + qty : cur - qty;
+    const nq = +(side === 'buy' ? cur + qty : cur - qty).toFixed(6);
     const navg = side === 'buy' ? (cur * avg + qty * price) / nq : avg;
     await run('INSERT INTO positions (user_id, account, symbol, qty, avg_price) VALUES (?,?,?,?,?) ON CONFLICT(user_id, account, symbol) DO UPDATE SET qty = excluded.qty, avg_price = excluded.avg_price',
-      userId, account, symbol, +nq.toFixed(6), nq ? navg : 0);
-    await run('INSERT INTO fills (user_id, account, symbol, side, qty, price, source, broker_order_id, at) VALUES (?,?,?,?,?,?,?,?,?)', userId, account, symbol, side, qty, price, source, brokerId, now());
-    if (account === 'paper') await run('UPDATE paper_accounts SET cash = cash + ? WHERE user_id = ?', (side === 'buy' ? -1 : 1) * qty * price, userId);
+      userId, account, symbol, nq, nq ? navg : 0);
+    await run('INSERT INTO fills (user_id, account, symbol, side, qty, price, source, broker_order_id, at) VALUES (?,?,?,?,?,?,?,?,?)', userId, account, symbol, side, qty, price, source, brokerId, at);
+    if (account === 'paper') await run('UPDATE paper_accounts SET cash = cash + ? WHERE user_id = ?', +((side === 'buy' ? -1 : 1) * qty * price).toFixed(6), userId);
   });
 }
 
 // order: { symbol, side, qty?, notional? }
 export async function placeOrder(userId, account, order, source = 'manual') {
-  const symbol = String(order.symbol || '').toUpperCase();
+  const symbol = String(order.symbol || '').trim().toUpperCase();
   const side = order.side === 'sell' ? 'sell' : 'buy';
-  if (!/^[A-Z.]{1,10}$/.test(symbol)) throw new Error('Invalid symbol');
-  if (!(+order.qty > 0) && !(+order.notional > 0)) throw new Error('Give a quantity or dollar amount');
+  const q = +order.qty, n = +order.notional;
+  if (!validSymbol(symbol)) throw new Error('Invalid symbol');
+  if (!(Number.isFinite(q) && q > 0) && !(Number.isFinite(n) && n > 0)) throw new Error('Give a quantity or dollar amount');
   if (account === 'alpaca') {
     const c = await getCred(userId, 'alpaca'); if (!c) throw new Error('Connect Alpaca in Settings first');
-    const body = { symbol, side, type: 'market', time_in_force: 'day', ...(+order.qty > 0 ? { qty: String(+order.qty) } : { notional: String(+order.notional) }) };
+    const body = { symbol, side, type: 'market', time_in_force: 'day', ...(q > 0 ? { qty: String(q) } : { notional: n.toFixed(2) }) };
     const o = await alpaca(c, '/orders', 'POST', body);
-    // Record the fill locally once Alpaca reports it so tax lots stay complete.
-    setTimeout(() => syncAlpacaOrder(userId, c, o.id, source).catch(() => {}), 4000);
+    // Usually fills within seconds; anything still open is picked up later by syncAlpacaFills.
+    setTimeout(() => syncAlpacaFills(userId).catch(() => {}), 4000);
     return { id: o.id, status: o.status, symbol, side, broker: 'alpaca', live: !!c.live };
   }
   const price = await lastPrice(symbol, userId);
-  let qty = +order.qty > 0 ? +order.qty : +(+order.notional / price).toFixed(6);
-  const acct = await one('SELECT cash FROM paper_accounts WHERE user_id = ?', userId);
-  if (side === 'buy' && qty * price > acct.cash + 1e-6) throw new Error(`Not enough paper cash ($${acct.cash.toFixed(2)})`);
-  if (side === 'sell') {
-    const p = await one("SELECT qty FROM positions WHERE user_id = ? AND account = 'paper' AND symbol = ?", userId, symbol);
-    if (!p || p.qty < qty - 1e-9) throw new Error(`You hold ${p?.qty || 0} ${symbol}`);
-  }
-  await recordFill(userId, 'paper', symbol, side, qty, price, source);
+  const qty = q > 0 ? q : +(n / price).toFixed(6);
+  if (!(qty > 0)) throw new Error('Amount is too small');
+  await recordFill(userId, 'paper', symbol, side, qty, price, source, { check: async one => {
+    if (side === 'buy') {
+      const a = await one('SELECT cash FROM paper_accounts WHERE user_id = ?', userId);
+      if (qty * price > a.cash + 1e-6) throw new Error(`Not enough paper cash ($${a.cash.toFixed(2)})`);
+    } else {
+      const p = await one("SELECT qty FROM positions WHERE user_id = ? AND account = 'paper' AND symbol = ?", userId, symbol);
+      if (!p || p.qty < qty - 1e-9) throw new Error(`You hold ${p?.qty || 0} ${symbol}`);
+    }
+  } });
   return { status: 'filled', symbol, side, qty, price, broker: 'paper' };
 }
 
-async function syncAlpacaOrder(userId, c, id, source) {
-  const o = await alpaca(c, `/orders/${id}`);
-  if (o.status !== 'filled') return;
-  if (await one('SELECT id FROM fills WHERE broker_order_id = ?', id)) return;
-  await recordFill(userId, 'alpaca', o.symbol, o.side, +o.filled_qty, +o.filled_avg_price, source, id);
+// Copies filled Alpaca orders into local fills so tax lots stay complete, including orders that
+// filled later (placed after hours, by bots, or directly in Alpaca).
+export async function syncAlpacaFills(userId) {
+  const c = await getCred(userId, 'alpaca');
+  if (!c) return 0;
+  const orders = await alpaca(c, '/orders?status=closed&limit=200&direction=desc');
+  let added = 0;
+  for (const o of orders.reverse()) {
+    if (o.status !== 'filled' && !(+o.filled_qty > 0)) continue;
+    if (await one('SELECT id FROM fills WHERE broker_order_id = ?', o.id)) continue;
+    await recordFill(userId, 'alpaca', o.symbol, o.side, +o.filled_qty, +o.filled_avg_price, 'alpaca', { brokerId: o.id, at: Date.parse(o.filled_at) || now() });
+    added++;
+  }
+  return added;
 }
 
 export async function listOrders(userId, account) {
   if (account === 'alpaca') {
     const c = await getCred(userId, 'alpaca'); if (!c) throw new Error('Connect Alpaca in Settings first');
+    syncAlpacaFills(userId).catch(e => console.warn('alpaca sync', e.message));
     return (await alpaca(c, '/orders?status=all&limit=50')).map(o => ({ id: o.id, symbol: o.symbol, side: o.side, qty: +o.qty || null, notional: +o.notional || null, status: o.status, price: +o.filled_avg_price || null, at: o.submitted_at }));
   }
   return (await all("SELECT id, symbol, side, qty, price, source, at FROM fills WHERE user_id = ? AND account = 'paper' ORDER BY id DESC LIMIT 50", userId)).map(f => ({ ...f, status: 'filled' }));

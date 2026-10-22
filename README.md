@@ -70,7 +70,7 @@ Webhook URLs, once those services are set up:
 |---|---|
 | Twilio number → Messaging | `POST https://YOUR_APP/twilio/sms` |
 | Twilio number → Voice | `POST https://YOUR_APP/twilio/voice` (status callback `/twilio/voice/status`) |
-| Stripe → Webhooks | `https://YOUR_APP/webhooks/stripe` (`checkout.session.completed`, `customer.subscription.deleted`) |
+| Stripe → Webhooks | `https://YOUR_APP/webhooks/stripe` (`checkout.session.completed`, `invoice.paid`, `customer.subscription.deleted`) |
 
 Prefer Docker? `docker build -t quantpocket . && docker run -p 3000:3000 --env-file .env quantpocket`.
 

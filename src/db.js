@@ -137,6 +137,10 @@ CREATE TABLE IF NOT EXISTS messages (
   status TEXT NOT NULL DEFAULT 'open',
   at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS job_runs (
+  k TEXT PRIMARY KEY,
+  at INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS alerts (
   id INTEGER PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -154,6 +158,8 @@ const MIGRATIONS = [
   'ALTER TABLE users ADD COLUMN reset_hash TEXT',
   'ALTER TABLE users ADD COLUMN reset_expires INTEGER',
   'ALTER TABLE users ADD COLUMN verify_hash TEXT',
+  'ALTER TABLE users ADD COLUMN phone_code_expires INTEGER',
+  'CREATE UNIQUE INDEX IF NOT EXISTS ledger_ref ON ledger (kind, ref) WHERE ref IS NOT NULL',
 ];
 
 export const ready = (async () => {

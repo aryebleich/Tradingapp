@@ -15,19 +15,23 @@ async function api(path, opts = {}) {
     body: opts.body ? JSON.stringify(opts.body) : undefined,
   });
   const d = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(d.error || r.statusText);
+  // Session expired (or signed out in another tab): go back to sign-in instead of showing errors.
+  if (r.status === 401 && ME && !path.startsWith('/auth/')) { ME = null; location.hash = '#/login'; }
+  if (!r.ok) throw new Error(d.error || (r.status >= 500 ? 'The server is busy, please try again.' : r.statusText));
   return d;
 }
 const form = el => Object.fromEntries($$('[name]', el).map(i => [i.name, i.type === 'checkbox' ? i.checked : i.value]));
 
 // Wire a button to an async action with an error/ok line under it.
+// Wire a button to an async action with a status line under it ("Working…", then the result or error).
 function act(btn, fn, out) {
   btn.onclick = async e => {
     e.preventDefault();
-    let o = out || btn.parentElement.querySelector('.err');
+    let o = out || btn.__out || btn.parentElement.querySelector('.err');
     if (!o) { o = document.createElement('div'); btn.after(o); }
-    btn.disabled = true; o.className = 'err'; o.textContent = '';
-    try { const m = await fn(); if (typeof m === 'string') { o.className = 'ok'; o.textContent = m; } }
+    btn.__out = o;
+    btn.disabled = true; o.className = 'mu'; o.style.marginTop = '8px'; o.textContent = 'Working…';
+    try { const m = await fn(); o.className = 'ok'; o.textContent = typeof m === 'string' ? m : ''; }
     catch (err) { o.className = 'err'; o.textContent = err.message; }
     btn.disabled = false;
   };
@@ -149,6 +153,10 @@ routes.dashboard = async view => {
   }
   const base = a.startCash ?? a.history[0]?.equity ?? a.equity;
   const pnl = a.equity - base, pnlPct = base ? pnl / base * 100 : 0;
+  // Today's change: Alpaca reports yesterday's close; for paper use the last snapshot before today.
+  const today = new Date().toISOString().slice(0, 10);
+  const prev = a.lastEquity || [...a.history].reverse().find(x => x.day < today)?.equity;
+  const dayChg = prev ? a.equity - prev : null;
   const steps = [[ME.emailVerified, 'Confirm your email', '#/dashboard'], [ME.totpEnabled, 'Turn on two-factor login', '#/settings'], [a.positions.length > 0 || state.account !== 'paper', 'Place your first paper trade', '#/dashboard'],
     [ME.phoneVerified && ME.hasPin, 'Add your phone and PIN for SMS', '#/settings'], [!!sessionStorage.getItem('qp_strategy'), 'Backtest a strategy', '#/backtest']];
   const todo = steps.filter(x => !x[0]).length > 1 && !localStorage.getItem('qp_onboard_done');
@@ -160,6 +168,7 @@ routes.dashboard = async view => {
     <div class="stats">
       <div class="stat"><span>Equity</span><b>${money(a.equity)}</b></div>
       <div class="stat"><span>Profit / loss</span><b class="${cls(pnl)}">${money(pnl)} (${pct(pnlPct, 2)})</b></div>
+      <div class="stat"><span>Today</span><b class="${cls(dayChg)}">${dayChg == null ? '-' : `${money(dayChg)} (${pct(dayChg / prev * 100, 2)})`}</b></div>
       <div class="stat"><span>Cash</span><b>${money(a.cash)}</b></div>
       <div class="stat"><span>Positions</span><b>${a.positions.length}</b></div>
     </div>

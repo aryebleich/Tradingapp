@@ -5,16 +5,17 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { one, all, run, now, audit } from './src/db.js';
-import { encrypt, hashSecret, verifySecret } from './src/crypto.js';
+import { encrypt, hashSecret, verifySecret, safeEqual } from './src/crypto.js';
 import * as auth from './src/auth.js';
-import { backtest, projectAnnual, walkForward, optimize, warmupFor, PRESETS } from './src/engine.js';
+import crypto from 'node:crypto';
+import { backtest, projectAnnual, walkForward, optimize, warmupFor, compile, PRESETS } from './src/engine.js';
 import { getBars, getCred, accountSummary, placeOrder, listOrders, portfolioHistory, lastPrice, snapshotEquity } from './src/brokers.js';
 import * as QC from './src/quantconnect.js';
 import { PLANS, adjustForCashflow, revenueSummary } from './src/fees.js';
 import { taxSummary, harvestCandidates, form8949Csv } from './src/tax.js';
 import { buildStrategy } from './src/ai.js';
-import { handleCommand, userByPhone, HELP } from './src/commands.js';
-import { startScheduler, assessAllFees, runScheduledOrders, runBots, runAlerts, snapshotAll, marketOpen } from './src/scheduler.js';
+import { handleCommand, userByPhone, normalize, HELP } from './src/commands.js';
+import { startScheduler, assessAllFees, runDueJobs, snapshotAll } from './src/scheduler.js';
 import * as N from './src/notify.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -27,7 +28,8 @@ app.use(compression());
 // Minimal access log (no query strings: reset/verify tokens live in the URL fragment, but be safe).
 app.use((req, res, next) => {
   const t = Date.now();
-  res.on('finish', () => { if (!req.path.startsWith('/assets')) console.log(`${req.method} ${req.path} ${res.statusCode} ${Date.now() - t}ms`); });
+  const url = req.originalUrl.split('?')[0];
+  res.on('finish', () => console.log(`${req.method} ${url} ${res.statusCode} ${Date.now() - t}ms`));
   next();
 });
 
@@ -39,9 +41,8 @@ app.get('/healthz', async (req, res) => {
 // Free hosts sleep idle apps, so a GitHub Actions cron calls this to run due jobs.
 app.post('/internal/tick', async (req, res) => {
   const secret = process.env.CRON_SECRET;
-  if (!secret || req.headers.authorization !== `Bearer ${secret}`) return res.status(401).json({ error: 'unauthorized' });
-  const out = { orders: await runScheduledOrders(), bots: await runBots() };
-  if (marketOpen()) await runAlerts();
+  if (!secret || !safeEqual(req.headers.authorization || '', `Bearer ${secret}`)) return res.status(401).json({ error: 'unauthorized' });
+  const out = await runDueJobs();
   if (req.query.snapshot) await snapshotAll();
   res.json(out);
 });
@@ -68,12 +69,20 @@ app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (r
   if (!N.verifyStripe(raw, req.headers['stripe-signature'])) return res.status(400).send('bad signature');
   const ev = JSON.parse(raw), o = ev.data.object;
   try {
+    // Stripe retries deliveries, so every ledger write is keyed by a Stripe id (unique index ledger_ref).
     if (ev.type === 'checkout.session.completed' && o.metadata?.kind === 'subscription') {
-      const plan = o.metadata.plan in PLANS ? o.metadata.plan : 'free';
+      const plan = Object.hasOwn(PLANS, o.metadata.plan) ? o.metadata.plan : 'free';
       await run('UPDATE users SET plan = ?, stripe_customer = ?, plan_renews = ? WHERE id = ?', plan, o.customer, now() + 31 * 86400e3, +o.client_reference_id);
-      await run('INSERT INTO ledger (user_id, kind, amount, status, ref, memo, at) VALUES (?,?,?,?,?,?,?)', +o.client_reference_id, 'subscription', PLANS[plan].monthly, 'paid', o.id, `${PLANS[plan].name} plan`, now());
+      await run('INSERT OR IGNORE INTO ledger (user_id, kind, amount, status, ref, memo, at) VALUES (?,?,?,?,?,?,?)', +o.client_reference_id, 'subscription', (o.amount_total ?? PLANS[plan].monthly * 100) / 100, 'paid', o.invoice || o.id, `${PLANS[plan].name} plan`, now());
+    } else if (ev.type === 'invoice.paid' && o.billing_reason === 'subscription_cycle') {
+      const u = await one('SELECT id, plan FROM users WHERE stripe_customer = ?', o.customer);
+      if (u) {
+        await run('UPDATE users SET plan_renews = ? WHERE id = ?', (o.lines?.data?.[0]?.period?.end ?? 0) * 1000 || now() + 31 * 86400e3, u.id);
+        await run('INSERT OR IGNORE INTO ledger (user_id, kind, amount, status, ref, memo, at) VALUES (?,?,?,?,?,?,?)', u.id, 'subscription', o.amount_paid / 100, 'paid', o.id, `${PLANS[u.plan]?.name || 'Plan'} renewal`, now());
+      }
     } else if (ev.type === 'checkout.session.completed' && o.metadata?.kind === 'deposit') {
       const id = +o.metadata.ledger_id;
+      if ((await one('SELECT status FROM ledger WHERE id = ?', id))?.status !== 'pending') return res.json({ received: true });
       const funding = await N.cardFunding(o.payment_intent);
       if (funding !== 'debit') {
         await N.refund(o.payment_intent);
@@ -92,7 +101,6 @@ app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (r
 
 app.use(express.json({ limit: '200kb' }));
 app.use(express.urlencoded({ extended: false, limit: '50kb' }));
-app.use(auth.sessionMiddleware);
 
 // ---------- Twilio: SMS + voice hotline (validated by Twilio signature, not session) ----------
 const twiml = (res, body) => res.type('text/xml').send(`<?xml version="1.0" encoding="UTF-8"?><Response>${body}</Response>`);
@@ -111,12 +119,14 @@ app.post('/twilio/sms', async (req, res) => {
   twiml(res, `<Message>${N.xml(reply)}</Message>`);
 });
 
-const calls = new Map(); // CallSid -> { userId, tries }
+const calls = new Map(); // CallSid -> { userId, tries, ok, pending, at }
+// Drop call state after 30 minutes in case Twilio's status callback is not configured.
+setInterval(() => { for (const [k, c] of calls) if (now() - c.at > 30 * 60e3) calls.delete(k); }, 5 * 60e3).unref();
 app.post('/twilio/voice', async (req, res) => {
   if (!twilioOk(req)) return res.status(403).send('forbidden');
   const user = await userByPhone(req.body.From);
   if (!user || !user.pin_hash) return twiml(res, '<Say>This phone number is not linked to an account with a PIN. Goodbye.</Say><Hangup/>');
-  calls.set(req.body.CallSid, { userId: user.id, tries: 0, ok: false });
+  calls.set(req.body.CallSid, { userId: user.id, tries: 0, ok: false, at: now() });
   twiml(res, '<Gather input="dtmf" finishOnKey="#" action="/twilio/voice/pin" timeout="8"><Say>Welcome to QuantPocket. Enter your PIN, then press pound.</Say></Gather><Say>No input. Goodbye.</Say>');
 });
 app.post('/twilio/voice/pin', async (req, res) => {
@@ -138,9 +148,27 @@ app.post('/twilio/voice/cmd', async (req, res) => {
   if (!c?.ok) return twiml(res, '<Hangup/>');
   const u = await one('SELECT * FROM users WHERE id = ?', c.userId);
   const text = { 1: 'BAL', 2: 'POS', 3: 'ORDERS', 9: 'PAUSE' }[req.body.Digits] || req.body.SpeechResult || 'HELP';
+  // Speech recognition can mishear, so anything that trades or cancels is read back first.
+  const words = normalize(text);
+  if (/^(BUY|SELL|DCA|CANCEL)\b/.test(words)) {
+    c.pending = words;
+    return twiml(res, `<Gather input="dtmf" numDigits="1" action="/twilio/voice/confirm" timeout="8"><Say>I heard: ${N.xml(words.replace(/\$/g, ' dollars ').toLowerCase())}. Press 1 to confirm, or 2 to cancel.</Say></Gather>${menu()}`);
+  }
   let reply;
   try { reply = await handleCommand(u, text, { pinVerified: true }); } catch (e) { reply = 'Error. ' + e.message; }
   await audit(u.id, 'hotline_command', { text }, req.body.From);
+  twiml(res, `<Say>${N.xml(reply.replace(/\$/g, ' dollars ').replace(/\n/g, '. '))}</Say>${menu()}`);
+});
+app.post('/twilio/voice/confirm', async (req, res) => {
+  if (!twilioOk(req)) return res.status(403).send('forbidden');
+  const c = calls.get(req.body.CallSid);
+  if (!c?.ok) return twiml(res, '<Hangup/>');
+  const text = c.pending; c.pending = null;
+  if (!text || req.body.Digits !== '1') return twiml(res, `<Say>Cancelled.</Say>${menu()}`);
+  const u = await one('SELECT * FROM users WHERE id = ?', c.userId);
+  let reply;
+  try { reply = await handleCommand(u, text, { pinVerified: true }); } catch (e) { reply = 'Error. ' + e.message; }
+  await audit(u.id, 'hotline_command', { text, confirmed: true }, req.body.From);
   twiml(res, `<Say>${N.xml(reply.replace(/\$/g, ' dollars ').replace(/\n/g, '. '))}</Say>${menu()}`);
 });
 app.post('/twilio/voice/status', async (req, res) => { calls.delete(req.body.CallSid); res.sendStatus(204); });
@@ -160,6 +188,8 @@ api.use('/public', (req, res, next) => {
   next();
 });
 api.use(auth.csrfGuard);
+// Only API calls look up the session; static files and pages skip the database round trip.
+api.use(auth.sessionMiddleware);
 api.use('/auth', auth.router);
 const U = auth.requireUser;
 const wrap = fn => async (req, res) => Promise.resolve(fn(req, res)).catch(e => res.status(400).json({ error: e.message }));
@@ -176,7 +206,7 @@ api.get('/config', async (req, res) => res.json({
 api.post('/public/backtest', async (req, res) => {
   if (!auth.rateLimit('pub:' + req.ip, 20, 600e3)) return res.status(429).json({ error: 'Demo limit reached - create a free account for unlimited backtests' });
   const b = req.body || {}, symbol = String(b.symbol || 'SPY').toUpperCase().slice(0, 8);
-  const preset = PRESETS[b.preset] || PRESETS['SMA cross'];
+  const preset = Object.hasOwn(PRESETS, b.preset) ? PRESETS[b.preset] : PRESETS['SMA cross'];
   const bars = await getBars(symbol, '2015-01-01', null);
   const cfg = { ...preset, capital: 10000 }, warm = warmupFor(cfg);
   const r = backtest(bars.closes, cfg, warm, bars.closes.length, bars.dates);
@@ -204,9 +234,10 @@ api.post('/backtest', U, wrap(async (req, res) => {
   }
   const r = backtest(bars.closes, cfg, warm, bars.closes.length, bars.dates);
   const step = Math.max(1, Math.floor(r.eq.length / 400));
+  const idx = r.eq.map((_, i) => i).filter(i => i % step === 0 || i === r.eq.length - 1);
   res.json({
     source: bars.source, symbol: String(b.symbol).toUpperCase(), m: r.m, holding: r.holding, trades: r.trades.slice(-100),
-    curve: r.eq.filter((_, i) => i % step === 0 || i === r.eq.length - 1).map((v, j) => ({ d: r.dates[Math.min(j * step, r.dates.length - 1)], eq: v, bh: r.bh[Math.min(j * step, r.bh.length - 1)] })),
+    curve: idx.map(i => ({ d: r.dates[i], eq: r.eq[i], bh: r.bh[i] })),
     projection: projectAnnual(r.eq), walkForward: walkForward(bars.closes, cfg, warm, 4, bars.dates),
   });
 }));
@@ -220,6 +251,8 @@ api.get('/strategies', U, async (req, res) => res.json(await all('SELECT * FROM 
 api.post('/strategies', U, wrap(async (req, res) => {
   const b = req.body;
   if (!b.name || !b.symbol || !b.entry) throw new Error('Name, symbol and entry rules are required');
+  if (/\{/.test(b.entry + (b.exit || ''))) throw new Error('Pick one setting from the optimizer before saving (remove the { } choices)');
+  compile(b.entry, [1, 2, 3]); compile(b.exit || '', [1, 2, 3]); // throws a readable error for bad rules
   const r = await run('INSERT INTO strategies (user_id, name, symbol, entry, exit, sl, tp, ts, size, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)',
     req.user.id, String(b.name).slice(0, 80), String(b.symbol).toUpperCase(), b.entry, b.exit || '', +b.sl || 0, +b.tp || 0, +b.ts || 0, +b.size || 100, now());
   res.json({ id: Number(r.lastInsertRowid) });
@@ -306,7 +339,7 @@ const qcCred = async req => { const c = await getCred(req.user.id, 'quantconnect
 api.get('/qc/templates', U, async (req, res) => res.json(Object.keys(QC.TEMPLATES)));
 api.get('/qc/projects', U, wrap(async (req, res) => res.json(await QC.listProjects(await qcCred(req)))));
 api.post('/qc/projects', U, needPlan, wrap(async (req, res) => {
-  const code = QC.TEMPLATES[req.body.template] || req.body.code;
+  const code = (Object.hasOwn(QC.TEMPLATES, req.body.template) && QC.TEMPLATES[req.body.template]) || req.body.code;
   if (!code) throw new Error('Pick a template or paste code');
   res.json({ id: await QC.createProject(await qcCred(req), String(req.body.name || req.body.template).slice(0, 60), code) });
 }));
@@ -321,12 +354,14 @@ api.post('/phone', U, wrap(async (req, res) => {
   if (!/^\+\d{10,15}$/.test(phone)) throw new Error('Use international format, e.g. +17185551234');
   if (await one('SELECT id FROM users WHERE phone = ? AND id != ?', phone, req.user.id)) throw new Error('Number already linked to another account');
   if (!auth.rateLimit('phone:' + req.user.id, 5, 3600e3)) throw new Error('Too many codes requested');
-  const code = String(Math.floor(100000 + Math.random() * 900000));
-  await run('UPDATE users SET phone = ?, phone_verified = 0, phone_code = ? WHERE id = ?', phone, hashSecret(code), req.user.id);
+  const code = String(crypto.randomInt(100000, 1000000));
+  await run('UPDATE users SET phone = ?, phone_verified = 0, phone_code = ?, phone_code_expires = ? WHERE id = ?', phone, hashSecret(code), now() + 10 * 60e3, req.user.id);
   const sent = await N.sendSms(phone, `QuantPocket code: ${code}`);
   res.json({ ok: true, devCode: sent.simulated && process.env.NODE_ENV !== 'production' ? code : undefined });
 }));
 api.post('/phone/verify', U, wrap(async (req, res) => {
+  if (!auth.rateLimit('phonev:' + req.user.id, 5, 15 * 60e3)) throw new Error('Too many attempts. Request a new code in 15 minutes.');
+  if (!req.user.phone_code || req.user.phone_code_expires < now()) throw new Error('This code expired. Request a new one.');
   if (!verifySecret(String(req.body.code || ''), req.user.phone_code)) throw new Error('Wrong code');
   await run('UPDATE users SET phone_verified = 1, phone_code = NULL WHERE id = ?', req.user.id);
   await audit(req.user.id, 'phone_verified', null, req.ip);
@@ -352,7 +387,7 @@ api.post('/funding/deposit', U, wrap(async (req, res) => {
   const amount = +req.body.amount, a = acct(req);
   if (!(amount >= 10 && amount <= 10000)) throw new Error('Deposits are $10 - $10,000');
   if (a === 'paper') {
-    await run('UPDATE paper_accounts SET cash = cash + ? WHERE user_id = ?', amount, req.user.id);
+    await run('UPDATE paper_accounts SET cash = cash + ?, start_cash = start_cash + ? WHERE user_id = ?', amount, amount, req.user.id);
     await adjustForCashflow(req.user.id, 'paper', amount);
     await run('INSERT INTO ledger (user_id, kind, amount, status, memo, at) VALUES (?,?,?,?,?,?)', req.user.id, 'deposit', amount, 'simulated', 'Paper deposit', now());
     return res.json({ ok: true, simulated: true });
@@ -420,7 +455,12 @@ const page = file => async (req, res) => {
 app.get('/app', async (req, res) => res.sendFile(path.join(pub, 'app.html')));
 app.get(['/', '/index.html', '/pricing'], page('index.html'));
 for (const p of ['terms', 'privacy', 'risk', 'contact']) app.get(['/' + p, `/${p}.html`], page(p + '.html'));
-app.use(express.static(pub, { index: 'index.html', maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0, extensions: ['html'] }));
+// Code and pages revalidate on every load (cheap 304s via ETag) so a deploy reaches users at once;
+// images rarely change and are cached for a week.
+app.use(express.static(pub, {
+  index: 'index.html', extensions: ['html'],
+  setHeaders: (res, file) => res.setHeader('Cache-Control', /\.(png|svg|webmanifest)$/.test(file) ? 'public, max-age=604800' : 'no-cache'),
+}));
 app.use(async (req, res) => res.status(404).sendFile(path.join(pub, '404.html')));
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

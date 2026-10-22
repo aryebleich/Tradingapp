@@ -37,6 +37,12 @@ export function decrypt(blob) {
   return JSON.parse(Buffer.concat([d.update(data), d.final()]).toString('utf8'));
 }
 
+// Constant-time string comparison for secrets.
+export function safeEqual(a, b) {
+  const x = crypto.createHash('sha256').update(String(a)).digest(), y = crypto.createHash('sha256').update(String(b)).digest();
+  return crypto.timingSafeEqual(x, y);
+}
+
 export const randomToken = (n = 32) => crypto.randomBytes(n).toString('base64url');
 export const sha256 = s => crypto.createHash('sha256').update(s).digest('hex');
 
