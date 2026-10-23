@@ -3,17 +3,23 @@ import { one, all, run, now } from './db.js';
 import { verifySecret } from './crypto.js';
 import { accountSummary, placeOrder, lastPrice } from './brokers.js';
 import { nextRunAfter } from './scheduler.js';
+import { isPaid } from './fees.js';
 
 export const HELP = `QuantPocket commands:
 BAL - balance   POS - positions   PRICE AAPL
 BUY 5 AAPL 1234   SELL 5 AAPL 1234   BUY $100 AAPL 1234
-(last number is your PIN; add LIVE to use Alpaca)
+(last number is your PIN; add LIVE for Alpaca, or SCHWAB, TRADIER, TASTYTRADE, TRADESTATION)
+Or just write what you want: "how is my account doing?"
 DCA $50 SPY WEEKLY 1234 - scheduled buy
 ORDERS - scheduled trades   CANCEL 7 1234
 BOTS - auto strategies   PAUSE 1234 - stop all bots & schedules`;
 
 const WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, twenty: 20, fifty: 50, hundred: 100 };
 const NAMES = { apple: 'AAPL', microsoft: 'MSFT', tesla: 'TSLA', amazon: 'AMZN', google: 'GOOGL', nvidia: 'NVDA', meta: 'META', 's&p': 'SPY', spy: 'SPY', qqq: 'QQQ' };
+// Words that pick the account: LIVE / ALPACA, or another connected brokerage.
+const ACCOUNT_WORDS = { LIVE: 'alpaca', ALPACA: 'alpaca', TRADIER: 'tradier', TASTYTRADE: 'tastytrade', SCHWAB: 'schwab', TRADESTATION: 'tradestation' };
+const ACCOUNT_NAMES = { paper: 'Paper', alpaca: 'Alpaca', tradier: 'Tradier', tastytrade: 'tastytrade', schwab: 'Schwab', tradestation: 'TradeStation' };
+export const KNOWN = ['HELP', 'MENU', '?', 'BAL', 'BALANCE', 'POS', 'POSITIONS', 'PRICE', 'QUOTE', 'BUY', 'SELL', 'DCA', 'ORDERS', 'CANCEL', 'BOTS', 'PAUSE'];
 const money = x => '$' + (+x).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function normalize(text) {
@@ -26,9 +32,10 @@ export function normalize(text) {
 export async function handleCommand(user, text, { pinVerified = false } = {}) {
   const t = normalize(text).split(' ');
   const cmd = t[0];
-  const live = t.includes('LIVE');
-  const args = t.filter(x => x !== 'LIVE');
-  const account = live ? 'alpaca' : 'paper';
+  const word = t.find(x => ACCOUNT_WORDS[x]);
+  const args = t.filter(x => !ACCOUNT_WORDS[x]);
+  const account = word ? ACCOUNT_WORDS[word] : 'paper';
+  if (account !== 'paper' && !isPaid(user) && ['BUY', 'SELL', 'DCA'].includes(cmd)) return 'Trading a brokerage account by text is part of Pro. Try it free for 14 days in the app under Plans & billing.';
   const pinOk = () => pinVerified || (user.pin_hash && verifySecret(args[args.length - 1], user.pin_hash));
   const needPin = 'That needs your PIN at the end. Set one in Settings > Phone.';
 
@@ -36,7 +43,7 @@ export async function handleCommand(user, text, { pinVerified = false } = {}) {
     case 'HELP': case 'MENU': case '?': return HELP;
     case 'BAL': case 'BALANCE': {
       const s = await accountSummary(user.id, account);
-      return `${live ? 'Alpaca' : 'Paper'}: equity ${money(s.equity)}, cash ${money(s.cash)}`;
+      return `${ACCOUNT_NAMES[account]}: equity ${money(s.equity)}, cash ${money(s.cash)}`;
     }
     case 'POS': case 'POSITIONS': {
       const s = await accountSummary(user.id, account);

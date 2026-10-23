@@ -140,7 +140,7 @@ console.log('Phone (iPhone 13)');
     await p.tap('button:has-text("Create account")'); await p.waitForSelector('#tabs a.on');
   });
   await step('connect API keys from the menu', async () => {
-    await p.tap('#moreTab'); await p.waitForSelector('#nav.open'); await p.tap('#nav a:has-text("Brokerage account")'); await p.waitForSelector('#keysForm');
+    await p.tap('#moreTab'); await p.waitForSelector('#nav.open'); await p.tap('#nav a:has-text("Alpaca account")'); await p.waitForSelector('#keysForm');
     await p.fill('#keysForm [name=keyId]', 'PHONEKEY'); await p.fill('#keysForm [name=secret]', 'S'); await p.tap('#keysForm button'); await p.waitForSelector('#keysForm .ok');
   });
   await step('sticky Buy bar places an order', async () => {
@@ -170,20 +170,22 @@ console.log('Phone (iPhone 13)');
 }
 
 // ---------- layout audit: no sideways scrolling and no zooming inputs on any page ----------
-for (const [device, width] of [['iPhone 13', 390], ['iPhone SE', 320]]) {
-  console.log(`Layout audit (${device}, ${width}px)`);
+for (const [device, width, lang] of [['iPhone 13', 390, 'en'], ['iPhone SE', 320, 'en'], ['iPhone SE', 320, 'yi']]) {
+  console.log(`Layout audit (${device}, ${width}px${lang === 'yi' ? ', Yiddish' : ''})`);
   const ctx = await browser.newContext({ ...devices[device] });
+  if (lang === 'yi') await ctx.addInitScript(() => localStorage.setItem('qp_lang', 'yi'));
   const p = await ctx.newPage();
-  const { step, done } = harness(p, device.replace(' ', ''));
-  const email = `audit${width}@example.com`;
+  const { step, done } = harness(p, device.replace(' ', '') + (lang === 'yi' ? '-yi' : ''));
+  const email = `audit${width}${lang}@example.com`;
   await p.goto(B + '/app#/register'); await p.fill('input[name=email]', email); await p.fill('input[name=password]', 'Str0ngPassword'); await p.check('input[name=agree]');
-  await p.tap('button:has-text("Create account")'); await p.waitForSelector('#tabs a.on');
+  await p.tap("form.auth button:not([type=button])"); await p.waitForSelector('#tabs a.on');
   await p.evaluate(() => fetch('/api/alpaca/keys', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ keyId: 'AUDIT' + innerWidth, secret: 'S' }) }));
   await p.evaluate(() => localStorage.setItem('qp_account', 'alpaca'));
-  for (const r of ['/', '/terms', '/app#/register', '/app#/login', '#/dashboard', '#/trade?symbol=AAPL', '#/orders', '#/positions', '#/watchlists', '#/markets', '#/options?underlying=AAPL', '#/calendar', '#/account', '#/signals', '#/backtest', '#/bots', '#/schedule', '#/text', '#/tax', '#/funding', '#/settings']) {
+  const lib = await p.evaluate(() => fetch('/api/library', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ templateId: 'multi_model' }) }).then(r => r.json()));
+  for (const r of ['/', '/yi', '/terms', '/app#/register', '/app#/login', '#/dashboard', '#/trade?symbol=AAPL', '#/orders', '#/positions', '#/watchlists', '#/markets', '#/options?underlying=AAPL', '#/calendar', '#/account', '#/brokers', '#/strategies', `#/strategy?id=${lib.id}`, '#/signals', '#/pairs', '#/sp500', '#/backtest', '#/bots', '#/schedule', '#/text', '#/tax', '#/funding', '#/settings']) {
     await step(r, async () => {
       await p.goto(r.startsWith('#') ? B + '/app' + r : B + r); if (r === '#/dashboard') await p.reload();
-      await p.waitForTimeout(1300);
+      await p.waitForTimeout(r.includes('strategy') || r.includes('sp500') ? 3000 : 1300);
       const a = await p.evaluate(() => ({
         w: Math.max(innerWidth, document.documentElement.scrollWidth),
         small: [...document.querySelectorAll('input, select, textarea')].filter(e => e.offsetParent && parseFloat(getComputedStyle(e).fontSize) < 16).length,

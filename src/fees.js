@@ -2,9 +2,9 @@
 import { one, all, run, now } from './db.js';
 
 export const PLANS = {
-  free: { name: 'Starter', monthly: 0, yearly: 0, perfFee: 0.20, tagline: 'Learn and practice', features: ['$100,000 paper account', 'Backtests & AI strategy builder', 'Alpaca paper & sandbox trading', 'Markets, news & watchlists', '1 alert webhook (paper)', 'SMS balance and quotes'] },
-  pro: { name: 'Pro', monthly: 29, yearly: 290, perfFee: 0.10, popular: true, tagline: 'Automate your trading', features: ['Everything in Starter', 'Live trading with Alpaca', '10 alert webhooks (TradingView, Zapier) to Alpaca', 'Auto-trading bots & scheduled trades', 'Optimizer + walk-forward testing', 'QuantConnect cloud backtests', 'Full SMS & voice hotline'] },
-  elite: { name: 'Elite', monthly: 99, yearly: 990, perfFee: 0.05, tagline: 'For serious capital', features: ['Everything in Pro', 'Lowest performance fee (5%)', '50 alert webhooks', 'Priority AI strategy builder', 'Tax-loss harvesting report', 'Priority support'] },
+  free: { name: 'Starter', monthly: 0, yearly: 0, perfFee: 0.20, tagline: 'Learn and practice', features: ['$100,000 paper account', 'Strategy library by hand + 1 automatic strategy on paper', 'S&P 500 auto-invest on paper', 'Pairs analysis & backtests', '1 alert webhook (paper)', 'AI text assistant for questions & balances', 'English & Yiddish'] },
+  pro: { name: 'Pro', monthly: 29, yearly: 290, perfFee: 0.10, popular: true, tagline: 'Automate your real accounts', features: ['Everything in Starter', 'Live trading on Alpaca, Schwab, tastytrade, Tradier & TradeStation', '5 automatic strategies with Reality Check auto-throttle', '10 alert webhooks (TradingView, Zapier)', 'Pair bots, scheduled trades & live S&P 500 auto-invest', 'Trade by text & phone with the AI assistant', 'Optimizer, walk-forward testing & QuantConnect'] },
+  elite: { name: 'Elite', monthly: 99, yearly: 990, perfFee: 0.05, tagline: 'For serious capital', features: ['Everything in Pro', 'Lowest performance fee (5%)', '50 automatic strategies & 50 webhooks', 'Market-neutral pairs (long + short)', 'Tax-loss harvesting report', 'Priority AI & priority support'] },
 };
 // Paid plans start with a free trial once per user.
 export const TRIAL_DAYS = +process.env.TRIAL_DAYS || 14;

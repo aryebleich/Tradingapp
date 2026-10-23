@@ -3,12 +3,13 @@
 import express from 'express';
 import { one, all, run, now } from './db.js';
 import { encrypt, decrypt, randomToken, sha256 } from './crypto.js';
-import { placeOrder, accountSummary, lastPrice, validSymbol } from './brokers.js';
+import { placeOrder, accountSummary, lastPrice, validSymbol, ACCOUNT_IDS } from './brokers.js';
+import { extName } from './ext/brokers.js';
 import { isPaid } from './fees.js';
 import { requireUser, rateLimit } from './auth.js';
 
 export const HOOK_LIMITS = { free: 1, pro: 10, elite: 50 };
-const ACCOUNTS = ['paper', 'alpaca'];
+const ACCOUNTS = ACCOUNT_IDS;
 const SIZE_MODES = ['dollars', 'qty', 'signal'];
 const appUrl = () => (process.env.PUBLIC_URL || 'http://localhost:3000').replace(/\/$/, '');
 const limitFor = u => (u.role === 'admin' ? HOOK_LIMITS.elite : isPaid(u) ? HOOK_LIMITS[u.plan] || HOOK_LIMITS.pro : HOOK_LIMITS.free);
@@ -44,7 +45,7 @@ export function parseSignal(raw) {
 
 // Turns one signal into an order for one account, applying the webhook's sizing and risk rules.
 async function orderFor(hook, user, sig, account) {
-  if (account === 'alpaca' && !isPaid(user)) throw new Error('Sending signals to Alpaca needs Pro (paper still works)');
+  if (account !== 'paper' && !isPaid(user)) throw new Error(`Sending signals to ${account === 'alpaca' ? 'Alpaca' : extName(account)} needs Pro (paper still works)`);
   const s = await accountSummary(user.id, account);
   const pos = s.positions.find(p => p.symbol === sig.symbol), held = pos?.qty > 0 ? pos.qty : 0;
   const price = pos?.price || await lastPrice(sig.symbol, user.id);
@@ -125,7 +126,7 @@ function settings(b, user) {
   if (!name) throw bad('Give the webhook a name');
   const accounts = [...new Set([].concat(b.accounts || []))].filter(a => ACCOUNTS.includes(a));
   if (!accounts.length) throw bad('Pick at least one account');
-  if (accounts.includes('alpaca') && !isPaid(user)) throw upgrade('Sending alerts to your Alpaca account');
+  if (accounts.some(a => a !== 'paper') && !isPaid(user)) throw upgrade('Sending alerts to your brokerage account');
   const sizeMode = SIZE_MODES.includes(b.sizeMode) ? b.sizeMode : 'dollars', size = +b.size || 0;
   if (sizeMode !== 'signal' && !(size > 0)) throw bad('Order size must be above zero');
   const pos = b.maxPosition === '' || b.maxPosition == null ? null : +b.maxPosition, trades = b.maxTradesDay === '' || b.maxTradesDay == null ? null : Math.floor(+b.maxTradesDay);

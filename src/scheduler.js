@@ -6,6 +6,8 @@ import { sendSms, sendEmail } from './notify.js';
 import { assessFee, isPaid } from './fees.js';
 import { tradingFor } from './alpaca/connections.js';
 import { getAccount, brokerEnabled, kycStep } from './alpaca/broker.js';
+import { runAuto, checkStops, recordDaily } from './rotation/runner.js';
+import { runPairBots } from './pairs.js';
 
 const DAY = 86400e3;
 
@@ -29,9 +31,9 @@ export const marketOpen = (t = now()) => { const n = nyTime(t); return !['Sat', 
 
 // Text message when the user has a verified phone, otherwise email.
 async function notify(userId, msg) {
-  const u = await one('SELECT email, email_verified, phone, phone_verified FROM users WHERE id = ?', userId);
+  const u = await one('SELECT email, phone, phone_verified FROM users WHERE id = ?', userId);
   if (u?.phone && u.phone_verified) await sendSms(u.phone, msg).catch(e => console.warn('sms', e.message));
-  else if (u?.email_verified) await sendEmail(u.email, 'QuantPocket: ' + msg.slice(0, 60), msg).catch(e => console.warn('email', e.message));
+  else if (u?.email) await sendEmail(u.email, 'QuantPocket: ' + msg.slice(0, 60), msg).catch(e => console.warn('email', e.message));
 }
 
 // Each job is claimed with a conditional UPDATE before it runs, so the in-process timer and the
@@ -123,11 +125,16 @@ export async function assessAllFees() {
 // Once-per-period jobs are claimed in the database, so restarts (common on free hosts) and the
 // cron endpoint running alongside the in-process timer never repeat them.
 const claimOnce = async key => (await run('INSERT OR IGNORE INTO job_runs (k, at) VALUES (?, ?)', key, now())).changes > 0;
-let lastAlerts = 0;
+let lastAlerts = 0, lastStops = 0;
 
 export async function runDueJobs(t = now()) {
   const n = nyTime(t), out = { orders: await runScheduledOrders(t), bots: await runBots(t) };
   if (marketOpen(t) && t - lastAlerts > 5 * 60e3) { lastAlerts = t; await runAlerts(); }
+  // Sheet strategies: automatic rebalances, trailing stops, and the after-close record for Reality Check.
+  out.strategies = await runAuto(t, claimOnce).catch(e => (console.error('strategies', e), 0));
+  out.pairs = await runPairBots(t, claimOnce).catch(e => (console.error('pairs', e), 0));
+  if (marketOpen(t) && t - lastStops > 5 * 60e3) { lastStops = t; await checkStops(t).catch(e => console.error('strategy stops', e)); }
+  if (n.minutes >= 975 && !['Sat', 'Sun'].includes(n.weekday) && await claimOnce('strategydays:' + n.day)) await recordDaily(t).catch(e => console.error('strategy days', e));
   if (n.minutes >= 965 && !['Sat', 'Sun'].includes(n.weekday) && await claimOnce('snapshot:' + n.day)) await snapshotAll();
   // Monthly fees on the 1st (days 2-3 cover an app that was asleep), never mid-month after a deploy.
   if (+n.day.slice(8) <= 3 && n.minutes >= 600 && await claimOnce('fees:' + n.day.slice(0, 7))) out.fees = (await assessAllFees()).length;

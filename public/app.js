@@ -1,6 +1,11 @@
 // QuantPocket single-page client. Hash routes, no framework.
 import { registerTrading } from './trading.js';
 import { registerSignals } from './signals.js';
+import { registerStrategies } from './strategies.js';
+import { registerPairs } from './pairs.js';
+import { registerSp500 } from './sp500.js';
+import { registerBrokers } from './brokers.js';
+import { startI18n, picker, setLang } from './i18n.js';
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -41,6 +46,15 @@ function act(btn, fn, out) {
 }
 
 let ME = null, CFG = null;
+// Accounts the user can trade (paper, Alpaca, other brokerages), cached for a minute.
+let ACCTS = null;
+async function accounts(force) {
+  if (force || !ACCTS || Date.now() - ACCTS.at > 60e3) ACCTS = { at: Date.now(), list: await api('/accounts').catch(() => [{ id: 'paper', name: 'Paper account', connected: true }]) };
+  return ACCTS.list;
+}
+const acctLabel = a => (a.id === 'paper' ? 'Paper account' : `${a.name}${a.live ? ' (live)' : a.id === 'alpaca' ? '' : ' (test)'}`);
+const accountOptions = (list, selected, paid = true) => list.filter(a => a.connected || a.id === selected || a.id === 'alpaca')
+  .map(a => `<option value="${a.id}" ${a.id === selected ? 'selected' : ''}>${esc(acctLabel(a))}${a.id !== 'paper' && !paid ? ' · Pro' : ''}${!a.connected ? ' · not connected' : ''}</option>`).join('');
 const state = { account: localStorage.getItem('qp_account') || 'paper' };
 
 // ---------- chart: line is green above the starting value and red below it ----------
@@ -100,12 +114,16 @@ async function showUpgrade(feature) {
 // ---------- routing ----------
 const NAV = [
   ['Trading', [['dashboard', 'Portfolio'], ['trade', 'Trade'], ['orders', 'Orders'], ['positions', 'Positions'], ['watchlists', 'Watchlists']]],
-  ['Markets', [['markets', 'Markets & news'], ['options', 'Options chain'], ['calendar', 'Calendar & events']]],
-  ['Strategies', [['signals', 'Alerts to trades'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['schedule', 'Scheduled trades'], ['quantconnect', 'QuantConnect']]],
-  ['Account', [['account', 'Brokerage account'], ['funding', 'Plans & billing'], ['referrals', 'Invite & earn'], ['tax', 'Taxes'], ['text', 'Text & hotline'], ['settings', 'Settings']]],
+  ['Markets', [['sp500', 'S&P 500 plan'], ['markets', 'Markets & news'], ['options', 'Options chain'], ['calendar', 'Calendar & events']]],
+  ['Strategies', [['strategies', 'Strategy library'], ['signals', 'Alerts to trades'], ['pairs', 'Pairs trading'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['schedule', 'Scheduled trades'], ['quantconnect', 'QuantConnect']]],
+  ['Account', [['brokers', 'Brokerages'], ['account', 'Alpaca account'], ['funding', 'Plans & billing'], ['referrals', 'Invite & earn'], ['tax', 'Taxes'], ['text', 'Text & hotline'], ['settings', 'Settings']]],
 ];
 // Simple line icons (24x24 paths) for the menu.
 const ICONS = {
+  brokers: '<path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/>',
+  sp500: '<path d="M3 17l5-5 4 4 8-9"/><path d="M14 7h6v6"/>',
+  pairs: '<path d="M7 4v16M17 4v16M4 8h6M14 16h6"/>',
+  strategies: '<path d="M12 3v18M5 8h14M7 13h10M9 18h6"/>',
   signals: '<path d="M4 12h4l3-8 4 16 3-8h2"/>',
   dashboard: '<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/>', trade: '<path d="M7 17 17 7M9 7h8v8"/>',
   orders: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>', positions: '<path d="M21 12a9 9 0 1 1-9-9v9z"/><path d="M12 3a9 9 0 0 1 9 9h-9z"/>',
@@ -149,12 +167,6 @@ async function render() {
   view.innerHTML = '<div class="skel"><div class="h1"></div><div class="box"></div><div class="w60"></div><div></div><div class="box"></div></div>';
   try {
     await (routes[route] || routes.dashboard)(view, new URLSearchParams(q));
-    if (ME && !ME.emailVerified && !['verify'].includes(route)) {
-      const b = document.createElement('div'); b.className = 'banner';
-      b.innerHTML = 'Please confirm your email address. <a href="#" id="resend">Resend the link</a>';
-      view.prepend(b);
-      $('#resend', b).onclick = async e => { e.preventDefault(); await api('/auth/verify/resend', { body: {} }); b.textContent = 'Sent. Check your inbox.'; };
-    }
   }
   catch (e) { view.innerHTML = `<div class="card err">${esc(e.message)}</div>`; }
 }
@@ -199,7 +211,7 @@ async function updateBadge(force) {
 }
 $('#logout').onclick = async () => { await api('/auth/logout', { body: {} }); ME = null; location.href = '/'; };
 
-const accountSwitch = () => `<div class="seg" id="acctseg">${[['paper', 'Paper'], ['alpaca', 'Alpaca']].map(([k, t]) => `<button class="${state.account === k ? 'on' : ''}" data-a="${k}">${t}</button>`).join('')}</div>`;
+const accountSwitch = () => `<div class="seg" id="acctseg">${[['paper', 'Paper'], ['alpaca', 'Alpaca'], ...(ACCTS?.list || []).filter(a => a.connected && !['paper', 'alpaca'].includes(a.id)).map(a => [a.id, a.name])].map(([k, t]) => `<button class="${state.account === k ? 'on' : ''}" data-a="${k}">${t}</button>`).join('')}</div>`;
 function wireAccountSwitch(view) {
   $$('#acctseg button', view).forEach(b => (b.onclick = () => { state.account = b.dataset.a; localStorage.setItem('qp_account', state.account); render(); }));
 }
@@ -221,7 +233,7 @@ routes.login = async (view, q) => {
     <label>Email<input name="email" type="email" autocomplete="username" required></label>
     <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
     <button>Sign in</button><div class="err"></div>
-    <p class="mu"><a href="#/forgot">Forgot password?</a> · New here? <a href="#/register">Create an account</a></p></form>`;
+    <p class="mu"><a href="#/forgot">Forgot password?</a> · New here? <a href="#/register">Create an account</a></p><div class="authlang">${picker()}</div></form>`;
   if (q.get('error')) $('.err', view).textContent = q.get('error');
   act($('button', view), async () => {
     const r = await api('/auth/login', { body: form(view) });
@@ -238,7 +250,7 @@ routes.register = async (view, q) => {
     <label>Password (10+ chars, upper, lower, digit)<input name="password" type="password" autocomplete="new-password" required></label>
     <label><input type="checkbox" name="agree" style="width:auto"> I agree to the <a href="/terms" target="_blank">Terms</a> and <a href="/privacy" target="_blank">Privacy Policy</a> and have read the <a href="/risk" target="_blank">Risk Disclosure</a>.</label>
     <button>Create account</button><div class="err"></div>
-    <p class="mu">You start with a $100,000 paper account. <a href="#/login">Sign in instead</a></p></form>`;
+    <p class="mu">You start with a $100,000 paper account. <a href="#/login">Sign in instead</a></p><div class="authlang">${picker()}</div></form>`;
   if (q.get('email')) { view.querySelector('[name=email]').value = q.get('email'); view.querySelector('[name=password]').focus(); }
   act($('button', view), async () => {
     const f = form(view);
@@ -272,6 +284,7 @@ routes.mfa = view => {
 
 // ---------- portfolio ----------
 routes.dashboard = async (view, q) => {
+  await accounts();
   if (state.account === 'alpaca') return routes.portfolio(view, q, accountSwitch, wireAccountSwitch);
   const a = await api('/account?account=' + state.account).catch(e => ({ error: e.message }));
   if (a.error) {
@@ -284,7 +297,7 @@ routes.dashboard = async (view, q) => {
   const today = new Date().toISOString().slice(0, 10);
   const prev = a.lastEquity || [...a.history].reverse().find(x => x.day < today)?.equity;
   const dayChg = prev ? a.equity - prev : null;
-  const steps = [[ME.emailVerified, 'Confirm your email', '#/dashboard'], [ME.totpEnabled, 'Turn on two-factor login', '#/settings'], [a.positions.length > 0 || state.account !== 'paper', 'Place your first paper trade', '#/dashboard'],
+  const steps = [[!!localStorage.getItem('qp_seen_strategies'), 'Try a ready-made strategy', '#/strategies'], [ME.totpEnabled, 'Turn on two-factor login', '#/settings'], [a.positions.length > 0 || state.account !== 'paper', 'Place your first paper trade', '#/dashboard'],
     [ME.phoneVerified && ME.hasPin, 'Add your phone and PIN for SMS', '#/settings'], [!!sessionStorage.getItem('qp_strategy'), 'Backtest a strategy', '#/backtest']];
   const todo = steps.filter(x => !x[0]).length > 1 && !localStorage.getItem('qp_onboard_done');
   view.innerHTML = `
@@ -521,12 +534,13 @@ routes.text = async view => {
   view.innerHTML = `<h1>Text & Hotline</h1>
   <div class="grid">
     <div class="card"><h2>Manage your account by SMS or phone</h2>
-      <p>${CFG.hotline ? `Text or call <b>${esc(CFG.hotline)}</b> from your verified phone.` : '<span class="warn">The SMS/voice number is not configured on this server yet (Twilio).</span>'}</p>
-      <p class="mu">Status: phone ${ME.phone ? esc(ME.phone) : 'not set'} ${ME.phoneVerified ? '<span class="pill">verified</span>' : ''} · PIN ${ME.hasPin ? 'set' : 'not set'} — <a href="#/settings">change in Settings</a></p>
+      ${CFG.hotline ? `<div class="hotline"><span class="mu">QuantPocket's number</span><b dir="ltr">${esc(CFG.hotline)}</b><div class="row" style="gap:8px"><a href="sms:${esc(CFG.hotline)}"><button type="button">Text us</button></a><a href="tel:${esc(CFG.hotline)}"><button type="button" class="ghost">Call</button></a></div></div>
+        <p>Text or call from your verified phone.</p>${CFG.assistant ? '<p>The AI assistant understands plain language: "how am I doing this month?", "put $200 into the S&amp;P every week", "what does RSI mean?". Trades always need your PIN.</p>' : ''}` : '<p class="warn">The SMS/voice number is not configured on this server yet (Twilio).</p>'}
+      <p class="mu"><span>Phone:</span> ${ME.phone ? `<span dir="ltr">${esc(ME.phone)}</span>` : '<span>not set</span>'} ${ME.phoneVerified ? '<span class="pill">verified</span>' : ''} · <span>PIN:</span> <span>${ME.hasPin ? 'set' : 'not set'}</span> · <a href="#/settings">change in Settings</a></p>
       <pre>${esc(help)}</pre>
       <p class="mu">On the hotline: enter your PIN, then press 1 balance, 2 positions, 3 scheduled trades, 9 pause bots, or say a command like "buy five shares of Apple".</p></div>
-    <div class="card"><h2>Try a command here</h2>
-      <label>Command<input id="cmd" placeholder="BAL"></label><button id="send">Send</button><div class="err"></div><pre id="reply"></pre></div>
+    <div class="card"><h2>Try it here</h2>
+      <label>Message<input id="cmd" placeholder="${CFG.assistant ? 'How is my account doing?' : 'BAL'}"></label><button id="send">Send</button><div class="err"></div><pre id="reply"></pre></div>
   </div>`;
   act($('#send', view), async () => { $('#reply', view).textContent = (await api('/command', { body: { text: $('#cmd', view).value } })).reply; });
   $('#cmd', view).onkeydown = e => { if (e.key === 'Enter') $('#send', view).click(); };
@@ -560,7 +574,7 @@ routes.tax = async (view, q) => {
 // ---------- funding & plans ----------
 routes.funding = routes.billing = async (view, q) => {
   CFG ||= await api('/config');
-  const [ledger, fees] = await Promise.all([api('/ledger'), api('/fees')]);
+  const [ledger, fees, pay, accts] = await Promise.all([api('/ledger'), api('/fees'), api('/funding/methods').catch(() => ({ methods: [], fee: {} })), accounts()]);
   let yearly = q.get('interval') === 'year';
   const days = CFG.trialDays || 14, trial = !ME.trialUsed, paid = isPaid(ME);
   const status = ME.planStatus === 'trialing' ? `Free trial · renews ${ME.planRenews ? new Date(ME.planRenews).toLocaleDateString() : ''}` : ME.planStatus === 'past_due' ? 'Payment failed - update your card' : ME.planRenews ? `Renews ${new Date(ME.planRenews).toLocaleDateString()}` : '';
@@ -586,6 +600,12 @@ routes.funding = routes.billing = async (view, q) => {
         <div class="row"><label>Amount (USD)<input name="amount" type="number" min="10" max="10000" value="10000"></label><input type="hidden" name="account" value="paper"></div>
         <button>Add to paper account</button><div class="err"></div>
         <p class="mu" style="font-size:13px">Real money goes to your brokerage account by bank transfer on the <a href="#/account">Brokerage account</a> page.</p></form>
+      <form class="card" id="realDep"><h2>Deposit to your brokerage</h2>
+        ${pay.methods.length ? `<label>Amount (USD)<input name="amount" type="number" min="10" max="10000" value="500"></label>
+        <div class="methods">${pay.methods.map((m, i) => `<label class="method"><input type="radio" name="method" value="${m.id}" ${i ? '' : 'checked'}><span><b>${esc(m.name)}</b> <span class="mu">via ${esc(m.via)}</span><br><span class="mu" style="font-size:13px">${esc(m.note)}</span></span></label>`).join('')}</div>
+        <p class="mu" id="feeLine" style="font-size:13px"></p>
+        <input type="hidden" name="account" value="${esc(accts.find(a => a.connected && a.id !== 'paper')?.id || 'alpaca')}">
+        <button>Continue to payment</button><div class="err"></div>` : '<p class="mu">Card and bank deposits are not set up on this server yet. You can fund your brokerage account by bank transfer on the <a href="#/account">Alpaca account</a> page.</p>'}</form>
       <div class="card"><h2>Performance fee</h2><p>Your rate: <b>${fees.rate * 100}%</b> of new profit. You only pay when an account is above its previous peak, after deposits and withdrawals.</p>
         ${fees.accounts.map(a => `<p class="mu">${esc(a.account)}: high-water mark ${money(a.high_water)}</p>`).join('')}</div>
     </div>
@@ -595,9 +615,40 @@ routes.funding = routes.billing = async (view, q) => {
     $$('[data-plan]', view).forEach(b => act(b, async () => { location.href = (await api('/billing/checkout', { body: { plan: b.dataset.plan, interval: yearly ? 'year' : 'month' } })).url; }, $('#planErr', view)));
     if ($('#portal', view)) act($('#portal', view), async () => { location.href = (await api('/billing/portal', { body: {} })).url; }, $('#planErr', view));
     act($('button', $('#dep', view)), async () => { await api('/funding/deposit', { body: form($('#dep', view)) }); setTimeout(render, 500); return 'Paper money added.'; });
+    const rd = $('#realDep', view);
+    if (rd && pay.methods.length) {
+      const feeOf = a => +(a * (pay.fee.percent || 0) / 100 + (pay.fee.percent || pay.fee.fixed ? pay.fee.fixed || 0 : 0)).toFixed(2);
+      const show = () => { const a = +rd.amount.value || 0, f = feeOf(a); $('#feeLine', rd).textContent = f ? `You pay ${money(a + f)}: ${money(a)} deposit + ${money(f)} service fee. ${money(a)} goes to your account.` : `You pay ${money(a)}. No service fee.`; };
+      rd.amount.oninput = show; show();
+      act($('button', rd), async () => {
+        const r = await api('/funding/deposit', { body: form(rd) });
+        if (r.url) { location.href = r.url; return 'Opening secure checkout…'; }
+        if (r.helcim) { await helcimPay(r.helcim.checkoutToken, r.ledgerId); setTimeout(render, 800); return 'Payment received. Thank you!'; }
+      });
+    }
   };
   draw();
 };
+
+// Helcim's secure payment window (HelcimPay.js); the result is verified on the server.
+function helcimPay(checkoutToken, ledgerId) {
+  return new Promise((resolve, reject) => {
+    const open = () => window.appendHelcimPayIframe(checkoutToken);
+    const onMsg = async e => {
+      if (e.data?.eventName !== 'helcim-pay-js-' + checkoutToken) return;
+      if (e.data.eventStatus === 'ABORTED') { window.removeEventListener('message', onMsg); window.removeHelcimPayIframe?.(); reject(new Error('Payment cancelled')); }
+      if (e.data.eventStatus === 'SUCCESS') {
+        window.removeEventListener('message', onMsg); window.removeHelcimPayIframe?.();
+        const m = typeof e.data.eventMessage === 'string' ? JSON.parse(e.data.eventMessage) : e.data.eventMessage;
+        try { await api('/funding/helcim/confirm', { body: { ledgerId, data: m?.data?.data ?? m?.data, hash: m?.data?.hash ?? m?.hash } }); resolve(); } catch (err) { reject(err); }
+      }
+    };
+    window.addEventListener('message', onMsg);
+    if (window.appendHelcimPayIframe) return open();
+    const s = document.createElement('script'); s.src = 'https://secure.helcim.app/helcim-pay/services/start.js'; s.onload = open; s.onerror = () => reject(new Error('Could not load the payment window'));
+    document.head.append(s);
+  });
+}
 
 // ---------- invite & earn ----------
 routes.referrals = async view => {
@@ -682,6 +733,9 @@ routes.admin = async view => {
     <div class="stat"><span>Annual run rate</span><b>${money(f.arr)}</b></div>
     <div class="stat"><span>Revenue, last 30 days</span><b>${money(f.revenue30)}</b></div>
     <div class="stat"><span>Signup → paying</span><b>${f.conversion}%</b></div></div></div>
+  <div class="card tablewrap"><h2>Payment processors</h2><p class="mu" style="margin-top:0">What each way of taking a $500 deposit costs you. Your service fee: <b>${s.depositFee.percent}%${s.depositFee.fixed ? ' + ' + money(s.depositFee.fixed) : ''}</b> (DEPOSIT_FEE_PERCENT / DEPOSIT_FEE_FIXED) · collected so far ${money(s.depositFee.collected)}.</p>
+    <table><tr><th>Method</th><th>Processor</th><th>Their price</th><th>Cost on $500</th><th>Status</th></tr>${s.payments.map(p => `<tr><td>${esc(p.name)}</td><td>${esc(p.via)}</td><td>${esc(p.cost)}</td><td>${money(p.on500)}</td><td>${p.enabled ? '<span class="pill pos">On</span>' : '<span class="pill">Not set up</span>'}</td></tr>`).join('')}</table>
+    <p class="mu" style="font-size:12px">Helcim's figure assumes a regulated (big-bank) debit card; cards from small banks and credit cards cost more. Card-network rules and some states limit surcharges on cards, so the service fee is shown up front and charged for the deposit service.</p></div>
   <div class="card"><h2>Funnel</h2><p class="mu" style="margin-top:0">${f.signups30} new signups in the last 30 days. Find the biggest drop and improve that step first.</p><div class="funnel">
     ${steps.map(([t, n]) => `<div class="bar"><span>${t}</span><i style="width:${f.signups ? Math.max(1, n / f.signups * 100) : 0}%"></i><b>${n}</b></div>`).join('')}</div></div>
   <div class="card"><div class="stats">
@@ -699,13 +753,21 @@ routes.admin = async view => {
   $$('[data-m]', view).forEach(b => (b.onclick = async () => { await api('/admin/messages/' + b.dataset.m, { body: {} }); render(); }));
 };
 
-registerSignals(routes, { $, $$, esc, money, date, api, form, act, render, me: () => ME });
+registerStrategies(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, cls, date, api, form, act, render, drawChart, onLeave, me: () => ME });
+registerBrokers(routes, { $, $$, esc, money, api, form, act, render, accounts });
+registerSp500(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, cls, api, form, act, render, drawChart, me: () => ME });
+registerPairs(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, cls, api, form, act, render, drawChart, me: () => ME });
+registerSignals(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, date, api, form, act, render, me: () => ME });
 registerTrading(routes, { $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, updateBadge, me: () => ME, state });
 
 (async () => {
   // Remember an invite code from a referral link (/app?ref=CODE) for sign-up.
   const ref = new URLSearchParams(location.search).get('ref');
   if (ref && /^[a-z0-9]{6,12}$/.test(ref)) { try { localStorage.setItem('qp_ref', ref); } catch {} }
+  // Language: the picker sits in the header, and on the sign-in pages before signing in.
+  $('#langSlot').innerHTML = picker();
+  document.addEventListener('change', e => { if (e.target.id === 'langSel') setLang(e.target.value); });
+  await startI18n().catch(e => console.warn('i18n', e));
   const me = await api('/auth/me').catch(() => ({}));
   ME = me.user;
   if (!ME && me.mfaPending) location.hash = '#/mfa';

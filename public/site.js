@@ -112,7 +112,7 @@ for (const box of document.querySelectorAll('[data-tabs]')) {
   const show = (i, focus) => {
     tabs.forEach((t, j) => { t.setAttribute('aria-selected', String(i === j)); t.tabIndex = i === j ? 0 : -1; t.classList.toggle('on', i === j); });
     panels.forEach((p, j) => (p.hidden = i !== j));
-    if (count) count.textContent = `${i + 1} of ${tabs.length}`;
+    if (count) count.textContent = `${i + 1} / ${tabs.length}`;
     // Keep the chosen tab visible in a sideways-scrolling row without moving the page.
     const row = tabs[i].parentElement;
     if (row.scrollWidth > row.clientWidth) row.scrollTo({ left: tabs[i].offsetLeft - row.clientWidth / 2 + tabs[i].offsetWidth / 2, behavior: 'smooth' });
@@ -126,14 +126,36 @@ for (const box of document.querySelectorAll('[data-tabs]')) {
   show(current());
 }
 
-// "Sign up with Google" appears only when the app has Google sign-in set up.
-const google = document.querySelectorAll('[data-google]');
-if (google.length && !standalone) {
+// What the app has set up: Google sign-in buttons, the company's text/call number, and the
+// Yiddish translation credit.
+if (!standalone) {
   fetch(API + '/api/public/features').then(r => r.json()).then(f => {
-    if (!f.google) return;
-    google.forEach(el => { el.hidden = false; if (el.tagName === 'A') el.href = `${API}/auth/google${ref ? '?ref=' + ref : ''}`; });
+    if (f.google) document.querySelectorAll('[data-google]').forEach(el => { el.hidden = false; if (el.tagName === 'A') el.href = `${API}/auth/google${ref ? '?ref=' + ref : ''}`; });
+    if (f.phone) document.querySelectorAll('[data-phone]').forEach(el => {
+      el.hidden = false;
+      const a = el.querySelector('[data-phone-link]');
+      if (a) { a.textContent = f.phone; a.href = 'sms:' + f.phone; }
+    });
+    const credit = document.querySelector('[data-credit]');
+    if (credit && f.yiddishCredit && document.documentElement.lang === 'yi') credit.textContent = ` · איבערגעזעצט אויף אידיש דורך ${f.yiddishCredit}`;
   }).catch(() => {});
 }
+
+// S&P 500 calculator: monthly amount growing at 6%, 8% and 10% a year.
+const calc = $('#spcalc');
+if (calc) {
+  const fmt = v => '$' + Math.round(v).toLocaleString('en-US');
+  const fv = (m, years, r) => { const i = (1 + r) ** (1 / 12) - 1, n = years * 12; return i ? m * (((1 + i) ** n - 1) / i) * (1 + i) : m * n; };
+  const draw = () => {
+    const m = Math.max(0, +calc.m.value || 0), y = Math.min(50, Math.max(1, +calc.y.value || 1));
+    calc.querySelector('[data-k=put]').textContent = fmt(m * 12 * y);
+    for (const r of [6, 8, 10]) calc.querySelector(`[data-k=r${r}]`).textContent = fmt(fv(m, y, r / 100));
+  };
+  calc.addEventListener('input', draw); calc.addEventListener('submit', e => e.preventDefault()); draw();
+}
+// Remember the language chosen on the site for the app too.
+document.querySelectorAll('a[data-lang]').forEach(a => a.addEventListener('click', () => { try { localStorage.setItem('qp_lang', a.dataset.lang); } catch {} }));
+try { if (document.documentElement.lang === 'yi') localStorage.setItem('qp_lang', 'yi'); } catch {}
 
 // "Start free" with an email: opens sign-up with the address filled in.
 const start = $('#startForm');

@@ -2,3 +2,4 @@ node_modules/
 data/
 .env
 e2e-output/
+__pycache__/

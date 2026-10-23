@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,20 +9,22 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-512.png">
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="alternate" hreflang="en" href="index.html"><link rel="alternate" hreflang="yi" href="yi.html">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Privacy Policy | QuantPocket">
 <meta property="og:description" content="What QuantPocket collects, why, and your choices.">
 <meta property="og:image" content="og.png">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Hebrew:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="site.css">
 <script src="config.js"></script>
 <script type="module" src="site.js"></script>
 </head>
 <body>
 <header class="top"><div class="wrap">
-  <a class="logo" href="./"><img src="favicon.svg" alt=""><b>Quant<span>Pocket</span></b></a>
-  <nav class="links"><a href="./#how">How it works</a><a href="./#who">Use cases</a><a href="./#features">Features</a><a href="./#pricing">Pricing</a><a href="./#faq">FAQ</a></nav>
+  <a class="logo" href="index.html"><img src="favicon.svg" alt=""><b>Quant<span>Pocket</span></b></a>
+  <nav class="links"><a href="index.html#how">How it works</a><a href="index.html#strategies">Strategies</a><a href="index.html#sp500">S&amp;P 500</a><a href="index.html#pricing">Pricing</a><a href="index.html#faq">FAQ</a></nav>
+  <a class="lang" href="yi.html" hreflang="yi" data-lang="yi">ייִדיש</a>
   <a class="btn ghost" data-app="#/login" href="app">Sign in</a>
   <a class="btn" data-app="#/register" href="app">Start free</a>
 </div></header>
@@ -36,14 +38,15 @@
 <li><b>Brokerage application data:</b> when you open a brokerage account we collect your legal name, date of birth, Social Security number, citizenship, address, phone, employment and regulatory disclosures. This is sent directly to Alpaca Securities LLC for identity verification (KYC) and account opening. QuantPocket does not store your Social Security number; we keep only your Alpaca account ID, account number and status.</li>
 <li><b>Bank details:</b> bank routing and account numbers you link for transfers are sent to Alpaca; we do not store them.</li>
 <li><b>Trading data:</b> strategies, paper and synced live orders, positions, scheduled trades, alerts and the ledger of fees and deposits.</li>
-<li><b>Connected services:</b> Alpaca and QuantConnect API keys, encrypted with AES-256-GCM.</li>
+<li><b>Connected services:</b> brokerage and QuantConnect keys and access tokens, encrypted with AES-256-GCM.</li>
+<li><b>Messages to the assistant:</b> texts and spoken requests you send to our phone number, used to answer you and kept in your security log.</li>
 <li><b>Security data:</b> IP address, browser type and a log of sign-ins and sensitive actions.</li>
 <li><b>Payments:</b> handled by Stripe. We never see or store full card numbers.</li>
 </ul>
 <h2>How we use it</h2>
 <p>To provide the Service, open and maintain your brokerage account with Alpaca, secure your account, process payments and fees, send messages you request (such as SMS replies, alerts and password resets), comply with law, and improve the product. We do not sell personal information.</p>
 <h2>Who we share it with</h2>
-<p>Service providers that run parts of the Service on our behalf: hosting and database (Render, Turso), brokerage (Alpaca), research (QuantConnect), messaging (Twilio, Resend), payments (Stripe) and AI (Anthropic, for the strategy builder only). We may disclose information when required by law.</p>
+<p>Service providers that run parts of the Service on our behalf: hosting and database (Render, Turso), brokerages you choose to connect (Alpaca, Charles Schwab, tastytrade, Tradier, TradeStation), research (QuantConnect), messaging (Twilio, Resend), payments (Stripe, Helcim), sign-in (Google, if you use it) and AI (Anthropic: for the strategy builder, and for messages you send to the text and phone assistant). We may disclose information when required by law.</p>
 <h2>Cookies</h2>
 <p>We use one essential, HttpOnly session cookie to keep you signed in. We do not use advertising or tracking cookies.</p>
 <h2>Retention</h2>
@@ -60,12 +63,13 @@
 </main>
 <footer class="site"><div class="wrap">
   <div class="cols">
-    <div><a class="logo" href="./"><img src="favicon.svg" alt=""><b>Quant<span>Pocket</span></b></a><p style="max-width:300px">Turn alerts and strategies into trades on your own brokerage account, from your browser, your phone, or a text message.</p></div>
-    <div><b>Product</b><a href="./#how">How it works</a><a href="./#features">Features</a><a href="./#pricing">Pricing</a><a href="./#demo">Live demo</a><a data-app="#/register" href="app">Create account</a></div>
-    <div><b>Company</b><a href="contact.html">Contact &amp; support</a><a href="terms.html">Terms of Service</a><a href="privacy.html">Privacy Policy</a><a href="risk.html">Risk Disclosure</a></div>
+    <div><a class="logo" href="index.html"><img src="favicon.svg" alt=""><b>Quant<span>Pocket</span></b></a><p style="max-width:320px">Turn alerts and strategies into trades on your own brokerage account, from your browser, your phone, or a text message.</p>
+      <p class="phoneline" data-phone hidden>Text or call us: <a data-phone-link dir="ltr"></a></p></div>
+    <div><b>Product</b><a href="index.html#how">How it works</a><a href="index.html#strategies">Strategies</a><a href="index.html#reality">Reality Check</a><a href="index.html#sp500">S&amp;P 500</a><a href="index.html#pricing">Pricing</a><a data-app="#/register" href="app">Create account</a></div>
+    <div><b>Company</b><a href="contact.html">Contact &amp; support</a><a href="terms.html">Terms of Service</a><a href="privacy.html">Privacy Policy</a><a href="risk.html">Risk Disclosure</a><a href="yi.html">ייִדיש</a></div>
   </div>
-  <p class="disc">Investing involves risk, including possible loss of principal. Backtests and projections are hypothetical, are built with the benefit of hindsight and do not guarantee future results. QuantPocket is a software provider and is not a broker-dealer. Brokerage services are provided by Alpaca Securities LLC, member FINRA/SIPC, under your own account agreement with Alpaca. Nothing on this site is an offer, solicitation or recommendation to buy or sell any security. See the <a href="risk.html" style="display:inline">Risk Disclosure</a>.</p>
-  <p class="disc">© 2026 QuantPocket. All rights reserved.</p>
+  <p class="disc">Investing involves risk, including possible loss of principal. Backtests and projections are hypothetical, are built with the benefit of hindsight and do not guarantee future results. QuantPocket is a software provider and is not a broker-dealer. Brokerage services are provided by your own broker (for example Alpaca Securities LLC, member FINRA/SIPC) under your own account agreement. Nothing on this site is an offer, solicitation or recommendation to buy or sell any security.</p>
+  <p class="disc">© 2026 QuantPocket. All rights reserved.<span data-credit></span></p>
 </div></footer>
 </body>
 </html>

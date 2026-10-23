@@ -29,6 +29,14 @@ services:
       - { key: ALPACA_OAUTH_ENV, value: paper }
       - { key: GOOGLE_CLIENT_ID, sync: false }
       - { key: GOOGLE_CLIENT_SECRET, sync: false }
+      - { key: HELCIM_API_TOKEN, sync: false }
+      - { key: DEPOSIT_FEE_PERCENT, value: "0" }
+      - { key: DEPOSIT_FEE_FIXED, value: "0" }
+      - { key: SCHWAB_APP_KEY, sync: false }
+      - { key: SCHWAB_APP_SECRET, sync: false }
+      - { key: TRADESTATION_CLIENT_ID, sync: false }
+      - { key: TRADESTATION_CLIENT_SECRET, sync: false }
+      - { key: YIDDISH_CREDIT, sync: false }
       - { key: ANTHROPIC_API_KEY, sync: false }
       - { key: RESEND_API_KEY, sync: false }
       - { key: EMAIL_FROM, sync: false }

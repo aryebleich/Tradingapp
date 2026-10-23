@@ -9,20 +9,26 @@ import { encrypt, hashSecret, verifySecret, safeEqual } from './src/crypto.js';
 import * as auth from './src/auth.js';
 import crypto from 'node:crypto';
 import { backtest, projectAnnual, walkForward, optimize, warmupFor, compile, PRESETS } from './src/engine.js';
-import { getBars, getCred, accountSummary, placeOrder, listOrders, portfolioHistory, lastPrice, snapshotEquity } from './src/brokers.js';
+import { getBars, getCred, accountSummary, placeOrder, listOrders, portfolioHistory, lastPrice, snapshotEquity, ACCOUNT_IDS } from './src/brokers.js';
 import * as QC from './src/quantconnect.js';
 import { PLANS, TRIAL_DAYS, REFERRAL_CREDIT, isPaid, adjustForCashflow, revenueSummary } from './src/fees.js';
 import { taxSummary, harvestCandidates, form8949Csv } from './src/tax.js';
 import { buildStrategy } from './src/ai.js';
-import { handleCommand, userByPhone, normalize, HELP } from './src/commands.js';
+import { handleCommand, userByPhone, normalize, HELP, KNOWN } from './src/commands.js';
+import { aiEnabled, interpret, toCommand } from './src/assistant.js';
 import { startScheduler, assessAllFees, runDueJobs, snapshotAll } from './src/scheduler.js';
 import * as N from './src/notify.js';
+import * as PAY from './src/payments.js';
 import { router as alpacaRouter } from './src/routes/alpaca.js';
 import { oauthCallback, oauthEnabled, tradingFor } from './src/alpaca/connections.js';
 import { brokerEnabled } from './src/alpaca/broker.js';
 import { dataEnabled } from './src/alpaca/data.js';
 import { router as googleRouter, googleEnabled } from './src/google.js';
 import { router as signalsRouter, receive as receiveSignal } from './src/signals.js';
+import { router as strategiesRouter } from './src/rotation/routes.js';
+import { router as pairsRouter } from './src/pairs.js';
+import { router as sp500Router } from './src/sp500.js';
+import { router as extRouter, oauthCallback as extOauthCallback, accountsFor } from './src/ext/routes.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_URL = (process.env.PUBLIC_URL || 'http://localhost:3000').replace(/\/$/, '');
@@ -55,7 +61,7 @@ app.post('/internal/tick', async (req, res) => {
 });
 
 app.get('/robots.txt', (req, res) => res.type('text/plain').send(`User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /app\nSitemap: ${PUBLIC_URL}/sitemap.xml\n`));
-app.get('/sitemap.xml', (req, res) => res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/', '/pricing', '/terms', '/privacy', '/risk', '/contact'].map(u => `<url><loc>${PUBLIC_URL}${u}</loc></url>`).join('')}</urlset>`));
+app.get('/sitemap.xml', (req, res) => res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/', '/yi', '/pricing', '/terms', '/privacy', '/risk', '/contact'].map(u => `<url><loc>${PUBLIC_URL}${u}</loc></url>`).join('')}</urlset>`));
 // The browser demo on the landing page reuses the exact engine the server runs.
 app.get('/config.js', (req, res) => res.type('text/javascript').send('window.QP = { api: "" };'));
 app.get('/engine.js', (req, res) => res.type('text/javascript').sendFile(path.join(here, 'src/engine.js')));
@@ -64,7 +70,7 @@ app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'same-origin');
-  res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://checkout.stripe.com");
+  res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://secure.helcim.app; frame-src https://secure.helcim.app; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://checkout.stripe.com");
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   if (process.env.NODE_ENV === 'production') res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   next();
@@ -99,15 +105,24 @@ app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (r
     } else if (ev.type === 'checkout.session.completed' && o.metadata?.kind === 'deposit') {
       const id = +o.metadata.ledger_id;
       if ((await one('SELECT status FROM ledger WHERE id = ?', id))?.status !== 'pending') return res.json({ received: true });
-      const funding = await N.cardFunding(o.payment_intent);
-      if (funding !== 'debit') {
+      if (o.metadata.method === 'stripe_ach' || o.payment_method_types?.includes('us_bank_account')) {
+        // Bank transfers settle days later (checkout.session.async_payment_succeeded / _failed).
+        if (o.payment_status === 'paid') await depositReceived(id, o.payment_intent);
+        else await run("UPDATE ledger SET status = 'processing', ref = ? WHERE id = ?", o.payment_intent, id);
+      } else if (await N.cardFunding(o.payment_intent) !== 'debit') {
         await N.refund(o.payment_intent);
         await run("UPDATE ledger SET status = 'refunded', memo = 'Only debit cards are accepted' WHERE id = ?", id);
+        await run("UPDATE ledger SET status = 'refunded' WHERE kind = 'deposit_fee' AND ref = ?", `fee:${id}`);
       } else {
         // Card funds land in the platform's Stripe balance; moving them into the user's
         // brokerage account requires the Alpaca Broker API (see README, "Funding").
-        await run("UPDATE ledger SET status = 'received', ref = ? WHERE id = ?", o.payment_intent, id);
+        await depositReceived(id, o.payment_intent);
       }
+    } else if (ev.type === 'checkout.session.async_payment_succeeded' && o.metadata?.kind === 'deposit') {
+      await depositReceived(+o.metadata.ledger_id, o.payment_intent);
+    } else if (ev.type === 'checkout.session.async_payment_failed' && o.metadata?.kind === 'deposit') {
+      await run("UPDATE ledger SET status = 'failed', memo = 'The bank transfer failed' WHERE id = ?", +o.metadata.ledger_id);
+      await run("UPDATE ledger SET status = 'failed' WHERE kind = 'deposit_fee' AND ref = ?", `fee:${+o.metadata.ledger_id}`);
     } else if (ev.type === 'customer.subscription.deleted') {
       await run("UPDATE users SET plan = 'free', plan_status = 'canceled', plan_renews = NULL WHERE stripe_customer = ?", o.customer);
     }
@@ -129,11 +144,22 @@ app.post('/twilio/sms', async (req, res) => {
   if (!user) reply = 'This number is not linked to a QuantPocket account. Add it under Settings > Phone.';
   else if (!auth.rateLimit('sms:' + user.id, 30, 3600e3)) reply = 'Too many messages, try again later.';
   else {
-    try { reply = await handleCommand(user, req.body.Body); } catch (e) { reply = 'Error: ' + e.message; }
+    try { reply = await smsReply(user, String(req.body.Body || '')); } catch (e) { reply = 'Error: ' + e.message; }
     await audit(user.id, 'sms_command', { cmd: String(req.body.Body).split(/\s+/)[0] }, req.body.From);
   }
   twiml(res, `<Message>${N.xml(reply)}</Message>`);
 });
+
+// Commands first; anything else goes to the AI assistant, which turns it into a command or answers.
+// A trade the AI understood still needs the PIN, so the reply tells the user exactly what to send.
+async function smsReply(user, body) {
+  if (KNOWN.includes(normalize(body).split(' ')[0]) || !aiEnabled()) return handleCommand(user, body);
+  const r = await interpret(user, body), cmd = toCommand(r);
+  if (!cmd) return (r.reply || HELP).slice(0, 600);
+  const last = body.trim().split(/\s+/).pop(), pin = /^\d{4,8}$/.test(last) ? last : null;
+  const out = await handleCommand(user, pin ? `${cmd} ${pin}` : cmd);
+  return /needs your PIN/.test(out) ? `To do that, reply: ${cmd} <your PIN>` : out;
+}
 
 const calls = new Map(); // CallSid -> { userId, tries, ok, pending, at }
 // Drop call state after 30 minutes in case Twilio's status callback is not configured.
@@ -157,13 +183,21 @@ app.post('/twilio/voice/pin', async (req, res) => {
   c.ok = true;
   twiml(res, menu());
 });
-const menu = () => '<Gather input="dtmf speech" numDigits="1" action="/twilio/voice/cmd" speechTimeout="auto" timeout="8"><Say>Press 1 for balance, 2 for positions, 3 for scheduled trades, 9 to pause all bots. Or say a command, like buy five shares of Apple.</Say></Gather><Say>Goodbye.</Say>';
+const menu = () => '<Gather input="dtmf speech" numDigits="1" action="/twilio/voice/cmd" speechTimeout="auto" timeout="8"><Say>Press 1 for balance, 2 for positions, 3 for scheduled trades, 9 to pause all bots. Or just say what you need, like: how is my account doing, or buy five shares of Apple.</Say></Gather><Say>Goodbye.</Say>';
 app.post('/twilio/voice/cmd', async (req, res) => {
   if (!twilioOk(req)) return res.status(403).send('forbidden');
   const c = calls.get(req.body.CallSid);
   if (!c?.ok) return twiml(res, '<Hangup/>');
   const u = await one('SELECT * FROM users WHERE id = ?', c.userId);
-  const text = { 1: 'BAL', 2: 'POS', 3: 'ORDERS', 9: 'PAUSE' }[req.body.Digits] || req.body.SpeechResult || 'HELP';
+  let text = { 1: 'BAL', 2: 'POS', 3: 'ORDERS', 9: 'PAUSE' }[req.body.Digits] || req.body.SpeechResult || 'HELP';
+  // Free speech the command words don't cover goes to the AI assistant.
+  if (req.body.SpeechResult && !KNOWN.includes(normalize(text).split(' ')[0]) && aiEnabled()) {
+    try {
+      const r = await interpret(u, text), cmd = toCommand(r);
+      if (!cmd) { await audit(u.id, 'hotline_ai', { text }, req.body.From); return twiml(res, `<Say>${N.xml((r.reply || 'Sorry, I did not get that.').replace(/\$/g, ' dollars '))}</Say>${menu()}`); }
+      text = cmd;
+    } catch (e) { console.warn('hotline ai', e.message); }
+  }
   // Speech recognition can mishear, so anything that trades or cancels is read back first.
   const words = normalize(text);
   if (/^(BUY|SELL|DCA|CANCEL)\b/.test(words)) {
@@ -195,6 +229,7 @@ app.post('/hook/:token', express.text({ type: () => true, limit: '20kb' }), asyn
   try { await receiveSignal(req, res); } catch (e) { console.error('webhook', e); res.status(500).json({ error: 'Could not process the signal' }); }
 });
 app.use('/auth/google', googleRouter);
+app.get(['/oauth/schwab/callback', '/oauth/tradestation/callback'], auth.sessionMiddleware, extOauthCallback);
 
 // OAuth2 redirect target after the user approves access in Alpaca.
 app.get('/oauth/alpaca/callback', auth.sessionMiddleware, async (req, res) => {
@@ -205,6 +240,12 @@ app.get('/oauth/alpaca/callback', auth.sessionMiddleware, async (req, res) => {
     res.redirect('/app#/account?connected=oauth');
   } catch (e) { res.redirect('/app#/account?error=' + encodeURIComponent(e.message)); }
 });
+
+// A deposit's money has arrived: mark it (and the owner's service fee on it) received.
+async function depositReceived(ledgerId, ref) {
+  await run("UPDATE ledger SET status = 'received', ref = ? WHERE id = ? AND status IN ('pending', 'processing')", ref, ledgerId);
+  await run("UPDATE ledger SET status = 'collected' WHERE kind = 'deposit_fee' AND ref = ?", `fee:${ledgerId}`);
+}
 
 // Credits whoever invited this user, once, when the invited user's first real payment arrives.
 async function rewardReferral(u) {
@@ -231,7 +272,7 @@ async function funnel() {
   const paying = await n("SELECT COUNT(*) n FROM users WHERE plan != 'free' AND COALESCE(plan_status, 'active') = 'active'");
   const rows = await all("SELECT plan, plan_interval, COUNT(*) n FROM users WHERE plan != 'free' AND COALESCE(plan_status, 'active') = 'active' GROUP BY plan, plan_interval");
   const mrr = rows.reduce((a, r) => a + r.n * (r.plan_interval === 'year' ? (PLANS[r.plan]?.yearly || 0) / 12 : PLANS[r.plan]?.monthly || 0), 0);
-  const revenue30 = (await one("SELECT COALESCE(SUM(amount), 0) n FROM ledger WHERE kind IN ('subscription', 'performance_fee') AND status IN ('paid', 'collected') AND at > ?", since(30))).n;
+  const revenue30 = (await one("SELECT COALESCE(SUM(amount), 0) n FROM ledger WHERE kind IN ('subscription', 'performance_fee', 'deposit_fee') AND status IN ('paid', 'collected') AND at > ?", since(30))).n;
   return { signups, signups30, connected, traded, trialing, paying, mrr: +mrr.toFixed(2), arr: +(mrr * 12).toFixed(2), revenue30, conversion: signups ? +(paying / signups * 100).toFixed(1) : 0 };
 }
 
@@ -255,20 +296,25 @@ api.use(auth.sessionMiddleware);
 api.use('/auth', auth.router);
 api.use('/alpaca', alpacaRouter);
 api.use('/signals', signalsRouter);
+api.use('/library', strategiesRouter);
+api.use('/pairs', pairsRouter);
+api.use('/sp500', sp500Router);
+api.use('/brokerages', extRouter);
 const U = auth.requireUser;
+api.get('/accounts', U, async (req, res) => res.json(await accountsFor(req.user.id)));
 const wrap = fn => async (req, res) => Promise.resolve(fn(req, res)).catch(e => res.status(e.status || 400).json({ error: e.message, ...(e.upgrade ? { upgrade: true, feature: e.feature } : {}) }));
-const acct = req => (req.query.account || req.body?.account) === 'alpaca' ? 'alpaca' : 'paper';
+const acct = req => { const a = req.query.account || req.body?.account; return ACCOUNT_IDS.includes(a) ? a : 'paper'; };
 // 402 with upgrade: true makes the app show the upgrade window instead of a plain error.
 const upgrade = feature => Object.assign(new Error(`${feature} is part of the Pro plan`), { status: 402, upgrade: true, feature });
 const needPlan = feature => (req, res, next) => (isPaid(req.user) ? next() : next(upgrade(feature)));
 
 api.get('/config', async (req, res) => res.json({
   plans: PLANS, trialDays: TRIAL_DAYS, presets: PRESETS, twilio: N.twilioEnabled(), stripe: N.stripeEnabled(), ai: !!process.env.ANTHROPIC_API_KEY, email: N.emailEnabled(),
-  marketData: dataEnabled(), hotline: process.env.TWILIO_FROM || null, broker: brokerEnabled(), oauth: oauthEnabled(), google: googleEnabled(),
+  marketData: dataEnabled(), hotline: process.env.TWILIO_FROM || null, broker: brokerEnabled(), oauth: oauthEnabled(), google: googleEnabled(), assistant: aiEnabled(),
 }));
 
 // Lets the landing page (also the GitHub Pages copy) show only sign-up options that work.
-api.get('/public/features', (req, res) => res.json({ google: googleEnabled() }));
+api.get('/public/features', (req, res) => res.json({ google: googleEnabled(), phone: N.twilioEnabled() ? process.env.TWILIO_FROM : null, ai: aiEnabled(), yiddishCredit: process.env.YIDDISH_CREDIT || null }));
 // Public, rate-limited demo backtest used by the landing page (also from the GitHub Pages copy).
 api.post('/public/backtest', async (req, res) => {
   if (!auth.rateLimit('pub:' + req.ip, 20, 600e3)) return res.status(429).json({ error: 'Demo limit reached - create a free account for unlimited backtests' });
@@ -341,7 +387,7 @@ api.get('/account', U, wrap(async (req, res) => {
 api.get('/orders', U, wrap(async (req, res) => res.json(await listOrders(req.user.id, acct(req)))));
 api.post('/orders', U, wrap(async (req, res) => {
   const a = acct(req);
-  if (a === 'alpaca' && !isPaid(req.user)) throw upgrade('Trading your brokerage account from the simulator page');
+  if (a !== 'paper' && !isPaid(req.user)) throw upgrade('Trading your brokerage account from the simulator page');
   const r = await placeOrder(req.user.id, a, req.body, 'web');
   await audit(req.user.id, 'order', { ...r }, req.ip);
   res.json(r);
@@ -440,7 +486,7 @@ api.post('/pin', U, wrap(async (req, res) => {
   await run('UPDATE users SET pin_hash = ? WHERE id = ?', hashSecret(String(req.body.pin)), req.user.id);
   res.json({ ok: true });
 }));
-api.post('/command', U, wrap(async (req, res) => res.json({ reply: await handleCommand(req.user, req.body.text) })));
+api.post('/command', U, wrap(async (req, res) => res.json({ reply: await smsReply(req.user, String(req.body.text || '')) })));
 api.get('/command/help', U, async (req, res) => res.json({ help: HELP }));
 
 // --- billing, funding, fees ---
@@ -478,10 +524,32 @@ api.post('/funding/deposit', U, wrap(async (req, res) => {
     await run('INSERT INTO ledger (user_id, kind, amount, status, memo, at) VALUES (?,?,?,?,?,?)', req.user.id, 'deposit', amount, 'simulated', 'Paper deposit', now());
     return res.json({ ok: true, simulated: true });
   }
-  if (!N.stripeEnabled()) throw new Error('Card payments are not configured (STRIPE_SECRET_KEY)');
-  const l = await run('INSERT INTO ledger (user_id, kind, amount, status, memo, at) VALUES (?,?,?,?,?,?)', req.user.id, 'deposit', amount, 'pending', 'Debit card deposit', now());
-  const s = await N.checkoutDeposit({ amount, email: req.user.email, userId: req.user.id, ledgerId: Number(l.lastInsertRowid), baseUrl: PUBLIC_URL });
-  res.json({ url: s.url });
+  // Real deposits: the cheapest enabled method unless the user picked one; the owner's service fee is added on top.
+  const avail = PAY.methods();
+  if (!avail.length) throw new Error('Deposits are not configured yet (STRIPE_SECRET_KEY or HELCIM_API_TOKEN)');
+  const method = avail.find(m => m.id === req.body.method)?.id || avail[0].id, fee = PAY.serviceFee(amount);
+  const l = await run('INSERT INTO ledger (user_id, kind, amount, status, memo, at) VALUES (?,?,?,?,?,?)', req.user.id, 'deposit', amount, 'pending', `${PAY.PROVIDERS[method].name} deposit (${PAY.PROVIDERS[method].via})`, now());
+  const ledgerId = Number(l.lastInsertRowid);
+  if (fee > 0) await run('INSERT INTO ledger (user_id, kind, amount, status, ref, memo, at) VALUES (?,?,?,?,?,?,?)', req.user.id, 'deposit_fee', fee, 'pending', `fee:${ledgerId}`, `Service fee for deposit #${ledgerId}`, now());
+  if (method === 'helcim') {
+    const h = await PAY.helcimStart({ total: amount + fee, ledgerId });
+    await run('INSERT INTO payment_sessions (ledger_id, provider, secret, total, created_at) VALUES (?,?,?,?,?)', ledgerId, 'helcim', h.secretToken, amount + fee, now());
+    return res.json({ helcim: { checkoutToken: h.checkoutToken }, ledgerId, fee });
+  }
+  const s = await PAY.stripeDeposit({ method, amount, fee, email: req.user.email, userId: req.user.id, ledgerId, baseUrl: PUBLIC_URL });
+  res.json({ url: s.url, fee });
+}));
+api.get('/funding/methods', U, (req, res) => res.json({ methods: PAY.methods(), fee: PAY.feeTerms() }));
+// HelcimPay.js result, checked against the secret token Helcim gave this session.
+api.post('/funding/helcim/confirm', U, wrap(async (req, res) => {
+  const id = +req.body.ledgerId, sess = await one('SELECT p.*, l.user_id, l.status FROM payment_sessions p JOIN ledger l ON l.id = p.ledger_id WHERE p.ledger_id = ?', id);
+  if (!sess || sess.user_id !== req.user.id) throw new Error('Payment not found');
+  if (sess.status !== 'pending') return res.json({ ok: true, status: sess.status });
+  const d = req.body.data || {};
+  if (!PAY.helcimValid(d, req.body.hash, sess.secret)) throw new Error('The payment response could not be verified');
+  if (String(d.status).toUpperCase() !== 'APPROVED' || Math.abs(+d.amount - sess.total) > 0.005) throw new Error('The payment was not approved');
+  await depositReceived(id, `helcim:${d.transactionId}`);
+  res.json({ ok: true, status: 'received' });
 }));
 api.get('/ledger', U, async (req, res) => res.json(await all('SELECT * FROM ledger WHERE user_id = ? ORDER BY id DESC LIMIT 100', req.user.id)));
 api.get('/fees', U, wrap(async (req, res) => {
@@ -513,6 +581,8 @@ api.get('/admin/summary', U, auth.requireAdmin, async (req, res) => res.json({
   pendingTransfers: await all("SELECT l.*, u.email FROM ledger l JOIN users u ON u.id = l.user_id WHERE l.kind = 'deposit' AND l.status = 'received' ORDER BY l.id DESC"),
   feesDue: await all("SELECT l.*, u.email FROM ledger l JOIN users u ON u.id = l.user_id WHERE l.kind = 'performance_fee' AND l.status = 'due' ORDER BY l.id DESC"),
   users: await all('SELECT id, email, plan, role, totp_enabled, phone_verified, created_at FROM users ORDER BY id DESC LIMIT 200'),
+  payments: Object.values(PAY.PROVIDERS).map(p => ({ id: p.id, name: p.name, via: p.via, cost: p.cost, enabled: p.enabled(), on500: +p.costOf(500).toFixed(2) })),
+  depositFee: { ...PAY.feeTerms(), collected: (await one("SELECT COALESCE(SUM(amount), 0) n FROM ledger WHERE kind = 'deposit_fee' AND status = 'collected'")).n },
 }));
 api.get('/admin/messages', U, auth.requireAdmin, async (req, res) => res.json(await all('SELECT * FROM messages ORDER BY id DESC LIMIT 100')));
 api.post('/admin/messages/:id', U, auth.requireAdmin, async (req, res) => { await run("UPDATE messages SET status = 'closed' WHERE id = ?", +req.params.id); res.json({ ok: true }); });
@@ -541,6 +611,7 @@ const page = file => async (req, res) => {
 };
 app.get('/app', async (req, res) => res.sendFile(path.join(pub, 'app.html')));
 app.get(['/', '/index.html', '/pricing'], page('index.html'));
+app.get(['/yi', '/yi.html'], page('yi.html'));
 for (const p of ['terms', 'privacy', 'risk', 'contact']) app.get(['/' + p, `/${p}.html`], page(p + '.html'));
 // Code and pages revalidate on every load (cheap 304s via ETag) so a deploy reaches users at once;
 // images rarely change and are cached for a week.

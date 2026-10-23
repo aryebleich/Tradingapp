@@ -101,7 +101,8 @@ router.post('/register', async (req, res) => {
   if (await one('SELECT id FROM users WHERE email = ?', email)) return res.status(409).json({ error: 'Email already registered' });
   const id = await createUser({ email, password, ref: req.body.ref });
   await audit(id, 'register', null, req.ip);
-  await sendVerification(id, email).catch(e => console.warn('verify email', e.message));
+  // No confirmation step: the account works at once. A welcome email points to the first steps.
+  sendEmail(email, 'Welcome to QuantPocket', `Your account is ready, with a $100,000 paper account to practice.\n\nGet started: ${appUrl()}/app#/dashboard\n\nIf you did not sign up, reply to this email and we will remove the account.`).catch(e => console.warn('welcome email', e.message));
   await createSession(res, req, id, false);
   res.json({ user: publicUser(await one('SELECT * FROM users WHERE id = ?', id)) });
 });
@@ -244,6 +245,7 @@ router.get('/export', requireUser, async (req, res) => {
     alerts: await t('SELECT * FROM alerts WHERE user_id = ?'),
     webhooks: await t('SELECT id, name, accounts, size_mode, size, max_position, max_trades_day, symbols, enabled, created_at FROM signal_hooks WHERE user_id = ?'),
     signals: await t('SELECT * FROM signals WHERE user_id = ?'),
+    libraryStrategies: await t('SELECT id, name, template_id, spec, account, allocation, cash_buffer, mode, stop_pct, created_at FROM user_strategies WHERE user_id = ?'),
     ledger: await t('SELECT * FROM ledger WHERE user_id = ?'),
     securityLog: await t('SELECT event, ip, at FROM audit_log WHERE user_id = ?'),
   };
@@ -254,7 +256,8 @@ router.post('/delete', requireUser, async (req, res) => {
   await audit(null, 'account_deleted', { id: req.user.id }, req.ip);
   // Explicit deletes: hosted libSQL does not always enforce ON DELETE CASCADE.
   await tx(async ({ run }) => {
-    for (const t of ['sessions', 'credentials', 'strategies', 'paper_accounts', 'positions', 'fills', 'equity_history', 'scheduled_orders', 'fee_state', 'ledger', 'alerts', 'signal_hooks', 'signals'])
+    await run('DELETE FROM strategy_days WHERE strategy_id IN (SELECT id FROM user_strategies WHERE user_id = ?)', req.user.id);
+    for (const t of ['sessions', 'credentials', 'strategies', 'paper_accounts', 'positions', 'fills', 'equity_history', 'scheduled_orders', 'fee_state', 'ledger', 'alerts', 'signal_hooks', 'signals', 'user_strategies', 'strategy_runs', 'pair_bots'])
       await run(`DELETE FROM ${t} WHERE user_id = ?`, req.user.id);
     await run('DELETE FROM users WHERE id = ?', req.user.id);
   });

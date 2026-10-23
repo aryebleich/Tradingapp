@@ -60,6 +60,30 @@ New Google users get a confirmed email and no password (they can add one in Sett
 
 Under **Alerts to trades** each user creates private webhook URLs for TradingView, TrendSpider, Zapier, scripts or AI agents. Each webhook has its accounts (paper and/or Alpaca), sizing (dollars, shares or from the alert) and risk rules (max position per ticker, max trades per day, allowed tickers; long-only). Messages can be JSON such as `{"ticker":"{{ticker}}","action":"{{strategy.order.action}}","quantity":"{{strategy.order.contracts}}"}` or text like `buy AAPL 10`. Free: 1 webhook, paper only. Pro: 10, including Alpaca. Elite: 50.
 
+## Strategy library (the MULTI_STRATEGIES sheet)
+
+**Strategies** in the app holds seven rotation strategies from the MULTI_STRATEGIES (v8.3) sheet: BG Ensemble, Multi-Model ETF Rotation (4 sleeves), Leveraged ETF Rotation, Gold Miner, Large-Cap Momentum, Large-Cap Pullback and Macro Rotation (`src/rotation/templates.js`). Each user copies one and can:
+
+- **run it by hand**: today's walkdown with every value filled in from market data (Wilder RSI, SMAs, returns, Bollinger, momentum), any value can be overtyped like the sheet's yellow cells, then the orders are sized in whole shares and placed with one click;
+- **run it automatically** on any connected account at a chosen time on each rebalance day (daily, Wednesday, or the first trading day of the month), with an optional trailing stop;
+- **edit everything**: thresholds, indicators, tickers, sleeves, lists and parameters (form or JSON), preview and backtest before saving.
+
+Not every rule was in the PDF export: Gold Miner shows only the steps on that day's path (the walk stops at "needs a rule"), and Leveraged ETF Rotation steps 4-12 are rebuilt from the public "TQQQ For The Long Term" logic and marked "check". Send the QuantConnect code or the sheet to fill them in exactly.
+
+**Reality Check** compares each strategy's live daily results with its backtest (z-test on the mean daily return, plus a drawdown limit): Healthy / Watch / Drifting, a text or email when it gets worse, and optional auto-throttle (100% / 50% / 0% of the strategy's money). The **portfolio split** suggests win-rate weighted allocations (10%-70% each), like the sheet's PORTFOLIO_SPLIT tab.
+
+## Pairs trading, S&P 500 plan, more brokerages
+
+- **Pairs** (`src/pairs.js`): OLS hedge ratio on log prices, rolling z-score, Engle-Granger cointegration t-stat, half-life, walk-forward backtest (market-neutral and long-only), a scanner of 20 classic pairs, and pair bots that trade daily at 3:45 pm New York time.
+- **S&P 500** (`src/sp500.js`): SPY record with dividends, projections resampled from real monthly history, and automatic monthly or weekly buys of VOO, SPLG, IVV or SPY.
+- **Brokerages** (`src/ext/brokers.js`): Tradier (token), tastytrade (OAuth personal grant), Charles Schwab and TradeStation (OAuth; set the app keys above). They appear in every account picker; webhooks can send one alert to several accounts.
+
+## Deposits, owner fees, AI phone assistant, Yiddish
+
+- Deposits can go through **Stripe ACH** (0.8%, max $5), **Helcim** (interchange-plus; a regulated debit card costs about 0.55% + 47¢) or Stripe cards (2.9% + 30¢). `DEPOSIT_FEE_PERCENT` / `DEPOSIT_FEE_FIXED` add your service fee, shown before paying and recorded as revenue. Add the Stripe webhook events `checkout.session.async_payment_succeeded` and `checkout.session.async_payment_failed` for bank transfers. Check card-network and state rules on surcharges with a lawyer before charging a fee on card deposits.
+- **AI assistant** (`src/assistant.js`): texts and calls to `TWILIO_FROM` that are not plain commands go to Claude, which answers questions or turns requests into the app's own commands. Trades still need the PIN (SMS) or the spoken read-back (calls).
+- **Languages**: English and Yiddish (right-to-left) for the app (`public/i18n.js`, `public/i18n/yi.js`) and the homepage (`/yi`, generated from `scripts/home.py` + `scripts/yi_home.py`). Add a language by adding a dictionary.
+
 ## Professional site extras
 
 - **Public homepage** at `/` with a live demo backtest, features, pricing, FAQ, and **Terms, Privacy, Risk Disclosure and Contact** pages. A support inbox is on the Admin page.

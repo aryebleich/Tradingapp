@@ -3,6 +3,11 @@ import { one, all, run, now, tx } from './db.js';
 import { decrypt } from './crypto.js';
 import { rng } from './engine.js';
 import { tradingFor, requireTrading } from './alpaca/connections.js';
+import { EXT_IDS, withExt } from './ext/brokers.js';
+
+// Every account a user can trade: the paper simulator, Alpaca, and the other brokerages.
+export const ACCOUNT_IDS = ['paper', 'alpaca', ...EXT_IDS];
+export const isExt = a => EXT_IDS.includes(a);
 
 export const DATA = (process.env.ALPACA_DATA_URL || 'https://data.alpaca.markets') + '/v2';
 
@@ -144,6 +149,7 @@ export async function lastPrice(symbol, userId) {
 // --- unified account interface; account is 'paper' (built-in sim) or 'alpaca' ---
 
 export async function accountSummary(userId, account) {
+  if (isExt(account)) return withExt(userId, account, async (b, c, save) => ({ account, live: !!c.live, broker: b.name, ...(await b.summary(c, save)) }));
   if (account === 'alpaca') {
     const t = await requireTrading(userId);
     const [a, pos] = await Promise.all([t.account(), t.positions()]);
@@ -186,6 +192,19 @@ export async function placeOrder(userId, account, order, source = 'manual') {
   const q = +order.qty, n = +order.notional;
   if (!validSymbol(symbol)) throw new Error('Invalid symbol');
   if (!(Number.isFinite(q) && q > 0) && !(Number.isFinite(n) && n > 0)) throw new Error('Give a quantity or dollar amount');
+  if (isExt(account)) {
+    return withExt(userId, account, async (b, c, save) => {
+      // Other brokerages take whole shares. A sell beyond what is held opens a short; a buy
+      // against a short position covers it (each broker names these differently).
+      const qty = q > 0 ? Math.floor(q) : Math.floor(n / await lastPrice(symbol, userId));
+      if (!(qty >= 1)) throw new Error('Amount is less than one share');
+      const held = (await b.summary(c, save)).positions.find(p => p.symbol === symbol)?.qty || 0;
+      const kind = side === 'buy' ? (held < 0 ? 'buy_to_cover' : 'buy') : held > 0 ? 'sell' : 'sell_short';
+      if (kind === 'sell_short' && !b.shorts) throw new Error(`${b.name} does not support short selling here`);
+      const r = await b.place(c, { symbol, side: kind, qty }, save);
+      return { id: r.id, status: r.status, symbol, side, qty, broker: account, live: !!c.live };
+    });
+  }
   if (account === 'alpaca') {
     const t = await requireTrading(userId);
     const body = { symbol, side, type: 'market', time_in_force: 'day', ...(q > 0 ? { qty: String(q) } : { notional: n.toFixed(2) }) };
@@ -227,6 +246,7 @@ export async function syncAlpacaFills(userId) {
 }
 
 export async function listOrders(userId, account) {
+  if (isExt(account)) return withExt(userId, account, (b, c, save) => b.orders(c, save));
   if (account === 'alpaca') {
     const t = await requireTrading(userId);
     syncAlpacaFills(userId).catch(e => console.warn('alpaca sync', e.message));
@@ -236,6 +256,7 @@ export async function listOrders(userId, account) {
 }
 
 export async function portfolioHistory(userId, account) {
+  if (isExt(account)) return [];
   if (account === 'alpaca') {
     const t = await requireTrading(userId);
     const h = await t.portfolioHistory({ period: '1A', timeframe: '1D' });

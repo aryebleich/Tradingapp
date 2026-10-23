@@ -80,7 +80,8 @@ test('password reset, email verification, export and delete', async () => {
   const { sha256 } = await import('../src/crypto.js');
   await call('/auth/register', { email: 'r@s.co', password: 'Str0ngPassword' });
   const u = await one('SELECT * FROM users WHERE email = ?', 'r@s.co');
-  assert.ok(u.verify_hash);
+  // No confirmation is required to use the account; the optional verify endpoint still works.
+  assert.equal(u.verify_hash, null);
   // Tokens are stored hashed; plant a known one to exercise the endpoints.
   await run('UPDATE users SET verify_hash = ? WHERE id = ?', sha256('vtok'), u.id);
   assert.equal((await call('/auth/verify', { token: 'vtok' })).status, 200);

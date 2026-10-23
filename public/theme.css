@@ -172,4 +172,83 @@ dialog { border-radius: 18px; box-shadow: var(--shadow-lg); }
 
 /* the hidden attribute always wins over display rules */
 [hidden] { display: none !important; }
-.refbox button { white-space: nowrap; flex-shrink: 0; }
+.hook .refbox button { white-space: nowrap; flex-shrink: 0; }
+
+/* strategy library */
+.sec2 { font-size: 20px; margin: 26px 0 12px; }
+.libgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); gap: 16px; }
+.lib { display: flex; flex-direction: column; margin: 0; }
+.lib .libhead { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.lib h3 { font-size: 18px; letter-spacing: -0.01em; text-transform: none; margin: 0; }
+.lib .tag { margin: 4px 0 8px; font-size: 13px; }
+.lib .about { font-size: 14px; margin: 0 0 12px; flex: 1; }
+.lib button { align-self: flex-start; }
+.qc { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.qc div { background: var(--bg2); border-radius: var(--r-sm); padding: 8px 10px; }
+.qc span { display: block; font-size: 11px; color: var(--mu); }
+.qc b { font-size: 16px; }
+.note { font-size: 13px; background: color-mix(in srgb, var(--warn) 10%, transparent); border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent); border-radius: var(--r-sm); padding: 8px 12px; color: var(--tx); }
+.pagehead { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+.sgrid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
+.sgrid > div > .card { margin-top: 0; margin-bottom: 16px; }
+h3.sleeve { font-size: 14px; text-transform: none; letter-spacing: 0; margin: 18px 0 6px; }
+table.walk td, table.rules td { vertical-align: top; }
+input.cell { width: 92px; padding: 6px 8px; margin: 0; font-variant-numeric: tabular-nums; background: color-mix(in srgb, #3b82f6 7%, var(--input)); }
+input.cell.typed { background: color-mix(in srgb, #facc15 25%, var(--input)); border-color: #eab308; }
+tr.rebuilt td { background: color-mix(in srgb, var(--warn) 6%, transparent); }
+tr.win td { background: color-mix(in srgb, var(--gr) 8%, transparent); }
+tr.sub td { border-bottom-style: dashed; }
+.result { margin: 8px 0 4px; padding: 10px 14px; border-radius: var(--r-sm); font-weight: 600; }
+.result.done { background: color-mix(in srgb, var(--gr) 12%, transparent); color: var(--gr); }
+.result.wait { background: color-mix(in srgb, var(--warn) 12%, transparent); color: var(--warn); }
+.medit { display: inline-flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+.medit select, .medit input, input.tgt { width: auto; padding: 5px 7px; margin: 2px 0; font-size: 14px; }
+.medit input[size="6"] { width: 74px; } .medit input[size="3"] { width: 62px; } input.tgt { width: 110px; }
+.chk2 { display: flex; gap: 8px; align-items: center; font-weight: 500; }
+.chk2 input { width: auto; margin: 0; }
+@media (max-width: 1100px) { .sgrid { grid-template-columns: 1fr; } }
+@media (max-width: 640px) {
+  .qc { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; } .qc b { font-size: 14px; }
+  input.cell { width: 86px; font-size: 16px; }
+  .medit select, .medit input, input.tgt { font-size: 16px; }
+}
+table.walk td, table.rules td { white-space: normal; overflow-wrap: anywhere; }
+table.walk td:last-child { min-width: 140px; }
+.rl { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.rl > .rl { flex-basis: 100%; }
+
+/* pairs */
+.pairrow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 12px; }
+.botf { border-top: 1px solid var(--bd); margin-top: 18px; padding-top: 6px; }
+@media (max-width: 900px) { .pairrow { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* S&P 500 year bars: green above the middle line, red below */
+.years { display: grid; grid-template-columns: repeat(20, minmax(0, 1fr)); gap: 4px; height: 130px; margin-top: 10px; position: relative; border-top: 1px dashed transparent; }
+.years::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px solid var(--bd); }
+.years span { position: relative; height: 100%; }
+.years span i { position: absolute; left: 0; right: 0; border-radius: 3px; }
+.years span.up i { bottom: 50%; background: var(--gr); } .years span.down i { top: 50%; background: var(--rd); }
+.years em { position: absolute; bottom: -16px; left: 0; right: 0; text-align: center; font-size: 10px; font-style: normal; color: var(--mu); }
+.years { margin-bottom: 18px; }
+.lib[data-b] .about { flex: 0 0 auto; } .lib[data-b] form, .lib[data-b] .sum { margin-top: auto; }
+.methods { display: grid; gap: 8px; margin: 10px 0; }
+.method { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--bd); border-radius: var(--r-sm); padding: 10px 12px; cursor: pointer; font-weight: 400; }
+.method input { width: auto; margin: 4px 0 0; }
+.method:has(input:checked) { border-color: var(--ac); background: var(--acs); }
+.hotline { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border-radius: var(--r); background: var(--grad); color: #fff; margin-bottom: 12px; }
+.hotline .mu { color: rgba(255, 255, 255, .8); font-size: 13px; } .hotline b { font-size: 26px; letter-spacing: .01em; }
+.hotline button { background: #fff; color: #1f1f3a; } .hotline button.ghost { background: transparent; color: #fff; border-color: rgba(255, 255, 255, .5); }
+
+/* language picker + right-to-left (Yiddish) */
+.langsel { width: auto; margin: 0; padding: 7px 10px; font-size: 14px; border-radius: var(--r-sm); background: var(--card); }
+.authlang { display: flex; justify-content: center; margin-top: 10px; }
+html[dir="rtl"] body { font-family: "Noto Sans Hebrew", Inter, system-ui, sans-serif; letter-spacing: 0; }
+html[dir="rtl"] .plan li { padding: 5px 26px 5px 0; } html[dir="rtl"] .plan li::before { left: auto; right: 2px; }
+html[dir="rtl"] #nav a { flex-direction: row; }
+html[dir="rtl"] .stat b, html[dir="rtl"] td, html[dir="rtl"] input[type=number] { unicode-bidi: plaintext; }
+html[dir="rtl"] .funnel .bar { direction: rtl; }
+html[dir="rtl"] canvas { direction: ltr; }
+@media (max-width: 640px) { .langsel { font-size: 16px; padding: 6px 6px; max-width: 92px; } }
+html[dir="rtl"] .steps div::after { left: auto; right: -50%; }
+#json { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+@media (max-width: 640px) { #json { font-size: 16px; } }

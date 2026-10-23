@@ -159,6 +159,62 @@ CREATE TABLE IF NOT EXISTS alerts (
   active INTEGER NOT NULL DEFAULT 1,
   created_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS user_strategies (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  template_id TEXT,
+  name TEXT NOT NULL,
+  spec TEXT NOT NULL,
+  account TEXT NOT NULL DEFAULT 'paper',
+  allocation REAL NOT NULL DEFAULT 100,
+  cash_buffer REAL NOT NULL DEFAULT 0,
+  mode TEXT NOT NULL DEFAULT 'manual',
+  whole_shares INTEGER NOT NULL DEFAULT 1,
+  stop_pct REAL,
+  run_at INTEGER NOT NULL DEFAULT 945,
+  state TEXT,
+  last_run TEXT,
+  last_result TEXT,
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS pair_bots (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  a TEXT NOT NULL,
+  b TEXT NOT NULL,
+  params TEXT NOT NULL,
+  account TEXT NOT NULL,
+  mode TEXT NOT NULL,
+  capital REAL NOT NULL,
+  active INTEGER NOT NULL DEFAULT 1,
+  state TEXT,
+  last_run TEXT,
+  last_summary TEXT,
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS payment_sessions (
+  ledger_id INTEGER PRIMARY KEY,
+  provider TEXT NOT NULL,
+  secret TEXT NOT NULL,
+  total REAL NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS strategy_runs (
+  id INTEGER PRIMARY KEY,
+  strategy_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  kind TEXT NOT NULL,
+  summary TEXT,
+  detail TEXT,
+  at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS strategy_days (
+  strategy_id INTEGER NOT NULL,
+  day TEXT NOT NULL,
+  ret REAL NOT NULL,
+  weights TEXT,
+  PRIMARY KEY (strategy_id, day)
+);
 CREATE TABLE IF NOT EXISTS signal_hooks (
   id INTEGER PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

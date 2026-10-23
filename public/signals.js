@@ -19,6 +19,8 @@ const TEMPLATES = {
   'Exit a position': `{ "ticker": "AAPL", "action": "exit" }`,
   'Plain text': 'buy AAPL 10',
 };
+let ACCTS = [];
+const nm = id => (id === 'paper' ? 'Paper' : ACCTS.find(a => a.id === id)?.name || id);
 const STATUS = { ok: ['Filled', 'pos'], partial: ['Partly done', 'warn'], rejected: ['Rejected', 'neg'] };
 
 function hookForm(h, paid) {
@@ -31,8 +33,7 @@ function hookForm(h, paid) {
     </div>
     <div class="lbl">Send orders to</div>
     <div class="chips" id="accts">
-      <label class="chk"><input type="checkbox" name="acct" value="paper" ${acc.includes('paper') ? 'checked' : ''}> Paper account</label>
-      <label class="chk"><input type="checkbox" name="acct" value="alpaca" ${acc.includes('alpaca') ? 'checked' : ''}> Alpaca account ${paid ? '' : '<span class="pill">Pro</span>'}</label>
+      ${ACCTS.filter(a => a.connected || a.id === 'alpaca' || acc.includes(a.id)).map(a => `<label class="chk"><input type="checkbox" name="acct" value="${a.id}" ${acc.includes(a.id) ? 'checked' : ''}> ${H.esc(H.acctLabel(a))} ${a.id !== 'paper' && !paid ? '<span class="pill">Pro</span>' : ''}</label>`).join('')}
     </div>
     <div class="grid2">
       <label>Order size<select name="sizeMode">
@@ -52,7 +53,8 @@ function hookForm(h, paid) {
 
 async function signals(view, q) {
   const me = H.me(), paid = me.role === 'admin' || (['pro', 'elite'].includes(me.plan) && ['active', 'trialing', null, undefined].includes(me.planStatus));
-  const [{ hooks, limit }, log] = await Promise.all([H.api('/signals/hooks'), H.api('/signals/log')]);
+  const [{ hooks, limit }, log, accts] = await Promise.all([H.api('/signals/hooks'), H.api('/signals/log'), H.accounts()]);
+  ACCTS = accts;
   const editing = hooks.find(h => h.id === +q.get('edit'));
   view.innerHTML = `
   <div class="pagehead"><div><h1>Alerts to trades</h1><p class="mu" style="margin:4px 0 0">Send an alert from TradingView, TrendSpider, Zapier, a script or an AI agent. It becomes an order in the accounts you choose, inside your risk rules.</p></div></div>
@@ -64,7 +66,7 @@ async function signals(view, q) {
   <div id="hooks">${hooks.map(h => `
     <div class="card hook ${h.enabled ? '' : 'off'}" data-id="${h.id}">
       <div class="hookhead"><div><h2 style="margin:0">${H.esc(h.name)}</h2>
-        <div class="mu" style="font-size:13px">${h.accounts.map(a => `<span class="pill">${a === 'paper' ? 'Paper' : 'Alpaca'}</span>`).join(' ')}
+        <div class="mu" style="font-size:13px">${h.accounts.map(a => `<span class="pill">${H.esc(nm(a))}</span>`).join(' ')}
         ${h.sizeMode === 'signal' ? 'Size from alert' : h.sizeMode === 'qty' ? `${h.size} shares` : `${H.money(h.size)} per order`}
         ${h.maxPosition ? ` · max ${H.money(h.maxPosition)}/ticker` : ''}${h.maxTradesDay ? ` · ${h.maxTradesDay} trades/day` : ''}${h.symbols ? ` · ${H.esc(h.symbols)}` : ''}</div></div>
         <label class="switch" title="${h.enabled ? 'On' : 'Paused'}"><input type="checkbox" data-pause ${h.enabled ? 'checked' : ''}><i></i></label></div>
@@ -82,7 +84,7 @@ async function signals(view, q) {
   <div class="card tablewrap"><h2>Signal log</h2><table><tr><th>When</th><th>Webhook</th><th>Signal</th><th>Result</th><th>Details</th></tr>
     ${log.map(r => `<tr><td>${H.date(r.at)}</td><td>${H.esc(r.hook || '(deleted)')}${r.test ? ' <span class="pill">test</span>' : ''}</td><td>${r.action ? `<b>${H.esc(r.action.toUpperCase())}</b> ${H.esc(r.symbol)}` : '-'}</td>
       <td><span class="pill ${STATUS[r.status]?.[1] || ''}">${STATUS[r.status]?.[0] || H.esc(r.status)}</span></td>
-      <td class="mu" style="font-size:13px">${r.detail.error ? H.esc(r.detail.error) : (r.detail.results || []).map(x => `${x.account === 'paper' ? 'Paper' : 'Alpaca'}: ${x.ok ? `${x.side} ${x.qty != null ? +(+x.qty).toFixed(4) + ' sh' : H.money(x.notional)}${x.price ? ' @ ' + H.money(x.price) : ''}` : H.esc(x.error)}`).join('<br>')}</td></tr>`).join('') || '<tr><td colspan="5" class="mu">No signals yet. Send a test signal from a webhook above.</td></tr>'}</table></div>`;
+      <td class="mu" style="font-size:13px">${r.detail.error ? H.esc(r.detail.error) : (r.detail.results || []).map(x => `${H.esc(nm(x.account))}: ${x.ok ? `${x.side} ${x.qty != null ? +(+x.qty).toFixed(4) + ' sh' : H.money(x.notional)}${x.price ? ' @ ' + H.money(x.price) : ''}` : H.esc(x.error)}`).join('<br>')}</td></tr>`).join('') || '<tr><td colspan="5" class="mu">No signals yet. Send a test signal from a webhook above.</td></tr>'}</table></div>`;
 
   // Webhook cards
   H.$$('[data-copy]', view).forEach(b => (b.onclick = async () => { try { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = 'Copied'; } catch { b.previousElementSibling.select(); } setTimeout(() => (b.textContent = 'Copy URL'), 1500); }));
