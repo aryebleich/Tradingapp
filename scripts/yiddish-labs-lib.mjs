@@ -43,7 +43,7 @@ export function parseBatch(reply, parts) {
     if (!t) return null;
     const r = restore(t, p.saved);
     // A translation must actually be Yiddish (Hebrew letters) unless the source had none to translate.
-    if (r == null || (/[a-z]{3}/.test(p.text.replace(/⟦\d+⟧/g, '')) && !/[\u05D0-\u05EA]/.test(r))) return null;
+    if (r == null || (/[A-Za-z]/.test(p.text.replace(/⟦\d+⟧/g, '')) && !/[\u05D0-\u05EA]/.test(r))) return null;
     return r;
   });
 }

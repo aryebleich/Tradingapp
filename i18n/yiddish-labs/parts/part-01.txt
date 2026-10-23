@@ -1,15 +1,15 @@
 Translate each numbered line to Yiddish. Keep the [[number]] at the start of every line and keep every ⟦n⟧ exactly as it is.
 
-[[1]] טרעדינג
-[[2]] מארקעטס
-[[3]] סטרעטעדזשיס
-[[4]] אקאונט
-[[5]] בעל הבית
-[[6]] פארטפאליא
-[[7]] טרעיד
-[[8]] ארדערס
-[[9]] פאזישאנס
-[[10]] ליסטע וואס איך האלט מיט
+[[1]] Trading
+[[2]] Markets
+[[3]] Strategies
+[[4]] Account
+[[5]] Owner
+[[6]] Portfolio
+[[7]] Trade
+[[8]] Orders
+[[9]] Positions
+[[10]] Watchlists
 [[11]] ⟦0⟧ plan
 [[12]] Markets & news
 [[13]] Options chain

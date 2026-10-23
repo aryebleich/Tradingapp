@@ -11,6 +11,8 @@ test('protects HTML, entities, brands and tickers', () => {
 });
 
 test('parses numbered batches, rejects untranslated lines', () => {
+  const short = buildBatch(['Buy', 'or']);
+  assert.deepEqual(parseBatch('[[1]] Buy\n[[2]] אדער', short.parts), [null, 'אדער']); // short lines left in English are rejected too
   const { parts, text } = buildBatch(['Open a brokerage account', 'Sell **all** of SPY', 'Settings']);
   assert.match(text, /^\[\[1\]\] Open a brokerage account\n\[\[2\]\] Sell \*\*all\*\* of ⟦0⟧\n\[\[3\]\] Settings$/);
   const got = parseBatch('[[1]] עפנט א בראוקער קאנטע\n[[2]] פארקויפט **אלעס** פון ⟦0⟧\n[[3]] Settings', parts);

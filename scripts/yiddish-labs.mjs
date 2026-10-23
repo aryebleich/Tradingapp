@@ -49,7 +49,7 @@ if (cmd === 'export') {
   if (!key) { console.error('Set YIDDISH_LABS_API_KEY (Yiddish Labs → API Keys).'); process.exit(1); }
   const { out, credits } = await translateAll(unique, { base, key, log: m => console.log(m) });
   const res = { app: {}, home: {} };
-  for (const [where, en] of todo) if (out.has(en)) res[where][en] = out.get(en);
+  for (const [where, en] of todo) if (out.has(en) && out.get(en) !== en) res[where][en] = out.get(en);
   await save(res.app, res.home);
   console.log(`Translated ${out.size} of ${unique.length} strings with Yiddish Labs (${credits} credits). Rebuild the homepage with: python3 scripts/pages.py`);
 } else if (cmd === 'parts') {
@@ -77,7 +77,7 @@ if (cmd === 'export') {
     res.forEach((yi, i) => { if (yi != null) got.set(p.strings[i], yi); else { missing++; console.log(`  ${p.name} line ${i + 1} kept as before: ${p.strings[i].slice(0, 60)}`); } });
   }
   const res = { app: {}, home: {} };
-  for (const [where, en] of todo) if (got.has(en)) res[where][en] = got.get(en);
+  for (const [where, en] of todo) if (got.has(en) && got.get(en) !== en) res[where][en] = got.get(en); // unchanged English keeps the current Yiddish
   await save(res.app, res.home);
   console.log(`Imported ${got.size} strings from ${files} of ${index.length} parts (${missing} lines kept as before). Rebuild the homepage with: python3 scripts/pages.py`);
 } else {

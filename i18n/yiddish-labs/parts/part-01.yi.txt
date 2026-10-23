@@ -1,0 +1,207 @@
+Translate each numbered line to Yiddish. Keep the [[number]] at the start of every line and keep every ⟦n⟧ exactly as it is.
+
+[[1]] טרעדינג
+[[2]] מארקעטס
+[[3]] סטרעטעדזשיס
+[[4]] אקאונט
+[[5]] בעל הבית
+[[6]] פארטפאליא
+[[7]] טרעיד
+[[8]] ארדערס
+[[9]] פאזישאנס
+[[10]] ליסטע וואס איך האלט מיט
+[[11]] ⟦0⟧ plan
+[[12]] Markets & news
+[[13]] Options chain
+[[14]] Calendar & events
+[[15]] Strategy library
+[[16]] Alerts to trades
+[[17]] Pairs trading
+[[18]] Backtest
+[[19]] Bots
+[[20]] Scheduled trades
+[[21]] Brokerages
+[[22]] ⟦0⟧ account
+[[23]] Plans & billing
+[[24]] Invite & earn
+[[25]] Taxes
+[[26]] Text & hotline
+[[27]] Settings
+[[28]] Admin
+[[29]] Sign out
+[[30]] Sign in
+[[31]] Menu
+[[32]] Switch theme
+[[33]] Language
+[[34]] Try ⟦0⟧ free for 14 days
+[[35]] Upgrade to ⟦0⟧
+[[36]] Paper
+[[37]] Simulated
+[[38]] ⟦0⟧ ⟦1⟧
+[[39]] ⟦0⟧ paper
+[[40]] No brokerage connected
+[[41]] Create account
+[[42]] Create an account
+[[43]] Email
+[[44]] Password
+[[45]] Password (10+ chars, upper, lower, digit)
+[[46]] Forgot password?
+[[47]] New here?
+[[48]] Sign in instead
+[[49]] Continue with ⟦0⟧
+[[50]] Sign up with ⟦0⟧
+[[51]] or
+[[52]] I agree to the
+[[53]] and
+[[54]] and have read the
+[[55]] Terms
+[[56]] Privacy Policy
+[[57]] Privacy
+[[58]] Risk Disclosure
+[[59]] Support
+[[60]] By continuing with ⟦0⟧ you agree to the
+[[61]] You start with a $100,000 paper account.
+[[62]] Reset your password
+[[63]] Enter your email and we will send you a reset link.
+[[64]] Send reset link
+[[65]] Back to sign in
+[[66]] Choose a new password
+[[67]] New password (10+ chars, upper, lower, digit)
+[[68]] Save password
+[[69]] Two-factor code
+[[70]] Open your authenticator app.
+[[71]] 6-digit code
+[[72]] Verify
+[[73]] Email confirmed
+[[74]] Continue
+[[75]] Backtest, paper trade and automate stock strategies. Connect ⟦0⟧ and ⟦1⟧, trade by text or phone.
+[[76]] Save
+[[77]] Save changes
+[[78]] Cancel
+[[79]] Delete
+[[80]] Edit
+[[81]] Remove
+[[82]] Rename
+[[83]] Add
+[[84]] Send
+[[85]] Go
+[[86]] Open
+[[87]] Close
+[[88]] Back
+[[89]] Done
+[[90]] Copy
+[[91]] Loading…
+[[92]] Working…
+[[93]] None
+[[94]] None yet
+[[95]] Nothing yet
+[[96]] Off
+[[97]] On
+[[98]] Yes
+[[99]] No
+[[100]] Name
+[[101]] Date
+[[102]] Time
+[[103]] When
+[[104]] Type
+[[105]] Status
+[[106]] Amount
+[[107]] Amount ($)
+[[108]] Amount (⟦0⟧)
+[[109]] Price
+[[110]] Prices
+[[111]] Value
+[[112]] Symbol
+[[113]] Ticker
+[[114]] Qty
+[[115]] Side
+[[116]] Buy
+[[117]] Sell
+[[118]] buy
+[[119]] sell
+[[120]] exit
+[[121]] Cash
+[[122]] Equity
+[[123]] Buying power
+[[124]] Today
+[[125]] Total ⟦0⟧
+[[126]] Profit / loss
+[[127]] Unrealized ⟦0⟧
+[[128]] Market value
+[[129]] Avg entry
+[[130]] Avg
+[[131]] Order type
+[[132]] Market
+[[133]] Limit
+[[134]] Stop
+[[135]] Time in force
+[[136]] Day
+[[137]] Shares
+[[138]] Dollars
+[[139]] Review order
+[[140]] Place market order
+[[141]] Recent orders
+[[142]] All orders →
+[[143]] All positions →
+[[144]] No orders.
+[[145]] No positions.
+[[146]] No positions
+[[147]] No open positions.
+[[148]] Account settings
+[[149]] Details
+[[150]] Result
+[[151]] Results
+[[152]] Signal
+[[153]] Message
+[[154]] Note
+[[155]] Monthly
+[[156]] Yearly
+[[157]] Weekly
+[[158]] Once
+[[159]] Every trading day
+[[160]] Year
+[[161]] Years
+[[162]] Most popular
+[[163]] 2 months free
+[[164]] Current
+[[165]] Your plan
+[[166]] Automatic
+[[167]] By hand
+[[168]] Strategy
+[[169]] Rule
+[[170]] Decision
+[[171]] Run now
+[[172]] History
+[[173]] Not connected
+[[174]] Disconnect
+[[175]] Connected
+[[176]] Enabled
+[[177]] New
+[[178]] Place a trade
+[[179]] Reset paper account
+[[180]] The line turns green above your starting value and red below it.
+[[181]] Projected next-year return
+[[182]] Bad year (5th pct)
+[[183]] Typical (median)
+[[184]] Good year (95th)
+[[185]] Chance of a loss
+[[186]] Symbol or company
+[[187]] Bid
+[[188]] Ask
+[[189]] Bid / Ask
+[[190]] Volume
+[[191]] News
+[[192]] No recent news.
+[[193]] News unavailable.
+[[194]] Top movers
+[[195]] Most active
+[[196]] Market is
+[[197]] Next open
+[[198]] Next close
+[[199]] Early close
+[[200]] Advanced: bracket, ⟦0⟧, ⟦1⟧, extended hours
+[[201]] Limit price
+[[202]] Stop price
+[[203]] Take-profit limit
+[[204]] Stop-loss stop
+[[205]] Stop-loss limit (optional)
