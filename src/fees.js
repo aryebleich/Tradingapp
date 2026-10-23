@@ -2,10 +2,17 @@
 import { one, all, run, now } from './db.js';
 
 export const PLANS = {
-  free: { name: 'Starter', monthly: 0, perfFee: 0.20, features: ['Paper trading', 'Backtests (5 years)', 'SMS balance & quotes'] },
-  pro: { name: 'Pro', monthly: 29, perfFee: 0.10, features: ['Live trading via Alpaca', 'Scheduled trades', 'Auto-trading bots', 'QuantConnect cloud backtests', 'Full SMS + voice hotline'] },
-  elite: { name: 'Elite', monthly: 99, perfFee: 0.05, features: ['Everything in Pro', 'Optimizer + walk-forward', 'AI strategy builder priority', 'Tax-loss harvesting report'] },
+  free: { name: 'Starter', monthly: 0, yearly: 0, perfFee: 0.20, tagline: 'Learn and practice', features: ['$100,000 paper account', 'Backtests & AI strategy builder', 'Alpaca paper & sandbox trading', 'Markets, news & watchlists', 'SMS balance and quotes'] },
+  pro: { name: 'Pro', monthly: 29, yearly: 290, perfFee: 0.10, popular: true, tagline: 'Automate your trading', features: ['Everything in Starter', 'Live trading with Alpaca', 'Auto-trading bots & scheduled trades', 'Optimizer + walk-forward testing', 'QuantConnect cloud backtests', 'Full SMS & voice hotline'] },
+  elite: { name: 'Elite', monthly: 99, yearly: 990, perfFee: 0.05, tagline: 'For serious capital', features: ['Everything in Pro', 'Lowest performance fee (5%)', 'Priority AI strategy builder', 'Tax-loss harvesting report', 'Priority support'] },
 };
+// Paid plans start with a free trial once per user.
+export const TRIAL_DAYS = +process.env.TRIAL_DAYS || 14;
+export const PAID = ['pro', 'elite'];
+// A user has paid features on a paid plan that is active or still in its trial.
+export const isPaid = u => u?.role === 'admin' || (PAID.includes(u?.plan) && ['active', 'trialing', null, undefined].includes(u?.plan_status));
+// Referral reward: credited to the referrer when someone they invited starts paying.
+export const REFERRAL_CREDIT = +process.env.REFERRAL_CREDIT || 10;
 
 // Fee = rate x (equity - high-water mark), where the HWM moves with deposits/withdrawals so
 // users never pay on their own contributions or on recovering an earlier loss.

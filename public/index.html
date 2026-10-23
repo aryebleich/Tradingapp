@@ -14,6 +14,7 @@
 <meta property="og:description" content="Turn trading ideas into tested, automated strategies. Backtesting, AI strategy builder, QuantConnect, Alpaca trading, SMS and phone control, and a tax center.">
 <meta property="og:image" content="og.png">
 <meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="site.css">
 <script src="config.js"></script>
 <script type="module" src="site.js"></script>
@@ -23,17 +24,22 @@
   <a class="logo" href="./"><img src="favicon.svg" alt=""><b>Quant<span>Pocket</span></b></a>
   <nav class="links"><a href="./#features">Features</a><a href="./#demo">Live demo</a><a href="./#pricing">Pricing</a><a href="./#faq">FAQ</a><a href="contact.html">Contact</a></nav>
   <a class="btn ghost" data-app="#/login" href="app">Sign in</a>
-  <a class="btn" data-app="#/register" href="app">Start free</a>
+  <a class="btn" data-app="#/register" href="app">Start free trial</a>
 </div></header>
 <main>
 
-<section class="hero"><div class="wrap">
-  <h1>Turn trading ideas into tested, automated strategies.</h1>
-  <p class="lead">Backtest with real market history, see the range of outcomes to expect, then run it on paper or with your Alpaca account. Manage everything from the web, by text message, or over the phone.</p>
-  <div class="cta"><a class="btn light" data-app="#/register" href="app">Create a free account</a><a class="btn ghost" style="color:#fff;border-color:#40548a" href="#demo">Try the live demo</a></div>
-  <p class="note">Free plan includes $100,000 in paper money. No card required.</p>
-  <div class="logos"><span>Works with <b>Alpaca</b></span><span><b>QuantConnect</b> LEAN</span><span><b>Twilio</b> SMS &amp; voice</span><span>Payments by <b>Stripe</b></span></div>
-</div></section>
+<section class="hero"><div class="wrap hero-grid">
+  <div>
+    <a class="eyebrow" href="#pricing"><span>New</span> Try Pro free for 14 days &rarr;</a>
+    <h1>Trade smarter with <span>tested, automated</span> strategies.</h1>
+    <p class="lead">Build a strategy in plain English, backtest it on years of market data, then run it automatically with your Alpaca brokerage account. From the web, your phone, or a text message.</p>
+    <div class="cta"><a class="btn light lg" data-app="#/register" href="app">Start free trial</a><a class="btn outline lg" href="#demo">Try the live demo</a></div>
+    <ul class="ticks"><li>$100,000 paper account to practice</li><li>No card needed for the free plan</li><li>Cancel anytime</li></ul>
+  </div>
+  <figure class="shot"><div class="frame"><i></i><i></i><i></i></div><img src="hero-app.webp" width="1600" height="1000" alt="QuantPocket portfolio dashboard with equity chart, positions and order ticket" fetchpriority="high"><figcaption>Illustrative paper-trading account</figcaption></figure>
+</div>
+<div class="wrap"><div class="logos"><span>Brokerage by <b>Alpaca Securities LLC</b> (FINRA/SIPC)</span><span><b>QuantConnect</b> LEAN</span><span>Payments by <b>Stripe</b></span><span><b>Two-factor</b> login &amp; encrypted keys</span></div></div>
+</section>
 
 <section id="features"><div class="wrap">
   <h2 class="sec">Everything you need to trade systematically</h2>
@@ -71,13 +77,15 @@
 </div></section>
 
 <section class="alt" id="pricing"><div class="wrap">
-  <h2 class="sec">Simple, aligned pricing</h2>
-  <p class="sub">A flat monthly plan plus a small share of new profits above your high-water mark. If your account is not at a new high, you pay no performance fee.</p>
+  <h2 class="sec center">Simple pricing. Start free.</h2>
+  <p class="sub center">Every paid plan starts with a 14-day free trial. Plus a small share of new profits above your high-water mark, so you only pay more when your account reaches new highs.</p>
+  <div class="toggle" id="billing"><button class="on" data-i="m">Monthly</button><button data-i="y">Yearly <em>2 months free</em></button></div>
   <div class="plans">
-    <div class="plan"><h3>Starter</h3><div class="price">$0<small>/mo</small></div><p class="mu">+ 20% of new profits</p><ul><li>$100,000 paper account</li><li>Backtests &amp; AI builder</li><li>SMS balance and quotes</li><li>Tax center</li></ul><a class="btn ghost" data-app="#/register" href="app">Start free</a></div>
-    <div class="plan best"><h3>Pro</h3><div class="price">$29<small>/mo</small></div><p class="mu">+ 10% of new profits</p><ul><li>Live trading with Alpaca</li><li>Bots and scheduled trades</li><li>QuantConnect cloud backtests</li><li>Full SMS and voice hotline</li></ul><a class="btn" data-app="#/register" href="app">Choose Pro</a></div>
-    <div class="plan"><h3>Elite</h3><div class="price">$99<small>/mo</small></div><p class="mu">+ 5% of new profits</p><ul><li>Everything in Pro</li><li>Optimizer and walk-forward</li><li>Priority AI builder</li><li>Tax-loss harvesting report</li></ul><a class="btn ghost" data-app="#/register" href="app">Choose Elite</a></div>
+    <div class="plan"><h3>Starter</h3><p class="tag">Learn and practice</p><div class="price">$0<small>/forever</small></div><p class="fee">+ 20% of new profits</p><ul><li>$100,000 paper account</li><li>Backtests &amp; AI strategy builder</li><li>Alpaca paper &amp; sandbox trading</li><li>Markets, news &amp; watchlists</li></ul><a class="btn ghost" data-app="#/register" href="app">Start free</a></div>
+    <div class="plan best"><div class="ribbon">Most popular</div><h3>Pro</h3><p class="tag">Automate your trading</p><div class="price" data-m="$29" data-y="$290">$29<small data-m="/month" data-y="/year">/month</small></div><p class="fee">+ 10% of new profits</p><ul><li>Everything in Starter</li><li>Live trading with Alpaca</li><li>Auto-trading bots &amp; scheduled trades</li><li>Optimizer + walk-forward testing</li><li>QuantConnect cloud backtests</li><li>Full SMS &amp; voice hotline</li></ul><a class="btn" data-app="#/register" href="app">Start 14-day free trial</a></div>
+    <div class="plan"><h3>Elite</h3><p class="tag">For serious capital</p><div class="price" data-m="$99" data-y="$990">$99<small data-m="/month" data-y="/year">/month</small></div><p class="fee">+ 5% of new profits</p><ul><li>Everything in Pro</li><li>Lowest performance fee</li><li>Priority AI strategy builder</li><li>Tax-loss harvesting report</li><li>Priority support</li></ul><a class="btn ghost" data-app="#/register" href="app">Start 14-day free trial</a></div>
   </div>
+  <p class="fine">Secure checkout by Stripe. Cancel anytime. Trading involves risk; see the <a href="risk.html">Risk Disclosure</a>.</p>
 </div></section>
 
 <section id="faq"><div class="wrap faq" style="max-width:820px">
@@ -87,10 +95,12 @@
   <details><summary>How does the performance fee work?</summary><p>Each month we compare your account to its previous peak, adjusted for deposits and withdrawals. You only pay the plan's percentage on value above that peak. Losses must be recovered before any new fee is charged.</p></details>
   <details><summary>Is texting trades secure?</summary><p>Commands only work from the phone number you verified, and every order needs your personal PIN. You can pause all bots and scheduled trades with one text.</p></details>
   <details><summary>What is QuantConnect?</summary><p>QuantConnect is a professional algorithmic trading platform. Connect your QuantConnect account to create projects and run cloud backtests of Python LEAN algorithms right from QuantPocket.</p></details>
-  <details><summary>Can I cancel any time?</summary><p>Yes. Plans are month to month. You can also export or delete all your data from Settings.</p></details>
+  <details><summary>How does the free trial work?</summary><p>Every paid plan starts with 14 days free. You can cancel before the trial ends and you won't be charged. The free Starter plan has no time limit.</p></details>
+  <details><summary>Can I cancel any time?</summary><p>Yes. Cancel from "Manage billing" in the app at any time; you keep access until the end of the period you paid for. You can also export or delete all your data from Settings.</p></details>
 </div></section>
 
-<section><div class="wrap"><div class="band"><div><h2>Start with $100,000 in paper money.</h2><p style="margin:6px 0 0;color:#c3cde3">Free forever plan. No card required.</p></div><a class="btn light" data-app="#/register" href="app">Create your account</a></div></div></section>
+<section><div class="wrap"><div class="band"><div><h2>Your next strategy starts here.</h2><p style="margin:6px 0 0;opacity:.85">Practice with $100,000 in paper money, then try Pro free for 14 days.</p></div><a class="btn light lg" data-app="#/register" href="app">Start free trial</a></div></div></section>
+<div class="stickycta"><a class="btn lg" data-app="#/register" href="app">Start free trial</a></div>
 
 </main>
 <footer class="site"><div class="wrap">

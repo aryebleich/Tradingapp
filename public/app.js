@@ -18,6 +18,7 @@ async function api(path, opts = {}) {
   const d = await r.json().catch(() => ({}));
   // Session expired (or signed out in another tab): go back to sign-in instead of showing errors.
   if (r.status === 401 && ME && !path.startsWith('/auth/')) { ME = null; location.hash = '#/login'; }
+  if (r.status === 402 && d.upgrade) showUpgrade(d.feature);
   if (!r.ok) throw new Error(d.error || (r.status >= 500 ? 'The server is busy, please try again.' : r.statusText));
   return d;
 }
@@ -64,13 +65,60 @@ function drawChart(canvas, series, { base, compare } = {}) {
   }
 }
 
+// ---------- theme: auto (device), light or dark ----------
+const THEMES = ['auto', 'light', 'dark'];
+function applyTheme(t) {
+  if (t === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.dataset.theme = t;
+  const svg = { auto: '<circle cx="12" cy="12" r="8"/><path d="M12 4v16a8 8 0 0 0 0-16z" fill="currentColor"/>', light: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>', dark: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>' }[t];
+  const b = $('#themeBtn'); if (b) { b.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">${svg}</svg>`; b.title = `Theme: ${t} (click to change)`; }
+}
+let theme = (() => { try { return localStorage.getItem('qp_theme') || 'auto'; } catch { return 'auto'; } })();
+applyTheme(theme);
+$('#themeBtn').onclick = () => { theme = THEMES[(THEMES.indexOf(theme) + 1) % 3]; try { localStorage.setItem('qp_theme', theme); } catch {} applyTheme(theme); render(); };
+
+// ---------- upgrade window: shown whenever a Pro feature is used on the free plan ----------
+async function showUpgrade(feature) {
+  if (document.querySelector('dialog.upgrade')) return;
+  CFG ||= await api('/config').catch(() => null);
+  const p = CFG?.plans?.pro || { monthly: 29, yearly: 290, features: [] }, trial = !ME?.trialUsed, days = CFG?.trialDays || 14;
+  const d = document.createElement('dialog'); d.className = 'upgrade';
+  d.innerHTML = `<div class="top"><h2>${esc(feature || 'This feature')} is a Pro feature</h2><div>${trial ? `Try every Pro feature free for ${days} days. Cancel anytime.` : 'Upgrade to unlock it, plus everything else in Pro.'}</div></div>
+    <div class="body"><ul style="padding-left:18px;margin:0 0 14px">${p.features.slice(1, 6).map(f => `<li>${esc(f)}</li>`).join('')}</ul>
+    <p class="mu" style="margin:0 0 14px">$${p.monthly}/month, or $${p.yearly}/year <span class="save">2 months free</span></p>
+    <div class="row" style="justify-content:flex-end"><button class="ghost" value="no">Not now</button><button value="yes">${trial ? `Start ${days}-day free trial` : 'See plans'}</button></div><div class="err"></div></div>`;
+  document.body.append(d);
+  d.querySelector('[value=no]').onclick = () => d.close();
+  act(d.querySelector('[value=yes]'), async () => {
+    if (!CFG?.stripe) { d.close(); location.hash = '#/funding'; return; }
+    location.href = (await api('/billing/checkout', { body: { plan: 'pro', interval: 'month' } })).url;
+  });
+  d.onclose = () => d.remove();
+  d.showModal();
+}
+
 // ---------- routing ----------
 const NAV = [
   ['Trading', [['dashboard', 'Portfolio'], ['trade', 'Trade'], ['orders', 'Orders'], ['positions', 'Positions'], ['watchlists', 'Watchlists']]],
   ['Markets', [['markets', 'Markets & news'], ['options', 'Options chain'], ['calendar', 'Calendar & events']]],
   ['Strategies', [['backtest', 'Backtest'], ['bots', 'Bots'], ['schedule', 'Scheduled trades'], ['quantconnect', 'QuantConnect']]],
-  ['Account', [['account', 'Brokerage account'], ['funding', 'Plans & billing'], ['tax', 'Taxes'], ['text', 'Text & hotline'], ['settings', 'Settings']]],
+  ['Account', [['account', 'Brokerage account'], ['funding', 'Plans & billing'], ['referrals', 'Invite & earn'], ['tax', 'Taxes'], ['text', 'Text & hotline'], ['settings', 'Settings']]],
 ];
+// Simple line icons (24x24 paths) for the menu.
+const ICONS = {
+  dashboard: '<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/>', trade: '<path d="M7 17 17 7M9 7h8v8"/>',
+  orders: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>', positions: '<path d="M21 12a9 9 0 1 1-9-9v9z"/><path d="M12 3a9 9 0 0 1 9 9h-9z"/>',
+  watchlists: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>', markets: '<path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/>',
+  options: '<path d="M3 6h18M3 12h18M3 18h18M9 3v18M15 3v18"/>', calendar: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>',
+  backtest: '<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5M12 7v5l3 2"/>', bots: '<rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4M9 14h.01M15 14h.01"/>',
+  schedule: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>', quantconnect: '<path d="M21 16V8l-9-5-9 5v8l9 5z"/><path d="M3.3 7 12 12l8.7-5M12 22V12"/>',
+  account: '<path d="M3 10l9-6 9 6M5 10v9h14v-9M9 19v-5h6v5"/>', funding: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
+  referrals: '<path d="M20 12v9H4v-9M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 1 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 1 0 0-5C13 2 12 7 12 7z"/>',
+  tax: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 15l6-6M9.5 9.5h.01M14.5 14.5h.01"/>',
+  text: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>', settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 13H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 3V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 21 10h.1a2 2 0 1 1 0 4z"/>',
+  admin: '<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"/>', star: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
+};
+const icon = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k] || ''}</svg>`;
+const isPaid = u => u && (u.role === 'admin' || (['pro', 'elite'].includes(u.plan) && ['active', 'trialing', null, undefined].includes(u.planStatus)));
 const routes = {};
 // Live streams and timers belong to the page that opened them; they stop on navigation.
 const cleanups = [];
@@ -82,18 +130,21 @@ async function render() {
   // write into a detached element instead of overwriting the page the user moved to.
   const view = document.createElement('div');
   $('#view').replaceChildren(view);
+  // A new page starts at the top instead of keeping the previous page's scroll position.
+  scrollTo(0, 0);
   if (!ME && !['login', 'register', 'mfa', 'forgot', 'reset', 'verify'].includes(route)) { location.hash = '#/login'; return; }
   $('#top').hidden = !ME; $('#nav').hidden = !ME; $('#tabs').hidden = !ME;
   setMenu(false);
   $$('#tabs a[data-r]').forEach(a => a.classList.toggle('on', a.dataset.r === route || (route === '' && a.dataset.r === 'dashboard')));
   if (ME) {
     const groups = ME.role === 'admin' ? [...NAV, ['Owner', [['admin', 'Admin']]]] : NAV;
-    $('#nav').innerHTML = groups.map(([g, items]) => `<div class="grp">${g}</div>` + items.map(([k, t]) => `<a href="#/${k}" class="${k === route ? 'on' : ''}">${t}</a>`).join('')).join('')
-      + `<div class="grp">${esc(ME.email)}</div><a href="#" id="navLogout">Sign out</a>`;
+    $('#nav').innerHTML = groups.map(([g, items]) => `<div class="grp">${g}</div>` + items.map(([k, t]) => `<a href="#/${k}" class="${k === route ? 'on' : ''}">${icon(k)}${t}</a>`).join('')).join('')
+      + (isPaid(ME) ? '' : `<a href="#/funding" class="upsell">${icon('star')}${ME.trialUsed ? 'Upgrade to Pro' : 'Try Pro free for 14 days'}</a>`)
+      + `<div class="grp">${esc(ME.email)}</div><a href="#" id="navLogout">${icon('account')}Sign out</a>`;
     $('#navLogout').onclick = e => { e.preventDefault(); $('#logout').click(); };
     updateBadge();
   }
-  view.innerHTML = '<p class="mu">Loading…</p>';
+  view.innerHTML = '<div class="skel"><div class="h1"></div><div class="box"></div><div class="w60"></div><div></div><div class="box"></div></div>';
   try {
     await (routes[route] || routes.dashboard)(view, new URLSearchParams(q));
     if (ME && !ME.emailVerified && !['verify'].includes(route)) {
@@ -177,7 +228,8 @@ routes.register = view => {
   act($('button', view), async () => {
     const f = form(view);
     if (!f.agree) throw new Error('Please accept the Terms to continue');
-    ME = (await api('/auth/register', { body: f })).user; location.hash = '#/dashboard';
+    let ref = null; try { ref = localStorage.getItem('qp_ref'); } catch {}
+    ME = (await api('/auth/register', { body: { ...f, ref } })).user; location.hash = '#/dashboard';
   });
 };
 routes.forgot = view => {
@@ -491,32 +543,60 @@ routes.tax = async (view, q) => {
 };
 
 // ---------- funding & plans ----------
-routes.funding = routes.billing = async view => {
+routes.funding = routes.billing = async (view, q) => {
   CFG ||= await api('/config');
   const [ledger, fees] = await Promise.all([api('/ledger'), api('/fees')]);
-  view.innerHTML = `<h1>Funding & Plans</h1>
-  <div class="plans">${Object.entries(CFG.plans).map(([k, p]) => `<div class="card plan"><h2>${esc(p.name)} ${ME.plan === k ? '<span class="pill">current</span>' : ''}</h2>
-    <div class="price">${p.monthly ? '$' + p.monthly + '<span class="mu" style="font-size:14px">/mo</span>' : 'Free'}</div>
-    <p>+ <b>${p.perfFee * 100}%</b> of new profits <span class="mu">(above your high-water mark, charged monthly)</span></p>
-    <ul>${p.features.map(f => `<li>${esc(f)}</li>`).join('')}</ul>
-    ${p.monthly && ME.plan !== k ? `<button data-plan="${k}">Choose ${esc(p.name)}</button>` : ''}</div>`).join('')}</div>
-  <div class="err" id="planErr"></div>
-  <div class="grid">
-    <form class="card" id="dep"><h2>Deposit with a debit card</h2>
-      <div class="row"><label>Account<select name="account"><option value="paper">Paper (simulated, instant)</option><option value="alpaca">Brokerage (real money)</option></select></label><label>Amount (USD)<input name="amount" type="number" min="10" max="10000" value="500"></label></div>
-      <button>Deposit</button><div class="err"></div>
-      <p class="mu" style="font-size:13px">Real deposits are processed by Stripe; only debit cards are accepted and credit cards are refunded automatically. Funds are credited to your brokerage account after the transfer clears.</p></form>
-    <div class="card"><h2>Performance fee</h2><p>Your rate: <b>${fees.rate * 100}%</b> of new profit. You only pay when an account is above its previous peak, after deposits and withdrawals.</p>
-      ${fees.accounts.map(a => `<p class="mu">${a.account}: high-water mark ${money(a.high_water)}</p>`).join('')}</div>
-  </div>
-  <div class="card tablewrap"><h2>Ledger</h2><table><tr><th>Date</th><th>Type</th><th>Amount</th><th>Status</th><th>Note</th></tr>
-    ${ledger.map(l => `<tr><td>${date(l.at)}</td><td>${esc(l.kind.replace('_', ' '))}</td><td>${money(l.amount)}</td><td>${esc(l.status)}</td><td>${esc(l.memo || '')}</td></tr>`).join('') || '<tr><td colspan="5" class="mu">Nothing yet</td></tr>'}</table></div>`;
-  $$('[data-plan]', view).forEach(b => act(b, async () => { location.href = (await api('/billing/checkout', { body: { plan: b.dataset.plan } })).url; }, $('#planErr', view)));
-  act($('button', $('#dep', view)), async () => {
-    const r = await api('/funding/deposit', { body: form($('#dep', view)) });
-    if (r.url) { location.href = r.url; return; }
-    setTimeout(render, 500); return 'Paper deposit added.';
-  });
+  let yearly = q.get('interval') === 'year';
+  const days = CFG.trialDays || 14, trial = !ME.trialUsed, paid = isPaid(ME);
+  const status = ME.planStatus === 'trialing' ? `Free trial · renews ${ME.planRenews ? new Date(ME.planRenews).toLocaleDateString() : ''}` : ME.planStatus === 'past_due' ? 'Payment failed - update your card' : ME.planRenews ? `Renews ${new Date(ME.planRenews).toLocaleDateString()}` : '';
+  const draw = () => {
+    view.innerHTML = `<div class="row" style="justify-content:space-between;align-items:center"><h1>Plans & billing</h1>${ME.plan !== 'free' ? '<button class="ghost" id="portal">Manage billing</button>' : ''}</div>
+    ${q.get('ok') ? '<div class="banner">Thank you! Your plan is being activated. It can take a few seconds to show here.</div>' : ''}
+    ${ME.plan !== 'free' ? `<div class="banner">You are on <b>${esc(CFG.plans[ME.plan]?.name || ME.plan)}</b>${ME.planInterval === 'year' ? ' (yearly)' : ''}. ${esc(status)}</div>` : trial ? `<div class="banner">Every paid plan starts with a <b>${days}-day free trial</b>. You won't be charged until it ends, and you can cancel anytime.</div>` : ''}
+    <div class="billing-toggle"><div class="seg" id="interval"><button data-i="month" class="${yearly ? '' : 'on'}">Monthly</button><button data-i="year" class="${yearly ? 'on' : ''}">Yearly <span class="save">2 months free</span></button></div></div>
+    <div class="plans">${Object.entries(CFG.plans).map(([k, p]) => {
+      const price = yearly ? p.yearly : p.monthly, cur = ME.plan === k;
+      return `<div class="card plan ${p.popular ? 'best' : ''}">${p.popular ? '<div class="ribbon">Most popular</div>' : ''}
+        <h2 style="margin:0">${esc(p.name)} ${cur ? '<span class="pill">Current</span>' : ''}</h2><div class="mu" style="font-size:14px">${esc(p.tagline || '')}</div>
+        <div class="price">${price ? '$' + price : '$0'}<small>${price ? (yearly ? '/year' : '/month') : ' forever'}</small></div>
+        ${yearly && p.yearly ? `<div class="mu" style="font-size:13px">$${(p.yearly / 12).toFixed(2)}/month billed yearly</div>` : '<div style="height:19px"></div>'}
+        <div class="mu" style="font-size:13px;margin-top:6px">+ ${p.perfFee * 100}% of new profits above your high-water mark</div>
+        <ul>${p.features.map(f => `<li>${esc(f)}</li>`).join('')}</ul>
+        ${p.monthly && !cur ? `<button data-plan="${k}" class="${p.popular ? '' : 'ghost'}">${trial ? `Start ${days}-day free trial` : `Choose ${esc(p.name)}`}</button>` : cur ? '<button class="ghost" disabled>Your plan</button>' : ''}</div>`;
+    }).join('')}</div>
+    <div class="err" id="planErr"></div>
+    <p class="mu" style="text-align:center;font-size:13px">Secure checkout by Stripe. Cancel anytime from "Manage billing". Prices in USD.</p>
+    <div class="grid">
+      <form class="card" id="dep"><h2>Add paper money</h2>
+        <div class="row"><label>Amount (USD)<input name="amount" type="number" min="10" max="10000" value="10000"></label><input type="hidden" name="account" value="paper"></div>
+        <button>Add to paper account</button><div class="err"></div>
+        <p class="mu" style="font-size:13px">Real money goes to your brokerage account by bank transfer on the <a href="#/account">Brokerage account</a> page.</p></form>
+      <div class="card"><h2>Performance fee</h2><p>Your rate: <b>${fees.rate * 100}%</b> of new profit. You only pay when an account is above its previous peak, after deposits and withdrawals.</p>
+        ${fees.accounts.map(a => `<p class="mu">${esc(a.account)}: high-water mark ${money(a.high_water)}</p>`).join('')}</div>
+    </div>
+    <div class="card tablewrap"><h2>Billing history</h2><table><tr><th>Date</th><th>Type</th><th>Amount</th><th>Status</th><th>Note</th></tr>
+      ${ledger.map(l => `<tr><td>${date(l.at)}</td><td>${esc(l.kind.replace(/_/g, ' '))}</td><td>${money(l.amount)}</td><td>${esc(l.status)}</td><td>${esc(l.memo || '')}</td></tr>`).join('') || '<tr><td colspan="5" class="mu">Nothing yet</td></tr>'}</table></div>`;
+    $$('#interval button', view).forEach(b => (b.onclick = () => { yearly = b.dataset.i === 'year'; draw(); }));
+    $$('[data-plan]', view).forEach(b => act(b, async () => { location.href = (await api('/billing/checkout', { body: { plan: b.dataset.plan, interval: yearly ? 'year' : 'month' } })).url; }, $('#planErr', view)));
+    if ($('#portal', view)) act($('#portal', view), async () => { location.href = (await api('/billing/portal', { body: {} })).url; }, $('#planErr', view));
+    act($('button', $('#dep', view)), async () => { await api('/funding/deposit', { body: form($('#dep', view)) }); setTimeout(render, 500); return 'Paper money added.'; });
+  };
+  draw();
+};
+
+// ---------- invite & earn ----------
+routes.referrals = async view => {
+  const r = await api('/referrals');
+  view.innerHTML = `<h1>Invite & earn</h1>
+  <div class="card" style="background:var(--grad);color:#fff;border:0"><h2 style="color:#fff;font-size:20px">Give your friends a head start. Get $${r.reward} for each one who subscribes.</h2>
+    <p style="margin:0;opacity:.9">Share your link. When someone signs up with it and starts a paid plan, $${r.reward} is credited to your account and taken off your next bill.</p></div>
+  <div class="card"><h2>Your invite link</h2><div class="refbox"><input id="reflink" readonly value="${esc(r.link)}"><button id="copy">Copy</button>${navigator.share ? '<button class="ghost" id="share">Share</button>' : ''}</div><div class="err"></div></div>
+  <div class="card"><div class="stats">
+    <div class="stat"><span>Friends who joined</span><b>${r.invited}</b></div>
+    <div class="stat"><span>Friends who subscribed</span><b>${r.paying}</b></div>
+    <div class="stat"><span>Credit earned</span><b class="pos">${money(r.credit)}</b></div></div></div>`;
+  act($('#copy', view), async () => { await navigator.clipboard.writeText(r.link).catch(() => { $('#reflink', view).select(); document.execCommand('copy'); }); return 'Link copied'; });
+  if ($('#share', view)) $('#share', view).onclick = () => navigator.share({ title: 'QuantPocket', text: 'Backtest and automate your trading ideas with QuantPocket:', url: r.link }).catch(() => {});
 };
 
 // ---------- settings ----------
@@ -577,7 +657,15 @@ routes.settings = async view => {
 routes.admin = async view => {
   const [s, msgs] = await Promise.all([api('/admin/summary'), api('/admin/messages')]);
   const total = (kind, status) => s.byKind.filter(x => x.kind === kind && (!status || x.status === status)).reduce((a, x) => a + x.total, 0);
+  const f = s.funnel, steps = [['Signed up', f.signups], ['Connected a brokerage', f.connected], ['Placed a trade', f.traded], ['In free trial', f.trialing], ['Paying', f.paying]];
   view.innerHTML = `<h1>Admin</h1>
+  <div class="card"><h2>Revenue</h2><div class="stats">
+    <div class="stat"><span>Monthly recurring revenue</span><b class="kpi">${money(f.mrr)}</b></div>
+    <div class="stat"><span>Annual run rate</span><b>${money(f.arr)}</b></div>
+    <div class="stat"><span>Revenue, last 30 days</span><b>${money(f.revenue30)}</b></div>
+    <div class="stat"><span>Signup → paying</span><b>${f.conversion}%</b></div></div></div>
+  <div class="card"><h2>Funnel</h2><p class="mu" style="margin-top:0">${f.signups30} new signups in the last 30 days. Find the biggest drop and improve that step first.</p><div class="funnel">
+    ${steps.map(([t, n]) => `<div class="bar"><span>${t}</span><i style="width:${f.signups ? Math.max(1, n / f.signups * 100) : 0}%"></i><b>${n}</b></div>`).join('')}</div></div>
   <div class="card"><div class="stats">
     <div class="stat"><span>Users</span><b>${s.users.length}</b></div>
     <div class="stat"><span>Monthly recurring revenue</span><b>${money(s.mrr)}</b></div>
@@ -596,6 +684,9 @@ routes.admin = async view => {
 registerTrading(routes, { $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, updateBadge, me: () => ME, state });
 
 (async () => {
+  // Remember an invite code from a referral link (/app?ref=CODE) for sign-up.
+  const ref = new URLSearchParams(location.search).get('ref');
+  if (ref && /^[a-z0-9]{6,12}$/.test(ref)) { try { localStorage.setItem('qp_ref', ref); } catch {} }
   const me = await api('/auth/me').catch(() => ({}));
   ME = me.user;
   if (!ME && me.mfaPending) location.hash = '#/mfa';

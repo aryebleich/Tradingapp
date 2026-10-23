@@ -38,15 +38,28 @@ async function stripe(path, params) {
   return d;
 }
 
-export function checkoutSubscription({ plan, email, userId, baseUrl }) {
-  const price = env(`STRIPE_PRICE_${plan.toUpperCase()}`);
-  if (!price) throw new Error(`Set STRIPE_PRICE_${plan.toUpperCase()} to the Stripe price id for this plan`);
+// interval: 'month' or 'year' (STRIPE_PRICE_PRO / STRIPE_PRICE_PRO_YEARLY ...). trialDays > 0 adds a free trial.
+export function checkoutSubscription({ plan, interval = 'month', trialDays = 0, email, customer, userId, baseUrl }) {
+  const key = `STRIPE_PRICE_${plan.toUpperCase()}${interval === 'year' ? '_YEARLY' : ''}`;
+  const price = env(key);
+  if (!price) throw new Error(`Set ${key} to the Stripe price id for this plan`);
   return stripe('/checkout/sessions', {
-    mode: 'subscription', customer_email: email, client_reference_id: String(userId), 'metadata[plan]': plan, 'metadata[kind]': 'subscription',
+    mode: 'subscription', ...(customer ? { customer } : { customer_email: email }), client_reference_id: String(userId),
+    'metadata[plan]': plan, 'metadata[kind]': 'subscription', 'metadata[interval]': interval,
+    'subscription_data[metadata][plan]': plan, 'subscription_data[metadata][user_id]': String(userId),
+    ...(trialDays > 0 ? { 'subscription_data[trial_period_days]': String(trialDays) } : {}),
+    allow_promotion_codes: 'true',
     'line_items[0][price]': price, 'line_items[0][quantity]': '1',
-    success_url: `${baseUrl}/#/billing?ok=1`, cancel_url: `${baseUrl}/#/billing`,
+    success_url: `${baseUrl}/app#/funding?ok=1`, cancel_url: `${baseUrl}/app#/funding`,
   });
 }
+
+// Stripe-hosted page where customers update cards, switch plans, download invoices or cancel.
+export const billingPortal = ({ customer, baseUrl }) => stripe('/billing_portal/sessions', { customer, return_url: `${baseUrl}/app#/funding` });
+
+// Account credit applied to the customer's next invoice (negative amount = credit).
+export const creditCustomer = (customer, dollars, description) =>
+  stripe(`/customers/${encodeURIComponent(customer)}/balance_transactions`, { amount: String(-Math.round(dollars * 100)), currency: 'usd', description });
 
 // Card deposit. payment_method_types=card accepts debit and credit; we restrict to debit
 // by checking card funding in the webhook (Stripe reports card.funding = 'debit').
@@ -57,7 +70,7 @@ export function checkoutDeposit({ amount, email, userId, ledgerId, baseUrl }) {
     'line_items[0][price_data][currency]': 'usd', 'line_items[0][price_data][product_data][name]': 'Account deposit',
     'line_items[0][price_data][unit_amount]': String(Math.round(amount * 100)), 'line_items[0][quantity]': '1',
     'payment_intent_data[metadata][ledger_id]': String(ledgerId),
-    success_url: `${baseUrl}/#/funding?ok=1`, cancel_url: `${baseUrl}/#/funding`,
+    success_url: `${baseUrl}/app#/funding?ok=1`, cancel_url: `${baseUrl}/app#/funding`,
   });
 }
 

@@ -169,6 +169,13 @@ const MIGRATIONS = [
   'ALTER TABLE users ADD COLUMN verify_hash TEXT',
   'ALTER TABLE users ADD COLUMN phone_code_expires INTEGER',
   'ALTER TABLE users ADD COLUMN alpaca_conn TEXT',
+  'ALTER TABLE users ADD COLUMN plan_status TEXT',
+  'ALTER TABLE users ADD COLUMN plan_interval TEXT',
+  'ALTER TABLE users ADD COLUMN trial_used INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE users ADD COLUMN ref_code TEXT',
+  'ALTER TABLE users ADD COLUMN referred_by INTEGER',
+  'ALTER TABLE users ADD COLUMN referral_rewarded INTEGER NOT NULL DEFAULT 0',
+  'CREATE UNIQUE INDEX IF NOT EXISTS users_ref_code ON users (ref_code) WHERE ref_code IS NOT NULL',
   'CREATE UNIQUE INDEX IF NOT EXISTS ledger_ref ON ledger (kind, ref) WHERE ref IS NOT NULL',
 ];
 

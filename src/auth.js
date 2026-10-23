@@ -65,10 +65,11 @@ export const requireAdmin = (req, res, next) => req.user?.role === 'admin' ? nex
 
 export const publicUser = u => u && ({
   id: u.id, email: u.email, role: u.role, totpEnabled: !!u.totp_enabled, phone: u.phone, phoneVerified: !!u.phone_verified,
-  hasPin: !!u.pin_hash, emailVerified: !!u.email_verified, plan: u.plan, planRenews: u.plan_renews, taxBracket: u.tax_bracket, stateTax: u.state_tax,
+  hasPin: !!u.pin_hash, emailVerified: !!u.email_verified, planStatus: u.plan_status, planInterval: u.plan_interval, trialUsed: !!u.trial_used, refCode: u.ref_code, plan: u.plan, planRenews: u.plan_renews, taxBracket: u.tax_bracket, stateTax: u.state_tax,
 });
 
 export const router = express.Router();
+const newRefCode = () => randomToken(9).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8).padEnd(8, '7');
 const DUMMY_HASH = hashSecret('timing-equalizer');
 
 router.post('/register', async (req, res) => {
@@ -81,7 +82,9 @@ router.post('/register', async (req, res) => {
   // Admin is whoever matches ADMIN_EMAIL; outside production the first account also qualifies.
   const admin = process.env.ADMIN_EMAIL ? email === process.env.ADMIN_EMAIL.toLowerCase()
     : process.env.NODE_ENV !== 'production' && !await one('SELECT id FROM users LIMIT 1');
-  const r = await run('INSERT INTO users (email, pass_hash, role, created_at) VALUES (?,?,?,?)', email, hashSecret(password), admin ? 'admin' : 'user', now());
+  // Referral: ?ref=CODE on the sign-up link credits whoever invited this user once they pay.
+  const ref = /^[a-z0-9]{6,12}$/.test(String(req.body.ref || '')) ? await one('SELECT id FROM users WHERE ref_code = ?', req.body.ref) : null;
+  const r = await run('INSERT INTO users (email, pass_hash, role, created_at, ref_code, referred_by) VALUES (?,?,?,?,?,?)', email, hashSecret(password), admin ? 'admin' : 'user', now(), newRefCode(), ref?.id ?? null);
   const id = Number(r.lastInsertRowid);
   await run('INSERT INTO paper_accounts (user_id, cash, start_cash) VALUES (?,?,?)', id, 100000, 100000);
   await run('INSERT INTO fee_state (user_id, account, high_water, net_contrib) VALUES (?,?,?,?)', id, 'paper', 100000, 100000);

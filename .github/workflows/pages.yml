@@ -29,7 +29,7 @@ jobs:
         run: |
           mkdir -p _site
           cd public
-          cp index.html terms.html privacy.html risk.html contact.html 404.html site.css site.js favicon.svg icon-512.png og.png manifest.webmanifest ../_site/
+          cp index.html terms.html privacy.html risk.html contact.html 404.html site.css site.js favicon.svg icon-512.png og.png hero-app.webp manifest.webmanifest ../_site/
           cp ../src/engine.js ../_site/engine.js
           cd ../_site
           APP="${APP_URL%/}"

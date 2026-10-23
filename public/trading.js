@@ -381,7 +381,8 @@ async function trade(view, q) {
   // Phones: a Buy/Sell bar stays on screen until the order form itself is visible.
   const bar = H.$('#tradeBar', view), tk = H.$('#ticket', view);
   if ('IntersectionObserver' in window) {
-    const io = new IntersectionObserver(([e]) => (bar.hidden = e.isIntersecting || innerWidth > 900), { rootMargin: '0px 0px -80px 0px' });
+    // Hidden once at least half of the order form is on screen (its Review button is then reachable).
+    const io = new IntersectionObserver(([e]) => (bar.hidden = e.intersectionRatio >= 0.5 || innerWidth > 900), { threshold: [0, 0.25, 0.5, 0.75, 1] });
     io.observe(tk); H.onLeave(() => io.disconnect());
   }
   H.$$('button', bar).forEach(b => (b.onclick = () => { H.$(`#sideSeg [data-s=${b.dataset.s}]`, tk)?.click(); tk.scrollIntoView({ behavior: 'smooth', block: 'start' }); }));

@@ -6,7 +6,11 @@ const API = (window.QP && window.QP.api) ?? '';
 const standalone = window.QP?.standalone && !API;
 const $ = s => document.querySelector(s);
 
-for (const a of document.querySelectorAll('a[data-app]')) a.href = standalone ? 'contact.html' : `${API || '.'}/app${a.dataset.app}`;
+// Referral links (/?ref=CODE) carry the code into sign-up, also across to the app's own domain.
+let ref = new URLSearchParams(location.search).get('ref');
+if (ref && /^[a-z0-9]{6,12}$/.test(ref)) { try { localStorage.setItem('qp_ref', ref); } catch {} }
+else { try { ref = localStorage.getItem('qp_ref'); } catch { ref = null; } }
+for (const a of document.querySelectorAll('a[data-app]')) a.href = standalone ? 'contact.html' : `${API || '.'}/app${ref ? '?ref=' + ref : ''}${a.dataset.app}`;
 
 async function post(path, body) {
   const r = await fetch(API + path, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify(body) });
@@ -83,3 +87,20 @@ if (cf) cf.addEventListener('submit', async e => {
   } catch (err) { out.textContent = standalone ? 'Messaging is not available yet. Please try again soon.' : err.message; }
   btn.disabled = false;
 });
+
+// Pricing: monthly / yearly switch.
+const billing = $('#billing');
+if (billing) billing.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const yearly = b.dataset.i === 'y';
+  billing.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.plan .price[data-m]').forEach(p => {
+    p.firstChild.textContent = yearly ? p.dataset.y : p.dataset.m;
+    const s = p.querySelector('small'); s.textContent = yearly ? s.dataset.y : s.dataset.m;
+  });
+});
+
+// Phones: the sticky "Start free trial" bar appears once the hero's own buttons are off screen.
+const sticky = document.querySelector('.stickycta'), heroCta = document.querySelector('.hero .cta');
+if (sticky && heroCta && 'IntersectionObserver' in window)
+  new IntersectionObserver(([e]) => sticky.classList.toggle('show', !e.isIntersecting && e.boundingClientRect.top < 0)).observe(heroCta);

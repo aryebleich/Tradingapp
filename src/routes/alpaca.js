@@ -8,17 +8,17 @@ import { buildOrder, buildReplace } from '../alpaca/trading.js';
 import { connections, tradingFor, requireTrading, saveCred, oauthEnabled, oauthStartUrl } from '../alpaca/connections.js';
 import { sseHandler, streamEnabled } from '../alpaca/stream.js';
 import { syncAlpacaFills } from '../brokers.js';
+import { isPaid } from '../fees.js';
 
 export const router = express.Router();
 router.use(requireUser);
 const T = req => requireTrading(req.user.id);
-const PAID = ['pro', 'elite'];
 const bad = msg => Object.assign(new Error(msg), { status: 400 });
 const symParam = s => { const v = String(s || '').trim().toUpperCase(); if (!/^[A-Z0-9.\-]{1,21}(\/[A-Z]{3,4})?$/.test(v)) throw bad('Invalid symbol'); return v; };
 
 // Live-money trading is a paid feature; paper, sandbox and simulated trading are free.
 async function liveGate(req, t) {
-  if (t.live && !PAID.includes(req.user.plan) && req.user.role !== 'admin') throw Object.assign(new Error('Live trading needs the Pro plan'), { status: 402 });
+  if (t.live && !isPaid(req.user)) throw Object.assign(new Error('Live-money trading is part of the Pro plan'), { status: 402, upgrade: true, feature: 'Live-money trading' });
 }
 
 // ---------- connection status ----------

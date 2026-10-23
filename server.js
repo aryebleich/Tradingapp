@@ -11,7 +11,7 @@ import crypto from 'node:crypto';
 import { backtest, projectAnnual, walkForward, optimize, warmupFor, compile, PRESETS } from './src/engine.js';
 import { getBars, getCred, accountSummary, placeOrder, listOrders, portfolioHistory, lastPrice, snapshotEquity } from './src/brokers.js';
 import * as QC from './src/quantconnect.js';
-import { PLANS, adjustForCashflow, revenueSummary } from './src/fees.js';
+import { PLANS, TRIAL_DAYS, REFERRAL_CREDIT, isPaid, adjustForCashflow, revenueSummary } from './src/fees.js';
 import { taxSummary, harvestCandidates, form8949Csv } from './src/tax.js';
 import { buildStrategy } from './src/ai.js';
 import { handleCommand, userByPhone, normalize, HELP } from './src/commands.js';
@@ -77,14 +77,23 @@ app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (r
     // Stripe retries deliveries, so every ledger write is keyed by a Stripe id (unique index ledger_ref).
     if (ev.type === 'checkout.session.completed' && o.metadata?.kind === 'subscription') {
       const plan = Object.hasOwn(PLANS, o.metadata.plan) ? o.metadata.plan : 'free';
-      await run('UPDATE users SET plan = ?, stripe_customer = ?, plan_renews = ? WHERE id = ?', plan, o.customer, now() + 31 * 86400e3, +o.client_reference_id);
-      await run('INSERT OR IGNORE INTO ledger (user_id, kind, amount, status, ref, memo, at) VALUES (?,?,?,?,?,?,?)', +o.client_reference_id, 'subscription', (o.amount_total ?? PLANS[plan].monthly * 100) / 100, 'paid', o.invoice || o.id, `${PLANS[plan].name} plan`, now());
-    } else if (ev.type === 'invoice.paid' && o.billing_reason === 'subscription_cycle') {
-      const u = await one('SELECT id, plan FROM users WHERE stripe_customer = ?', o.customer);
+      // A trial checkout charges $0 now; the first real charge arrives later as invoice.paid.
+      const trialing = !(o.amount_total > 0);
+      await run('UPDATE users SET plan = ?, plan_status = ?, plan_interval = ?, stripe_customer = ?, plan_renews = ?, trial_used = 1 WHERE id = ?',
+        plan, trialing ? 'trialing' : 'active', o.metadata.interval === 'year' ? 'year' : 'month', o.customer, now() + (trialing ? TRIAL_DAYS : 31) * 86400e3, +o.client_reference_id);
+      if (!trialing) await run('INSERT OR IGNORE INTO ledger (user_id, kind, amount, status, ref, memo, at) VALUES (?,?,?,?,?,?,?)', +o.client_reference_id, 'subscription', o.amount_total / 100, 'paid', o.invoice || o.id, `${PLANS[plan].name} plan`, now());
+    } else if (ev.type === 'invoice.paid' && o.amount_paid > 0) {
+      const u = await one('SELECT * FROM users WHERE stripe_customer = ?', o.customer);
       if (u) {
-        await run('UPDATE users SET plan_renews = ? WHERE id = ?', (o.lines?.data?.[0]?.period?.end ?? 0) * 1000 || now() + 31 * 86400e3, u.id);
-        await run('INSERT OR IGNORE INTO ledger (user_id, kind, amount, status, ref, memo, at) VALUES (?,?,?,?,?,?,?)', u.id, 'subscription', o.amount_paid / 100, 'paid', o.id, `${PLANS[u.plan]?.name || 'Plan'} renewal`, now());
+        await run("UPDATE users SET plan_status = 'active', plan_renews = ? WHERE id = ?", (o.lines?.data?.[0]?.period?.end ?? 0) * 1000 || now() + 31 * 86400e3, u.id);
+        await run('INSERT OR IGNORE INTO ledger (user_id, kind, amount, status, ref, memo, at) VALUES (?,?,?,?,?,?,?)', u.id, 'subscription', o.amount_paid / 100, 'paid', o.id, `${PLANS[u.plan]?.name || 'Plan'} ${o.billing_reason === 'subscription_cycle' ? 'renewal' : 'payment'}`, now());
+        await rewardReferral(u);
       }
+    } else if (ev.type === 'customer.subscription.updated' || ev.type === 'customer.subscription.created') {
+      const plan = Object.hasOwn(PLANS, o.metadata?.plan) ? o.metadata.plan : null;
+      const ended = ['canceled', 'unpaid', 'incomplete_expired'].includes(o.status);
+      await run('UPDATE users SET plan_status = ?, plan = CASE WHEN ? THEN \'free\' ELSE COALESCE(?, plan) END, plan_renews = ? WHERE stripe_customer = ?',
+        o.status, ended ? 1 : 0, plan, o.current_period_end ? o.current_period_end * 1000 : null, o.customer);
     } else if (ev.type === 'checkout.session.completed' && o.metadata?.kind === 'deposit') {
       const id = +o.metadata.ledger_id;
       if ((await one('SELECT status FROM ledger WHERE id = ?', id))?.status !== 'pending') return res.json({ received: true });
@@ -98,7 +107,7 @@ app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (r
         await run("UPDATE ledger SET status = 'received', ref = ? WHERE id = ?", o.payment_intent, id);
       }
     } else if (ev.type === 'customer.subscription.deleted') {
-      await run("UPDATE users SET plan = 'free', plan_renews = NULL WHERE stripe_customer = ?", o.customer);
+      await run("UPDATE users SET plan = 'free', plan_status = 'canceled', plan_renews = NULL WHERE stripe_customer = ?", o.customer);
     }
   } catch (e) { console.error('stripe webhook', e); return res.status(500).send('error'); }
   res.json({ received: true });
@@ -188,6 +197,35 @@ app.get('/oauth/alpaca/callback', auth.sessionMiddleware, async (req, res) => {
   } catch (e) { res.redirect('/app#/account?error=' + encodeURIComponent(e.message)); }
 });
 
+// Credits whoever invited this user, once, when the invited user's first real payment arrives.
+async function rewardReferral(u) {
+  if (!u.referred_by || u.referral_rewarded) return;
+  const claim = await run('UPDATE users SET referral_rewarded = 1 WHERE id = ? AND referral_rewarded = 0', u.id);
+  if (!claim.changes) return;
+  const ref = await one('SELECT id, stripe_customer FROM users WHERE id = ?', u.referred_by);
+  if (!ref) return;
+  let status = 'earned';
+  if (ref.stripe_customer && N.stripeEnabled()) {
+    try { await N.creditCustomer(ref.stripe_customer, REFERRAL_CREDIT, 'Referral credit'); status = 'applied'; } catch (e) { console.warn('referral credit', e.message); }
+  }
+  await run('INSERT INTO ledger (user_id, kind, amount, status, memo, at) VALUES (?,?,?,?,?,?)', ref.id, 'referral_credit', REFERRAL_CREDIT, status, 'A friend you invited subscribed', now());
+}
+
+// Owner metrics: where people drop off between signing up and paying.
+async function funnel() {
+  const since = d => now() - d * 86400e3;
+  const n = async (sql, ...a) => (await one(sql, ...a)).n;
+  const signups = await n('SELECT COUNT(*) n FROM users'), signups30 = await n('SELECT COUNT(*) n FROM users WHERE created_at > ?', since(30));
+  const connected = await n("SELECT COUNT(DISTINCT user_id) n FROM (SELECT user_id FROM credentials WHERE provider IN ('alpaca', 'alpaca_oauth') UNION SELECT user_id FROM broker_accounts)");
+  const traded = await n('SELECT COUNT(DISTINCT user_id) n FROM fills');
+  const trialing = await n("SELECT COUNT(*) n FROM users WHERE plan != 'free' AND plan_status = 'trialing'");
+  const paying = await n("SELECT COUNT(*) n FROM users WHERE plan != 'free' AND COALESCE(plan_status, 'active') = 'active'");
+  const rows = await all("SELECT plan, plan_interval, COUNT(*) n FROM users WHERE plan != 'free' AND COALESCE(plan_status, 'active') = 'active' GROUP BY plan, plan_interval");
+  const mrr = rows.reduce((a, r) => a + r.n * (r.plan_interval === 'year' ? (PLANS[r.plan]?.yearly || 0) / 12 : PLANS[r.plan]?.monthly || 0), 0);
+  const revenue30 = (await one("SELECT COALESCE(SUM(amount), 0) n FROM ledger WHERE kind IN ('subscription', 'performance_fee') AND status IN ('paid', 'collected') AND at > ?", since(30))).n;
+  return { signups, signups30, connected, traded, trialing, paying, mrr: +mrr.toFixed(2), arr: +(mrr * 12).toFixed(2), revenue30, conversion: signups ? +(paying / signups * 100).toFixed(1) : 0 };
+}
+
 // ---------- JSON API ----------
 const api = express.Router();
 // The landing page copy on GitHub Pages calls the public demo endpoints cross-origin (no cookies).
@@ -208,13 +246,14 @@ api.use(auth.sessionMiddleware);
 api.use('/auth', auth.router);
 api.use('/alpaca', alpacaRouter);
 const U = auth.requireUser;
-const wrap = fn => async (req, res) => Promise.resolve(fn(req, res)).catch(e => res.status(400).json({ error: e.message }));
+const wrap = fn => async (req, res) => Promise.resolve(fn(req, res)).catch(e => res.status(e.status || 400).json({ error: e.message, ...(e.upgrade ? { upgrade: true, feature: e.feature } : {}) }));
 const acct = req => (req.query.account || req.body?.account) === 'alpaca' ? 'alpaca' : 'paper';
-const PAID = ['pro', 'elite'];
-const needPlan = (req, res, next) => (PAID.includes(req.user.plan) || req.user.role === 'admin' ? next() : res.status(402).json({ error: 'This feature needs the Pro or Elite plan' }));
+// 402 with upgrade: true makes the app show the upgrade window instead of a plain error.
+const upgrade = feature => Object.assign(new Error(`${feature} is part of the Pro plan`), { status: 402, upgrade: true, feature });
+const needPlan = feature => (req, res, next) => (isPaid(req.user) ? next() : next(upgrade(feature)));
 
 api.get('/config', async (req, res) => res.json({
-  plans: PLANS, presets: PRESETS, twilio: N.twilioEnabled(), stripe: N.stripeEnabled(), ai: !!process.env.ANTHROPIC_API_KEY, email: N.emailEnabled(),
+  plans: PLANS, trialDays: TRIAL_DAYS, presets: PRESETS, twilio: N.twilioEnabled(), stripe: N.stripeEnabled(), ai: !!process.env.ANTHROPIC_API_KEY, email: N.emailEnabled(),
   marketData: dataEnabled(), hotline: process.env.TWILIO_FROM || null, broker: brokerEnabled(), oauth: oauthEnabled(),
 }));
 
@@ -245,7 +284,7 @@ api.post('/backtest', U, wrap(async (req, res) => {
   const cfg = { entry: b.entry, exit: b.exit, sl: b.sl, tp: b.tp, ts: b.ts, size: b.size, cost: b.cost, capital: b.capital || 10000 };
   const warm = warmupFor(cfg);
   if (/\{/.test(cfg.entry + cfg.exit)) {
-    if (!PAID.includes(req.user.plan) && req.user.role !== 'admin') throw new Error('The optimizer needs the Elite or Pro plan');
+    if (!isPaid(req.user)) throw upgrade('The strategy optimizer');
     return res.json({ optimize: optimize(bars.closes, cfg, warm, bars.dates), source: bars.source });
   }
   const r = backtest(bars.closes, cfg, warm, bars.closes.length, bars.dates);
@@ -276,7 +315,7 @@ api.post('/strategies', U, wrap(async (req, res) => {
 api.delete('/strategies/:id', U, async (req, res) => { await run('DELETE FROM strategies WHERE id = ? AND user_id = ?', +req.params.id, req.user.id); res.json({ ok: true }); });
 api.post('/strategies/:id/deploy', U, wrap(async (req, res) => {
   const target = req.body.account === 'alpaca' ? 'alpaca' : req.body.account === 'paper' ? 'paper' : null;
-  if (target === 'alpaca' && !PAID.includes(req.user.plan) && req.user.role !== 'admin') throw new Error('Live bots need the Pro plan');
+  if (target === 'alpaca' && !isPaid(req.user)) throw upgrade('Running bots on your brokerage account');
   if (target === 'alpaca' && !(await tradingFor(req.user.id))) throw new Error('Connect Alpaca first');
   await run('UPDATE strategies SET deployed = ?, last_run = NULL WHERE id = ? AND user_id = ?', target, +req.params.id, req.user.id);
   await audit(req.user.id, target ? 'bot_deployed' : 'bot_stopped', { id: +req.params.id, target }, req.ip);
@@ -290,7 +329,7 @@ api.get('/account', U, wrap(async (req, res) => {
 api.get('/orders', U, wrap(async (req, res) => res.json(await listOrders(req.user.id, acct(req)))));
 api.post('/orders', U, wrap(async (req, res) => {
   const a = acct(req);
-  if (a === 'alpaca' && !PAID.includes(req.user.plan) && req.user.role !== 'admin') throw new Error('Live trading needs the Pro plan');
+  if (a === 'alpaca' && !isPaid(req.user)) throw upgrade('Trading your brokerage account from the simulator page');
   const r = await placeOrder(req.user.id, a, req.body, 'web');
   await audit(req.user.id, 'order', { ...r }, req.ip);
   res.json(r);
@@ -306,7 +345,7 @@ api.post('/paper/reset', U, async (req, res) => {
 });
 
 api.get('/schedule', U, async (req, res) => res.json(await all('SELECT * FROM scheduled_orders WHERE user_id = ? ORDER BY active DESC, next_run', req.user.id)));
-api.post('/schedule', U, needPlan, wrap(async (req, res) => {
+api.post('/schedule', U, needPlan('Scheduled trades'), wrap(async (req, res) => {
   const b = req.body, at = Date.parse(b.at);
   if (!(at > now() - 60e3)) throw new Error('Pick a time in the future');
   if (!['once', 'daily', 'weekly', 'monthly'].includes(b.repeat)) throw new Error('Bad repeat');
@@ -354,12 +393,12 @@ api.delete('/integrations/:p', U, async (req, res) => { await run('DELETE FROM c
 const qcCred = async req => { const c = await getCred(req.user.id, 'quantconnect'); if (!c) throw new Error('Connect QuantConnect in Settings first'); return c; };
 api.get('/qc/templates', U, async (req, res) => res.json(Object.keys(QC.TEMPLATES)));
 api.get('/qc/projects', U, wrap(async (req, res) => res.json(await QC.listProjects(await qcCred(req)))));
-api.post('/qc/projects', U, needPlan, wrap(async (req, res) => {
+api.post('/qc/projects', U, needPlan('QuantConnect cloud projects'), wrap(async (req, res) => {
   const code = (Object.hasOwn(QC.TEMPLATES, req.body.template) && QC.TEMPLATES[req.body.template]) || req.body.code;
   if (!code) throw new Error('Pick a template or paste code');
   res.json({ id: await QC.createProject(await qcCred(req), String(req.body.name || req.body.template).slice(0, 60), code) });
 }));
-api.post('/qc/projects/:id/backtest', U, needPlan, wrap(async (req, res) => res.json({ backtestId: await QC.startBacktest(await qcCred(req), +req.params.id, req.body.name) })));
+api.post('/qc/projects/:id/backtest', U, needPlan('QuantConnect cloud backtests'), wrap(async (req, res) => res.json({ backtestId: await QC.startBacktest(await qcCred(req), +req.params.id, req.body.name) })));
 api.get('/qc/projects/:id/backtests', U, wrap(async (req, res) => res.json(await QC.listBacktests(await qcCred(req), +req.params.id))));
 api.get('/qc/projects/:id/backtests/:bt', U, wrap(async (req, res) => res.json(await QC.readBacktest(await qcCred(req), +req.params.id, req.params.bt))));
 api.get('/qc/live', U, wrap(async (req, res) => res.json(await QC.listLive(await qcCred(req)))));
@@ -394,10 +433,29 @@ api.get('/command/help', U, async (req, res) => res.json({ help: HELP }));
 
 // --- billing, funding, fees ---
 api.post('/billing/checkout', U, wrap(async (req, res) => {
-  if (!(req.body.plan in PLANS) || req.body.plan === 'free') throw new Error('Pick a paid plan');
+  if (!Object.hasOwn(PLANS, req.body.plan) || req.body.plan === 'free') throw new Error('Pick a paid plan');
   if (!N.stripeEnabled()) throw new Error('Payments are not configured (STRIPE_SECRET_KEY)');
-  const s = await N.checkoutSubscription({ plan: req.body.plan, email: req.user.email, userId: req.user.id, baseUrl: PUBLIC_URL });
+  const interval = req.body.interval === 'year' ? 'year' : 'month';
+  const s = await N.checkoutSubscription({
+    plan: req.body.plan, interval, trialDays: req.user.trial_used ? 0 : TRIAL_DAYS,
+    email: req.user.email, customer: req.user.stripe_customer || undefined, userId: req.user.id, baseUrl: PUBLIC_URL,
+  });
+  await audit(req.user.id, 'checkout_started', { plan: req.body.plan, interval }, req.ip);
   res.json({ url: s.url });
+}));
+// Self-service: change card, switch or cancel plan, download invoices (Stripe Billing Portal).
+api.post('/billing/portal', U, wrap(async (req, res) => {
+  if (!req.user.stripe_customer) throw new Error('No billing account yet - choose a plan first');
+  res.json({ url: (await N.billingPortal({ customer: req.user.stripe_customer, baseUrl: PUBLIC_URL })).url });
+}));
+
+// ---------- referrals ----------
+api.get('/referrals', U, wrap(async (req, res) => {
+  let code = req.user.ref_code;
+  if (!code) { code = crypto.randomBytes(6).toString('hex').slice(0, 8); await run('UPDATE users SET ref_code = ? WHERE id = ?', code, req.user.id); }
+  const invited = await one('SELECT COUNT(*) n, SUM(CASE WHEN referral_rewarded = 1 THEN 1 ELSE 0 END) paid FROM users WHERE referred_by = ?', req.user.id);
+  const credit = await one("SELECT COALESCE(SUM(amount), 0) total FROM ledger WHERE user_id = ? AND kind = 'referral_credit'", req.user.id);
+  res.json({ code, link: `${PUBLIC_URL}/?ref=${code}`, invited: invited.n || 0, paying: invited.paid || 0, credit: credit.total, reward: REFERRAL_CREDIT });
 }));
 api.post('/funding/deposit', U, wrap(async (req, res) => {
   const amount = +req.body.amount, a = acct(req);
@@ -439,6 +497,7 @@ api.post('/tax/settings', U, wrap(async (req, res) => {
 // --- admin (platform owner) ---
 api.get('/admin/summary', U, auth.requireAdmin, async (req, res) => res.json({
   ...(await revenueSummary()),
+  funnel: await funnel(),
   pendingTransfers: await all("SELECT l.*, u.email FROM ledger l JOIN users u ON u.id = l.user_id WHERE l.kind = 'deposit' AND l.status = 'received' ORDER BY l.id DESC"),
   feesDue: await all("SELECT l.*, u.email FROM ledger l JOIN users u ON u.id = l.user_id WHERE l.kind = 'performance_fee' AND l.status = 'due' ORDER BY l.id DESC"),
   users: await all('SELECT id, email, plan, role, totp_enabled, phone_verified, created_at FROM users ORDER BY id DESC LIMIT 200'),
@@ -457,7 +516,7 @@ api.use((req, res) => res.status(404).json({ error: 'Not found' }));
 api.use((err, req, res, _next) => {
   if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'Invalid JSON' });
   if (!err.status || err.status >= 500) console.error(err);
-  res.status(err.status || 400).json({ error: err.expose === false ? 'Something went wrong' : err.message });
+  res.status(err.status || 400).json({ error: err.expose === false ? 'Something went wrong' : err.message, ...(err.upgrade ? { upgrade: true, feature: err.feature } : {}) });
 });
 app.use('/api', api);
 const pub = path.join(here, 'public');

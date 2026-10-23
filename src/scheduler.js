@@ -3,7 +3,7 @@ import { one, all, run, now } from './db.js';
 import { placeOrder, getBars, lastPrice, snapshotEquity, accountSummary, getCred, syncAlpacaFills } from './brokers.js';
 import { latestSignal } from './engine.js';
 import { sendSms, sendEmail } from './notify.js';
-import { assessFee } from './fees.js';
+import { assessFee, isPaid } from './fees.js';
 import { tradingFor } from './alpaca/connections.js';
 import { getAccount, brokerEnabled, kycStep } from './alpaca/broker.js';
 
@@ -58,13 +58,12 @@ export async function runScheduledOrders(t = now()) {
   return ran;
 }
 
-const PAID = ['pro', 'elite'];
 
 // Bots evaluate their rules once per trading day, in the last half hour before the 4 pm close.
 export async function runBots(t = now()) {
   const n = nyTime(t);
   if (['Sat', 'Sun'].includes(n.weekday) || n.minutes < 930 || n.minutes >= 960) return 0;
-  const bots = await all('SELECT s.*, u.plan, u.role FROM strategies s JOIN users u ON u.id = s.user_id WHERE s.deployed IS NOT NULL AND (s.last_run IS NULL OR s.last_run != ?)', n.day);
+  const bots = await all('SELECT s.*, u.plan, u.role, u.plan_status FROM strategies s JOIN users u ON u.id = s.user_id WHERE s.deployed IS NOT NULL AND (s.last_run IS NULL OR s.last_run != ?)', n.day);
   let ran = 0;
   for (const b of bots) {
     const claim = await run('UPDATE strategies SET last_run = ? WHERE id = ? AND (last_run IS NULL OR last_run != ?)', n.day, b.id, n.day);
@@ -72,7 +71,7 @@ export async function runBots(t = now()) {
     ran++;
     let action = 'hold';
     try {
-      if (b.deployed === 'alpaca' && !PAID.includes(b.plan) && b.role !== 'admin') {
+      if (b.deployed === 'alpaca' && !isPaid(b)) {
         await run('UPDATE strategies SET deployed = NULL WHERE id = ?', b.id);
         throw new Error('stopped: live bots need the Pro plan');
       }

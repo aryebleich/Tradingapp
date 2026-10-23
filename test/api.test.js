@@ -161,3 +161,49 @@ test('fixes: no double execution, deposits, phone code limits, rule validation',
   assert.match((await call('/backtest', { symbol: '../etc', entry: 'Close > 0', exit: '' })).body.error, /Unknown ticker/);
   assert.match((await call('/orders', { account: 'paper', symbol: 'SPY', side: 'buy', notional: 0.000001 })).body.error, /too small/);
 });
+
+test('monetization: trial, paid invoice, referral credit once, cancellation, upgrade prompt', async () => {
+  const crypto = (await import('node:crypto')).default;
+  const { one } = await import('../src/db.js');
+  process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test';
+  const hook = async ev => {
+    const raw = JSON.stringify(ev), t = Math.floor(Date.now() / 1000);
+    const sig = crypto.createHmac('sha256', 'whsec_test').update(`${t}.${raw}`).digest('hex');
+    return fetch(base + '/webhooks/stripe', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Stripe-Signature': `t=${t},v1=${sig}` }, body: raw });
+  };
+  // Referrer A invites B.
+  cookie = ''; await call('/auth/register', { email: 'refa@t.co', password: 'Str0ngPassword' });
+  const a = (await call('/referrals')).body;
+  assert.match(a.link, /\?ref=[a-z0-9]{8}$/);
+  cookie = ''; await call('/auth/register', { email: 'refb@t.co', password: 'Str0ngPassword', ref: a.code });
+  const b = await one('SELECT * FROM users WHERE email = ?', 'refb@t.co');
+  assert.equal(b.referred_by, (await one('SELECT id FROM users WHERE email = ?', 'refa@t.co')).id);
+
+  // Free user hitting a Pro feature gets the upgrade prompt.
+  const blocked = await call('/schedule', { account: 'paper', symbol: 'SPY', side: 'buy', notional: 5, repeat: 'once', at: new Date(Date.now() + 864e5).toISOString() });
+  assert.equal(blocked.status, 402); assert.equal(blocked.body.upgrade, true); assert.equal(blocked.body.feature, 'Scheduled trades');
+
+  // Bad signature is rejected.
+  assert.equal((await fetch(base + '/webhooks/stripe', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Stripe-Signature': 't=1,v1=bad' }, body: '{}' })).status, 400);
+
+  // Trial checkout ($0 today): Pro unlocked, trial used, no revenue recorded yet.
+  await hook({ type: 'checkout.session.completed', data: { object: { id: 'cs_1', customer: 'cus_b', client_reference_id: String(b.id), amount_total: 0, metadata: { kind: 'subscription', plan: 'pro', interval: 'year' } } } });
+  const me = (await call('/auth/me')).body.user;
+  assert.deepEqual([me.plan, me.planStatus, me.planInterval, me.trialUsed], ['pro', 'trialing', 'year', true]);
+  assert.equal((await call('/schedule', { account: 'paper', symbol: 'SPY', side: 'buy', notional: 5, repeat: 'once', at: new Date(Date.now() + 864e5).toISOString() })).status, 200);
+  assert.equal((await one("SELECT COUNT(*) n FROM ledger WHERE user_id = ? AND kind = 'subscription'", b.id)).n, 0);
+
+  // First real payment: active, revenue recorded, referrer credited exactly once (retries ignored).
+  const inv = { type: 'invoice.paid', data: { object: { id: 'in_1', customer: 'cus_b', amount_paid: 29000, billing_reason: 'subscription_cycle', lines: { data: [{ period: { end: Math.floor(Date.now() / 1000) + 365 * 86400 } }] } } } };
+  await hook(inv); await hook(inv);
+  assert.equal((await one('SELECT plan_status FROM users WHERE id = ?', b.id)).plan_status, 'active');
+  assert.equal((await one("SELECT COUNT(*) n, SUM(amount) s FROM ledger WHERE user_id = ? AND kind = 'subscription'", b.id)).s, 290);
+  cookie = ''; await call('/auth/login', { email: 'refa@t.co', password: 'Str0ngPassword' });
+  const a2 = (await call('/referrals')).body;
+  assert.deepEqual([a2.invited, a2.paying, a2.credit], [1, 1, 10]);
+
+  // Cancellation returns the user to the free plan.
+  await hook({ type: 'customer.subscription.updated', data: { object: { customer: 'cus_b', status: 'canceled', metadata: { plan: 'pro' } } } });
+  const after = await one('SELECT plan, plan_status FROM users WHERE id = ?', b.id);
+  assert.deepEqual([after.plan, after.plan_status], ['free', 'canceled']);
+});
