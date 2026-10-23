@@ -286,7 +286,10 @@ async function renderBrokerAccount(box) {
     let es = null;
     try {
       es = new EventSource('/api/alpaca/broker/events/stream');
-      es.addEventListener('status', () => { es.close(); H.updateBadge(true); H.render(); });
+      const refresh = () => { es.close(); H.updateBadge(true); H.render(); };
+      es.addEventListener('status', refresh);
+      // A change between loading this page and the stream connecting would otherwise be missed.
+      es.addEventListener('hello', e => { try { if (JSON.parse(e.data).status !== a.status) refresh(); } catch {} });
     } catch {}
     const t = setInterval(() => { if (!document.hidden) H.render(); }, a.live ? 60000 : 15000);
     H.onLeave(() => { clearInterval(t); es?.close(); });
