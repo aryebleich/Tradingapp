@@ -80,8 +80,23 @@ if (cmd === 'export') {
   for (const [where, en] of todo) if (got.has(en) && got.get(en) !== en) res[where][en] = got.get(en); // unchanged English keeps the current Yiddish
   await save(res.app, res.home);
   console.log(`Imported ${got.size} strings from ${files} of ${index.length} parts (${missing} lines kept as before). Rebuild the homepage with: python3 scripts/pages.py`);
+} else if (cmd === 'import-json') {
+  // A {"English": "Yiddish"} file (e.g. from a Quick Action run). Strings already set by hand in
+  // the parts (*.yi.txt) win, and names, tickers and tags must come back exactly as written.
+  const file = process.argv[3], got = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const map = got.ok || got, prev = (await import(pathToFileURL(path.join(root, 'public/i18n/yi-labs.js')) + '?' + Date.now())).default;
+  const hand = new Set(); const pdir = path.join(dir, 'parts');
+  if (fs.existsSync(path.join(pdir, 'index.json'))) for (const p of JSON.parse(fs.readFileSync(path.join(pdir, 'index.json'), 'utf8')).index) {
+    const f = path.join(pdir, p.name + '.yi.txt');
+    if (!fs.existsSync(f)) continue;
+    parseBatch(fs.readFileSync(f, 'utf8'), p.texts.map((text, i) => ({ text, saved: p.saved[i] }))).forEach((yi, i) => { if (yi != null && yi !== p.strings[i]) hand.add(p.strings[i]); });
+  }
+  const res = { app: {}, home: {} };
+  for (const [where, en] of entries) if (map[en] && map[en] !== en && !hand.has(en)) res[where][en] = map[en];
+  await save(res.app, res.home);
+  console.log(`Imported ${Object.keys(res.app).length} app and ${Object.keys(res.home).length} homepage strings (${hand.size} set by hand kept). Rebuild the homepage with: python3 scripts/pages.py`);
 } else {
-  console.log('Usage: node scripts/yiddish-labs.mjs export [--missing] | import | translate [--limit N] [--dry] | parts | import-parts');
+  console.log('Usage: node scripts/yiddish-labs.mjs export [--missing] | import | translate [--limit N] [--dry] | parts | import-parts | import-json <file>');
 }
 
 // Merges into earlier results so a partial round keeps the rest.

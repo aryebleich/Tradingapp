@@ -238,7 +238,7 @@ console.log('Settings → Language');
     await p.click('form.auth button:not([type=button])'); await p.waitForSelector('#nav a.on');
     if (await p.$('header select, #langSel')) throw new Error('language picker still in the header');
     await p.goto(B + '/app#/settings'); await p.click('[data-setlang=yi]');
-    await p.waitForSelector('html[dir=rtl]'); await p.waitForSelector('#language button.on[data-setlang=yi]'); await p.waitForSelector('text=סעטינגס');
+    await p.waitForSelector('html[dir=rtl]'); await p.waitForSelector('#language button.on[data-setlang=yi]'); await p.waitForFunction(() => /[\u05D0-\u05EA]/.test(document.querySelector('#view h1')?.textContent || ''));
     await p.screenshot({ path: path.join(OUT, 'settings-language-yi.png') });
     await p.click('[data-setlang=en]'); await p.waitForSelector('html[dir=ltr]'); await p.waitForSelector('h1:has-text("Settings")');
   });
