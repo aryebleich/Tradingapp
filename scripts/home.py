@@ -225,6 +225,7 @@ def index(lang='en'):
     <p class="lead">{T('Stocks, ETFs, options and crypto through your own brokerage account. Ready-made strategies, TradingView alerts, pairs trading and an S&amp;P 500 plan: test them, paper trade them and automate them on one platform.')}</p>
     <div class="cta">{gbtn()}<a class="btn outline lg" data-app="#/register" href="app">{T('Start free with email')}</a></div>
     <ul class="ticks"><li>{T('Set up in 3 minutes')}</li><li>{T('$100,000 paper account')}</li><li>{T('No card needed')}</li></ul>
+    <p class="acctlink"><a data-app="#/open-account" href="app">{T('Open a brokerage account')} &rarr;</a> <span>{T('Commission-free, held at Alpaca Securities LLC (FINRA/SIPC)')}</span></p>
     <a class="lang-m" href="{'index.html' if lang == 'yi' else 'yi.html'}" data-lang="{'en' if lang == 'yi' else 'yi'}">{'English' if lang == 'yi' else 'ייִדיש'} &rarr;</a>
     <p class="phoneline hero-phone" data-phone hidden>{ic('msg', 16)} {T('Text or call us:')} <a data-phone-link dir="ltr"></a></p>
   </div>

@@ -5,7 +5,8 @@ import { latestSignal } from './engine.js';
 import { sendSms, sendEmail } from './notify.js';
 import { assessFee, isPaid } from './fees.js';
 import { tradingFor } from './alpaca/connections.js';
-import { getAccount, brokerEnabled, kycStep } from './alpaca/broker.js';
+import { getAccount, brokerEnabled, FINAL_STATUSES } from './alpaca/broker.js';
+import { applyStatus } from './alpaca/kyc.js';
 import { runAuto, checkStops, recordDaily } from './rotation/runner.js';
 import { runPairBots } from './pairs.js';
 
@@ -142,17 +143,15 @@ export async function runDueJobs(t = now()) {
   return out;
 }
 
-// KYC: follow brokerage applications until they are ACTIVE and tell the user when status changes.
+// KYC: follow brokerage applications until they are final. The Alpaca event feed normally reports
+// changes first; this hourly read is the safety net and records through the same path.
 export async function refreshKyc() {
   if (!brokerEnabled()) return 0;
-  const pending = await all("SELECT * FROM broker_accounts WHERE status NOT IN ('ACTIVE', 'REJECTED', 'ACCOUNT_CLOSED', 'DISABLED')");
+  const pending = await all(`SELECT * FROM broker_accounts WHERE status NOT IN (${FINAL_STATUSES.map(() => '?').join(',')})`, ...FINAL_STATUSES);
   for (const b of pending) {
     try {
       const a = await getAccount(b.account_id);
-      if (a.status === b.status) continue;
-      await run('UPDATE broker_accounts SET status = ?, crypto_status = ?, account_number = ?, updated_at = ? WHERE user_id = ?', a.status, a.crypto_status ?? null, a.account_number, now(), b.user_id);
-      const msg = a.status === 'ACTIVE' ? 'Your brokerage account is approved and ready to trade.' : kycStep(a.status) === 0 ? `Your brokerage application needs attention (status ${a.status}). Open the Account page.` : `Brokerage application update: ${a.status}.`;
-      await notify(b.user_id, msg);
+      await applyStatus(b.account_id, { to: a.status, source: 'poll', accountNumber: a.account_number, cryptoStatus: a.crypto_status });
     } catch (e) { console.warn('kyc refresh', b.user_id, e.message); }
   }
   return pending.length;

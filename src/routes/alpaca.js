@@ -9,6 +9,7 @@ import { connections, tradingFor, requireTrading, saveCred, oauthEnabled, oauthS
 import { sseHandler, streamEnabled } from '../alpaca/stream.js';
 import { syncAlpacaFills } from '../brokers.js';
 import { isPaid } from '../fees.js';
+import { applyStatus, adoptAccount, history, kycBus, feedStatus } from '../alpaca/kyc.js';
 
 export const router = express.Router();
 router.use(requireUser);
@@ -57,11 +58,12 @@ export async function refreshBrokerAccount(userId) {
   const b = await one('SELECT * FROM broker_accounts WHERE user_id = ?', userId);
   if (!b) return null;
   const a = await B.getAccount(b.account_id);
-  if (a.status !== b.status || a.crypto_status !== b.crypto_status)
-    await run('UPDATE broker_accounts SET status = ?, crypto_status = ?, account_number = ?, updated_at = ? WHERE user_id = ?', a.status, a.crypto_status ?? null, a.account_number, now(), userId);
+  await applyStatus(b.account_id, { to: a.status, source: 'poll', accountNumber: a.account_number, cryptoStatus: a.crypto_status });
   return { previous: b.status, account: a };
 }
 
+// Opens the account at Alpaca (POST /v1/accounts) and links the returned account id to the user.
+// The request is built and sent here on the server; Broker API keys never reach the browser.
 router.post('/broker/accounts', async (req, res) => {
   if (!rateLimit('acct-open:' + req.user.id, 5, 3600e3)) throw Object.assign(new Error('Too many attempts, try again later'), { status: 429 });
   if (await one('SELECT 1 FROM broker_accounts WHERE user_id = ?', req.user.id)) throw bad('You already have a brokerage account');
@@ -69,9 +71,11 @@ router.post('/broker/accounts', async (req, res) => {
   const a = await B.createAccount(body);
   await run('INSERT INTO broker_accounts (user_id, account_id, account_number, status, crypto_status, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
     req.user.id, a.id, a.account_number, a.status, a.crypto_status ?? null, now(), now());
+  await applyStatus(a.id, { to: a.status, source: 'created' });
+  await adoptAccount(a.id);
   await run("UPDATE users SET alpaca_conn = 'broker' WHERE id = ?", req.user.id);
-  await audit(req.user.id, 'broker_account_created', { account: a.account_number, status: a.status }, req.ip);
-  res.json({ id: a.id, accountNumber: a.account_number, status: a.status, step: B.kycStep(a.status) });
+  await audit(req.user.id, 'broker_account_created', { account: a.account_number, status: a.status, documents: body.documents?.length || 0 }, req.ip);
+  res.json({ id: a.id, accountNumber: a.account_number, status: a.status, step: B.kycStep(a.status), info: B.statusInfo(a.status) });
 });
 router.get('/broker/account', async (req, res) => {
   const r = await refreshBrokerAccount(req.user.id);
@@ -79,11 +83,40 @@ router.get('/broker/account', async (req, res) => {
   const a = r.account;
   // Only what the UI needs; the SSN is never sent back to the browser.
   res.json({
-    id: a.id, accountNumber: a.account_number, status: a.status, cryptoStatus: a.crypto_status, step: B.kycStep(a.status), createdAt: a.created_at,
+    id: a.id, accountNumber: a.account_number, status: a.status, cryptoStatus: a.crypto_status, step: B.kycStep(a.status), info: B.statusInfo(a.status), createdAt: a.created_at,
     kyc: a.kyc_results ? { reject: a.kyc_results.reject, accept: a.kyc_results.accept, indeterminate: a.kyc_results.indeterminate, summary: a.kyc_results.summary } : null,
     contact: a.contact, name: a.identity ? `${a.identity.given_name} ${a.identity.family_name}` : null,
     enabledAssets: a.enabled_assets, agreements: (a.agreements || []).map(g => g.agreement),
+    history: await history(req.user.id), live: feedStatus().connected,
   });
+});
+// Status history for the dashboard timeline.
+router.get('/broker/events', async (req, res) => res.json({ events: await history(req.user.id), feed: feedStatus() }));
+// Live status for this user's open tabs: changes from the Alpaca feed are relayed here as they arrive.
+const kycClients = new Map();
+router.get('/broker/events/stream', async (req, res) => {
+  const uid = req.user.id;
+  if ((kycClients.get(uid) || 0) >= 5) return res.status(429).json({ error: 'Too many status streams open; close some tabs.' });
+  kycClients.set(uid, (kycClients.get(uid) || 0) + 1);
+  res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
+  const b = await one('SELECT status FROM broker_accounts WHERE user_id = ?', uid);
+  res.write(`event: hello\ndata: ${JSON.stringify({ status: b?.status || null, live: feedStatus().connected })}\n\n`);
+  const on = e => { if (e.userId === uid) res.write(`event: status\ndata: ${JSON.stringify({ status: e.status, previous: e.previous, title: e.title, detail: e.detail, tone: e.tone, action: e.action, reason: e.reason, at: e.at })}\n\n`); };
+  kycBus.on('status', on);
+  const ping = setInterval(() => res.write(': ping\n\n'), 25000);
+  res.on('close', () => { clearInterval(ping); kycBus.off('status', on); kycClients.set(uid, kycClients.get(uid) - 1); });
+});
+// Extra identity documents, e.g. when Alpaca marks the application ACTION_REQUIRED.
+router.post('/broker/documents', async (req, res) => {
+  if (!rateLimit('acct-docs:' + req.user.id, 10, 3600e3)) throw Object.assign(new Error('Too many uploads, try again later'), { status: 429 });
+  const b = await one('SELECT account_id FROM broker_accounts WHERE user_id = ?', req.user.id);
+  if (!b) throw bad('Open a brokerage account first');
+  const docs = B.buildDocuments(req.body?.documents);
+  if (!docs.length) throw bad('Choose a file to upload');
+  await B.uploadDocuments(b.account_id, docs);
+  await audit(req.user.id, 'broker_documents_uploaded', { count: docs.length, kinds: docs.map(d => d.document_sub_type) }, req.ip);
+  const r = await refreshBrokerAccount(req.user.id);
+  res.json({ ok: true, status: r.account.status, info: B.statusInfo(r.account.status) });
 });
 router.patch('/broker/account', async (req, res) => {
   const b = await one('SELECT account_id FROM broker_accounts WHERE user_id = ?', req.user.id);

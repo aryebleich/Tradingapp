@@ -146,6 +146,17 @@ CREATE TABLE IF NOT EXISTS broker_accounts (
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS broker_events (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  account_id TEXT NOT NULL,
+  event_id TEXT UNIQUE,
+  status_from TEXT,
+  status_to TEXT NOT NULL,
+  reason TEXT,
+  source TEXT NOT NULL,
+  at INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS job_runs (
   k TEXT PRIMARY KEY,
   at INTEGER NOT NULL
@@ -264,6 +275,7 @@ const MIGRATIONS = [
   'ALTER TABLE users ADD COLUMN password_set INTEGER NOT NULL DEFAULT 1',
   'CREATE UNIQUE INDEX IF NOT EXISTS users_google_sub ON users (google_sub) WHERE google_sub IS NOT NULL',
   'CREATE INDEX IF NOT EXISTS signals_user ON signals (user_id, id)',
+  'CREATE INDEX IF NOT EXISTS broker_events_user ON broker_events (user_id, id)',
   'CREATE UNIQUE INDEX IF NOT EXISTS ledger_ref ON ledger (kind, ref) WHERE ref IS NOT NULL',
 ];
 

@@ -21,6 +21,8 @@ services:
       - { key: BROKER_API_KEY, sync: false }
       - { key: BROKER_API_SECRET, sync: false }
       - { key: BROKER_BASE_URL, value: "https://broker-api.sandbox.alpaca.markets" }
+      - { key: BROKER_CLIENT_ID, sync: false }
+      - { key: BROKER_CLIENT_SECRET, sync: false }
       - { key: ALPACA_KEY_ID, sync: false }
       - { key: ALPACA_SECRET, sync: false }
       - { key: ALPACA_TRADING_URL, value: "https://paper-api.alpaca.markets" }

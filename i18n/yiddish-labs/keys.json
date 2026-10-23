@@ -1,0 +1,4006 @@
+[
+ [
+  "app",
+  "Trading"
+ ],
+ [
+  "app",
+  "Markets"
+ ],
+ [
+  "app",
+  "Strategies"
+ ],
+ [
+  "app",
+  "Account"
+ ],
+ [
+  "app",
+  "Owner"
+ ],
+ [
+  "app",
+  "Portfolio"
+ ],
+ [
+  "app",
+  "Trade"
+ ],
+ [
+  "app",
+  "Orders"
+ ],
+ [
+  "app",
+  "Positions"
+ ],
+ [
+  "app",
+  "Watchlists"
+ ],
+ [
+  "app",
+  "S&P 500 plan"
+ ],
+ [
+  "app",
+  "Markets & news"
+ ],
+ [
+  "app",
+  "Options chain"
+ ],
+ [
+  "app",
+  "Calendar & events"
+ ],
+ [
+  "app",
+  "Strategy library"
+ ],
+ [
+  "app",
+  "Alerts to trades"
+ ],
+ [
+  "app",
+  "Pairs trading"
+ ],
+ [
+  "app",
+  "Backtest"
+ ],
+ [
+  "app",
+  "Bots"
+ ],
+ [
+  "app",
+  "Scheduled trades"
+ ],
+ [
+  "app",
+  "QuantConnect"
+ ],
+ [
+  "app",
+  "Brokerages"
+ ],
+ [
+  "app",
+  "Alpaca account"
+ ],
+ [
+  "app",
+  "Plans & billing"
+ ],
+ [
+  "app",
+  "Invite & earn"
+ ],
+ [
+  "app",
+  "Taxes"
+ ],
+ [
+  "app",
+  "Text & hotline"
+ ],
+ [
+  "app",
+  "Settings"
+ ],
+ [
+  "app",
+  "Admin"
+ ],
+ [
+  "app",
+  "Sign out"
+ ],
+ [
+  "app",
+  "Sign in"
+ ],
+ [
+  "app",
+  "Menu"
+ ],
+ [
+  "app",
+  "Switch theme"
+ ],
+ [
+  "app",
+  "Language"
+ ],
+ [
+  "app",
+  "Try Pro free for 14 days"
+ ],
+ [
+  "app",
+  "Upgrade to Pro"
+ ],
+ [
+  "app",
+  "Paper"
+ ],
+ [
+  "app",
+  "Simulated"
+ ],
+ [
+  "app",
+  "LIVE MONEY"
+ ],
+ [
+  "app",
+  "Alpaca paper"
+ ],
+ [
+  "app",
+  "No brokerage connected"
+ ],
+ [
+  "app",
+  "Create account"
+ ],
+ [
+  "app",
+  "Create an account"
+ ],
+ [
+  "app",
+  "Email"
+ ],
+ [
+  "app",
+  "Password"
+ ],
+ [
+  "app",
+  "Password (10+ chars, upper, lower, digit)"
+ ],
+ [
+  "app",
+  "Forgot password?"
+ ],
+ [
+  "app",
+  "New here?"
+ ],
+ [
+  "app",
+  "Sign in instead"
+ ],
+ [
+  "app",
+  "Continue with Google"
+ ],
+ [
+  "app",
+  "Sign up with Google"
+ ],
+ [
+  "app",
+  "or"
+ ],
+ [
+  "app",
+  "I agree to the"
+ ],
+ [
+  "app",
+  "and"
+ ],
+ [
+  "app",
+  "and have read the"
+ ],
+ [
+  "app",
+  "Terms"
+ ],
+ [
+  "app",
+  "Privacy Policy"
+ ],
+ [
+  "app",
+  "Privacy"
+ ],
+ [
+  "app",
+  "Risk Disclosure"
+ ],
+ [
+  "app",
+  "Support"
+ ],
+ [
+  "app",
+  "By continuing with Google you agree to the"
+ ],
+ [
+  "app",
+  "You start with a $100,000 paper account."
+ ],
+ [
+  "app",
+  "Reset your password"
+ ],
+ [
+  "app",
+  "Enter your email and we will send you a reset link."
+ ],
+ [
+  "app",
+  "Send reset link"
+ ],
+ [
+  "app",
+  "Back to sign in"
+ ],
+ [
+  "app",
+  "Choose a new password"
+ ],
+ [
+  "app",
+  "New password (10+ chars, upper, lower, digit)"
+ ],
+ [
+  "app",
+  "Save password"
+ ],
+ [
+  "app",
+  "Two-factor code"
+ ],
+ [
+  "app",
+  "Open your authenticator app."
+ ],
+ [
+  "app",
+  "6-digit code"
+ ],
+ [
+  "app",
+  "Verify"
+ ],
+ [
+  "app",
+  "Email confirmed"
+ ],
+ [
+  "app",
+  "Continue"
+ ],
+ [
+  "app",
+  "Backtest, paper trade and automate stock strategies. Connect Alpaca and QuantConnect, trade by text or phone."
+ ],
+ [
+  "app",
+  "Save"
+ ],
+ [
+  "app",
+  "Save changes"
+ ],
+ [
+  "app",
+  "Cancel"
+ ],
+ [
+  "app",
+  "Delete"
+ ],
+ [
+  "app",
+  "Edit"
+ ],
+ [
+  "app",
+  "Remove"
+ ],
+ [
+  "app",
+  "Rename"
+ ],
+ [
+  "app",
+  "Add"
+ ],
+ [
+  "app",
+  "Send"
+ ],
+ [
+  "app",
+  "Go"
+ ],
+ [
+  "app",
+  "Open"
+ ],
+ [
+  "app",
+  "Close"
+ ],
+ [
+  "app",
+  "Back"
+ ],
+ [
+  "app",
+  "Done"
+ ],
+ [
+  "app",
+  "Copy"
+ ],
+ [
+  "app",
+  "Loading…"
+ ],
+ [
+  "app",
+  "Working…"
+ ],
+ [
+  "app",
+  "None"
+ ],
+ [
+  "app",
+  "None yet"
+ ],
+ [
+  "app",
+  "Nothing yet"
+ ],
+ [
+  "app",
+  "Off"
+ ],
+ [
+  "app",
+  "On"
+ ],
+ [
+  "app",
+  "Yes"
+ ],
+ [
+  "app",
+  "No"
+ ],
+ [
+  "app",
+  "Name"
+ ],
+ [
+  "app",
+  "Date"
+ ],
+ [
+  "app",
+  "Time"
+ ],
+ [
+  "app",
+  "When"
+ ],
+ [
+  "app",
+  "Type"
+ ],
+ [
+  "app",
+  "Status"
+ ],
+ [
+  "app",
+  "Amount"
+ ],
+ [
+  "app",
+  "Amount ($)"
+ ],
+ [
+  "app",
+  "Amount (USD)"
+ ],
+ [
+  "app",
+  "Price"
+ ],
+ [
+  "app",
+  "Prices"
+ ],
+ [
+  "app",
+  "Value"
+ ],
+ [
+  "app",
+  "Symbol"
+ ],
+ [
+  "app",
+  "Ticker"
+ ],
+ [
+  "app",
+  "Qty"
+ ],
+ [
+  "app",
+  "Side"
+ ],
+ [
+  "app",
+  "Buy"
+ ],
+ [
+  "app",
+  "Sell"
+ ],
+ [
+  "app",
+  "buy"
+ ],
+ [
+  "app",
+  "sell"
+ ],
+ [
+  "app",
+  "exit"
+ ],
+ [
+  "app",
+  "Cash"
+ ],
+ [
+  "app",
+  "Equity"
+ ],
+ [
+  "app",
+  "Buying power"
+ ],
+ [
+  "app",
+  "Today"
+ ],
+ [
+  "app",
+  "Total P/L"
+ ],
+ [
+  "app",
+  "Profit / loss"
+ ],
+ [
+  "app",
+  "Unrealized P/L"
+ ],
+ [
+  "app",
+  "Market value"
+ ],
+ [
+  "app",
+  "Avg entry"
+ ],
+ [
+  "app",
+  "Avg"
+ ],
+ [
+  "app",
+  "Order type"
+ ],
+ [
+  "app",
+  "Market"
+ ],
+ [
+  "app",
+  "Limit"
+ ],
+ [
+  "app",
+  "Stop"
+ ],
+ [
+  "app",
+  "Time in force"
+ ],
+ [
+  "app",
+  "Day"
+ ],
+ [
+  "app",
+  "Shares"
+ ],
+ [
+  "app",
+  "Dollars"
+ ],
+ [
+  "app",
+  "Review order"
+ ],
+ [
+  "app",
+  "Place market order"
+ ],
+ [
+  "app",
+  "Recent orders"
+ ],
+ [
+  "app",
+  "All orders →"
+ ],
+ [
+  "app",
+  "All positions →"
+ ],
+ [
+  "app",
+  "No orders."
+ ],
+ [
+  "app",
+  "No positions."
+ ],
+ [
+  "app",
+  "No positions"
+ ],
+ [
+  "app",
+  "No open positions."
+ ],
+ [
+  "app",
+  "Account settings"
+ ],
+ [
+  "app",
+  "Details"
+ ],
+ [
+  "app",
+  "Result"
+ ],
+ [
+  "app",
+  "Results"
+ ],
+ [
+  "app",
+  "Signal"
+ ],
+ [
+  "app",
+  "Message"
+ ],
+ [
+  "app",
+  "Note"
+ ],
+ [
+  "app",
+  "Monthly"
+ ],
+ [
+  "app",
+  "Yearly"
+ ],
+ [
+  "app",
+  "Weekly"
+ ],
+ [
+  "app",
+  "Once"
+ ],
+ [
+  "app",
+  "Every trading day"
+ ],
+ [
+  "app",
+  "Year"
+ ],
+ [
+  "app",
+  "Years"
+ ],
+ [
+  "app",
+  "Most popular"
+ ],
+ [
+  "app",
+  "2 months free"
+ ],
+ [
+  "app",
+  "Pro"
+ ],
+ [
+  "app",
+  "Current"
+ ],
+ [
+  "app",
+  "Your plan"
+ ],
+ [
+  "app",
+  "Automatic"
+ ],
+ [
+  "app",
+  "By hand"
+ ],
+ [
+  "app",
+  "Strategy"
+ ],
+ [
+  "app",
+  "Rule"
+ ],
+ [
+  "app",
+  "Decision"
+ ],
+ [
+  "app",
+  "Run now"
+ ],
+ [
+  "app",
+  "History"
+ ],
+ [
+  "app",
+  "Not connected"
+ ],
+ [
+  "app",
+  "Disconnect"
+ ],
+ [
+  "app",
+  "Connected"
+ ],
+ [
+  "app",
+  "Enabled"
+ ],
+ [
+  "app",
+  "New"
+ ],
+ [
+  "app",
+  "Place a trade"
+ ],
+ [
+  "app",
+  "Reset paper account"
+ ],
+ [
+  "app",
+  "The line turns green above your starting value and red below it."
+ ],
+ [
+  "app",
+  "Projected next-year return"
+ ],
+ [
+  "app",
+  "Bad year (5th pct)"
+ ],
+ [
+  "app",
+  "Typical (median)"
+ ],
+ [
+  "app",
+  "Good year (95th)"
+ ],
+ [
+  "app",
+  "Chance of a loss"
+ ],
+ [
+  "app",
+  "Symbol or company"
+ ],
+ [
+  "app",
+  "AAPL, BTC/USD, Apple…"
+ ],
+ [
+  "app",
+  "Bid"
+ ],
+ [
+  "app",
+  "Ask"
+ ],
+ [
+  "app",
+  "Bid / Ask"
+ ],
+ [
+  "app",
+  "Volume"
+ ],
+ [
+  "app",
+  "News"
+ ],
+ [
+  "app",
+  "No recent news."
+ ],
+ [
+  "app",
+  "News unavailable."
+ ],
+ [
+  "app",
+  "Top movers"
+ ],
+ [
+  "app",
+  "Most active"
+ ],
+ [
+  "app",
+  "Market is"
+ ],
+ [
+  "app",
+  "Next open"
+ ],
+ [
+  "app",
+  "Next close"
+ ],
+ [
+  "app",
+  "Early close"
+ ],
+ [
+  "app",
+  "Advanced: bracket, OCO, OTO, extended hours"
+ ],
+ [
+  "app",
+  "Limit price"
+ ],
+ [
+  "app",
+  "Stop price"
+ ],
+ [
+  "app",
+  "Take-profit limit"
+ ],
+ [
+  "app",
+  "Stop-loss stop"
+ ],
+ [
+  "app",
+  "Stop-loss limit (optional)"
+ ],
+ [
+  "app",
+  "Trail %"
+ ],
+ [
+  "app",
+  "Allow pre-market & after-hours (Day orders)"
+ ],
+ [
+  "app",
+  "Estimated cost"
+ ],
+ [
+  "app",
+  "Cancel all open"
+ ],
+ [
+  "app",
+  "Close all positions"
+ ],
+ [
+  "app",
+  "Modify"
+ ],
+ [
+  "app",
+  "Submitted"
+ ],
+ [
+  "app",
+  "Filter"
+ ],
+ [
+  "app",
+  "Every open order on this account will be cancelled."
+ ],
+ [
+  "app",
+  "Market orders will be sent to close every position, and open orders will be cancelled."
+ ],
+ [
+  "app",
+  "This is a LIVE order with real money."
+ ],
+ [
+  "app",
+  "This sends a real order with real money."
+ ],
+ [
+  "app",
+  "Empty. Add a symbol above."
+ ],
+ [
+  "app",
+  "New watchlist name"
+ ],
+ [
+  "app",
+  "No watchlists yet. Create one above."
+ ],
+ [
+  "app",
+  "Add symbol (AAPL, BTC/USD)"
+ ],
+ [
+  "app",
+  "Calls"
+ ],
+ [
+  "app",
+  "Puts"
+ ],
+ [
+  "app",
+  "Strike"
+ ],
+ [
+  "app",
+  "Expiration"
+ ],
+ [
+  "app",
+  "Underlying"
+ ],
+ [
+  "app",
+  "Order builder"
+ ],
+ [
+  "app",
+  "Click a bid or ask in the chain to add a leg."
+ ],
+ [
+  "app",
+  "Options can expire worthless. Max loss on long options is the premium paid."
+ ],
+ [
+  "app",
+  "Corporate actions"
+ ],
+ [
+  "app",
+  "Trading days (next 30 days)"
+ ],
+ [
+  "app",
+  "No announcements in this window."
+ ],
+ [
+  "app",
+  "Days not listed are market holidays or weekends. Times are New York time."
+ ],
+ [
+  "app",
+  "Open a brokerage account"
+ ],
+ [
+  "app",
+  "Connect an existing Alpaca account"
+ ],
+ [
+  "app",
+  "Connect with Alpaca"
+ ],
+ [
+  "app",
+  "Use API keys"
+ ],
+ [
+  "app",
+  "Save keys"
+ ],
+ [
+  "app",
+  "API key ID"
+ ],
+ [
+  "app",
+  "Secret key"
+ ],
+ [
+  "app",
+  "These are live (real money) keys"
+ ],
+ [
+  "app",
+  "Your Alpaca account is connected."
+ ],
+ [
+  "app",
+  "Your account is active. You can fund it and start trading."
+ ],
+ [
+  "app",
+  "Link a bank account"
+ ],
+ [
+  "app",
+  "Link bank"
+ ],
+ [
+  "app",
+  "No bank linked yet."
+ ],
+ [
+  "app",
+  "Deposit to brokerage"
+ ],
+ [
+  "app",
+  "Withdraw to bank"
+ ],
+ [
+  "app",
+  "Transfers"
+ ],
+ [
+  "app",
+  "No transfers yet"
+ ],
+ [
+  "app",
+  "Submit transfer"
+ ],
+ [
+  "app",
+  "Routing number"
+ ],
+ [
+  "app",
+  "Account number"
+ ],
+ [
+  "app",
+  "Account holder name"
+ ],
+ [
+  "app",
+  "Nickname"
+ ],
+ [
+  "app",
+  "First name"
+ ],
+ [
+  "app",
+  "Middle name"
+ ],
+ [
+  "app",
+  "Last name"
+ ],
+ [
+  "app",
+  "Date of birth"
+ ],
+ [
+  "app",
+  "Social Security number"
+ ],
+ [
+  "app",
+  "Street address"
+ ],
+ [
+  "app",
+  "Apt / unit"
+ ],
+ [
+  "app",
+  "City"
+ ],
+ [
+  "app",
+  "State"
+ ],
+ [
+  "app",
+  "ZIP code"
+ ],
+ [
+  "app",
+  "Mobile phone"
+ ],
+ [
+  "app",
+  "Employer"
+ ],
+ [
+  "app",
+  "Takes about 3 minutes. Accounts are held by Alpaca Securities LLC, member FINRA/SIPC."
+ ],
+ [
+  "app",
+  "Required by law to verify your identity (KYC). Your SSN is sent securely to Alpaca and is not stored by QuantPocket."
+ ],
+ [
+  "app",
+  "Sign in at Alpaca and approve access. We never see your Alpaca password."
+ ],
+ [
+  "app",
+  "My strategies"
+ ],
+ [
+  "app",
+  "Library"
+ ],
+ [
+  "app",
+  "Use this strategy"
+ ],
+ [
+  "app",
+  "Portfolio split"
+ ],
+ [
+  "app",
+  "Use these allocations"
+ ],
+ [
+  "app",
+  "Runs"
+ ],
+ [
+  "app",
+  "Money"
+ ],
+ [
+  "app",
+  "Last result"
+ ],
+ [
+  "app",
+  "Reality Check"
+ ],
+ [
+  "app",
+  "Backtest, 5 years"
+ ],
+ [
+  "app",
+  "Worst drop"
+ ],
+ [
+  "app",
+  "Live, last 3 months"
+ ],
+ [
+  "app",
+  "Live results so far are far below the backtest"
+ ],
+ [
+  "app",
+  "No QuantConnect figures in the sheet. Run the backtest to see how it behaved."
+ ],
+ [
+  "app",
+  "Backtests are hypothetical and leveraged ETFs can lose most of their value quickly. Results shown are not a promise of future returns."
+ ],
+ [
+  "app",
+  "Today's walkdown"
+ ],
+ [
+  "app",
+  "Orders go to:"
+ ],
+ [
+  "app",
+  "2nd value"
+ ],
+ [
+  "app",
+  "Needs a rule"
+ ],
+ [
+  "app",
+  "Not spelled out in the sheet export"
+ ],
+ [
+  "app",
+  "check"
+ ],
+ [
+  "app",
+  "Clear typed values"
+ ],
+ [
+  "app",
+  "No position today: stay in cash."
+ ],
+ [
+  "app",
+  "Target $"
+ ],
+ [
+  "app",
+  "Target shares"
+ ],
+ [
+  "app",
+  "Held"
+ ],
+ [
+  "app",
+  "Order"
+ ],
+ [
+  "app",
+  "Stop column: suggested trailing stop ≈ 3.5 × the ticker's daily volatility (6%–35%), as in the sheet's STOP_LOSS tab."
+ ],
+ [
+  "app",
+  "Run backtest"
+ ],
+ [
+  "app",
+  "Return per year"
+ ],
+ [
+  "app",
+  "S&P 500 per year"
+ ],
+ [
+  "app",
+  "Sharpe"
+ ],
+ [
+  "app",
+  "Total return"
+ ],
+ [
+  "app",
+  "Switches"
+ ],
+ [
+  "app",
+  "Running… (loading several years of prices for every ticker the rules use)"
+ ],
+ [
+  "app",
+  "Edit rules"
+ ],
+ [
+  "app",
+  "Change any number, indicator or ticker, then preview today's result or backtest before saving."
+ ],
+ [
+  "app",
+  "Preview today"
+ ],
+ [
+  "app",
+  "Backtest these rules"
+ ],
+ [
+  "app",
+  "Save rules"
+ ],
+ [
+  "app",
+  "Back to original"
+ ],
+ [
+  "app",
+  "Advanced: edit as JSON"
+ ],
+ [
+  "app",
+  "Apply JSON"
+ ],
+ [
+  "app",
+  "Turn into a comparison"
+ ],
+ [
+  "app",
+  "Money for this strategy (% of account)"
+ ],
+ [
+  "app",
+  "Cash kept aside (%)"
+ ],
+ [
+  "app",
+  "Trailing stop (%)"
+ ],
+ [
+  "app",
+  "Trade at (New York time)"
+ ],
+ [
+  "app",
+  "Whole shares only"
+ ],
+ [
+  "app",
+  "Save settings"
+ ],
+ [
+  "app",
+  "Auto-throttle: trade 50% while on Watch, 0% while Drifting"
+ ],
+ [
+  "app",
+  "Live days"
+ ],
+ [
+  "app",
+  "Live return"
+ ],
+ [
+  "app",
+  "Backtest expected"
+ ],
+ [
+  "app",
+  "Win rate"
+ ],
+ [
+  "app",
+  "Delete strategy"
+ ],
+ [
+  "app",
+  "No runs yet."
+ ],
+ [
+  "app",
+  "Healthy"
+ ],
+ [
+  "app",
+  "Watch"
+ ],
+ [
+  "app",
+  "Drifting"
+ ],
+ [
+  "app",
+  "Learning"
+ ],
+ [
+  "app",
+  "Rebalance day:"
+ ],
+ [
+  "app",
+  "New buys:"
+ ],
+ [
+  "app",
+  "Exits:"
+ ],
+ [
+  "app",
+  "Keep:"
+ ],
+ [
+  "app",
+  "Predictions:"
+ ],
+ [
+  "app",
+  "Stocks to rank (comma separated)"
+ ],
+ [
+  "app",
+  "Stocks to scan"
+ ],
+ [
+  "app",
+  "Predictions"
+ ],
+ [
+  "app",
+  "I type them each month"
+ ],
+ [
+  "app",
+  "Automatic (recent return)"
+ ],
+ [
+  "app",
+  "Bitcoin ticker"
+ ],
+ [
+  "app",
+  "Rebalance day"
+ ],
+ [
+  "app",
+  "Predicted 21-day return %"
+ ],
+ [
+  "app",
+  "Asset"
+ ],
+ [
+  "app",
+  "Weight"
+ ],
+ [
+  "app",
+  "Rank"
+ ],
+ [
+  "app",
+  "Pullback"
+ ],
+ [
+  "app",
+  "Z-score"
+ ],
+ [
+  "app",
+  "win-rate weighted, 10%–70% each"
+ ],
+ [
+  "app",
+  "Like the sheet's PORTFOLIO_SPLIT tab: strategies that win more often get more money. Win rates come from each strategy's live daily results."
+ ],
+ [
+  "app",
+  "Send an alert from TradingView, TrendSpider, Zapier, a script or an AI agent. It becomes an order in the accounts you choose, inside your risk rules."
+ ],
+ [
+  "app",
+  "Create"
+ ],
+ [
+  "app",
+  "a webhook with sizing and risk rules"
+ ],
+ [
+  "app",
+  "Paste"
+ ],
+ [
+  "app",
+  "its URL into your alert"
+ ],
+ [
+  "app",
+  ": every alert is executed and logged"
+ ],
+ [
+  "app",
+  "New webhook"
+ ],
+ [
+  "app",
+  "Edit webhook"
+ ],
+ [
+  "app",
+  "Create webhook"
+ ],
+ [
+  "app",
+  "Allowed tickers"
+ ],
+ [
+  "app",
+  "(optional)"
+ ],
+ [
+  "app",
+  "Send orders to"
+ ],
+ [
+  "app",
+  "Order size"
+ ],
+ [
+  "app",
+  "Fixed dollar amount"
+ ],
+ [
+  "app",
+  "Fixed number of shares"
+ ],
+ [
+  "app",
+  "Use the size in the alert"
+ ],
+ [
+  "app",
+  "Risk rules"
+ ],
+ [
+  "app",
+  "(leave empty for no limit)"
+ ],
+ [
+  "app",
+  "Max position per ticker ($)"
+ ],
+ [
+  "app",
+  "Max trades per day"
+ ],
+ [
+  "app",
+  "No limit"
+ ],
+ [
+  "app",
+  "Long only: sells never go below zero shares, and \"exit\" sells the whole position."
+ ],
+ [
+  "app",
+  "Copy URL"
+ ],
+ [
+  "app",
+  "Send test signal"
+ ],
+ [
+  "app",
+  "New URL"
+ ],
+ [
+  "app",
+  "Alert message"
+ ],
+ [
+  "app",
+  "Copy message"
+ ],
+ [
+  "app",
+  "Send from a script, Zapier or an AI agent"
+ ],
+ [
+  "app",
+  "Signal log"
+ ],
+ [
+  "app",
+  "Webhook"
+ ],
+ [
+  "app",
+  "test"
+ ],
+ [
+  "app",
+  "Filled"
+ ],
+ [
+  "app",
+  "Partly done"
+ ],
+ [
+  "app",
+  "Rejected"
+ ],
+ [
+  "app",
+  "See Pro"
+ ],
+ [
+  "app",
+  "No signals yet. Send a test signal from a webhook above."
+ ],
+ [
+  "app",
+  "Stock A"
+ ],
+ [
+  "app",
+  "Stock B"
+ ],
+ [
+  "app",
+  "Fit window (days)"
+ ],
+ [
+  "app",
+  "z window (days)"
+ ],
+ [
+  "app",
+  "Enter at |z| ≥"
+ ],
+ [
+  "app",
+  "Exit at |z| ≤"
+ ],
+ [
+  "app",
+  "Stop at |z| ≥"
+ ],
+ [
+  "app",
+  "Max days in a trade"
+ ],
+ [
+  "app",
+  "Analyze pair"
+ ],
+ [
+  "app",
+  "Scan 20 popular pairs"
+ ],
+ [
+  "app",
+  "Today's z-score"
+ ],
+ [
+  "app",
+  "Hedge ratio (β)"
+ ],
+ [
+  "app",
+  "Half-life"
+ ],
+ [
+  "app",
+  "Correlation"
+ ],
+ [
+  "app",
+  "Cointegration t-stat"
+ ],
+ [
+  "app",
+  "Pair bots"
+ ],
+ [
+  "app",
+  "Pair"
+ ],
+ [
+  "app",
+  "Mode"
+ ],
+ [
+  "app",
+  "Position"
+ ],
+ [
+  "app",
+  "Last run"
+ ],
+ [
+  "app",
+  "Run this pair automatically"
+ ],
+ [
+  "app",
+  "Money for this pair ($)"
+ ],
+ [
+  "app",
+  "Long only (no shorting)"
+ ],
+ [
+  "app",
+  "Market-neutral (needs margin)"
+ ],
+ [
+  "app",
+  "Popular pairs, strongest first"
+ ],
+ [
+  "app",
+  "Cointegrated"
+ ],
+ [
+  "app",
+  "Colored: market-neutral. Grey: long only."
+ ],
+ [
+  "app",
+  "z today"
+ ],
+ [
+  "app",
+  "A pair bot checks its pair every trading day at 3:45 pm New York time and trades when the gap crosses your levels."
+ ],
+ [
+  "app",
+  "No pair bots yet. Analyze a pair, then start a bot from the result."
+ ],
+ [
+  "app",
+  "SPY today"
+ ],
+ [
+  "app",
+  "This year"
+ ],
+ [
+  "app",
+  "Last 12 months"
+ ],
+ [
+  "app",
+  "5 years, per year"
+ ],
+ [
+  "app",
+  "10 years, per year"
+ ],
+ [
+  "app",
+  "The 500 largest US companies in one fund. The simplest long-term plan: buy a little every month, whatever the market does."
+ ],
+ [
+  "app",
+  "Your investment plan"
+ ],
+ [
+  "app",
+  "Start with ($)"
+ ],
+ [
+  "app",
+  "Add every month ($)"
+ ],
+ [
+  "app",
+  "For how many years"
+ ],
+ [
+  "app",
+  "Goal (optional, $)"
+ ],
+ [
+  "app",
+  "Fund"
+ ],
+ [
+  "app",
+  "Show my range"
+ ],
+ [
+  "app",
+  "You put in"
+ ],
+ [
+  "app",
+  "Typical result"
+ ],
+ [
+  "app",
+  "Bad case (1 in 10)"
+ ],
+ [
+  "app",
+  "Good case (1 in 10)"
+ ],
+ [
+  "app",
+  "Invest automatically"
+ ],
+ [
+  "app",
+  "Buys your fund on the same day every month, in dollars (fractional shares), so every dollar is invested."
+ ],
+ [
+  "app",
+  "Day of the month"
+ ],
+ [
+  "app",
+  "How often"
+ ],
+ [
+  "app",
+  "Start investing"
+ ],
+ [
+  "app",
+  "Active plans"
+ ],
+ [
+  "app",
+  "Repeats"
+ ],
+ [
+  "app",
+  "Next buy"
+ ],
+ [
+  "app",
+  "No automatic plan yet."
+ ],
+ [
+  "app",
+  "Connect every account you trade. Each one then shows up in the account pickers: alerts, strategies, pairs and the S&P 500 plan can send orders to any of them, or to several at once."
+ ],
+ [
+  "app",
+  "Loading balance…"
+ ],
+ [
+  "app",
+  "Use the TradeStation simulator"
+ ],
+ [
+  "app",
+  "Manage billing"
+ ],
+ [
+  "app",
+  "Every paid plan starts with a"
+ ],
+ [
+  "app",
+  "You are on"
+ ],
+ [
+  "app",
+  "Thank you! Your plan is being activated. It can take a few seconds to show here."
+ ],
+ [
+  "app",
+  "Add paper money"
+ ],
+ [
+  "app",
+  "Add to paper account"
+ ],
+ [
+  "app",
+  "Deposit to your brokerage"
+ ],
+ [
+  "app",
+  "Continue to payment"
+ ],
+ [
+  "app",
+  "Performance fee"
+ ],
+ [
+  "app",
+  "Your rate:"
+ ],
+ [
+  "app",
+  "of new profit. You only pay when an account is above its previous peak, after deposits and withdrawals."
+ ],
+ [
+  "app",
+  "Billing history"
+ ],
+ [
+  "app",
+  "Secure checkout by Stripe. Cancel anytime from \"Manage billing\". Prices in USD."
+ ],
+ [
+  "app",
+  "Real money goes to your brokerage account by bank transfer on the"
+ ],
+ [
+  "app",
+  "Your invite link"
+ ],
+ [
+  "app",
+  "Share"
+ ],
+ [
+  "app",
+  "Friends who joined"
+ ],
+ [
+  "app",
+  "Friends who subscribed"
+ ],
+ [
+  "app",
+  "Credit earned"
+ ],
+ [
+  "app",
+  "Two-factor authentication"
+ ],
+ [
+  "app",
+  "Set up 2FA"
+ ],
+ [
+  "app",
+  "Turn on 2FA"
+ ],
+ [
+  "app",
+  "Disable 2FA"
+ ],
+ [
+  "app",
+  "Protect your account with an authenticator app (Google Authenticator, 1Password, Authy)."
+ ],
+ [
+  "app",
+  "Phone for SMS & hotline"
+ ],
+ [
+  "app",
+  "Mobile number"
+ ],
+ [
+  "app",
+  "Send code"
+ ],
+ [
+  "app",
+  "Trading PIN"
+ ],
+ [
+  "app",
+  "Account password"
+ ],
+ [
+  "app",
+  "New PIN (4-8 digits)"
+ ],
+ [
+  "app",
+  "Save PIN"
+ ],
+ [
+  "app",
+  "Tax rates"
+ ],
+ [
+  "app",
+  "Federal bracket"
+ ],
+ [
+  "app",
+  "State rate %"
+ ],
+ [
+  "app",
+  "Add a password"
+ ],
+ [
+  "app",
+  "Your data"
+ ],
+ [
+  "app",
+  "Download my data"
+ ],
+ [
+  "app",
+  "Delete my account"
+ ],
+ [
+  "app",
+  "Download everything we store about you, or permanently delete your account."
+ ],
+ [
+  "app",
+  "Active sessions"
+ ],
+ [
+  "app",
+  "Security log"
+ ],
+ [
+  "app",
+  "IP address"
+ ],
+ [
+  "app",
+  "Device"
+ ],
+ [
+  "app",
+  "Signed in"
+ ],
+ [
+  "app",
+  "Event"
+ ],
+ [
+  "app",
+  "this device"
+ ],
+ [
+  "app",
+  "Manage brokerage connection"
+ ],
+ [
+  "app",
+  "Alpaca brokerage"
+ ],
+ [
+  "app",
+  "User id"
+ ],
+ [
+  "app",
+  "API token"
+ ],
+ [
+  "app",
+  "Text & Hotline"
+ ],
+ [
+  "app",
+  "Manage your account by SMS or phone"
+ ],
+ [
+  "app",
+  "QuantPocket's number"
+ ],
+ [
+  "app",
+  "Text us"
+ ],
+ [
+  "app",
+  "Call"
+ ],
+ [
+  "app",
+  "Try it here"
+ ],
+ [
+  "app",
+  "How is my account doing?"
+ ],
+ [
+  "app",
+  "The SMS/voice number is not configured on this server yet (Twilio)."
+ ],
+ [
+  "app",
+  "Tax information"
+ ],
+ [
+  "app",
+  "Download Form 8949 CSV"
+ ],
+ [
+  "app",
+  "Short-term gains"
+ ],
+ [
+  "app",
+  "Long-term gains"
+ ],
+ [
+  "app",
+  "Estimated tax"
+ ],
+ [
+  "app",
+  "Tax-loss harvesting ideas"
+ ],
+ [
+  "app",
+  "Realized sales"
+ ],
+ [
+  "app",
+  "No sales this year"
+ ],
+ [
+  "app",
+  "Estimates for planning only (US federal + flat state rate, FIFO lots). Your broker's 1099-B is the official record; check with a tax professional."
+ ],
+ [
+  "app",
+  "Run on paper"
+ ],
+ [
+  "app",
+  "Run on Alpaca"
+ ],
+ [
+  "app",
+  "Save strategy"
+ ],
+ [
+  "app",
+  "Build rules"
+ ],
+ [
+  "app",
+  "Idea"
+ ],
+ [
+  "app",
+  "Entry rules (all must be true)"
+ ],
+ [
+  "app",
+  "Exit rules (any)"
+ ],
+ [
+  "app",
+  "Stop loss %"
+ ],
+ [
+  "app",
+  "Take profit %"
+ ],
+ [
+  "app",
+  "Trailing stop %"
+ ],
+ [
+  "app",
+  "Position size %"
+ ],
+ [
+  "app",
+  "Cost per side %"
+ ],
+ [
+  "app",
+  "Preset"
+ ],
+ [
+  "app",
+  "Start"
+ ],
+ [
+  "app",
+  "Capital"
+ ],
+ [
+  "app",
+  "Max drawdown"
+ ],
+ [
+  "app",
+  "Buy & hold"
+ ],
+ [
+  "app",
+  "Walk-forward check"
+ ],
+ [
+  "app",
+  "Trades"
+ ],
+ [
+  "app",
+  "New scheduled order"
+ ],
+ [
+  "app",
+  "Nothing scheduled"
+ ],
+ [
+  "app",
+  "Next run"
+ ],
+ [
+  "app",
+  "Repeat"
+ ],
+ [
+  "app",
+  "Price alerts (sent by SMS)"
+ ],
+ [
+  "app",
+  "Add alert"
+ ],
+ [
+  "app",
+  "Strategies & Bots"
+ ],
+ [
+  "app",
+  "Save a strategy from the Backtest page first."
+ ],
+ [
+  "app",
+  "Running on"
+ ],
+ [
+  "app",
+  "Last action"
+ ],
+ [
+  "app",
+  "Brokerage account"
+ ],
+ [
+  "app",
+  "Trading connection"
+ ],
+ [
+  "app",
+  "Identity"
+ ],
+ [
+  "app",
+  "Contact"
+ ],
+ [
+  "app",
+  "Employment & disclosures"
+ ],
+ [
+  "app",
+  "Agreements"
+ ],
+ [
+  "app",
+  "Citizenship"
+ ],
+ [
+  "app",
+  "Country of birth"
+ ],
+ [
+  "app",
+  "Other ways to connect"
+ ],
+ [
+  "app",
+  "(existing Alpaca account or API keys)"
+ ],
+ [
+  "app",
+  "Fractional shares"
+ ],
+ [
+  "app",
+  "Disable short selling"
+ ],
+ [
+  "app",
+  "Suspend all trading (kill switch)"
+ ],
+ [
+  "app",
+  "Orders go to"
+ ],
+ [
+  "app",
+  "Day-trade buying power check"
+ ],
+ [
+  "app",
+  "Pattern day trader check"
+ ],
+ [
+  "app",
+  "Max margin"
+ ],
+ [
+  "app",
+  "Trade confirmations"
+ ],
+ [
+  "app",
+  "Trading involves risk of loss. Backtests and projections are hypothetical and do not guarantee future results. QuantPocket is software, not a broker or investment adviser; orders route to your own Alpaca account."
+ ],
+ [
+  "app",
+  "Text or call from your verified phone."
+ ],
+ [
+  "app",
+  "The AI assistant understands plain language: \"how am I doing this month?\", \"put $200 into the S&P every week\", \"what does RSI mean?\". Trades always need your PIN."
+ ],
+ [
+  "app",
+  "Phone:"
+ ],
+ [
+  "app",
+  "PIN:"
+ ],
+ [
+  "app",
+  "not set"
+ ],
+ [
+  "app",
+  "set"
+ ],
+ [
+  "app",
+  "verified"
+ ],
+ [
+  "app",
+  "change in Settings"
+ ],
+ [
+  "app",
+  "Email already registered"
+ ],
+ [
+  "app",
+  "Wrong email or password"
+ ],
+ [
+  "app",
+  "Please accept the Terms to continue"
+ ],
+ [
+  "app",
+  "Enter a valid email"
+ ],
+ [
+  "app",
+  "Password needs 10+ characters with upper, lower and a digit"
+ ],
+ [
+  "app",
+  "Not signed in"
+ ],
+ [
+  "app",
+  "The server is busy, please try again."
+ ],
+ [
+  "app",
+  "Saved"
+ ],
+ [
+  "app",
+  "Paper account"
+ ],
+ [
+  "app",
+  "Paper money added."
+ ],
+ [
+  "app",
+  "Monthly recurring revenue"
+ ],
+ [
+  "app",
+  "Annual run rate"
+ ],
+ [
+  "app",
+  "Revenue, last 30 days"
+ ],
+ [
+  "app",
+  "Signup → paying"
+ ],
+ [
+  "app",
+  "Funnel"
+ ],
+ [
+  "app",
+  "Payment processors"
+ ],
+ [
+  "app",
+  "Users"
+ ],
+ [
+  "app",
+  "Support inbox"
+ ],
+ [
+  "app",
+  "Fees due"
+ ],
+ [
+  "app",
+  "Card deposits awaiting brokerage transfer"
+ ],
+ [
+  "app",
+  "Assess performance fees now"
+ ],
+ [
+  "app",
+  "Disclosures"
+ ],
+ [
+  "app",
+  "Documents"
+ ],
+ [
+  "app",
+  "Country of citizenship"
+ ],
+ [
+  "app",
+  "Tax residence"
+ ],
+ [
+  "app",
+  "Main source of funds"
+ ],
+ [
+  "app",
+  "Employment income"
+ ],
+ [
+  "app",
+  "Investments"
+ ],
+ [
+  "app",
+  "Inheritance"
+ ],
+ [
+  "app",
+  "Business income"
+ ],
+ [
+  "app",
+  "Savings"
+ ],
+ [
+  "app",
+  "Family"
+ ],
+ [
+  "app",
+  "Required by law to verify your identity (KYC). Your SSN goes to Alpaca over an encrypted connection and is not stored by QuantPocket."
+ ],
+ [
+  "app",
+  "Are you a 10% shareholder, director or officer of a public company? (control person)"
+ ],
+ [
+  "app",
+  "Are you affiliated with a stock exchange or FINRA?"
+ ],
+ [
+  "app",
+  "Are you a senior political figure (politically exposed person)?"
+ ],
+ [
+  "app",
+  "Is an immediate family member a senior political figure?"
+ ],
+ [
+  "app",
+  "Employment (optional)"
+ ],
+ [
+  "app",
+  "Employment"
+ ],
+ [
+  "app",
+  "Employed"
+ ],
+ [
+  "app",
+  "Unemployed"
+ ],
+ [
+  "app",
+  "Student"
+ ],
+ [
+  "app",
+  "Retired"
+ ],
+ [
+  "app",
+  "Account features"
+ ],
+ [
+  "app",
+  "Apply for a margin account (Margin Agreement)"
+ ],
+ [
+  "app",
+  "Enable options trading (Options Agreement)"
+ ],
+ [
+  "app",
+  "Enable crypto trading (Crypto Agreement)"
+ ],
+ [
+  "app",
+  "Your agreement is recorded with the time you submit and your IP address, as Alpaca requires."
+ ],
+ [
+  "app",
+  "Optional: adding a photo of your ID now can speed up approval. You can also upload later if Alpaca asks for it."
+ ],
+ [
+  "app",
+  "Document"
+ ],
+ [
+  "app",
+  "File (JPG, PNG or PDF, up to 5 MB)"
+ ],
+ [
+  "app",
+  "File"
+ ],
+ [
+  "app",
+  "Passport"
+ ],
+ [
+  "app",
+  "Driver's license"
+ ],
+ [
+  "app",
+  "National ID card"
+ ],
+ [
+  "app",
+  "State ID"
+ ],
+ [
+  "app",
+  "Review"
+ ],
+ [
+  "app",
+  "Address"
+ ],
+ [
+  "app",
+  "Email / phone"
+ ],
+ [
+  "app",
+  "None apply"
+ ],
+ [
+  "app",
+  "Submit application"
+ ],
+ [
+  "app",
+  "Submit application?"
+ ],
+ [
+  "app",
+  "Submit"
+ ],
+ [
+  "app",
+  "Your information will be sent to Alpaca for identity verification."
+ ],
+ [
+  "app",
+  "Application under review"
+ ],
+ [
+  "app",
+  "Account approved! Ready to trade"
+ ],
+ [
+  "app",
+  "Action required: upload documents"
+ ],
+ [
+  "app",
+  "Pending manual review"
+ ],
+ [
+  "app",
+  "Application rejected"
+ ],
+ [
+  "app",
+  "Submission failed"
+ ],
+ [
+  "app",
+  "Account disabled"
+ ],
+ [
+  "app",
+  "Account closed"
+ ],
+ [
+  "app",
+  "Alpaca is verifying your identity. Most applications are decided within minutes."
+ ],
+ [
+  "app",
+  "Alpaca is switching the account on. This usually takes a few minutes."
+ ],
+ [
+  "app",
+  "Fund your account by linking a bank below, then place your first trade."
+ ],
+ [
+  "app",
+  "Alpaca needs more documents to verify your identity. Upload a passport or driver's license below."
+ ],
+ [
+  "app",
+  "A compliance officer at Alpaca is reviewing your application. This can take up to 1 business day."
+ ],
+ [
+  "app",
+  "Alpaca could not approve this application. Contact support if you think this is a mistake."
+ ],
+ [
+  "app",
+  "Contact support"
+ ],
+ [
+  "app",
+  "Under review"
+ ],
+ [
+  "app",
+  "Approved"
+ ],
+ [
+  "app",
+  "Active"
+ ],
+ [
+  "app",
+  "Live: this page updates the moment Alpaca decides."
+ ],
+ [
+  "app",
+  "This page checks for updates automatically."
+ ],
+ [
+  "app",
+  "Upload documents"
+ ],
+ [
+  "app",
+  "Upload"
+ ],
+ [
+  "app",
+  "A clear photo or scan of a government ID. JPG, PNG or PDF, up to 5 MB each."
+ ],
+ [
+  "app",
+  "Account details"
+ ],
+ [
+  "app",
+  "Crypto"
+ ],
+ [
+  "app",
+  "Enabled assets"
+ ],
+ [
+  "app",
+  "Opened"
+ ],
+ [
+  "app",
+  "Application history"
+ ],
+ [
+  "app",
+  "No updates yet"
+ ],
+ [
+  "app",
+  "Alpaca event"
+ ],
+ [
+  "app",
+  "Application sent"
+ ],
+ [
+  "app",
+  "Status check"
+ ],
+ [
+  "app",
+  "Update contact details"
+ ],
+ [
+  "app",
+  "1. Create your QuantPocket login"
+ ],
+ [
+  "app",
+  "Continue to application"
+ ],
+ [
+  "app",
+  "Already have a login?"
+ ],
+ [
+  "app",
+  "Commission-free US stocks and ETFs, plus options and crypto, at Alpaca Securities LLC (member FINRA/SIPC). Apply in about 3 minutes, all from QuantPocket."
+ ],
+ [
+  "app",
+  "Choose a file to upload"
+ ],
+ [
+  "app",
+  ", then open Account → Alpaca account."
+ ],
+ [
+  "home",
+  "$100,000 paper account"
+ ],
+ [
+  "home",
+  "+ 10% of new profits"
+ ],
+ [
+  "home",
+  "+ 20% of new profits"
+ ],
+ [
+  "home",
+  "+ 5% of new profits"
+ ],
+ [
+  "home",
+  "/forever"
+ ],
+ [
+  "home",
+  "/month"
+ ],
+ [
+  "home",
+  "/year"
+ ],
+ [
+  "home",
+  "1 alert webhook (paper)"
+ ],
+ [
+  "home",
+  "10 alert webhooks (TradingView, Zapier)"
+ ],
+ [
+  "home",
+  "2 months free"
+ ],
+ [
+  "home",
+  "4 independent sleeves × 25%"
+ ],
+ [
+  "home",
+  "5 automatic strategies with Reality Check auto-throttle"
+ ],
+ [
+  "home",
+  "50 automatic strategies &amp; 50 webhooks"
+ ],
+ [
+  "home",
+  "<b>Auto-throttle:</b> 100% while healthy, 50% on Watch, 0% when Drifting"
+ ],
+ [
+  "home",
+  "<b>Automatic:</b> trades at the time you choose, on the accounts you choose"
+ ],
+ [
+  "home",
+  "<b>By hand:</b> see each step, type your own numbers, place the orders with one click"
+ ],
+ [
+  "home",
+  "<b>Editable:</b> change any rule, threshold or ticker, then backtest it"
+ ],
+ [
+  "home",
+  "<b>Honest:</b> backtest and live results side by side"
+ ],
+ [
+  "home",
+  "A range of outcomes built from real history, crashes included"
+ ],
+ [
+  "home",
+  "A text or email the day a strategy starts to drift"
+ ],
+ [
+  "home",
+  "AI assistant"
+ ],
+ [
+  "home",
+  "AI phone assistant"
+ ],
+ [
+  "home",
+  "AI text assistant for questions &amp; balances"
+ ],
+ [
+  "home",
+  "Account &amp; pricing"
+ ],
+ [
+  "home",
+  "Advanced"
+ ],
+ [
+  "home",
+  "Alerts from"
+ ],
+ [
+  "home",
+  "All rights reserved."
+ ],
+ [
+  "home",
+  "All your accounts, side by side."
+ ],
+ [
+  "home",
+  "Alpaca (you can also open a new account inside QuantPocket), Charles Schwab, tastytrade, Tradier and TradeStation. Your money always stays at your broker."
+ ],
+ [
+  "home",
+  "Alpaca, Charles Schwab, tastytrade, Tradier and TradeStation. Open a new account inside QuantPocket, or connect the one you already have."
+ ],
+ [
+  "home",
+  "Alpaca, Schwab, tastytrade, Tradier and TradeStation, side by side."
+ ],
+ [
+  "home",
+  "An all-in-one trading automation platform"
+ ],
+ [
+  "home",
+  "An equity curve that shows how you are doing"
+ ],
+ [
+  "home",
+  "Analyze a pair"
+ ],
+ [
+  "home",
+  "Answers questions about your account"
+ ],
+ [
+  "home",
+  "Any program that can send an HTTPS request can use a webhook, AI agents included. It can only do what that webhook allows: its accounts, sizes and risk rules. Start on paper."
+ ],
+ [
+  "home",
+  "At 10% a year"
+ ],
+ [
+  "home",
+  "At 6% a year"
+ ],
+ [
+  "home",
+  "At 8% a year"
+ ],
+ [
+  "home",
+  "Automate monthly S&amp;P 500 buys and keep an eye on taxes, without watching the market all day."
+ ],
+ [
+  "home",
+  "Automate your real accounts"
+ ],
+ [
+  "home",
+  "Automatic strategies, pair bots and webhooks run without you. Automation can still fail or act on bad data, so check your account regularly."
+ ],
+ [
+  "home",
+  "Automation"
+ ],
+ [
+  "home",
+  "Automation on your own account"
+ ],
+ [
+  "home",
+  "Back to full size automatically when it recovers"
+ ],
+ [
+  "home",
+  "Backtest before you risk a dollar"
+ ],
+ [
+  "home",
+  "Backtesting"
+ ],
+ [
+  "home",
+  "Backtests with drawdowns and losing years"
+ ],
+ [
+  "home",
+  "Balances, positions, prices and explanations, any time"
+ ],
+ [
+  "home",
+  "Brokers:"
+ ],
+ [
+  "home",
+  "Built into every strategy"
+ ],
+ [
+  "home",
+  "Buy the dip in an uptrend, sell the bounce"
+ ],
+ [
+  "home",
+  "Can I cancel any time?"
+ ],
+ [
+  "home",
+  "Can I run one strategy across all my accounts?"
+ ],
+ [
+  "home",
+  "Can I set a swing trade and walk away?"
+ ],
+ [
+  "home",
+  "Can I sign up with Google?"
+ ],
+ [
+  "home",
+  "Can I trigger trades from Zapier or TrendSpider?"
+ ],
+ [
+  "home",
+  "Can I turn my TradingView alerts into trades?"
+ ],
+ [
+  "home",
+  "Can I use QuantPocket in Yiddish?"
+ ],
+ [
+  "home",
+  "Can my AI agent place real trades?"
+ ],
+ [
+  "home",
+  "Can my strategy run fully hands-off?"
+ ],
+ [
+  "home",
+  "Choose an amount and a day. QuantPocket buys an S&amp;P 500 fund for you every month, so every dollar is invested, and shows the range of outcomes first."
+ ],
+ [
+  "home",
+  "Code-first trading"
+ ],
+ [
+  "home",
+  "Cointegration, z-scores, half-life, walk-forward backtests and pair bots."
+ ],
+ [
+  "home",
+  "Commands only work from the phone number you verified, every order needs your personal PIN, and phone calls read the order back before it is placed."
+ ],
+ [
+  "home",
+  "Company"
+ ],
+ [
+  "home",
+  "Connect"
+ ],
+ [
+  "home",
+  "Connect my broker"
+ ],
+ [
+  "home",
+  "Connect the charting tools you already use"
+ ],
+ [
+  "home",
+  "Contact &amp; support"
+ ],
+ [
+  "home",
+  "Copy a ready-made strategy"
+ ],
+ [
+  "home",
+  "Copy-and-paste alert message templates"
+ ],
+ [
+  "home",
+  "Create"
+ ],
+ [
+  "home",
+  "Create account"
+ ],
+ [
+  "home",
+  "Disconnect at any time"
+ ],
+ [
+  "home",
+  "Drifting"
+ ],
+ [
+  "home",
+  "Each month we compare your account to its previous peak, adjusted for deposits and withdrawals. You pay the plan&rsquo;s percentage only on value above that peak. Losses must be recovered before any new fee is charged."
+ ],
+ [
+  "home",
+  "Elite"
+ ],
+ [
+  "home",
+  "Email address"
+ ],
+ [
+  "home",
+  "English &amp; Yiddish"
+ ],
+ [
+  "home",
+  "Every month ($)"
+ ],
+ [
+  "home",
+  "Every order, fill and signal in one record."
+ ],
+ [
+  "home",
+  "Every paid plan starts with 14 days free. Cancel before the trial ends and you are not charged. The free Starter plan has no time limit."
+ ],
+ [
+  "home",
+  "Every paid plan starts with a 14-day free trial. Plus a small share of new profits above your high-water mark, so you only pay more when your account reaches new highs."
+ ],
+ [
+  "home",
+  "Every rule, number and ticker can be changed"
+ ],
+ [
+  "home",
+  "Every signal logged with its fill, or the reason it was blocked"
+ ],
+ [
+  "home",
+  "Every trade needs your PIN; calls read the order back first"
+ ],
+ [
+  "home",
+  "Every trade you take, <span>executed from one place.</span>"
+ ],
+ [
+  "home",
+  "Every trading day"
+ ],
+ [
+  "home",
+  "Every trading day we compare a strategy&rsquo;s live result with its backtest. If they drift apart, you get a text or email, and with Auto-throttle on, the money that strategy trades is cut to 50% (Watch) or 0% (Drifting) until it recovers."
+ ],
+ [
+  "home",
+  "Everything in Pro"
+ ],
+ [
+  "home",
+  "Everything in Starter"
+ ],
+ [
+  "home",
+  "Example"
+ ],
+ [
+  "home",
+  "Example conversation"
+ ],
+ [
+  "home",
+  "Exits close the whole position"
+ ],
+ [
+  "home",
+  "FAQ"
+ ],
+ [
+  "home",
+  "Far below the backtest"
+ ],
+ [
+  "home",
+  "Figures as recorded from QuantConnect for one of the library strategies."
+ ],
+ [
+  "home",
+  "Filter your order history, see why a signal was rejected, and follow realized gains by tax lot."
+ ],
+ [
+  "home",
+  "Find pairs that move together, see when the gap between them is unusually wide, and let a pair bot trade it every day."
+ ],
+ [
+  "home",
+  "Five brokerages"
+ ],
+ [
+  "home",
+  "For serious capital"
+ ],
+ [
+  "home",
+  "Fractional shares from $1"
+ ],
+ [
+  "home",
+  "Free on the paper account; real accounts with Pro"
+ ],
+ [
+  "home",
+  "Free version"
+ ],
+ [
+  "home",
+  "From the first backtest to live orders on every account you own."
+ ],
+ [
+  "home",
+  "Gains by lot, wash-sale flags, an estimated tax bill and Form 8949 export."
+ ],
+ [
+  "home",
+  "Gap normal: close"
+ ],
+ [
+  "home",
+  "Gap wide: buy A, sell B"
+ ],
+ [
+  "home",
+  "Gap wide: sell A, buy B"
+ ],
+ [
+  "home",
+  "Get reliable alert-to-broker automation without running servers or writing integrations."
+ ],
+ [
+  "home",
+  "Get started free"
+ ],
+ [
+  "home",
+  "Gold-miner fade and Nasdaq momentum tree"
+ ],
+ [
+  "home",
+  "Good-till-canceled orders"
+ ],
+ [
+  "home",
+  "Guardrails before every order."
+ ],
+ [
+  "home",
+  "Healthy"
+ ],
+ [
+  "home",
+  "Hedge ratio, cointegration test and half-life"
+ ],
+ [
+  "home",
+  "Hierarchical decision-tree regime rotation"
+ ],
+ [
+  "home",
+  "Holds one leveraged ETF at 100%"
+ ],
+ [
+  "home",
+  "How does the free trial work?"
+ ],
+ [
+  "home",
+  "How does the performance fee work?"
+ ],
+ [
+  "home",
+  "How it works"
+ ],
+ [
+  "home",
+  "Illustration with example values."
+ ],
+ [
+  "home",
+  "Illustrative paper-trading account"
+ ],
+ [
+  "home",
+  "Invest in the S&amp;P 500"
+ ],
+ [
+  "home",
+  "Invest on a schedule"
+ ],
+ [
+  "home",
+  "Investing involves risk, including possible loss of principal. Backtests and projections are hypothetical, are built with the benefit of hindsight and do not guarantee future results. QuantPocket is a software provider and is not a broker-dealer. Brokerage services are provided by your own broker (for example Alpaca Securities LLC, member FINRA/SIPC) under your own account agreement. Nothing on this site is an offer, solicitation or recommendation to buy or sell any security."
+ ],
+ [
+  "home",
+  "Investment plan"
+ ],
+ [
+  "home",
+  "Is texting trades secure?"
+ ],
+ [
+  "home",
+  "JSON, or plain text like <code>buy AAPL 10</code>"
+ ],
+ [
+  "home",
+  "Learn and practice"
+ ],
+ [
+  "home",
+  "Learn how strategies behave with $100,000 in paper money and honest numbers."
+ ],
+ [
+  "home",
+  "Learners"
+ ],
+ [
+  "home",
+  "Limits are checked before anything is sent to your broker, and Reality Check cuts the money a strategy trades when it stops behaving like its backtest."
+ ],
+ [
+  "home",
+  "Link your brokerage in seconds, or start with the built-in paper account. Choose which accounts each strategy trades."
+ ],
+ [
+  "home",
+  "Live demo: test a strategy now"
+ ],
+ [
+  "home",
+  "Live quotes and market news"
+ ],
+ [
+  "home",
+  "Live results compared with the backtest every day, with automatic throttling."
+ ],
+ [
+  "home",
+  "Live results match the backtest"
+ ],
+ [
+  "home",
+  "Live trading on Alpaca, Schwab, tastytrade, Tradier &amp; TradeStation"
+ ],
+ [
+  "home",
+  "Long-only by default"
+ ],
+ [
+  "home",
+  "Long-term investors"
+ ],
+ [
+  "home",
+  "Lowest performance fee (5%)"
+ ],
+ [
+  "home",
+  "Market-neutral or long-only"
+ ],
+ [
+  "home",
+  "Market-neutral pairs (long + short)"
+ ],
+ [
+  "home",
+  "Maximum position size and trades per day"
+ ],
+ [
+  "home",
+  "Monthly"
+ ],
+ [
+  "home",
+  "Monthly index-fund buys with projections from real history."
+ ],
+ [
+  "home",
+  "Monthly or weekly automatic buys"
+ ],
+ [
+  "home",
+  "Most platforms show you a beautiful backtest and stop there. But many strategies with spectacular backtests lose money once they go live. QuantPocket compares every strategy&rsquo;s live results with its backtest, every single day."
+ ],
+ [
+  "home",
+  "Most popular"
+ ],
+ [
+  "home",
+  "New"
+ ],
+ [
+  "home",
+  "Next profile"
+ ],
+ [
+  "home",
+  "No card needed"
+ ],
+ [
+  "home",
+  "Nobody can promise that. Most active strategies underperform simply holding an index after costs. QuantPocket shows how an idea behaved in the past, how it is doing live, and the range of outcomes to expect, so you can decide with your eyes open."
+ ],
+ [
+  "home",
+  "One log across accounts"
+ ],
+ [
+  "home",
+  "One number for everyone. Text or call QuantPocket and say what you need in plain words. The AI assistant answers questions and turns requests into orders."
+ ],
+ [
+  "home",
+  "One number to text or call"
+ ],
+ [
+  "home",
+  "One signal, many accounts."
+ ],
+ [
+  "home",
+  "One stock: the strongest 12-month momentum"
+ ],
+ [
+  "home",
+  "Open the strategy library"
+ ],
+ [
+  "home",
+  "Optimizer, walk-forward testing &amp; QuantConnect"
+ ],
+ [
+  "home",
+  "Order history with status filters"
+ ],
+ [
+  "home",
+  "Pair bots, scheduled trades &amp; live S&amp;P 500 auto-invest"
+ ],
+ [
+  "home",
+  "Pairs analysis &amp; backtests"
+ ],
+ [
+  "home",
+  "Pairs trading"
+ ],
+ [
+  "home",
+  "Pairs trading, done properly."
+ ],
+ [
+  "home",
+  "Paper account for testing"
+ ],
+ [
+  "home",
+  "Paper trading"
+ ],
+ [
+  "home",
+  "Paper trading that works like the real thing"
+ ],
+ [
+  "home",
+  "Paper: equity $103,240, up $1,180 (+1.2%) since Monday."
+ ],
+ [
+  "home",
+  "Paste a private webhook URL into a TradingView, TrendSpider or Zapier alert. When it fires, QuantPocket checks your risk rules and places the order in seconds."
+ ],
+ [
+  "home",
+  "Payments by"
+ ],
+ [
+  "home",
+  "Pick a ready-made strategy, or define entries and exits, sizing and risk limits. Use a TradingView alert or our JSON templates."
+ ],
+ [
+  "home",
+  "Pick a rotation strategy from the library. Every day the app fills in the numbers, walks the rules step by step and tells you exactly what to buy. Run it by hand or let it trade by itself."
+ ],
+ [
+  "home",
+  "Pick a ticker and a classic strategy. It runs on the same engine as the app, using market data since 2015."
+ ],
+ [
+  "home",
+  "Pick one. Everything works on paper first, with no risk."
+ ],
+ [
+  "home",
+  "Pick the accounts for each webhook or strategy"
+ ],
+ [
+  "home",
+  "Pick your entry, then let bracket orders manage the exit while you are away from the screen."
+ ],
+ [
+  "home",
+  "Plain-English strategy builder"
+ ],
+ [
+  "home",
+  "Popular questions"
+ ],
+ [
+  "home",
+  "Position limits, trade limits, allowed tickers, trailing stops and brackets."
+ ],
+ [
+  "home",
+  "Positions, orders, buying power and an equity chart that turns green or red with your P&amp;L, on desktop and on your phone."
+ ],
+ [
+  "home",
+  "Practice with zero risk"
+ ],
+ [
+  "home",
+  "Previous profile"
+ ],
+ [
+  "home",
+  "Price alerts by text message"
+ ],
+ [
+  "home",
+  "Pricing"
+ ],
+ [
+  "home",
+  "Priority AI &amp; priority support"
+ ],
+ [
+  "home",
+  "Privacy Policy"
+ ],
+ [
+  "home",
+  "Pro"
+ ],
+ [
+  "home",
+  "Product"
+ ],
+ [
+  "home",
+  "Projections from real market history"
+ ],
+ [
+  "home",
+  "QuantConnect LEAN projects and cloud backtests"
+ ],
+ [
+  "home",
+  "QuantPocket portfolio dashboard with equity chart, positions and order ticket"
+ ],
+ [
+  "home",
+  "QuantPocket: automate your trading from one place"
+ ],
+ [
+  "home",
+  "Quants &amp; developers"
+ ],
+ [
+  "home",
+  "Question topics"
+ ],
+ [
+  "home",
+  "Ready-made strategies, TradingView alerts, pairs trading and an S&P 500 autopilot on your own brokerage account, with Reality Check watching every strategy. In English and Yiddish."
+ ],
+ [
+  "home",
+  "Ready-made strategies. Every number in your hands."
+ ],
+ [
+  "home",
+  "Reality Check"
+ ],
+ [
+  "home",
+  "Reality Check tells you when a strategy stops working"
+ ],
+ [
+  "home",
+  "Reality Check: know when a strategy stops working."
+ ],
+ [
+  "home",
+  "Realized P&amp;L, wash-sale flags and Form 8949 export"
+ ],
+ [
+  "home",
+  "Retail traders"
+ ],
+ [
+  "home",
+  "Review my trades"
+ ],
+ [
+  "home",
+  "Risk Disclosure"
+ ],
+ [
+  "home",
+  "Risk rules"
+ ],
+ [
+  "home",
+  "Risk rules your code cannot bypass"
+ ],
+ [
+  "home",
+  "Run Python algorithms on QuantConnect, backtest rules here, and send orders from any script or AI agent."
+ ],
+ [
+  "home",
+  "Run backtest"
+ ],
+ [
+  "home",
+  "S&amp;P 500"
+ ],
+ [
+  "home",
+  "S&amp;P 500 auto-invest on paper"
+ ],
+ [
+  "home",
+  "S&amp;P 500 autopilot"
+ ],
+ [
+  "home",
+  "Scanner for 20 classic pairs"
+ ],
+ [
+  "home",
+  "Scanner for 20 classic pairs and bots that trade every day"
+ ],
+ [
+  "home",
+  "Scheduled #12: buy $200 SPY monthly."
+ ],
+ [
+  "home",
+  "Secure checkout by Stripe. Cancel anytime. Trading involves risk; see the"
+ ],
+ [
+  "home",
+  "See my accounts in one place"
+ ],
+ [
+  "home",
+  "Send"
+ ],
+ [
+  "home",
+  "Send alerts straight to your own brokerage account"
+ ],
+ [
+  "home",
+  "Send each alert or strategy to several accounts together: paper and live, or two different brokers, each with its own sizing."
+ ],
+ [
+  "home",
+  "Send orders to your broker from TradingView, TrendSpider and Zapier."
+ ],
+ [
+  "home",
+  "Set it and walk away"
+ ],
+ [
+  "home",
+  "Set my risk rules"
+ ],
+ [
+  "home",
+  "Set up in 3 minutes"
+ ],
+ [
+  "home",
+  "Set up your strategy. Send a signal. Orders go to every account you chose, inside your rules."
+ ],
+ [
+  "home",
+  "Seven ready-made rotation strategies, by hand or automatic, every rule editable."
+ ],
+ [
+  "home",
+  "Seven rotation strategies, built from a real trading spreadsheet. Every day QuantPocket fills in the market numbers, walks the rules step by step and tells you exactly what to buy."
+ ],
+ [
+  "home",
+  "Seven strategies, ready to run."
+ ],
+ [
+  "home",
+  "Several brokers at once"
+ ],
+ [
+  "home",
+  "Sign in"
+ ],
+ [
+  "home",
+  "Sign up with Google"
+ ],
+ [
+  "home",
+  "Signal and strategy logs"
+ ],
+ [
+  "home",
+  "Signals fire, orders execute, and fills, P&amp;L and positions update in one place."
+ ],
+ [
+  "home",
+  "Simple pricing. Start free."
+ ],
+ [
+  "home",
+  "Size from the alert or a fixed amount"
+ ],
+ [
+  "home",
+  "Sizing in shares or dollars"
+ ],
+ [
+  "home",
+  "Start 14-day free trial"
+ ],
+ [
+  "home",
+  "Start free"
+ ],
+ [
+  "home",
+  "Start free with email"
+ ],
+ [
+  "home",
+  "Start my S&amp;P 500 plan"
+ ],
+ [
+  "home",
+  "Start on paper before going live"
+ ],
+ [
+  "home",
+  "Start on paper, switch to live when you are ready"
+ ],
+ [
+  "home",
+  "Starter"
+ ],
+ [
+  "home",
+  "Stocks, ETFs, options and crypto through your own brokerage account. Ready-made strategies, TradingView alerts, pairs trading and an S&amp;P 500 plan: test them, paper trade them and automate them on one platform."
+ ],
+ [
+  "home",
+  "Stocks, gold, bonds and bitcoin by predicted return"
+ ],
+ [
+  "home",
+  "Stop-loss and take-profit placed with the entry"
+ ],
+ [
+  "home",
+  "Strategies"
+ ],
+ [
+  "home",
+  "Strategy"
+ ],
+ [
+  "home",
+  "Strategy library"
+ ],
+ [
+  "home",
+  "Strategy library by hand + 1 automatic strategy on paper"
+ ],
+ [
+  "home",
+  "Swing traders"
+ ],
+ [
+  "home",
+  "Switch accounts with one tap"
+ ],
+ [
+  "home",
+  "Tax center"
+ ],
+ [
+  "home",
+  "Tax-loss harvesting ideas"
+ ],
+ [
+  "home",
+  "Tax-loss harvesting report"
+ ],
+ [
+  "home",
+  "Terms of Service"
+ ],
+ [
+  "home",
+  "Test everything with $100,000 in paper money before risking real money."
+ ],
+ [
+  "home",
+  "Text PAUSE to stop all automation"
+ ],
+ [
+  "home",
+  "Text PAUSE to stop all automation at once"
+ ],
+ [
+  "home",
+  "Text or call QuantPocket and say what you need in plain words. The AI assistant answers questions and turns requests into orders; every trade needs your PIN."
+ ],
+ [
+  "home",
+  "Text or call one number; ask questions or trade in plain words."
+ ],
+ [
+  "home",
+  "Text or call us:"
+ ],
+ [
+  "home",
+  "The 500 largest US companies in one fund. Pick an amount and a day: QuantPocket buys it for you every month, in dollars, so every dollar is invested."
+ ],
+ [
+  "home",
+  "The S&amp;P 500 has averaged roughly 10% a year since 1957 with dividends reinvested, but some years fell more than 35%. Examples, not a promise."
+ ],
+ [
+  "home",
+  "The S&amp;P 500, on autopilot."
+ ],
+ [
+  "home",
+  "The whole app and this site in English or Yiddish, right-to-left."
+ ],
+ [
+  "home",
+  "They are rotation strategies from a trading spreadsheet that tracks QuantConnect backtests. We show each backtest next to its live results, and Reality Check keeps watching them for you. A great backtest is not a promise: several of them did much worse live."
+ ],
+ [
+  "home",
+  "Ticker"
+ ],
+ [
+  "home",
+  "To do that, reply: DCA $200 SPY MONTHLY &lt;your PIN&gt;"
+ ],
+ [
+  "home",
+  "Trade a pair of stocks"
+ ],
+ [
+  "home",
+  "Trade all my accounts at once"
+ ],
+ [
+  "home",
+  "Trade by text &amp; phone with the AI assistant"
+ ],
+ [
+  "home",
+  "Trade by text or phone"
+ ],
+ [
+  "home",
+  "Trader profiles"
+ ],
+ [
+  "home",
+  "TradingView alerts"
+ ],
+ [
+  "home",
+  "TradingView strategy and indicator alerts"
+ ],
+ [
+  "home",
+  "TradingView users"
+ ],
+ [
+  "home",
+  "Trailing stops sized to each ticker"
+ ],
+ [
+  "home",
+  "Turn alerts and strategies into trades on your own brokerage account, from your browser, your phone, or a text message."
+ ],
+ [
+  "home",
+  "Turn my alert into a trade"
+ ],
+ [
+  "home",
+  "Two stocks that usually move together, like Coca-Cola and Pepsi. When the gap between them stretches far from normal, sell the expensive one and buy the cheap one, then close when the gap returns."
+ ],
+ [
+  "home",
+  "Type your own values, like in a spreadsheet"
+ ],
+ [
+  "home",
+  "VOO, SPLG, IVV or SPY"
+ ],
+ [
+  "home",
+  "VOO, SPLG, IVV or SPY, with their yearly costs shown"
+ ],
+ [
+  "home",
+  "Walk-forward backtest: market-neutral or long-only"
+ ],
+ [
+  "home",
+  "Watch"
+ ],
+ [
+  "home",
+  "Weaker than expected"
+ ],
+ [
+  "home",
+  "Webhooks from any language, any tool"
+ ],
+ [
+  "home",
+  "Weekly"
+ ],
+ [
+  "home",
+  "What could it grow to?"
+ ],
+ [
+  "home",
+  "What do you want to do?"
+ ],
+ [
+  "home",
+  "What is Reality Check?"
+ ],
+ [
+  "home",
+  "What you get"
+ ],
+ [
+  "home",
+  "Whatever your style, QuantPocket automates the parts you don&rsquo;t want to do by hand. Pick the profile that fits you best."
+ ],
+ [
+  "home",
+  "When two stocks drift apart, trade the gap."
+ ],
+ [
+  "home",
+  "Where do the ready-made strategies come from?"
+ ],
+ [
+  "home",
+  "Which brokerages can I connect?"
+ ],
+ [
+  "home",
+  "Who is QuantPocket for?"
+ ],
+ [
+  "home",
+  "Will I make money?"
+ ],
+ [
+  "home",
+  "Works on any phone, no app to install"
+ ],
+ [
+  "home",
+  "Yearly"
+ ],
+ [
+  "home",
+  "Years"
+ ],
+ [
+  "home",
+  "Years of daily data, costs, drawdowns, walk-forward checks and an optimizer."
+ ],
+ [
+  "home",
+  "Yes. Both can call a webhook URL. Use your QuantPocket webhook URL with the fields <code>ticker</code>, <code>action</code> and <code>quantity</code>."
+ ],
+ [
+  "home",
+  "Yes. Cancel from <b>Manage billing</b> in the app; you keep access until the end of the period you paid for. You can also export or delete all your data from Settings."
+ ],
+ [
+  "home",
+  "Yes. Choose <b>Sign up with Google</b> and your account is ready in seconds. You can add a password later in Settings."
+ ],
+ [
+  "home",
+  "Yes. Choose ייִדיש at the top of this page or in the app. The whole app switches to Yiddish, written right-to-left."
+ ],
+ [
+  "home",
+  "Yes. Create a webhook under <b>Alerts to trades</b>, paste its URL into the alert&rsquo;s <b>Webhook URL</b> field, and use our message template. Strategy alerts can pass the direction and size with <code>{{strategy.order.action}}</code> and <code>{{strategy.order.contracts}}</code>."
+ ],
+ [
+  "home",
+  "Yes. Place a bracket order (entry, stop-loss and take-profit) as good-till-canceled. The exit orders wait at your broker even while you are offline."
+ ],
+ [
+  "home",
+  "Yes. Webhooks can send each alert to several accounts at once (paper, Alpaca, Schwab, tastytrade, Tradier, TradeStation), with the same risk rules."
+ ],
+ [
+  "home",
+  "You put in"
+ ],
+ [
+  "home",
+  "You&rsquo;re 3 minutes away from your first trade."
+ ],
+ [
+  "home",
+  "Your Pine Script strategy already knows when to buy and sell. QuantPocket places those orders for you."
+ ],
+ [
+  "home",
+  "Your account, by text or phone call."
+ ],
+ [
+  "home",
+  "Your account, from any phone."
+ ],
+ [
+  "home",
+  "Your alert fires. The order goes out."
+ ],
+ [
+  "home",
+  "Your own brokerage accounts, connected in minutes."
+ ],
+ [
+  "home",
+  "Your strategy, executed"
+ ],
+ [
+  "home",
+  "a strategy with a 922% a year backtest returned &minus;27% in its first three live months. Reality Check would have flagged it and cut it to cash."
+ ],
+ [
+  "home",
+  "high risk"
+ ],
+ [
+  "home",
+  "how much is my account up this week?"
+ ],
+ [
+  "home",
+  "medium risk"
+ ],
+ [
+  "home",
+  "or"
+ ],
+ [
+  "home",
+  "put $200 into the S&amp;P every month"
+ ],
+ [
+  "home",
+  "very high risk"
+ ]
+]

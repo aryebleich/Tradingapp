@@ -4,7 +4,7 @@ let H; // helpers from app.js
 
 export function registerTrading(routes, helpers) {
   H = helpers;
-  Object.assign(routes, { account, portfolio, trade, orders, positions, markets, options, watchlists, calendar });
+  Object.assign(routes, { account, 'open-account': openAccount, portfolio, trade, orders, positions, markets, options, watchlists, calendar });
 }
 
 // ---------- shared helpers ----------
@@ -142,82 +142,183 @@ async function account(view, q) {
   if (conn && !(conn.type === 'broker' && s.broker.account?.status !== 'ACTIVE')) renderConfig(H.$('#configBox', view));
 }
 
+// ---------- account opening (Broker API, POST /v1/accounts via our server) ----------
+// Five steps in the order Alpaca's KYC needs them. Nothing here talks to Alpaca directly: the
+// browser sends the form to /api/alpaca/broker/accounts and the server signs the request.
+const DOC_KINDS = [['passport', 'Passport'], ['drivers_license', "Driver's license"], ['national_id_card', 'National ID card'], ['state_id', 'State ID']];
+const MAX_DOC = 5 * 1024 * 1024;
+const FUNDING = [['employment_income', 'Employment income'], ['investments', 'Investments'], ['inheritance', 'Inheritance'], ['business_income', 'Business income'], ['savings', 'Savings'], ['family', 'Family']];
+const DISCLOSURES = [
+  ['isControlPerson', 'Are you a 10% shareholder, director or officer of a public company? (control person)'],
+  ['isAffiliated', 'Are you affiliated with a stock exchange or FINRA?'],
+  ['isPoliticallyExposed', 'Are you a senior political figure (politically exposed person)?'],
+  ['familyExposed', 'Is an immediate family member a senior political figure?'],
+];
+// Like H.form, but radio groups give the checked value.
+const collect = el => Object.fromEntries(H.$$('[name]', el).filter(i => i.type !== 'radio' || i.checked).filter(i => i.type !== 'file').map(i => [i.name, i.type === 'checkbox' ? i.checked : i.value]));
+const readFile = file => new Promise((ok, fail) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = () => fail(new Error('Could not read ' + file.name)); r.readAsDataURL(file); });
+async function pickDocs(input, kind, list) {
+  for (const f of input.files) {
+    if (!['image/jpeg', 'image/png', 'application/pdf'].includes(f.type)) throw new Error(`${f.name}: use a JPG, PNG or PDF`);
+    if (f.size > MAX_DOC) throw new Error(`${f.name} is larger than 5 MB`);
+    if (list.length >= 4) throw new Error('Upload at most 4 documents');
+    list.push({ subType: kind, mimeType: f.type, content: await readFile(f), name: f.name, size: f.size });
+  }
+  input.value = '';
+}
+const docList = list => list.map((d, i) => `<div class="doc"><span>${H.esc(DOC_KINDS.find(k => k[0] === d.subType)?.[1] || d.subType)}: ${H.esc(d.name)} <span class="mu">(${Math.ceil(d.size / 1024)} KB)</span></span><button type="button" class="small ghost" data-rm="${i}">Remove</button></div>`).join('');
+
 function renderOnboarding(box, me) {
-  const data = { email: me.email, citizenship: 'USA', countryOfBirth: 'USA', employmentStatus: 'EMPLOYED', fundingSource: 'employment_income' };
+  const data = { email: me.email, citizenship: 'USA', countryOfBirth: 'USA', taxResidence: 'USA', fundingSource: 'employment_income', employmentStatus: 'EMPLOYED', docKind: 'passport', documents: [] };
+  for (const [k] of DISCLOSURES) data[k] = 'no';
   let step = 0;
-  const STEPS = ['Identity', 'Contact', 'Employment & disclosures', 'Agreements'];
+  const STEPS = ['Contact', 'Identity', 'Disclosures', 'Agreements', 'Documents'];
   const sel = (name, opts) => `<select name="${name}">${opts.map(([v, t]) => `<option value="${v}" ${data[name] === v ? 'selected' : ''}>${t}</option>`).join('')}</select>`;
   const val = k => H.esc(data[k] ?? '');
   const yes = k => (data[k] ? 'checked' : '');
+  const yn = (k, q) => `<div class="yn"><span>${q}</span><span class="seg" role="radiogroup"><label><input type="radio" name="${k}" value="no" ${data[k] !== 'yes' ? 'checked' : ''}> No</label><label><input type="radio" name="${k}" value="yes" ${data[k] === 'yes' ? 'checked' : ''}> Yes</label></span></div>`;
   const pages = [
+    () => `<div class="row"><label>Email<input name="email" type="email" value="${val('email')}" required autocomplete="email"></label><label>Mobile phone<input name="phone" type="tel" value="${val('phone')}" required placeholder="+17185551234" autocomplete="tel"></label></div>
+      <div class="row"><label style="flex:3">Street address<input name="street" value="${val('street')}" required autocomplete="address-line1"></label><label>Apt / unit<input name="unit" value="${val('unit')}" autocomplete="address-line2"></label></div>
+      <div class="row"><label>City<input name="city" value="${val('city')}" required autocomplete="address-level2"></label><label>State${sel('state', STATES.map(x => [x, x]))}</label><label>ZIP code<input name="postalCode" value="${val('postalCode')}" required inputmode="numeric" pattern="\\d{5}(-\\d{4})?" autocomplete="postal-code"></label></div>`,
     () => `<div class="row"><label>First name<input name="givenName" value="${val('givenName')}" required autocomplete="given-name"></label><label>Middle name<input name="middleName" value="${val('middleName')}" autocomplete="additional-name"></label><label>Last name<input name="familyName" value="${val('familyName')}" required autocomplete="family-name"></label></div>
       <div class="row"><label>Date of birth<input name="dateOfBirth" type="date" value="${val('dateOfBirth')}" required autocomplete="bday"></label>
       <label>Social Security number<input name="ssn" value="${val('ssn')}" required inputmode="numeric" autocomplete="off" placeholder="123-45-6789" pattern="\\d{3}-?\\d{2}-?\\d{4}"></label></div>
-      <div class="row"><label>Citizenship${sel('citizenship', COUNTRIES)}</label><label>Country of birth${sel('countryOfBirth', COUNTRIES)}</label></div>
-      <p class="mu" style="font-size:13px">Required by law to verify your identity (KYC). Your SSN is sent securely to Alpaca and is not stored by QuantPocket.</p>`,
-    () => `<div class="row"><label>Email<input name="email" type="email" value="${val('email')}" required autocomplete="email"></label><label>Mobile phone<input name="phone" value="${val('phone')}" required placeholder="+17185551234" autocomplete="tel"></label></div>
-      <div class="row"><label style="flex:3">Street address<input name="street" value="${val('street')}" required autocomplete="address-line1"></label><label>Apt / unit<input name="unit" value="${val('unit')}" autocomplete="address-line2"></label></div>
-      <div class="row"><label>City<input name="city" value="${val('city')}" required autocomplete="address-level2"></label><label>State${sel('state', STATES.map(x => [x, x]))}</label><label>ZIP code<input name="postalCode" value="${val('postalCode')}" required pattern="\\d{5}(-\\d{4})?" autocomplete="postal-code"></label></div>`,
-    () => `<div class="row"><label>Employment${sel('employmentStatus', [['EMPLOYED', 'Employed'], ['UNEMPLOYED', 'Unemployed'], ['STUDENT', 'Student'], ['RETIRED', 'Retired']])}</label>
-      <label>Employer<input name="employerName" value="${val('employerName')}"></label><label>Position<input name="employmentPosition" value="${val('employmentPosition')}"></label></div>
-      <label>Main source of funds${sel('fundingSource', [['employment_income', 'Employment income'], ['investments', 'Investments'], ['inheritance', 'Inheritance'], ['business_income', 'Business income'], ['savings', 'Savings'], ['family', 'Family']])}</label>
-      <fieldset><legend>Disclosures (check any that apply)</legend>
-        <label class="check"><input type="checkbox" name="isControlPerson" ${yes('isControlPerson')}> I am a 10% shareholder, director or officer of a public company</label>
-        <label class="check"><input type="checkbox" name="isAffiliated" ${yes('isAffiliated')}> I am affiliated with a stock exchange or FINRA</label>
-        <label class="check"><input type="checkbox" name="isPoliticallyExposed" ${yes('isPoliticallyExposed')}> I am a senior political figure</label>
-        <label class="check"><input type="checkbox" name="familyExposed" ${yes('familyExposed')}> An immediate family member is a senior political figure</label></fieldset>`,
+      <div class="row"><label>Country of citizenship${sel('citizenship', COUNTRIES)}</label><label>Country of birth${sel('countryOfBirth', COUNTRIES)}</label><label>Tax residence${sel('taxResidence', COUNTRIES)}</label></div>
+      <label>Main source of funds${sel('fundingSource', FUNDING)}</label>
+      <p class="mu" style="font-size:13px">Required by law to verify your identity (KYC). Your SSN goes to Alpaca over an encrypted connection and is not stored by QuantPocket.</p>`,
+    () => `<fieldset><legend>Disclosures</legend>${DISCLOSURES.map(([k, q]) => yn(k, q)).join('')}</fieldset>
+      <details><summary>Employment (optional)</summary><div class="row"><label>Employment${sel('employmentStatus', [['EMPLOYED', 'Employed'], ['UNEMPLOYED', 'Unemployed'], ['STUDENT', 'Student'], ['RETIRED', 'Retired']])}</label>
+      <label>Employer<input name="employerName" value="${val('employerName')}"></label><label>Position<input name="employmentPosition" value="${val('employmentPosition')}"></label></div></details>`,
     () => `<fieldset><legend>Account features</legend>
-        <label class="check"><input type="checkbox" name="crypto" ${yes('crypto')}> Enable crypto trading</label>
-        <label class="check"><input type="checkbox" name="options" ${yes('options')}> Enable options trading</label>
-        <label class="check"><input type="checkbox" name="margin" ${yes('margin')}> Apply for a margin account</label></fieldset>
+        <label class="check"><input type="checkbox" name="margin" ${yes('margin')}> Apply for a margin account (Margin Agreement)</label>
+        <label class="check"><input type="checkbox" name="options" ${yes('options')}> Enable options trading (Options Agreement)</label>
+        <label class="check"><input type="checkbox" name="crypto" ${yes('crypto')}> Enable crypto trading (Crypto Agreement)</label></fieldset>
       <fieldset><legend>Agreements</legend>
-        <p style="font-size:14px">Read the <a href="https://alpaca.markets/disclosures" target="_blank" rel="noopener">Alpaca Customer Agreement and disclosures</a>${data.margin ? ', including the Margin Agreement' : ''}${data.crypto ? ', the Crypto Agreement' : ''}${data.options ? ' and the Options Agreement' : ''}.</p>
-        <label class="check"><input type="checkbox" name="agreeCustomer" ${yes('agreeCustomer')} required> I have read and agree to the Alpaca agreements above and the QuantPocket Terms. I certify the information I provided is true.</label></fieldset>
+        <p style="font-size:14px">Read the <a href="https://alpaca.markets/disclosures" target="_blank" rel="noopener">Alpaca Customer Agreement and disclosures</a>${data.margin ? ', the Margin Agreement' : ''}${data.options ? ', the Options Agreement' : ''}${data.crypto ? ', the Crypto Agreement' : ''}.</p>
+        <label class="check"><input type="checkbox" name="agreeCustomer" ${yes('agreeCustomer')} required> I have read and agree to the Alpaca agreements above and the QuantPocket Terms. I certify the information I provided is true.</label>
+        <p class="mu" style="font-size:12px">Your agreement is recorded with the time you submit and your IP address, as Alpaca requires.</p></fieldset>`,
+    () => `<p class="mu">Optional: adding a photo of your ID now can speed up approval. You can also upload later if Alpaca asks for it.</p>
+      <div class="row"><label>Document${sel('docKind', DOC_KINDS)}</label><label>File (JPG, PNG or PDF, up to 5 MB)<input type="file" id="docFile" accept="image/jpeg,image/png,application/pdf" multiple></label></div>
+      <div id="docs">${docList(data.documents)}</div>
       <h3>Review</h3><div class="kv">
         <span>Name</span><span>${val('givenName')} ${val('familyName')}</span><span>Date of birth</span><span>${val('dateOfBirth')}</span>
         <span>SSN</span><span>•••-••-${H.esc(String(data.ssn || '').replace(/\D/g, '').slice(-4))}</span><span>Address</span><span>${val('street')}, ${val('city')} ${val('state')} ${val('postalCode')}</span>
-        <span>Email / phone</span><span>${val('email')} · ${val('phone')}</span></div>`,
+        <span>Email / phone</span><span>${val('email')} · ${val('phone')}</span>
+        <span>Disclosures</span><span>${DISCLOSURES.filter(([k]) => data[k] === 'yes').length ? DISCLOSURES.filter(([k]) => data[k] === 'yes').length + ' answered yes' : 'None apply'}</span>
+        <span>Agreements</span><span>Customer${data.margin ? ', Margin' : ''}${data.options ? ', Options' : ''}${data.crypto ? ', Crypto' : ''}</span></div>`,
   ];
+  const last = STEPS.length - 1;
   const draw = () => {
     box.innerHTML = `<form class="card" id="onb" novalidate><h2>Open a brokerage account</h2>
       <p class="mu">Takes about 3 minutes. Accounts are held by Alpaca Securities LLC, member FINRA/SIPC.</p>
       <div class="steps">${STEPS.map((t, i) => `<div class="${i < step ? 'done' : i === step ? 'cur' : ''}">${t}</div>`).join('')}</div>
+      <p class="mu stepof">Step ${step + 1} of ${STEPS.length}: <b>${STEPS[step]}</b></p>
       ${pages[step]()}
-      <div class="row" style="justify-content:space-between;margin-top:10px">${step ? '<button type="button" class="ghost" id="back">Back</button>' : '<span></span>'}<button id="next">${step === 3 ? 'Submit application' : 'Continue'}</button></div><div class="err" id="onbErr"></div></form>`;
+      <div class="row" style="justify-content:space-between;margin-top:10px">${step ? '<button type="button" class="ghost" id="back">Back</button>' : '<span></span>'}<button id="next">${step === last ? 'Submit application' : 'Continue'}</button></div><div class="err" id="onbErr"></div></form>`;
     const f = H.$('#onb', box);
-    const save = () => Object.assign(data, H.form(f));
+    const save = () => Object.assign(data, collect(f));
     if (H.$('#back', box)) H.$('#back', box).onclick = () => { save(); step--; draw(); };
-    H.$$('input[name=crypto],input[name=options],input[name=margin]', f).forEach(i => (i.onchange = () => { save(); draw(); }));
+    H.$$('input[name=options],input[name=margin],input[name=crypto]', f).forEach(i => (i.onchange = () => { save(); draw(); }));
+    const file = H.$('#docFile', f);
+    if (file) file.onchange = async () => {
+      const err = H.$('#onbErr', box); err.textContent = '';
+      try { save(); await pickDocs(file, data.docKind, data.documents); } catch (e) { err.textContent = e.message; }
+      draw();
+    };
+    H.$$('[data-rm]', f).forEach(b => (b.onclick = () => { save(); data.documents.splice(+b.dataset.rm, 1); draw(); }));
     H.act(H.$('#next', box), async () => {
-      const bad = [...f.querySelectorAll('input,select')].find(i => !i.checkValidity());
+      const bad = [...f.querySelectorAll('input:not([type=file]),select')].find(i => !i.checkValidity());
       if (bad) { bad.focus(); throw new Error(`Check "${bad.closest('label')?.textContent.trim().split('\n')[0] || bad.name}"`); }
       save();
-      if (step < 3) { step++; draw(); return; }
+      if (step < last) { step++; draw(); return; }
       if (!(await confirmBox('Submit application?', '<p>Your information will be sent to Alpaca for identity verification.</p>', 'Submit'))) return;
-      await A('/broker/accounts', { body: data });
+      const { docKind, documents, ...body } = data;
+      await A('/broker/accounts', { body: { ...body, documents: documents.map(({ subType, mimeType, content }) => ({ subType, mimeType, content })) } });
       H.updateBadge(true); H.render();
     }, H.$('#onbErr', box));
   };
   draw();
 }
 
+// Status dashboard: where the application stands, what to do next, and its history. Changes
+// arrive live from /broker/events/stream (relayed from Alpaca's event feed); a slow poll is the backup.
+const KYC_TRACK = [['SUBMITTED', 'Submitted'], ['REVIEW', 'Under review'], ['APPROVED', 'Approved'], ['ACTIVE', 'Active']];
+const trackPos = s => (s === 'ACTIVE' ? 3 : s === 'APPROVED' ? 2 : ['APPROVAL_PENDING', 'REAPPROVAL_PENDING', 'ACTION_REQUIRED', 'RESUBMITTED', 'AML_REVIEW', 'KYC_SUBMITTED'].includes(s) ? 1 : 0);
 async function renderBrokerAccount(box) {
   const a = await A('/broker/account');
-  const steps = ['SUBMITTED', 'APPROVED', 'ACTIVE'];
-  const problem = a.step === 0;
-  box.innerHTML = `<div class="card"><div class="row" style="justify-content:space-between"><h2>Brokerage account ${H.esc(a.accountNumber || '')}</h2><span class="pill ${a.status === 'ACTIVE' ? '' : 'warn'}">${H.esc(a.status)}</span></div>
-    <div class="steps">${steps.map((t, i) => `<div class="${a.step > i ? 'done' : a.step === i + 1 && a.step < 3 ? 'cur' : ''}">${t[0] + t.slice(1).toLowerCase()}</div>`).join('')}</div>
-    ${problem ? `<p class="err">Your application needs attention (${H.esc(a.status)}). ${a.kyc?.summary ? 'Result: ' + H.esc(a.kyc.summary) + '. ' : ''}Please <a href="/contact">contact support</a>.</p>` : a.status !== 'ACTIVE' ? '<p class="mu">Identity verification usually takes a few minutes in the sandbox and up to 1 business day in production. This page updates automatically.</p>' : '<p class="pos">Your account is active. You can fund it and start trading.</p>'}
-    <div class="kv"><span>Name</span><span>${H.esc(a.name || '')}</span><span>Crypto</span><span>${H.esc(a.cryptoStatus || 'not enabled')}</span><span>Enabled assets</span><span>${H.esc((a.enabledAssets || []).join(', '))}</span><span>Opened</span><span>${H.date(a.createdAt)}</span></div>
-    <details style="margin-top:10px"><summary>Update contact details</summary><form id="contactForm">
+  const info = a.info, pos = trackPos(a.status), final = ['ACTIVE', 'REJECTED', 'ACCOUNT_CLOSED', 'DISABLED'].includes(a.status);
+  const bad = info.tone === 'bad';
+  box.innerHTML = `<div class="card kycstat ${info.tone}" id="kycStatus"><div class="row" style="justify-content:space-between;align-items:flex-start">
+      <div><div class="mu" style="font-size:13px">Brokerage account ${H.esc(a.accountNumber || '')}</div><h2 style="margin:4px 0">${H.esc(info.title)}</h2></div>
+      <span class="pill ${info.tone === 'ok' ? '' : 'warn'}">${H.esc(a.status)}</span></div>
+    <p>${H.esc(info.detail)}${a.kyc?.summary && bad ? ' Result: ' + H.esc(a.kyc.summary) + '.' : ''}${info.action === 'support' ? ' <a href="/contact">Contact support</a>.' : ''}</p>
+    <div class="steps">${KYC_TRACK.map(([, t], i) => `<div class="${bad ? '' : pos > i || a.status === 'ACTIVE' ? 'done' : pos === i ? 'cur' : ''}">${t}</div>`).join('')}</div>
+    ${final ? '' : `<p class="mu live-note"><span class="dot ${a.live ? 'on' : ''}"></span> ${a.live ? 'Live: this page updates the moment Alpaca decides.' : 'This page checks for updates automatically.'}</p>`}
+  </div>
+  ${info.action === 'documents' ? `<form class="card" id="docForm"><h2>Upload documents</h2><p class="mu">A clear photo or scan of a government ID. JPG, PNG or PDF, up to 5 MB each.</p>
+    <div class="row"><label>Document<select name="docKind">${DOC_KINDS.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select></label><label>File<input type="file" id="docFile" accept="image/jpeg,image/png,application/pdf" multiple></label></div>
+    <div id="docs"></div><button>Upload</button><div class="err"></div></form>` : ''}
+  <div class="grid">
+    <div class="card"><h2>Account details</h2><div class="kv"><span>Name</span><span>${H.esc(a.name || '')}</span><span>Account number</span><span>${H.esc(a.accountNumber || '-')}</span><span>Crypto</span><span>${H.esc(a.cryptoStatus || 'not enabled')}</span><span>Enabled assets</span><span>${H.esc((a.enabledAssets || []).join(', '))}</span><span>Agreements</span><span>${H.esc((a.agreements || []).map(x => x.replace('_agreement', '')).join(', '))}</span><span>Opened</span><span>${H.date(a.createdAt)}</span></div>
+      <details style="margin-top:10px"><summary>Update contact details</summary><form id="contactForm">
       <div class="row"><label>Email<input name="email" value="${H.esc(a.contact?.email_address || '')}"></label><label>Phone<input name="phone" value="${H.esc(a.contact?.phone_number || '')}"></label></div>
       <div class="row"><label style="flex:3">Street<input name="street" value="${H.esc(a.contact?.street_address?.[0] || '')}"></label><label>Unit<input name="unit" value="${H.esc(a.contact?.unit || '')}"></label></div>
       <div class="row"><label>City<input name="city" value="${H.esc(a.contact?.city || '')}"></label><label>State<input name="state" value="${H.esc(a.contact?.state || '')}"></label><label>ZIP<input name="postalCode" value="${H.esc(a.contact?.postal_code || '')}"></label></div>
       <button>Save changes</button><div class="err"></div></form></details></div>
-    ${a.status === 'ACTIVE' ? '<div class="grid"><div class="card" id="achBox"></div><div class="card" id="trBox"></div></div>' : ''}`;
+    <div class="card"><h2>Application history</h2><ol class="timeline">${(a.history || []).slice().reverse().map(e => `<li><b>${H.esc(e.status_to)}</b>${e.reason ? ` <span class="mu">${H.esc(e.reason)}</span>` : ''}<div class="mu">${new Date(e.at).toLocaleString()} · ${e.source === 'sse' ? 'Alpaca event' : e.source === 'created' ? 'Application sent' : 'Status check'}</div></li>`).join('') || '<li class="mu">No updates yet</li>'}</ol></div>
+  </div>
+  ${a.status === 'ACTIVE' ? '<div class="grid"><div class="card" id="achBox"></div><div class="card" id="trBox"></div></div>' : ''}`;
   H.act(H.$('#contactForm button', box), async () => { await A('/broker/account', { body: H.form(H.$('#contactForm', box)), method: 'PATCH' }); return 'Saved'; });
-  if (a.status !== 'ACTIVE' && !problem) { const t = setTimeout(H.render, 8000); H.onLeave(() => clearTimeout(t)); }
+  const df = H.$('#docForm', box);
+  if (df) {
+    const docs = [], file = H.$('#docFile', df), list = H.$('#docs', df);
+    const redraw = () => { list.innerHTML = docList(docs); H.$$('[data-rm]', list).forEach(b => (b.onclick = () => { docs.splice(+b.dataset.rm, 1); redraw(); })); };
+    file.onchange = async () => { const err = H.$('.err', df); err.textContent = ''; try { await pickDocs(file, df.docKind.value, docs); } catch (e) { err.textContent = e.message; } redraw(); };
+    H.act(H.$('button:not([data-rm])', df), async () => {
+      if (!docs.length) throw new Error('Choose a file to upload');
+      await A('/broker/documents', { body: { documents: docs.map(({ subType, mimeType, content }) => ({ subType, mimeType, content })) } });
+      H.render();
+    });
+  }
+  if (!final) {
+    // Live updates; the stream closes when the user leaves the page.
+    let es = null;
+    try {
+      es = new EventSource('/api/alpaca/broker/events/stream');
+      es.addEventListener('status', () => { es.close(); H.updateBadge(true); H.render(); });
+    } catch {}
+    const t = setInterval(() => { if (!document.hidden) H.render(); }, a.live ? 60000 : 15000);
+    H.onLeave(() => { clearInterval(t); es?.close(); });
+  }
   if (a.status === 'ACTIVE') await renderBanking(H.$('#achBox', box), H.$('#trBox', box));
+}
+
+// Public page for new customers: create the QuantPocket login (if needed), then the application.
+async function openAccount(view) {
+  const me = H.me();
+  if (!me) {
+    view.innerHTML = `<div class="hero"><h1>Open a brokerage account</h1><p class="mu">Commission-free US stocks and ETFs, plus options and crypto, at Alpaca Securities LLC (member FINRA/SIPC). Apply in about 3 minutes, all from QuantPocket.</p></div>
+      <form class="card auth" id="oaReg"><h2>1. Create your QuantPocket login</h2>
+      <label>Email<input name="email" type="email" autocomplete="username" required></label>
+      <label>Password (10+ chars, upper, lower, digit)<input name="password" type="password" autocomplete="new-password" required></label>
+      <label><input type="checkbox" name="agree" style="width:auto"> I agree to the <a href="/terms" target="_blank">Terms</a> and <a href="/privacy" target="_blank">Privacy Policy</a> and have read the <a href="/risk" target="_blank">Risk Disclosure</a>.</label>
+      <button>Continue to application</button><div class="err"></div>
+      <p class="mu">Already have a login? <a href="#/login">Sign in</a>, then open Account → Alpaca account.</p></form>`;
+    H.act(H.$('#oaReg button', view), async () => {
+      const f = H.form(H.$('#oaReg', view));
+      if (!f.agree) throw new Error('Please accept the Terms to continue');
+      let ref = null; try { ref = localStorage.getItem('qp_ref'); } catch {}
+      await H.api('/auth/register', { body: { ...f, ref } });
+      location.reload(); // signed in now; the page reopens on the application
+    });
+    return;
+  }
+  const s = await A('/status');
+  if (!s.broker.enabled) { view.innerHTML = '<h1>Open a brokerage account</h1><div class="card"><p>Brokerage accounts are not available on this server yet. You can still <a href="#/account">connect an existing Alpaca account</a>.</p></div>'; return; }
+  view.innerHTML = '<h1>Open a brokerage account</h1><div id="brokerBox"></div>';
+  const box = H.$('#brokerBox', view);
+  if (s.broker.account) await renderBrokerAccount(box); else renderOnboarding(box, me);
 }
 
 async function renderBanking(achBox, trBox) {

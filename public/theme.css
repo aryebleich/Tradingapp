@@ -252,3 +252,31 @@ html[dir="rtl"] canvas { direction: ltr; }
 html[dir="rtl"] .steps div::after { left: auto; right: -50%; }
 #json { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
 @media (max-width: 640px) { #json { font-size: 16px; } }
+
+/* brokerage application: yes/no questions, documents, status dashboard */
+.yn { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--bd); }
+.yn:last-child { border-bottom: 0; }
+.yn > span:first-child { flex: 1; font-size: 14.5px; }
+.yn .seg { display: inline-flex; gap: 4px; flex-shrink: 0; }
+.yn .seg label { display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 6px 12px; border: 1px solid var(--bd); border-radius: 8px; cursor: pointer; font-weight: 600; }
+.yn .seg label:has(input:checked) { background: var(--tx); color: var(--card); border-color: var(--tx); }
+.yn .seg input { width: auto; margin: 0; }
+.doc { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--bd); font-size: 14px; overflow-wrap: anywhere; }
+.stepof { font-size: 13px; margin: 0 0 8px; }
+.kycstat { border-left: 4px solid var(--ac); }
+.kycstat.ok { border-left-color: var(--gr); } .kycstat.warn { border-left-color: var(--warn); } .kycstat.bad { border-left-color: var(--rd); }
+html[dir="rtl"] .kycstat { border-left-width: 1px; border-right: 4px solid var(--ac); }
+html[dir="rtl"] .kycstat.ok { border-right-color: var(--gr); } html[dir="rtl"] .kycstat.warn { border-right-color: var(--warn); } html[dir="rtl"] .kycstat.bad { border-right-color: var(--rd); }
+.live-note { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 0; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--mu); flex-shrink: 0; }
+.dot.on { background: var(--gr); box-shadow: 0 0 0 3px color-mix(in srgb, var(--gr) 25%, transparent); }
+.timeline { list-style: none; padding: 0; margin: 0; }
+.timeline li { position: relative; padding: 0 0 12px 18px; border-left: 2px solid var(--bd); margin-left: 4px; font-size: 14px; }
+.timeline li::before { content: ""; position: absolute; left: -6px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--ac); }
+.timeline li .mu { font-size: 12.5px; }
+html[dir="rtl"] .timeline li { border-left: 0; border-right: 2px solid var(--bd); padding: 0 18px 12px 0; margin: 0 4px 0 0; }
+html[dir="rtl"] .timeline li::before { left: auto; right: -6px; }
+@media (max-width: 640px) { .yn { flex-direction: column; align-items: flex-start; } }
+/* Five steps do not fit with labels on a phone; the "Step 2 of 5: Identity" line names the step. */
+.steps div { min-width: 0; }
+@media (max-width: 480px) { #onb .steps div { font-size: 0; padding-top: 24px; } }

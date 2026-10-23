@@ -17,6 +17,7 @@ import { buildStrategy } from './src/ai.js';
 import { handleCommand, userByPhone, normalize, HELP, KNOWN } from './src/commands.js';
 import { aiEnabled, interpret, toCommand } from './src/assistant.js';
 import { startScheduler, assessAllFees, runDueJobs, snapshotAll } from './src/scheduler.js';
+import { startKycEvents } from './src/alpaca/kyc.js';
 import * as N from './src/notify.js';
 import * as PAY from './src/payments.js';
 import { router as alpacaRouter } from './src/routes/alpaca.js';
@@ -130,6 +131,8 @@ app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (r
   res.json({ received: true });
 });
 
+// Identity documents (base64 images/PDFs) are only accepted on the two onboarding endpoints.
+app.use(['/api/alpaca/broker/accounts', '/api/alpaca/broker/documents'], express.json({ limit: '30mb' }));
 app.use(express.json({ limit: '200kb' }));
 app.use(express.urlencoded({ extended: false, limit: '50kb' }));
 
@@ -625,7 +628,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const port = +process.env.PORT || 3000;
   const server = app.listen(port, () => console.log(`QuantPocket on http://localhost:${port}`));
   const timer = startScheduler();
-  const stop = () => { clearInterval(timer); server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 8000).unref(); };
+  const stopKyc = startKycEvents();
+  const stop = () => { clearInterval(timer); stopKyc(); server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 8000).unref(); };
   process.on('SIGTERM', stop);
   process.on('SIGINT', stop);
 }

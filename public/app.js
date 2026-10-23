@@ -152,7 +152,7 @@ async function render() {
   $('#view').replaceChildren(view);
   // A new page starts at the top instead of keeping the previous page's scroll position.
   scrollTo(0, 0);
-  if (!ME && !['login', 'register', 'mfa', 'forgot', 'reset', 'verify'].includes(route)) { location.hash = '#/login'; return; }
+  if (!ME && !['login', 'register', 'mfa', 'forgot', 'reset', 'verify', 'open-account'].includes(route)) { location.hash = '#/login'; return; }
   $('#top').hidden = !ME; $('#nav').hidden = !ME; $('#tabs').hidden = !ME;
   setMenu(false);
   $$('#tabs a[data-r]').forEach(a => a.classList.toggle('on', a.dataset.r === route || (route === '' && a.dataset.r === 'dashboard')));

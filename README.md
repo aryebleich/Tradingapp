@@ -44,7 +44,12 @@ Everything starts in the **sandbox / paper** environment.
 1. Alpaca dashboard → **Broker API** → sandbox keys → set `BROKER_API_KEY` and `BROKER_API_SECRET`.
 2. Alpaca dashboard → **Trading API (paper)** → keys → set `ALPACA_KEY_ID` and `ALPACA_SECRET`. These are used for market data and the live price stream.
 3. Optional, for OAuth: create an OAuth app with redirect URI `https://YOUR_APP/oauth/alpaca/callback`, then set `ALPACA_OAUTH_CLIENT_ID` and `ALPACA_OAUTH_CLIENT_SECRET`.
-4. Live trading later: set `BROKER_BASE_URL=https://broker-api.alpaca.markets` (production Broker API, requires Alpaca's approval) or use live keys / `ALPACA_OAUTH_ENV=live`. Live trading is limited to the Pro and Elite plans, and the app shows a **LIVE** badge and warning on every order.
+4. Optional: use OAuth client credentials instead of the key pair: set `BROKER_CLIENT_ID` and `BROKER_CLIENT_SECRET` (the server gets a token from `https://authx.alpaca.markets/v1/oauth2/token`, override with `BROKER_TOKEN_URL`).
+5. Live trading later: set `BROKER_BASE_URL=https://broker-api.alpaca.markets` (production Broker API, requires Alpaca's approval) or use live keys / `ALPACA_OAUTH_ENV=live`. Live trading is limited to the Pro and Elite plans, and the app shows a **LIVE** badge and warning on every order.
+
+**Account opening** (`/app#/open-account`, also on the Account page): a visitor creates a login, then fills five steps (Contact, Identity, Disclosures, Agreements, optional ID documents). The server builds and sends `POST /v1/accounts` (agreements carry `signed_at` and the user's IP), stores the returned account id against the user, and never stores the SSN or documents. Status changes come from Alpaca's event feed (`GET /v1/events/accounts/status`, one server-side SSE connection that resumes with `since_id`), are saved in `broker_events`, sent to the user by text or email and pushed to their open page. `ACTION_REQUIRED` shows an upload form (`POST /v1/accounts/{id}/documents/upload`). Hourly polling is the backup. All Alpaca calls run on the server; the browser never sees Broker API credentials.
+
+**Yiddish with Yiddish Labs**: `npm run yiddish:export` writes every English string to `i18n/yiddish-labs/english.txt`. Translate it at https://app.yiddishlabs.com/app/quick-action, save the result as `i18n/yiddish-labs/yiddish.txt` (same line order), run `npm run yiddish:import`, then `python3 scripts/pages.py`. Imported strings override the built-in ones. Set `YIDDISH_CREDIT=Yiddish Labs` to show the credit line.
 
 Tests run the whole integration against a local mock of Alpaca (`test/mock-alpaca.js`), including the exact auth headers and request bodies. Check the first real sandbox calls in your own environment as well.
 

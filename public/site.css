@@ -365,3 +365,6 @@ html[dir="rtl"] .eyebrow { padding: 5px 5px 5px 14px; }
   .lang-m { display: inline-flex; margin-top: 16px; color: #dfe4ff; font-weight: 600; text-decoration: none; border: 1px solid rgba(255, 255, 255, .22); border-radius: 999px; padding: 6px 14px; font-size: 14px; }
 }
 @media (max-width: 430px) { html[dir="rtl"] .top .logo b { display: none; } }
+.acctlink { margin: 14px 0 0; font-size: 14.5px; color: var(--mu); }
+.acctlink a { font-weight: 650; margin-right: 6px; }
+html[dir="rtl"] .acctlink a { margin: 0 0 0 6px; }

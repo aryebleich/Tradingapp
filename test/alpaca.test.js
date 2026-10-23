@@ -13,8 +13,10 @@ Object.assign(process.env, {
 });
 const { app } = await import('../server.js');
 const { buildOrder, buildReplace } = await import('../src/alpaca/trading.js');
-const { buildAccountRequest, kycStep } = await import('../src/alpaca/broker.js');
+const { buildAccountRequest, buildDocuments, kycStep, statusInfo } = await import('../src/alpaca/broker.js');
+const { startKycEvents, sseMessages } = await import('../src/alpaca/kyc.js');
 const { parseOcc } = await import('../src/alpaca/data.js');
+const { one } = await import('../src/db.js');
 
 let server, base;
 before(() => new Promise(r => { server = app.listen(0, () => { base = `http://127.0.0.1:${server.address().port}`; r(); }); }));
@@ -117,6 +119,115 @@ test('broker account: open, KYC to ACTIVE, ACH, transfers, then trade through th
   assert.equal(req.body.limit_price, '150');
   assert.equal((await call('/alpaca/account')).body.buyingPower, 200000);
   assert.equal((await call('/alpaca/clock')).body.is_open, true);
+});
+
+const PNG = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex').toString('base64');
+test('onboarding spec: yes/no disclosures, tax residence, agreements, documents, status messages', () => {
+  const r = buildAccountRequest({ ...FORM, crypto: false, options: 'no', margin: 'yes', isControlPerson: 'yes', isAffiliated: 'no', taxResidence: 'usa',
+    documents: [{ subType: 'passport', mimeType: 'image/png', content: 'data:image/png;base64,' + PNG }] }, '5.6.7.8', new Date('2026-10-22T12:00:00Z'));
+  assert.deepEqual(r.agreements.map(a => a.agreement), ['customer_agreement', 'account_agreement', 'margin_agreement']);
+  assert.ok(r.agreements.every(a => a.signed_at === '2026-10-22T12:00:00.000Z' && a.ip_address === '5.6.7.8'));
+  assert.deepEqual([r.disclosures.is_control_person, r.disclosures.is_affiliated_exchange_or_finra], [true, false]);
+  assert.equal(r.identity.country_of_tax_residence, 'USA');
+  assert.deepEqual(r.documents, [{ document_type: 'identity_verification', document_sub_type: 'passport', content: PNG, mime_type: 'image/png' }]);
+  assert.deepEqual(r.enabled_assets, ['us_equity']);
+  assert.equal(buildAccountRequest({ ...FORM, phone: '(718) 555-0100' }).contact.phone_number, '+17185550100');
+  assert.throws(() => buildDocuments([{ mimeType: 'text/html', content: PNG }]), /JPG, PNG or PDF/);
+  assert.throws(() => buildDocuments([{ mimeType: 'image/png', content: 'not base64!' }]), /not valid/);
+  assert.throws(() => buildDocuments([{ mimeType: 'image/png', content: 'A'.repeat(7.2e6) }]), /under 5 MB/);
+  assert.throws(() => buildAccountRequest({ ...FORM, postalCode: '123' }), /ZIP/);
+  assert.equal(statusInfo('SUBMITTED').title, 'Application under review');
+  assert.equal(statusInfo('APPROVED').title, 'Account approved! Ready to trade');
+  assert.equal(statusInfo('ACTIVE').title, 'Account approved! Ready to trade');
+  assert.equal(statusInfo('ACTION_REQUIRED').action, 'documents');
+  assert.equal(statusInfo('APPROVAL_PENDING').title, 'Pending manual review');
+  assert.equal(statusInfo('REJECTED').title, 'Application rejected');
+});
+
+// Reads this user's live status stream (our SSE endpoint, which relays Alpaca's feed).
+async function statusStream(cookie) {
+  const ctrl = new AbortController();
+  const r = await fetch(base + '/api/alpaca/broker/events/stream', { headers: { cookie }, signal: ctrl.signal });
+  assert.equal(r.headers.get('content-type'), 'text/event-stream');
+  const it = sseMessages(r.body);
+  const seen = [];
+  return {
+    seen,
+    async until(status) {
+      for (const m of seen) if (m.status === status) return m;
+      const timer = setTimeout(() => ctrl.abort(), 4000);
+      try {
+        for (;;) {
+          const { value, done } = await it.next();
+          if (done) throw new Error('stream ended before ' + status + ' seen ' + JSON.stringify(seen));
+          const d = JSON.parse(value.data); seen.push(d);
+          if (d.status === status) return d;
+        }
+      } catch (e) { throw new Error(status + ' not seen; got ' + JSON.stringify(seen) + ' ' + e.message); } finally { clearTimeout(timer); }
+    },
+    close: () => ctrl.abort(),
+  };
+}
+const waitFor = async (fn, ms = 3000) => { const end = Date.now() + ms; for (;;) { const v = await fn(); if (v) return v; if (Date.now() > end) throw new Error('timed out'); await new Promise(r => setTimeout(r, 25)); } };
+
+test('KYC events: Alpaca SSE feed drives status, ACTION_REQUIRED upload, live relay, resume after a drop', async () => {
+  let stop = startKycEvents({ maxDelay: 50 });
+  try {
+    const call = client();
+    await call('/auth/register', { email: 'kyc@t.co', password: 'Str0ngPassword' });
+    const cookie = (await call('/auth/me')).cookie();
+    const s = await statusStream(cookie);
+    const opened = await call('/alpaca/broker/accounts', { ...FORM, givenName: 'Action', documents: [{ subType: 'drivers_license', mimeType: 'image/png', content: PNG }] });
+    assert.equal(opened.status, 200, JSON.stringify(opened.body));
+    assert.equal(opened.body.info.title, 'Application under review');
+    assert.equal(lastReq(r => r.path === '/v1/accounts' && r.method === 'POST').body.documents[0].document_type, 'identity_verification');
+    // The feed reports ACTION_REQUIRED; the user's open tab hears it without polling.
+    const ar = await s.until('ACTION_REQUIRED');
+    assert.equal(ar.action, 'documents');
+    assert.equal((await call('/alpaca/broker/documents', { documents: [] })).status, 400);
+    const up = await call('/alpaca/broker/documents', { documents: [{ subType: 'passport', mimeType: 'image/png', content: PNG }] });
+    assert.equal(up.status, 200, JSON.stringify(up.body));
+    assert.ok(lastReq(r => /\/documents\/upload$/.test(r.path)));
+    await s.until('RESUBMITTED');
+    mock.setStatus(opened.body.id, 'ACTIVE');
+    assert.equal((await s.until('ACTIVE')).title, 'Account approved! Ready to trade');
+    s.close();
+    const hist = (await call('/alpaca/broker/events')).body.events.map(e => e.status_to);
+    assert.deepEqual(hist, ['SUBMITTED', 'ACTION_REQUIRED', 'RESUBMITTED', 'APPROVED', 'ACTIVE']); // the read after the upload saw APPROVED
+    const acct = (await call('/alpaca/broker/account')).body;
+    assert.equal(acct.info.title, 'Account approved! Ready to trade');
+    assert.equal(acct.history.length, 5);
+    assert.equal(JSON.stringify(acct).includes(PNG), false);
+
+    // Manual review, then a decision made while our feed connection is down: on reconnect the
+    // feed resumes from the last event id and the decision still arrives.
+    const call2 = client();
+    await call2('/auth/register', { email: 'kyc2@t.co', password: 'Str0ngPassword' });
+    const o2 = (await call2('/alpaca/broker/accounts', { ...FORM, givenName: 'Review' })).body;
+    await waitFor(async () => (await one('SELECT status FROM broker_accounts WHERE account_id = ?', o2.id)).status === 'APPROVAL_PENDING');
+    stop();
+    mock.setStatus(o2.id, 'REJECTED', 'identity mismatch');
+    stop = startKycEvents({ maxDelay: 50 });
+    await waitFor(async () => (await one('SELECT status FROM broker_accounts WHERE account_id = ?', o2.id)).status === 'REJECTED');
+    assert.ok(lastReq(r => r.path === '/v1/events/accounts/status' && r.query.since_id));
+    const ev = (await call2('/alpaca/broker/events')).body.events.at(-1);
+    assert.deepEqual([ev.status_to, ev.reason, ev.source], ['REJECTED', 'identity mismatch', 'sse']);
+    assert.equal(statusInfo(ev.status_to).title, 'Application rejected');
+  } finally { stop(); }
+});
+
+test('Broker API OAuth: client-credentials token from authx replaces Basic auth', async () => {
+  Object.assign(process.env, { BROKER_CLIENT_ID: 'BCID', BROKER_CLIENT_SECRET: 'BCSECRET', BROKER_TOKEN_URL: mock.url + '/v1/oauth2/token' });
+  try {
+    const call = client();
+    await call('/auth/register', { email: 'oauthbroker@t.co', password: 'Str0ngPassword' });
+    const r = await call('/alpaca/broker/accounts', { ...FORM, email: 'ob@example.com' });
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    assert.equal(lastReq(x => x.path === '/v1/accounts' && x.method === 'POST').headers.authorization, 'Bearer broker-token');
+    assert.equal(lastReq(x => x.path === '/v1/oauth2/token').body.grant_type, 'client_credentials');
+    await call('/alpaca/broker/account');
+    assert.equal(mock.log.filter(x => x.path === '/v1/oauth2/token').length, 1); // token cached
+  } finally { for (const k of ['BROKER_CLIENT_ID', 'BROKER_CLIENT_SECRET', 'BROKER_TOKEN_URL']) delete process.env[k]; }
 });
 
 test('API keys: every order type, modify/cancel, positions, portfolio, watchlists, config', async () => {

@@ -10,7 +10,7 @@ export const URLS = {
   oauthToken: () => process.env.ALPACA_OAUTH_TOKEN_URL || 'https://api.alpaca.markets/oauth/token',
 };
 
-// auth: { basic: [key, secret] } (Broker API) | { keys: [id, secret] } (Trading/Data API) | { bearer: token } (OAuth)
+// auth: { basic: [key, secret] } (Broker API) | async () => { bearer } (Broker API OAuth) | { keys: [id, secret] } (Trading/Data API) | { bearer: token } (OAuth)
 export function authHeaders(auth) {
   if (auth.bearer) return { Authorization: 'Bearer ' + auth.bearer };
   if (auth.basic) return { Authorization: 'Basic ' + Buffer.from(auth.basic.join(':')).toString('base64') };
@@ -35,6 +35,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 export async function request(base, path, { auth, method = 'GET', query, body, timeout = 15000 } = {}) {
   const url = base + path + qs(query);
+  if (typeof auth === 'function') auth = await auth(); // e.g. an OAuth token fetched on demand
   for (let attempt = 0; ; attempt++) {
     let r;
     try {

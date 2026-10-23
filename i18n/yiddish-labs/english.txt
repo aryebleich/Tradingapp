@@ -1,0 +1,1001 @@
+Trading
+Markets
+Strategies
+Account
+Owner
+Portfolio
+Trade
+Orders
+Positions
+Watchlists
+S&P 500 plan
+Markets & news
+Options chain
+Calendar & events
+Strategy library
+Alerts to trades
+Pairs trading
+Backtest
+Bots
+Scheduled trades
+QuantConnect
+Brokerages
+Alpaca account
+Plans & billing
+Invite & earn
+Taxes
+Text & hotline
+Settings
+Admin
+Sign out
+Sign in
+Menu
+Switch theme
+Language
+Try Pro free for 14 days
+Upgrade to Pro
+Paper
+Simulated
+LIVE MONEY
+Alpaca paper
+No brokerage connected
+Create account
+Create an account
+Email
+Password
+Password (10+ chars, upper, lower, digit)
+Forgot password?
+New here?
+Sign in instead
+Continue with Google
+Sign up with Google
+or
+I agree to the
+and
+and have read the
+Terms
+Privacy Policy
+Privacy
+Risk Disclosure
+Support
+By continuing with Google you agree to the
+You start with a $100,000 paper account.
+Reset your password
+Enter your email and we will send you a reset link.
+Send reset link
+Back to sign in
+Choose a new password
+New password (10+ chars, upper, lower, digit)
+Save password
+Two-factor code
+Open your authenticator app.
+6-digit code
+Verify
+Email confirmed
+Continue
+Backtest, paper trade and automate stock strategies. Connect Alpaca and QuantConnect, trade by text or phone.
+Save
+Save changes
+Cancel
+Delete
+Edit
+Remove
+Rename
+Add
+Send
+Go
+Open
+Close
+Back
+Done
+Copy
+Loading…
+Working…
+None
+None yet
+Nothing yet
+Off
+On
+Yes
+No
+Name
+Date
+Time
+When
+Type
+Status
+Amount
+Amount ($)
+Amount (USD)
+Price
+Prices
+Value
+Symbol
+Ticker
+Qty
+Side
+Buy
+Sell
+buy
+sell
+exit
+Cash
+Equity
+Buying power
+Today
+Total P/L
+Profit / loss
+Unrealized P/L
+Market value
+Avg entry
+Avg
+Order type
+Market
+Limit
+Stop
+Time in force
+Day
+Shares
+Dollars
+Review order
+Place market order
+Recent orders
+All orders →
+All positions →
+No orders.
+No positions.
+No positions
+No open positions.
+Account settings
+Details
+Result
+Results
+Signal
+Message
+Note
+Monthly
+Yearly
+Weekly
+Once
+Every trading day
+Year
+Years
+Most popular
+2 months free
+Pro
+Current
+Your plan
+Automatic
+By hand
+Strategy
+Rule
+Decision
+Run now
+History
+Not connected
+Disconnect
+Connected
+Enabled
+New
+Place a trade
+Reset paper account
+The line turns green above your starting value and red below it.
+Projected next-year return
+Bad year (5th pct)
+Typical (median)
+Good year (95th)
+Chance of a loss
+Symbol or company
+AAPL, BTC/USD, Apple…
+Bid
+Ask
+Bid / Ask
+Volume
+News
+No recent news.
+News unavailable.
+Top movers
+Most active
+Market is
+Next open
+Next close
+Early close
+Advanced: bracket, OCO, OTO, extended hours
+Limit price
+Stop price
+Take-profit limit
+Stop-loss stop
+Stop-loss limit (optional)
+Trail %
+Allow pre-market & after-hours (Day orders)
+Estimated cost
+Cancel all open
+Close all positions
+Modify
+Submitted
+Filter
+Every open order on this account will be cancelled.
+Market orders will be sent to close every position, and open orders will be cancelled.
+This is a LIVE order with real money.
+This sends a real order with real money.
+Empty. Add a symbol above.
+New watchlist name
+No watchlists yet. Create one above.
+Add symbol (AAPL, BTC/USD)
+Calls
+Puts
+Strike
+Expiration
+Underlying
+Order builder
+Click a bid or ask in the chain to add a leg.
+Options can expire worthless. Max loss on long options is the premium paid.
+Corporate actions
+Trading days (next 30 days)
+No announcements in this window.
+Days not listed are market holidays or weekends. Times are New York time.
+Open a brokerage account
+Connect an existing Alpaca account
+Connect with Alpaca
+Use API keys
+Save keys
+API key ID
+Secret key
+These are live (real money) keys
+Your Alpaca account is connected.
+Your account is active. You can fund it and start trading.
+Link a bank account
+Link bank
+No bank linked yet.
+Deposit to brokerage
+Withdraw to bank
+Transfers
+No transfers yet
+Submit transfer
+Routing number
+Account number
+Account holder name
+Nickname
+First name
+Middle name
+Last name
+Date of birth
+Social Security number
+Street address
+Apt / unit
+City
+State
+ZIP code
+Mobile phone
+Employer
+Takes about 3 minutes. Accounts are held by Alpaca Securities LLC, member FINRA/SIPC.
+Required by law to verify your identity (KYC). Your SSN is sent securely to Alpaca and is not stored by QuantPocket.
+Sign in at Alpaca and approve access. We never see your Alpaca password.
+My strategies
+Library
+Use this strategy
+Portfolio split
+Use these allocations
+Runs
+Money
+Last result
+Reality Check
+Backtest, 5 years
+Worst drop
+Live, last 3 months
+Live results so far are far below the backtest
+No QuantConnect figures in the sheet. Run the backtest to see how it behaved.
+Backtests are hypothetical and leveraged ETFs can lose most of their value quickly. Results shown are not a promise of future returns.
+Today's walkdown
+Orders go to:
+2nd value
+Needs a rule
+Not spelled out in the sheet export
+check
+Clear typed values
+No position today: stay in cash.
+Target $
+Target shares
+Held
+Order
+Stop column: suggested trailing stop ≈ 3.5 × the ticker's daily volatility (6%–35%), as in the sheet's STOP_LOSS tab.
+Run backtest
+Return per year
+S&P 500 per year
+Sharpe
+Total return
+Switches
+Running… (loading several years of prices for every ticker the rules use)
+Edit rules
+Change any number, indicator or ticker, then preview today's result or backtest before saving.
+Preview today
+Backtest these rules
+Save rules
+Back to original
+Advanced: edit as JSON
+Apply JSON
+Turn into a comparison
+Money for this strategy (% of account)
+Cash kept aside (%)
+Trailing stop (%)
+Trade at (New York time)
+Whole shares only
+Save settings
+Auto-throttle: trade 50% while on Watch, 0% while Drifting
+Live days
+Live return
+Backtest expected
+Win rate
+Delete strategy
+No runs yet.
+Healthy
+Watch
+Drifting
+Learning
+Rebalance day:
+New buys:
+Exits:
+Keep:
+Predictions:
+Stocks to rank (comma separated)
+Stocks to scan
+Predictions
+I type them each month
+Automatic (recent return)
+Bitcoin ticker
+Rebalance day
+Predicted 21-day return %
+Asset
+Weight
+Rank
+Pullback
+Z-score
+win-rate weighted, 10%–70% each
+Like the sheet's PORTFOLIO_SPLIT tab: strategies that win more often get more money. Win rates come from each strategy's live daily results.
+Send an alert from TradingView, TrendSpider, Zapier, a script or an AI agent. It becomes an order in the accounts you choose, inside your risk rules.
+Create
+a webhook with sizing and risk rules
+Paste
+its URL into your alert
+: every alert is executed and logged
+New webhook
+Edit webhook
+Create webhook
+Allowed tickers
+(optional)
+Send orders to
+Order size
+Fixed dollar amount
+Fixed number of shares
+Use the size in the alert
+Risk rules
+(leave empty for no limit)
+Max position per ticker ($)
+Max trades per day
+No limit
+Long only: sells never go below zero shares, and "exit" sells the whole position.
+Copy URL
+Send test signal
+New URL
+Alert message
+Copy message
+Send from a script, Zapier or an AI agent
+Signal log
+Webhook
+test
+Filled
+Partly done
+Rejected
+See Pro
+No signals yet. Send a test signal from a webhook above.
+Stock A
+Stock B
+Fit window (days)
+z window (days)
+Enter at |z| ≥
+Exit at |z| ≤
+Stop at |z| ≥
+Max days in a trade
+Analyze pair
+Scan 20 popular pairs
+Today's z-score
+Hedge ratio (β)
+Half-life
+Correlation
+Cointegration t-stat
+Pair bots
+Pair
+Mode
+Position
+Last run
+Run this pair automatically
+Money for this pair ($)
+Long only (no shorting)
+Market-neutral (needs margin)
+Popular pairs, strongest first
+Cointegrated
+Colored: market-neutral. Grey: long only.
+z today
+A pair bot checks its pair every trading day at 3:45 pm New York time and trades when the gap crosses your levels.
+No pair bots yet. Analyze a pair, then start a bot from the result.
+SPY today
+This year
+Last 12 months
+5 years, per year
+10 years, per year
+The 500 largest US companies in one fund. The simplest long-term plan: buy a little every month, whatever the market does.
+Your investment plan
+Start with ($)
+Add every month ($)
+For how many years
+Goal (optional, $)
+Fund
+Show my range
+You put in
+Typical result
+Bad case (1 in 10)
+Good case (1 in 10)
+Invest automatically
+Buys your fund on the same day every month, in dollars (fractional shares), so every dollar is invested.
+Day of the month
+How often
+Start investing
+Active plans
+Repeats
+Next buy
+No automatic plan yet.
+Connect every account you trade. Each one then shows up in the account pickers: alerts, strategies, pairs and the S&P 500 plan can send orders to any of them, or to several at once.
+Loading balance…
+Use the TradeStation simulator
+Manage billing
+Every paid plan starts with a
+You are on
+Thank you! Your plan is being activated. It can take a few seconds to show here.
+Add paper money
+Add to paper account
+Deposit to your brokerage
+Continue to payment
+Performance fee
+Your rate:
+of new profit. You only pay when an account is above its previous peak, after deposits and withdrawals.
+Billing history
+Secure checkout by Stripe. Cancel anytime from "Manage billing". Prices in USD.
+Real money goes to your brokerage account by bank transfer on the
+Your invite link
+Share
+Friends who joined
+Friends who subscribed
+Credit earned
+Two-factor authentication
+Set up 2FA
+Turn on 2FA
+Disable 2FA
+Protect your account with an authenticator app (Google Authenticator, 1Password, Authy).
+Phone for SMS & hotline
+Mobile number
+Send code
+Trading PIN
+Account password
+New PIN (4-8 digits)
+Save PIN
+Tax rates
+Federal bracket
+State rate %
+Add a password
+Your data
+Download my data
+Delete my account
+Download everything we store about you, or permanently delete your account.
+Active sessions
+Security log
+IP address
+Device
+Signed in
+Event
+this device
+Manage brokerage connection
+Alpaca brokerage
+User id
+API token
+Text & Hotline
+Manage your account by SMS or phone
+QuantPocket's number
+Text us
+Call
+Try it here
+How is my account doing?
+The SMS/voice number is not configured on this server yet (Twilio).
+Tax information
+Download Form 8949 CSV
+Short-term gains
+Long-term gains
+Estimated tax
+Tax-loss harvesting ideas
+Realized sales
+No sales this year
+Estimates for planning only (US federal + flat state rate, FIFO lots). Your broker's 1099-B is the official record; check with a tax professional.
+Run on paper
+Run on Alpaca
+Save strategy
+Build rules
+Idea
+Entry rules (all must be true)
+Exit rules (any)
+Stop loss %
+Take profit %
+Trailing stop %
+Position size %
+Cost per side %
+Preset
+Start
+Capital
+Max drawdown
+Buy & hold
+Walk-forward check
+Trades
+New scheduled order
+Nothing scheduled
+Next run
+Repeat
+Price alerts (sent by SMS)
+Add alert
+Strategies & Bots
+Save a strategy from the Backtest page first.
+Running on
+Last action
+Brokerage account
+Trading connection
+Identity
+Contact
+Employment & disclosures
+Agreements
+Citizenship
+Country of birth
+Other ways to connect
+(existing Alpaca account or API keys)
+Fractional shares
+Disable short selling
+Suspend all trading (kill switch)
+Orders go to
+Day-trade buying power check
+Pattern day trader check
+Max margin
+Trade confirmations
+Trading involves risk of loss. Backtests and projections are hypothetical and do not guarantee future results. QuantPocket is software, not a broker or investment adviser; orders route to your own Alpaca account.
+Text or call from your verified phone.
+The AI assistant understands plain language: "how am I doing this month?", "put $200 into the S&P every week", "what does RSI mean?". Trades always need your PIN.
+Phone:
+PIN:
+not set
+set
+verified
+change in Settings
+Email already registered
+Wrong email or password
+Please accept the Terms to continue
+Enter a valid email
+Password needs 10+ characters with upper, lower and a digit
+Not signed in
+The server is busy, please try again.
+Saved
+Paper account
+Paper money added.
+Monthly recurring revenue
+Annual run rate
+Revenue, last 30 days
+Signup → paying
+Funnel
+Payment processors
+Users
+Support inbox
+Fees due
+Card deposits awaiting brokerage transfer
+Assess performance fees now
+Disclosures
+Documents
+Country of citizenship
+Tax residence
+Main source of funds
+Employment income
+Investments
+Inheritance
+Business income
+Savings
+Family
+Required by law to verify your identity (KYC). Your SSN goes to Alpaca over an encrypted connection and is not stored by QuantPocket.
+Are you a 10% shareholder, director or officer of a public company? (control person)
+Are you affiliated with a stock exchange or FINRA?
+Are you a senior political figure (politically exposed person)?
+Is an immediate family member a senior political figure?
+Employment (optional)
+Employment
+Employed
+Unemployed
+Student
+Retired
+Account features
+Apply for a margin account (Margin Agreement)
+Enable options trading (Options Agreement)
+Enable crypto trading (Crypto Agreement)
+Your agreement is recorded with the time you submit and your IP address, as Alpaca requires.
+Optional: adding a photo of your ID now can speed up approval. You can also upload later if Alpaca asks for it.
+Document
+File (JPG, PNG or PDF, up to 5 MB)
+File
+Passport
+Driver's license
+National ID card
+State ID
+Review
+Address
+Email / phone
+None apply
+Submit application
+Submit application?
+Submit
+Your information will be sent to Alpaca for identity verification.
+Application under review
+Account approved! Ready to trade
+Action required: upload documents
+Pending manual review
+Application rejected
+Submission failed
+Account disabled
+Account closed
+Alpaca is verifying your identity. Most applications are decided within minutes.
+Alpaca is switching the account on. This usually takes a few minutes.
+Fund your account by linking a bank below, then place your first trade.
+Alpaca needs more documents to verify your identity. Upload a passport or driver's license below.
+A compliance officer at Alpaca is reviewing your application. This can take up to 1 business day.
+Alpaca could not approve this application. Contact support if you think this is a mistake.
+Contact support
+Under review
+Approved
+Active
+Live: this page updates the moment Alpaca decides.
+This page checks for updates automatically.
+Upload documents
+Upload
+A clear photo or scan of a government ID. JPG, PNG or PDF, up to 5 MB each.
+Account details
+Crypto
+Enabled assets
+Opened
+Application history
+No updates yet
+Alpaca event
+Application sent
+Status check
+Update contact details
+1. Create your QuantPocket login
+Continue to application
+Already have a login?
+Commission-free US stocks and ETFs, plus options and crypto, at Alpaca Securities LLC (member FINRA/SIPC). Apply in about 3 minutes, all from QuantPocket.
+Choose a file to upload
+, then open Account → Alpaca account.
+$100,000 paper account
++ 10% of new profits
++ 20% of new profits
++ 5% of new profits
+/forever
+/month
+/year
+1 alert webhook (paper)
+10 alert webhooks (TradingView, Zapier)
+2 months free
+4 independent sleeves × 25%
+5 automatic strategies with Reality Check auto-throttle
+50 automatic strategies &amp; 50 webhooks
+<b>Auto-throttle:</b> 100% while healthy, 50% on Watch, 0% when Drifting
+<b>Automatic:</b> trades at the time you choose, on the accounts you choose
+<b>By hand:</b> see each step, type your own numbers, place the orders with one click
+<b>Editable:</b> change any rule, threshold or ticker, then backtest it
+<b>Honest:</b> backtest and live results side by side
+A range of outcomes built from real history, crashes included
+A text or email the day a strategy starts to drift
+AI assistant
+AI phone assistant
+AI text assistant for questions &amp; balances
+Account &amp; pricing
+Advanced
+Alerts from
+All rights reserved.
+All your accounts, side by side.
+Alpaca (you can also open a new account inside QuantPocket), Charles Schwab, tastytrade, Tradier and TradeStation. Your money always stays at your broker.
+Alpaca, Charles Schwab, tastytrade, Tradier and TradeStation. Open a new account inside QuantPocket, or connect the one you already have.
+Alpaca, Schwab, tastytrade, Tradier and TradeStation, side by side.
+An all-in-one trading automation platform
+An equity curve that shows how you are doing
+Analyze a pair
+Answers questions about your account
+Any program that can send an HTTPS request can use a webhook, AI agents included. It can only do what that webhook allows: its accounts, sizes and risk rules. Start on paper.
+At 10% a year
+At 6% a year
+At 8% a year
+Automate monthly S&amp;P 500 buys and keep an eye on taxes, without watching the market all day.
+Automate your real accounts
+Automatic strategies, pair bots and webhooks run without you. Automation can still fail or act on bad data, so check your account regularly.
+Automation
+Automation on your own account
+Back to full size automatically when it recovers
+Backtest before you risk a dollar
+Backtesting
+Backtests with drawdowns and losing years
+Balances, positions, prices and explanations, any time
+Brokers:
+Built into every strategy
+Buy the dip in an uptrend, sell the bounce
+Can I cancel any time?
+Can I run one strategy across all my accounts?
+Can I set a swing trade and walk away?
+Can I sign up with Google?
+Can I trigger trades from Zapier or TrendSpider?
+Can I turn my TradingView alerts into trades?
+Can I use QuantPocket in Yiddish?
+Can my AI agent place real trades?
+Can my strategy run fully hands-off?
+Choose an amount and a day. QuantPocket buys an S&amp;P 500 fund for you every month, so every dollar is invested, and shows the range of outcomes first.
+Code-first trading
+Cointegration, z-scores, half-life, walk-forward backtests and pair bots.
+Commands only work from the phone number you verified, every order needs your personal PIN, and phone calls read the order back before it is placed.
+Company
+Connect
+Connect my broker
+Connect the charting tools you already use
+Contact &amp; support
+Copy a ready-made strategy
+Copy-and-paste alert message templates
+Create
+Create account
+Disconnect at any time
+Drifting
+Each month we compare your account to its previous peak, adjusted for deposits and withdrawals. You pay the plan&rsquo;s percentage only on value above that peak. Losses must be recovered before any new fee is charged.
+Elite
+Email address
+English &amp; Yiddish
+Every month ($)
+Every order, fill and signal in one record.
+Every paid plan starts with 14 days free. Cancel before the trial ends and you are not charged. The free Starter plan has no time limit.
+Every paid plan starts with a 14-day free trial. Plus a small share of new profits above your high-water mark, so you only pay more when your account reaches new highs.
+Every rule, number and ticker can be changed
+Every signal logged with its fill, or the reason it was blocked
+Every trade needs your PIN; calls read the order back first
+Every trade you take, <span>executed from one place.</span>
+Every trading day
+Every trading day we compare a strategy&rsquo;s live result with its backtest. If they drift apart, you get a text or email, and with Auto-throttle on, the money that strategy trades is cut to 50% (Watch) or 0% (Drifting) until it recovers.
+Everything in Pro
+Everything in Starter
+Example
+Example conversation
+Exits close the whole position
+FAQ
+Far below the backtest
+Figures as recorded from QuantConnect for one of the library strategies.
+Filter your order history, see why a signal was rejected, and follow realized gains by tax lot.
+Find pairs that move together, see when the gap between them is unusually wide, and let a pair bot trade it every day.
+Five brokerages
+For serious capital
+Fractional shares from $1
+Free on the paper account; real accounts with Pro
+Free version
+From the first backtest to live orders on every account you own.
+Gains by lot, wash-sale flags, an estimated tax bill and Form 8949 export.
+Gap normal: close
+Gap wide: buy A, sell B
+Gap wide: sell A, buy B
+Get reliable alert-to-broker automation without running servers or writing integrations.
+Get started free
+Gold-miner fade and Nasdaq momentum tree
+Good-till-canceled orders
+Guardrails before every order.
+Healthy
+Hedge ratio, cointegration test and half-life
+Hierarchical decision-tree regime rotation
+Holds one leveraged ETF at 100%
+How does the free trial work?
+How does the performance fee work?
+How it works
+Illustration with example values.
+Illustrative paper-trading account
+Invest in the S&amp;P 500
+Invest on a schedule
+Investing involves risk, including possible loss of principal. Backtests and projections are hypothetical, are built with the benefit of hindsight and do not guarantee future results. QuantPocket is a software provider and is not a broker-dealer. Brokerage services are provided by your own broker (for example Alpaca Securities LLC, member FINRA/SIPC) under your own account agreement. Nothing on this site is an offer, solicitation or recommendation to buy or sell any security.
+Investment plan
+Is texting trades secure?
+JSON, or plain text like <code>buy AAPL 10</code>
+Learn and practice
+Learn how strategies behave with $100,000 in paper money and honest numbers.
+Learners
+Limits are checked before anything is sent to your broker, and Reality Check cuts the money a strategy trades when it stops behaving like its backtest.
+Link your brokerage in seconds, or start with the built-in paper account. Choose which accounts each strategy trades.
+Live demo: test a strategy now
+Live quotes and market news
+Live results compared with the backtest every day, with automatic throttling.
+Live results match the backtest
+Live trading on Alpaca, Schwab, tastytrade, Tradier &amp; TradeStation
+Long-only by default
+Long-term investors
+Lowest performance fee (5%)
+Market-neutral or long-only
+Market-neutral pairs (long + short)
+Maximum position size and trades per day
+Monthly
+Monthly index-fund buys with projections from real history.
+Monthly or weekly automatic buys
+Most platforms show you a beautiful backtest and stop there. But many strategies with spectacular backtests lose money once they go live. QuantPocket compares every strategy&rsquo;s live results with its backtest, every single day.
+Most popular
+New
+Next profile
+No card needed
+Nobody can promise that. Most active strategies underperform simply holding an index after costs. QuantPocket shows how an idea behaved in the past, how it is doing live, and the range of outcomes to expect, so you can decide with your eyes open.
+One log across accounts
+One number for everyone. Text or call QuantPocket and say what you need in plain words. The AI assistant answers questions and turns requests into orders.
+One number to text or call
+One signal, many accounts.
+One stock: the strongest 12-month momentum
+Open the strategy library
+Optimizer, walk-forward testing &amp; QuantConnect
+Order history with status filters
+Pair bots, scheduled trades &amp; live S&amp;P 500 auto-invest
+Pairs analysis &amp; backtests
+Pairs trading
+Pairs trading, done properly.
+Paper account for testing
+Paper trading
+Paper trading that works like the real thing
+Paper: equity $103,240, up $1,180 (+1.2%) since Monday.
+Paste a private webhook URL into a TradingView, TrendSpider or Zapier alert. When it fires, QuantPocket checks your risk rules and places the order in seconds.
+Payments by
+Pick a ready-made strategy, or define entries and exits, sizing and risk limits. Use a TradingView alert or our JSON templates.
+Pick a rotation strategy from the library. Every day the app fills in the numbers, walks the rules step by step and tells you exactly what to buy. Run it by hand or let it trade by itself.
+Pick a ticker and a classic strategy. It runs on the same engine as the app, using market data since 2015.
+Pick one. Everything works on paper first, with no risk.
+Pick the accounts for each webhook or strategy
+Pick your entry, then let bracket orders manage the exit while you are away from the screen.
+Plain-English strategy builder
+Popular questions
+Position limits, trade limits, allowed tickers, trailing stops and brackets.
+Positions, orders, buying power and an equity chart that turns green or red with your P&amp;L, on desktop and on your phone.
+Practice with zero risk
+Previous profile
+Price alerts by text message
+Pricing
+Priority AI &amp; priority support
+Privacy Policy
+Pro
+Product
+Projections from real market history
+QuantConnect LEAN projects and cloud backtests
+QuantPocket portfolio dashboard with equity chart, positions and order ticket
+QuantPocket: automate your trading from one place
+Quants &amp; developers
+Question topics
+Ready-made strategies, TradingView alerts, pairs trading and an S&P 500 autopilot on your own brokerage account, with Reality Check watching every strategy. In English and Yiddish.
+Ready-made strategies. Every number in your hands.
+Reality Check
+Reality Check tells you when a strategy stops working
+Reality Check: know when a strategy stops working.
+Realized P&amp;L, wash-sale flags and Form 8949 export
+Retail traders
+Review my trades
+Risk Disclosure
+Risk rules
+Risk rules your code cannot bypass
+Run Python algorithms on QuantConnect, backtest rules here, and send orders from any script or AI agent.
+Run backtest
+S&amp;P 500
+S&amp;P 500 auto-invest on paper
+S&amp;P 500 autopilot
+Scanner for 20 classic pairs
+Scanner for 20 classic pairs and bots that trade every day
+Scheduled #12: buy $200 SPY monthly.
+Secure checkout by Stripe. Cancel anytime. Trading involves risk; see the
+See my accounts in one place
+Send
+Send alerts straight to your own brokerage account
+Send each alert or strategy to several accounts together: paper and live, or two different brokers, each with its own sizing.
+Send orders to your broker from TradingView, TrendSpider and Zapier.
+Set it and walk away
+Set my risk rules
+Set up in 3 minutes
+Set up your strategy. Send a signal. Orders go to every account you chose, inside your rules.
+Seven ready-made rotation strategies, by hand or automatic, every rule editable.
+Seven rotation strategies, built from a real trading spreadsheet. Every day QuantPocket fills in the market numbers, walks the rules step by step and tells you exactly what to buy.
+Seven strategies, ready to run.
+Several brokers at once
+Sign in
+Sign up with Google
+Signal and strategy logs
+Signals fire, orders execute, and fills, P&amp;L and positions update in one place.
+Simple pricing. Start free.
+Size from the alert or a fixed amount
+Sizing in shares or dollars
+Start 14-day free trial
+Start free
+Start free with email
+Start my S&amp;P 500 plan
+Start on paper before going live
+Start on paper, switch to live when you are ready
+Starter
+Stocks, ETFs, options and crypto through your own brokerage account. Ready-made strategies, TradingView alerts, pairs trading and an S&amp;P 500 plan: test them, paper trade them and automate them on one platform.
+Stocks, gold, bonds and bitcoin by predicted return
+Stop-loss and take-profit placed with the entry
+Strategies
+Strategy
+Strategy library
+Strategy library by hand + 1 automatic strategy on paper
+Swing traders
+Switch accounts with one tap
+Tax center
+Tax-loss harvesting ideas
+Tax-loss harvesting report
+Terms of Service
+Test everything with $100,000 in paper money before risking real money.
+Text PAUSE to stop all automation
+Text PAUSE to stop all automation at once
+Text or call QuantPocket and say what you need in plain words. The AI assistant answers questions and turns requests into orders; every trade needs your PIN.
+Text or call one number; ask questions or trade in plain words.
+Text or call us:
+The 500 largest US companies in one fund. Pick an amount and a day: QuantPocket buys it for you every month, in dollars, so every dollar is invested.
+The S&amp;P 500 has averaged roughly 10% a year since 1957 with dividends reinvested, but some years fell more than 35%. Examples, not a promise.
+The S&amp;P 500, on autopilot.
+The whole app and this site in English or Yiddish, right-to-left.
+They are rotation strategies from a trading spreadsheet that tracks QuantConnect backtests. We show each backtest next to its live results, and Reality Check keeps watching them for you. A great backtest is not a promise: several of them did much worse live.
+Ticker
+To do that, reply: DCA $200 SPY MONTHLY &lt;your PIN&gt;
+Trade a pair of stocks
+Trade all my accounts at once
+Trade by text &amp; phone with the AI assistant
+Trade by text or phone
+Trader profiles
+TradingView alerts
+TradingView strategy and indicator alerts
+TradingView users
+Trailing stops sized to each ticker
+Turn alerts and strategies into trades on your own brokerage account, from your browser, your phone, or a text message.
+Turn my alert into a trade
+Two stocks that usually move together, like Coca-Cola and Pepsi. When the gap between them stretches far from normal, sell the expensive one and buy the cheap one, then close when the gap returns.
+Type your own values, like in a spreadsheet
+VOO, SPLG, IVV or SPY
+VOO, SPLG, IVV or SPY, with their yearly costs shown
+Walk-forward backtest: market-neutral or long-only
+Watch
+Weaker than expected
+Webhooks from any language, any tool
+Weekly
+What could it grow to?
+What do you want to do?
+What is Reality Check?
+What you get
+Whatever your style, QuantPocket automates the parts you don&rsquo;t want to do by hand. Pick the profile that fits you best.
+When two stocks drift apart, trade the gap.
+Where do the ready-made strategies come from?
+Which brokerages can I connect?
+Who is QuantPocket for?
+Will I make money?
+Works on any phone, no app to install
+Yearly
+Years
+Years of daily data, costs, drawdowns, walk-forward checks and an optimizer.
+Yes. Both can call a webhook URL. Use your QuantPocket webhook URL with the fields <code>ticker</code>, <code>action</code> and <code>quantity</code>.
+Yes. Cancel from <b>Manage billing</b> in the app; you keep access until the end of the period you paid for. You can also export or delete all your data from Settings.
+Yes. Choose <b>Sign up with Google</b> and your account is ready in seconds. You can add a password later in Settings.
+Yes. Choose ייִדיש at the top of this page or in the app. The whole app switches to Yiddish, written right-to-left.
+Yes. Create a webhook under <b>Alerts to trades</b>, paste its URL into the alert&rsquo;s <b>Webhook URL</b> field, and use our message template. Strategy alerts can pass the direction and size with <code>{{strategy.order.action}}</code> and <code>{{strategy.order.contracts}}</code>.
+Yes. Place a bracket order (entry, stop-loss and take-profit) as good-till-canceled. The exit orders wait at your broker even while you are offline.
+Yes. Webhooks can send each alert to several accounts at once (paper, Alpaca, Schwab, tastytrade, Tradier, TradeStation), with the same risk rules.
+You put in
+You&rsquo;re 3 minutes away from your first trade.
+Your Pine Script strategy already knows when to buy and sell. QuantPocket places those orders for you.
+Your account, by text or phone call.
+Your account, from any phone.
+Your alert fires. The order goes out.
+Your own brokerage accounts, connected in minutes.
+Your strategy, executed
+a strategy with a 922% a year backtest returned &minus;27% in its first three live months. Reality Check would have flagged it and cut it to cash.
+high risk
+how much is my account up this week?
+medium risk
+or
+put $200 into the S&amp;P every month
+very high risk

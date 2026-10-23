@@ -1,5 +1,7 @@
 # Yiddish for the homepage (scripts/home.py). Keys are the exact English strings.
 YI = {
+ "Open a brokerage account": "עפנט א בראוקער קאנטע",
+ "Commission-free, held at Alpaca Securities LLC (FINRA/SIPC)": "אן קאמישאן, געהאלטן ביי Alpaca Securities LLC (FINRA/SIPC)",
  "$100,000 paper account": "$100,000 פּעיפּער קאנטע",
  "+ 10% of new profits": "+ 10% פון נייע געווינסן",
  "+ 20% of new profits": "+ 20% פון נייע געווינסן",
@@ -327,3 +329,9 @@ YI = {
  "put $200 into the S&amp;P every month": "לייג אריין $200 אין S&amp;P יעדן חודש",
  "very high risk": "זייער הויכע ריזיקע",
 }
+
+# Translations made with Yiddish Labs (npm run yiddish:import) take precedence.
+import json as _json, os as _os
+_labs = _os.path.join(_os.path.dirname(__file__), 'yi_labs.json')
+if _os.path.exists(_labs):
+    with open(_labs, encoding='utf-8') as _f: YI.update(_json.load(_f))

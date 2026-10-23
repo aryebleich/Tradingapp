@@ -81,5 +81,5 @@ export function sseHandler(req, res) {
   clients.add(c);
   feeds.stocks.sync(); feeds.crypto.sync();
   const ping = setInterval(() => res.write(': ping\n\n'), 25000);
-  req.on('close', () => { clearInterval(ping); clearTimeout(c.timer); clients.delete(c); feeds.stocks.sync(); feeds.crypto.sync(); });
+  res.on('close', () => { clearInterval(ping); clearTimeout(c.timer); clients.delete(c); feeds.stocks.sync(); feeds.crypto.sync(); });
 }

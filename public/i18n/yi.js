@@ -1,5 +1,7 @@
 // Yiddish for the QuantPocket app (exact English phrase → Yiddish). Written in everyday
 // American-Hasidic usage: common trading terms stay in their English form, in Yiddish letters.
+import labs from './yi-labs.js';
+
 export const credit = '';
 
 export const strings = {
@@ -201,7 +203,45 @@ export const strings = {
   'Monthly recurring revenue': 'חודש\'ליכע איינקונפט', 'Annual run rate': 'יערליכע ראטע', 'Revenue, last 30 days': 'איינקונפט, לעצטע 30 טעג', 'Signup → paying': 'איינשרייבן ← באצאלן',
   'Funnel': 'פאנעל', 'Payment processors': 'פעימענט פראסעסארס', 'Users': 'באניצער', 'Support inbox': 'סופּאָרט אינבאקס', 'Fees due': 'אפצאלן שולדיג',
   'Card deposits awaiting brokerage transfer': 'קארטל אריינלייגן וואס ווארטן אויף בראוקער טראנספער', 'Assess performance fees now': 'רעכנט אויס פערפארמענס אפצאלן יעצט',
+  // brokerage application (5 steps) and status dashboard
+  'Disclosures': 'אנמעלדונגען', 'Documents': 'דאקומענטן', 'Mobile phone': 'מאביל טעלעפאן', 'Street address': 'גאס אדרעס', 'Apt / unit': 'דירה / יוניט', 'City': 'שטאט', 'State': 'סטעיט', 'ZIP code': 'זיפ קאוד',
+  'First name': 'ערשטער נאמען', 'Middle name': 'מיטלסטער נאמען', 'Last name': 'פאמיליע נאמען', 'Date of birth': 'געבורטס טאג', 'Social Security number': 'סאשעל סעקיוריטי נומער',
+  'Country of citizenship': 'בירגערשאפט לאנד', 'Country of birth': 'געבורטס לאנד', 'Tax residence': 'שטייער וואוינארט', 'Main source of funds': 'הויפט מקור פון געלט',
+  'Employment income': 'פארדינסט פון ארבעט', 'Investments': 'אינוועסטמענטס', 'Inheritance': 'ירושה', 'Business income': 'ביזנעס איינקונפט', 'Savings': 'סעיווינגס', 'Family': 'פאמיליע',
+  'Required by law to verify your identity (KYC). Your SSN goes to Alpaca over an encrypted connection and is not stored by QuantPocket.': 'דאס געזעץ פארלאנגט צו באשטעטיגן אייער אידענטיטעט (KYC). אייער SSN גייט צו Alpaca איבער א פארשלאסענע פארבינדונג און ווערט נישט אפגעהיט ביי QuantPocket.',
+  'Are you a 10% shareholder, director or officer of a public company? (control person)': 'זענט איר א 10% שעיר-האלטער, דירעקטאר אדער אפיציר פון א פובליק פירמע? (קאנטראל פערזאן)',
+  'Are you affiliated with a stock exchange or FINRA?': 'זענט איר פארבינדן מיט א סטאק בערזע אדער FINRA?',
+  'Are you a senior political figure (politically exposed person)?': 'זענט איר א הויכע פאליטישע פיגור (פאליטיש אויסגעשטעלטע פערזאן)?',
+  'Is an immediate family member a senior political figure?': 'איז א נאענטער פאמיליע מיטגליד א הויכע פאליטישע פיגור?',
+  'No': 'ניין', 'Yes': 'יא', 'Employment (optional)': 'ארבעט (נישט מוז)', 'Employment': 'ארבעט', 'Employer': 'ארבעטס-געבער', 'Position': 'פאזיציע',
+  'Employed': 'ארבעט', 'Unemployed': 'ארבעטסלאז', 'Student': 'סטודענט', 'Retired': 'פענסיאנירט', 'Account features': 'קאנטע מעגליכקייטן',
+  'Apply for a margin account (Margin Agreement)': 'בעט א מארדזשין קאנטע (מארדזשין הסכם)', 'Enable options trading (Options Agreement)': 'עפנט אפשאנס טרעידינג (אפשאנס הסכם)', 'Enable crypto trading (Crypto Agreement)': 'עפנט קריפטא טרעידינג (קריפטא הסכם)',
+  'Your agreement is recorded with the time you submit and your IP address, as Alpaca requires.': 'אייער הסכמה ווערט פארשריבן מיט דער צייט ווען איר שיקט אריין און אייער IP אדרעס, אזוי ווי Alpaca פארלאנגט.',
+  'Optional: adding a photo of your ID now can speed up approval. You can also upload later if Alpaca asks for it.': 'נישט מוז: א בילד פון אייער ID יעצט קען פארשנעלערן די באשטעטיגונג. איר קענט עס אויך ארויפלייגן שפעטער אויב Alpaca בעט.',
+  'Document': 'דאקומענט', 'File (JPG, PNG or PDF, up to 5 MB)': 'פייל (JPG, PNG אדער PDF, ביז 5 MB)', 'File': 'פייל', 'Passport': 'פאספארט', "Driver's license": 'דרייווער לייסענס', 'National ID card': 'נאציאנאלע ID קארטל', 'State ID': 'סטעיט ID',
+  'Review': 'איבערקוקן', 'Name': 'נאמען', 'Address': 'אדרעס', 'Email / phone': 'אימעיל / טעלעפאן', 'None apply': 'קיינס פאסט נישט', 'Remove': 'אראפנעמען',
+  'Takes about 3 minutes. Accounts are held by Alpaca Securities LLC, member FINRA/SIPC.': 'נעמט בערך 3 מינוט. קאנטעס ווערן געהאלטן ביי Alpaca Securities LLC, מיטגליד FINRA/SIPC.',
+  'Continue': 'ווייטער', 'Back': 'צוריק', 'Submit application': 'שיקט אריין די אפליקאציע', 'Submit application?': 'אריינשיקן די אפליקאציע?', 'Submit': 'שיקט אריין',
+  'Your information will be sent to Alpaca for identity verification.': 'אייער אינפארמאציע וועט געשיקט ווערן צו Alpaca צו באשטעטיגן אייער אידענטיטעט.',
+  'Application under review': 'די אפליקאציע ווערט איבערגעקוקט', 'Account approved! Ready to trade': 'קאנטע באשטעטיגט! גרייט צו טרעידן', 'Action required: upload documents': 'מען דארף אייך: לייגט ארויף דאקומענטן',
+  'Pending manual review': 'ווארט אויף א מענטשליכע איבערקוק', 'Application rejected': 'די אפליקאציע איז אפגעווארפן געווארן', 'Submission failed': 'אריינשיקן איז דורכגעפאלן', 'Account disabled': 'קאנטע אפגעשטעלט', 'Account closed': 'קאנטע פארמאכט',
+  'Alpaca is verifying your identity. Most applications are decided within minutes.': 'Alpaca באשטעטיגט אייער אידענטיטעט. רוב אפליקאציעס ווערן באשלאסן אין עטליכע מינוט.',
+  'Alpaca is switching the account on. This usually takes a few minutes.': 'Alpaca צינדט אן די קאנטע. דאס נעמט געווענליך עטליכע מינוט.',
+  'Fund your account by linking a bank below, then place your first trade.': 'לייגט אריין געלט דורך פארבינדן א באנק אונטן, און דערנאך מאכט אייער ערשטן טרעיד.',
+  "Alpaca needs more documents to verify your identity. Upload a passport or driver's license below.": 'Alpaca דארף מער דאקומענטן צו באשטעטיגן אייער אידענטיטעט. לייגט ארויף א פאספארט אדער דרייווער לייסענס אונטן.',
+  'A compliance officer at Alpaca is reviewing your application. This can take up to 1 business day.': 'א קאמפלייענס אפיציר ביי Alpaca קוקט איבער אייער אפליקאציע. דאס קען נעמען ביז 1 ביזנעס טאג.',
+  'Alpaca could not approve this application. Contact support if you think this is a mistake.': 'Alpaca האט נישט געקענט באשטעטיגן די אפליקאציע. קאנטאקטירט סופּאָרט אויב איר מיינט אז עס איז א טעות.',
+  'Contact support': 'קאנטאקטירט סופּאָרט', 'Submitted': 'אריינגעשיקט', 'Under review': 'ווערט איבערגעקוקט', 'Approved': 'באשטעטיגט', 'Active': 'אקטיוו',
+  'Live: this page updates the moment Alpaca decides.': 'לייוו: דער בלאט דערהייַנטיקט זיך דעם מאמענט וואס Alpaca באשליסט.', 'This page checks for updates automatically.': 'דער בלאט קוקט אליין פאר נייעס.',
+  'Upload documents': 'לייגט ארויף דאקומענטן', 'Upload': 'ארויפלייגן', 'A clear photo or scan of a government ID. JPG, PNG or PDF, up to 5 MB each.': 'א קלארער בילד אדער סקען פון א רעגירונג ID. JPG, PNG אדער PDF, ביז 5 MB יעדעס.',
+  'Account details': 'קאנטע פרטים', 'Account number': 'קאנטע נומער', 'Crypto': 'קריפטא', 'Enabled assets': 'ערלויבטע אסעטס', 'Opened': 'געעפנט', 'Application history': 'אפליקאציע היסטאריע',
+  'No updates yet': 'נאך קיין נייעס', 'Alpaca event': 'Alpaca געשעעניש', 'Application sent': 'אפליקאציע געשיקט', 'Status check': 'סטאטוס טשעק', 'Update contact details': 'דערהייַנטיקט קאנטאקט פרטים', 'Save changes': 'היט אפ די ענדערונגען',
+  '1. Create your QuantPocket login': '1. שאפט אייער QuantPocket לאגין', 'Continue to application': 'גייט ווייטער צו די אפליקאציע', 'Already have a login?': 'האט איר שוין א לאגין?',
+  'Commission-free US stocks and ETFs, plus options and crypto, at Alpaca Securities LLC (member FINRA/SIPC). Apply in about 3 minutes, all from QuantPocket.': 'אמעריקאנער סטאקס און ETFs אן קאמישאן, פלוס אפשאנס און קריפטא, ביי Alpaca Securities LLC (מיטגליד FINRA/SIPC). אפליקירט אין בערך 3 מינוט, אלעס פון QuantPocket.',
+  'Choose a file to upload': 'קלייבט א פייל ארויפצולייגן', ', then open Account → Alpaca account.': ', און דערנאך עפנט קאנטע ← Alpaca קאנטע.',
 };
+
+Object.assign(strings, labs);
 
 // Sentences that contain numbers or names.
 export const patterns = [
@@ -213,6 +253,9 @@ export const patterns = [
   [/^(\S+) risk$/, 'ריזיקע: $1'],
   [/^Start (\d+)-day free trial$/, 'הייבט אן $1 טעג אומזיסט'],
   [/^Start 14-day free trial$/, 'הייבט אן 14 טעג אומזיסט'],
+  [/^Step (\d) of (\d):$/, 'שריט $1 פון $2:'],
+  [/^Brokerage account: (.+)$/, 'בראוקער קאנטע: $1'],
+  [/^Brokerage account (\d+)$/, 'בראוקער קאנטע $1'],
   [/^Connect (.+)$/, 'פארבינדט $1'],
   [/^Sign in with (.+)$/, 'לאגירט זיך איין מיט $1'],
   [/^Choose (.+)$/, 'קלייבט $1'],

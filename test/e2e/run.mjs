@@ -64,15 +64,43 @@ console.log('Desktop (1360x900)');
     for (const u of ['/terms', '/privacy', '/risk', '/contact']) if ((await q.goto(B + u)).status() !== 200) throw new Error(u);
     await q.close();
   });
-  await step('open brokerage account (4 steps)', async () => {
+  await step('open brokerage account (5 steps + ID upload)', async () => {
     await p.goto(B + '/app#/account'); await p.waitForSelector('#onb');
-    await p.fill('[name=givenName]', 'Jane'); await p.fill('[name=familyName]', 'Doe'); await p.fill('[name=dateOfBirth]', '1990-05-01'); await p.fill('[name=ssn]', '123-45-6789');
-    await p.click('#next'); await p.fill('[name=phone]', '+17185550100'); await p.fill('[name=street]', '1 Main St'); await p.fill('[name=city]', 'Brooklyn'); await p.selectOption('[name=state]', 'NY'); await p.fill('[name=postalCode]', '11211');
-    await p.click('#next'); await p.fill('[name=employerName]', 'Acme'); await p.click('#next');
-    await p.check('[name=crypto]'); await p.check('[name=options]'); await p.check('[name=agreeCustomer]');
+    // 1 Contact
+    await p.fill('[name=phone]', '+17185550100'); await p.fill('[name=street]', '1 Main St'); await p.fill('[name=city]', 'Brooklyn'); await p.selectOption('[name=state]', 'NY'); await p.fill('[name=postalCode]', '11211');
+    await p.click('#next');
+    // 2 Identity
+    // The mock holds a first name of "Review" for manual review.
+    await p.fill('[name=givenName]', 'Review'); await p.fill('[name=familyName]', 'Doe'); await p.fill('[name=dateOfBirth]', '1990-05-01'); await p.fill('[name=ssn]', '123-45-6789');
+    await p.selectOption('[name=taxResidence]', 'USA'); await p.selectOption('[name=fundingSource]', 'savings');
+    await p.click('#next');
+    // 3 Disclosures (yes/no)
+    await p.check('[name=isAffiliated][value=yes]'); await p.check('[name=isAffiliated][value=no]');
+    await p.click('#next');
+    // 4 Agreements
+    await p.check('[name=margin]'); await p.check('[name=options]'); await p.check('[name=agreeCustomer]');
+    await p.click('#next');
+    // 5 Documents (optional) and review
+    await p.setInputFiles('#docFile', { name: 'passport.png', mimeType: 'image/png', buffer: Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex') });
+    await p.waitForSelector('#docs .doc');
+    await p.screenshot({ path: path.join(OUT, 'desktop-onboarding-review.png'), fullPage: true });
     await p.click('#next'); await confirmDialog(p);
+    await p.waitForSelector('#kycStatus');
+    const sent = [...mock.log].reverse().find(r => r.path === '/v1/accounts' && r.method === 'POST').body;
+    if (sent.documents?.[0]?.document_type !== 'identity_verification') throw new Error('document not sent');
+    if (!sent.agreements.some(a => a.agreement === 'margin_agreement')) throw new Error('margin agreement missing');
+    if (sent.identity.funding_source[0] !== 'savings' || sent.disclosures.is_affiliated_exchange_or_finra !== false) throw new Error('form mapping');
   });
-  await step('KYC reaches ACTIVE', async () => { await p.waitForSelector('text=Your account is active', { timeout: 30000 }); await p.screenshot({ path: path.join(OUT, 'desktop-account.png'), fullPage: true }); });
+  await step('status dashboard updates live to ACTIVE', async () => {
+    await p.waitForSelector('text=Pending manual review', { timeout: 10000 });
+    await p.screenshot({ path: path.join(OUT, 'desktop-kyc-review.png'), fullPage: true });
+    await p.waitForTimeout(800); // the page's live stream is open
+    mock.setStatus([...mock.accounts.keys()].at(-1), 'ACTIVE'); // Alpaca decides; only the event feed tells us
+    await p.waitForSelector('#achForm', { timeout: 8000 }); // well before the page's 60s backup poll
+    await p.waitForSelector('text=Account approved! Ready to trade');
+    if (!(await p.textContent('.timeline')).includes('Alpaca event')) throw new Error('ACTIVE did not come from the event feed');
+    await p.screenshot({ path: path.join(OUT, 'desktop-account.png'), fullPage: true });
+  });
   await step('link bank and deposit', async () => {
     await p.fill('#achForm [name=ownerName]', 'Jane Doe'); await p.fill('#achForm [name=routingNumber]', '121000358'); await p.fill('#achForm [name=accountNumber]', '32131231');
     await p.click('#achForm button'); await p.waitForSelector('#trForm');
@@ -129,6 +157,22 @@ console.log('Desktop (1360x900)');
   done(); await p.close();
 }
 
+// ---------- public account-opening page ----------
+console.log('Open account page (new visitor)');
+{
+  const ctx = await browser.newContext({ viewport: { width: 1100, height: 850 } });
+  const p = await ctx.newPage();
+  const { step, done } = harness(p, 'open-account');
+  await step('create login, then the application starts', async () => {
+    await p.goto(B + '/app#/open-account'); await p.waitForSelector('#oaReg');
+    await p.fill('#oaReg [name=email]', 'newinvestor@example.com'); await p.fill('#oaReg [name=password]', 'Str0ngPassword'); await p.check('#oaReg [name=agree]');
+    await p.click('#oaReg button'); await p.waitForSelector('#onb'); await p.waitForSelector('text=Step 1 of 5');
+    if (await p.inputValue('[name=email]') !== 'newinvestor@example.com') throw new Error('email not carried over');
+    await p.screenshot({ path: path.join(OUT, 'open-account.png'), fullPage: true });
+  });
+  done(); await ctx.close();
+}
+
 // ---------- phone flow ----------
 console.log('Phone (iPhone 13)');
 {
@@ -182,7 +226,7 @@ for (const [device, width, lang] of [['iPhone 13', 390, 'en'], ['iPhone SE', 320
   await p.evaluate(() => fetch('/api/alpaca/keys', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ keyId: 'AUDIT' + innerWidth, secret: 'S' }) }));
   await p.evaluate(() => localStorage.setItem('qp_account', 'alpaca'));
   const lib = await p.evaluate(() => fetch('/api/library', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ templateId: 'multi_model' }) }).then(r => r.json()));
-  for (const r of ['/', '/yi', '/terms', '/app#/register', '/app#/login', '#/dashboard', '#/trade?symbol=AAPL', '#/orders', '#/positions', '#/watchlists', '#/markets', '#/options?underlying=AAPL', '#/calendar', '#/account', '#/brokers', '#/strategies', `#/strategy?id=${lib.id}`, '#/signals', '#/pairs', '#/sp500', '#/backtest', '#/bots', '#/schedule', '#/text', '#/tax', '#/funding', '#/settings']) {
+  for (const r of ['/', '/yi', '/terms', '/app#/register', '/app#/login', '#/dashboard', '#/trade?symbol=AAPL', '#/orders', '#/positions', '#/watchlists', '#/markets', '#/options?underlying=AAPL', '#/calendar', '#/account', '#/open-account', '#/brokers', '#/strategies', `#/strategy?id=${lib.id}`, '#/signals', '#/pairs', '#/sp500', '#/backtest', '#/bots', '#/schedule', '#/text', '#/tax', '#/funding', '#/settings']) {
     await step(r, async () => {
       await p.goto(r.startsWith('#') ? B + '/app' + r : B + r); if (r === '#/dashboard') await p.reload();
       await p.waitForTimeout(r.includes('strategy') || r.includes('sp500') ? 3000 : 1300);

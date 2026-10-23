@@ -7,7 +7,15 @@ export function startMock() {
   const accounts = new Map(); // broker account id -> { status, polls, acct }
   const books = new Map();    // trading account key -> { orders, positions, watchlists }
   const ach = new Map(), transfers = new Map();
-  let seq = 0;
+  const events = [], listeners = new Set(), docs = new Map();
+  let seq = 0, eventSeq = 100;
+  // Account status changes are published on the events feed, like Alpaca's SSE endpoint.
+  const setStatus = (acctId, status, reason = '') => {
+    const r = accounts.get(acctId); if (!r || r.a.status === status) return;
+    const e = { account_id: acctId, account_number: r.a.account_number, at: new Date().toISOString(), event_id: ++eventSeq, status_from: r.a.status, status_to: status, reason, crypto_status_from: r.a.crypto_status, crypto_status_to: status };
+    r.a.status = status; r.a.crypto_status = status; events.push(e);
+    for (const l of listeners) l.write(`data: ${JSON.stringify(e)}\n\n`);
+  };
   const id = p => `${p}-${++seq}`;
   const book = k => books.get(k) || books.set(k, { orders: [], positions: [{ symbol: 'AAPL', asset_class: 'us_equity', side: 'long', qty: '10', qty_available: '10', avg_entry_price: '150', current_price: '180', market_value: '1800', cost_basis: '1500', unrealized_pl: '300', unrealized_plpc: '0.2', unrealized_intraday_pl: '20', unrealized_intraday_plpc: '0.011', change_today: '0.011' }], watchlists: [], config: { dtbp_check: 'entry', fractional_trading: true, max_margin_multiplier: '4', no_shorting: false, pdt_check: 'entry', suspend_trade: false, trade_confirm_email: 'all' } }).get(k);
   const tradeAccount = () => ({ id: 'acct', account_number: 'PA123', status: 'ACTIVE', currency: 'USD', equity: '101800', last_equity: '100500', cash: '100000', buying_power: '200000', regt_buying_power: '200000', daytrading_buying_power: '400000', non_marginable_buying_power: '100000', options_buying_power: '100000', long_market_value: '1800', short_market_value: '0', initial_margin: '900', maintenance_margin: '540', multiplier: '2', sma: '0', daytrade_count: 0, pattern_day_trader: false, trading_blocked: false, shorting_enabled: true, crypto_status: 'ACTIVE', options_trading_level: 2 });
@@ -93,19 +101,39 @@ export function startMock() {
       };
       const auth = req.headers.authorization || '', key = req.headers['apca-api-key-id'];
       let m;
+      if (path === '/v1/oauth2/token') return body?.grant_type === 'client_credentials' && body.client_id === 'BCID' && body.client_secret === 'BCSECRET' ? send({ access_token: 'broker-token', token_type: 'Bearer', expires_in: 900 }) : send({ __status: 401, message: 'invalid client' });
       if (path === '/oauth/token') return body?.code === 'good-code' ? send({ access_token: 'oauth-token-123', token_type: 'bearer', scope: 'account:write trading data' }) : send({ __status: 401, message: 'invalid code' });
       if (path.startsWith('/v1/') && !path.startsWith('/v1/corporate-actions')) {
-        if (auth !== 'Basic ' + Buffer.from('BKEY:BSECRET').toString('base64')) return send({ __status: 401, message: 'bad broker auth' });
+        if (auth !== 'Basic ' + Buffer.from('BKEY:BSECRET').toString('base64') && auth !== 'Bearer broker-token') return send({ __status: 401, message: 'bad broker auth' });
+        if (path === '/v1/events/accounts/status') {
+          res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+          res.write(': connected\n\n');
+          for (const e of events) if (!query.since_id || e.event_id > +query.since_id) res.write(`data: ${JSON.stringify(e)}\n\n`);
+          listeners.add(res); res.on('close', () => listeners.delete(res));
+          return;
+        }
+        if ((m = /^\/v1\/accounts\/([^/]+)\/documents\/upload$/.exec(path)) && req.method === 'POST') {
+          if (!accounts.has(m[1])) return send({ __status: 404, message: 'account not found' });
+          if (!Array.isArray(body) || !body.every(d => d.document_type && d.content && d.mime_type)) return send({ __status: 422, message: 'bad documents' });
+          docs.set(m[1], [...(docs.get(m[1]) || []), ...body]);
+          setStatus(m[1], 'RESUBMITTED'); accounts.get(m[1]).hold = false;
+          return send(null, 204);
+        }
         if (path === '/v1/accounts' && req.method === 'POST') {
           if (!body?.identity?.tax_id || !body.agreements?.length) return send({ __status: 422, message: 'missing fields' });
           const a = { id: id('bacct'), account_number: '9' + seq, status: 'SUBMITTED', crypto_status: 'SUBMITTED', currency: 'USD', last_equity: '0', created_at: new Date().toISOString(), contact: body.contact, identity: body.identity, agreements: body.agreements, enabled_assets: body.enabled_assets };
-          accounts.set(a.id, { polls: 0, a }); return send(a);
+          // Like the sandbox's magic names: a given name of "Action" needs documents, "Review" waits for compliance.
+          const hold = { Action: 'ACTION_REQUIRED', Review: 'APPROVAL_PENDING' }[body.identity.given_name];
+          accounts.set(a.id, { polls: 0, a, hold: !!hold });
+          if (body.documents) docs.set(a.id, body.documents);
+          if (hold) setTimeout(() => setStatus(a.id, hold), 30);
+          return send(a);
         }
         if ((m = /^\/v1\/accounts\/([^/]+)$/.exec(path))) {
           const r = accounts.get(m[1]); if (!r) return send({ __status: 404, message: 'account not found' });
           if (req.method === 'PATCH') { Object.assign(r.a.contact, body.contact); return send(r.a); }
           // Sandbox-style progression on each read: SUBMITTED -> APPROVED -> ACTIVE.
-          r.polls++; r.a.status = r.polls >= 2 ? 'ACTIVE' : 'APPROVED'; r.a.crypto_status = r.a.status;
+          if (!r.hold && !['ACTIVE', 'REJECTED'].includes(r.a.status)) { r.polls++; setStatus(r.a.id, r.polls >= 2 ? 'ACTIVE' : 'APPROVED'); }
           return send(r.a);
         }
         if ((m = /^\/v1\/accounts\/([^/]+)\/ach_relationships(?:\/([^/]+))?$/.exec(path))) {
@@ -132,5 +160,5 @@ export function startMock() {
       return send(data(path, query));
     });
   });
-  return new Promise(r => server.listen(0, '127.0.0.1', () => r({ url: `http://127.0.0.1:${server.address().port}`, log, close: () => server.close(), accounts })));
+  return new Promise(r => server.listen(0, '127.0.0.1', () => r({ url: `http://127.0.0.1:${server.address().port}`, log, close: () => { for (const l of listeners) l.end(); server.close(); }, accounts, setStatus, events, docs })));
 }
