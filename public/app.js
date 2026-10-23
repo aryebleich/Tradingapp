@@ -780,7 +780,7 @@ registerTrading(routes, { $, $$, esc, money, pct, num, cls, date, api, form, act
   // Remember an invite code from a referral link (/app?ref=CODE) for sign-up.
   const ref = new URLSearchParams(location.search).get('ref');
   if (ref && /^[a-z0-9]{6,12}$/.test(ref)) { try { localStorage.setItem('qp_ref', ref); } catch {} }
-  // Language: chosen in Settings → Language (the homepage footer also links the Yiddish site).
+  // Language: chosen in Settings → Language.
   await startI18n().catch(e => console.warn('i18n', e));
   const me = await api('/auth/me').catch(() => ({}));
   ME = me.user;

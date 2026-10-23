@@ -228,9 +228,9 @@ console.log('Settings → Language');
     await p.screenshot({ path: path.join(OUT, 'settings-language-yi.png') });
     await p.click('[data-setlang=en]'); await p.waitForSelector('html[dir=ltr]'); await p.waitForSelector('h1:has-text("Settings")');
   });
-  await step('homepage has no language switch on top', async () => {
+  await step('homepage has no language links', async () => {
     await p.goto(B + '/'); if (await p.isVisible('.top .lang, .lang-m')) throw new Error('language link on the homepage');
-    if (!(await p.$('footer a[data-lang=yi]'))) throw new Error('footer link to the Yiddish site missing');
+    if (await p.$('a[data-lang]')) throw new Error('language link on the homepage');
   });
   done(); await ctx.close();
 }
