@@ -326,3 +326,11 @@ html[dir="rtl"] body { line-height: 1.6; }
 html[dir="rtl"] h1, html[dir="rtl"] h2 { letter-spacing: 0; }
 html[dir="rtl"] .seg button, html[dir="rtl"] button { letter-spacing: 0; }
 @media (max-width: 360px) { .brand b { display: none; } }
+
+/* Settings → Language */
+.langpick { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.langpick button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; background: var(--card); color: var(--tx); border: 1.5px solid var(--bd); box-shadow: none; padding: 12px 14px; text-align: start; }
+.langpick button:hover:not(:disabled) { background: var(--bg2); box-shadow: none; filter: none; }
+.langpick button.on { border-color: var(--ac); background: var(--acs); }
+.langpick button b { font-size: 16px; }
+.langpick button small { font-weight: 500; color: var(--mu); font-size: 12.5px; }

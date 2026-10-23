@@ -313,6 +313,7 @@ export const strings = {
   'quantconnect.com → Account → API Access': 'quantconnect.com ← Account ← API Access', 'Not set': 'נישט איינגעשטעלט', 'Code': 'קאוד', 'Change password': 'טוישט פאסווארט', 'Changing it signs out every other device.': 'טוישן עס לאגירט אויס יעדן אנדערן מכשיר.', 'Password to delete your account': 'פאסווארט צו אויסמעקן אייער קאנטע',
   'Language': 'שפראך', 'Main': 'הויפט', 'Theme: auto (click to change)': 'קאליר: אויטאמאטיש (קליקט צו טוישן)', 'Theme: light (click to change)': 'קאליר: ליכטיג (קליקט צו טוישן)', 'Theme: dark (click to change)': 'קאליר: טונקל (קליקט צו טוישן)',
   'No price data for this range.': 'קיין פרייז דאטן פאר די צייט.',
+  'The language of the app on this device.': 'די שפראך פון דער עפּ אויף דעם מכשיר.',
   // security log
   'Account created': 'קאנטע געעפנט', 'Signed in': 'אריינלאגירט', 'Failed sign-in': 'דורכגעפאלענער לאגין', 'Wrong two-factor code': 'אומריכטיגער צוויי-שריט קאוד', 'Password changed': 'פאסווארט געטוישט',
   'Password reset': 'פאסווארט איבערגעשטעלט', 'Password reset requested': 'געבעטן איבערשטעלן פאסווארט', 'Email verified': 'אימעיל באשטעטיגט', 'Phone verified': 'טעלעפאן באשטעטיגט',

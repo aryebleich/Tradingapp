@@ -4032,6 +4032,11 @@
   ],
   [
    "app",
+   "The language of the app on this device.",
+   "די שפראך פון דער עפּ אויף דעם מכשיר."
+  ],
+  [
+   "app",
    "Account created",
    "קאנטע געעפנט"
   ],
@@ -8712,6 +8717,7 @@
     "Theme: light (click to change)",
     "Theme: dark (click to change)",
     "No price data for this range.",
+    "The language of the app on this device.",
     "Account created",
     "Failed sign-in",
     "Wrong two-factor code",
@@ -8779,10 +8785,10 @@
     "An all-in-one trading automation platform",
     "An equity curve that shows how you are doing",
     "Analyze a pair",
-    "Answers questions about your account",
-    "Any program that can send an HTTPS request can use a webhook, AI agents included. It can only do what that webhook allows: its accounts, sizes and risk rules. Start on paper."
+    "Answers questions about your account"
    ],
    "saved": [
+    [],
     [],
     [],
     [],
@@ -8922,11 +8928,7 @@
     [],
     [],
     [],
-    [],
-    [
-     "HTTPS",
-     "AI"
-    ]
+    []
    ],
    "texts": [
     "Code",
@@ -8938,6 +8940,7 @@
     "Theme: light (click to change)",
     "Theme: dark (click to change)",
     "No price data for this range.",
+    "The language of the app on this device.",
     "Account created",
     "Failed sign-in",
     "Wrong two-factor code",
@@ -9005,13 +9008,13 @@
     "An all-in-one trading automation platform",
     "An equity curve that shows how you are doing",
     "Analyze a pair",
-    "Answers questions about your account",
-    "Any program that can send an ⟦0⟧ request can use a webhook, ⟦1⟧ agents included. It can only do what that webhook allows: its accounts, sizes and risk rules. Start on paper."
+    "Answers questions about your account"
    ]
   },
   {
    "name": "part-11",
    "strings": [
+    "Any program that can send an HTTPS request can use a webhook, AI agents included. It can only do what that webhook allows: its accounts, sizes and risk rules. Start on paper.",
     "At 10% a year",
     "At 6% a year",
     "At 8% a year",
@@ -9057,10 +9060,13 @@
     "Every paid plan starts with a 14-day free trial. Plus a small share of new profits above your high-water mark, so you only pay more when your account reaches new highs.",
     "Every rule, number and ticker can be changed",
     "Every signal logged with its fill, or the reason it was blocked",
-    "Every trade needs your PIN; calls read the order back first",
-    "Every trade you take, <span>executed from one place.</span>"
+    "Every trade needs your PIN; calls read the order back first"
    ],
    "saved": [
+    [
+     "HTTPS",
+     "AI"
+    ],
     [],
     [],
     [],
@@ -9134,13 +9140,10 @@
     [],
     [
      "PIN"
-    ],
-    [
-     "<span>",
-     "</span>"
     ]
    ],
    "texts": [
+    "Any program that can send an ⟦0⟧ request can use a webhook, ⟦1⟧ agents included. It can only do what that webhook allows: its accounts, sizes and risk rules. Start on paper.",
     "At 10% a year",
     "At 6% a year",
     "At 8% a year",
@@ -9186,13 +9189,13 @@
     "Every paid plan starts with a 14-day free trial. Plus a small share of new profits above your high-water mark, so you only pay more when your account reaches new highs.",
     "Every rule, number and ticker can be changed",
     "Every signal logged with its fill, or the reason it was blocked",
-    "Every trade needs your ⟦0⟧; calls read the order back first",
-    "Every trade you take, ⟦0⟧executed from one place.⟦1⟧"
+    "Every trade needs your ⟦0⟧; calls read the order back first"
    ]
   },
   {
    "name": "part-12",
    "strings": [
+    "Every trade you take, <span>executed from one place.</span>",
     "Every trading day we compare a strategy&rsquo;s live result with its backtest. If they drift apart, you get a text or email, and with Auto-throttle on, the money that strategy trades is cut to 50% (Watch) or 0% (Drifting) until it recovers.",
     "Example",
     "Example conversation",
@@ -9238,6 +9241,10 @@
     "Live quotes and market news"
    ],
    "saved": [
+    [
+     "<span>",
+     "</span>"
+    ],
     [
      "&rsquo;"
     ],
@@ -9306,6 +9313,7 @@
     []
    ],
    "texts": [
+    "Every trade you take, ⟦0⟧executed from one place.⟦1⟧",
     "Every trading day we compare a strategy⟦0⟧s live result with its backtest. If they drift apart, you get a text or email, and with Auto-throttle on, the money that strategy trades is cut to 50% (Watch) or 0% (Drifting) until it recovers.",
     "Example",
     "Example conversation",

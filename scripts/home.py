@@ -41,7 +41,6 @@ def layout(title, desc, body, lang='en', home='index.html'):
 <header class="top"><div class="wrap">
   <a class="logo" href="{home}"><img src="favicon.svg" alt=""><b>Quant<span>Pocket</span></b></a>
   <nav class="links">{nav}</nav>
-  <a class="lang" href="{other[0]}" hreflang="{'en' if rtl else 'yi'}" data-lang="{'en' if rtl else 'yi'}">{other[1]}</a>
   <a class="btn ghost" data-app="#/login" href="app">{T('Sign in')}</a>
   <a class="btn" data-app="#/register" href="app">{T('Start free')}</a>
 </div></header>
@@ -53,7 +52,7 @@ def layout(title, desc, body, lang='en', home='index.html'):
     <div><a class="logo" href="{home}"><img src="favicon.svg" alt=""><b>Quant<span>Pocket</span></b></a><p style="max-width:320px">{T('Turn alerts and strategies into trades on your own brokerage account, from your browser, your phone, or a text message.')}</p>
       <p class="phoneline" data-phone hidden>{T('Text or call us:')} <a data-phone-link dir="ltr"></a></p></div>
     <div><b>{T('Product')}</b><a href="{home}#how">{T('How it works')}</a><a href="{home}#strategies">{T('Strategies')}</a><a href="{home}#reality">{T('Reality Check')}</a><a href="{home}#sp500">{T('S&amp;P 500')}</a><a href="{home}#pricing">{T('Pricing')}</a><a data-app="#/register" href="app">{T('Create account')}</a></div>
-    <div><b>{T('Company')}</b><a href="contact.html">{T('Contact &amp; support')}</a><a href="terms.html">{T('Terms of Service')}</a><a href="privacy.html">{T('Privacy Policy')}</a><a href="risk.html">{T('Risk Disclosure')}</a><a href="{other[0]}">{other[1]}</a></div>
+    <div><b>{T('Company')}</b><a href="contact.html">{T('Contact &amp; support')}</a><a href="terms.html">{T('Terms of Service')}</a><a href="privacy.html">{T('Privacy Policy')}</a><a href="risk.html">{T('Risk Disclosure')}</a><a href="{other[0]}" hreflang="{'en' if rtl else 'yi'}" data-lang="{'en' if rtl else 'yi'}">{other[1]}</a></div>
   </div>
   <p class="disc">{T('Investing involves risk, including possible loss of principal. Backtests and projections are hypothetical, are built with the benefit of hindsight and do not guarantee future results. QuantPocket is a software provider and is not a broker-dealer. Brokerage services are provided by your own broker (for example Alpaca Securities LLC, member FINRA/SIPC) under your own account agreement. Nothing on this site is an offer, solicitation or recommendation to buy or sell any security.')}</p>
   <p class="disc">© 2026 QuantPocket. {T('All rights reserved.')}<span data-credit></span></p>
@@ -226,7 +225,6 @@ def index(lang='en'):
     <div class="cta">{gbtn()}<a class="btn outline lg" data-app="#/register" href="app">{T('Start free with email')}</a></div>
     <ul class="ticks"><li>{T('Set up in 3 minutes')}</li><li>{T('$100,000 paper account')}</li><li>{T('No card needed')}</li></ul>
     <p class="acctlink"><a data-app="#/open-account" href="app">{T('Open a brokerage account')} &rarr;</a> <span>{T('Commission-free, held at Alpaca Securities LLC (FINRA/SIPC)')}</span></p>
-    <a class="lang-m" href="{'index.html' if lang == 'yi' else 'yi.html'}" data-lang="{'en' if lang == 'yi' else 'yi'}">{'English' if lang == 'yi' else 'ייִדיש'} &rarr;</a>
     <p class="phoneline hero-phone" data-phone hidden>{ic('msg', 16)} {T('Text or call us:')} <a data-phone-link dir="ltr"></a></p>
   </div>
   <figure class="shot"><div class="frame"><i></i><i></i><i></i></div><img src="hero-app.webp" width="1600" height="1000" alt="{T('QuantPocket portfolio dashboard with equity chart, positions and order ticket')}" fetchpriority="high"><figcaption>{T('Illustrative paper-trading account')}</figcaption></figure>

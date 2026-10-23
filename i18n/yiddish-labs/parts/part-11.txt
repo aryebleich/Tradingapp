@@ -1,49 +1,49 @@
 Translate each numbered line to Yiddish. Keep the [[number]] at the start of every line and keep every ⟦n⟧ exactly as it is.
 
-[[1]] At 10% a year
-[[2]] At 6% a year
-[[3]] At 8% a year
-[[4]] Automate monthly ⟦0⟧ buys and keep an eye on taxes, without watching the market all day.
-[[5]] Automatic strategies, pair bots and webhooks run without you. Automation can still fail or act on bad data, so check your account regularly.
-[[6]] Automation
-[[7]] Automation on your own account
-[[8]] Back to full size automatically when it recovers
-[[9]] Backtest before you risk a dollar
-[[10]] Backtesting
-[[11]] Backtests with drawdowns and losing years
-[[12]] Balances, positions, prices and explanations, any time
-[[13]] Brokers:
-[[14]] Built into every strategy
-[[15]] Buy the dip in an uptrend, sell the bounce
-[[16]] Can I cancel any time?
-[[17]] Can I run one strategy across all my accounts?
-[[18]] Can I set a swing trade and walk away?
-[[19]] Can I sign up with ⟦0⟧?
-[[20]] Can I trigger trades from ⟦0⟧ or ⟦1⟧?
-[[21]] Can I turn my ⟦0⟧ alerts into trades?
-[[22]] Can I use ⟦0⟧ in Yiddish?
-[[23]] Can my ⟦0⟧ agent place real trades?
-[[24]] Can my strategy run fully hands-off?
-[[25]] Choose an amount and a day. ⟦0⟧ buys an ⟦1⟧ fund for you every month, so every dollar is invested, and shows the range of outcomes first.
-[[26]] Code-first trading
-[[27]] Cointegration, z-scores, half-life, walk-forward backtests and pair bots.
-[[28]] Commands only work from the phone number you verified, every order needs your personal ⟦0⟧, and phone calls read the order back before it is placed.
-[[29]] Company
-[[30]] Connect
-[[31]] Connect my broker
-[[32]] Connect the charting tools you already use
-[[33]] Contact ⟦0⟧ support
-[[34]] Copy a ready-made strategy
-[[35]] Copy-and-paste alert message templates
-[[36]] Disconnect at any time
-[[37]] Each month we compare your account to its previous peak, adjusted for deposits and withdrawals. You pay the plan⟦0⟧s percentage only on value above that peak. Losses must be recovered before any new fee is charged.
-[[38]] Email address
-[[39]] English ⟦0⟧ Yiddish
-[[40]] Every month ($)
-[[41]] Every order, fill and signal in one record.
-[[42]] Every paid plan starts with 14 days free. Cancel before the trial ends and you are not charged. The free ⟦0⟧ plan has no time limit.
-[[43]] Every paid plan starts with a 14-day free trial. Plus a small share of new profits above your high-water mark, so you only pay more when your account reaches new highs.
-[[44]] Every rule, number and ticker can be changed
-[[45]] Every signal logged with its fill, or the reason it was blocked
-[[46]] Every trade needs your ⟦0⟧; calls read the order back first
-[[47]] Every trade you take, ⟦0⟧executed from one place.⟦1⟧
+[[1]] Any program that can send an ⟦0⟧ request can use a webhook, ⟦1⟧ agents included. It can only do what that webhook allows: its accounts, sizes and risk rules. Start on paper.
+[[2]] At 10% a year
+[[3]] At 6% a year
+[[4]] At 8% a year
+[[5]] Automate monthly ⟦0⟧ buys and keep an eye on taxes, without watching the market all day.
+[[6]] Automatic strategies, pair bots and webhooks run without you. Automation can still fail or act on bad data, so check your account regularly.
+[[7]] Automation
+[[8]] Automation on your own account
+[[9]] Back to full size automatically when it recovers
+[[10]] Backtest before you risk a dollar
+[[11]] Backtesting
+[[12]] Backtests with drawdowns and losing years
+[[13]] Balances, positions, prices and explanations, any time
+[[14]] Brokers:
+[[15]] Built into every strategy
+[[16]] Buy the dip in an uptrend, sell the bounce
+[[17]] Can I cancel any time?
+[[18]] Can I run one strategy across all my accounts?
+[[19]] Can I set a swing trade and walk away?
+[[20]] Can I sign up with ⟦0⟧?
+[[21]] Can I trigger trades from ⟦0⟧ or ⟦1⟧?
+[[22]] Can I turn my ⟦0⟧ alerts into trades?
+[[23]] Can I use ⟦0⟧ in Yiddish?
+[[24]] Can my ⟦0⟧ agent place real trades?
+[[25]] Can my strategy run fully hands-off?
+[[26]] Choose an amount and a day. ⟦0⟧ buys an ⟦1⟧ fund for you every month, so every dollar is invested, and shows the range of outcomes first.
+[[27]] Code-first trading
+[[28]] Cointegration, z-scores, half-life, walk-forward backtests and pair bots.
+[[29]] Commands only work from the phone number you verified, every order needs your personal ⟦0⟧, and phone calls read the order back before it is placed.
+[[30]] Company
+[[31]] Connect
+[[32]] Connect my broker
+[[33]] Connect the charting tools you already use
+[[34]] Contact ⟦0⟧ support
+[[35]] Copy a ready-made strategy
+[[36]] Copy-and-paste alert message templates
+[[37]] Disconnect at any time
+[[38]] Each month we compare your account to its previous peak, adjusted for deposits and withdrawals. You pay the plan⟦0⟧s percentage only on value above that peak. Losses must be recovered before any new fee is charged.
+[[39]] Email address
+[[40]] English ⟦0⟧ Yiddish
+[[41]] Every month ($)
+[[42]] Every order, fill and signal in one record.
+[[43]] Every paid plan starts with 14 days free. Cancel before the trial ends and you are not charged. The free ⟦0⟧ plan has no time limit.
+[[44]] Every paid plan starts with a 14-day free trial. Plus a small share of new profits above your high-water mark, so you only pay more when your account reaches new highs.
+[[45]] Every rule, number and ticker can be changed
+[[46]] Every signal logged with its fill, or the reason it was blocked
+[[47]] Every trade needs your ⟦0⟧; calls read the order back first

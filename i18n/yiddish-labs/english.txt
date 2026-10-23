@@ -810,6 +810,7 @@ Theme: auto (click to change)
 Theme: light (click to change)
 Theme: dark (click to change)
 No price data for this range.
+The language of the app on this device.
 Account created
 Failed sign-in
 Wrong two-factor code

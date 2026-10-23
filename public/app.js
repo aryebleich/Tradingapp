@@ -5,7 +5,7 @@ import { registerStrategies } from './strategies.js';
 import { registerPairs } from './pairs.js';
 import { registerSp500 } from './sp500.js';
 import { registerBrokers } from './brokers.js';
-import { startI18n, picker, setLang, canvasNote } from './i18n.js';
+import { startI18n, setLang, canvasNote, LANGS, current as currentLang } from './i18n.js';
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -244,7 +244,7 @@ routes.login = async (view, q) => {
     <label>Email<input name="email" type="email" autocomplete="username" required></label>
     <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
     <button>Sign in</button><div class="err"></div>
-    <p class="mu"><a href="#/forgot">Forgot password?</a> · New here? <a href="#/register">Create an account</a></p><div class="authlang">${picker()}</div></form>`;
+    <p class="mu"><a href="#/forgot">Forgot password?</a> · New here? <a href="#/register">Create an account</a></p></form>`;
   if (q.get('error')) $('.err', view).textContent = q.get('error');
   act($('button', view), async () => {
     const r = await api('/auth/login', { body: form(view) });
@@ -261,7 +261,7 @@ routes.register = async (view, q) => {
     <label>Password (10+ chars, upper, lower, digit)<input name="password" type="password" autocomplete="new-password" required></label>
     <label><input type="checkbox" name="agree" style="width:auto"> I agree to the <a href="/terms" target="_blank">Terms</a> and <a href="/privacy" target="_blank">Privacy Policy</a> and have read the <a href="/risk" target="_blank">Risk Disclosure</a>.</label>
     <button>Create account</button><div class="err"></div>
-    <p class="mu">You start with a $100,000 paper account. <a href="#/login">Sign in instead</a></p><div class="authlang">${picker()}</div></form>`;
+    <p class="mu">You start with a $100,000 paper account. <a href="#/login">Sign in instead</a></p></form>`;
   if (q.get('email')) { view.querySelector('[name=email]').value = q.get('email'); view.querySelector('[name=password]').focus(); }
   act($('button', view), async () => {
     const f = form(view);
@@ -684,6 +684,9 @@ routes.settings = async view => {
   const pw = ME.hasPassword, confirmLabel = what => pw ? `Password to ${what}` : `Type your email to ${what}`, confirmType = pw ? 'password' : 'email';
   view.innerHTML = `<h1>Settings</h1>
   <div class="grid">
+    <div class="card" id="language"><h2>Language</h2>
+      <p class="mu">The language of the app on this device.</p>
+      <div class="langpick" data-no-tr>${Object.entries(LANGS).map(([k, v]) => `<button type="button" class="${k === currentLang() ? 'on' : ''}" data-setlang="${k}" lang="${k}" dir="${v.dir}" aria-pressed="${k === currentLang()}"><b>${v.name}</b><small>${k === 'yi' ? 'איבערגעזעצט פאר אידישע באניצער' : 'Original'}</small></button>`).join('')}</div></div>
     <div class="card"><h2>Alpaca brokerage</h2>
       <p class="mu">Open a brokerage account, connect your Alpaca account with one click, or use API keys.</p>
       <a href="#/account"><button type="button">Manage brokerage connection</button></a></div>
@@ -711,6 +714,7 @@ routes.settings = async view => {
     <label>${confirmLabel('delete your account')}<input type="${confirmType}" id="delpw" autocomplete="${pw ? 'current-password' : 'off'}"></label><button class="danger" id="delacct">Delete my account</button><div class="err"></div></div>
   <div class="card tablewrap"><h2>Active sessions</h2><table><tr><th>IP address</th><th>Device</th><th>Signed in</th><th></th></tr>${sessions.map(s => `<tr><td>${esc(s.ip)}</td><td data-no-tr>${esc(s.ua.slice(0, 60))}</td><td>${date(s.createdAt)}</td><td>${s.current ? '<span class="pill">this device</span>' : `<button class="small ghost" data-s="${s.id}">Sign out</button>`}</td></tr>`).join('')}</table></div>
   <div class="card tablewrap"><h2>Security log</h2><table><tr><th>When</th><th>Event</th><th>IP address</th></tr>${log.map(l => `<tr><td>${date(l.at)}</td><td>${esc(EVENT_LABELS[l.event] || l.event.replace(/_/g, ' '))}</td><td>${esc(l.ip || '')}</td></tr>`).join('')}</table></div>`;
+  $$('[data-setlang]', view).forEach(b => (b.onclick = () => { if (b.dataset.setlang !== currentLang()) setLang(b.dataset.setlang); }));
   const refreshMe = async () => { ME = (await api('/auth/me')).user; };
   act($('button', $('#qcf', view)), async () => { await api('/integrations/quantconnect', { body: form($('#qcf', view)) }); setTimeout(render, 800); return 'Connected'; });
   $$('[data-dis]', view).forEach(b => (b.onclick = async () => { await api('/integrations/' + b.dataset.dis, { method: 'DELETE' }); render(); }));
@@ -776,9 +780,7 @@ registerTrading(routes, { $, $$, esc, money, pct, num, cls, date, api, form, act
   // Remember an invite code from a referral link (/app?ref=CODE) for sign-up.
   const ref = new URLSearchParams(location.search).get('ref');
   if (ref && /^[a-z0-9]{6,12}$/.test(ref)) { try { localStorage.setItem('qp_ref', ref); } catch {} }
-  // Language: the picker sits in the header, and on the sign-in pages before signing in.
-  $('#langSlot').innerHTML = picker();
-  document.addEventListener('change', e => { if (e.target.id === 'langSel') setLang(e.target.value); });
+  // Language: chosen in Settings → Language (the homepage footer also links the Yiddish site).
   await startI18n().catch(e => console.warn('i18n', e));
   const me = await api('/auth/me').catch(() => ({}));
   ME = me.user;

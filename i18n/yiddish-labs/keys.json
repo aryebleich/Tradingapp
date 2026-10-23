@@ -3249,6 +3249,10 @@
  ],
  [
   "app",
+  "The language of the app on this device."
+ ],
+ [
+  "app",
   "Account created"
  ],
  [

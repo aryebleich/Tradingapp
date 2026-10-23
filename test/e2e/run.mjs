@@ -213,6 +213,28 @@ console.log('Phone (iPhone 13)');
   done(); await ctx.close();
 }
 
+// ---------- language is chosen in Settings, not in the header ----------
+console.log('Settings → Language');
+{
+  const ctx = await browser.newContext({ viewport: { width: 1100, height: 850 } });
+  const p = await ctx.newPage();
+  const { step, done } = harness(p, 'language');
+  await step('switch to Yiddish and back', async () => {
+    await p.goto(B + '/app#/register'); await p.fill('input[name=email]', 'lang@example.com'); await p.fill('input[name=password]', 'Str0ngPassword'); await p.check('input[name=agree]');
+    await p.click('form.auth button:not([type=button])'); await p.waitForSelector('#nav a.on');
+    if (await p.$('header select, #langSel')) throw new Error('language picker still in the header');
+    await p.goto(B + '/app#/settings'); await p.click('[data-setlang=yi]');
+    await p.waitForSelector('html[dir=rtl]'); await p.waitForSelector('#language button.on[data-setlang=yi]'); await p.waitForSelector('text=סעטינגס');
+    await p.screenshot({ path: path.join(OUT, 'settings-language-yi.png') });
+    await p.click('[data-setlang=en]'); await p.waitForSelector('html[dir=ltr]'); await p.waitForSelector('h1:has-text("Settings")');
+  });
+  await step('homepage has no language switch on top', async () => {
+    await p.goto(B + '/'); if (await p.isVisible('.top .lang, .lang-m')) throw new Error('language link on the homepage');
+    if (!(await p.$('footer a[data-lang=yi]'))) throw new Error('footer link to the Yiddish site missing');
+  });
+  done(); await ctx.close();
+}
+
 // ---------- layout audit: no sideways scrolling and no zooming inputs on any page ----------
 for (const [device, width, lang] of [['iPhone 13', 390, 'en'], ['iPhone SE', 320, 'en'], ['iPhone SE', 320, 'yi']]) {
   console.log(`Layout audit (${device}, ${width}px${lang === 'yi' ? ', Yiddish' : ''})`);
