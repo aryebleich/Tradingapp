@@ -29,9 +29,9 @@ function parseCookies(req) {
   return Object.fromEntries((req.headers.cookie || '').split(';').map(c => c.trim().split('=')).filter(p => p[0]).map(([k, ...v]) => [k, decodeURIComponent(v.join('='))]));
 }
 function setCookie(res, token, ms) {
-  res.setHeader('Set-Cookie', `${COOKIE}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${Math.floor(ms / 1000)}${secure ? '; Secure' : ''}`);
+  res.append('Set-Cookie', `${COOKIE}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${Math.floor(ms / 1000)}${secure ? '; Secure' : ''}`);
 }
-async function createSession(res, req, userId, mfaPending) {
+export async function createSession(res, req, userId, mfaPending) {
   const token = randomToken();
   const ttl = mfaPending ? MFA_MS : SESSION_MS;
   await run('INSERT INTO sessions (token_hash, user_id, mfa_pending, ip, ua, created_at, expires_at) VALUES (?,?,?,?,?,?,?)',
@@ -65,12 +65,32 @@ export const requireAdmin = (req, res, next) => req.user?.role === 'admin' ? nex
 
 export const publicUser = u => u && ({
   id: u.id, email: u.email, role: u.role, totpEnabled: !!u.totp_enabled, phone: u.phone, phoneVerified: !!u.phone_verified,
-  hasPin: !!u.pin_hash, emailVerified: !!u.email_verified, planStatus: u.plan_status, planInterval: u.plan_interval, trialUsed: !!u.trial_used, refCode: u.ref_code, plan: u.plan, planRenews: u.plan_renews, taxBracket: u.tax_bracket, stateTax: u.state_tax,
+  hasPin: !!u.pin_hash, hasPassword: u.password_set !== 0, google: !!u.google_sub, emailVerified: !!u.email_verified, planStatus: u.plan_status, planInterval: u.plan_interval, trialUsed: !!u.trial_used, refCode: u.ref_code, plan: u.plan, planRenews: u.plan_renews, taxBracket: u.tax_bracket, stateTax: u.state_tax,
 });
 
 export const router = express.Router();
 const newRefCode = () => randomToken(9).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8).padEnd(8, '7');
 const DUMMY_HASH = hashSecret('timing-equalizer');
+
+// Creates a user with a $100,000 paper account. Without a password (Google sign-up) the stored
+// hash is of a random secret nobody knows, so password sign-in stays impossible until one is set.
+export async function createUser({ email, password, ref, googleSub = null, verified = false }) {
+  // Admin is whoever matches ADMIN_EMAIL; outside production the first account also qualifies.
+  const admin = process.env.ADMIN_EMAIL ? email === process.env.ADMIN_EMAIL.toLowerCase()
+    : process.env.NODE_ENV !== 'production' && !await one('SELECT id FROM users LIMIT 1');
+  // Referral: ?ref=CODE on the sign-up link credits whoever invited this user once they pay.
+  const referrer = /^[a-z0-9]{6,12}$/.test(String(ref || '')) ? await one('SELECT id FROM users WHERE ref_code = ?', ref) : null;
+  const r = await run('INSERT INTO users (email, pass_hash, password_set, google_sub, email_verified, role, created_at, ref_code, referred_by) VALUES (?,?,?,?,?,?,?,?,?)',
+    email, hashSecret(password || randomToken()), password ? 1 : 0, googleSub, verified ? 1 : 0, admin ? 'admin' : 'user', now(), newRefCode(), referrer?.id ?? null);
+  const id = Number(r.lastInsertRowid);
+  await run('INSERT INTO paper_accounts (user_id, cash, start_cash) VALUES (?,?,?)', id, 100000, 100000);
+  await run('INSERT INTO fee_state (user_id, account, high_water, net_contrib) VALUES (?,?,?,?)', id, 'paper', 100000, 100000);
+  return id;
+}
+// Sensitive actions re-check the password; accounts created with Google confirm with their email instead.
+const confirmsIdentity = (u, body) => u.password_set === 0
+  ? String(body.confirm || '').trim().toLowerCase() === u.email
+  : verifySecret(String(body.password || ''), u.pass_hash);
 
 router.post('/register', async (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase();
@@ -79,15 +99,7 @@ router.post('/register', async (req, res) => {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return res.status(400).json({ error: 'Enter a valid email' });
   if (!validPassword(password)) return res.status(400).json({ error: 'Password needs 10+ characters with upper, lower and a digit' });
   if (await one('SELECT id FROM users WHERE email = ?', email)) return res.status(409).json({ error: 'Email already registered' });
-  // Admin is whoever matches ADMIN_EMAIL; outside production the first account also qualifies.
-  const admin = process.env.ADMIN_EMAIL ? email === process.env.ADMIN_EMAIL.toLowerCase()
-    : process.env.NODE_ENV !== 'production' && !await one('SELECT id FROM users LIMIT 1');
-  // Referral: ?ref=CODE on the sign-up link credits whoever invited this user once they pay.
-  const ref = /^[a-z0-9]{6,12}$/.test(String(req.body.ref || '')) ? await one('SELECT id FROM users WHERE ref_code = ?', req.body.ref) : null;
-  const r = await run('INSERT INTO users (email, pass_hash, role, created_at, ref_code, referred_by) VALUES (?,?,?,?,?,?)', email, hashSecret(password), admin ? 'admin' : 'user', now(), newRefCode(), ref?.id ?? null);
-  const id = Number(r.lastInsertRowid);
-  await run('INSERT INTO paper_accounts (user_id, cash, start_cash) VALUES (?,?,?)', id, 100000, 100000);
-  await run('INSERT INTO fee_state (user_id, account, high_water, net_contrib) VALUES (?,?,?,?)', id, 'paper', 100000, 100000);
+  const id = await createUser({ email, password, ref: req.body.ref });
   await audit(id, 'register', null, req.ip);
   await sendVerification(id, email).catch(e => console.warn('verify email', e.message));
   await createSession(res, req, id, false);
@@ -146,16 +158,17 @@ router.post('/totp/enable', requireUser, async (req, res) => {
   res.json({ ok: true });
 });
 router.post('/totp/disable', requireUser, async (req, res) => {
-  if (!verifySecret(String(req.body.password || ''), req.user.pass_hash)) return res.status(401).json({ error: 'Wrong password' });
+  if (!confirmsIdentity(req.user, req.body)) return res.status(401).json({ error: req.user.password_set === 0 ? 'Type your email address to confirm' : 'Wrong password' });
   await run('UPDATE users SET totp_enabled = 0, totp_secret = NULL WHERE id = ?', req.user.id);
   await audit(req.user.id, 'totp_disabled', null, req.ip);
   res.json({ ok: true });
 });
 
 router.post('/password', requireUser, async (req, res) => {
-  if (!verifySecret(String(req.body.current || ''), req.user.pass_hash)) return res.status(401).json({ error: 'Wrong current password' });
+  // Google-only accounts have no current password to check; they are adding their first one.
+  if (req.user.password_set !== 0 && !verifySecret(String(req.body.current || ''), req.user.pass_hash)) return res.status(401).json({ error: 'Wrong current password' });
   if (!validPassword(req.body.next)) return res.status(400).json({ error: 'Password needs 10+ characters with upper, lower and a digit' });
-  await run('UPDATE users SET pass_hash = ? WHERE id = ?', hashSecret(req.body.next), req.user.id);
+  await run('UPDATE users SET pass_hash = ?, password_set = 1 WHERE id = ?', hashSecret(req.body.next), req.user.id);
   await run('DELETE FROM sessions WHERE user_id = ? AND token_hash != ?', req.user.id, req.sessionHash);
   await audit(req.user.id, 'password_changed', null, req.ip);
   res.json({ ok: true });
@@ -213,7 +226,7 @@ router.post('/reset', async (req, res) => {
   const u = await one('SELECT * FROM users WHERE reset_hash = ? AND reset_expires > ?', sha256(String(req.body.token || '')), now());
   if (!u) return res.status(400).json({ error: 'This link is invalid or expired' });
   if (!validPassword(req.body.password)) return res.status(400).json({ error: 'Password needs 10+ characters with upper, lower and a digit' });
-  await run('UPDATE users SET pass_hash = ?, reset_hash = NULL, reset_expires = NULL, failed_logins = 0, locked_until = 0, email_verified = 1 WHERE id = ?', hashSecret(req.body.password), u.id);
+  await run('UPDATE users SET pass_hash = ?, password_set = 1, reset_hash = NULL, reset_expires = NULL, failed_logins = 0, locked_until = 0, email_verified = 1 WHERE id = ?', hashSecret(req.body.password), u.id);
   await run('DELETE FROM sessions WHERE user_id = ?', u.id);
   await audit(u.id, 'password_reset', null, req.ip);
   res.json({ ok: true });
@@ -229,17 +242,19 @@ router.get('/export', requireUser, async (req, res) => {
     positions: await t('SELECT * FROM positions WHERE user_id = ?'),
     scheduled: await t('SELECT * FROM scheduled_orders WHERE user_id = ?'),
     alerts: await t('SELECT * FROM alerts WHERE user_id = ?'),
+    webhooks: await t('SELECT id, name, accounts, size_mode, size, max_position, max_trades_day, symbols, enabled, created_at FROM signal_hooks WHERE user_id = ?'),
+    signals: await t('SELECT * FROM signals WHERE user_id = ?'),
     ledger: await t('SELECT * FROM ledger WHERE user_id = ?'),
     securityLog: await t('SELECT event, ip, at FROM audit_log WHERE user_id = ?'),
   };
   res.attachment('quantpocket-export.json').json(data);
 });
 router.post('/delete', requireUser, async (req, res) => {
-  if (!verifySecret(String(req.body.password || ''), req.user.pass_hash)) return res.status(401).json({ error: 'Wrong password' });
+  if (!confirmsIdentity(req.user, req.body)) return res.status(401).json({ error: req.user.password_set === 0 ? 'Type your email address to confirm' : 'Wrong password' });
   await audit(null, 'account_deleted', { id: req.user.id }, req.ip);
   // Explicit deletes: hosted libSQL does not always enforce ON DELETE CASCADE.
   await tx(async ({ run }) => {
-    for (const t of ['sessions', 'credentials', 'strategies', 'paper_accounts', 'positions', 'fills', 'equity_history', 'scheduled_orders', 'fee_state', 'ledger', 'alerts'])
+    for (const t of ['sessions', 'credentials', 'strategies', 'paper_accounts', 'positions', 'fills', 'equity_history', 'scheduled_orders', 'fee_state', 'ledger', 'alerts', 'signal_hooks', 'signals'])
       await run(`DELETE FROM ${t} WHERE user_id = ?`, req.user.id);
     await run('DELETE FROM users WHERE id = ?', req.user.id);
   });

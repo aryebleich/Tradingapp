@@ -48,6 +48,18 @@ Everything starts in the **sandbox / paper** environment.
 
 Tests run the whole integration against a local mock of Alpaca (`test/mock-alpaca.js`), including the exact auth headers and request bodies. Check the first real sandbox calls in your own environment as well.
 
+## Sign in with Google
+
+1. In [Google Cloud Console](https://console.cloud.google.com/apis/credentials) create an **OAuth client ID** of type **Web application**.
+2. Add the authorized redirect URI `https://YOUR_APP/auth/google/callback` (same host as `PUBLIC_URL`).
+3. Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. The "Sign up with Google" buttons on the homepage and the app appear automatically once both are set.
+
+New Google users get a confirmed email and no password (they can add one in Settings). A Google sign-in with the same email as an existing account links to it; if that account's email was never confirmed, its old password is discarded first.
+
+## Alerts to trades (webhooks)
+
+Under **Alerts to trades** each user creates private webhook URLs for TradingView, TrendSpider, Zapier, scripts or AI agents. Each webhook has its accounts (paper and/or Alpaca), sizing (dollars, shares or from the alert) and risk rules (max position per ticker, max trades per day, allowed tickers; long-only). Messages can be JSON such as `{"ticker":"{{ticker}}","action":"{{strategy.order.action}}","quantity":"{{strategy.order.contracts}}"}` or text like `buy AAPL 10`. Free: 1 webhook, paper only. Pro: 10, including Alpaca. Elite: 50.
+
 ## Professional site extras
 
 - **Public homepage** at `/` with a live demo backtest, features, pricing, FAQ, and **Terms, Privacy, Risk Disclosure and Contact** pages. A support inbox is on the Admin page.

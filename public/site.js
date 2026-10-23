@@ -104,3 +104,41 @@ if (billing) billing.addEventListener('click', e => {
 const sticky = document.querySelector('.stickycta'), heroCta = document.querySelector('.hero .cta');
 if (sticky && heroCta && 'IntersectionObserver' in window)
   new IntersectionObserver(([e]) => sticky.classList.toggle('show', !e.isIntersecting && e.boundingClientRect.top < 0)).observe(heroCta);
+
+// Tabs: the "What do you want to do?" picker, use cases (with previous / next) and FAQ topics.
+for (const box of document.querySelectorAll('[data-tabs]')) {
+  const tabs = [...box.querySelectorAll('[role=tab]')], panels = [...box.querySelectorAll('[role=tabpanel]')], count = box.querySelector('[data-count]');
+  const current = () => Math.max(0, tabs.findIndex(t => t.getAttribute('aria-selected') === 'true'));
+  const show = (i, focus) => {
+    tabs.forEach((t, j) => { t.setAttribute('aria-selected', String(i === j)); t.tabIndex = i === j ? 0 : -1; t.classList.toggle('on', i === j); });
+    panels.forEach((p, j) => (p.hidden = i !== j));
+    if (count) count.textContent = `${i + 1} of ${tabs.length}`;
+    // Keep the chosen tab visible in a sideways-scrolling row without moving the page.
+    const row = tabs[i].parentElement;
+    if (row.scrollWidth > row.clientWidth) row.scrollTo({ left: tabs[i].offsetLeft - row.clientWidth / 2 + tabs[i].offsetWidth / 2, behavior: 'smooth' });
+    if (focus) tabs[i].focus();
+  };
+  tabs.forEach((t, i) => {
+    t.addEventListener('click', () => show(i));
+    t.addEventListener('keydown', e => { const d = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key]; if (d) { e.preventDefault(); show((i + d + tabs.length) % tabs.length, true); } });
+  });
+  box.querySelectorAll('[data-step]').forEach(b => b.addEventListener('click', () => show((current() + +b.dataset.step + tabs.length) % tabs.length)));
+  show(current());
+}
+
+// "Sign up with Google" appears only when the app has Google sign-in set up.
+const google = document.querySelectorAll('[data-google]');
+if (google.length && !standalone) {
+  fetch(API + '/api/public/features').then(r => r.json()).then(f => {
+    if (!f.google) return;
+    google.forEach(el => { el.hidden = false; if (el.tagName === 'A') el.href = `${API}/auth/google${ref ? '?ref=' + ref : ''}`; });
+  }).catch(() => {});
+}
+
+// "Start free" with an email: opens sign-up with the address filled in.
+const start = $('#startForm');
+if (start) start.addEventListener('submit', e => {
+  e.preventDefault();
+  const email = String(new FormData(start).get('email') || '').trim();
+  location.href = standalone ? 'contact.html' : `${API || '.'}/app${ref ? '?ref=' + ref : ''}#/register?email=${encodeURIComponent(email)}`;
+});

@@ -21,6 +21,8 @@ import { router as alpacaRouter } from './src/routes/alpaca.js';
 import { oauthCallback, oauthEnabled, tradingFor } from './src/alpaca/connections.js';
 import { brokerEnabled } from './src/alpaca/broker.js';
 import { dataEnabled } from './src/alpaca/data.js';
+import { router as googleRouter, googleEnabled } from './src/google.js';
+import { router as signalsRouter, receive as receiveSignal } from './src/signals.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_URL = (process.env.PUBLIC_URL || 'http://localhost:3000').replace(/\/$/, '');
@@ -33,7 +35,7 @@ app.use(compression({ filter: (req, res) => !String(req.headers.accept).includes
 // Minimal access log (no query strings: reset/verify tokens live in the URL fragment, but be safe).
 app.use((req, res, next) => {
   const t = Date.now();
-  const url = req.originalUrl.split('?')[0];
+  const url = req.originalUrl.split('?')[0].replace(/^\/hook\/.*/, '/hook/[secret]');
   res.on('finish', () => console.log(`${req.method} ${url} ${res.statusCode} ${Date.now() - t}ms`));
   next();
 });
@@ -187,6 +189,13 @@ app.post('/twilio/voice/confirm', async (req, res) => {
 });
 app.post('/twilio/voice/status', async (req, res) => { calls.delete(req.body.CallSid); res.sendStatus(204); });
 
+// Alerts from TradingView, TrendSpider, Zapier or any script. TradingView sends text/plain unless the
+// message is valid JSON, so any body type is accepted.
+app.post('/hook/:token', express.text({ type: () => true, limit: '20kb' }), async (req, res) => {
+  try { await receiveSignal(req, res); } catch (e) { console.error('webhook', e); res.status(500).json({ error: 'Could not process the signal' }); }
+});
+app.use('/auth/google', googleRouter);
+
 // OAuth2 redirect target after the user approves access in Alpaca.
 app.get('/oauth/alpaca/callback', auth.sessionMiddleware, async (req, res) => {
   try {
@@ -235,7 +244,7 @@ api.use('/public', (req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
     res.setHeader('Vary', 'Origin');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Requested-With');
-    res.setHeader('Access-Control-Allow-Methods', 'POST');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST');
   }
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
@@ -245,6 +254,7 @@ api.use(auth.csrfGuard);
 api.use(auth.sessionMiddleware);
 api.use('/auth', auth.router);
 api.use('/alpaca', alpacaRouter);
+api.use('/signals', signalsRouter);
 const U = auth.requireUser;
 const wrap = fn => async (req, res) => Promise.resolve(fn(req, res)).catch(e => res.status(e.status || 400).json({ error: e.message, ...(e.upgrade ? { upgrade: true, feature: e.feature } : {}) }));
 const acct = req => (req.query.account || req.body?.account) === 'alpaca' ? 'alpaca' : 'paper';
@@ -254,9 +264,11 @@ const needPlan = feature => (req, res, next) => (isPaid(req.user) ? next() : nex
 
 api.get('/config', async (req, res) => res.json({
   plans: PLANS, trialDays: TRIAL_DAYS, presets: PRESETS, twilio: N.twilioEnabled(), stripe: N.stripeEnabled(), ai: !!process.env.ANTHROPIC_API_KEY, email: N.emailEnabled(),
-  marketData: dataEnabled(), hotline: process.env.TWILIO_FROM || null, broker: brokerEnabled(), oauth: oauthEnabled(),
+  marketData: dataEnabled(), hotline: process.env.TWILIO_FROM || null, broker: brokerEnabled(), oauth: oauthEnabled(), google: googleEnabled(),
 }));
 
+// Lets the landing page (also the GitHub Pages copy) show only sign-up options that work.
+api.get('/public/features', (req, res) => res.json({ google: googleEnabled() }));
 // Public, rate-limited demo backtest used by the landing page (also from the GitHub Pages copy).
 api.post('/public/backtest', async (req, res) => {
   if (!auth.rateLimit('pub:' + req.ip, 20, 600e3)) return res.status(429).json({ error: 'Demo limit reached - create a free account for unlimited backtests' });

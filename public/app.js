@@ -1,5 +1,6 @@
 // QuantPocket single-page client. Hash routes, no framework.
 import { registerTrading } from './trading.js';
+import { registerSignals } from './signals.js';
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -100,11 +101,12 @@ async function showUpgrade(feature) {
 const NAV = [
   ['Trading', [['dashboard', 'Portfolio'], ['trade', 'Trade'], ['orders', 'Orders'], ['positions', 'Positions'], ['watchlists', 'Watchlists']]],
   ['Markets', [['markets', 'Markets & news'], ['options', 'Options chain'], ['calendar', 'Calendar & events']]],
-  ['Strategies', [['backtest', 'Backtest'], ['bots', 'Bots'], ['schedule', 'Scheduled trades'], ['quantconnect', 'QuantConnect']]],
+  ['Strategies', [['signals', 'Alerts to trades'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['schedule', 'Scheduled trades'], ['quantconnect', 'QuantConnect']]],
   ['Account', [['account', 'Brokerage account'], ['funding', 'Plans & billing'], ['referrals', 'Invite & earn'], ['tax', 'Taxes'], ['text', 'Text & hotline'], ['settings', 'Settings']]],
 ];
 // Simple line icons (24x24 paths) for the menu.
 const ICONS = {
+  signals: '<path d="M4 12h4l3-8 4 16 3-8h2"/>',
   dashboard: '<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/>', trade: '<path d="M7 17 17 7M9 7h8v8"/>',
   orders: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>', positions: '<path d="M21 12a9 9 0 1 1-9-9v9z"/><path d="M12 3a9 9 0 0 1 9 9h-9z"/>',
   watchlists: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>', markets: '<path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/>',
@@ -203,28 +205,41 @@ function wireAccountSwitch(view) {
 }
 
 // ---------- auth ----------
-routes.login = view => {
+// "Continue with Google" (shown only when the server has Google sign-in set up).
+const G_LOGO = '<svg viewBox="0 0 48 48" width="20" height="20" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
+async function googleButton(label) {
+  CFG ||= await api('/config').catch(() => null);
+  if (!CFG?.google) return '';
+  let ref = null; try { ref = localStorage.getItem('qp_ref'); } catch {}
+  return `<a class="gbtn" href="/auth/google${ref ? '?ref=' + encodeURIComponent(ref) : ''}">${G_LOGO}<span>${label}</span></a><div class="or"><span>or</span></div>`;
+}
+routes.login = async (view, q) => {
+  const g = await googleButton('Continue with Google');
   view.innerHTML = `
   <div class="hero"><h1>Quant<span style="color:var(--ac)">Pocket</span></h1><p class="mu">Backtest, paper trade and automate stock strategies. Connect Alpaca and QuantConnect, trade by text or phone.</p></div>
-  <form class="card auth"><h2>Sign in</h2>
+  <form class="card auth"><h2>Sign in</h2>${g}
     <label>Email<input name="email" type="email" autocomplete="username" required></label>
     <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
     <button>Sign in</button><div class="err"></div>
     <p class="mu"><a href="#/forgot">Forgot password?</a> · New here? <a href="#/register">Create an account</a></p></form>`;
+  if (q.get('error')) $('.err', view).textContent = q.get('error');
   act($('button', view), async () => {
     const r = await api('/auth/login', { body: form(view) });
     if (r.mfaRequired) { location.hash = '#/mfa'; return; }
     ME = r.user; location.hash = '#/dashboard';
   });
 };
-routes.register = view => {
+routes.register = async (view, q) => {
+  const g = await googleButton('Sign up with Google');
   view.innerHTML = `
   <form class="card auth"><h2>Create account</h2>
+    ${g ? g.replace('<div class="or">', '<p class="mu small-print">By continuing with Google you agree to the <a href="/terms" target="_blank">Terms</a> and <a href="/privacy" target="_blank">Privacy Policy</a> and have read the <a href="/risk" target="_blank">Risk Disclosure</a>.</p><div class="or">') : ''}
     <label>Email<input name="email" type="email" autocomplete="username" required></label>
     <label>Password (10+ chars, upper, lower, digit)<input name="password" type="password" autocomplete="new-password" required></label>
     <label><input type="checkbox" name="agree" style="width:auto"> I agree to the <a href="/terms" target="_blank">Terms</a> and <a href="/privacy" target="_blank">Privacy Policy</a> and have read the <a href="/risk" target="_blank">Risk Disclosure</a>.</label>
     <button>Create account</button><div class="err"></div>
     <p class="mu">You start with a $100,000 paper account. <a href="#/login">Sign in instead</a></p></form>`;
+  if (q.get('email')) { view.querySelector('[name=email]').value = q.get('email'); view.querySelector('[name=password]').focus(); }
   act($('button', view), async () => {
     const f = form(view);
     if (!f.agree) throw new Error('Please accept the Terms to continue');
@@ -602,6 +617,8 @@ routes.referrals = async view => {
 // ---------- settings ----------
 routes.settings = async view => {
   const [integ, sessions, log] = await Promise.all([api('/integrations'), api('/auth/sessions'), api('/auth/audit')]);
+  // Accounts created with Google have no password until they add one; they confirm with their email.
+  const pw = ME.hasPassword, confirmLabel = what => pw ? `Password to ${what}` : `Type your email to ${what}`, confirmType = pw ? 'password' : 'email';
   view.innerHTML = `<h1>Settings</h1>
   <div class="grid">
     <div class="card"><h2>Alpaca brokerage</h2>
@@ -612,22 +629,23 @@ routes.settings = async view => {
       <label>User id<input name="userId" autocomplete="off"></label><label>API token<input name="token" type="password" autocomplete="off"></label>
       <button>${integ.quantconnect.connected ? 'Replace' : 'Connect QuantConnect'}</button> ${integ.quantconnect.connected ? '<button type="button" class="ghost" data-dis="quantconnect">Disconnect</button>' : ''}<div class="err"></div></form>
     <div class="card" id="mfa"><h2>Two-factor authentication</h2>
-      ${ME.totpEnabled ? `<p class="pos">Enabled</p><label>Password to disable<input type="password" id="mfapw"></label><button class="danger" id="mfaoff">Disable 2FA</button><div class="err"></div>`
+      ${ME.totpEnabled ? `<p class="pos">Enabled</p><label>${confirmLabel('disable')}<input type="${confirmType}" id="mfapw"></label><button class="danger" id="mfaoff">Disable 2FA</button><div class="err"></div>`
         : `<p class="mu">Protect your account with an authenticator app (Google Authenticator, 1Password, Authy).</p><button id="mfaset">Set up 2FA</button><div class="err"></div><div id="mfabox"></div>`}</div>
     <form class="card" id="ph"><h2>Phone for SMS & hotline</h2>
       <p class="mu">${ME.phone ? esc(ME.phone) + (ME.phoneVerified ? ' · verified' : ' · not verified') : 'Not set'}</p>
       <label>Mobile number<input name="phone" placeholder="+17185551234" value="${esc(ME.phone || '')}"></label><button>Send code</button>
       <label>Code<input name="code" inputmode="numeric"></label><button type="button" id="phv">Verify</button><div class="err"></div>
-      <h3>Trading PIN</h3><label>Account password<input type="password" name="pinpw"></label><label>New PIN (4-8 digits)<input name="pin" inputmode="numeric"></label><button type="button" id="pinb">Save PIN</button><div class="err"></div></form>
+      <h3>Trading PIN</h3>${pw ? '' : '<p class="mu">Add a password in the Password card first.</p>'}<label>Account password<input type="password" name="pinpw"></label><label>New PIN (4-8 digits)<input name="pin" inputmode="numeric"></label><button type="button" id="pinb">Save PIN</button><div class="err"></div></form>
     <form class="card" id="taxs"><h2>Tax rates</h2>
       <label>Federal bracket<select name="bracket">${[0.10, 0.12, 0.22, 0.24, 0.32, 0.35, 0.37].map(b => `<option value="${b}" ${b === ME.taxBracket ? 'selected' : ''}>${b * 100}%</option>`).join('')}</select></label>
       <label>State rate %<input name="stateTax" type="number" step="0.1" value="${ME.stateTax * 100}"></label><button>Save</button><div class="err"></div></form>
-    <form class="card" id="pw"><h2>Password</h2><label>Current<input type="password" name="current" autocomplete="current-password"></label><label>New<input type="password" name="next" autocomplete="new-password"></label><button>Change password</button><div class="err"></div>
-      <p class="mu" style="font-size:12px">Changing it signs out every other device.</p></form>
+    <form class="card" id="pw"><h2>${pw ? 'Password' : 'Add a password'}</h2>${ME.google ? '<p class="mu"><span class="pill">Google</span> Sign in with Google is connected.</p>' : ''}
+      ${pw ? '<label>Current<input type="password" name="current" autocomplete="current-password"></label>' : '<p class="mu">Add one to also sign in with your email and password.</p>'}<label>New<input type="password" name="next" autocomplete="new-password"></label><button>${pw ? 'Change password' : 'Save password'}</button><div class="err"></div>
+      <p class="mu" style="font-size:12px">${pw ? 'Changing it signs out every other device.' : '10+ characters with upper, lower and a digit.'}</p></form>
   </div>
   <div class="card"><h2>Your data</h2><p class="mu">Download everything we store about you, or permanently delete your account.</p>
     <a href="/api/auth/export"><button type="button" class="ghost">Download my data</button></a>
-    <label>Password to delete account<input type="password" id="delpw" autocomplete="current-password"></label><button class="danger" id="delacct">Delete my account</button><div class="err"></div></div>
+    <label>${confirmLabel('delete your account')}<input type="${confirmType}" id="delpw" autocomplete="${pw ? 'current-password' : 'off'}"></label><button class="danger" id="delacct">Delete my account</button><div class="err"></div></div>
   <div class="card tablewrap"><h2>Active sessions</h2><table><tr><th>IP address</th><th>Device</th><th>Signed in</th><th></th></tr>${sessions.map(s => `<tr><td>${esc(s.ip)}</td><td>${esc(s.ua.slice(0, 60))}</td><td>${date(s.createdAt)}</td><td>${s.current ? '<span class="pill">this device</span>' : `<button class="small ghost" data-s="${s.id}">Sign out</button>`}</td></tr>`).join('')}</table></div>
   <div class="card tablewrap"><h2>Security log</h2><table><tr><th>When</th><th>Event</th><th>IP address</th></tr>${log.map(l => `<tr><td>${date(l.at)}</td><td>${esc(l.event)}</td><td>${esc(l.ip || '')}</td></tr>`).join('')}</table></div>`;
   const refreshMe = async () => { ME = (await api('/auth/me')).user; };
@@ -639,17 +657,17 @@ routes.settings = async view => {
       <label>Code from the app<input id="mfacode" inputmode="numeric" maxlength="6"></label><button id="mfaon">Turn on 2FA</button><div class="err"></div>`;
     act($('#mfaon', view), async () => { await api('/auth/totp/enable', { body: { code: $('#mfacode', view).value } }); await refreshMe(); render(); });
   });
-  if ($('#mfaoff', view)) act($('#mfaoff', view), async () => { await api('/auth/totp/disable', { body: { password: $('#mfapw', view).value } }); await refreshMe(); render(); });
+  if ($('#mfaoff', view)) act($('#mfaoff', view), async () => { const v = $('#mfapw', view).value; await api('/auth/totp/disable', { body: { password: v, confirm: v } }); await refreshMe(); render(); });
   const ph = $('#ph', view);
   act($('button', ph), async () => { const r = await api('/phone', { body: { phone: ph.phone.value } }); await refreshMe(); return r.devCode ? `SMS is off on this server - your dev code is ${r.devCode}` : 'Code sent'; }, $$('.err', ph)[0]);
   act($('#phv', view), async () => { await api('/phone/verify', { body: { code: ph.code.value } }); await refreshMe(); return 'Phone verified'; }, $$('.err', ph)[0]);
   act($('#pinb', view), async () => { await api('/pin', { body: { password: ph.pinpw.value, pin: ph.pin.value } }); await refreshMe(); return 'PIN saved'; }, $$('.err', ph)[1]);
   act($('button', $('#taxs', view)), async () => { const f = form($('#taxs', view)); await api('/tax/settings', { body: { bracket: +f.bracket, stateTax: f.stateTax / 100 } }); await refreshMe(); return 'Saved'; });
-  act($('button', $('#pw', view)), async () => { await api('/auth/password', { body: form($('#pw', view)) }); return 'Password changed'; });
+  act($('button', $('#pw', view)), async () => { await api('/auth/password', { body: form($('#pw', view)) }); if (!pw) { await refreshMe(); setTimeout(render, 1200); } return pw ? 'Password changed' : 'Password saved'; });
   $$('[data-s]', view).forEach(b => (b.onclick = async () => { await api('/auth/sessions/' + b.dataset.s, { method: 'DELETE' }); render(); }));
   act($('#delacct', view), async () => {
     if (!confirm('Delete your account and all data permanently? This cannot be undone. Your Alpaca account is not affected.')) return;
-    await api('/auth/delete', { body: { password: $('#delpw', view).value } }); location.href = '/';
+    const v = $('#delpw', view).value; await api('/auth/delete', { body: { password: v, confirm: v } }); location.href = '/';
   });
 };
 
@@ -681,6 +699,7 @@ routes.admin = async view => {
   $$('[data-m]', view).forEach(b => (b.onclick = async () => { await api('/admin/messages/' + b.dataset.m, { body: {} }); render(); }));
 };
 
+registerSignals(routes, { $, $$, esc, money, date, api, form, act, render, me: () => ME });
 registerTrading(routes, { $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, updateBadge, me: () => ME, state });
 
 (async () => {

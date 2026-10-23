@@ -131,3 +131,45 @@ dialog { border-radius: 18px; box-shadow: var(--shadow-lg); }
   .stat { min-width: 0; padding: 10px 11px; }
   .stat b { font-size: clamp(15px, 4.7vw, 20px); overflow-wrap: anywhere; }
 }
+
+/* Continue with Google (follows Google's button guidelines: white, logo at left, neutral border) */
+.gbtn { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; min-height: 46px; border-radius: var(--r-sm); border: 1px solid #dadce0; background: #fff; color: #1f1f1f; font-weight: 600; font-size: 15px; text-decoration: none; transition: background .15s, box-shadow .15s; }
+.gbtn:hover { background: #f8f9fb; box-shadow: var(--shadow); text-decoration: none; }
+.or { display: flex; align-items: center; gap: 12px; color: var(--mu); font-size: 13px; margin: 16px 0 4px; }
+.or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--bd); }
+.small-print { font-size: 12px; margin: 8px 0 0; }
+
+/* webhooks page */
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 14px; }
+.lbl { font-weight: 600; font-size: 14px; margin: 14px 0 6px; }
+.chips .chk { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--bd); border-radius: 999px; padding: 7px 14px; margin: 0 6px 6px 0; font-weight: 550; cursor: pointer; background: var(--card); }
+.chips .chk input { width: auto; margin: 0; }
+.chips .chk:has(input:checked) { border-color: var(--ac); background: var(--acs); color: var(--ac); }
+.flow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
+.flow div { display: flex; gap: 12px; align-items: center; background: var(--card); border: 1px solid var(--bd); border-radius: var(--r); padding: 14px; box-shadow: var(--shadow); font-size: 14px; color: var(--mu); }
+.flow b { flex-shrink: 0; width: 32px; height: 32px; border-radius: 10px; background: var(--grad); color: #fff; display: grid; place-items: center; }
+.flow strong { color: var(--tx); }
+.hook.off { opacity: .65; }
+.hookhead { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+.hookhead .pill { margin-right: 4px; }
+.hook .row { display: flex; flex-wrap: wrap; gap: 8px; }
+.danger-t { color: var(--rd) !important; }
+.switch { position: relative; width: 44px; height: 26px; flex-shrink: 0; cursor: pointer; }
+.switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+.switch i { position: absolute; inset: 0; border-radius: 999px; background: var(--bd); transition: background .15s; }
+.switch i::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); transition: transform .15s; }
+.switch input:checked + i { background: var(--gr); }
+.switch input:checked + i::after { transform: translateX(18px); }
+.switch input:focus-visible + i { box-shadow: 0 0 0 4px var(--acs); }
+.pill.pos { color: var(--gr); background: color-mix(in srgb, var(--gr) 12%, transparent); border-color: color-mix(in srgb, var(--gr) 35%, transparent); }
+.pill.neg { color: var(--rd); background: color-mix(in srgb, var(--rd) 12%, transparent); border-color: color-mix(in srgb, var(--rd) 35%, transparent); }
+.upsellcard { border: 1px dashed color-mix(in srgb, var(--ac) 50%, var(--bd)); }
+#tpl { white-space: pre-wrap; word-break: break-word; }
+@media (max-width: 640px) {
+  .grid2, .flow { grid-template-columns: 1fr; }
+  .flow { gap: 8px; } .flow div { padding: 10px 12px; }
+}
+
+/* the hidden attribute always wins over display rules */
+[hidden] { display: none !important; }
+.refbox button { white-space: nowrap; flex-shrink: 0; }

@@ -27,6 +27,8 @@ services:
       - { key: ALPACA_OAUTH_CLIENT_ID, sync: false }
       - { key: ALPACA_OAUTH_CLIENT_SECRET, sync: false }
       - { key: ALPACA_OAUTH_ENV, value: paper }
+      - { key: GOOGLE_CLIENT_ID, sync: false }
+      - { key: GOOGLE_CLIENT_SECRET, sync: false }
       - { key: ANTHROPIC_API_KEY, sync: false }
       - { key: RESEND_API_KEY, sync: false }
       - { key: EMAIL_FROM, sync: false }

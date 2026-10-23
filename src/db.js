@@ -159,6 +159,34 @@ CREATE TABLE IF NOT EXISTS alerts (
   active INTEGER NOT NULL DEFAULT 1,
   created_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS signal_hooks (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  token_hash TEXT NOT NULL UNIQUE,
+  token_enc TEXT NOT NULL,
+  accounts TEXT NOT NULL DEFAULT '["paper"]',
+  size_mode TEXT NOT NULL DEFAULT 'dollars',
+  size REAL NOT NULL DEFAULT 1000,
+  max_position REAL,
+  max_trades_day INTEGER,
+  symbols TEXT,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  last_at INTEGER,
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS signals (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  hook_id INTEGER,
+  symbol TEXT,
+  action TEXT,
+  status TEXT NOT NULL,
+  detail TEXT,
+  payload TEXT,
+  test INTEGER NOT NULL DEFAULT 0,
+  at INTEGER NOT NULL
+);
 `;
 
 // Columns added after the first release; ALTER fails harmlessly when they already exist.
@@ -176,6 +204,10 @@ const MIGRATIONS = [
   'ALTER TABLE users ADD COLUMN referred_by INTEGER',
   'ALTER TABLE users ADD COLUMN referral_rewarded INTEGER NOT NULL DEFAULT 0',
   'CREATE UNIQUE INDEX IF NOT EXISTS users_ref_code ON users (ref_code) WHERE ref_code IS NOT NULL',
+  'ALTER TABLE users ADD COLUMN google_sub TEXT',
+  'ALTER TABLE users ADD COLUMN password_set INTEGER NOT NULL DEFAULT 1',
+  'CREATE UNIQUE INDEX IF NOT EXISTS users_google_sub ON users (google_sub) WHERE google_sub IS NOT NULL',
+  'CREATE INDEX IF NOT EXISTS signals_user ON signals (user_id, id)',
   'CREATE UNIQUE INDEX IF NOT EXISTS ledger_ref ON ledger (kind, ref) WHERE ref IS NOT NULL',
 ];
 

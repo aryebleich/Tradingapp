@@ -25,6 +25,8 @@ const server = spawn(process.execPath, ['server.js'], {
     BROKER_API_KEY: 'BKEY', BROKER_API_SECRET: 'BSECRET', BROKER_BASE_URL: mock.url,
     ALPACA_TRADING_URL: mock.url, ALPACA_DATA_URL: mock.url, ALPACA_DATA_SANDBOX_URL: mock.url,
     ALPACA_KEY_ID: 'DKEY', ALPACA_SECRET: 'DSECRET', ALPACA_STREAM_URL: 'ws://127.0.0.1:1',
+    // Shows the Google buttons so their layout is checked (the sign-in itself is covered by unit tests).
+    GOOGLE_CLIENT_ID: 'e2e', GOOGLE_CLIENT_SECRET: 'e2e',
   },
 });
 const serverLog = [];
@@ -178,7 +180,7 @@ for (const [device, width] of [['iPhone 13', 390], ['iPhone SE', 320]]) {
   await p.tap('button:has-text("Create account")'); await p.waitForSelector('#tabs a.on');
   await p.evaluate(() => fetch('/api/alpaca/keys', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ keyId: 'AUDIT' + innerWidth, secret: 'S' }) }));
   await p.evaluate(() => localStorage.setItem('qp_account', 'alpaca'));
-  for (const r of ['/', '/terms', '#/dashboard', '#/trade?symbol=AAPL', '#/orders', '#/positions', '#/watchlists', '#/markets', '#/options?underlying=AAPL', '#/calendar', '#/account', '#/backtest', '#/bots', '#/schedule', '#/text', '#/tax', '#/funding', '#/settings']) {
+  for (const r of ['/', '/terms', '/app#/register', '/app#/login', '#/dashboard', '#/trade?symbol=AAPL', '#/orders', '#/positions', '#/watchlists', '#/markets', '#/options?underlying=AAPL', '#/calendar', '#/account', '#/signals', '#/backtest', '#/bots', '#/schedule', '#/text', '#/tax', '#/funding', '#/settings']) {
     await step(r, async () => {
       await p.goto(r.startsWith('#') ? B + '/app' + r : B + r); if (r === '#/dashboard') await p.reload();
       await p.waitForTimeout(1300);
