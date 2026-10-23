@@ -159,6 +159,14 @@ console.log('Desktop (1360x900)');
     await p.click('[data-rm=MSFT]'); await p.waitForTimeout(800); if (await p.$('tr[data-s=MSFT]')) throw new Error('not removed');
   });
   await step('calendar & events', async () => { await p.goto(B + '/app#/calendar'); await p.waitForSelector('text=Early close'); await p.waitForSelector('text=dividend'); });
+  await step('admin: every owner page is in the menu and opens', async () => {
+    for (const [k, h] of [['admin', 'Funnel'], ['admin-users', 'Changing a plan here'], ['admin-money', 'Payment processors'], ['admin-support', 'Support inbox'], ['admin-setup', 'Alpaca Broker API']]) {
+      await p.click(`#nav a[href="#/${k}"]`); await p.waitForSelector(`.admintabs button.on`); await p.waitForSelector(`text=${h}`);
+    }
+    await p.screenshot({ path: path.join(OUT, 'admin-setup.png'), fullPage: true });
+    await p.click('#nav a[href="#/admin-users"]'); await p.fill('#userFind', 'desk'); await p.waitForTimeout(200);
+    if ((await p.$$('#userTable tr[data-email]:not([hidden])')).length !== 1) throw new Error('user search');
+  });
   await step('strategy backtest', async () => { await p.goto(B + '/app#/backtest'); await p.click('button:has-text("Run backtest")'); await p.waitForSelector('#btc'); });
   done(); await p.close();
 }

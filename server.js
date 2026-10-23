@@ -583,13 +583,50 @@ api.get('/admin/summary', U, auth.requireAdmin, async (req, res) => res.json({
   funnel: await funnel(),
   pendingTransfers: await all("SELECT l.*, u.email FROM ledger l JOIN users u ON u.id = l.user_id WHERE l.kind = 'deposit' AND l.status = 'received' ORDER BY l.id DESC"),
   feesDue: await all("SELECT l.*, u.email FROM ledger l JOIN users u ON u.id = l.user_id WHERE l.kind = 'performance_fee' AND l.status = 'due' ORDER BY l.id DESC"),
-  users: await all('SELECT id, email, plan, role, totp_enabled, phone_verified, created_at FROM users ORDER BY id DESC LIMIT 200'),
+  users: await all('SELECT id, email, plan, plan_status, role, totp_enabled, phone_verified, google_sub IS NOT NULL AS google, created_at FROM users ORDER BY id DESC LIMIT 500'),
   payments: Object.values(PAY.PROVIDERS).map(p => ({ id: p.id, name: p.name, via: p.via, cost: p.cost, enabled: p.enabled(), on500: +p.costOf(500).toFixed(2) })),
   depositFee: { ...PAY.feeTerms(), collected: (await one("SELECT COALESCE(SUM(amount), 0) n FROM ledger WHERE kind = 'deposit_fee' AND status = 'collected'")).n },
 }));
 api.get('/admin/messages', U, auth.requireAdmin, async (req, res) => res.json(await all('SELECT * FROM messages ORDER BY id DESC LIMIT 100')));
 api.post('/admin/messages/:id', U, auth.requireAdmin, async (req, res) => { await run("UPDATE messages SET status = 'closed' WHERE id = ?", +req.params.id); res.json({ ok: true }); });
 api.post('/admin/assess-fees', U, auth.requireAdmin, wrap(async (req, res) => res.json(await assessAllFees())));
+// Which services are set up in the environment (names only, never the values).
+api.get('/admin/setup', U, auth.requireAdmin, async (req, res) => {
+  const has = (...k) => k.every(x => !!process.env[x]);
+  res.json({ admins: auth.adminEmails(), items: [
+    ['Admin email', 'ADMIN_EMAIL', auth.adminEmails().length > 0],
+    ['Database (Turso)', 'DATABASE_URL', has('DATABASE_URL')],
+    ['Encryption key', 'ENCRYPTION_KEY', has('ENCRYPTION_KEY')],
+    ['Alpaca Broker API (account opening)', 'BROKER_API_KEY, BROKER_API_SECRET', brokerEnabled()],
+    ['Alpaca market data', 'ALPACA_KEY_ID, ALPACA_SECRET', dataEnabled()],
+    ['Connect existing Alpaca accounts (OAuth)', 'ALPACA_OAUTH_CLIENT_ID, ALPACA_OAUTH_CLIENT_SECRET', oauthEnabled()],
+    ['Sign in with Google', 'GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET', googleEnabled()],
+    ['Plans and card payments (Stripe)', 'STRIPE_SECRET_KEY', N.stripeEnabled()],
+    ['Stripe webhook', 'STRIPE_WEBHOOK_SECRET', has('STRIPE_WEBHOOK_SECRET')],
+    ['Text messages and hotline (Twilio)', 'TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM', N.twilioEnabled()],
+    ['Emails (Resend)', 'RESEND_API_KEY', N.emailEnabled()],
+    ['AI assistant (Claude)', 'ANTHROPIC_API_KEY', aiEnabled()],
+    ...Object.values(PAY.PROVIDERS).map(p => [`Deposits: ${p.name} (${p.via})`, ({ stripe_ach: 'STRIPE_SECRET_KEY', stripe_card: 'STRIPE_SECRET_KEY', helcim: 'HELCIM_API_TOKEN' })[p.id] || '', p.enabled()]),
+    ['Yiddish Labs credit line', 'YIDDISH_CREDIT', has('YIDDISH_CREDIT')],
+  ].map(([name, env, on]) => ({ name, env, on: !!on })) });
+});
+// Change a user's plan (e.g. a free Pro account for a friend) or admin role.
+api.post('/admin/users/:id', U, auth.requireAdmin, wrap(async (req, res) => {
+  const u = await one('SELECT id, email, role FROM users WHERE id = ?', +req.params.id);
+  if (!u) throw Object.assign(new Error('No such user'), { status: 404 });
+  const { plan, role } = req.body || {};
+  if (plan !== undefined) {
+    if (!Object.keys(PLANS).includes(plan)) throw new Error('Unknown plan');
+    await run("UPDATE users SET plan = ?, plan_status = CASE WHEN ? = 'free' THEN NULL ELSE 'active' END WHERE id = ?", plan, plan, u.id);
+  }
+  if (role !== undefined) {
+    if (!['user', 'admin'].includes(role)) throw new Error('Unknown role');
+    if (role === 'user' && (u.id === req.user.id || auth.isAdminEmail(u.email))) throw new Error(u.id === req.user.id ? 'You cannot remove your own admin access' : 'This address is in ADMIN_EMAIL; remove it there first');
+    await run('UPDATE users SET role = ? WHERE id = ?', role, u.id);
+  }
+  await audit(req.user.id, 'admin_user_update', { user: u.id, plan, role }, req.ip);
+  res.json({ ok: true });
+}));
 api.post('/admin/ledger/:id', U, auth.requireAdmin, wrap(async (req, res) => {
   if (!['transferred', 'collected', 'waived'].includes(req.body.status)) throw new Error('Bad status');
   await run('UPDATE ledger SET status = ? WHERE id = ?', req.body.status, +req.params.id);

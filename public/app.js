@@ -135,6 +135,10 @@ const ICONS = {
   referrals: '<path d="M20 12v9H4v-9M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 1 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 1 0 0-5C13 2 12 7 12 7z"/>',
   tax: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 15l6-6M9.5 9.5h.01M14.5 14.5h.01"/>',
   text: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>', settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 13H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 3V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 21 10h.1a2 2 0 1 1 0 4z"/>',
+  'admin-users': '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 14.8c1.7.8 2.7 2.6 3 5.2"/>',
+  'admin-money': '<rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/>',
+  'admin-support': '<path d="M4 5h16v11H8l-4 4z"/><path d="M8 9h8M8 12.5h5"/>',
+  'admin-setup': '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
   admin: '<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"/>', star: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
 };
 const icon = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k] || ''}</svg>`;
@@ -147,7 +151,7 @@ const EVENT_LABELS = {
   totp_enabled: 'Two-factor login turned on', totp_disabled: 'Two-factor login turned off', google_linked: 'Google sign-in linked', account_deleted: 'Account deleted',
   alpaca_connected: 'Alpaca keys connected', alpaca_oauth_connected: 'Alpaca connected', brokerage_connected: 'Brokerage connected', brokerage_disconnected: 'Brokerage disconnected',
   broker_account_created: 'Brokerage application sent', broker_account_updated: 'Brokerage contact details changed', broker_documents_uploaded: 'Identity documents uploaded',
-  ach_linked: 'Bank account linked', transfer: 'Bank transfer', order: 'Order', alpaca_order: 'Order', alpaca_order_replaced: 'Order changed', alpaca_cancel_all: 'All orders cancelled',
+  ach_linked: 'Bank account linked', admin_user_update: 'Admin user update', transfer: 'Bank transfer', order: 'Order', alpaca_order: 'Order', alpaca_order_replaced: 'Order changed', alpaca_cancel_all: 'All orders cancelled',
   position_closed: 'Position closed', positions_closed_all: 'All positions closed', account_config: 'Account settings changed', checkout_started: 'Checkout started',
   sms_command: 'Text command', hotline_command: 'Phone command', hotline_ai: 'Phone AI request', hotline_pin_failed: 'Wrong phone PIN', ledger_update: 'Balance update',
 };
@@ -168,7 +172,7 @@ async function render() {
   setMenu(false);
   $$('#tabs a[data-r]').forEach(a => a.classList.toggle('on', a.dataset.r === route || (route === '' && a.dataset.r === 'dashboard')));
   if (ME) {
-    const groups = ME.role === 'admin' ? [...NAV, ['Owner', [['admin', 'Admin']]]] : NAV;
+    const groups = ME.role === 'admin' ? [['Owner', ADMIN_TABS], ...NAV] : NAV;
     $('#nav').innerHTML = groups.map(([g, items]) => `<div class="grp">${g}</div>` + items.map(([k, t]) => `<a href="#/${k}" class="${k === route ? 'on' : ''}">${icon(k)}${t}</a>`).join('')).join('')
       + (isPaid(ME) ? '' : `<a href="#/funding" class="upsell">${icon('star')}${ME.trialUsed ? 'Upgrade to Pro' : 'Try Pro free for 14 days'}</a>`)
       + `<div class="grp">${esc(ME.email)}</div><a href="#" id="navLogout">${icon('account')}Sign out</a>`;
@@ -739,35 +743,64 @@ routes.settings = async view => {
 };
 
 // ---------- admin ----------
-routes.admin = async view => {
-  const [s, msgs] = await Promise.all([api('/admin/summary'), api('/admin/messages')]);
+// Owner pages: one route per section so each has its own place in the menu.
+const ADMIN_TABS = [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-money', 'Money & fees'], ['admin-support', 'Support inbox'], ['admin-setup', 'Setup']];
+async function adminPage(view, tab) {
+  const [s, msgs, setup] = await Promise.all([api('/admin/summary'), api('/admin/messages'), tab === 'admin-setup' ? api('/admin/setup') : null]);
   const total = (kind, status) => s.byKind.filter(x => x.kind === kind && (!status || x.status === status)).reduce((a, x) => a + x.total, 0);
   const f = s.funnel, steps = [['Signed up', f.signups], ['Connected a brokerage', f.connected], ['Placed a trade', f.traded], ['In free trial', f.trialing], ['Paying', f.paying]];
-  view.innerHTML = `<h1>Admin</h1>
+  const open = msgs.filter(m => m.status === 'open');
+  const tabs = `<div class="chips admintabs">${ADMIN_TABS.map(([k, t]) => `<a href="#/${k}"><button type="button" class="${k === tab ? 'on' : ''}">${t}${k === 'admin-support' && open.length ? ` <span class="pill warn">${open.length}</span>` : ''}</button></a>`).join('')}</div>`;
+  const sections = {
+    admin: () => `
   <div class="card"><h2>Revenue</h2><div class="stats">
     <div class="stat"><span>Monthly recurring revenue</span><b class="kpi">${money(f.mrr)}</b></div>
     <div class="stat"><span>Annual run rate</span><b>${money(f.arr)}</b></div>
     <div class="stat"><span>Revenue, last 30 days</span><b>${money(f.revenue30)}</b></div>
     <div class="stat"><span>Signup → paying</span><b>${f.conversion}%</b></div></div></div>
-  <div class="card tablewrap"><h2>Payment processors</h2><p class="mu" style="margin-top:0">What each way of taking a $500 deposit costs you. Your service fee: <b>${s.depositFee.percent}%${s.depositFee.fixed ? ' + ' + money(s.depositFee.fixed) : ''}</b> (DEPOSIT_FEE_PERCENT / DEPOSIT_FEE_FIXED) · collected so far ${money(s.depositFee.collected)}.</p>
-    <table><tr><th>Method</th><th>Processor</th><th>Their price</th><th>Cost on $500</th><th>Status</th></tr>${s.payments.map(p => `<tr><td>${esc(p.name)}</td><td>${esc(p.via)}</td><td>${esc(p.cost)}</td><td>${money(p.on500)}</td><td>${p.enabled ? '<span class="pill pos">On</span>' : '<span class="pill">Not set up</span>'}</td></tr>`).join('')}</table>
-    <p class="mu" style="font-size:12px">Helcim's figure assumes a regulated (big-bank) debit card; cards from small banks and credit cards cost more. Card-network rules and some states limit surcharges on cards, so the service fee is shown up front and charged for the deposit service.</p></div>
-  <div class="card"><h2>Funnel</h2><p class="mu" style="margin-top:0">${f.signups30} new signups in the last 30 days. Find the biggest drop and improve that step first.</p><div class="funnel">
-    ${steps.map(([t, n]) => `<div class="bar"><span>${t}</span><i style="width:${f.signups ? Math.max(1, n / f.signups * 100) : 0}%"></i><b>${n}</b></div>`).join('')}</div></div>
   <div class="card"><div class="stats">
     <div class="stat"><span>Users</span><b>${s.users.length}</b></div>
+    <div class="stat"><span>Performance fees due</span><b>${money(total('performance_fee', 'due'))}</b></div>
+    <div class="stat"><span>Open support messages</span><b>${open.length}</b></div>
+    <div class="stat"><span>Deposits awaiting transfer</span><b>${s.pendingTransfers.length}</b></div></div></div>
+  <div class="card"><h2>Funnel</h2><p class="mu" style="margin-top:0">${f.signups30} new signups in the last 30 days. Find the biggest drop and improve that step first.</p><div class="funnel">
+    ${steps.map(([t, n]) => `<div class="bar"><span>${t}</span><i style="width:${f.signups ? Math.max(1, n / f.signups * 100) : 0}%"></i><b>${n}</b></div>`).join('')}</div></div>`,
+    'admin-users': () => `
+  <div class="card tablewrap"><div class="row" style="justify-content:space-between;align-items:center"><h2>Users</h2><input id="userFind" type="search" placeholder="Search email" style="max-width:260px;margin:0"></div>
+    <table id="userTable"><tr><th>Email</th><th>Plan</th><th>Role</th><th>2FA</th><th>Phone</th><th>Joined</th></tr>${s.users.map(u => `<tr data-email="${esc(u.email)}"><td data-no-tr>${esc(u.email)}${u.google ? ' <span class="pill">Google</span>' : ''}</td>
+      <td><select data-plan="${u.id}" style="margin:0;min-width:110px">${['free', 'pro', 'elite'].map(p => `<option value="${p}" ${u.plan === p ? 'selected' : ''}>${p === 'free' ? 'Starter' : p === 'pro' ? 'Pro' : 'Elite'}</option>`).join('')}</select></td>
+      <td>${u.role === 'admin' ? `<span class="pill">Admin</span>${u.id !== ME.id ? ` <button class="small ghost" data-role="${u.id}" data-to="user">Remove admin</button>` : ''}` : `<button class="small ghost" data-role="${u.id}" data-to="admin">Make admin</button>`}</td>
+      <td>${u.totp_enabled ? 'yes' : '-'}</td><td>${u.phone_verified ? 'yes' : '-'}</td><td>${date(u.created_at)}</td></tr>`).join('')}</table><div class="err" id="userErr"></div>
+    <p class="mu" style="font-size:12.5px">Changing a plan here gives it without payment (for friends, testers or support cases). Paying customers change plans themselves under Plans &amp; billing.</p></div>`,
+    'admin-money': () => `
+  <div class="card"><div class="stats">
     <div class="stat"><span>Monthly recurring revenue</span><b>${money(s.mrr)}</b></div>
     <div class="stat"><span>Performance fees due</span><b>${money(total('performance_fee', 'due'))}</b></div>
     <div class="stat"><span>Performance fees collected</span><b>${money(total('performance_fee', 'collected'))}</b></div>
   </div><button id="assess">Assess performance fees now</button><div class="err"></div></div>
-  <div class="card tablewrap"><h2>Fees due</h2><table>${s.feesDue.map(l => `<tr><td>${esc(l.email)}</td><td>${money(l.amount)}</td><td>${esc(l.memo)}</td><td><button class="small" data-l="${l.id}" data-s="collected">Mark collected</button> <button class="small ghost" data-l="${l.id}" data-s="waived">Waive</button></td></tr>`).join('') || '<tr><td class="mu">None</td></tr>'}</table></div>
-  <div class="card tablewrap"><h2>Card deposits awaiting brokerage transfer</h2><table>${s.pendingTransfers.map(l => `<tr><td>${esc(l.email)}</td><td>${money(l.amount)}</td><td>${date(l.at)}</td><td><button class="small" data-l="${l.id}" data-s="transferred">Mark transferred</button></td></tr>`).join('') || '<tr><td class="mu">None</td></tr>'}</table></div>
-  <div class="card tablewrap"><h2>Support inbox</h2><table>${msgs.filter(m => m.status === 'open').map(m => `<tr><td>${date(m.at)}</td><td>${esc(m.name)} &lt;<a href="mailto:${esc(m.email)}">${esc(m.email)}</a>&gt;</td><td><b>${esc(m.subject)}</b><br><span class="mu" style="white-space:pre-wrap">${esc(m.body)}</span></td><td><button class="small ghost" data-m="${m.id}">Done</button></td></tr>`).join('') || '<tr><td class="mu">Inbox zero</td></tr>'}</table></div>
-  <div class="card tablewrap"><h2>Users</h2><table><tr><th>Email</th><th>Plan</th><th>Role</th><th>2FA</th><th>Phone</th><th>Joined</th></tr>${s.users.map(u => `<tr><td>${esc(u.email)}</td><td>${u.plan}</td><td>${u.role}</td><td>${u.totp_enabled ? 'yes' : '-'}</td><td>${u.phone_verified ? 'yes' : '-'}</td><td>${date(u.created_at)}</td></tr>`).join('')}</table></div>`;
-  act($('#assess', view), async () => { const r = await api('/admin/assess-fees', { body: {} }); setTimeout(render, 1200); return `Assessed ${r.length} accounts, ${money(r.reduce((a, x) => a + (x.fee || 0), 0))} in new fees`; });
+  <div class="card tablewrap"><h2>Fees due</h2><table>${s.feesDue.map(l => `<tr><td data-no-tr>${esc(l.email)}</td><td>${money(l.amount)}</td><td>${esc(l.memo)}</td><td><button class="small" data-l="${l.id}" data-s="collected">Mark collected</button> <button class="small ghost" data-l="${l.id}" data-s="waived">Waive</button></td></tr>`).join('') || '<tr><td class="mu">None</td></tr>'}</table></div>
+  <div class="card tablewrap"><h2>Card deposits awaiting brokerage transfer</h2><table>${s.pendingTransfers.map(l => `<tr><td data-no-tr>${esc(l.email)}</td><td>${money(l.amount)}</td><td>${date(l.at)}</td><td><button class="small" data-l="${l.id}" data-s="transferred">Mark transferred</button></td></tr>`).join('') || '<tr><td class="mu">None</td></tr>'}</table></div>
+  <div class="card tablewrap"><h2>Payment processors</h2><p class="mu" style="margin-top:0">What each way of taking a $500 deposit costs you. Your service fee: <b>${s.depositFee.percent}%${s.depositFee.fixed ? ' + ' + money(s.depositFee.fixed) : ''}</b> (DEPOSIT_FEE_PERCENT / DEPOSIT_FEE_FIXED) · collected so far ${money(s.depositFee.collected)}.</p>
+    <table><tr><th>Method</th><th>Processor</th><th>Their price</th><th>Cost on $500</th><th>Status</th></tr>${s.payments.map(p => `<tr><td>${esc(p.name)}</td><td>${esc(p.via)}</td><td>${esc(p.cost)}</td><td>${money(p.on500)}</td><td>${p.enabled ? '<span class="pill pos">On</span>' : '<span class="pill">Not set up</span>'}</td></tr>`).join('')}</table>
+    <p class="mu" style="font-size:12px">Helcim's figure assumes a regulated (big-bank) debit card; cards from small banks and credit cards cost more. Card-network rules and some states limit surcharges on cards, so the service fee is shown up front and charged for the deposit service.</p></div>`,
+    'admin-support': () => `
+  <div class="card tablewrap"><h2>Support inbox</h2><table>${open.map(m => `<tr><td>${date(m.at)}</td><td data-no-tr>${esc(m.name)} &lt;<a href="mailto:${esc(m.email)}">${esc(m.email)}</a>&gt;</td><td data-no-tr><b>${esc(m.subject)}</b><br><span class="mu" style="white-space:pre-wrap">${esc(m.body)}</span></td><td><button class="small ghost" data-m="${m.id}">Done</button></td></tr>`).join('') || '<tr><td class="mu">Inbox zero</td></tr>'}</table></div>`,
+    'admin-setup': () => `
+  <div class="card"><h2>Setup</h2><p class="mu" style="margin-top:0">What is switched on, from the environment variables in Render (values are never shown). Admins: <b data-no-tr>${esc(setup.admins.join(', ') || 'none')}</b></p>
+    <div class="setup">${setup.items.map(x => `<div class="setup-row"><span class="dot ${x.on ? 'on' : ''}"></span><span class="setup-name">${esc(x.name)}</span><code data-no-tr>${esc(x.env)}</code><span class="pill ${x.on ? '' : 'warn'}">${x.on ? 'On' : 'Not set'}</span></div>`).join('')}</div>
+    <p class="mu" style="font-size:12.5px">To change one: Render → your service → Environment → add or edit the variable → Save. The server restarts by itself.</p></div>`,
+  };
+  view.innerHTML = `<h1>Admin</h1>${tabs}${sections[tab]()}`;
+  if ($('#assess', view)) act($('#assess', view), async () => { const r = await api('/admin/assess-fees', { body: {} }); setTimeout(render, 1200); return `Assessed ${r.length} accounts, ${money(r.reduce((a, x) => a + (x.fee || 0), 0))} in new fees`; });
   $$('[data-l]', view).forEach(b => (b.onclick = async () => { await api('/admin/ledger/' + b.dataset.l, { body: { status: b.dataset.s } }); render(); }));
   $$('[data-m]', view).forEach(b => (b.onclick = async () => { await api('/admin/messages/' + b.dataset.m, { body: {} }); render(); }));
-};
+  const uerr = $('#userErr', view);
+  const userCall = async (id, body) => { uerr.textContent = ''; try { await api('/admin/users/' + id, { body }); render(); } catch (e) { uerr.textContent = e.message; } };
+  $$('[data-plan]', view).forEach(sel => (sel.onchange = () => userCall(sel.dataset.plan, { plan: sel.value })));
+  $$('[data-role]', view).forEach(b => (b.onclick = () => userCall(b.dataset.role, { role: b.dataset.to })));
+  if ($('#userFind', view)) $('#userFind', view).oninput = e => { const q = e.target.value.trim().toLowerCase(); $$('#userTable tr[data-email]', view).forEach(tr => (tr.hidden = !!q && !tr.dataset.email.toLowerCase().includes(q))); };
+}
+for (const [k] of ADMIN_TABS) routes[k] = view => (ME?.role === 'admin' ? adminPage(view, k) : routes.dashboard(view, new URLSearchParams()));
 
 registerStrategies(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, cls, date, api, form, act, render, drawChart, onLeave, me: () => ME });
 registerBrokers(routes, { $, $$, esc, money, api, form, act, render, accounts });

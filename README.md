@@ -110,7 +110,7 @@ npm test             # unit + integration tests
 npm run e2e          # whole app in a real browser (needs: npx playwright install chromium)
 ```
 
-Locally, the first account you register becomes the **admin**. In production, set `ADMIN_EMAIL` instead. Everything works without keys: emails and SMS codes are printed in the server log, and payment buttons explain what is missing.
+Locally, the first account you register becomes the **admin**. In production, set `ADMIN_EMAIL` instead (one address, or several separated by commas). It also applies to accounts that already exist: the next page load with that email shows the **Owner** menu (Overview, Users, Money & fees, Support inbox, Setup). Everything works without keys: emails and SMS codes are printed in the server log, and payment buttons explain what is missing.
 
 ## Free hosting (about 15 minutes, $0/month)
 

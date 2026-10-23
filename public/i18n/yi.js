@@ -323,6 +323,18 @@ export const strings = {
   'Bank account linked': 'באנק קאנטע פארבינדן', 'Bank transfer': 'באנק טראנספער', 'Order': 'ארדער', 'Order changed': 'ארדער געטוישט', 'All orders cancelled': 'אלע ארדערס אנולירט',
   'Position closed': 'פאזיציע פארמאכט', 'All positions closed': 'אלע פאזיציעס פארמאכט', 'Account settings changed': 'קאנטע סעטינגס געטוישט', 'Checkout started': 'באצאלונג אנגעהויבן',
   'Text command': 'טעקסט באפעל', 'Phone command': 'טעלעפאן באפעל', 'Phone AI request': 'טעלעפאן AI בקשה', 'Wrong phone PIN': 'אומריכטיגער טעלעפאן PIN', 'Balance update': 'באלאנס דערהייַנטיקונג',
+  // admin pages
+  'Overview': 'איבערבליק', 'Money & fees': 'געלט און אפצאלן', 'Open support messages': 'אפענע סופּאָרט מעסעדזשעס', 'Deposits awaiting transfer': 'אריינלייגן וואס ווארטן אויף טראנספער',
+  'Search email': 'זוכט אימעיל', 'Role': 'ראלע', 'Joined': 'איינגעשריבן', 'Make admin': 'מאכט אדמין', 'Remove admin': 'נעמט אראפ אדמין',
+  'Changing a plan here gives it without payment (for friends, testers or support cases). Paying customers change plans themselves under Plans & billing.': 'טוישן א פלאן דא גיט עס אן באצאלן (פאר פריינט, טעסטערס אדער סופּאָרט פעלער). באצאלנדע קליענטן טוישן פלענער אליין אונטער פלענער און באצאלונג.',
+  'Setup': 'איינשטעלונגען', 'What is switched on, from the environment variables in Render (values are never shown). Admins:': 'וואס איז אנגעצונדן, לויט די environment variables אין Render (די ווערטן ווערן קיינמאל נישט געוויזן). אדמינס:',
+  'On': 'אן', 'Not set': 'נישט איינגעשטעלט', 'To change one: Render → your service → Environment → add or edit the variable → Save. The server restarts by itself.': 'צו טוישן: Render ← אייער סערוויס ← Environment ← לייגט צו אדער טוישט דעם variable ← Save. דער סערווער שטעלט זיך אליין איבער.',
+  'Admin email': 'אדמין אימעיל', 'Database (Turso)': 'דאטאבאזע (Turso)', 'Encryption key': 'פארשליסונג שליסל', 'Alpaca Broker API (account opening)': 'Alpaca Broker API (קאנטע עפענען)', 'Alpaca market data': 'Alpaca מארקעט דאטן',
+  'Connect existing Alpaca accounts (OAuth)': 'פארבינדן עקזיסטירנדע Alpaca קאנטעס (OAuth)', 'Sign in with Google': 'אריינלאגירן מיט Google', 'Plans and card payments (Stripe)': 'פלענער און קארטל באצאלונגען (Stripe)', 'Stripe webhook': 'Stripe וועבהוק',
+  'Text messages and hotline (Twilio)': 'טעקסט מעסעדזשעס און האטליין (Twilio)', 'Emails (Resend)': 'אימעילס (Resend)', 'AI assistant (Claude)': 'AI אסיסטענט (Claude)', 'Yiddish Labs credit line': 'Yiddish Labs קרעדיט שורה',
+  'Deposits: Bank account (ACH) (Stripe)': 'אריינלייגן: באנק קאנטע (ACH) (Stripe)', 'Deposits: Debit card (Helcim)': 'אריינלייגן: דעביט קארטל (Helcim)', 'Deposits: Debit card (Stripe)': 'אריינלייגן: דעביט קארטל (Stripe)',
+  'You cannot remove your own admin access': 'איר קענט נישט אראפנעמען אייער אייגענעם אדמין צוטריט', 'This address is in ADMIN_EMAIL; remove it there first': 'די אדרעס איז אין ADMIN_EMAIL; נעמט עס קודם ארויס פון דארט',
+  'Admin user update': 'אדמין האט געטוישט א באניצער',
 };
 
 Object.assign(strings, labs);

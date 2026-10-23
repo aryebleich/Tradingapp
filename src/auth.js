@@ -47,6 +47,8 @@ export async function sessionMiddleware(req, _res, next) {
     if (s && s.expires_at > now()) {
       req.sessionHash = s.token_hash;
       const u = await one('SELECT * FROM users WHERE id = ?', s.user_id);
+      // ADMIN_EMAIL counts on every visit, so an account made before it was set becomes admin too.
+      if (u && u.role !== 'admin' && isAdminEmail(u.email)) { await run("UPDATE users SET role = 'admin' WHERE id = ?", u.id); u.role = 'admin'; }
       if (s.mfa_pending) req.pending = u; else req.user = u;
     }
   }
@@ -59,6 +61,10 @@ export function csrfGuard(req, res, next) {
   if (req.headers['x-requested-with'] !== 'qp') return res.status(403).json({ error: 'Missing CSRF header' });
   next();
 }
+
+// ADMIN_EMAIL may list several addresses, separated by commas; case and spaces do not matter.
+export const adminEmails = () => String(process.env.ADMIN_EMAIL || '').split(/[,;\s]+/).map(e => e.trim().toLowerCase()).filter(Boolean);
+export const isAdminEmail = email => !!email && adminEmails().includes(String(email).trim().toLowerCase());
 
 export const requireUser = (req, res, next) => req.user ? next() : res.status(401).json({ error: 'Not signed in' });
 export const requireAdmin = (req, res, next) => req.user?.role === 'admin' ? next() : res.status(403).json({ error: 'Admin only' });
@@ -76,7 +82,7 @@ const DUMMY_HASH = hashSecret('timing-equalizer');
 // hash is of a random secret nobody knows, so password sign-in stays impossible until one is set.
 export async function createUser({ email, password, ref, googleSub = null, verified = false }) {
   // Admin is whoever matches ADMIN_EMAIL; outside production the first account also qualifies.
-  const admin = process.env.ADMIN_EMAIL ? email === process.env.ADMIN_EMAIL.toLowerCase()
+  const admin = adminEmails().length ? isAdminEmail(email)
     : process.env.NODE_ENV !== 'production' && !await one('SELECT id FROM users LIMIT 1');
   // Referral: ?ref=CODE on the sign-up link credits whoever invited this user once they pay.
   const referrer = /^[a-z0-9]{6,12}$/.test(String(ref || '')) ? await one('SELECT id FROM users WHERE ref_code = ?', ref) : null;
