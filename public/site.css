@@ -153,6 +153,8 @@ footer.site .disc { margin-top: 26px; font-size: 12px; line-height: 1.55; }
   .logo { font-size: 17px; }
 }
 @media (max-width: 360px) { .logo { font-size: 15px; } .logo img { width: 24px; height: 24px; } .top .btn { padding: 7px 9px; font-size: 13px; } .top .wrap { padding: 0 10px; } }
+/* Very small phones: the logo mark alone, so both header buttons always fit whatever font the device has. */
+@media (max-width: 340px) { .top .logo b { display: none; } .top .btn { white-space: nowrap; } }
 @media (max-width: 640px) {
   .hero .cta .btn { flex: 1 1 100%; }
   .stickycta { transform: translateY(110%); transition: transform .25s; }
