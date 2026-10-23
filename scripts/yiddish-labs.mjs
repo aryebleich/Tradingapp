@@ -5,11 +5,15 @@
 // Add --missing to export only strings that have no Yiddish yet.
 // Or all at once through the API (needs a key from Yiddish Labs → API Keys):
 //   YIDDISH_LABS_API_KEY=yl_live_... npm run yiddish:translate   [--limit N] [--dry]
+// Without the API (any plan), in parts sized for the Quick Action box:
+//   npm run yiddish:parts          writes i18n/yiddish-labs/parts/part-01.txt, part-02.txt, ...
+//   paste each part into Quick Action → "Translate to Yiddish", save the answer as part-01.yi.txt, ...
+//   npm run yiddish:import-parts   reads every part-NN.yi.txt there is (partial rounds are fine)
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { translateAll } from './yiddish-labs-lib.mjs';
+import { translateAll, buildBatch, parseBatch } from './yiddish-labs-lib.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dir = path.join(root, 'i18n', 'yiddish-labs');
@@ -48,8 +52,36 @@ if (cmd === 'export') {
   for (const [where, en] of todo) if (out.has(en)) res[where][en] = out.get(en);
   await save(res.app, res.home);
   console.log(`Translated ${out.size} of ${unique.length} strings with Yiddish Labs (${credits} credits). Rebuild the homepage with: python3 scripts/pages.py`);
+} else if (cmd === 'parts') {
+  // Numbered lines ([[1]] ...) with names, tickers and HTML swapped for ⟦n⟧ so they come back unchanged.
+  const pdir = path.join(dir, 'parts'), maxChars = 2500;
+  fs.rmSync(pdir, { recursive: true, force: true }); fs.mkdirSync(pdir, { recursive: true });
+  const todo = entries.filter(([, en, yi]) => yi && yi !== en), unique = [...new Set(todo.map(([, en]) => en))];
+  const groups = [[]];
+  for (const en of unique) { const g = groups.at(-1); if (g.length && g.join('\n').length + en.length > maxChars) groups.push([en]); else g.push(en); }
+  const index = groups.map((g, i) => {
+    const { parts, text } = buildBatch(g), name = `part-${String(i + 1).padStart(2, '0')}`;
+    fs.writeFileSync(path.join(pdir, name + '.txt'), 'Translate each numbered line to Yiddish. Keep the [[number]] at the start of every line and keep every ⟦n⟧ exactly as it is.\n\n' + text + '\n');
+    return { name, strings: g, saved: parts.map(p => p.saved), texts: parts.map(p => p.text) };
+  });
+  fs.writeFileSync(path.join(pdir, 'index.json'), JSON.stringify({ todo, index }, null, 1));
+  console.log(`Wrote ${index.length} parts (${unique.length} strings) to i18n/yiddish-labs/parts/.\nPaste each part-NN.txt into https://app.yiddishlabs.com/app/quick-action, translate to Yiddish, save the answer as part-NN.yi.txt next to it, then run: npm run yiddish:import-parts`);
+} else if (cmd === 'import-parts') {
+  const pdir = path.join(dir, 'parts'), { todo, index } = JSON.parse(fs.readFileSync(path.join(pdir, 'index.json'), 'utf8'));
+  const got = new Map(); let missing = 0, files = 0;
+  for (const p of index) {
+    const f = path.join(pdir, p.name + '.yi.txt');
+    if (!fs.existsSync(f)) continue;
+    files++;
+    const res = parseBatch(fs.readFileSync(f, 'utf8'), p.texts.map((text, i) => ({ text, saved: p.saved[i] })));
+    res.forEach((yi, i) => { if (yi != null) got.set(p.strings[i], yi); else { missing++; console.log(`  ${p.name} line ${i + 1} kept as before: ${p.strings[i].slice(0, 60)}`); } });
+  }
+  const res = { app: {}, home: {} };
+  for (const [where, en] of todo) if (got.has(en)) res[where][en] = got.get(en);
+  await save(res.app, res.home);
+  console.log(`Imported ${got.size} strings from ${files} of ${index.length} parts (${missing} lines kept as before). Rebuild the homepage with: python3 scripts/pages.py`);
 } else {
-  console.log('Usage: node scripts/yiddish-labs.mjs export [--missing] | import | translate [--limit N] [--dry]');
+  console.log('Usage: node scripts/yiddish-labs.mjs export [--missing] | import | translate [--limit N] [--dry] | parts | import-parts');
 }
 
 // Merges into earlier results so a partial round keeps the rest.

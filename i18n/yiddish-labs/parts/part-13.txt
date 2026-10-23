@@ -1,0 +1,41 @@
+Translate each numbered line to Yiddish. Keep the [[number]] at the start of every line and keep every ⟦n⟧ exactly as it is.
+
+[[1]] Live results compared with the backtest every day, with automatic throttling.
+[[2]] Live results match the backtest
+[[3]] Live trading on ⟦0⟧, ⟦1⟧, ⟦2⟧, ⟦3⟧ ⟦4⟧ ⟦5⟧
+[[4]] Long-only by default
+[[5]] Long-term investors
+[[6]] Market-neutral or long-only
+[[7]] Maximum position size and trades per day
+[[8]] Monthly index-fund buys with projections from real history.
+[[9]] Monthly or weekly automatic buys
+[[10]] Most platforms show you a beautiful backtest and stop there. But many strategies with spectacular backtests lose money once they go live. ⟦0⟧ compares every strategy⟦1⟧s live results with its backtest, every single day.
+[[11]] Next profile
+[[12]] No card needed
+[[13]] Nobody can promise that. Most active strategies underperform simply holding an index after costs. ⟦0⟧ shows how an idea behaved in the past, how it is doing live, and the range of outcomes to expect, so you can decide with your eyes open.
+[[14]] One log across accounts
+[[15]] One number for everyone. Text or call ⟦0⟧ and say what you need in plain words. The ⟦1⟧ assistant answers questions and turns requests into orders.
+[[16]] One number to text or call
+[[17]] One signal, many accounts.
+[[18]] One stock: the strongest 12-month momentum
+[[19]] Open the strategy library
+[[20]] Optimizer, walk-forward testing ⟦0⟧ ⟦1⟧
+[[21]] Order history with status filters
+[[22]] Pair bots, scheduled trades ⟦0⟧ live ⟦1⟧ auto-invest
+[[23]] Pairs analysis ⟦0⟧ backtests
+[[24]] Pairs trading, done properly.
+[[25]] Paper account for testing
+[[26]] Paper trading
+[[27]] Paper trading that works like the real thing
+[[28]] Paper: equity $103,240, up $1,180 (+1.2%) since Monday.
+[[29]] Paste a private webhook ⟦0⟧ into a ⟦1⟧, ⟦2⟧ or ⟦3⟧ alert. When it fires, ⟦4⟧ checks your risk rules and places the order in seconds.
+[[30]] Payments by
+[[31]] Pick a ready-made strategy, or define entries and exits, sizing and risk limits. Use a ⟦0⟧ alert or our ⟦1⟧ templates.
+[[32]] Pick a rotation strategy from the library. Every day the app fills in the numbers, walks the rules step by step and tells you exactly what to buy. Run it by hand or let it trade by itself.
+[[33]] Pick a ticker and a classic strategy. It runs on the same engine as the app, using market data since 2015.
+[[34]] Pick one. Everything works on paper first, with no risk.
+[[35]] Pick the accounts for each webhook or strategy
+[[36]] Pick your entry, then let bracket orders manage the exit while you are away from the screen.
+[[37]] ⟦0⟧ strategy builder
+[[38]] Popular questions
+[[39]] Position limits, trade limits, allowed tickers, trailing stops and brackets.

@@ -1,0 +1,80 @@
+Translate each numbered line to Yiddish. Keep the [[number]] at the start of every line and keep every ⟦n⟧ exactly as it is.
+
+[[1]] Code
+[[2]] Change password
+[[3]] Changing it signs out every other device.
+[[4]] Password to delete your account
+[[5]] Main
+[[6]] Theme: auto (click to change)
+[[7]] Theme: light (click to change)
+[[8]] Theme: dark (click to change)
+[[9]] No price data for this range.
+[[10]] Account created
+[[11]] Failed sign-in
+[[12]] Wrong two-factor code
+[[13]] Password changed
+[[14]] Password reset
+[[15]] Password reset requested
+[[16]] Email verified
+[[17]] Phone verified
+[[18]] Two-factor login turned on
+[[19]] Two-factor login turned off
+[[20]] ⟦0⟧ sign-in linked
+[[21]] Account deleted
+[[22]] ⟦0⟧ keys connected
+[[23]] ⟦0⟧ connected
+[[24]] Brokerage connected
+[[25]] Brokerage disconnected
+[[26]] Brokerage application sent
+[[27]] Brokerage contact details changed
+[[28]] Identity documents uploaded
+[[29]] Bank account linked
+[[30]] Bank transfer
+[[31]] Order changed
+[[32]] All orders cancelled
+[[33]] Position closed
+[[34]] All positions closed
+[[35]] Account settings changed
+[[36]] Checkout started
+[[37]] Text command
+[[38]] Phone command
+[[39]] Phone ⟦0⟧ request
+[[40]] Wrong phone ⟦0⟧
+[[41]] Balance update
+[[42]] ⟦0⟧ alert
+[[43]] Risk rules passed
+[[44]] max $5,000 per ticker ⟦0⟧ 3 of 10 trades today
+[[45]] Paper:
+[[46]] filled
+[[47]] accepted
+[[48]] Equity curve
+[[49]] Commission-free, held at ⟦0⟧ (⟦1⟧)
+[[50]] + 10% of new profits
+[[51]] + 20% of new profits
+[[52]] + 5% of new profits
+[[53]] /forever
+[[54]] 4 independent sleeves × 25%
+[[55]] 50 automatic strategies ⟦0⟧ 50 webhooks
+[[56]] ⟦0⟧Auto-throttle:⟦1⟧ 100% while healthy, 50% on Watch, 0% when Drifting
+[[57]] ⟦0⟧Automatic:⟦1⟧ trades at the time you choose, on the accounts you choose
+[[58]] ⟦0⟧By hand:⟦1⟧ see each step, type your own numbers, place the orders with one click
+[[59]] ⟦0⟧Editable:⟦1⟧ change any rule, threshold or ticker, then backtest it
+[[60]] ⟦0⟧Honest:⟦1⟧ backtest and live results side by side
+[[61]] A range of outcomes built from real history, crashes included
+[[62]] A text or email the day a strategy starts to drift
+[[63]] ⟦0⟧ assistant
+[[64]] ⟦0⟧ phone assistant
+[[65]] ⟦0⟧ text assistant for questions ⟦1⟧ balances
+[[66]] Account ⟦0⟧ pricing
+[[67]] Advanced
+[[68]] Alerts from
+[[69]] All rights reserved.
+[[70]] All your accounts, side by side.
+[[71]] ⟦0⟧ (you can also open a new account inside ⟦1⟧), ⟦2⟧, ⟦3⟧, ⟦4⟧ and ⟦5⟧. Your money always stays at your broker.
+[[72]] ⟦0⟧, ⟦1⟧, ⟦2⟧, ⟦3⟧ and ⟦4⟧. Open a new account inside ⟦5⟧, or connect the one you already have.
+[[73]] ⟦0⟧, ⟦1⟧, ⟦2⟧, ⟦3⟧ and ⟦4⟧, side by side.
+[[74]] An all-in-one trading automation platform
+[[75]] An equity curve that shows how you are doing
+[[76]] Analyze a pair
+[[77]] Answers questions about your account
+[[78]] Any program that can send an ⟦0⟧ request can use a webhook, ⟦1⟧ agents included. It can only do what that webhook allows: its accounts, sizes and risk rules. Start on paper.

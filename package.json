@@ -14,7 +14,9 @@
     "e2e": "node test/e2e/run.mjs",
     "yiddish:export": "node scripts/yiddish-labs.mjs export",
     "yiddish:import": "node scripts/yiddish-labs.mjs import",
-    "yiddish:translate": "node scripts/yiddish-labs.mjs translate"
+    "yiddish:translate": "node scripts/yiddish-labs.mjs translate",
+    "yiddish:parts": "node scripts/yiddish-labs.mjs parts",
+    "yiddish:import-parts": "node scripts/yiddish-labs.mjs import-parts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",

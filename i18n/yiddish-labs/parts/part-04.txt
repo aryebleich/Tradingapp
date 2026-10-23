@@ -1,0 +1,100 @@
+Translate each numbered line to Yiddish. Keep the [[number]] at the start of every line and keep every ⟦n⟧ exactly as it is.
+
+[[1]] This year
+[[2]] Last 12 months
+[[3]] 5 years, per year
+[[4]] 10 years, per year
+[[5]] The 500 largest ⟦0⟧ companies in one fund. The simplest long-term plan: buy a little every month, whatever the market does.
+[[6]] Your investment plan
+[[7]] Start with ($)
+[[8]] Add every month ($)
+[[9]] For how many years
+[[10]] Goal (optional, $)
+[[11]] Fund
+[[12]] Show my range
+[[13]] You put in
+[[14]] Typical result
+[[15]] Bad case (1 in 10)
+[[16]] Good case (1 in 10)
+[[17]] Invest automatically
+[[18]] Buys your fund on the same day every month, in dollars (fractional shares), so every dollar is invested.
+[[19]] Day of the month
+[[20]] How often
+[[21]] Start investing
+[[22]] Active plans
+[[23]] Repeats
+[[24]] Next buy
+[[25]] No automatic plan yet.
+[[26]] Connect every account you trade. Each one then shows up in the account pickers: alerts, strategies, pairs and the ⟦0⟧ plan can send orders to any of them, or to several at once.
+[[27]] Loading balance…
+[[28]] Use the ⟦0⟧ simulator
+[[29]] Manage billing
+[[30]] Every paid plan starts with a
+[[31]] You are on
+[[32]] Thank you! Your plan is being activated. It can take a few seconds to show here.
+[[33]] Add paper money
+[[34]] Add to paper account
+[[35]] Deposit to your brokerage
+[[36]] Continue to payment
+[[37]] Performance fee
+[[38]] Your rate:
+[[39]] of new profit. You only pay when an account is above its previous peak, after deposits and withdrawals.
+[[40]] Billing history
+[[41]] Secure checkout by ⟦0⟧. Cancel anytime from "Manage billing". Prices in ⟦1⟧.
+[[42]] Real money goes to your brokerage account by bank transfer on the
+[[43]] Your invite link
+[[44]] Share
+[[45]] Friends who joined
+[[46]] Friends who subscribed
+[[47]] Credit earned
+[[48]] Two-factor authentication
+[[49]] Set up ⟦0⟧
+[[50]] Turn on ⟦0⟧
+[[51]] Disable ⟦0⟧
+[[52]] Protect your account with an authenticator app (⟦0⟧ Authenticator, 1Password, ⟦1⟧).
+[[53]] Phone for ⟦0⟧ & hotline
+[[54]] Mobile number
+[[55]] Send code
+[[56]] Trading ⟦0⟧
+[[57]] Account password
+[[58]] New ⟦0⟧ (4-8 digits)
+[[59]] Save ⟦0⟧
+[[60]] Tax rates
+[[61]] Federal bracket
+[[62]] State rate %
+[[63]] Add a password
+[[64]] Your data
+[[65]] Download my data
+[[66]] Delete my account
+[[67]] Download everything we store about you, or permanently delete your account.
+[[68]] Active sessions
+[[69]] Security log
+[[70]] ⟦0⟧ address
+[[71]] Device
+[[72]] Signed in
+[[73]] Event
+[[74]] this device
+[[75]] Manage brokerage connection
+[[76]] ⟦0⟧ brokerage
+[[77]] User id
+[[78]] ⟦0⟧ token
+[[79]] Text & Hotline
+[[80]] Manage your account by ⟦0⟧ or phone
+[[81]] ⟦0⟧'s number
+[[82]] Text us
+[[83]] Call
+[[84]] Try it here
+[[85]] How is my account doing?
+[[86]] The ⟦0⟧ number is not configured on this server yet (⟦1⟧).
+[[87]] Tax information
+[[88]] Download Form 8949 ⟦0⟧
+[[89]] Short-term gains
+[[90]] Long-term gains
+[[91]] Estimated tax
+[[92]] Tax-loss harvesting ideas
+[[93]] Realized sales
+[[94]] No sales this year
+[[95]] Estimates for planning only (⟦0⟧ federal + flat state rate, ⟦1⟧ lots). Your broker's 1099-B is the official record; check with a tax professional.
+[[96]] Run on paper
+[[97]] Run on ⟦0⟧
+[[98]] Save strategy

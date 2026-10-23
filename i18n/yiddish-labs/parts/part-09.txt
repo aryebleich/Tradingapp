@@ -1,0 +1,58 @@
+Translate each numbered line to Yiddish. Keep the [[number]] at the start of every line and keep every ⟦n⟧ exactly as it is.
+
+[[1]] Pairs that moved together in the past can stop doing so (a merger, a lawsuit, a new product). The stop level and the time limit exist for that. Short selling needs a margin account and has borrowing costs; the paper account trades the long-only version. Backtests are hypothetical.
+[[2]] Projections resample real 12-month stretches of ⟦0⟧ history (crashes included) 2,000 times. They are not a forecast or a promise; the market can fall for years.
+[[3]] Describe a strategy in plain English
+[[4]] Indicators: Close, ⟦0⟧(n), ⟦1⟧(n), ⟦2⟧(n), ⟦3⟧(n,k), ⟦4⟧(n,k), ⟦5⟧(n), ⟦6⟧(n), ⟦7⟧(n), ⟦8⟧(f,s), ⟦9⟧(f,s,sig). Ops: > ⟦10⟧= <= crosses_above crosses_below. Optimizer: put choices in braces, e.g.
+[[5]] Buy ⟦0⟧ when ⟦1⟧ drops below 30 in an uptrend, 8% stop loss
+[[6]] A deployed bot checks its rules once per trading day shortly before the 4 pm New York close and buys or sells on the chosen account. Text ⟦0⟧ to see them, ⟦1⟧ ⟦2⟧ to stop all.
+[[7]] Entry
+[[8]] Exit
+[[9]] First run
+[[10]] Schedule
+[[11]] When price is
+[[12]] 14-day free trial
+[[13]] . You won't be charged until it ends, and you can cancel anytime.
+[[14]] Learn and practice
+[[15]] forever
+[[16]] + 20% of new profits above your high-water mark
+[[17]] + 10% of new profits above your high-water mark
+[[18]] + 5% of new profits above your high-water mark
+[[19]] $100,000 paper account
+[[20]] Strategy library by hand + 1 automatic strategy on paper
+[[21]] ⟦0⟧ auto-invest on paper
+[[22]] Pairs analysis & backtests
+[[23]] 1 alert webhook (paper)
+[[24]] ⟦0⟧ text assistant for questions & balances
+[[25]] English & Yiddish
+[[26]] Automate your real accounts
+[[27]] /month
+[[28]] /year
+[[29]] Everything in ⟦0⟧
+[[30]] Everything in ⟦0⟧
+[[31]] Live trading on ⟦0⟧, ⟦1⟧, ⟦2⟧, ⟦3⟧ & ⟦4⟧
+[[32]] 5 automatic strategies with Reality Check auto-throttle
+[[33]] 10 alert webhooks (⟦0⟧, ⟦1⟧)
+[[34]] Pair bots, scheduled trades & live ⟦0⟧ auto-invest
+[[35]] Trade by text & phone with the ⟦0⟧ assistant
+[[36]] Optimizer, walk-forward testing & ⟦0⟧
+[[37]] For serious capital
+[[38]] Lowest performance fee (5%)
+[[39]] 50 automatic strategies & 50 webhooks
+[[40]] Market-neutral pairs (long + short)
+[[41]] Tax-loss harvesting report
+[[42]] Priority ⟦0⟧ & priority support
+[[43]] Card and bank deposits are not set up on this server yet. You can fund your brokerage account by bank transfer on the
+[[44]] page.
+[[45]] Wash-sale disallowed
+[[46]] Loss carryforward
+[[47]] Acquired
+[[48]] Sold
+[[49]] Proceeds
+[[50]] Cost
+[[51]] Gain
+[[52]] Term
+[[53]] On the hotline: enter your ⟦0⟧, then press 1 balance, 2 positions, 3 scheduled trades, 9 pause bots, or say a command like "buy five shares of ⟦1⟧".
+[[54]] Open a brokerage account, connect your ⟦0⟧ account with one click, or use ⟦1⟧ keys.
+[[55]] ⟦0⟧ → Account → ⟦1⟧ Access
+[[56]] Not set

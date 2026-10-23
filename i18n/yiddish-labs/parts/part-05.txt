@@ -1,0 +1,101 @@
+Translate each numbered line to Yiddish. Keep the [[number]] at the start of every line and keep every ⟦n⟧ exactly as it is.
+
+[[1]] Build rules
+[[2]] Idea
+[[3]] Entry rules (all must be true)
+[[4]] Exit rules (any)
+[[5]] Stop loss %
+[[6]] Take profit %
+[[7]] Trailing stop %
+[[8]] Position size %
+[[9]] Cost per side %
+[[10]] Preset
+[[11]] Start
+[[12]] Capital
+[[13]] Max drawdown
+[[14]] Buy & hold
+[[15]] Walk-forward check
+[[16]] Trades
+[[17]] New scheduled order
+[[18]] Nothing scheduled
+[[19]] Next run
+[[20]] Repeat
+[[21]] Price alerts (sent by ⟦0⟧)
+[[22]] Add alert
+[[23]] Strategies & Bots
+[[24]] Save a strategy from the Backtest page first.
+[[25]] Running on
+[[26]] Last action
+[[27]] Brokerage account
+[[28]] Trading connection
+[[29]] Identity
+[[30]] Contact
+[[31]] Employment & disclosures
+[[32]] Agreements
+[[33]] Citizenship
+[[34]] Country of birth
+[[35]] Other ways to connect
+[[36]] (existing ⟦0⟧ account or ⟦1⟧ keys)
+[[37]] Fractional shares
+[[38]] Disable short selling
+[[39]] Suspend all trading (kill switch)
+[[40]] Orders go to
+[[41]] Day-trade buying power check
+[[42]] Pattern day trader check
+[[43]] Max margin
+[[44]] Trade confirmations
+[[45]] Trading involves risk of loss. Backtests and projections are hypothetical and do not guarantee future results. ⟦0⟧ is software, not a broker or investment adviser; orders route to your own ⟦1⟧ account.
+[[46]] Text or call from your verified phone.
+[[47]] The ⟦0⟧ assistant understands plain language: "how am I doing this month?", "put $200 into the ⟦1⟧ every week", "what does ⟦2⟧ mean?". Trades always need your ⟦3⟧.
+[[48]] Phone:
+[[49]] not set
+[[50]] set
+[[51]] verified
+[[52]] change in Settings
+[[53]] Email already registered
+[[54]] Wrong email or password
+[[55]] Please accept the Terms to continue
+[[56]] Enter a valid email
+[[57]] Password needs 10+ characters with upper, lower and a digit
+[[58]] Not signed in
+[[59]] The server is busy, please try again.
+[[60]] Saved
+[[61]] Paper account
+[[62]] Paper money added.
+[[63]] Monthly recurring revenue
+[[64]] Annual run rate
+[[65]] Revenue, last 30 days
+[[66]] Signup → paying
+[[67]] Funnel
+[[68]] Payment processors
+[[69]] Users
+[[70]] Support inbox
+[[71]] Fees due
+[[72]] Card deposits awaiting brokerage transfer
+[[73]] Assess performance fees now
+[[74]] Disclosures
+[[75]] Documents
+[[76]] Country of citizenship
+[[77]] Tax residence
+[[78]] Main source of funds
+[[79]] Employment income
+[[80]] Investments
+[[81]] Inheritance
+[[82]] Business income
+[[83]] Savings
+[[84]] Family
+[[85]] Required by law to verify your identity (⟦0⟧). Your ⟦1⟧ goes to ⟦2⟧ over an encrypted connection and is not stored by ⟦3⟧.
+[[86]] Are you a 10% shareholder, director or officer of a public company? (control person)
+[[87]] Are you affiliated with a stock exchange or ⟦0⟧?
+[[88]] Are you a senior political figure (politically exposed person)?
+[[89]] Is an immediate family member a senior political figure?
+[[90]] Employment (optional)
+[[91]] Employment
+[[92]] Employed
+[[93]] Unemployed
+[[94]] Student
+[[95]] Retired
+[[96]] Account features
+[[97]] Apply for a margin account (Margin Agreement)
+[[98]] Enable options trading (Options Agreement)
+[[99]] Enable crypto trading (Crypto Agreement)

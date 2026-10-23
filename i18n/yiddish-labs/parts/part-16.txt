@@ -1,0 +1,27 @@
+Translate each numbered line to Yiddish. Keep the [[number]] at the start of every line and keep every ⟦n⟧ exactly as it is.
+
+[[1]] Whatever your style, ⟦0⟧ automates the parts you don⟦1⟧t want to do by hand. Pick the profile that fits you best.
+[[2]] When two stocks drift apart, trade the gap.
+[[3]] Where do the ready-made strategies come from?
+[[4]] Which brokerages can I connect?
+[[5]] Who is ⟦0⟧ for?
+[[6]] Will I make money?
+[[7]] Works on any phone, no app to install
+[[8]] Years of daily data, costs, drawdowns, walk-forward checks and an optimizer.
+[[9]] Yes. Both can call a webhook ⟦0⟧. Use your ⟦1⟧ webhook ⟦2⟧ with the fields ⟦3⟧ticker⟦4⟧, ⟦5⟧action⟦6⟧ and ⟦7⟧quantity⟦8⟧.
+[[10]] Yes. Cancel from ⟦0⟧Manage billing⟦1⟧ in the app; you keep access until the end of the period you paid for. You can also export or delete all your data from Settings.
+[[11]] Yes. Choose ⟦0⟧Sign up with ⟦1⟧⟦2⟧ and your account is ready in seconds. You can add a password later in Settings.
+[[12]] Yes. Choose ייִדיש at the top of this page or in the app. The whole app switches to Yiddish, written right-to-left.
+[[13]] Yes. Create a webhook under ⟦0⟧Alerts to trades⟦1⟧, paste its ⟦2⟧ into the alert⟦3⟧s ⟦4⟧Webhook ⟦5⟧⟦6⟧ field, and use our message template. Strategy alerts can pass the direction and size with ⟦7⟧⟦8⟧}⟦9⟧ and ⟦10⟧⟦11⟧}⟦12⟧.
+[[14]] Yes. Place a bracket order (entry, stop-loss and take-profit) as good-till-canceled. The exit orders wait at your broker even while you are offline.
+[[15]] Yes. Webhooks can send each alert to several accounts at once (paper, ⟦0⟧, ⟦1⟧, ⟦2⟧, ⟦3⟧, ⟦4⟧), with the same risk rules.
+[[16]] You⟦0⟧re 3 minutes away from your first trade.
+[[17]] Your Pine Script strategy already knows when to buy and sell. ⟦0⟧ places those orders for you.
+[[18]] Your account, by text or phone call.
+[[19]] Your account, from any phone.
+[[20]] Your alert fires. The order goes out.
+[[21]] Your own brokerage accounts, connected in minutes.
+[[22]] Your strategy, executed
+[[23]] a strategy with a 922% a year backtest returned ⟦0⟧27% in its first three live months. Reality Check would have flagged it and cut it to cash.
+[[24]] how much is my account up this week?
+[[25]] put $200 into the ⟦0⟧ every month

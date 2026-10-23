@@ -1,0 +1,53 @@
+Translate each numbered line to Yiddish. Keep the [[number]] at the start of every line and keep every ⟦n⟧ exactly as it is.
+
+[[1]] Positions, orders, buying power and an equity chart that turns green or red with your P⟦0⟧L, on desktop and on your phone.
+[[2]] Practice with zero risk
+[[3]] Previous profile
+[[4]] Price alerts by text message
+[[5]] Pricing
+[[6]] Priority ⟦0⟧ ⟦1⟧ priority support
+[[7]] Product
+[[8]] Projections from real market history
+[[9]] ⟦0⟧ ⟦1⟧ projects and cloud backtests
+[[10]] ⟦0⟧ portfolio dashboard with equity chart, positions and order ticket
+[[11]] ⟦0⟧: automate your trading from one place
+[[12]] Quants ⟦0⟧ developers
+[[13]] Question topics
+[[14]] Ready-made strategies, ⟦0⟧ alerts, pairs trading and an ⟦1⟧ autopilot on your own brokerage account, with Reality Check watching every strategy. In English and Yiddish.
+[[15]] Ready-made strategies. Every number in your hands.
+[[16]] Reality Check tells you when a strategy stops working
+[[17]] Reality Check: know when a strategy stops working.
+[[18]] Realized P⟦0⟧L, wash-sale flags and Form 8949 export
+[[19]] Retail traders
+[[20]] Review my trades
+[[21]] Risk rules your code cannot bypass
+[[22]] Run Python algorithms on ⟦0⟧, backtest rules here, and send orders from any script or ⟦1⟧ agent.
+[[23]] ⟦0⟧ auto-invest on paper
+[[24]] ⟦0⟧ autopilot
+[[25]] Scanner for 20 classic pairs
+[[26]] Scanner for 20 classic pairs and bots that trade every day
+[[27]] Scheduled #12: buy $200 ⟦0⟧ monthly.
+[[28]] Secure checkout by ⟦0⟧. Cancel anytime. Trading involves risk; see the
+[[29]] See my accounts in one place
+[[30]] Send alerts straight to your own brokerage account
+[[31]] Send each alert or strategy to several accounts together: paper and live, or two different brokers, each with its own sizing.
+[[32]] Send orders to your broker from ⟦0⟧, ⟦1⟧ and ⟦2⟧.
+[[33]] Set it and walk away
+[[34]] Set my risk rules
+[[35]] Set up in 3 minutes
+[[36]] Set up your strategy. Send a signal. Orders go to every account you chose, inside your rules.
+[[37]] Seven ready-made rotation strategies, by hand or automatic, every rule editable.
+[[38]] Seven rotation strategies, built from a real trading spreadsheet. Every day ⟦0⟧ fills in the market numbers, walks the rules step by step and tells you exactly what to buy.
+[[39]] Seven strategies, ready to run.
+[[40]] Several brokers at once
+[[41]] Signal and strategy logs
+[[42]] Signals fire, orders execute, and fills, P⟦0⟧L and positions update in one place.
+[[43]] Simple pricing. Start free.
+[[44]] Size from the alert or a fixed amount
+[[45]] Sizing in shares or dollars
+[[46]] Start 14-day free trial
+[[47]] Start free
+[[48]] Start free with email
+[[49]] Start my ⟦0⟧ plan
+[[50]] Start on paper before going live
+[[51]] Start on paper, switch to live when you are ready

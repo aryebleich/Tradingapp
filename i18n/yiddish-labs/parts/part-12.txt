@@ -1,0 +1,45 @@
+Translate each numbered line to Yiddish. Keep the [[number]] at the start of every line and keep every ⟦n⟧ exactly as it is.
+
+[[1]] Every trading day we compare a strategy⟦0⟧s live result with its backtest. If they drift apart, you get a text or email, and with Auto-throttle on, the money that strategy trades is cut to 50% (Watch) or 0% (Drifting) until it recovers.
+[[2]] Example
+[[3]] Example conversation
+[[4]] Exits close the whole position
+[[5]] ⟦0⟧
+[[6]] Far below the backtest
+[[7]] Figures as recorded from ⟦0⟧ for one of the library strategies.
+[[8]] Filter your order history, see why a signal was rejected, and follow realized gains by tax lot.
+[[9]] Find pairs that move together, see when the gap between them is unusually wide, and let a pair bot trade it every day.
+[[10]] Five brokerages
+[[11]] Fractional shares from $1
+[[12]] Free on the paper account; real accounts with ⟦0⟧
+[[13]] Free version
+[[14]] From the first backtest to live orders on every account you own.
+[[15]] Gains by lot, wash-sale flags, an estimated tax bill and Form 8949 export.
+[[16]] Gap normal: close
+[[17]] Gap wide: buy A, sell B
+[[18]] Gap wide: sell A, buy B
+[[19]] Get reliable alert-to-broker automation without running servers or writing integrations.
+[[20]] Get started free
+[[21]] Gold-miner fade and ⟦0⟧ momentum tree
+[[22]] Good-till-canceled orders
+[[23]] Guardrails before every order.
+[[24]] Hedge ratio, cointegration test and half-life
+[[25]] Hierarchical decision-tree regime rotation
+[[26]] Holds one leveraged ⟦0⟧ at 100%
+[[27]] How does the free trial work?
+[[28]] How does the performance fee work?
+[[29]] How it works
+[[30]] Illustration with example values.
+[[31]] Illustrative paper-trading account
+[[32]] Invest in the ⟦0⟧
+[[33]] Invest on a schedule
+[[34]] Investing involves risk, including possible loss of principal. Backtests and projections are hypothetical, are built with the benefit of hindsight and do not guarantee future results. ⟦0⟧ is a software provider and is not a broker-dealer. Brokerage services are provided by your own broker (for example ⟦1⟧, member ⟦2⟧) under your own account agreement. Nothing on this site is an offer, solicitation or recommendation to buy or sell any security.
+[[35]] Investment plan
+[[36]] Is texting trades secure?
+[[37]] ⟦0⟧, or plain text like ⟦1⟧buy ⟦2⟧ 10⟦3⟧
+[[38]] Learn how strategies behave with $100,000 in paper money and honest numbers.
+[[39]] Learners
+[[40]] Limits are checked before anything is sent to your broker, and Reality Check cuts the money a strategy trades when it stops behaving like its backtest.
+[[41]] Link your brokerage in seconds, or start with the built-in paper account. Choose which accounts each strategy trades.
+[[42]] Live demo: test a strategy now
+[[43]] Live quotes and market news

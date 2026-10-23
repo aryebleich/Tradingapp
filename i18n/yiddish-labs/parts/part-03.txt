@@ -1,0 +1,116 @@
+Translate each numbered line to Yiddish. Keep the [[number]] at the start of every line and keep every ⟦n⟧ exactly as it is.
+
+[[1]] Running… (loading several years of prices for every ticker the rules use)
+[[2]] Edit rules
+[[3]] Change any number, indicator or ticker, then preview today's result or backtest before saving.
+[[4]] Preview today
+[[5]] Backtest these rules
+[[6]] Save rules
+[[7]] Back to original
+[[8]] Advanced: edit as ⟦0⟧
+[[9]] Apply ⟦0⟧
+[[10]] Turn into a comparison
+[[11]] Money for this strategy (% of account)
+[[12]] Cash kept aside (%)
+[[13]] Trailing stop (%)
+[[14]] Trade at (New York time)
+[[15]] Whole shares only
+[[16]] Save settings
+[[17]] Auto-throttle: trade 50% while on Watch, 0% while Drifting
+[[18]] Live days
+[[19]] Live return
+[[20]] Backtest expected
+[[21]] Win rate
+[[22]] Delete strategy
+[[23]] No runs yet.
+[[24]] Healthy
+[[25]] Watch
+[[26]] Drifting
+[[27]] Learning
+[[28]] Rebalance day:
+[[29]] New buys:
+[[30]] Exits:
+[[31]] Keep:
+[[32]] Predictions:
+[[33]] Stocks to rank (comma separated)
+[[34]] Stocks to scan
+[[35]] Predictions
+[[36]] I type them each month
+[[37]] Automatic (recent return)
+[[38]] Bitcoin ticker
+[[39]] Rebalance day
+[[40]] Predicted 21-day return %
+[[41]] Asset
+[[42]] Weight
+[[43]] Rank
+[[44]] Pullback
+[[45]] Z-score
+[[46]] win-rate weighted, 10%–70% each
+[[47]] Like the sheet's PORTFOLIO_SPLIT tab: strategies that win more often get more money. Win rates come from each strategy's live daily results.
+[[48]] Send an alert from ⟦0⟧, ⟦1⟧, ⟦2⟧, a script or an ⟦3⟧ agent. It becomes an order in the accounts you choose, inside your risk rules.
+[[49]] Create
+[[50]] a webhook with sizing and risk rules
+[[51]] Paste
+[[52]] its ⟦0⟧ into your alert
+[[53]] : every alert is executed and logged
+[[54]] New webhook
+[[55]] Edit webhook
+[[56]] Create webhook
+[[57]] Allowed tickers
+[[58]] (optional)
+[[59]] Send orders to
+[[60]] Order size
+[[61]] Fixed dollar amount
+[[62]] Fixed number of shares
+[[63]] Use the size in the alert
+[[64]] Risk rules
+[[65]] (leave empty for no limit)
+[[66]] Max position per ticker ($)
+[[67]] Max trades per day
+[[68]] No limit
+[[69]] Long only: sells never go below zero shares, and "exit" sells the whole position.
+[[70]] Copy ⟦0⟧
+[[71]] Send test signal
+[[72]] New ⟦0⟧
+[[73]] Alert message
+[[74]] Copy message
+[[75]] Send from a script, ⟦0⟧ or an ⟦1⟧ agent
+[[76]] Signal log
+[[77]] Webhook
+[[78]] test
+[[79]] Filled
+[[80]] Partly done
+[[81]] Rejected
+[[82]] See ⟦0⟧
+[[83]] No signals yet. Send a test signal from a webhook above.
+[[84]] Stock A
+[[85]] Stock B
+[[86]] Fit window (days)
+[[87]] z window (days)
+[[88]] Enter at |z| ≥
+[[89]] Exit at |z| ≤
+[[90]] Stop at |z| ≥
+[[91]] Max days in a trade
+[[92]] Analyze pair
+[[93]] Scan 20 popular pairs
+[[94]] Today's z-score
+[[95]] Hedge ratio (β)
+[[96]] Half-life
+[[97]] Correlation
+[[98]] Cointegration t-stat
+[[99]] Pair bots
+[[100]] Pair
+[[101]] Mode
+[[102]] Position
+[[103]] Last run
+[[104]] Run this pair automatically
+[[105]] Money for this pair ($)
+[[106]] Long only (no shorting)
+[[107]] Market-neutral (needs margin)
+[[108]] Popular pairs, strongest first
+[[109]] Cointegrated
+[[110]] Colored: market-neutral. Grey: long only.
+[[111]] z today
+[[112]] A pair bot checks its pair every trading day at 3:45 pm New York time and trades when the gap crosses your levels.
+[[113]] No pair bots yet. Analyze a pair, then start a bot from the result.
+[[114]] ⟦0⟧ today

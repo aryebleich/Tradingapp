@@ -1,0 +1,24 @@
+Translate each numbered line to Yiddish. Keep the [[number]] at the start of every line and keep every ⟦n⟧ exactly as it is.
+
+[[1]] Steps 1-3 are exactly as in the sheet. The sheet export did not include the rules for steps 4-12, so they are rebuilt from the well-known "⟦0⟧ For The Long Term" logic the sheet's step list matches. Check them against your code and adjust.
+[[2]] Gold-miner fade and ⟦0⟧ momentum tree · Every trading day
+[[3]] Starts with the ⟦0⟧ ⟦1⟧ exhaustion gate and the ⟦2⟧ 90-day vs 70-day momentum split, then a long tree of ⟦3⟧, trend and return checks across leveraged ⟦4⟧ and single stocks.
+[[4]] The sheet export only shows the rules for the steps on that day's path (steps 1, 2 and 4). The other ~105 steps have no thresholds in the export, so the walk stops with "needs a rule" when it reaches one. Send the ⟦0⟧ #687 code (or the sheet itself) to fill them in, or type them in the editor.
+[[5]] One stock: the strongest 12-month momentum · Weekly
+[[6]] Every Wednesday ranks 50 large ⟦0⟧ companies by their 252-day return and holds the single strongest one at 100%. The original code uses a 10% stop.
+[[7]] The sheet builds the list from price > $5, top 100 by dollar volume and top 50 by market cap. Here the list is the sheet's current top 50 and you can edit it.
+[[8]] Buy the dip in an uptrend, sell the bounce · Every trading day
+[[9]] Buys top ⟦0⟧-100 stocks in a long-term uptrend that dipped below the lower ⟦1⟧ band with weak ⟦2⟧ and a real pullback. Sells on the bounce back to the 15-day average, a break of the 200-day average, or after 15 days. Equal weight, up to 10 stocks.
+[[10]] Stocks, gold, bonds and ⟦0⟧ by predicted return · Monthly
+[[11]] Once a month, weights ⟦0⟧, ⟦1⟧, ⟦2⟧ and ⟦3⟧ (⟦4⟧) by their predicted 21-day return. Only positive predictions get money, ⟦5⟧ is capped, and the total never exceeds 100% (no margin).
+[[12]] In the sheet you type the model's 4 predictions each month. Here you can keep typing them (manual), or let the app use each asset's recent 3-month return as a simple stand-in (automatic).
+[[13]] Dollars per order
+[[14]] In ⟦0⟧: create an alert, turn on
+[[15]] and paste your ⟦0⟧, then use one of these as the message. Accepted actions are
+[[16]] ; size with
+[[17]] ⟦0⟧ strategy
+[[18]] ⟦0⟧ alert (buy)
+[[19]] Exit a position
+[[20]] Plain text
+[[21]] ⟦0⟧ trend strategy
+[[22]] Two stocks that usually move together. When the gap between them stretches far from normal, sell the expensive one and buy the cheap one, then close when the gap returns.

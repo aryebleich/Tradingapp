@@ -1,0 +1,101 @@
+Translate each numbered line to Yiddish. Keep the [[number]] at the start of every line and keep every ⟦n⟧ exactly as it is.
+
+[[1]] Trail %
+[[2]] Allow pre-market & after-hours (Day orders)
+[[3]] Estimated cost
+[[4]] Cancel all open
+[[5]] Close all positions
+[[6]] Modify
+[[7]] Submitted
+[[8]] Filter
+[[9]] Every open order on this account will be cancelled.
+[[10]] Market orders will be sent to close every position, and open orders will be cancelled.
+[[11]] This is a ⟦0⟧ order with real money.
+[[12]] This sends a real order with real money.
+[[13]] Empty. Add a symbol above.
+[[14]] New watchlist name
+[[15]] No watchlists yet. Create one above.
+[[16]] Add symbol (⟦0⟧, ⟦1⟧)
+[[17]] Calls
+[[18]] Puts
+[[19]] Strike
+[[20]] Expiration
+[[21]] Underlying
+[[22]] Order builder
+[[23]] Click a bid or ask in the chain to add a leg.
+[[24]] Options can expire worthless. Max loss on long options is the premium paid.
+[[25]] Corporate actions
+[[26]] Trading days (next 30 days)
+[[27]] No announcements in this window.
+[[28]] Days not listed are market holidays or weekends. Times are New York time.
+[[29]] Open a brokerage account
+[[30]] Connect an existing ⟦0⟧ account
+[[31]] Connect with ⟦0⟧
+[[32]] Use ⟦0⟧ keys
+[[33]] Save keys
+[[34]] ⟦0⟧ key ⟦1⟧
+[[35]] Secret key
+[[36]] These are live (real money) keys
+[[37]] Your ⟦0⟧ account is connected.
+[[38]] Your account is active. You can fund it and start trading.
+[[39]] Link a bank account
+[[40]] Link bank
+[[41]] No bank linked yet.
+[[42]] Deposit to brokerage
+[[43]] Withdraw to bank
+[[44]] Transfers
+[[45]] No transfers yet
+[[46]] Submit transfer
+[[47]] Routing number
+[[48]] Account number
+[[49]] Account holder name
+[[50]] Nickname
+[[51]] First name
+[[52]] Middle name
+[[53]] Last name
+[[54]] Date of birth
+[[55]] Social Security number
+[[56]] Street address
+[[57]] Apt / unit
+[[58]] City
+[[59]] State
+[[60]] ⟦0⟧ code
+[[61]] Mobile phone
+[[62]] Employer
+[[63]] Takes about 3 minutes. Accounts are held by ⟦0⟧, member ⟦1⟧.
+[[64]] Required by law to verify your identity (⟦0⟧). Your ⟦1⟧ is sent securely to ⟦2⟧ and is not stored by ⟦3⟧.
+[[65]] Sign in at ⟦0⟧ and approve access. We never see your ⟦1⟧ password.
+[[66]] My strategies
+[[67]] Library
+[[68]] Use this strategy
+[[69]] Portfolio split
+[[70]] Use these allocations
+[[71]] Runs
+[[72]] Money
+[[73]] Last result
+[[74]] Reality Check
+[[75]] Backtest, 5 years
+[[76]] Worst drop
+[[77]] Live, last 3 months
+[[78]] Live results so far are far below the backtest
+[[79]] No ⟦0⟧ figures in the sheet. Run the backtest to see how it behaved.
+[[80]] Backtests are hypothetical and leveraged ⟦0⟧ can lose most of their value quickly. Results shown are not a promise of future returns.
+[[81]] Today's walkdown
+[[82]] Orders go to:
+[[83]] 2nd value
+[[84]] Needs a rule
+[[85]] Not spelled out in the sheet export
+[[86]] check
+[[87]] Clear typed values
+[[88]] No position today: stay in cash.
+[[89]] Target $
+[[90]] Target shares
+[[91]] Held
+[[92]] Order
+[[93]] Stop column: suggested trailing stop ≈ 3.5 × the ticker's daily volatility (6%–35%), as in the sheet's STOP_LOSS tab.
+[[94]] Run backtest
+[[95]] Return per year
+[[96]] ⟦0⟧ per year
+[[97]] ⟦0⟧
+[[98]] Total return
+[[99]] Switches

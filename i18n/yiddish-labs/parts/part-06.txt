@@ -1,0 +1,78 @@
+Translate each numbered line to Yiddish. Keep the [[number]] at the start of every line and keep every ⟦n⟧ exactly as it is.
+
+[[1]] Your agreement is recorded with the time you submit and your ⟦0⟧ address, as ⟦1⟧ requires.
+[[2]] Optional: adding a photo of your ⟦0⟧ now can speed up approval. You can also upload later if ⟦1⟧ asks for it.
+[[3]] Document
+[[4]] File (⟦0⟧, ⟦1⟧ or ⟦2⟧, up to 5 ⟦3⟧)
+[[5]] File
+[[6]] Passport
+[[7]] Driver's license
+[[8]] National ⟦0⟧ card
+[[9]] State ⟦0⟧
+[[10]] Review
+[[11]] Address
+[[12]] Email / phone
+[[13]] None apply
+[[14]] Submit application
+[[15]] Submit application?
+[[16]] Submit
+[[17]] Your information will be sent to ⟦0⟧ for identity verification.
+[[18]] Application under review
+[[19]] Account approved! Ready to trade
+[[20]] Action required: upload documents
+[[21]] Pending manual review
+[[22]] Application rejected
+[[23]] Submission failed
+[[24]] Account disabled
+[[25]] Account closed
+[[26]] ⟦0⟧ is verifying your identity. Most applications are decided within minutes.
+[[27]] ⟦0⟧ is switching the account on. This usually takes a few minutes.
+[[28]] Fund your account by linking a bank below, then place your first trade.
+[[29]] ⟦0⟧ needs more documents to verify your identity. Upload a passport or driver's license below.
+[[30]] A compliance officer at ⟦0⟧ is reviewing your application. This can take up to 1 business day.
+[[31]] ⟦0⟧ could not approve this application. Contact support if you think this is a mistake.
+[[32]] Contact support
+[[33]] Under review
+[[34]] Approved
+[[35]] Active
+[[36]] Live: this page updates the moment ⟦0⟧ decides.
+[[37]] This page checks for updates automatically.
+[[38]] Upload documents
+[[39]] Upload
+[[40]] A clear photo or scan of a government ⟦0⟧. ⟦1⟧, ⟦2⟧ or ⟦3⟧, up to 5 ⟦4⟧ each.
+[[41]] Account details
+[[42]] Crypto
+[[43]] Enabled assets
+[[44]] Opened
+[[45]] Application history
+[[46]] No updates yet
+[[47]] ⟦0⟧ event
+[[48]] Application sent
+[[49]] Status check
+[[50]] Update contact details
+[[51]] 1. Create your ⟦0⟧ login
+[[52]] Continue to application
+[[53]] Already have a login?
+[[54]] Commission-free ⟦0⟧ stocks and ⟦1⟧, plus options and crypto, at ⟦2⟧ (member ⟦3⟧). Apply in about 3 minutes, all from ⟦4⟧.
+[[55]] Choose a file to upload
+[[56]] , then open Account → ⟦0⟧ account.
+[[57]] Get started
+[[58]] Hide
+[[59]] Try a ready-made strategy
+[[60]] Turn on two-factor login
+[[61]] Place your first paper trade
+[[62]] Add your phone and ⟦0⟧ for ⟦1⟧
+[[63]] Backtest a strategy
+[[64]] or Dollars
+[[65]] Quote
+[[66]] Source
+[[67]] · New here?
+[[68]] Stocks
+[[69]] Your equity curve starts filling in after the first trading day.
+[[70]] Connect a brokerage account to start
+[[71]] Open a new ⟦0⟧ brokerage account, connect your existing ⟦1⟧ account, or use ⟦2⟧ keys. Everything starts in the paper / sandbox environment.
+[[72]] Set up brokerage
+[[73]] Could not reach ⟦0⟧. Please try again.
+[[74]] Filter: ⟦0⟧, ⟦1⟧, ⟦2⟧
+[[75]] Nothing connected yet. Choose one of the options below.
+[[76]] ⟦0⟧ is not configured on this server yet.

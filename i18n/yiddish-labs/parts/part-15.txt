@@ -1,0 +1,43 @@
+Translate each numbered line to Yiddish. Keep the [[number]] at the start of every line and keep every ⟦n⟧ exactly as it is.
+
+[[1]] Stocks, ⟦0⟧, options and crypto through your own brokerage account. Ready-made strategies, ⟦1⟧ alerts, pairs trading and an ⟦2⟧ plan: test them, paper trade them and automate them on one platform.
+[[2]] Stocks, gold, bonds and ⟦0⟧ by predicted return
+[[3]] Stop-loss and take-profit placed with the entry
+[[4]] Swing traders
+[[5]] Switch accounts with one tap
+[[6]] Tax center
+[[7]] Terms of Service
+[[8]] Test everything with $100,000 in paper money before risking real money.
+[[9]] Text ⟦0⟧ to stop all automation
+[[10]] Text ⟦0⟧ to stop all automation at once
+[[11]] Text or call ⟦0⟧ and say what you need in plain words. The ⟦1⟧ assistant answers questions and turns requests into orders; every trade needs your ⟦2⟧.
+[[12]] Text or call one number; ask questions or trade in plain words.
+[[13]] Text or call us:
+[[14]] The 500 largest ⟦0⟧ companies in one fund. Pick an amount and a day: ⟦1⟧ buys it for you every month, in dollars, so every dollar is invested.
+[[15]] The ⟦0⟧ has averaged roughly 10% a year since 1957 with dividends reinvested, but some years fell more than 35%. Examples, not a promise.
+[[16]] The ⟦0⟧, on autopilot.
+[[17]] The whole app and this site in English or Yiddish, right-to-left.
+[[18]] They are rotation strategies from a trading spreadsheet that tracks ⟦0⟧ backtests. We show each backtest next to its live results, and Reality Check keeps watching them for you. A great backtest is not a promise: several of them did much worse live.
+[[19]] To do that, reply: ⟦0⟧ $200 ⟦1⟧ ⟦2⟧ ⟦3⟧your ⟦4⟧;
+[[20]] Trade a pair of stocks
+[[21]] Trade all my accounts at once
+[[22]] Trade by text ⟦0⟧ phone with the ⟦1⟧ assistant
+[[23]] Trade by text or phone
+[[24]] Trader profiles
+[[25]] ⟦0⟧ alerts
+[[26]] ⟦0⟧ strategy and indicator alerts
+[[27]] ⟦0⟧ users
+[[28]] Trailing stops sized to each ticker
+[[29]] Turn alerts and strategies into trades on your own brokerage account, from your browser, your phone, or a text message.
+[[30]] Turn my alert into a trade
+[[31]] Two stocks that usually move together, like ⟦0⟧ and Pepsi. When the gap between them stretches far from normal, sell the expensive one and buy the cheap one, then close when the gap returns.
+[[32]] Type your own values, like in a spreadsheet
+[[33]] ⟦0⟧, ⟦1⟧, ⟦2⟧ or ⟦3⟧
+[[34]] ⟦0⟧, ⟦1⟧, ⟦2⟧ or ⟦3⟧, with their yearly costs shown
+[[35]] Walk-forward backtest: market-neutral or long-only
+[[36]] Weaker than expected
+[[37]] Webhooks from any language, any tool
+[[38]] What could it grow to?
+[[39]] What do you want to do?
+[[40]] What is Reality Check?
+[[41]] What you get
