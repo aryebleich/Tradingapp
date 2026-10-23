@@ -1,5 +1,6 @@
 // Alpaca trading pages: brokerage account & KYC, portfolio, trade ticket, orders, positions,
 // markets & news, option chains, watchlists, calendar & corporate actions.
+import { canvasNote } from './i18n.js';
 let H; // helpers from app.js
 
 export function registerTrading(routes, helpers) {
@@ -74,7 +75,7 @@ function drawCandles(canvas, bars, tipEl) {
   canvas.width = w * dpr; canvas.height = h * dpr;
   const g = canvas.getContext('2d'); g.scale(dpr, dpr);
   const css = getComputedStyle(document.documentElement), C = k => css.getPropertyValue(k).trim();
-  if (!bars.length) { g.fillStyle = C('--mu'); g.font = '14px system-ui'; g.fillText('No price data for this range.', 12, 28); return; }
+  if (!bars.length) { g.fillStyle = C('--mu'); canvasNote(g, 'No price data for this range.'); return; }
   const volH = h * 0.18, ph = h - volH - 16, padR = 56;
   let lo = Math.min(...bars.map(b => b.l)), hi = Math.max(...bars.map(b => b.h)); if (hi === lo) { hi += 1; lo -= 1; }
   const vmax = Math.max(...bars.map(b => b.v || 0)) || 1, cw = (w - padR) / bars.length;

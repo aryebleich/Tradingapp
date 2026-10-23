@@ -109,7 +109,7 @@ NOTFOUND = '''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta n
 
 files = {
  'index.html': index('en'),
- 'yi.html': index('yi'),
+ 'yi.html': index('yi').replace('&rarr;', '&larr;'),
  'terms.html': doc('Terms of Service', 'The terms that govern your use of QuantPocket.', TERMS),
  'privacy.html': doc('Privacy Policy', 'What QuantPocket collects, why, and your choices.', PRIVACY),
  'risk.html': doc('Risk Disclosure', 'Important information about trading risk, backtests and automation.', RISK),

@@ -1,5 +1,12 @@
 # Yiddish for the homepage (scripts/home.py). Keys are the exact English strings.
 YI = {
+ "TradingView alert": "TradingView אלערט",
+ "Risk rules passed": "ריזיקע כללים דורכגעגאנגען",
+ "max $5,000 per ticker &middot; 3 of 10 trades today": "מאקס $5,000 פער טיקער &middot; 3 פון 10 טרעידס היינט",
+ "Paper:": "פּעיפּער:",
+ "filled": "אויסגעפירט",
+ "accepted": "אנגענומען",
+ "Equity curve": "ווערט-ליניע",
  "Open a brokerage account": "עפנט א בראוקער קאנטע",
  "Commission-free, held at Alpaca Securities LLC (FINRA/SIPC)": "אן קאמישאן, געהאלטן ביי Alpaca Securities LLC (FINRA/SIPC)",
  "$100,000 paper account": "$100,000 פּעיפּער קאנטע",

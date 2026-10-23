@@ -32,7 +32,7 @@ def layout(title, desc, body, lang='en', home='index.html'):
 <meta property="og:description" content="{html.escape(desc)}">
 <meta property="og:image" content="og.png">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Hebrew:wght@400;500;600;700;800&display=swap">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Rubik:wght@400;500;600;700;800&family=Noto+Sans+Hebrew:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="site.css">
 <script src="config.js"></script>
 <script type="module" src="site.js"></script>
@@ -276,14 +276,14 @@ def index(lang='en'):
       <li><b>{T('Send')}</b><span>{T('Signals fire, orders execute, and fills, P&amp;L and positions update in one place.')}</span></li>
     </ol>
     <div class="term" dir="ltr">
-      <div class="bar"><i></i><i></i><i></i><span>TradingView alert &rarr; QuantPocket</span></div>
+      <div class="bar"><i></i><i></i><i></i><span>{T('TradingView alert')} &rarr; QuantPocket</span></div>
 <pre><span class="k">POST</span> /hook/&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;
 {{
   <span class="s">"ticker"</span>: <span class="v">"NASDAQ:AAPL"</span>,
   <span class="s">"action"</span>: <span class="v">"buy"</span>,
   <span class="s">"quantity"</span>: <span class="v">10</span>
 }}</pre>
-      <div class="res"><div><i></i>Risk rules passed <em>max $5,000 per ticker &middot; 3 of 10 trades today</em></div><div><i></i>Paper: <b>BUY 10 AAPL</b> filled</div><div><i></i>Schwab: <b>BUY 10 AAPL</b> accepted</div></div>
+      <div class="res"><div><i></i>{T('Risk rules passed')} <em>{T('max $5,000 per ticker &middot; 3 of 10 trades today')}</em></div><div><i></i>{T('Paper:')} <b>BUY 10 AAPL</b> {T('filled')}</div><div><i></i>Schwab: <b>BUY 10 AAPL</b> {T('accepted')}</div></div>
       <p class="figcap">{T('Illustration with example values.')}</p>
     </div>
   </div>
@@ -366,7 +366,7 @@ def index(lang='en'):
       <p class="mu" style="font-size:13px" id="demoSrc"></p>
     </form>
     <div dir="ltr">
-      <canvas id="demoChart" aria-label="Equity curve"></canvas>
+      <canvas id="demoChart" aria-label="{T('Equity curve')}"></canvas>
       <div class="stats" id="demoStats"></div>
     </div>
   </div>

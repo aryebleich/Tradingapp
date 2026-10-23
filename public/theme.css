@@ -242,7 +242,7 @@ table.walk td:last-child { min-width: 140px; }
 /* language picker + right-to-left (Yiddish) */
 .langsel { width: auto; margin: 0; padding: 7px 10px; font-size: 14px; border-radius: var(--r-sm); background: var(--card); }
 .authlang { display: flex; justify-content: center; margin-top: 10px; }
-html[dir="rtl"] body { font-family: "Noto Sans Hebrew", Inter, system-ui, sans-serif; letter-spacing: 0; }
+html[dir="rtl"] body { font-family: Rubik, "Noto Sans Hebrew", Inter, system-ui, sans-serif; letter-spacing: 0; }
 html[dir="rtl"] .plan li { padding: 5px 26px 5px 0; } html[dir="rtl"] .plan li::before { left: auto; right: 2px; }
 html[dir="rtl"] #nav a { flex-direction: row; }
 html[dir="rtl"] .stat b, html[dir="rtl"] td, html[dir="rtl"] input[type=number] { unicode-bidi: plaintext; }
@@ -280,3 +280,49 @@ html[dir="rtl"] .timeline li::before { left: auto; right: -6px; }
 /* Five steps do not fit with labels on a phone; the "Step 2 of 5: Identity" line names the step. */
 .steps div { min-width: 0; }
 @media (max-width: 480px) { #onb .steps div { font-size: 0; padding-top: 24px; } }
+
+/* ---------- v3: a calmer, more modern surface ---------- */
+:root { --r: 16px; --r-sm: 11px; }
+body { background: radial-gradient(1100px 420px at 85% -120px, color-mix(in srgb, var(--ac) 9%, transparent), transparent 70%) no-repeat, var(--bg); }
+h1 { font-size: 28px; letter-spacing: -0.025em; }
+.card { box-shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 8px 24px -12px rgba(16, 24, 40, .10); }
+.card > h2:first-child { margin-top: 0; }
+
+/* header brand stays one piece, in either reading direction */
+.brand { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; direction: ltr; }
+.brand img { display: block; border-radius: 7px; }
+
+/* stat tiles: light surface, quiet label, strong number */
+.stat { background: var(--card); border: 1px solid var(--bd); box-shadow: none; padding: 14px 16px; }
+.stat span { text-transform: uppercase; font-size: 11px; letter-spacing: .06em; font-weight: 600; color: var(--mu); }
+html[dir="rtl"] .stat span { text-transform: none; letter-spacing: 0; font-size: 13px; }
+.stat b { font-size: 22px; }
+
+/* sidebar: active item gets an accent bar on the reading-start side */
+#nav a { position: relative; transition: background .15s, color .15s; }
+#nav a:hover:not(.on):not(.upsell) { background: var(--bg2); }
+#nav a.on::before { content: ''; position: absolute; inset-inline-start: -12px; top: 8px; bottom: 8px; width: 3px; border-radius: 3px; background: var(--grad); }
+
+/* "Get started" checklist with progress */
+.onboard { padding: 20px; }
+.ob-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.ob-head h2 { margin: 0 0 2px; font-size: 18px; }
+.ob-head p { margin: 0; font-size: 13px; }
+.ob-bar { height: 6px; border-radius: 6px; background: var(--bg2); margin: 14px 0 10px; overflow: hidden; }
+.ob-bar i { display: block; height: 100%; border-radius: 6px; background: var(--grad); }
+.ob-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 8px; }
+.ob-item { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border: 1px solid var(--bd); border-radius: var(--r-sm); color: var(--tx); text-decoration: none; font-weight: 550; font-size: 14.5px; transition: border-color .15s, background .15s, transform .15s; }
+.ob-item:hover { border-color: color-mix(in srgb, var(--ac) 45%, var(--bd)); background: var(--acs); }
+.ob-check { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--bd); flex-shrink: 0; }
+.ob-item.done { color: var(--mu); }
+.ob-item.done .ob-t { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--mu) 60%, transparent); }
+.ob-item.done .ob-check { border-color: var(--gr); background: var(--gr) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.5l2.5 2.5L12 5.5' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E") center/14px no-repeat; }
+.ob-t { flex: 1; }
+.ob-go { color: var(--mu); }
+.ob-item:hover .ob-go { color: var(--ac); }
+
+/* Yiddish: Rubik reads cleaner at small sizes with a touch more line height */
+html[dir="rtl"] body { line-height: 1.6; }
+html[dir="rtl"] h1, html[dir="rtl"] h2 { letter-spacing: 0; }
+html[dir="rtl"] .seg button, html[dir="rtl"] button { letter-spacing: 0; }
+@media (max-width: 360px) { .brand b { display: none; } }

@@ -13,7 +13,8 @@
     "test": "node --import ./test/setup.js --test test/*.test.js",
     "e2e": "node test/e2e/run.mjs",
     "yiddish:export": "node scripts/yiddish-labs.mjs export",
-    "yiddish:import": "node scripts/yiddish-labs.mjs import"
+    "yiddish:import": "node scripts/yiddish-labs.mjs import",
+    "yiddish:translate": "node scripts/yiddish-labs.mjs translate"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",

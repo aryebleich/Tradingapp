@@ -5,7 +5,7 @@ import { registerStrategies } from './strategies.js';
 import { registerPairs } from './pairs.js';
 import { registerSp500 } from './sp500.js';
 import { registerBrokers } from './brokers.js';
-import { startI18n, picker, setLang } from './i18n.js';
+import { startI18n, picker, setLang, canvasNote } from './i18n.js';
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -63,7 +63,7 @@ function drawChart(canvas, series, { base, compare } = {}) {
   canvas.width = w * dpr; canvas.height = h * dpr;
   const g = canvas.getContext('2d'); g.scale(dpr, dpr);
   const css = getComputedStyle(document.documentElement), C = k => css.getPropertyValue(k).trim();
-  if (series.length < 2) { g.fillStyle = C('--mu'); g.font = '14px system-ui'; g.fillText('Your equity curve starts filling in after the first trading day.', 12, 28); return; }
+  if (series.length < 2) { g.fillStyle = C('--mu'); canvasNote(g, 'Your equity curve starts filling in after the first trading day.'); return; }
   base ??= series[0];
   const all = [...series, ...(compare || []), base];
   let lo = Math.min(...all), hi = Math.max(...all); if (hi === lo) { hi += 1; lo -= 1; }
@@ -140,6 +140,17 @@ const ICONS = {
 const icon = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k] || ''}</svg>`;
 const isPaid = u => u && (u.role === 'admin' || (['pro', 'elite'].includes(u.plan) && ['active', 'trialing', null, undefined].includes(u.planStatus)));
 const routes = {};
+// Readable names for the security log.
+const EVENT_LABELS = {
+  register: 'Account created', login: 'Signed in', login_failed: 'Failed sign-in', mfa_failed: 'Wrong two-factor code', password_changed: 'Password changed',
+  password_reset: 'Password reset', password_reset_requested: 'Password reset requested', email_verified: 'Email verified', phone_verified: 'Phone verified',
+  totp_enabled: 'Two-factor login turned on', totp_disabled: 'Two-factor login turned off', google_linked: 'Google sign-in linked', account_deleted: 'Account deleted',
+  alpaca_connected: 'Alpaca keys connected', alpaca_oauth_connected: 'Alpaca connected', brokerage_connected: 'Brokerage connected', brokerage_disconnected: 'Brokerage disconnected',
+  broker_account_created: 'Brokerage application sent', broker_account_updated: 'Brokerage contact details changed', broker_documents_uploaded: 'Identity documents uploaded',
+  ach_linked: 'Bank account linked', transfer: 'Bank transfer', order: 'Order', alpaca_order: 'Order', alpaca_order_replaced: 'Order changed', alpaca_cancel_all: 'All orders cancelled',
+  position_closed: 'Position closed', positions_closed_all: 'All positions closed', account_config: 'Account settings changed', checkout_started: 'Checkout started',
+  sms_command: 'Text command', hotline_command: 'Phone command', hotline_ai: 'Phone AI request', hotline_pin_failed: 'Wrong phone PIN', ledger_update: 'Balance update',
+};
 // Live streams and timers belong to the page that opened them; they stop on navigation.
 const cleanups = [];
 const onLeave = fn => cleanups.push(fn);
@@ -228,7 +239,7 @@ async function googleButton(label) {
 routes.login = async (view, q) => {
   const g = await googleButton('Continue with Google');
   view.innerHTML = `
-  <div class="hero"><h1>Quant<span style="color:var(--ac)">Pocket</span></h1><p class="mu">Backtest, paper trade and automate stock strategies. Connect Alpaca and QuantConnect, trade by text or phone.</p></div>
+  <div class="hero"><h1 data-no-tr>Quant<span style="color:var(--ac)">Pocket</span></h1><p class="mu">Backtest, paper trade and automate stock strategies. Connect Alpaca and QuantConnect, trade by text or phone.</p></div>
   <form class="card auth"><h2>Sign in</h2>${g}
     <label>Email<input name="email" type="email" autocomplete="username" required></label>
     <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
@@ -301,8 +312,9 @@ routes.dashboard = async (view, q) => {
     [ME.phoneVerified && ME.hasPin, 'Add your phone and PIN for SMS', '#/settings'], [!!sessionStorage.getItem('qp_strategy'), 'Backtest a strategy', '#/backtest']];
   const todo = steps.filter(x => !x[0]).length > 1 && !localStorage.getItem('qp_onboard_done');
   view.innerHTML = `
-  ${todo ? `<div class="card"><div class="row" style="justify-content:space-between"><h2>Get started</h2><button class="ghost small" id="hideOnboard">Hide</button></div>
-    ${steps.map(([done, t, href]) => `<p style="margin:6px 0">${done ? '✅' : '⬜'} <a href="${href}">${t}</a></p>`).join('')}</div>` : ''}
+  ${todo ? `<div class="card onboard"><div class="ob-head"><div><h2>Get started</h2><p class="mu">${steps.filter(x => x[0]).length} of ${steps.length} done</p></div><button class="ghost small" id="hideOnboard">Hide</button></div>
+    <div class="ob-bar"><i style="width:${Math.round(steps.filter(x => x[0]).length / steps.length * 100)}%"></i></div>
+    <div class="ob-list">${steps.map(([done, t, href]) => `<a class="ob-item${done ? ' done' : ''}" href="${href}"><span class="ob-check" aria-hidden="true"></span><span class="ob-t">${t}</span><span class="ob-go" aria-hidden="true">→</span></a>`).join('')}</div></div>` : ''}
   <div class="row" style="justify-content:space-between"><h1>Portfolio ${a.live ? '<span class="pill warn">LIVE MONEY</span>' : state.account === 'alpaca' ? '<span class="pill">Alpaca paper</span>' : '<span class="pill">Simulated</span>'}</h1>${accountSwitch()}</div>
   <div class="card">
     <div class="stats">
@@ -697,8 +709,8 @@ routes.settings = async view => {
   <div class="card"><h2>Your data</h2><p class="mu">Download everything we store about you, or permanently delete your account.</p>
     <a href="/api/auth/export"><button type="button" class="ghost">Download my data</button></a>
     <label>${confirmLabel('delete your account')}<input type="${confirmType}" id="delpw" autocomplete="${pw ? 'current-password' : 'off'}"></label><button class="danger" id="delacct">Delete my account</button><div class="err"></div></div>
-  <div class="card tablewrap"><h2>Active sessions</h2><table><tr><th>IP address</th><th>Device</th><th>Signed in</th><th></th></tr>${sessions.map(s => `<tr><td>${esc(s.ip)}</td><td>${esc(s.ua.slice(0, 60))}</td><td>${date(s.createdAt)}</td><td>${s.current ? '<span class="pill">this device</span>' : `<button class="small ghost" data-s="${s.id}">Sign out</button>`}</td></tr>`).join('')}</table></div>
-  <div class="card tablewrap"><h2>Security log</h2><table><tr><th>When</th><th>Event</th><th>IP address</th></tr>${log.map(l => `<tr><td>${date(l.at)}</td><td>${esc(l.event)}</td><td>${esc(l.ip || '')}</td></tr>`).join('')}</table></div>`;
+  <div class="card tablewrap"><h2>Active sessions</h2><table><tr><th>IP address</th><th>Device</th><th>Signed in</th><th></th></tr>${sessions.map(s => `<tr><td>${esc(s.ip)}</td><td data-no-tr>${esc(s.ua.slice(0, 60))}</td><td>${date(s.createdAt)}</td><td>${s.current ? '<span class="pill">this device</span>' : `<button class="small ghost" data-s="${s.id}">Sign out</button>`}</td></tr>`).join('')}</table></div>
+  <div class="card tablewrap"><h2>Security log</h2><table><tr><th>When</th><th>Event</th><th>IP address</th></tr>${log.map(l => `<tr><td>${date(l.at)}</td><td>${esc(EVENT_LABELS[l.event] || l.event.replace(/_/g, ' '))}</td><td>${esc(l.ip || '')}</td></tr>`).join('')}</table></div>`;
   const refreshMe = async () => { ME = (await api('/auth/me')).user; };
   act($('button', $('#qcf', view)), async () => { await api('/integrations/quantconnect', { body: form($('#qcf', view)) }); setTimeout(render, 800); return 'Connected'; });
   $$('[data-dis]', view).forEach(b => (b.onclick = async () => { await api('/integrations/' + b.dataset.dis, { method: 'DELETE' }); render(); }));

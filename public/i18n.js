@@ -13,13 +13,16 @@ let dict = null, patterns = [], obs = null;
 const ATTRS = ['placeholder', 'title', 'aria-label'];
 const SKIP = new Set(['SCRIPT', 'STYLE', 'PRE', 'CODE', 'TEXTAREA', 'CANVAS', 'svg']);
 
+let rtl = false;
 function tr(s) {
   const t = s.trim();
-  if (!t || !/[A-Za-z]/.test(t)) return null;
+  if (!t) return null;
+  // Arrows show reading direction, so they flip in right-to-left languages.
+  if (!/[A-Za-z]/.test(t)) return rtl && /[→⟶]/.test(t) ? s.replace(/→/g, '←').replace(/⟶/g, '⟵') : null;
   const key = t.replace(/\s+/g, ' '), hit = dict[key];
   if (hit) return s.replace(t, hit);
   for (const [re, rep] of patterns) if (re.test(key)) return s.replace(t, key.replace(re, rep));
-  return null;
+  return rtl && t.includes('→') ? s.replace(/→/g, '←') : null;
 }
 function translate(root) {
   if (!dict || !root) return;
@@ -41,7 +44,7 @@ export async function startI18n() {
   document.documentElement.dir = meta.dir;
   if (!meta.load) return;
   const m = await meta.load();
-  dict = m.strings; patterns = m.patterns || [];
+  dict = m.strings; patterns = m.patterns || []; rtl = meta.dir === 'rtl';
   translate(document.body);
   obs = new MutationObserver(list => {
     for (const r of list) {
@@ -56,6 +59,13 @@ export async function startI18n() {
 
 // A translated message from code (alerts, confirms).
 export const t = s => (dict && tr(s)) || s;
+
+// A one-line message drawn on a chart canvas, which the page translation cannot reach.
+export function canvasNote(g, text) {
+  g.font = '14px ' + getComputedStyle(document.body).fontFamily;
+  if (rtl) { g.direction = 'rtl'; g.textAlign = 'right'; g.fillText(t(text), g.canvas.width / (devicePixelRatio || 1) - 12, 28); }
+  else g.fillText(t(text), 12, 28);
+}
 
 export function setLang(l) {
   try { localStorage.setItem(KEY, l); } catch {}

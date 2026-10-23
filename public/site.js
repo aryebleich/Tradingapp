@@ -50,6 +50,14 @@ function synthetic(symbol) {
   return p;
 }
 
+// The demo writes its own labels; on the Yiddish page they come from here.
+const DEMO_YI = {
+  'Strategy return': 'סטראטעגיע רעזולטאט', 'Buy & hold': 'קויפן און האלטן', 'Max drawdown': 'גרעסטער אראפגאנג', 'Sharpe': 'Sharpe',
+  'Typical year (projected)': 'א טיפישער יאר (פראיעקטירט)', 'Chance of a losing year': 'שאנס פון א פארלוסט יאר',
+  'Simulated prices (live data unavailable). Grey line: buy & hold.': 'סימולירטע פרייזן (לייוו דאטן נישט צו באקומען). גרויע ליניע: קויפן און האלטן.',
+  '{s} daily data since 2015. Grey line: buy & hold. Hypothetical results.': '{s} טעגליכע דאטן זינט 2015. גרויע ליניע: קויפן און האלטן. היפאטעטישע רעזולטאטן.',
+};
+const L = s => (document.documentElement.lang === 'yi' && DEMO_YI[s]) || s;
 async function runDemo(e) {
   e?.preventDefault();
   const f = new FormData($('#demoForm')), symbol = String(f.get('symbol') || 'SPY').toUpperCase(), preset = f.get('preset');
@@ -70,8 +78,8 @@ async function runDemo(e) {
     ['Strategy return', `<b class="${cls(m.ret)}">${pct(m.ret)}</b>`], ['Buy & hold', `<b class="${cls(m.bh)}">${pct(m.bh)}</b>`],
     ['Max drawdown', `<b class="neg">-${m.dd.toFixed(1)}%</b>`], ['Sharpe', `<b>${isFinite(m.sharpe) ? m.sharpe.toFixed(2) : '-'}</b>`],
     ['Typical year (projected)', `<b class="${cls(p.median)}">${pct(p.median)}</b>`], ['Chance of a losing year', `<b>${isFinite(p.probLoss) ? p.probLoss.toFixed(0) + '%' : '-'}</b>`],
-  ].map(([k, v]) => `<div class="stat"><span>${k}</span>${v}</div>`).join('');
-  $('#demoSrc').textContent = r.source === 'synthetic' ? 'Simulated prices (live data unavailable). Grey line: buy & hold.' : `${r.symbol} daily data since 2015. Grey line: buy & hold. Hypothetical results.`;
+  ].map(([k, v]) => `<div class="stat"><span>${L(k)}</span>${v}</div>`).join('');
+  $('#demoSrc').textContent = r.source === 'synthetic' ? L('Simulated prices (live data unavailable). Grey line: buy & hold.') : L('{s} daily data since 2015. Grey line: buy & hold. Hypothetical results.').replace('{s}', r.symbol);
   btn.disabled = false;
 }
 if ($('#demoForm')) { $('#demoForm').addEventListener('submit', runDemo); runDemo(); }

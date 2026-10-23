@@ -348,7 +348,7 @@ section.dark .sub { color: #b9c2dc; }
 @media (max-width: 400px) { .top .lang { display: none; } }
 
 /* right-to-left (Yiddish) */
-html[dir="rtl"] body { font-family: "Noto Sans Hebrew", Inter, system-ui, sans-serif; letter-spacing: 0; }
+html[dir="rtl"] body { font-family: Rubik, "Noto Sans Hebrew", Inter, system-ui, sans-serif; letter-spacing: 0; }
 html[dir="rtl"] .checks li { padding-left: 0; padding-right: 28px; } html[dir="rtl"] .checks li::before { left: auto; right: 0; }
 html[dir="rtl"] .checks.big li { padding-right: 30px; }
 html[dir="rtl"] .plan li { padding: 6px 28px 6px 0; } html[dir="rtl"] .plan li::before { left: auto; right: 0; }

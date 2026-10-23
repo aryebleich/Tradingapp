@@ -673,6 +673,184 @@ Already have a login?
 Commission-free US stocks and ETFs, plus options and crypto, at Alpaca Securities LLC (member FINRA/SIPC). Apply in about 3 minutes, all from QuantPocket.
 Choose a file to upload
 , then open Account → Alpaca account.
+Get started
+Hide
+Try a ready-made strategy
+Turn on two-factor login
+Place your first paper trade
+Add your phone and PIN for SMS
+Backtest a strategy
+or Dollars
+Quote
+Source
+· New here?
+Stocks
+Your equity curve starts filling in after the first trading day.
+Connect a brokerage account to start
+Open a new Alpaca brokerage account, connect your existing Alpaca account, or use API keys. Everything starts in the paper / sandbox environment.
+Set up brokerage
+Could not reach Alpaca. Please try again.
+Filter: AAPL, TSLA, BTCUSD
+Nothing connected yet. Choose one of the options below.
+OAuth is not configured on this server yet.
+From the Alpaca dashboard → API keys. Stored encrypted.
+Open a new brokerage account inside QuantPocket, sign in with Alpaca, or use API keys. Stocks, ETFs, options and crypto, with fractional shares.
+Stocks, ETFs and options. Create a token at dash.tradier.com → API Access (use a sandbox token to test).
+API access token
+Sandbox (paper) account
+Sandbox (cert) environment
+Stocks, ETFs and options. At my.tastytrade.com → Manage → My Profile → API, create an OAuth application and a personal grant, then paste its client secret and refresh token.
+OAuth client secret
+Refresh token (personal grant)
+Your Schwab brokerage account (stocks and ETFs). You sign in at Schwab; Schwab asks you to sign in again every 7 days.
+Not available yet on this server: the owner needs to register a Charles Schwab developer app first.
+Stocks and ETFs at TradeStation, live or in its simulator. You sign in at TradeStation.
+Not available yet on this server: the owner needs to register a TradeStation developer app first.
+Keys and tokens are encrypted before they are stored, and you can disconnect at any time (also revoke access at the broker). Orders on these brokerages are whole shares only. Live accounts trade real money.
+Ready-made rotation strategies from the MULTI_STRATEGIES sheet. Run them by hand (type your own values, like the sheet's yellow cells) or let them trade automatically. Every rule and number can be changed.
+very high risk
+high risk
+medium risk
+low risk
+Hierarchical decision-tree regime rotation · Every trading day
+Gold-miner RSI exhaustion gate, then Nasdaq momentum decides between a fast risk-on path (TQQQ / SPXL / UVXY / BTAL) and a slow path through bonds, financials and inverse ETFs. Holds one ETF at 100%.
+QC #698 figures from QuantConnect as recorded in the sheet.
+QC #504 figures from QuantConnect as recorded in the sheet.
+QC #687 figures from QuantConnect as recorded in the sheet.
+, a common sign of over-fitting.
+4 independent sleeves × 25% · Every trading day
+Four separate models each run a quarter of the money: Nasdaq trend (TQQQ/SQQQ), semiconductors (SOXL), a 202-day trend vote across SPY/QQQ/IWM (TECL or T-bills), and S&P trend (SPXL or anti-beta).
+Holds one leveraged ETF at 100% · Every trading day
+Bull market (SPY above its 200-day average): TQQQ unless Nasdaq or the S&P is overbought, then volatility (UVXY). Bear market: buys oversold dips in TECL / SPXL, otherwise rotates between TQQQ, SQQQ, TECS and short-term bonds.
+Steps 1-3 are exactly as in the sheet. The sheet export did not include the rules for steps 4-12, so they are rebuilt from the well-known "TQQQ For The Long Term" logic the sheet's step list matches. Check them against your code and adjust.
+Gold-miner fade and Nasdaq momentum tree · Every trading day
+Starts with the GDXU RSI exhaustion gate and the Nasdaq 90-day vs 70-day momentum split, then a long tree of RSI, trend and return checks across leveraged ETFs and single stocks.
+The sheet export only shows the rules for the steps on that day's path (steps 1, 2 and 4). The other ~105 steps have no thresholds in the export, so the walk stops with "needs a rule" when it reaches one. Send the QC #687 code (or the sheet itself) to fill them in, or type them in the editor.
+One stock: the strongest 12-month momentum · Weekly
+Every Wednesday ranks 50 large US companies by their 252-day return and holds the single strongest one at 100%. The original code uses a 10% stop.
+The sheet builds the list from price > $5, top 100 by dollar volume and top 50 by market cap. Here the list is the sheet's current top 50 and you can edit it.
+Buy the dip in an uptrend, sell the bounce · Every trading day
+Buys top Nasdaq-100 stocks in a long-term uptrend that dipped below the lower Bollinger band with weak RSI and a real pullback. Sells on the bounce back to the 15-day average, a break of the 200-day average, or after 15 days. Equal weight, up to 10 stocks.
+Stocks, gold, bonds and bitcoin by predicted return · Monthly
+Once a month, weights SPY, GLD, BND and bitcoin (IBIT) by their predicted 21-day return. Only positive predictions get money, bitcoin is capped, and the total never exceeds 100% (no margin).
+In the sheet you type the model's 4 predictions each month. Here you can keep typing them (manual), or let the app use each asset's recent 3-month return as a simple stand-in (automatic).
+Dollars per order
+In TradingView: create an alert, turn on
+Webhook URL
+and paste your URL, then use one of these as the message. Accepted actions are
+; size with
+TradingView strategy
+TradingView alert (buy)
+Exit a position
+Plain text
+SPY trend strategy
+Two stocks that usually move together. When the gap between them stretches far from normal, sell the expensive one and buy the cheap one, then close when the gap returns.
+Pairs that moved together in the past can stop doing so (a merger, a lawsuit, a new product). The stop level and the time limit exist for that. Short selling needs a margin account and has borrowing costs; the paper account trades the long-only version. Backtests are hypothetical.
+Projections resample real 12-month stretches of S&P 500 history (crashes included) 2,000 times. They are not a forecast or a promise; the market can fall for years.
+Describe a strategy in plain English
+Indicators: Close, SMA(n), EMA(n), RSI(n), BBU(n,k), BBL(n,k), HIGH(n), LOW(n), ROC(n), MACD(f,s), MACDSIG(f,s,sig). Ops: > < >= <= crosses_above crosses_below. Optimizer: put choices in braces, e.g.
+Buy AAPL when RSI drops below 30 in an uptrend, 8% stop loss
+A deployed bot checks its rules once per trading day shortly before the 4 pm New York close and buys or sells on the chosen account. Text BOTS to see them, PAUSE <PIN> to stop all.
+Entry
+Exit
+First run
+Schedule
+When price is
+14-day free trial
+. You won't be charged until it ends, and you can cancel anytime.
+Learn and practice
+forever
++ 20% of new profits above your high-water mark
++ 10% of new profits above your high-water mark
++ 5% of new profits above your high-water mark
+$100,000 paper account
+Strategy library by hand + 1 automatic strategy on paper
+S&P 500 auto-invest on paper
+Pairs analysis & backtests
+1 alert webhook (paper)
+AI text assistant for questions & balances
+English & Yiddish
+Automate your real accounts
+/month
+/year
+Everything in Starter
+Everything in Pro
+Live trading on Alpaca, Schwab, tastytrade, Tradier & TradeStation
+5 automatic strategies with Reality Check auto-throttle
+10 alert webhooks (TradingView, Zapier)
+Pair bots, scheduled trades & live S&P 500 auto-invest
+Trade by text & phone with the AI assistant
+Optimizer, walk-forward testing & QuantConnect
+For serious capital
+Lowest performance fee (5%)
+50 automatic strategies & 50 webhooks
+Market-neutral pairs (long + short)
+Tax-loss harvesting report
+Priority AI & priority support
+Card and bank deposits are not set up on this server yet. You can fund your brokerage account by bank transfer on the
+page.
+Wash-sale disallowed
+Loss carryforward
+Acquired
+Sold
+Proceeds
+Cost
+Gain
+Term
+On the hotline: enter your PIN, then press 1 balance, 2 positions, 3 scheduled trades, 9 pause bots, or say a command like "buy five shares of Apple".
+Open a brokerage account, connect your Alpaca account with one click, or use API keys.
+quantconnect.com → Account → API Access
+Not set
+Code
+Change password
+Changing it signs out every other device.
+Password to delete your account
+Main
+Theme: auto (click to change)
+Theme: light (click to change)
+Theme: dark (click to change)
+No price data for this range.
+Account created
+Failed sign-in
+Wrong two-factor code
+Password changed
+Password reset
+Password reset requested
+Email verified
+Phone verified
+Two-factor login turned on
+Two-factor login turned off
+Google sign-in linked
+Account deleted
+Alpaca keys connected
+Alpaca connected
+Brokerage connected
+Brokerage disconnected
+Brokerage application sent
+Brokerage contact details changed
+Identity documents uploaded
+Bank account linked
+Bank transfer
+Order changed
+All orders cancelled
+Position closed
+All positions closed
+Account settings changed
+Checkout started
+Text command
+Phone command
+Phone AI request
+Wrong phone PIN
+Balance update
+TradingView alert
+Risk rules passed
+max $5,000 per ticker &middot; 3 of 10 trades today
+Paper:
+filled
+accepted
+Equity curve
+Open a brokerage account
+Commission-free, held at Alpaca Securities LLC (FINRA/SIPC)
 $100,000 paper account
 + 10% of new profits
 + 20% of new profits
