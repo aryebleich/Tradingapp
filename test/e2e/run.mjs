@@ -43,7 +43,13 @@ function harness(p, label) {
   p.on('dialog', d => d.accept());
   const step = async (name, fn) => {
     try { await fn(); console.log(`  ✓ ${name}`); }
-    catch (e) { failures++; console.log(`  ✗ ${name}: ${e.message.split('\n')[0]}`); await p.screenshot({ path: path.join(OUT, `FAIL-${label}-${name.replace(/\W+/g, '_')}.png`), fullPage: true }).catch(() => {}); }
+    catch (e) {
+      failures++; console.log(`  ✗ ${name}: ${e.message.split('\n')[0]}`);
+      // What the page showed, for runs where the screenshot cannot be opened.
+      const seen = await p.evaluate(() => ({ url: location.href, err: [...document.querySelectorAll('.err, #tkErr')].map(x => x.textContent.trim()).filter(Boolean).join(' | '), view: (document.querySelector('#view')?.innerText || '').replace(/\s+/g, ' ').slice(0, 300) })).catch(() => null);
+      if (seen) console.log(`    at ${seen.url}\n    errors: ${seen.err || '-'}\n    page: ${seen.view}`);
+      if (errors.length) console.log(`    browser errors so far: ${errors.join(' | ').slice(0, 300)}`);
+      await p.screenshot({ path: path.join(OUT, `FAIL-${label}-${name.replace(/\W+/g, '_')}.png`), fullPage: true }).catch(() => {}); }
   };
   const done = () => { if (errors.length) { failures++; console.log(`  ✗ browser errors: ${errors.join(' | ')}`); } };
   return { step, done };
