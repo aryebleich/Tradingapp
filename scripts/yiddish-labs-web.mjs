@@ -33,8 +33,10 @@ function adminStrings() {
   return out;
 }
 const adminOnly = adminStrings();
+// Any text that appears inside the admin pages' code stays English too.
+const adminSrc = (() => { const a = fs.readFileSync(path.join(root, 'public/app.js'), 'utf8'), b = fs.readFileSync(path.join(root, 'public/protect.js'), 'utf8'); return a.slice(a.indexOf('async function adminPage'), a.indexOf('\nfor (const [k] of ADMIN_TABS')) + b.slice(b.indexOf('async function system')); })();
 const entries = [...Object.entries(app).map(([en, yi]) => ['app', en, yi]), ...Object.entries(home).map(([en, yi]) => ['home', en, yi])]
-  .filter(([where, en, yi]) => !/\n/.test(en) && /[A-Za-z]{2}/.test(en) && yi !== en && !(where === 'app' ? labsApp[en] : labsHome[en]) && !(where === 'app' && adminOnly.has(en)));
+  .filter(([where, en, yi]) => !/\n/.test(en) && /[A-Za-z]{2}/.test(en) && yi !== en && !(where === 'app' ? labsApp[en] : labsHome[en]) && !(where === 'app' && (adminOnly.has(en) || adminSrc.includes(en))));
 const todo = [...new Set(entries.map(([, en]) => en))].slice(0, limit);
 console.log(`${todo.length} strings to translate on the Yiddish Labs website.`);
 if (dry || !todo.length) process.exit(0);
