@@ -59,9 +59,18 @@ export async function callApi({ base, key, text, fetchImpl = fetch }) {
 }
 
 // Translates strings in batches; lines a batch loses are retried one by one.
+// Stops cleanly (keeping what is done) when the account runs out of credits or the plan has no API.
+export const outOfCredits = e => [402, 403].includes(e?.status) || /credit|quota|insufficient|upgrade/i.test(e?.message || '');
 export async function translateAll(strings, { base, key, size = 25, log = () => {}, fetchImpl } = {}) {
   const out = new Map();
   let credits = 0;
+  try { await loop(); } catch (e) {
+    if (!outOfCredits(e)) throw e;
+    log(`Stopped: ${e.message}. ${out.size} strings were translated before that.`);
+    return { out, credits, stopped: e.message };
+  }
+  return { out, credits };
+  async function loop() {
   for (let i = 0; i < strings.length; i += size) {
     const chunk = strings.slice(i, i + size), { parts, text } = buildBatch(chunk);
     const r = await callApi({ base, key, text, fetchImpl });
@@ -76,5 +85,5 @@ export async function translateAll(strings, { base, key, size = 25, log = () => 
     }
     log(`  ${Math.min(i + size, strings.length)} / ${strings.length} (credits so far: ${credits})`);
   }
-  return { out, credits };
+  }
 }

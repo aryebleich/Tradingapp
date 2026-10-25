@@ -5,7 +5,7 @@ let H;
 const later = ms => { const h = location.hash; setTimeout(() => location.hash === h && H.render(), ms); };
 export function registerProtect(routes, helpers) {
   H = helpers;
-  Object.assign(routes, { security, execution, learn, longterm, workspace, 'admin-system': system });
+  Object.assign(routes, { security, execution, learn, longterm, workspace, accounts: allAccounts, 'admin-system': system });
 }
 const pc = (v, d = 1) => (v == null || !Number.isFinite(+v) ? '-' : `${v > 0 ? '+' : ''}${(+v).toFixed(d)}%`);
 const stat = (k, v, c = '') => `<div class="stat"><span>${k}</span><b class="${c}">${v}</b></div>`;
@@ -145,6 +145,28 @@ async function workspace(view) {
   ws.addEventListener('change', e => { if (!e.target.classList.contains('wsym')) return; const i = +e.target.closest('.wpanel').dataset.i; layout[i].sym = e.target.value.trim().toUpperCase() || 'SPY'; save(); draw(); });
   H.$('#addBtn', view).onclick = () => { layout.push({ w: H.$('#addW', view).value, size: 1, sym: 'SPY' }); save(); draw(); };
   draw();
+}
+
+// ---------- all accounts: paper + several Alpaca accounts ----------
+async function allAccounts(view) {
+  const d = await H.api('/alpaca/accounts/summary');
+  const row = a => `<tr data-id="${H.esc(a.id)}"><td><b>${H.esc(a.label)}</b><div class="mu small-print">${H.esc(a.id)} · ${a.role === 'paper' ? 'simulated' : a.role === 'main' ? 'main account' : 'sub account'}</div></td>
+    <td>${a.id === 'paper' ? '<span class="pill">paper</span>' : a.live ? '<span class="pill warn">live</span>' : '<span class="pill">paper (Alpaca)</span>'}</td>
+    ${a.error ? `<td colspan="5" class="err">${H.esc(a.error)}</td>` : `<td>${H.money(a.equity)}</td><td>${H.money(a.cash)}</td><td class="${H.cls(a.dayPl)}">${a.dayPl == null ? '-' : H.money(a.dayPl) + ` <span class="small-print">${pc(a.dayPlPct, 2)}</span>`}</td><td class="${H.cls(a.unrealized)}">${H.money(a.unrealized)}</td><td>${a.positions}</td>`}
+    <td class="nowrap"><button class="small ghost" data-open="${H.esc(a.id)}">Open</button>${/^alpaca:/.test(a.id) ? ` <button class="small ghost" data-rm="${H.esc(a.id)}">Remove</button>` : ''}</td></tr>`;
+  view.innerHTML = `<div class="pagehead"><h1>All accounts</h1><p class="mu">Your paper account and every Alpaca account (a main account and its sub accounts, each with its own API keys) in one place.</p></div>
+  <div class="card"><h2>Live accounts together</h2><div class="stats">${stat('Live accounts', d.live.count)}${stat('Total value', H.money(d.live.equity))}${stat('Cash', H.money(d.live.cash))}${stat('Today', H.money(d.live.dayPl), H.cls(d.live.dayPl))}${stat('Open profit / loss', H.money(d.live.unrealized), H.cls(d.live.unrealized))}${stat('Positions', d.live.positions)}</div>
+    ${d.test.count ? `<p class="mu small-print">Plus ${d.test.count} Alpaca paper account(s) worth ${H.money(d.test.equity)}, not counted above.</p>` : ''}</div>
+  <div class="card"><h2>Each account</h2><div class="tablewrap"><table><tr><th>Account</th><th>Type</th><th>Value</th><th>Cash</th><th>Today</th><th>Open P/L</th><th>Positions</th><th></th></tr>${d.accounts.map(row).join('')}</table></div><div class="err" id="accErr"></div></div>
+  <form class="card" id="addAcc"><h2>Add an Alpaca account</h2><p class="mu">Create API keys for the account in Alpaca (each sub account has its own keys), then add them here. Keys are encrypted and never shown again.</p>
+    <div class="row"><label>Name<input name="label" placeholder="e.g. Sub account 2"></label><label>Type<select name="role"><option value="sub">Sub account</option><option value="main">Main account</option></select></label></div>
+    <div class="row"><label>API key id<input name="keyId" autocomplete="off" data-no-tr></label><label>Secret key<input name="secret" type="password" autocomplete="off"></label></div>
+    <label class="chk"><input type="checkbox" name="live"> Live account (real money). Leave unticked for an Alpaca paper account.</label>
+    <button>Add account</button><div class="err"></div></form>`;
+  const f = H.$('#addAcc', view);
+  H.act(H.$('button', f), async () => { const r = await H.api('/alpaca/accounts', { body: H.form(f) }); later(800); return `Added ${r.accountNumber || r.id}`; });
+  H.$$('[data-rm]', view).forEach(b => (b.onclick = async () => { if (!confirm('Remove this account from QuantPocket? Nothing changes at Alpaca.')) return; try { await H.api('/alpaca/accounts/' + encodeURIComponent(b.dataset.rm), { method: 'DELETE' }); H.render(); } catch (e) { H.$('#accErr', view).textContent = e.message; } }));
+  H.$$('[data-open]', view).forEach(b => (b.onclick = () => { H.state.account = b.dataset.open; try { localStorage.setItem('qp_account', b.dataset.open); } catch {} location.hash = '#/dashboard'; }));
 }
 
 // ---------- owner: system health ----------

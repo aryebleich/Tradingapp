@@ -461,3 +461,6 @@ body.popout main { padding: 10px; }
 .whead .grip { color: var(--mu); }
 .whead .wsym { width: 100px; margin: 0; padding: 5px 8px; }
 .wbody table { width: 100%; }
+.viewas { width: auto; margin: 0; padding: 6px 10px; font-size: 13px; max-width: 190px; }
+.viewas.on { border-color: var(--warn); color: var(--warn); font-weight: 650; }
+@media (max-width: 640px) { .viewas { max-width: 120px; font-size: 16px; } }

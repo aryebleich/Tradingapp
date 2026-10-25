@@ -5,7 +5,7 @@ import { requireUser, rateLimit } from '../auth.js';
 import * as B from '../alpaca/broker.js';
 import * as D from '../alpaca/data.js';
 import { buildOrder, buildReplace } from '../alpaca/trading.js';
-import { connections, tradingFor, requireTrading, saveCred, oauthEnabled, oauthStartUrl } from '../alpaca/connections.js';
+import { connections, tradingFor, requireTrading, saveCred, oauthEnabled, oauthStartUrl, extraAlpaca, requireTradingFor } from '../alpaca/connections.js';
 import { sseHandler, streamEnabled } from '../alpaca/stream.js';
 import { syncAlpacaFills, accountSummary, lastPrice, riskDeps } from '../brokers.js';
 import { breaker, chaos } from '../reliability.js';
@@ -18,7 +18,8 @@ import { applyStatus, adoptAccount, history, kycBus, feedStatus } from '../alpac
 
 export const router = express.Router();
 router.use(requireUser);
-const T = req => requireTrading(req.user.id);
+// The Alpaca account a request works on: the primary connection, or an extra one picked with ?acct=alpaca:N.
+const T = req => { const a = req.query.acct || req.body?.acct; return a && a !== 'alpaca' ? requireTradingFor(req.user.id, String(a)) : requireTrading(req.user.id); };
 const bad = msg => Object.assign(new Error(msg), { status: 400 });
 const symParam = s => { const v = String(s || '').trim().toUpperCase(); if (!/^[A-Z0-9.\-]{1,21}(\/[A-Z]{3,4})?$/.test(v)) throw bad('Invalid symbol'); return v; };
 
@@ -327,6 +328,48 @@ router.get('/data/corporate-actions', async (req, res) => { dataLimit(req); res.
 router.get('/stream', sseHandler);
 
 // Lets users keep their own API keys as before (stored encrypted).
+// ---------- several Alpaca accounts (main + sub accounts) ----------
+// Each extra account has its own API keys (paper or live). The primary connection stays "alpaca".
+router.get('/accounts', async (req, res) => res.json((await extraAlpaca(req.user.id)).map(({ k, s, ...x }) => ({ ...x, keyId: k.slice(0, 4) + '…' + k.slice(-3) }))));
+router.post('/accounts', async (req, res) => {
+  const { keyId, secret, live, label, role } = req.body || {};
+  if (!keyId || !secret) throw bad('Key id and secret are required');
+  const list = await extraAlpaca(req.user.id);
+  if (list.length >= 20) throw bad('Up to 20 extra Alpaca accounts');
+  if (live && !isPaid(req.user)) throw Object.assign(new Error('Live Alpaca accounts are part of Pro'), { status: 402, upgrade: true, feature: 'Several live Alpaca accounts' });
+  const c = { type: 'keys', k: String(keyId).trim(), s: String(secret).trim(), live: !!live };
+  if (list.some(x => x.k === c.k)) throw bad('These keys are already connected');
+  const { Trading } = await import('../alpaca/trading.js');
+  const a = await new Trading(c).account(); // verifies the keys
+  const used = new Set(list.map(x => +x.id.split(':')[1])); let n = 2; while (used.has(n)) n++;
+  const id = 'alpaca:' + n;
+  await saveCred(req.user.id, id, { ...c, label: String(label || (role === 'main' ? 'Main account' : 'Sub account ' + (n - 1))).slice(0, 40), role: role === 'main' ? 'main' : 'sub' });
+  await audit(req.user.id, 'alpaca_account_added', { id, live: c.live, role }, req.ip);
+  res.json({ id, accountNumber: a.account_number, equity: +a.equity });
+});
+router.delete('/accounts/:id', async (req, res) => {
+  const id = String(req.params.id);
+  if (!/^alpaca:\d{1,3}$/.test(id)) throw bad('Unknown account');
+  await run('DELETE FROM credentials WHERE user_id = ? AND provider = ?', req.user.id, id);
+  await audit(req.user.id, 'alpaca_account_removed', { id }, req.ip);
+  res.json({ ok: true });
+});
+// Every account side by side, with totals for the live ones (and separately for paper/test ones).
+router.get('/accounts/summary', async (req, res) => {
+  const extras = await extraAlpaca(req.user.id), primary = await tradingFor(req.user.id);
+  const list = [{ id: 'paper', label: 'Paper account (simulated)', role: 'paper', live: false }, ...(primary ? [{ id: 'alpaca', label: 'Primary Alpaca connection', role: 'main', live: primary.live }] : []), ...extras.map(({ k, s, ...x }) => x)];
+  const rows = await Promise.all(list.map(async x => {
+    try {
+      const sm = await accountSummary(req.user.id, x.id);
+      const day = sm.lastEquity ? sm.equity - sm.lastEquity : null;
+      return { ...x, live: x.id === 'paper' ? false : sm.live ?? x.live, equity: +sm.equity.toFixed(2), cash: +sm.cash.toFixed(2), buyingPower: sm.buyingPower != null ? +(+sm.buyingPower).toFixed(2) : null, dayPl: day == null ? null : +day.toFixed(2), dayPlPct: day == null || !sm.lastEquity ? null : +(day / sm.lastEquity * 100).toFixed(2), positions: sm.positions.length, unrealized: +sm.positions.reduce((a, p) => a + (p.pnl || 0), 0).toFixed(2) };
+    } catch (e) { return { ...x, error: e.message }; }
+  }));
+  const sum = (arr, k) => +arr.reduce((a, r) => a + (+r[k] || 0), 0).toFixed(2);
+  const live = rows.filter(r => r.live && !r.error), test = rows.filter(r => !r.live && !r.error && r.id !== 'paper');
+  res.json({ accounts: rows, live: { count: live.length, equity: sum(live, 'equity'), cash: sum(live, 'cash'), dayPl: sum(live, 'dayPl'), unrealized: sum(live, 'unrealized'), positions: sum(live, 'positions') }, test: { count: test.length, equity: sum(test, 'equity'), dayPl: sum(test, 'dayPl') } });
+});
+
 router.post('/keys', async (req, res) => {
   const { keyId, secret, live } = req.body || {};
   if (!keyId || !secret) throw bad('Key id and secret are required');

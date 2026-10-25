@@ -16,7 +16,7 @@ export const PAID = ['pro', 'elite', 'ultimate'];
 // A user has paid features on a paid plan that is active or still in its trial.
 // AI messages a day by plan.
 export const AI_LIMITS = { free: 30, pro: 300, elite: 1000, ultimate: 3000 };
-export const isPaid = u => u?.role === 'admin' || (PAID.includes(u?.plan) && ['active', 'trialing', null, undefined].includes(u?.plan_status));
+export const isPaid = u => (u?.role === 'admin' && !u.previewPlan) || (PAID.includes(u?.plan) && ['active', 'trialing', null, undefined].includes(u?.plan_status));
 // Referral reward: credited to the referrer when someone they invited starts paying.
 export const REFERRAL_CREDIT = +process.env.REFERRAL_CREDIT || 10;
 

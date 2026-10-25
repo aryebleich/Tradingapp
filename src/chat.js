@@ -89,7 +89,7 @@ export function chatRouter({ extraTools } = {}) {
   r.use(requireUser);
   r.get('/status', (req, res) => res.json({ ai: chatEnabled(), model: llmInfo() }));
   r.post('/chat', async (req, res) => {
-    const limit = req.user.role === 'admin' ? AI_LIMITS.ultimate : isPaid(req.user) ? AI_LIMITS[req.user.plan] || AI_LIMITS.pro : AI_LIMITS.free;
+    const limit = req.user.role === 'admin' && !req.user.previewPlan ? AI_LIMITS.ultimate : isPaid(req.user) ? AI_LIMITS[req.user.plan] || AI_LIMITS.pro : AI_LIMITS.free;
     if (!rateLimit('chat:' + req.user.id, limit, 86400e3)) throw Object.assign(new Error(`Daily AI limit reached (${limit} messages)`), { status: 429, upgrade: !isPaid(req.user), feature: 'More AI messages' });
     const history = (Array.isArray(req.body?.messages) ? req.body.messages : []).filter(m => m && m.content).slice(-20);
     if (!history.length || history.at(-1).role === 'assistant') throw Object.assign(new Error('Send a message'), { status: 400 });

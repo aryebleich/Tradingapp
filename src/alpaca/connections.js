@@ -1,6 +1,6 @@
 // Which Alpaca account a user trades through, and the OAuth2 flow for linking an existing one.
 import crypto from 'node:crypto';
-import { one, run, now } from '../db.js';
+import { one, all, run, now } from '../db.js';
 import { encrypt, decrypt } from '../crypto.js';
 import { URLS } from './http.js';
 import { Trading } from './trading.js';
@@ -77,3 +77,24 @@ export async function oauthCallback(state, code, sessionUserId) {
   await run("UPDATE users SET alpaca_conn = 'oauth' WHERE id = ?", s.userId);
   return s.userId;
 }
+
+// Extra Alpaca accounts (a main account plus sub accounts, each with its own API keys), stored as
+// credentials "alpaca:2", "alpaca:3", ... next to the primary connection "alpaca".
+export const isExtraAlpaca = a => /^alpaca:\d{1,3}$/.test(String(a));
+export async function extraAlpaca(userId) {
+  const rows = await all("SELECT provider, blob FROM credentials WHERE user_id = ? AND provider LIKE 'alpaca:%' ORDER BY provider", userId);
+  return rows.map(r => { try { const c = decrypt(r.blob); return { id: r.provider, label: c.label || r.provider, role: c.role || 'sub', live: !!c.live, k: c.k, s: c.s }; } catch { return null; } }).filter(Boolean);
+}
+export async function tradingForAccount(userId, account) {
+  if (!account || account === 'alpaca') return tradingFor(userId);
+  if (!isExtraAlpaca(account)) return null;
+  const c = await cred(userId, account);
+  return c ? new Trading({ type: 'keys', k: c.k, s: c.s, live: !!c.live }) : null;
+}
+export async function requireTradingFor(userId, account) {
+  if (!account || account === 'alpaca') return requireTrading(userId);
+  const t = await tradingForAccount(userId, account);
+  if (!t) throw Object.assign(new Error('That Alpaca account is not connected any more.'), { status: 409 });
+  return t;
+}
+

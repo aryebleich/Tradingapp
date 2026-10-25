@@ -349,3 +349,25 @@ test('SSE stream endpoint answers even without a live feed', async () => {
   assert.match(first, /event: hello/);
   reader.cancel();
 });
+
+test('several Alpaca accounts: add a sub account, trade it, summary across accounts', async () => {
+  const call = client();
+  await call('/auth/register', { email: 'multi@t.co', password: 'Str0ngPassword' });
+  const { run } = await import('../src/db.js'); await run("UPDATE users SET plan = 'pro' WHERE email = 'multi@t.co'");
+  assert.equal((await call('/alpaca/keys', { keyId: 'MAINKEY', secret: 'S' })).status, 200);
+  const add = (await call('/alpaca/accounts', { keyId: 'SUBKEY1', secret: 'S2', label: 'Sub one', role: 'sub' })).body;
+  assert.equal(add.id, 'alpaca:2');
+  assert.equal((await call('/alpaca/accounts', { keyId: 'SUBKEY1', secret: 'S2' })).status, 400); // same keys twice
+  const list = (await call('/alpaca/accounts')).body;
+  assert.equal(list[0].label, 'Sub one'); assert.ok(!('s' in list[0]) && !('k' in list[0]));
+  assert.ok((await call('/accounts')).body.find(a => a.id === 'alpaca:2' && a.connected));
+  // An order on the sub account goes out with the sub account's keys.
+  const o = await call('/orders', { account: 'alpaca:2', symbol: 'AAPL', side: 'buy', qty: 1 });
+  assert.equal(o.status, 200, JSON.stringify(o.body));
+  assert.equal(lastReq(r => r.method === 'POST' && r.path === '/v2/orders').headers['apca-api-key-id'], 'SUBKEY1');
+  const sum = (await call('/alpaca/accounts/summary')).body;
+  assert.deepEqual(sum.accounts.map(a => a.id), ['paper', 'alpaca', 'alpaca:2']);
+  assert.ok(sum.accounts.every(a => !a.error), JSON.stringify(sum.accounts));
+  assert.equal((await call('/alpaca/accounts/alpaca:2', null, 'DELETE')).status, 200);
+  assert.equal((await call('/alpaca/accounts')).body.length, 0);
+});

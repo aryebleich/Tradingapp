@@ -5,6 +5,15 @@
 export const LANGS = {
   en: { name: 'English', dir: 'ltr' },
   yi: { name: 'ייִדיש', dir: 'rtl', load: () => import('./i18n/yi.js') },
+  // Simple translations (menus and main buttons): ./i18n/simple.js
+  es: { name: 'Español', dir: 'ltr', simple: true, load: () => import('./i18n/simple.js').then(m => m.forLang('es')) },
+  fr: { name: 'Français', dir: 'ltr', simple: true, load: () => import('./i18n/simple.js').then(m => m.forLang('fr')) },
+  de: { name: 'Deutsch', dir: 'ltr', simple: true, load: () => import('./i18n/simple.js').then(m => m.forLang('de')) },
+  pt: { name: 'Português', dir: 'ltr', simple: true, load: () => import('./i18n/simple.js').then(m => m.forLang('pt')) },
+  ru: { name: 'Русский', dir: 'ltr', simple: true, load: () => import('./i18n/simple.js').then(m => m.forLang('ru')) },
+  he: { name: 'עברית', dir: 'rtl', simple: true, load: () => import('./i18n/simple.js').then(m => m.forLang('he')) },
+  ar: { name: 'العربية', dir: 'rtl', simple: true, load: () => import('./i18n/simple.js').then(m => m.forLang('ar')) },
+  zh: { name: '中文', dir: 'ltr', simple: true, load: () => import('./i18n/simple.js').then(m => m.forLang('zh')) },
 };
 const KEY = 'qp_lang';
 export const current = () => { try { const l = localStorage.getItem(KEY); return LANGS[l] ? l : 'en'; } catch { return 'en'; } };

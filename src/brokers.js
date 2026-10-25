@@ -2,7 +2,7 @@
 import { one, all, run, now, tx } from './db.js';
 import { decrypt } from './crypto.js';
 import { rng } from './engine.js';
-import { tradingFor, requireTrading } from './alpaca/connections.js';
+import { tradingFor, requireTrading, tradingForAccount, requireTradingFor, isExtraAlpaca } from './alpaca/connections.js';
 import { EXT_IDS, withExt } from './ext/brokers.js';
 import { checkOrder, logOrder } from './risk.js';
 import { breaker, chaos, isOutage, shedding } from './reliability.js';
@@ -11,7 +11,11 @@ import { quoteAt, auditAppend, improvementBps, routePlan } from './execution.js'
 import crypto from 'node:crypto';
 
 // Every account a user can trade: the paper simulator, Alpaca, and the other brokerages.
-export const ACCOUNT_IDS = ['paper', 'alpaca', ...EXT_IDS];
+// Account ids: the paper account, the primary Alpaca connection, extra Alpaca accounts
+// ("alpaca:2", "alpaca:3", ...) and the other brokerages. includes() accepts the extra ones too.
+class AccountIds extends Array { includes(a) { return super.includes(a) || isExtraAlpaca(a); } }
+export const ACCOUNT_IDS = AccountIds.from(['paper', 'alpaca', ...EXT_IDS]);
+export const isAlpaca = a => a === 'alpaca' || isExtraAlpaca(a);
 export const isExt = a => EXT_IDS.includes(a);
 
 export const DATA = (process.env.ALPACA_DATA_URL || 'https://data.alpaca.markets') + '/v2';
@@ -155,8 +159,8 @@ export async function lastPrice(symbol, userId) {
 
 export async function accountSummary(userId, account) {
   if (isExt(account)) return withExt(userId, account, async (b, c, save) => ({ account, live: !!c.live, broker: b.name, ...(await b.summary(c, save)) }));
-  if (account === 'alpaca') {
-    const t = await requireTrading(userId);
+  if (isAlpaca(account)) {
+    const t = await requireTradingFor(userId, account);
     const [a, pos] = await Promise.all([t.account(), t.positions()]);
     return {
       account, live: t.live, cash: +a.cash, equity: +a.equity, buyingPower: +a.buying_power, lastEquity: +a.last_equity,
@@ -275,14 +279,14 @@ async function sendOrder(userId, account, symbol, side, q, n, source, order) {
       return { id: r.id, status: r.status, symbol, side, qty, broker: account, live: !!c.live };
     });
   }
-  if (account === 'alpaca') {
-    const t = await requireTrading(userId);
+  if (isAlpaca(account)) {
+    const t = await requireTradingFor(userId, account);
     const body = { symbol, side, type: 'market', time_in_force: 'day', ...(q > 0 ? { qty: String(q) } : { notional: n.toFixed(2) }) };
     const o = await t.placeOrder(body);
-    await intent(o.id, 'alpaca');
+    await intent(o.id, account);
     // Usually fills within seconds; anything still open is picked up later by syncAlpacaFills.
-    setTimeout(() => syncAlpacaFills(userId).catch(() => {}), 4000);
-    return { id: o.id, status: o.status, symbol, side, broker: 'alpaca', live: t.live };
+    setTimeout(() => syncAlpacaFills(userId, account).catch(() => {}), 4000);
+    return { id: o.id, status: o.status, symbol, side, broker: account, live: t.live };
   }
   const price = await lastPrice(symbol, userId);
   const qty = q > 0 ? q : +(n / price).toFixed(6);
@@ -301,8 +305,8 @@ async function sendOrder(userId, account, symbol, side, q, n, source, order) {
 
 // Copies filled Alpaca orders into local fills so tax lots stay complete, including orders that
 // filled later (placed after hours, by bots, or directly in Alpaca).
-export async function syncAlpacaFills(userId) {
-  const t = await tradingFor(userId);
+export async function syncAlpacaFills(userId, account = 'alpaca') {
+  const t = await tradingForAccount(userId, account);
   if (!t || (t.type === 'broker' && t.conn.status !== 'ACTIVE')) return 0;
   const orders = await t.orders({ status: 'closed', limit: 200, direction: 'desc', nested: false });
   let added = 0;
@@ -310,7 +314,7 @@ export async function syncAlpacaFills(userId) {
     if (o.status !== 'filled' && !(+o.filled_qty > 0)) continue;
     if (await one('SELECT id FROM fills WHERE broker_order_id = ?', o.id)) continue;
     if (!o.symbol || o.order_class === 'mleg') continue; // spreads: legs are recorded by Alpaca per contract
-    await recordFill(userId, 'alpaca', o.symbol, o.side, +o.filled_qty, +o.filled_avg_price, 'alpaca', { brokerId: o.id, at: Date.parse(o.filled_at) || now() });
+    await recordFill(userId, account, o.symbol, o.side, +o.filled_qty, +o.filled_avg_price, 'alpaca', { brokerId: o.id, at: Date.parse(o.filled_at) || now() });
     await auditFill(userId, o).catch(() => {});
     added++;
   }
@@ -319,9 +323,9 @@ export async function syncAlpacaFills(userId) {
 
 export async function listOrders(userId, account) {
   if (isExt(account)) return withExt(userId, account, (b, c, save) => b.orders(c, save));
-  if (account === 'alpaca') {
-    const t = await requireTrading(userId);
-    syncAlpacaFills(userId).catch(e => console.warn('alpaca sync', e.message));
+  if (isAlpaca(account)) {
+    const t = await requireTradingFor(userId, account);
+    syncAlpacaFills(userId, account).catch(e => console.warn('alpaca sync', e.message));
     return (await t.orders({ status: 'all', limit: 50, nested: false })).map(o => ({ id: o.id, symbol: o.symbol, side: o.side, qty: +o.qty || null, notional: +o.notional || null, status: o.status, price: +o.filled_avg_price || null, at: o.submitted_at }));
   }
   return (await all("SELECT id, symbol, side, qty, price, source, at FROM fills WHERE user_id = ? AND account = 'paper' ORDER BY id DESC LIMIT 50", userId)).map(f => ({ ...f, status: 'filled' }));
@@ -329,8 +333,8 @@ export async function listOrders(userId, account) {
 
 export async function portfolioHistory(userId, account) {
   if (isExt(account)) return [];
-  if (account === 'alpaca') {
-    const t = await requireTrading(userId);
+  if (isAlpaca(account)) {
+    const t = await requireTradingFor(userId, account);
     const h = await t.portfolioHistory({ period: '1A', timeframe: '1D' });
     return h.timestamp.map((t, i) => ({ day: new Date(t * 1000).toISOString().slice(0, 10), equity: h.equity[i] })).filter(x => x.equity != null);
   }

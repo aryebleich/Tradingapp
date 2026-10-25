@@ -1,6 +1,7 @@
 // /api/brokerages: connect and disconnect the other brokerages. accountsFor() lists every account
 // the signed-in user can trade (served at /api/accounts for the account pickers in the app).
 import express from 'express';
+import { extraAlpaca } from '../alpaca/connections.js';
 import { audit } from '../db.js';
 import { requireUser } from '../auth.js';
 import { EXT, catalog, getExtCred, saveExtCred, removeExtCred, withExt, takeState } from './brokers.js';
@@ -12,6 +13,7 @@ export async function accountsFor(userId) {
   const out = [{ id: 'paper', name: 'Paper account', live: false, connected: true }];
   const t = await tradingFor(userId).catch(() => null);
   out.push({ id: 'alpaca', name: 'Alpaca', live: !!t?.live, connected: !!t });
+  for (const x of await extraAlpaca(userId)) out.push({ id: x.id, name: `Alpaca · ${x.label}`, live: x.live, connected: true, role: x.role });
   for (const b of Object.values(EXT)) {
     const c = await getExtCred(userId, b.id);
     out.push({ id: b.id, name: b.name, live: !!c?.live, connected: !!c });

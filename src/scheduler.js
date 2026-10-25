@@ -161,6 +161,7 @@ async function hourly() {
   await run('DELETE FROM job_runs WHERE at < ?', now() - 90 * DAY);
   const users = await all("SELECT user_id FROM credentials WHERE provider IN ('alpaca', 'alpaca_oauth') UNION SELECT user_id FROM broker_accounts");
   for (const c of users) await syncAlpacaFills(c.user_id).catch(e => console.warn('alpaca sync', c.user_id, e.message));
+  for (const c of await all("SELECT user_id, provider FROM credentials WHERE provider LIKE 'alpaca:%'")) await syncAlpacaFills(c.user_id, c.provider).catch(e => console.warn('alpaca sync', c.user_id, c.provider, e.message));
   await refreshKyc();
 }
 

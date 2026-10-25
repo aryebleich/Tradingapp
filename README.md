@@ -185,3 +185,151 @@ upgrades to Claude, which adds web search. `AI_PROVIDER` picks one when several 
 - Passkeys (WebAuthn), typing-rhythm checks (`BEHAVIOR_ANOMALY_AT`), a one-tap account lock, lessons
   and risk notices for options/crypto/margin, budget quotas, graduated limits, margin watch
   (`MARGIN_FEED_URL` optional), and an AI support agent that escalates hacked accounts.
+
+## Where secret keys go
+
+Never put a key in the code, in GitHub, or in the browser. Every key is an **environment variable**
+on the server:
+
+- **Render (the free hosting above):** dashboard.render.com → your `quantpocket` service →
+  **Environment** → **Add Environment Variable** → name and value → **Save Changes**. Render restarts
+  the app by itself. Mark nothing as "public"; every value is private to the server.
+- **Running on your computer:** a file named `.env` in the project folder (it is in `.gitignore`),
+  one `NAME=value` per line, then `node --env-file=.env server.js`.
+- **Kubernetes:** `deploy/k8s/secret.example.yaml` → copy to `secret.yaml` (not committed) → `kubectl apply`.
+- **GitHub Actions secrets** (only for the scheduled jobs and Yiddish Labs): the repository →
+  **Settings → Secrets and variables → Actions → New repository secret**.
+
+The owner's **Admin → Setup** page shows which ones are switched on (never their values).
+
+## Connecting Stripe (payments and subscriptions)
+
+1. Create an account at dashboard.stripe.com and finish **Activate payments** (business details, bank
+   account for payouts). Until then, use **Test mode** (the toggle at the top right).
+2. **Products → Add product** for each plan: Pro, Elite, Ultimate. For each, add two **recurring**
+   prices: monthly ($53, $109, $320) and yearly ($530, $1,090, $3,200). Open each price and copy its
+   id (`price_...`).
+3. In Render set:
+   - `STRIPE_SECRET_KEY` = Developers → **API keys** → Secret key (`sk_live_...`, or `sk_test_...` in test mode)
+   - `STRIPE_PRICE_PRO`, `STRIPE_PRICE_PRO_YEARLY`, `STRIPE_PRICE_ELITE`, `STRIPE_PRICE_ELITE_YEARLY`,
+     `STRIPE_PRICE_ULTIMATE`, `STRIPE_PRICE_ULTIMATE_YEARLY` = the price ids from step 2
+4. Developers → **Webhooks** → **Add endpoint**: URL `https://YOUR-APP/webhooks/stripe`. Events:
+   `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
+   `checkout.session.async_payment_failed`, `customer.subscription.created`,
+   `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.paid`.
+   Copy the endpoint's **Signing secret** (`whsec_...`) into `STRIPE_WEBHOOK_SECRET`.
+5. Settings → **Billing → Customer portal**: turn it on (customers change card, switch or cancel plans there).
+6. Optional: `STRIPE_ACH=1` to accept bank (ACH) deposits; `DEPOSIT_FEE_PERCENT` / `DEPOSIT_FEE_FIXED` for your deposit fee.
+7. Test: in test mode, buy a plan with card `4242 4242 4242 4242`, any future date and CVC. The user's
+   plan changes to Pro within seconds (Admin → Users shows it). Then switch the keys to live.
+
+## Connecting Twilio (texts and the phone hotline)
+
+1. Sign up at twilio.com/console. Buy a phone number with **SMS and Voice** (Phone Numbers → Buy a number).
+2. US numbers must be registered for business texting: **Messaging → Regulatory compliance → A2P 10DLC**
+   (register the brand, then a campaign "account notifications and customer care"). Approval takes days;
+   until then texts to US phones may be blocked.
+3. In Render set `TWILIO_ACCOUNT_SID` (starts with `AC`) and `TWILIO_AUTH_TOKEN` from the console home
+   page, and `TWILIO_FROM` = your number in the form `+17185551234`.
+4. Phone Numbers → your number → **Messaging**: "A message comes in" → Webhook →
+   `https://YOUR-APP/twilio/sms` (HTTP POST). **Voice**: "A call comes in" → Webhook →
+   `https://YOUR-APP/twilio/voice` (HTTP POST). Call status changes → `https://YOUR-APP/twilio/voice/status`.
+5. Test: verify your phone in the app (Settings → Phone), text `BAL` to the number.
+
+## Connecting the Alpaca Broker API (opening brokerage accounts for customers)
+
+The Broker API is for businesses that open and run accounts for their customers. (Users who already
+have an Alpaca account connect it themselves with OAuth or their own API keys; nothing to do here.)
+
+1. Apply at alpaca.markets/broker → **Get started**. You get a **sandbox** right away; going live needs
+   Alpaca's review of your business, compliance setup and agreements (weeks).
+2. Broker dashboard (sandbox) → **API Keys** → generate. In Render set `BROKER_API_KEY`,
+   `BROKER_API_SECRET` and `BROKER_BASE_URL=https://broker-api.sandbox.alpaca.markets`.
+   If Alpaca gives you OAuth client credentials instead, set `BROKER_CLIENT_ID` / `BROKER_CLIENT_SECRET`.
+3. Market data for charts, scanners and options: a Trading API key pair in `ALPACA_KEY_ID` /
+   `ALPACA_SECRET` (free IEX data; `ALPACA_STOCK_FEED=sip` once you pay for the full feed).
+4. "Connect with Alpaca" for existing Alpaca users: alpaca.markets → OAuth Apps → create an app with
+   redirect URL `https://YOUR-APP/oauth/alpaca/callback`, then set `ALPACA_OAUTH_CLIENT_ID`,
+   `ALPACA_OAUTH_CLIENT_SECRET` and `ALPACA_OAUTH_ENV` (`paper` or `live`).
+5. Test in the sandbox: open an account in the app (Open account), approve it in the Broker dashboard,
+   link a bank and make a test deposit, then place an order.
+6. Going live: after Alpaca's approval, replace the sandbox keys with production keys and set
+   `BROKER_BASE_URL=https://broker-api.alpaca.markets`.
+
+Several Alpaca accounts per user (a main account and sub accounts): each user adds them under
+**All accounts** with each account's own API keys; the page shows every account and totals for the live ones.
+
+## Becoming a registered investment adviser (United States)
+
+*General information, not legal advice. Talk to a securities lawyer before taking clients' money.*
+
+Whether QuantPocket needs registration depends on what it does. Software that lets people run their
+own strategies, with impersonal and general content, can fall under the **publisher's exclusion**.
+Giving **personalized advice**, **managing accounts**, or running followed strategies for pay usually
+makes the business an **investment adviser**.
+
+**Performance fees:** under Advisers Act Rule 205-3, a registered adviser may charge a share of profits
+only to **qualified clients** — roughly $1.1M+ under management with the adviser or $2.2M+ net worth;
+check the current SEC figures. Charging every user a performance fee needs legal review first.
+
+1. **Pick the regulator.** Advisers with under $100M of regulatory assets under management register with
+   their **home state** (New York: the Attorney General's Investment Advisers section). Above $110M,
+   or under the **internet adviser exemption** (advice given only through an interactive website), they
+   register with the **SEC**.
+2. **Form the business** (LLC or corporation), get an EIN, open a business bank account.
+3. **Qualify the people.** Each investment adviser representative passes the **Series 65** exam (or
+   Series 7 + 66), taken through FINRA. Some designations (CFP, CFA) waive it in many states.
+4. **Open an IARD account** (FINRA's Investment Adviser Registration Depository) and fund it for the fees.
+5. **File Form ADV:**
+   - Part 1, about the firm.
+   - Part 2A, the brochure for clients.
+   - Part 2B, about each adviser.
+   - **Form CRS**, a short relationship summary for retail clients.
+   - Each person files a **Form U4**.
+6. **Write the compliance program:**
+   - A Chief Compliance Officer, a compliance manual and a code of ethics.
+   - Books and records, privacy (Regulation S-P) and a cybersecurity plan.
+   - Rules for advertising (the Marketing Rule) and business continuity.
+   - Custody: keep clients' assets at the broker (Alpaca) so the firm does not have custody.
+7. **Wait for approval:** about 45 days at the SEC; states usually take 30–90 days and may ask questions.
+   Pay state notice-filing fees where clients live.
+8. **Keep it current:**
+   - Update Form ADV within 90 days after each fiscal year ends, and promptly when facts change.
+   - Deliver the brochure to clients.
+   - Expect examinations, keep records 5+ years and renew state registrations.
+
+The broker side is Alpaca's (a FINRA member broker-dealer). Do not take commissions per trade, or
+the business may also need broker-dealer registration.
+
+## Filing the business's taxes (United States)
+
+*General information, not tax advice. A CPA familiar with SaaS and financial services is worth it.*
+
+1. **Set up:**
+   - Choose the entity: a single-member LLC files on **Schedule C** of Form 1040; it can elect S-corp
+     (Form 2553, then **Form 1120-S**). A partnership files **Form 1065**, a corporation **Form 1120**.
+   - Get an **EIN** (irs.gov, free) and register with the state tax department.
+   - New York LLCs also file the publication requirement and the annual **IT-204-LL** filing fee.
+2. **Record income:**
+   - Subscriptions, performance fees and deposit fees are business income.
+   - Stripe sends **Form 1099-K**; your books must match it.
+   - Keep monthly bookkeeping (QuickBooks, Wave or a bookkeeper) and keep receipts 7 years.
+3. **Sales tax on software:**
+   - Many states tax software subscriptions; New York treats SaaS as taxable prewritten software.
+   - You owe it in states where you pass their "economic nexus" thresholds.
+   - Stripe Tax can calculate and collect it; register in each state before collecting.
+4. **Pay estimated tax:** federal estimated payments with **Form 1040-ES** (owners of pass-through
+   entities) or 1120-W (corporations), due about April 15, June 15, September 15 and January 15. Pay
+   state estimates too.
+5. **Self-employment tax:** **Schedule SE** for sole proprietors and partners. An S-corp pays its owner
+   a reasonable salary through payroll.
+6. **People:**
+   - Employees: payroll taxes (Form 941 quarterly, 940 yearly), W-2s by January 31.
+   - Contractors paid $600+ (from 2026, $2,000+): **Form 1099-NEC** by January 31.
+   - Collect W-9s up front.
+7. **Annual return:** file by March 15 (S-corps, partnerships) or April 15 (sole proprietors,
+   C-corps), with extensions available (Form 7004 or 4868), plus the state returns.
+8. **Users' own taxes** are theirs:
+   - The broker issues their official **Form 1099-B**.
+   - The Taxes page gives estimates, **Form 8949** and **Schedule D** exports.
+   - It never files for them.

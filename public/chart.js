@@ -57,7 +57,7 @@ async function chartPage(view, q) {
   if (q.get('symbol')) cfg.symbols[0] = q.get('symbol').toUpperCase();
   if (q.get('layout')) cfg.layout = +q.get('layout');
   // Charts per layout by plan: 1 on Starter, 2 on Pro, 4 on Elite and Ultimate.
-  const me = H.me(), maxLayout = me?.role === 'admin' || ['elite', 'ultimate'].includes(me?.plan) && H.paid() ? 4 : H.paid() ? 2 : 1;
+  const me = H.me(), maxLayout = (me?.role === 'admin' && !me?.previewPlan) || ['elite', 'ultimate'].includes(me?.plan) && H.paid() ? 4 : H.paid() ? 2 : 1;
   cfg.layout = Math.min(cfg.layout, maxLayout);
   const popout = q.get('popout') === '1';
   document.body.classList.toggle('popout', popout);

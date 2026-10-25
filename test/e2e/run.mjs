@@ -172,6 +172,9 @@ console.log('Desktop (1360x900)');
     }
     await p.screenshot({ path: path.join(OUT, 'admin-setup.png'), fullPage: true });
     await p.click('#nav a[href="#/admin-system"]'); await p.waitForSelector('text=Capacity plan');
+    // View as each plan from the header, then back to the owner view.
+    await p.selectOption('#viewAs', 'free'); await p.waitForSelector('#viewAs.on'); await p.waitForSelector('#nav a.upsell');
+    await p.selectOption('#viewAs', ''); await p.waitForSelector('#viewAs:not(.on)'); await p.waitForFunction(() => !document.querySelector('#nav a.upsell'));
     await p.click('#nav a[href="#/admin-users"]'); await p.fill('#userFind', 'desk'); await p.waitForTimeout(200);
     if ((await p.$$('#userTable tr[data-email]:not([hidden])')).length !== 1) throw new Error('user search');
   });
@@ -212,7 +215,12 @@ console.log('Phone (iPhone 13)');
   });
   await step('sticky Buy bar places an order', async () => {
     await p.tap('#tabs a[data-r=trade]'); await p.waitForSelector('#tradeBar:not([hidden])'); await p.tap('#tradeBar .buy'); await p.waitForTimeout(700);
-    await p.fill('#tk [name=qty]', '2'); await p.tap('#review'); await confirmDialog(p, true); await p.waitForSelector('#tkErr.ok');
+    // The ticket can re-render when the live quote arrives (slower CI machines): fill, then retry once.
+    for (let i = 0; i < 2; i++) {
+      await p.waitForSelector('#tk [name=qty]'); await p.fill('#tk [name=qty]', '2'); await p.tap('#review');
+      if (await p.waitForSelector('dialog[open]', { timeout: 5000 }).then(() => true, () => false)) break;
+    }
+    await confirmDialog(p, true); await p.waitForSelector('#tkErr.ok');
     await p.evaluate(() => scrollTo(0, 0)); await p.waitForTimeout(400); await p.screenshot({ path: path.join(OUT, 'phone-trade.png') });
   });
   await step('order filters and cancel', async () => {
@@ -245,11 +253,13 @@ console.log('Settings → Language');
   await step('switch to Yiddish and back', async () => {
     await p.goto(B + '/app#/register'); await p.fill('input[name=email]', 'lang@example.com'); await p.fill('input[name=password]', 'Str0ngPassword'); await p.check('input[name=agree]');
     await p.click('form.auth button:not([type=button])'); await p.waitForSelector('#nav a.on');
-    if (await p.$('header select, #langSel')) throw new Error('language picker still in the header');
-    await p.goto(B + '/app#/settings'); await p.click('[data-setlang=yi]');
-    await p.waitForSelector('html[dir=rtl]'); await p.waitForSelector('#language button.on[data-setlang=yi]'); await p.waitForFunction(() => /[\u05D0-\u05EA]/.test(document.querySelector('#view h1')?.textContent || ''));
+    if (await p.$('header #langSel, header .langsel')) throw new Error('language picker still in the header');
+    await p.goto(B + '/app#/settings'); await p.selectOption('#langSel', 'yi');
+    await p.waitForSelector('html[dir=rtl]'); await p.waitForFunction(() => document.querySelector('#langSel')?.value === 'yi'); await p.waitForFunction(() => /[\u05D0-\u05EA]/.test(document.querySelector('#view h1')?.textContent || ''));
     await p.screenshot({ path: path.join(OUT, 'settings-language-yi.png') });
-    await p.click('[data-setlang=en]'); await p.waitForSelector('html[dir=ltr]'); await p.waitForSelector('h1:has-text("Settings")');
+    await p.selectOption('#langSel', 'es'); await p.waitForSelector('#nav a:has-text("Ajustes")');
+    await p.selectOption('#langSel', 'ar'); await p.waitForSelector('html[dir=rtl]'); await p.waitForSelector('#nav a:has-text("الإعدادات")');
+    await p.selectOption('#langSel', 'en'); await p.waitForSelector('html[dir=ltr]'); await p.waitForSelector('h1:has-text("Settings")');
   });
   await step('homepage has no language links', async () => {
     await p.goto(B + '/'); if (await p.isVisible('.top .lang, .lang-m')) throw new Error('language link on the homepage');
@@ -342,7 +352,7 @@ for (const [device, width, lang] of [['iPhone 13', 390, 'en'], ['iPhone SE', 320
   await p.evaluate(() => fetch('/api/alpaca/keys', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ keyId: 'AUDIT' + innerWidth, secret: 'S' }) }));
   await p.evaluate(() => localStorage.setItem('qp_account', 'alpaca'));
   const lib = await p.evaluate(() => fetch('/api/library', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ templateId: 'multi_model' }) }).then(r => r.json()));
-  for (const r of ['/', '/yi', '/terms', '/app#/register', '/app#/login', '#/dashboard', '#/trade?symbol=AAPL', '#/orders', '#/positions', '#/watchlists', '#/markets', '#/options?underlying=AAPL', '#/calendar', '#/account', '#/open-account', '#/brokers', '#/strategies', `#/strategy?id=${lib.id}`, '#/signals', '#/pairs', '#/sp500', '#/backtest', '#/bots', '#/schedule', '#/text', '#/tax', '#/funding', '#/settings', '#/chart?symbol=AAPL', '#/ai', '#/agents', '#/code', '#/news', '#/scanner', '#/optionslab', '#/institutions', '#/portfolios', '#/portfolios?tab=mine', '#/fleet', '#/marketplace', '#/insights', '#/insights?tab=journal', '#/risk', '#/spend', '#/halal', '#/halal?tab=zakat', '#/security', '#/execution', '#/learn', '#/longterm', '#/workspace']) {
+  for (const r of ['/', '/yi', '/terms', '/app#/register', '/app#/login', '#/dashboard', '#/trade?symbol=AAPL', '#/orders', '#/positions', '#/watchlists', '#/markets', '#/options?underlying=AAPL', '#/calendar', '#/account', '#/open-account', '#/brokers', '#/strategies', `#/strategy?id=${lib.id}`, '#/signals', '#/pairs', '#/sp500', '#/backtest', '#/bots', '#/schedule', '#/text', '#/tax', '#/funding', '#/settings', '#/chart?symbol=AAPL', '#/ai', '#/agents', '#/code', '#/news', '#/scanner', '#/optionslab', '#/institutions', '#/portfolios', '#/portfolios?tab=mine', '#/fleet', '#/marketplace', '#/insights', '#/insights?tab=journal', '#/risk', '#/spend', '#/halal', '#/halal?tab=zakat', '#/security', '#/execution', '#/learn', '#/longterm', '#/workspace', '#/accounts']) {
     await step(r, async () => {
       await p.goto(r.startsWith('#') ? B + '/app' + r : B + r); if (r === '#/dashboard') await p.reload();
       await p.waitForTimeout(r.includes('strategy') || r.includes('sp500') ? 3000 : 1300);

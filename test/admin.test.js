@@ -52,3 +52,25 @@ test('ADMIN_EMAIL: several addresses, any case, also for accounts made before it
   const bid = (await owner('/admin/summary')).body.users.find(u => u.email === 'boss@example.com').id;
   assert.match((await owner('/admin/users/' + bid, { role: 'user' })).body.error, /ADMIN_EMAIL/);
 });
+
+test('Gmail admin matches with dots and +tags (Google sign-in); owner can view the app as each plan', async () => {
+  const { isAdminEmail } = await import('../src/auth.js');
+  const prev = process.env.ADMIN_EMAIL;
+  process.env.ADMIN_EMAIL = 'aryebleich@gmail.com';
+  try {
+    assert.ok(isAdminEmail('Arye.Bleich@gmail.com')); assert.ok(isAdminEmail('aryebleich+x@googlemail.com'));
+    assert.ok(!isAdminEmail('aryebleich@example.com'));
+    const c = client();
+    await c('/auth/register', { email: 'arye.bleich@gmail.com', password: 'Str0ngPassword' });
+    const me = (await c('/auth/me')).body.user;
+    assert.equal(me.role, 'admin');
+    assert.equal((await c('/admin/preview-plan', { plan: 'free' }, 'PUT')).body.previewPlan, 'free');
+    const asFree = (await c('/auth/me')).body.user;
+    assert.equal(asFree.plan, 'free'); assert.equal(asFree.previewPlan, 'free'); assert.equal(asFree.role, 'admin');
+    assert.equal((await c('/alpaca/accounts', { keyId: 'X', secret: 'Y', live: true })).status, 402); // gated like a Starter user
+    await c('/admin/preview-plan', { plan: 'ultimate' }, 'PUT');
+    assert.equal((await c('/auth/me')).body.user.plan, 'ultimate');
+    assert.equal((await c('/admin/preview-plan', { plan: null }, 'PUT')).body.previewPlan, null);
+    assert.equal((await c('/auth/me')).body.user.previewPlan, null);
+  } finally { process.env.ADMIN_EMAIL = prev; }
+});

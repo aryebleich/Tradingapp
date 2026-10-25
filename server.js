@@ -17,6 +17,7 @@ import { securityRouter, passkeyLoginRouter, stepUpGuard } from './src/security.
 import { lessonsRouter } from './src/lessons.js';
 import { execRouter } from './src/execution.js';
 import { marginRouter } from './src/margin.js';
+import { setSetting } from './src/settings.js';
 import { prefsRouter } from './src/settings.js';
 import { longtermRouter } from './src/longterm.js';
 import { shedMiddleware, stats as relStats, metricsText, recommendedReplicas, jobAllowed, load as relLoad } from './src/reliability.js';
@@ -377,6 +378,12 @@ api.use('/exec', execRouter({ accounts: accountsFor }));
 api.use('/risk', riskRouter({ summarize: accountSummary, cancelAlpaca: async id => { const t = await tradingFor(id); return t ? t.cancelAllOrders() : null; } }));
 const U = auth.requireUser;
 api.get('/admin/system', U, auth.requireAdmin, async (req, res) => res.json({ ...relStats(), capacity: recommendedReplicas(), queue: await queueStats(), replicaId: process.env.HOSTNAME || null }));
+// "View as plan" for the owner: menus, limits and upgrade prompts as a user on that plan sees them.
+api.put('/admin/preview-plan', U, auth.requireAdmin, async (req, res) => {
+  const plan = Object.hasOwn(PLANS, req.body?.plan) ? req.body.plan : null;
+  if (plan) await setSetting(req.user.id, 'previewPlan', plan); else await run("DELETE FROM user_settings WHERE user_id = ? AND k = 'previewPlan'", req.user.id);
+  res.json({ previewPlan: plan });
+});
 api.get('/queue', U, async (req, res) => res.json(await userQueue(req.user.id)));
 api.get('/accounts', U, async (req, res) => res.json(await accountsFor(req.user.id)));
 const wrap = fn => async (req, res) => Promise.resolve(fn(req, res)).catch(e => res.status(e.status || 400).json({ error: e.message, ...(e.upgrade ? { upgrade: true, feature: e.feature } : {}), ...(e.needsAck ? { needsAck: e.needsAck } : {}), ...(e.needsLesson ? { needsLesson: e.needsLesson } : {}), ...(e.locked ? { locked: true } : {}) }));

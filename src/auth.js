@@ -50,6 +50,8 @@ export async function sessionMiddleware(req, _res, next) {
       const u = await one('SELECT * FROM users WHERE id = ?', s.user_id);
       // ADMIN_EMAIL counts on every visit, so an account made before it was set becomes admin too.
       if (u && u.role !== 'admin' && isAdminEmail(u.email)) { await run("UPDATE users SET role = 'admin' WHERE id = ?", u.id); u.role = 'admin'; }
+      // "View as plan": the owner sees the app (menus, limits, upgrade prompts) exactly as a user on that plan would.
+      if (u?.role === 'admin') { const pv = await one("SELECT v FROM user_settings WHERE user_id = ? AND k = 'previewPlan'", u.id).catch(() => null); const plan = pv ? JSON.parse(pv.v) : null; if (plan) { u.previewPlan = plan; u.plan = plan; u.plan_status = plan === 'free' ? null : 'active'; } }
       if (s.mfa_pending) req.pending = u; else req.user = u;
     }
   }
@@ -64,15 +66,22 @@ export function csrfGuard(req, res, next) {
 }
 
 // ADMIN_EMAIL may list several addresses, separated by commas; case and spaces do not matter.
+// Gmail ignores dots and anything after "+" in the name, and Google may report the address with
+// dots (arye.b@gmail.com) even when ADMIN_EMAIL is written without them, so Gmail is compared canonically.
+export const canonicalEmail = e => {
+  const [name, domain] = String(e || '').trim().toLowerCase().split('@');
+  if (!domain) return String(e || '').trim().toLowerCase();
+  return ['gmail.com', 'googlemail.com'].includes(domain) ? `${name.split('+')[0].replace(/\./g, '')}@gmail.com` : `${name}@${domain}`;
+};
 export const adminEmails = () => String(process.env.ADMIN_EMAIL || '').split(/[,;\s]+/).map(e => e.trim().toLowerCase()).filter(Boolean);
-export const isAdminEmail = email => !!email && adminEmails().includes(String(email).trim().toLowerCase());
+export const isAdminEmail = email => !!email && adminEmails().map(canonicalEmail).includes(canonicalEmail(email));
 
 export const requireUser = (req, res, next) => req.user ? next() : res.status(401).json({ error: 'Not signed in' });
 export const requireAdmin = (req, res, next) => req.user?.role === 'admin' ? next() : res.status(403).json({ error: 'Admin only' });
 
 export const publicUser = u => u && ({
   id: u.id, email: u.email, role: u.role, totpEnabled: !!u.totp_enabled, phone: u.phone, phoneVerified: !!u.phone_verified,
-  hasPin: !!u.pin_hash, hasPassword: u.password_set !== 0, google: !!u.google_sub, emailVerified: !!u.email_verified, planStatus: u.plan_status, planInterval: u.plan_interval, trialUsed: !!u.trial_used, refCode: u.ref_code, plan: u.plan, planRenews: u.plan_renews, taxBracket: u.tax_bracket, stateTax: u.state_tax,
+  previewPlan: u.previewPlan || null, hasPin: !!u.pin_hash, hasPassword: u.password_set !== 0, google: !!u.google_sub, emailVerified: !!u.email_verified, planStatus: u.plan_status, planInterval: u.plan_interval, trialUsed: !!u.trial_used, refCode: u.ref_code, plan: u.plan, planRenews: u.plan_renews, taxBracket: u.tax_bracket, stateTax: u.state_tax,
 });
 
 export const router = express.Router();

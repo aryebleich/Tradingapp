@@ -172,7 +172,7 @@ const NAV = [
   ['Markets', [['sp500', 'S&P 500 plan'], ['markets', 'Markets & news'], ['scanner', 'Scanner'], ['options', 'Options chain'], ['optionslab', 'Options lab'], ['institutions', 'Institutional portfolios'], ['calendar', 'Calendar & events']]],
   ['Strategies', [['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['code', 'Code lab'], ['portfolios', 'Portfolios'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['marketplace', 'Marketplace'], ['pairs', 'Pairs trading'], ['schedule', 'Scheduled trades'], ['quantconnect', 'Cloud algorithms'], ['workspace', 'Workspace']]],
   ['Money', [['longterm', 'Long-term view'], ['insights', 'Insights & journal'], ['risk', 'Risk controls'], ['execution', 'Execution & routing'], ['spend', 'Invest as you spend'], ['halal', 'Halal investing'], ['tax', 'Taxes']]],
-  ['Account', [['security', 'Security & help'], ['learn', 'Learn'], ['brokers', 'Brokerages'], ['account', 'Alpaca account'], ['funding', 'Plans & billing'], ['referrals', 'Invite & earn'], ['text', 'Text & hotline'], ['settings', 'Settings']]],
+  ['Account', [['security', 'Security & help'], ['learn', 'Learn'], ['accounts', 'All accounts'], ['brokers', 'Brokerages'], ['account', 'Alpaca account'], ['funding', 'Plans & billing'], ['referrals', 'Invite & earn'], ['text', 'Text & hotline'], ['settings', 'Settings']]],
 ];
 // Simple line icons (24x24 paths) for the menu.
 const ICONS = {
@@ -206,11 +206,12 @@ const ICONS = {
   security: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>', learn: '<path d="M2 8l10-5 10 5-10 5z"/><path d="M6 10v5c3 3 9 3 12 0v-5"/>',
   longterm: '<path d="M3 20h18"/><path d="M4 16l5-5 4 3 7-8"/><circle cx="20" cy="6" r="1"/>', execution: '<path d="M4 6h10M4 12h16M4 18h7"/><path d="M17 3l3 3-3 3"/>',
   workspace: '<rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="5" rx="1"/><rect x="13" y="10" width="8" height="11" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/>',
+  accounts: '<rect x="2" y="7" width="20" height="13" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2M2 13h20"/>',
   'admin-system': '<path d="M3 12h4l3-7 4 14 3-7h4"/>',
   halal: '<path d="M20 13A8 8 0 1 1 11 4a6.5 6.5 0 0 0 9 9z"/><path d="M17 4l.7 1.5 1.6.2-1.2 1.1.3 1.6L17 7.6l-1.4.8.3-1.6-1.2-1.1 1.6-.2z"/>', star: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
 };
 const icon = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k] || ''}</svg>`;
-const isPaid = u => u && (u.role === 'admin' || (['pro', 'elite', 'ultimate'].includes(u.plan) && ['active', 'trialing', null, undefined].includes(u.planStatus)));
+const isPaid = u => u && ((u.role === 'admin' && !u.previewPlan) || (['pro', 'elite', 'ultimate'].includes(u.plan) && ['active', 'trialing', null, undefined].includes(u.planStatus)));
 const routes = {};
 // Readable names for the security log.
 const EVENT_LABELS = {
@@ -237,6 +238,14 @@ async function render() {
   scrollTo(0, 0);
   if (!ME && !['login', 'register', 'mfa', 'forgot', 'reset', 'verify', 'open-account'].includes(route)) { location.hash = '#/login'; return; }
   $('#top').hidden = !ME; $('#nav').hidden = !ME; $('#tabs').hidden = !ME; $('#lockBtn').hidden = !ME;
+  // Owner: switch between the full owner view and the view of each plan.
+  const va = $('#viewAs'); va.hidden = ME?.role !== 'admin';
+  if (!va.hidden) {
+    CFG ||= await api('/config').catch(() => ({ plans: {} }));
+    va.innerHTML = `<option value="">Owner view (everything)</option>` + Object.entries(CFG.plans || {}).map(([k, p]) => `<option value="${k}" ${ME.previewPlan === k ? 'selected' : ''}>View as ${esc(p.name)}</option>`).join('');
+    va.classList.toggle('on', !!ME.previewPlan);
+    va.onchange = async () => { await api('/admin/preview-plan', { method: 'PUT', body: { plan: va.value || null } }); ME = (await api('/auth/me')).user; render(); };
+  }
   setMenu(false);
   $$('#tabs a[data-r]').forEach(a => a.classList.toggle('on', a.dataset.r === route || (route === '' && a.dataset.r === 'dashboard')));
   if (ME) {
@@ -803,7 +812,8 @@ routes.settings = async view => {
       <p class="mu small-print">Trading decisions go better without constant movement on the screen. Your long-term results are on the <a href="#/longterm">Long-term view</a>.</p></div>
     <div class="card" id="language"><h2>Language</h2>
       <p class="mu">The language of the app on this device.</p>
-      <div class="langpick" data-no-tr>${Object.entries(LANGS).map(([k, v]) => `<button type="button" class="${k === currentLang() ? 'on' : ''}" data-setlang="${k}" lang="${k}" dir="${v.dir}" aria-pressed="${k === currentLang()}"><b>${v.name}</b><small>${k === 'yi' ? 'איבערגעזעצט פאר אידישע באניצער' : 'Original'}</small></button>`).join('')}</div></div>
+      <label>Language<select id="langSel" data-no-tr>${Object.entries(LANGS).map(([k, v]) => `<option value="${k}" ${k === currentLang() ? 'selected' : ''} lang="${k}">${v.name}${k === 'en' ? ' (original)' : k === 'yi' ? ' (full translation)' : ''}</option>`).join('')}</select></label>
+      ${LANGS[currentLang()]?.simple ? '<p class="mu small-print">Simple translation: menus and main buttons are translated; the rest of the app stays in English.</p>' : ''}</div>
     <div class="card"><h2>Alpaca brokerage</h2>
       <p class="mu">Open a brokerage account, connect your Alpaca account with one click, or use API keys.</p>
       <a href="#/account"><button type="button">Manage brokerage connection</button></a></div>
@@ -831,7 +841,7 @@ routes.settings = async view => {
     <label>${confirmLabel('delete your account')}<input type="${confirmType}" id="delpw" autocomplete="${pw ? 'current-password' : 'off'}"></label><button class="danger" id="delacct">Delete my account</button><div class="err"></div></div>
   <div class="card tablewrap"><h2>Active sessions</h2><table><tr><th>IP address</th><th>Device</th><th>Signed in</th><th></th></tr>${sessions.map(s => `<tr><td>${esc(s.ip)}</td><td data-no-tr>${esc(s.ua.slice(0, 60))}</td><td>${date(s.createdAt)}</td><td>${s.current ? '<span class="pill">this device</span>' : `<button class="small ghost" data-s="${s.id}">Sign out</button>`}</td></tr>`).join('')}</table></div>
   <div class="card tablewrap"><h2>Security log</h2><table><tr><th>When</th><th>Event</th><th>IP address</th></tr>${log.map(l => `<tr><td>${date(l.at)}</td><td>${esc(EVENT_LABELS[l.event] || l.event.replace(/_/g, ' '))}</td><td>${esc(l.ip || '')}</td></tr>`).join('')}</table></div>`;
-  $$('[data-setlang]', view).forEach(b => (b.onclick = () => { if (b.dataset.setlang !== currentLang()) setLang(b.dataset.setlang); }));
+  $('#langSel', view).onchange = e => { if (e.target.value !== currentLang()) setLang(e.target.value); };
   const refreshMe = async () => { ME = (await api('/auth/me')).user; };
   act($('button', $('#qcf', view)), async () => { await api('/integrations/quantconnect', { body: form($('#qcf', view)) }); setTimeout(render, 800); return 'Connected'; });
   $$('[data-dis]', view).forEach(b => (b.onclick = async () => { await api('/integrations/' + b.dataset.dis, { method: 'DELETE' }); render(); }));
@@ -882,7 +892,7 @@ async function adminPage(view, tab) {
     'admin-users': () => `
   <div class="card tablewrap"><div class="row" style="justify-content:space-between;align-items:center"><h2>Users</h2><input id="userFind" type="search" placeholder="Search email" style="max-width:260px;margin:0"></div>
     <table id="userTable"><tr><th>Email</th><th>Plan</th><th>Role</th><th>2FA</th><th>Phone</th><th>Joined</th></tr>${s.users.map(u => `<tr data-email="${esc(u.email)}"><td data-no-tr>${esc(u.email)}${u.google ? ' <span class="pill">Google</span>' : ''}</td>
-      <td><select data-plan="${u.id}" style="margin:0;min-width:110px">${['free', 'pro', 'elite', 'ultimate'].map(p => `<option value="${p}" ${u.plan === p ? 'selected' : ''}>${p === 'free' ? 'Starter' : p === 'pro' ? 'Pro' : 'Elite'}</option>`).join('')}</select></td>
+      <td><select data-plan="${u.id}" style="margin:0;min-width:110px">${['free', 'pro', 'elite', 'ultimate'].map(p => `<option value="${p}" ${u.plan === p ? 'selected' : ''}>${{ free: 'Starter', pro: 'Pro', elite: 'Elite', ultimate: 'Ultimate' }[p]}</option>`).join('')}</select></td>
       <td>${u.role === 'admin' ? `<span class="pill">Admin</span>${u.id !== ME.id ? ` <button class="small ghost" data-role="${u.id}" data-to="user">Remove admin</button>` : ''}` : `<button class="small ghost" data-role="${u.id}" data-to="admin">Make admin</button>`}</td>
       <td>${u.totp_enabled ? 'yes' : '-'}</td><td>${u.phone_verified ? 'yes' : '-'}</td><td>${date(u.created_at)}</td></tr>`).join('')}</table><div class="err" id="userErr"></div>
     <p class="mu" style="font-size:12.5px">Changing a plan here gives it without payment (for friends, testers or support cases). Paying customers change plans themselves under Plans &amp; billing.</p></div>`,

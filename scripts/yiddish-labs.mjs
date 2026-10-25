@@ -38,6 +38,23 @@ if (cmd === 'export') {
   keys.forEach(([where, en], i) => { const yi = lines[i].trim(); if (yi) out[where][en] = yi; });
   await save(out.app, out.home);
   console.log(`Imported ${Object.keys(out.app).length} app and ${Object.keys(out.home).length} homepage strings. Rebuild the homepage with: python3 scripts/pages.py`);
+} else if (cmd === 'translate' && flag === '--new') {
+  // After each push (GitHub Actions): strings that have no Yiddish Labs translation yet, skipping the
+  // owner's admin pages (they stay in English) and anything without letters to translate.
+  const key = process.env.YIDDISH_LABS_API_KEY, base = process.env.YIDDISH_LABS_URL || 'https://app.yiddishlabs.com';
+  if (!key) { console.log('YIDDISH_LABS_API_KEY is not set: nothing to do.'); process.exit(0); }
+  const labsApp = (await import(pathToFileURL(path.join(root, 'public/i18n/yi-labs.js')))).default;
+  const homeFile = path.join(root, 'scripts/yi_labs.json'), labsHome = fs.existsSync(homeFile) ? JSON.parse(fs.readFileSync(homeFile, 'utf8')) : {};
+  const adminOnly = adminStrings();
+  const todo = entries.filter(([where, en, yi]) => /[A-Za-z]{2}/.test(en) && yi !== en && !(where === 'app' ? labsApp[en] : labsHome[en]) && !(where === 'app' && adminOnly.has(en)));
+  const unique = [...new Set(todo.map(([, en]) => en))];
+  console.log(`${unique.length} new strings for Yiddish Labs.`);
+  if (!unique.length) process.exit(0);
+  const { out, credits, stopped } = await translateAll(unique, { base, key, log: m => console.log(m) });
+  const res = { app: {}, home: {} };
+  for (const [where, en] of todo) if (out.has(en) && out.get(en) !== en) res[where][en] = out.get(en);
+  await save(res.app, res.home);
+  console.log(`Translated ${out.size} of ${unique.length} (${credits} credits)${stopped ? '; stopped early: ' + stopped : ''}.`);
 } else if (cmd === 'translate') {
   const key = process.env.YIDDISH_LABS_API_KEY, base = process.env.YIDDISH_LABS_URL || 'https://app.yiddishlabs.com';
   const args = process.argv.slice(3), limit = +(args[args.indexOf('--limit') + 1]) || Infinity;
@@ -97,6 +114,15 @@ if (cmd === 'export') {
   console.log(`Imported ${Object.keys(res.app).length} app and ${Object.keys(res.home).length} homepage strings (${hand.size} set by hand kept). Rebuild the homepage with: python3 scripts/pages.py`);
 } else {
   console.log('Usage: node scripts/yiddish-labs.mjs export [--missing] | import | translate [--limit N] [--dry] | parts | import-parts | import-json <file>');
+}
+
+// English text of the owner's admin pages, which stay in English.
+function adminStrings() {
+  const src = fs.readFileSync(path.join(root, 'public/app.js'), 'utf8'), prot = fs.readFileSync(path.join(root, 'public/protect.js'), 'utf8');
+  const sections = [src.slice(src.indexOf('async function adminPage'), src.indexOf('\nfor (const [k] of ADMIN_TABS')), prot.slice(prot.indexOf('async function system'))];
+  const out = new Set();
+  for (const s of sections) for (const m of s.matchAll(/(['"`])((?:(?!\1)[^\\]|\\.)*?)\1/g)) for (const piece of m[2].split(/<[^>]+>|\$\{[^}]*\}/)) { const t = piece.trim().replace(/\s+/g, ' '); if (/[A-Za-z]{2}/.test(t)) out.add(t); }
+  return out;
 }
 
 // Merges into earlier results so a partial round keeps the rest.
