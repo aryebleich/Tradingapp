@@ -85,7 +85,8 @@ app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'same-origin');
-  res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://secure.helcim.app; frame-src https://secure.helcim.app; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://checkout.stripe.com");
+  // Pyodide (the code lab's Python) loads only from its own jsdelivr folder; Plaid Link from cdn.plaid.com.
+  res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'wasm-unsafe-eval' https://secure.helcim.app https://cdn.jsdelivr.net/pyodide/ https://cdn.plaid.com; frame-src https://secure.helcim.app https://cdn.plaid.com; connect-src 'self' https://cdn.jsdelivr.net/pyodide/; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://checkout.stripe.com");
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   if (process.env.NODE_ENV === 'production') res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   next();
@@ -615,7 +616,8 @@ api.get('/tax', U, wrap(async (req, res) => {
 api.post('/tax/settings', U, wrap(async (req, res) => {
   const b = +req.body.bracket, st = +req.body.stateTax;
   if (!(b >= 0 && b <= 0.5 && st >= 0 && st <= 0.15)) throw new Error('Out of range');
-  await run('UPDATE users SET tax_bracket = ?, state_tax = ?, mtm_election = ? WHERE id = ?', b, st, req.body.mtm ? 1 : 0, req.user.id);
+  // The mark-to-market election changes only when sent (the Settings form leaves it alone).
+  await run('UPDATE users SET tax_bracket = ?, state_tax = ?, mtm_election = COALESCE(?, mtm_election) WHERE id = ?', b, st, req.body.mtm === undefined ? null : req.body.mtm ? 1 : 0, req.user.id);
   res.json({ ok: true });
 }));
 

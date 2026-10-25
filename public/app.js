@@ -5,6 +5,11 @@ import { registerStrategies } from './strategies.js';
 import { registerPairs } from './pairs.js';
 import { registerSp500 } from './sp500.js';
 import { registerBrokers } from './brokers.js';
+import { registerStudio } from './studio.js';
+import { registerBuild } from './build.js';
+import { registerAnalytics } from './analytics.js';
+import { registerChart } from './chart.js';
+import { registerOptionsLab } from './optionslab.js';
 import { startI18n, setLang, canvasNote, LANGS, current as currentLang } from './i18n.js';
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -113,10 +118,12 @@ async function showUpgrade(feature) {
 
 // ---------- routing ----------
 const NAV = [
-  ['Trading', [['dashboard', 'Portfolio'], ['trade', 'Trade'], ['orders', 'Orders'], ['positions', 'Positions'], ['watchlists', 'Watchlists']]],
-  ['Markets', [['sp500', 'S&P 500 plan'], ['markets', 'Markets & news'], ['options', 'Options chain'], ['calendar', 'Calendar & events']]],
-  ['Strategies', [['strategies', 'Strategy library'], ['signals', 'Alerts to trades'], ['pairs', 'Pairs trading'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['schedule', 'Scheduled trades'], ['quantconnect', 'QuantConnect']]],
-  ['Account', [['brokers', 'Brokerages'], ['account', 'Alpaca account'], ['funding', 'Plans & billing'], ['referrals', 'Invite & earn'], ['tax', 'Taxes'], ['text', 'Text & hotline'], ['settings', 'Settings']]],
+  ['Trading', [['dashboard', 'Portfolio'], ['trade', 'Trade'], ['chart', 'Chart'], ['orders', 'Orders'], ['positions', 'Positions'], ['watchlists', 'Watchlists']]],
+  ['AI', [['ai', 'AI assistant'], ['agents', 'Forecasts & AI agents'], ['news', 'News & sentiment']]],
+  ['Markets', [['sp500', 'S&P 500 plan'], ['markets', 'Markets & news'], ['scanner', 'Scanner'], ['options', 'Options chain'], ['optionslab', 'Options lab'], ['institutions', 'Institutional portfolios'], ['calendar', 'Calendar & events']]],
+  ['Strategies', [['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['code', 'Code lab'], ['portfolios', 'Portfolios'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['marketplace', 'Marketplace'], ['pairs', 'Pairs trading'], ['schedule', 'Scheduled trades'], ['quantconnect', 'QuantConnect']]],
+  ['Money', [['insights', 'Insights & journal'], ['risk', 'Risk controls'], ['spend', 'Invest as you spend'], ['halal', 'Halal investing'], ['tax', 'Taxes']]],
+  ['Account', [['brokers', 'Brokerages'], ['account', 'Alpaca account'], ['funding', 'Plans & billing'], ['referrals', 'Invite & earn'], ['text', 'Text & hotline'], ['settings', 'Settings']]],
 ];
 // Simple line icons (24x24 paths) for the menu.
 const ICONS = {
@@ -139,7 +146,15 @@ const ICONS = {
   'admin-money': '<rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/>',
   'admin-support': '<path d="M4 5h16v11H8l-4 4z"/><path d="M8 9h8M8 12.5h5"/>',
   'admin-setup': '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
-  admin: '<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"/>', star: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
+  admin: '<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"/>',
+  chart: '<path d="M7 4v16M17 6v12M4 8h6v8H4zM14 9h6v6h-6z"/>', ai: '<path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
+  agents: '<path d="M3 17l6-6 4 4 8-8"/><circle cx="21" cy="7" r="1"/><path d="M3 21h18"/>', news: '<path d="M4 5h13v14H6a2 2 0 0 1-2-2zM17 9h3v8a2 2 0 0 1-2 2"/><path d="M8 9h5M8 13h5"/>',
+  scanner: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5M8 11h6M11 8v6"/>', optionslab: '<path d="M3 18c4 0 5-12 9-12s5 12 9 12"/><path d="M3 21h18"/>',
+  institutions: '<path d="M3 21h18M5 21V10M19 21V10M9 21v-7M15 21v-7M2 10l10-6 10 6z"/>', code: '<path d="M8 8l-5 4 5 4M16 8l5 4-5 4M14 4l-4 16"/>',
+  portfolios: '<path d="M12 3v9l7.8 4.5A9 9 0 1 1 12 3z"/><path d="M15 3.5A9 9 0 0 1 20.5 13H15z"/>', fleet: '<circle cx="5" cy="12" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><path d="M7 11l10-5M7 13l10 5"/>',
+  marketplace: '<path d="M3 9l2-5h14l2 5M3 9v11h18V9M3 9h18M9 20v-6h6v6"/>', insights: '<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>',
+  risk: '<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"/><path d="M12 8v5M12 16h.01"/>', spend: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M16 15h2"/>',
+  halal: '<path d="M20 13A8 8 0 1 1 11 4a6.5 6.5 0 0 0 9 9z"/><path d="M17 4l.7 1.5 1.6.2-1.2 1.1.3 1.6L17 7.6l-1.4.8.3-1.6-1.2-1.1 1.6-.2z"/>', star: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
 };
 const icon = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k] || ''}</svg>`;
 const isPaid = u => u && (u.role === 'admin' || (['pro', 'elite'].includes(u.plan) && ['active', 'trialing', null, undefined].includes(u.planStatus)));
@@ -412,6 +427,11 @@ routes.backtest = async (view, q) => {
     $('#result', view).innerHTML = r.optimize ? optimizeHtml(r.optimize) : resultHtml(r);
     if (!r.optimize) drawChart($('#btc', view), r.curve.map(x => x.eq), { base: +body.capital, compare: r.curve.map(x => x.bh) });
   });
+  // Edit while you look: after the first run, changing any input re-runs the backtest.
+  let ran = false, tmr;
+  f.addEventListener('submit', e => e.preventDefault());
+  $('button', f).addEventListener('click', () => (ran = true));
+  f.addEventListener('input', () => { if (!ran) return; clearTimeout(tmr); tmr = setTimeout(() => { if (f.isConnected && /^#\/backtest/.test(location.hash)) $('button', f).click(); }, 700); });
   if (q.get('run')) $('button', f).click();
 };
 function resultHtml(r) {
@@ -455,23 +475,34 @@ function optimizeHtml(o) {
 
 // ---------- saved strategies / bots ----------
 routes.bots = async view => {
-  const list = await api('/strategies');
+  const [list, accts] = await Promise.all([api('/strategies'), accounts()]);
+  CFG ||= await api('/config').catch(() => ({}));
+  const freqName = { daily: 'daily', '1Hour': 'hourly', '15Min': 'every 15 min' };
   view.innerHTML = `<h1>Strategies & Bots</h1>
-  <div class="banner">A deployed bot checks its rules once per trading day shortly before the 4 pm New York close and buys or sells on the chosen account. Text BOTS to see them, PAUSE &lt;PIN&gt; to stop all.</div>
+  <div class="banner">A deployed bot checks its rules once a day shortly before the 4 pm New York close, or every hour or 15 minutes, and buys or sells on the chosen account. Crypto bots (e.g. BTC/USD) run around the clock. Text BOTS to see them, PAUSE &lt;PIN&gt; to stop all, or use the kill switch on the Risk page.</div>
   <div class="card tablewrap"><table><tr><th>Name</th><th>Symbol</th><th>Entry</th><th>Exit</th><th>Running on</th><th>Last action</th><th></th></tr>
-  ${list.map(s => `<tr data-id="${s.id}"><td>${esc(s.name)}</td><td>${esc(s.symbol)}</td><td><code>${esc(s.entry)}</code></td><td><code>${esc(s.exit)}</code></td>
-    <td>${s.deployed ? `<span class="pill ${s.deployed === 'alpaca' ? 'warn' : ''}">${s.deployed}</span>` : '<span class="mu">off</span>'}</td><td>${esc(s.last_action || '')}</td>
-    <td><button class="small ghost" data-do="test">Backtest</button> ${s.deployed ? '<button class="small danger" data-do="stop">Stop</button>' : '<button class="small" data-do="paper">Run on paper</button> <button class="small ghost" data-do="alpaca">Run on Alpaca</button>'} <button class="small ghost" data-do="del">Delete</button></td></tr>`).join('') || '<tr><td colspan="7" class="mu">Save a strategy from the Backtest page first.</td></tr>'}
+  ${list.map(s => `<tr data-id="${s.id}"><td>${esc(s.name)}${s.public ? ' <span class="pill">published</span>' : ''}</td><td>${esc(s.symbol)}</td><td><code>${esc(s.entry)}</code></td><td><code>${esc(s.exit)}</code></td>
+    <td>${s.deployed ? `<span class="pill ${s.deployed === 'paper' ? '' : 'warn'}">${esc(s.deployed)} · ${freqName[s.freq || 'daily']}</span>` : '<span class="mu">off</span>'}</td><td>${esc(s.last_action || '')}</td>
+    <td class="nowrap"><button class="small ghost" data-do="test">Backtest</button> ${s.deployed ? '<button class="small danger" data-do="stop">Stop</button>' : '<button class="small" data-do="run">Run…</button>'} <button class="small ghost" data-do="pub">${s.public ? 'Unpublish' : 'Publish'}</button> <button class="small ghost" data-do="del">Delete</button></td></tr>
+    <tr class="runrow" data-for="${s.id}" hidden><td colspan="7"><form class="row"><label>Account<select name="account">${accountOptions(accts, 'paper', isPaid(ME))}</select></label>
+      <label>Check<select name="freq"><option value="daily">Once a day, before the close</option><option value="1Hour" ${CFG.marketData ? '' : 'disabled'}>Every hour</option><option value="15Min" ${CFG.marketData ? '' : 'disabled'}>Every 15 minutes</option></select></label><button data-do="deploy">Start bot</button></form></td></tr>`).join('') || '<tr><td colspan="7" class="mu">Save a strategy from the Backtest page, the AI assistant or the Marketplace.</td></tr>'}
   </table><div class="err" id="botErr"></div></div>`;
-  $$('button[data-do]', view).forEach(b => (b.onclick = async () => {
-    const id = b.closest('tr').dataset.id, s = list.find(x => x.id == id), d = b.dataset.do;
+  $$('button[data-do]', view).forEach(b => (b.onclick = async e => {
+    e.preventDefault();
+    const tr = b.closest('tr'), id = tr.dataset.id || tr.dataset.for, s = list.find(x => x.id == id), d = b.dataset.do;
     try {
       if (d === 'test') { sessionStorage.setItem('qp_strategy', JSON.stringify(s)); location.hash = '#/backtest?run=1'; return; }
+      if (d === 'run') { const r = $(`tr[data-for="${id}"]`, view); r.hidden = !r.hidden; return; }
       if (d === 'del') { if (!confirm('Delete?')) return; await api('/strategies/' + id, { method: 'DELETE' }); }
-      else {
-        if (d === 'alpaca' && !confirm('This bot will place orders on your Alpaca account automatically. Continue?')) return;
-        await api(`/strategies/${id}/deploy`, { body: { account: d === 'stop' ? null : d } });
-      }
+      else if (d === 'pub') {
+        const desc = s.public ? undefined : prompt('Describe this strategy for others (optional)', s.description || '');
+        if (!s.public && desc === null) return;
+        await api(`/market/strategies/${id}/publish`, { body: { public: !s.public, description: desc } });
+      } else if (d === 'deploy') {
+        const f = form(b.closest('form'));
+        if (f.account !== 'paper' && !confirm('This bot will place orders on that account automatically. Continue?')) return;
+        await api(`/strategies/${id}/deploy`, { body: f });
+      } else await api(`/strategies/${id}/deploy`, { body: { account: null } });
       render();
     } catch (e) { $('#botErr', view).textContent = e.message; }
   }));
@@ -569,7 +600,8 @@ routes.tax = async (view, q) => {
   view.innerHTML = `<div class="row" style="justify-content:space-between"><h1>Tax information</h1>${accountSwitch()}</div>
   <div class="banner">Estimates for planning only (US federal + flat state rate, FIFO lots). Your broker's 1099-B is the official record; check with a tax professional.</div>
   <div class="card"><div class="row"><label>Year<select id="yr">${[0, 1, 2, 3].map(i => new Date().getFullYear() - i).map(y => `<option ${y === year ? 'selected' : ''}>${y}</option>`).join('')}</select></label>
-    <a href="/api/tax?account=${state.account}&year=${year}&format=csv"><button type="button" class="ghost">Download Form 8949 CSV</button></a></div>
+    <a href="/api/tax?account=${state.account}&year=${year}&format=csv"><button type="button" class="ghost">Download Form 8949 CSV</button></a>
+    <a href="/api/tax?account=${state.account}&year=${year}&format=scheduled"><button type="button" class="ghost">Download Schedule D CSV</button></a></div>
     <div class="stats" style="margin-top:12px">
       <div class="stat"><span>Short-term gains</span><b class="${cls(t.shortTerm)}">${money(t.shortTerm)}</b></div>
       <div class="stat"><span>Long-term gains</span><b class="${cls(t.longTerm)}">${money(t.longTerm)}</b></div>
@@ -579,12 +611,24 @@ routes.tax = async (view, q) => {
       <div class="stat"><span>Loss carryforward</span><b>${money(t.carryforward)}</b></div>
     </div>
     <p class="mu" style="font-size:13px">Rates used: ordinary ${num(t.bracket * 100, 0)}%, long-term ${num(t.ltRate * 100, 0)}%, state ${num(t.stateRate * 100, 1)}%. Change them in Settings.</p></div>
+  ${t.scheduleD ? `<div class="card"><h2>Schedule D summary</h2><div class="tablewrap"><table><tr><th>Line</th><th>Lots</th><th>Proceeds</th><th>Cost</th><th>Wash-sale adjustments</th><th>Gain or loss</th></tr>
+    <tr><td>1b / 7: Short-term (Form 8949 box A)</td><td>${t.scheduleD.line1b_shortTerm.lots}</td><td>${money(t.scheduleD.line1b_shortTerm.proceeds)}</td><td>${money(t.scheduleD.line1b_shortTerm.cost)}</td><td>${money(t.scheduleD.line1b_shortTerm.adjustments)}</td><td class="${cls(t.scheduleD.line7_netShortTerm)}">${money(t.scheduleD.line7_netShortTerm)}</td></tr>
+    <tr><td>8b / 15: Long-term (Form 8949 box D)</td><td>${t.scheduleD.line8b_longTerm.lots}</td><td>${money(t.scheduleD.line8b_longTerm.proceeds)}</td><td>${money(t.scheduleD.line8b_longTerm.cost)}</td><td>${money(t.scheduleD.line8b_longTerm.adjustments)}</td><td class="${cls(t.scheduleD.line15_netLongTerm)}">${money(t.scheduleD.line15_netLongTerm)}</td></tr>
+    <tr><td><b>16: Total</b></td><td></td><td></td><td></td><td></td><td class="${cls(t.scheduleD.line16_total)}"><b>${money(t.scheduleD.line16_total)}</b></td></tr>
+    ${t.scheduleD.line21_allowedLoss != null ? `<tr><td>21: Loss you can deduct this year</td><td></td><td></td><td></td><td></td><td class="neg">${money(t.scheduleD.line21_allowedLoss)}</td></tr>` : ''}</table></div></div>` : ''}
+  ${t.markToMarket ? `<div class="card"><h2>Trader mark-to-market (Section 475(f))</h2><label class="chk"><input type="checkbox" id="mtm" ${t.mtmElection ? 'checked' : ''}> I made the mark-to-market election</label>
+    <p class="mu" style="font-size:13px">With the election, gains and losses are ordinary income, open positions are treated as sold at year end, wash-sale rules don't apply and the $3,000 loss limit is lifted. It must be filed with the IRS by the tax deadline for the year before it applies.</p>
+    ${t.mtmElection ? `<div class="stats"><div class="stat"><span>Realized</span><b class="${cls(t.markToMarket.realized)}">${money(t.markToMarket.realized)}</b></div><div class="stat"><span>Open positions marked</span><b class="${cls(t.markToMarket.markedToMarket)}">${money(t.markToMarket.markedToMarket)}</b></div><div class="stat"><span>Ordinary income</span><b class="${cls(t.markToMarket.ordinaryIncome)}">${money(t.markToMarket.ordinaryIncome)}</b></div><div class="stat"><span>Estimated tax</span><b>${money(t.markToMarket.estimatedTax)}</b></div></div><p class="mu" style="font-size:12.5px">${esc(t.markToMarket.note)}</p>` : ''}<div class="err"></div></div>` : ''}
   ${t.harvest.length ? `<div class="card"><h2>Tax-loss harvesting ideas</h2>${t.harvest.map(h => `<p><b>${esc(h.symbol)}</b> <span class="neg">${money(h.unrealized)}</span> <span class="mu">${esc(h.note)}</span></p>`).join('')}</div>` : ''}
   <div class="card tablewrap"><h2>Realized sales</h2><table><tr><th>Symbol</th><th>Qty</th><th>Acquired</th><th>Sold</th><th>Proceeds</th><th>Cost</th><th>Gain</th><th>Term</th><th></th></tr>
     ${t.rows.map(r => `<tr><td>${esc(r.symbol)}</td><td>${num(r.qty, 4)}</td><td>${new Date(r.acquired).toLocaleDateString()}</td><td>${new Date(r.sold).toLocaleDateString()}</td><td>${money(r.proceeds)}</td><td>${money(r.cost)}</td><td class="${cls(r.gain)}">${money(r.gain)}</td><td>${r.longTerm ? 'Long' : 'Short'}</td><td>${r.washSale ? '<span class="pill warn">wash sale</span>' : ''}</td></tr>`).join('') || '<tr><td colspan="9" class="mu">No sales this year</td></tr>'}
   </table></div>`;
   wireAccountSwitch(view);
   $('#yr', view).onchange = e => (location.hash = '#/tax?year=' + e.target.value);
+  if ($('#mtm', view)) $('#mtm', view).onchange = async e => {
+    try { await api('/tax/settings', { body: { bracket: t.bracket, stateTax: t.stateRate, mtm: e.target.checked } }); render(); }
+    catch (x) { e.target.closest('.card').querySelector('.err').textContent = x.message; }
+  };
 };
 
 // ---------- funding & plans ----------
@@ -808,6 +852,12 @@ registerSp500(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, 
 registerPairs(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, cls, api, form, act, render, drawChart, me: () => ME });
 registerSignals(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, date, api, form, act, render, me: () => ME });
 registerTrading(routes, { $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, updateBadge, me: () => ME, state });
+const shared = { $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, accounts, accountOptions, acctLabel, state, me: () => ME, paid: () => isPaid(ME) };
+registerStudio(routes, shared);
+registerBuild(routes, shared);
+registerAnalytics(routes, shared);
+registerChart(routes, shared);
+registerOptionsLab(routes, shared);
 
 (async () => {
   // Remember an invite code from a referral link (/app?ref=CODE) for sign-up.

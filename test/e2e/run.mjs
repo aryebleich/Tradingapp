@@ -249,6 +249,63 @@ console.log('Settings → Language');
   done(); await ctx.close();
 }
 
+// ---------- new feature pages, driven on desktop ----------
+{
+  console.log('Feature pages (desktop)');
+  const ctx = await browser.newContext({ viewport: { width: 1360, height: 900 } });
+  const p = await ctx.newPage();
+  const { step, done } = harness(p, 'features');
+  await p.goto(B + '/app#/register'); await p.fill('input[name=email]', 'features@example.com'); await p.fill('input[name=password]', 'Str0ngPassword'); await p.check('input[name=agree]');
+  await p.click("form.auth button:not([type=button])"); await p.waitForSelector('#tabs a.on', { state: 'attached' });
+  const go = async (r, sel) => { if (p.url() === B + '/app' + r) await p.reload(); else await p.goto(B + '/app' + r); await p.waitForSelector(sel, { timeout: 15000 }); };
+  const okText = async box => { await p.waitForSelector(`${box} .ok`, { timeout: 20000 }).catch(async () => { throw new Error((await p.textContent(`${box} .err`).catch(() => '')) || 'no result'); }); };
+  await step('menu lists the new pages', async () => { for (const k of ['chart', 'ai', 'scanner', 'optionslab', 'portfolios', 'fleet', 'insights', 'risk', 'halal']) await p.waitForSelector(`#nav a[href="#/${k}"]`, { state: 'attached' }); });
+  await step('AI assistant answers (basic mode)', async () => {
+    await go('#/ai', '#ask'); await p.fill('#ask textarea', 'How does AAPL look technically?'); await p.click('#send');
+    await p.waitForSelector('.msg.assistant:not(.typing)', { timeout: 20000 });
+  });
+  await step('scanner runs', async () => { await go('#/scanner', '#scan'); await p.fill('#scan textarea[name=rules]', 'Close > 0'); await p.click('#runScan'); await p.waitForSelector('#scanOut table', { timeout: 30000 }); });
+  await step('scanner saves', async () => { await p.click('#saveScan button'); await okText('#saveScan'); });
+  await step('portfolio backtest and save', async () => {
+    await go('#/portfolios', '#bk'); await p.selectOption('#bk select[name=universe]', 'etfs'); await p.click('#bkTest'); await p.waitForSelector('#bkCh', { timeout: 60000 });
+    await p.click('#bkSave button'); await p.waitForSelector('[data-a=deploy]', { timeout: 30000 });
+    await p.click('[data-a=deploy]'); await p.waitForSelector('[data-a=stop]', { timeout: 15000 });
+  });
+  await step('signal channel: create, follow, send', async () => {
+    await go('#/fleet', '#newChan'); await p.click('#newChan button'); await p.waitForSelector('#newHook .banner');
+    await go('#/fleet', '[data-pub] button'); await p.click('[data-pub] button'); await p.click('#subForm button'); await p.waitForTimeout(1200);
+    await go('#/fleet', '[data-c] form.sig'); await p.fill('[data-c] input[name=symbol]', 'AAPL'); await p.click('[data-c] form.sig button');
+    await p.waitForFunction(() => /Sent to/.test(document.querySelector('[data-c] .ok')?.textContent || ''), null, { timeout: 15000 });
+  });
+  await step('marketplace lists shared items', async () => { await go('#/marketplace?tab=portfolios', '.cards'); });
+  await step('risk limits and kill switch', async () => {
+    await go('#/risk', '#rk'); await p.fill('#rk input[name=maxOrderUsd]', '5000'); await p.click('#rk button'); await okText('#rk');
+    await p.click('#kill'); await p.waitForSelector('.killcard.on', { timeout: 15000 }); await p.click('#kill'); await p.waitForSelector('.killcard:not(.on)', { timeout: 15000 });
+  });
+  await step('insights and journal', async () => { await go('#/insights', '#twrCh'); await go('#/insights?tab=journal', '#jt'); await go('#/insights?tab=execution', 'table'); });
+  await step('halal screen and zakat', async () => {
+    await go('#/halal', '#hs'); await p.click('#hs button'); await p.waitForSelector('#hsOut table');
+    await go('#/halal?tab=zakat', '#zk'); await p.fill('#zk input[name=cash]', '20000'); await p.fill('#zk input[name=goldPerGram]', '80'); await p.click('#zk button'); await p.waitForSelector('#zOut .stats');
+  });
+  await step('round-ups import', async () => { await go('#/spend', '#csv'); await p.fill('#csv', '2026-10-20,STARBUCKS #1,5.45\n2026-10-21,AMAZON,23.10'); await p.click('#imp'); await p.waitForFunction(() => /purchases read/.test(document.body.textContent), null, { timeout: 15000 }); });
+  await step('news sentiment', async () => { await go('#/news', '#nf'); await p.waitForSelector('#sent .cards', { timeout: 20000 }); });
+  await step('chart draws with candles and a trend line', async () => {
+    await go('#/chart?symbol=AAPL', '.cpanel canvas'); await p.waitForFunction(() => /Scroll|Daily|Simulated/.test(document.querySelector('.cnote')?.textContent || ''), null, { timeout: 20000 });
+    await p.click('[data-tool=trend]'); const b = await p.locator('.cpanel canvas').boundingBox();
+    await p.mouse.move(b.x + 100, b.y + 100); await p.mouse.down(); await p.mouse.move(b.x + 300, b.y + 60); await p.mouse.up();
+    await p.click('[data-l="2"]'); await p.waitForSelector('.chartgrid.l2 .cpanel:nth-child(2)');
+  });
+  await step('options lab template and payoff', async () => {
+    await go('#/optionslab?symbol=AAPL', '.tpls'); await p.click('[data-t=bull_call]');
+    await p.waitForFunction(() => document.querySelectorAll('#legs tr[data-i]').length >= 1 || /market|No contracts|expiration/i.test(document.querySelector('#tErr')?.textContent || ''), null, { timeout: 20000 });
+    if (!(await p.$('#legs tr[data-i]'))) { await p.fill('#spot', '100'); await p.dispatchEvent('#spot', 'change'); await p.click('#addLeg'); }
+    await p.waitForSelector('#pstats .stat', { timeout: 15000 });
+  });
+  await step('tax page shows Schedule D', async () => { await go('#/tax', '.card'); await p.waitForFunction(() => /Schedule D/.test(document.body.textContent)); });
+  await step('bots page offers frequency', async () => { await go('#/bots', 'h1'); });
+  done(); await ctx.close();
+}
+
 // ---------- layout audit: no sideways scrolling and no zooming inputs on any page ----------
 for (const [device, width, lang] of [['iPhone 13', 390, 'en'], ['iPhone SE', 320, 'en'], ['iPhone SE', 320, 'yi']]) {
   console.log(`Layout audit (${device}, ${width}px${lang === 'yi' ? ', Yiddish' : ''})`);
@@ -262,7 +319,7 @@ for (const [device, width, lang] of [['iPhone 13', 390, 'en'], ['iPhone SE', 320
   await p.evaluate(() => fetch('/api/alpaca/keys', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ keyId: 'AUDIT' + innerWidth, secret: 'S' }) }));
   await p.evaluate(() => localStorage.setItem('qp_account', 'alpaca'));
   const lib = await p.evaluate(() => fetch('/api/library', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ templateId: 'multi_model' }) }).then(r => r.json()));
-  for (const r of ['/', '/yi', '/terms', '/app#/register', '/app#/login', '#/dashboard', '#/trade?symbol=AAPL', '#/orders', '#/positions', '#/watchlists', '#/markets', '#/options?underlying=AAPL', '#/calendar', '#/account', '#/open-account', '#/brokers', '#/strategies', `#/strategy?id=${lib.id}`, '#/signals', '#/pairs', '#/sp500', '#/backtest', '#/bots', '#/schedule', '#/text', '#/tax', '#/funding', '#/settings']) {
+  for (const r of ['/', '/yi', '/terms', '/app#/register', '/app#/login', '#/dashboard', '#/trade?symbol=AAPL', '#/orders', '#/positions', '#/watchlists', '#/markets', '#/options?underlying=AAPL', '#/calendar', '#/account', '#/open-account', '#/brokers', '#/strategies', `#/strategy?id=${lib.id}`, '#/signals', '#/pairs', '#/sp500', '#/backtest', '#/bots', '#/schedule', '#/text', '#/tax', '#/funding', '#/settings', '#/chart?symbol=AAPL', '#/ai', '#/agents', '#/code', '#/news', '#/scanner', '#/optionslab', '#/institutions', '#/portfolios', '#/portfolios?tab=mine', '#/fleet', '#/marketplace', '#/insights', '#/insights?tab=journal', '#/risk', '#/spend', '#/halal', '#/halal?tab=zakat']) {
     await step(r, async () => {
       await p.goto(r.startsWith('#') ? B + '/app' + r : B + r); if (r === '#/dashboard') await p.reload();
       await p.waitForTimeout(r.includes('strategy') || r.includes('sp500') ? 3000 : 1300);

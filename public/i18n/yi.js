@@ -1,6 +1,7 @@
 // Yiddish for the QuantPocket app (exact English phrase → Yiddish). Written in everyday
 // American-Hasidic usage: common trading terms stay in their English form, in Yiddish letters.
 import labs from './yi-labs.js';
+import * as features from './yi-features.js';
 
 export const credit = '';
 
@@ -337,7 +338,7 @@ export const strings = {
   'Admin user update': 'אדמין האט געטוישט א באניצער',
 };
 
-Object.assign(strings, labs);
+Object.assign(strings, features.strings, labs);
 
 // Sentences that contain numbers or names.
 export const patterns = [
@@ -363,4 +364,5 @@ export const patterns = [
   [/^Connect (.+)$/, 'פארבינדט $1'],
   [/^Sign in with (.+)$/, 'לאגירט זיך איין מיט $1'],
   [/^Choose (.+)$/, 'קלייבט $1'],
+  ...features.patterns,
 ];
