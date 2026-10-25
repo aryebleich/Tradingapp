@@ -249,7 +249,7 @@ async function news(view, q) {
   H.act(H.$('#brief', view), async () => {
     const r = await H.api('/news/brief', { body: { symbols: list() } });
     const { md } = await import('./studio.js');
-    H.$('#briefOut', view).innerHTML = `<div class="card"><div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">Your brief ${r.ai ? '<span class="pill">Claude</span>' : ''}</h2>${window.speechSynthesis ? '<span class="row" style="gap:6px"><button class="ghost small" id="play">▶ Listen</button><button class="ghost small" id="stop">■ Stop</button></span>' : ''}</div><div class="md">${md(r.brief)}</div></div>`;
+    H.$('#briefOut', view).innerHTML = `<div class="card"><div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">Your brief ${r.ai ? '<span class="pill">AI</span>' : ''}</h2>${window.speechSynthesis ? '<span class="row" style="gap:6px"><button class="ghost small" id="play">▶ Listen</button><button class="ghost small" id="stop">■ Stop</button></span>' : ''}</div><div class="md">${md(r.brief)}</div></div>`;
     if (H.$('#play', view)) {
       H.$('#play', view).onclick = () => { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(r.script); u.rate = 1.02; speechSynthesis.speak(u); };
       H.$('#stop', view).onclick = () => speechSynthesis.cancel();

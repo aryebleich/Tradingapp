@@ -90,8 +90,8 @@ def gbtn(label='Sign up with Google', cls='lg'):
 # "What do you want to do?" picker: (id, chip, icon, title, text, bullets)
 INTENTS = [
  ('alert', 'Turn my alert into a trade', 'hook', 'Your alert fires. The order goes out.',
-  'Paste a private webhook URL into a TradingView, TrendSpider or Zapier alert. When it fires, QuantPocket checks your risk rules and places the order in seconds.',
-  ['TradingView strategy and indicator alerts', 'JSON, or plain text like <code>buy AAPL 10</code>', 'Every signal logged with its fill, or the reason it was blocked']),
+  'Paste a private webhook URL into an alert from your charting platform or automation tool. When it fires, QuantPocket checks your risk rules and places the order in seconds.',
+  ['Strategy and indicator alerts from any platform that sends webhooks', 'JSON, or plain text like <code>buy AAPL 10</code>', 'Every signal logged with its fill, or the reason it was blocked']),
  ('library', 'Copy a ready-made strategy', 'list', 'Seven strategies, ready to run.',
   'Pick a rotation strategy from the library. Every day the app fills in the numbers, walks the rules step by step and tells you exactly what to buy. Run it by hand or let it trade by itself.',
   ['Every rule, number and ticker can be changed', 'Type your own values, like in a spreadsheet', 'Backtest before you risk a dollar']),
@@ -134,12 +134,12 @@ LIBRARY = [
 USECASES = [
  ('Retail traders', 'Automation on your own account', 'Get reliable alert-to-broker automation without running servers or writing integrations.',
   ['Connect the charting tools you already use', 'Send alerts straight to your own brokerage account', 'Start on paper before going live']),
- ('TradingView users', 'Your strategy, executed', 'Your Pine Script strategy already knows when to buy and sell. QuantPocket places those orders for you.',
+ ('Chart traders', 'Your strategy, executed', 'Your charting strategy already knows when to buy and sell. QuantPocket places those orders for you.',
   ['Copy-and-paste alert message templates', 'Size from the alert or a fixed amount', 'Exits close the whole position']),
  ('Swing traders', 'Set it and walk away', 'Pick your entry, then let bracket orders manage the exit while you are away from the screen.',
   ['Stop-loss and take-profit placed with the entry', 'Good-till-canceled orders', 'Price alerts by text message']),
- ('Quants &amp; developers', 'Code-first trading', 'Run Python algorithms on QuantConnect, backtest rules here, and send orders from any script or AI agent.',
-  ['QuantConnect LEAN projects and cloud backtests', 'Webhooks from any language, any tool', 'Risk rules your code cannot bypass']),
+ ('Quants &amp; developers', 'Code-first trading', 'Run Python strategies in the code lab, backtest rules here, and send orders from any script or AI agent.',
+  ['Python code lab with backtests in your browser', 'Webhooks from any language, any tool', 'Risk rules your code cannot bypass']),
  ('Long-term investors', 'Invest on a schedule', 'Automate monthly S&amp;P 500 buys and keep an eye on taxes, without watching the market all day.',
   ['Monthly or weekly automatic buys', 'Tax-loss harvesting ideas', 'An equity curve that shows how you are doing']),
  ('Learners', 'Practice with zero risk', 'Learn how strategies behave with $100,000 in paper money and honest numbers.',
@@ -149,7 +149,7 @@ USECASES = [
 FEATURES = [
  ('list', 'Strategy library', 'Seven ready-made rotation strategies, by hand or automatic, every rule editable.'),
  ('radar', 'Reality Check', 'Live results compared with the backtest every day, with automatic throttling.'),
- ('hook', 'TradingView alerts', 'Send orders to your broker from TradingView, TrendSpider and Zapier.'),
+ ('hook', 'Webhook alerts', 'Send orders to your broker from any tool that can call a webhook.'),
  ('pair', 'Pairs trading', 'Cointegration, z-scores, half-life, walk-forward backtests and pair bots.'),
  ('up', 'S&amp;P 500 autopilot', 'Monthly index-fund buys with projections from real history.'),
  ('msg', 'AI phone assistant', 'Text or call one number; ask questions or trade in plain words.'),
@@ -163,22 +163,24 @@ FEATURES = [
 
 PLANS = [
  ('Starter', 'Learn and practice', '$0', None, '/forever', None, '+ 20% of new profits',
-  ['$100,000 paper account', 'Strategy library by hand + 1 automatic strategy on paper', 'S&amp;P 500 auto-invest on paper', 'Pairs analysis &amp; backtests', '1 alert webhook (paper)', 'AI text assistant for questions &amp; balances'], 'Start free', False),
- ('Pro', 'Automate your real accounts', '$29', '$290', '/month', '/year', '+ 10% of new profits',
-  ['Everything in Starter', 'Live trading on Alpaca, Schwab, tastytrade, Tradier &amp; TradeStation', '5 automatic strategies with Reality Check auto-throttle', '10 alert webhooks (TradingView, Zapier)', 'Pair bots, scheduled trades &amp; live S&amp;P 500 auto-invest', 'Trade by text &amp; phone with the AI assistant', 'Optimizer, walk-forward testing &amp; QuantConnect'], 'Start 14-day free trial', True),
- ('Elite', 'For serious capital', '$99', '$990', '/month', '/year', '+ 5% of new profits',
-  ['Everything in Pro', 'Lowest performance fee (5%)', '50 automatic strategies &amp; 50 webhooks', 'Market-neutral pairs (long + short)', 'Tax-loss harvesting report', 'Priority AI &amp; priority support'], 'Start 14-day free trial', False),
+  ['$100,000 paper account', '1 chart per layout, every indicator', 'Strategy library by hand + 1 automatic strategy on paper', 'Unlimited backtests', '1 alert webhook (paper)', '2 scanners, checked hourly', 'AI assistant: 30 messages a day'], 'Start free', False),
+ ('Pro', 'Automate your real accounts', '$53', '$530', '/month', '/year', '+ 10% of new profits',
+  ['Everything in Starter', 'Live trading on Alpaca, Schwab, tastytrade, Tradier &amp; TradeStation', '2-chart layouts', '5 automatic strategies with Reality Check auto-throttle', '10 alert webhooks', 'Scanners every 5 minutes, portfolios &amp; signal mirroring', 'AI assistant: 300 messages a day', 'Optimizer, walk-forward testing &amp; code lab'], 'Start 14-day free trial', True),
+ ('Elite', 'For active traders', '$109', '$1,090', '/month', '/year', '+ 5% of new profits',
+  ['Everything in Pro', '4-chart layouts and pop-out windows', '25 automatic strategies &amp; 25 webhooks', 'Option income bots &amp; multi-leg orders', 'Market-neutral pairs (long + short)', 'Tax-loss harvesting &amp; Schedule D', 'AI assistant: 1,000 messages a day'], 'Start 14-day free trial', False),
+ ('Ultimate', 'For serious capital', '$320', '$3,200', '/month', '/year', '+ 2.5% of new profits',
+  ['Everything in Elite', 'Lowest performance fee (2.5%)', '100 automatic strategies &amp; 100 webhooks', 'Unlimited scanners and AI agents', 'AI assistant: 3,000 messages a day', 'Priority support'], 'Start 14-day free trial', False),
 ]
 
 FAQ_AUTO = [
- ('Can I turn my TradingView alerts into trades?', 'Yes. Create a webhook under <b>Alerts to trades</b>, paste its URL into the alert&rsquo;s <b>Webhook URL</b> field, and use our message template. Strategy alerts can pass the direction and size with <code>{{strategy.order.action}}</code> and <code>{{strategy.order.contracts}}</code>.'),
- ('Where do the ready-made strategies come from?', 'They are rotation strategies from a trading spreadsheet that tracks QuantConnect backtests. We show each backtest next to its live results, and Reality Check keeps watching them for you. A great backtest is not a promise: several of them did much worse live.'),
+ ('Can I turn my chart alerts into trades?', 'Yes. Create a webhook under <b>Alerts to trades</b>, paste its URL into the alert&rsquo;s <b>Webhook URL</b> field, and use our message template. Strategy alerts can pass the direction and size with <code>{{strategy.order.action}}</code> and <code>{{strategy.order.contracts}}</code>.'),
+ ('Where do the ready-made strategies come from?', 'They are rotation strategies from a trading spreadsheet that tracks cloud backtests. We show each backtest next to its live results, and Reality Check keeps watching them for you. A great backtest is not a promise: several of them did much worse live.'),
  ('What is Reality Check?', 'Every trading day we compare a strategy&rsquo;s live result with its backtest. If they drift apart, you get a text or email, and with Auto-throttle on, the money that strategy trades is cut to 50% (Watch) or 0% (Drifting) until it recovers.'),
  ('Can I run one strategy across all my accounts?', 'Yes. Webhooks can send each alert to several accounts at once (paper, Alpaca, Schwab, tastytrade, Tradier, TradeStation), with the same risk rules.'),
  ('Can my AI agent place real trades?', 'Any program that can send an HTTPS request can use a webhook, AI agents included. It can only do what that webhook allows: its accounts, sizes and risk rules. Start on paper.'),
  ('Can I set a swing trade and walk away?', 'Yes. Place a bracket order (entry, stop-loss and take-profit) as good-till-canceled. The exit orders wait at your broker even while you are offline.'),
  ('Can my strategy run fully hands-off?', 'Automatic strategies, pair bots and webhooks run without you. Automation can still fail or act on bad data, so check your account regularly.'),
- ('Can I trigger trades from Zapier or TrendSpider?', 'Yes. Both can call a webhook URL. Use your QuantPocket webhook URL with the fields <code>ticker</code>, <code>action</code> and <code>quantity</code>.'),
+ ('Can I trigger trades from automation tools?', 'Yes. Any tool that can call a webhook URL works. Use your QuantPocket webhook URL with the fields <code>ticker</code>, <code>action</code> and <code>quantity</code>.'),
 ]
 FAQ_ACCOUNT = [
  ('Will I make money?', 'Nobody can promise that. Most active strategies underperform simply holding an index after costs. QuantPocket shows how an idea behaved in the past, how it is doing live, and the range of outcomes to expect, so you can decide with your eyes open.'),
@@ -220,7 +222,7 @@ def index(lang='en'):
   <div>
     <a class="eyebrow" href="#reality"><span>{T('New')}</span> {T('Reality Check tells you when a strategy stops working')} &rarr;</a>
     <h1>{T('Every trade you take, <span>executed from one place.</span>')}</h1>
-    <p class="lead">{T('Stocks, ETFs, options and crypto through your own brokerage account. Ready-made strategies, TradingView alerts, pairs trading and an S&amp;P 500 plan: test them, paper trade them and automate them on one platform.')}</p>
+    <p class="lead">{T('Stocks, ETFs, options and crypto through your own brokerage account. Ready-made strategies, webhook alerts, pairs trading and an S&amp;P 500 plan: test them, paper trade them and automate them on one platform.')}</p>
     <div class="cta">{gbtn()}<a class="btn outline lg" data-app="#/register" href="app">{T('Start free with email')}</a></div>
     <ul class="ticks"><li>{T('Set up in 3 minutes')}</li><li>{T('$100,000 paper account')}</li><li>{T('No card needed')}</li></ul>
     <p class="acctlink"><a data-app="#/open-account" href="app">{T('Open a brokerage account')} &rarr;</a> <span>{T('Commission-free, held at Alpaca Securities LLC (FINRA/SIPC)')}</span></p>
@@ -228,7 +230,7 @@ def index(lang='en'):
   </div>
   <figure class="shot"><div class="frame"><i></i><i></i><i></i></div><img src="hero-app.webp" width="1600" height="1000" alt="{T('QuantPocket portfolio dashboard with equity chart, positions and order ticket')}" fetchpriority="high"><figcaption>{T('Illustrative paper-trading account')}</figcaption></figure>
 </div>
-<div class="wrap"><div class="logos"><span>{T('Brokers:')} <b>Alpaca</b> · <b>Schwab</b> · <b>tastytrade</b> · <b>Tradier</b> · <b>TradeStation</b></span><span>{T('Alerts from')} <b>TradingView</b>, <b>TrendSpider</b> &amp; <b>Zapier</b></span><span><b>QuantConnect</b> LEAN</span><span>{T('Payments by')} <b>Stripe</b> &amp; <b>Helcim</b></span></div></div>
+<div class="wrap"><div class="logos"><span>{T('Brokers:')} <b>Alpaca</b> · <b>Schwab</b> · <b>tastytrade</b> · <b>Tradier</b> · <b>TradeStation</b></span><span>{T('Payments by')} <b>Stripe</b> &amp; <b>Helcim</b></span></div></div>
 </section>
 
 <section id="start"><div class="wrap">
@@ -259,7 +261,7 @@ def index(lang='en'):
     <div class="rcrow"><span class="pill pos">{T('Healthy')}</span><span>{T('Live results match the backtest')}</span><b>100%</b></div>
     <div class="rcrow"><span class="pill warn">{T('Watch')}</span><span>{T('Weaker than expected')}</span><b>50%</b></div>
     <div class="rcrow"><span class="pill neg">{T('Drifting')}</span><span>{T('Far below the backtest')}</span><b>0%</b></div>
-    <div class="rcex"><b>{T('Example')}</b>: {T('a strategy with a 922% a year backtest returned &minus;27% in its first three live months. Reality Check would have flagged it and cut it to cash.')}<small>{T('Figures as recorded from QuantConnect for one of the library strategies.')}</small></div>
+    <div class="rcex"><b>{T('Example')}</b>: {T('a strategy with a 922% a year backtest returned &minus;27% in its first three live months. Reality Check would have flagged it and cut it to cash.')}<small>{T('Figures as recorded from the cloud backtest of one of the library strategies.')}</small></div>
   </div>
 </div></section>
 
@@ -268,12 +270,12 @@ def index(lang='en'):
   <p class="sub">{T('Set up your strategy. Send a signal. Orders go to every account you chose, inside your rules.')}</p>
   <div class="how">
     <ol class="howsteps">
-      <li><b>{T('Create')}</b><span>{T('Pick a ready-made strategy, or define entries and exits, sizing and risk limits. Use a TradingView alert or our JSON templates.')}</span></li>
+      <li><b>{T('Create')}</b><span>{T('Pick a ready-made strategy, or define entries and exits, sizing and risk limits. Use a webhook alert or our JSON templates.')}</span></li>
       <li><b>{T('Connect')}</b><span>{T('Link your brokerage in seconds, or start with the built-in paper account. Choose which accounts each strategy trades.')}</span></li>
       <li><b>{T('Send')}</b><span>{T('Signals fire, orders execute, and fills, P&amp;L and positions update in one place.')}</span></li>
     </ol>
     <div class="term" dir="ltr">
-      <div class="bar"><i></i><i></i><i></i><span>{T('TradingView alert')} &rarr; QuantPocket</span></div>
+      <div class="bar"><i></i><i></i><i></i><span>{T('Webhook alert')} &rarr; QuantPocket</span></div>
 <pre><span class="k">POST</span> /hook/&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;
 {{
   <span class="s">"ticker"</span>: <span class="v">"NASDAQ:AAPL"</span>,
@@ -397,5 +399,5 @@ def index(lang='en'):
 <div class="stickycta"><a class="btn lg" data-app="#/register" href="app">{T('Start free')}</a></div>
 '''
     title = T('QuantPocket: automate your trading from one place')
-    desc = T('Ready-made strategies, TradingView alerts, pairs trading and an S&P 500 autopilot on your own brokerage account, with Reality Check watching every strategy. In English and Yiddish.')
+    desc = T('Ready-made strategies, webhook alerts, pairs trading and an S&P 500 autopilot on your own brokerage account, with Reality Check watching every strategy. In English and Yiddish.')
     return layout(title, desc, body, lang, home)

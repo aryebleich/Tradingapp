@@ -1,6 +1,6 @@
-// Plain-English strategy builder. Uses Claude when ANTHROPIC_API_KEY is set, otherwise a
+// Plain-English strategy builder. Uses the AI model when one is set up (free or Claude), otherwise a
 // keyword parser that understands the common setups.
-import Anthropic from '@anthropic-ai/sdk';
+import { jsonCall, llmEnabled, provider } from './llm.js';
 import { compile } from './engine.js';
 
 const DSL_HELP = `Rules are one condition per line: <operand> <op> <operand>.
@@ -21,21 +21,12 @@ const SCHEMA = {
   },
 };
 
-let client;
-async function viaClaude(prompt) {
-  client ||= new Anthropic();
-  const res = await client.beta.messages.create({
-    model: 'claude-opus-5-5',
-    max_tokens: 4000,
-    betas: ['server-side-fallback-2026-07-01'],
-    fallbacks: 'default',
-    output_config: { effort: 'low', format: { type: 'json_schema', schema: SCHEMA } },
+async function viaModel(prompt) {
+  return jsonCall({
+    schema: SCHEMA,
     system: `You turn a trader's idea into a long-only daily-bar strategy for a rule engine.\n${DSL_HELP}\nUse only those operands. If no ticker is given use SPY. Keep the explanation to two sentences and do not promise returns.`,
-    messages: [{ role: 'user', content: prompt }],
+    user: prompt,
   });
-  if (res.stop_reason === 'refusal') throw new Error('The AI declined this request');
-  const text = res.content.find(b => b.type === 'text')?.text;
-  return JSON.parse(text);
 }
 
 const num = (s, re, d) => { const m = s.match(re); return m ? +m[1] : d; };
@@ -69,8 +60,8 @@ export function heuristic(prompt) {
 export async function buildStrategy(prompt) {
   prompt = String(prompt || '').slice(0, 2000);
   let r, engine = 'keywords';
-  if (process.env.ANTHROPIC_API_KEY) {
-    try { r = await viaClaude(prompt); engine = 'claude'; } catch (e) { console.warn('AI builder fell back:', e.message); }
+  if (llmEnabled()) {
+    try { r = await viaModel(prompt); engine = provider().id; } catch (e) { console.warn('AI builder fell back:', e.message); }
   }
   r ||= heuristic(prompt);
   // Validate against the engine so the UI never receives rules that cannot run.

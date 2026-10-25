@@ -10,8 +10,8 @@ import { parse, mine, validateSpec, walkdown, execute, templatesList, ACCOUNTS }
 import { realityFor, winRateSplit } from './reality.js';
 
 // Free: try everything by hand and automate one strategy on paper. Paid plans automate real accounts.
-export const STRATEGY_LIMITS = { free: { saved: 3, auto: 1 }, pro: { saved: 10, auto: 5 }, elite: { saved: 50, auto: 50 } };
-const limits = u => (u.role === 'admin' ? STRATEGY_LIMITS.elite : isPaid(u) ? STRATEGY_LIMITS[u.plan] || STRATEGY_LIMITS.pro : STRATEGY_LIMITS.free);
+export const STRATEGY_LIMITS = { free: { saved: 3, auto: 1 }, pro: { saved: 10, auto: 5 }, elite: { saved: 50, auto: 25 }, ultimate: { saved: 200, auto: 100 } };
+const limits = u => (u.role === 'admin' ? STRATEGY_LIMITS.ultimate : isPaid(u) ? STRATEGY_LIMITS[u.plan] || STRATEGY_LIMITS.pro : STRATEGY_LIMITS.free);
 const bad = (msg, status = 400) => Object.assign(new Error(msg), { status });
 const upgrade = feature => Object.assign(new Error(`${feature} is part of the Pro plan`), { status: 402, upgrade: true, feature });
 const backtests = new Map(); // `${id}:${hash}` -> { at, result }, so reopening a page does not re-run it

@@ -254,4 +254,4 @@ async function detail(view, q) {
   H.act(H.$('#del', view), async () => { if (!confirm('Delete this strategy? Positions it bought stay in your account.')) return ''; await H.api('/library/' + id, { method: 'DELETE' }); location.hash = '#/strategies'; return ''; });
   await refresh();
 }
-const isPaid = u => u && (u.role === 'admin' || (['pro', 'elite'].includes(u.plan) && ['active', 'trialing', null, undefined].includes(u.planStatus)));
+const isPaid = u => u && (u.role === 'admin' || (['pro', 'elite', 'ultimate'].includes(u.plan) && ['active', 'trialing', null, undefined].includes(u.planStatus)));

@@ -2,10 +2,10 @@
 // ("how much do I have?", "put 200 dollars into the S&P"), turns them into the app's own commands,
 // and answers questions. Orders still go through the normal command path, so the PIN (SMS) or the
 // spoken read-back confirmation (phone) is always required; the AI never sees or invents a PIN.
-import Anthropic from '@anthropic-ai/sdk';
+import { jsonCall, llmEnabled } from './llm.js';
 import { accountSummary } from './brokers.js';
 
-export const aiEnabled = () => !!process.env.ANTHROPIC_API_KEY;
+export const aiEnabled = llmEnabled;
 
 const SCHEMA = {
   type: 'object', additionalProperties: false,
@@ -31,26 +31,14 @@ Map each message to one intent:
 Account: "paper" unless the user names a brokerage ("live" or "real" means alpaca).
 Never put a PIN in any field. If a trade request is unclear, use intent "answer" and ask one short question.`;
 
-let client;
 export async function interpret(user, text) {
-  client ||= new Anthropic();
   let context = '';
   try {
     const s = await accountSummary(user.id, 'paper');
     context = `User's paper account: equity $${s.equity.toFixed(2)}, cash $${s.cash.toFixed(2)}, positions: ${s.positions.map(p => `${p.symbol} ${p.qty}`).join(', ') || 'none'}.`;
   } catch {}
-  const res = await client.beta.messages.create({
-    model: 'claude-opus-5-5',
-    max_tokens: 2000,
-    betas: ['server-side-fallback-2026-07-01'],
-    fallbacks: 'default',
-    output_config: { effort: 'low', format: { type: 'json_schema', schema: SCHEMA } },
-    system: SYSTEM,
-    messages: [{ role: 'user', content: `${context}\n\nMessage: ${String(text).slice(0, 600)}` }],
-  });
-  if (res.stop_reason === 'refusal') return { intent: 'answer', reply: "Sorry, I can't help with that. Text HELP for the list of commands." };
-  const block = res.content.find(b => b.type === 'text');
-  return JSON.parse(block.text);
+  try { return await jsonCall({ schema: SCHEMA, system: SYSTEM, user: `${context}\n\nMessage: ${String(text).slice(0, 600)}`, maxTokens: 2000 }); }
+  catch (e) { if (e.refusal) return { intent: 'answer', reply: "Sorry, I can't help with that. Text HELP for the list of commands." }; throw e; }
 }
 
 // The intent as one of the app's own text commands (without the PIN).

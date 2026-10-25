@@ -56,6 +56,9 @@ async function chartPage(view, q) {
   const cfg = { ...DEF, ...load('qp_chart', {}) }; cfg.ind = { ...DEF.ind, ...cfg.ind };
   if (q.get('symbol')) cfg.symbols[0] = q.get('symbol').toUpperCase();
   if (q.get('layout')) cfg.layout = +q.get('layout');
+  // Charts per layout by plan: 1 on Starter, 2 on Pro, 4 on Elite and Ultimate.
+  const me = H.me(), maxLayout = me?.role === 'admin' || ['elite', 'ultimate'].includes(me?.plan) && H.paid() ? 4 : H.paid() ? 2 : 1;
+  cfg.layout = Math.min(cfg.layout, maxLayout);
   const popout = q.get('popout') === '1';
   document.body.classList.toggle('popout', popout);
   H.onLeave(() => document.body.classList.remove('popout'));
@@ -65,7 +68,7 @@ async function chartPage(view, q) {
       ${popout ? '' : '<h1 style="margin:0">Chart</h1>'}
       <div class="seg" id="tf">${Object.keys(TFS).map(t => `<button type="button" data-tf="${t}" class="${t === cfg.tf ? 'on' : ''}">${{ '5Min': '5m', '15Min': '15m', '1Hour': '1h', '1Day': '1D', '1Week': '1W' }[t]}</button>`).join('')}</div>
       <div class="seg" id="tools" title="Drawing tools">${[['none', '↖', 'Pointer'], ['trend', '╱', 'Trend line'], ['hline', '―', 'Horizontal line'], ['rect', '▭', 'Box'], ['fib', 'Fib', 'Fibonacci retracement'], ['trade', '$', 'Click to trade'], ['erase', '⌫', 'Erase drawing']].map(([k, s, t]) => `<button type="button" data-tool="${k}" title="${t}" aria-label="${t}" class="${k === 'none' ? 'on' : ''}">${s}</button>`).join('')}</div>
-      <div class="seg" id="lay" title="Layout">${[1, 2, 4].map(n => `<button type="button" data-l="${n}" class="${n === cfg.layout ? 'on' : ''}">${n === 1 ? '▢' : n === 2 ? '▥' : '▦'}</button>`).join('')}</div>
+      <div class="seg" id="lay" title="Layout">${[1, 2, 4].map(n => `<button type="button" data-l="${n}" class="${n === cfg.layout ? 'on' : ''}" ${n > maxLayout ? 'data-locked="1" title="More charts per layout come with a higher plan"' : ''}>${n === 1 ? '▢' : n === 2 ? '▥' : '▦'}</button>`).join('')}</div>
       ${popout ? '' : '<button type="button" class="ghost small" id="pop" title="Open in a new window (drag it to another monitor)">⧉ Pop out</button>'}
     </div>
     <div class="chips inds">${Object.entries(IND).map(([k, t]) => `<label class="chk"><input type="checkbox" data-ind="${k}" ${cfg.ind[k] ? 'checked' : ''}>${t}</label>`).join('')}</div>
@@ -87,7 +90,7 @@ async function chartPage(view, q) {
   panels.forEach(p => p.load());
   H.$$('[data-tf]', view).forEach(b => (b.onclick = () => { cfg.tf = b.dataset.tf; save(); H.$$('[data-tf]', view).forEach(x => x.classList.toggle('on', x === b)); panels.forEach(p => p.load()); }));
   H.$$('[data-tool]', view).forEach(b => (b.onclick = () => { tool = b.dataset.tool; H.$$('[data-tool]', view).forEach(x => x.classList.toggle('on', x === b)); panels.forEach(p => p.cursor()); }));
-  H.$$('[data-l]', view).forEach(b => (b.onclick = () => { cfg.layout = +b.dataset.l; save(); H.render(); }));
+  H.$$('[data-l]', view).forEach(b => (b.onclick = () => { if (b.dataset.locked) { location.hash = '#/funding'; return; } cfg.layout = +b.dataset.l; save(); H.render(); }));
   H.$$('[data-ind]', view).forEach(c => (c.onchange = () => { cfg.ind[c.dataset.ind] = c.checked; save(); panels.forEach(p => p.draw()); }));
   if (H.$('#pop', view)) H.$('#pop', view).onclick = () => window.open(`${location.pathname}#/chart?symbol=${encodeURIComponent(cfg.symbols[active])}&layout=${cfg.layout}&popout=1`, '_blank', 'width=1200,height=760');
   const ro = new ResizeObserver(() => panels.forEach(p => p.draw())); ro.observe(grid); H.onLeave(() => ro.disconnect());

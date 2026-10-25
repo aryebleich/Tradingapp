@@ -52,7 +52,7 @@ function hookForm(h, paid) {
 }
 
 async function signals(view, q) {
-  const me = H.me(), paid = me.role === 'admin' || (['pro', 'elite'].includes(me.plan) && ['active', 'trialing', null, undefined].includes(me.planStatus));
+  const me = H.me(), paid = me.role === 'admin' || (['pro', 'elite', 'ultimate'].includes(me.plan) && ['active', 'trialing', null, undefined].includes(me.planStatus));
   const [{ hooks, limit }, log, accts] = await Promise.all([H.api('/signals/hooks'), H.api('/signals/log'), H.accounts()]);
   ACCTS = accts;
   const editing = hooks.find(h => h.id === +q.get('edit'));

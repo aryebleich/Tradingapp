@@ -121,7 +121,7 @@ const NAV = [
   ['Trading', [['dashboard', 'Portfolio'], ['trade', 'Trade'], ['chart', 'Chart'], ['orders', 'Orders'], ['positions', 'Positions'], ['watchlists', 'Watchlists']]],
   ['AI', [['ai', 'AI assistant'], ['agents', 'Forecasts & AI agents'], ['news', 'News & sentiment']]],
   ['Markets', [['sp500', 'S&P 500 plan'], ['markets', 'Markets & news'], ['scanner', 'Scanner'], ['options', 'Options chain'], ['optionslab', 'Options lab'], ['institutions', 'Institutional portfolios'], ['calendar', 'Calendar & events']]],
-  ['Strategies', [['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['code', 'Code lab'], ['portfolios', 'Portfolios'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['marketplace', 'Marketplace'], ['pairs', 'Pairs trading'], ['schedule', 'Scheduled trades'], ['quantconnect', 'QuantConnect']]],
+  ['Strategies', [['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['code', 'Code lab'], ['portfolios', 'Portfolios'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['marketplace', 'Marketplace'], ['pairs', 'Pairs trading'], ['schedule', 'Scheduled trades'], ['quantconnect', 'Cloud algorithms']]],
   ['Money', [['insights', 'Insights & journal'], ['risk', 'Risk controls'], ['spend', 'Invest as you spend'], ['halal', 'Halal investing'], ['tax', 'Taxes']]],
   ['Account', [['brokers', 'Brokerages'], ['account', 'Alpaca account'], ['funding', 'Plans & billing'], ['referrals', 'Invite & earn'], ['text', 'Text & hotline'], ['settings', 'Settings']]],
 ];
@@ -157,7 +157,7 @@ const ICONS = {
   halal: '<path d="M20 13A8 8 0 1 1 11 4a6.5 6.5 0 0 0 9 9z"/><path d="M17 4l.7 1.5 1.6.2-1.2 1.1.3 1.6L17 7.6l-1.4.8.3-1.6-1.2-1.1 1.6-.2z"/>', star: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
 };
 const icon = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k] || ''}</svg>`;
-const isPaid = u => u && (u.role === 'admin' || (['pro', 'elite'].includes(u.plan) && ['active', 'trialing', null, undefined].includes(u.planStatus)));
+const isPaid = u => u && (u.role === 'admin' || (['pro', 'elite', 'ultimate'].includes(u.plan) && ['active', 'trialing', null, undefined].includes(u.planStatus)));
 const routes = {};
 // Readable names for the security log.
 const EVENT_LABELS = {
@@ -258,7 +258,7 @@ async function googleButton(label) {
 routes.login = async (view, q) => {
   const g = await googleButton('Continue with Google');
   view.innerHTML = `
-  <div class="hero"><h1 data-no-tr>Quant<span style="color:var(--ac)">Pocket</span></h1><p class="mu">Backtest, paper trade and automate stock strategies. Connect Alpaca and QuantConnect, trade by text or phone.</p></div>
+  <div class="hero"><h1 data-no-tr>Quant<span style="color:var(--ac)">Pocket</span></h1><p class="mu">Backtest, paper trade and automate stock strategies. Connect your brokerage, trade by text or phone.</p></div>
   <form class="card auth"><h2>Sign in</h2>${g}
     <label>Email<input name="email" type="email" autocomplete="username" required></label>
     <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
@@ -384,7 +384,7 @@ routes.backtest = async (view, q) => {
   view.innerHTML = `
   <h1>Backtest</h1>
   ${CFG.marketData ? '' : '<div class="banner">No market-data key on the server: backtests use synthetic prices until you connect Alpaca in Settings.</div>'}
-  <div class="card"><h2>Describe a strategy in plain English ${CFG.ai ? '<span class="pill">Claude</span>' : ''}</h2>
+  <div class="card"><h2>Describe a strategy in plain English ${CFG.ai ? `<span class="pill">AI · ${esc(CFG.aiModel?.free ? 'free' : 'Claude')}</span>` : ''}</h2>
     <div class="row"><label style="flex:4">Idea<input id="idea" placeholder="Buy AAPL when RSI drops below 30 in an uptrend, 8% stop loss"></label><button id="build">Build rules</button></div><div class="err"></div><p id="explain" class="mu"></p></div>
   <form class="card" id="bt">
     <div class="row">
@@ -512,12 +512,12 @@ routes.bots = async view => {
 routes.quantconnect = async view => {
   const integ = await api('/integrations');
   if (!integ.quantconnect.connected) {
-    view.innerHTML = `<h1>QuantConnect</h1><div class="card"><p>Run full LEAN algorithms (Python or C#, multi-asset, universe selection, options, futures) in QuantConnect's cloud with institutional data.</p>
+    view.innerHTML = `<h1>Cloud algorithms</h1><div class="card"><p>Run full LEAN algorithms (Python or C#, multi-asset, universe selection, options, futures) in QuantConnect's cloud with institutional data.</p>
       <p class="mu">Connect your QuantConnect user id and API token in <a href="#/settings">Settings</a>. Find them at quantconnect.com → Account → API Access.</p></div>`;
     return;
   }
   const [projects, templates] = await Promise.all([api('/qc/projects'), api('/qc/templates')]);
-  view.innerHTML = `<h1>QuantConnect</h1>
+  view.innerHTML = `<h1>Cloud algorithms</h1>
   <form class="card" id="newp"><h2>New cloud project</h2>
     <div class="row"><label>Template<select name="template">${templates.map(t => `<option>${esc(t)}</option>`).join('')}<option value="">Paste my own code…</option></select></label><label>Name<input name="name" placeholder="My algorithm"></label></div>
     <label>Python code (only when pasting your own)<textarea name="code" rows="8" placeholder="from AlgorithmImports import *"></textarea></label>
@@ -812,7 +812,7 @@ async function adminPage(view, tab) {
     'admin-users': () => `
   <div class="card tablewrap"><div class="row" style="justify-content:space-between;align-items:center"><h2>Users</h2><input id="userFind" type="search" placeholder="Search email" style="max-width:260px;margin:0"></div>
     <table id="userTable"><tr><th>Email</th><th>Plan</th><th>Role</th><th>2FA</th><th>Phone</th><th>Joined</th></tr>${s.users.map(u => `<tr data-email="${esc(u.email)}"><td data-no-tr>${esc(u.email)}${u.google ? ' <span class="pill">Google</span>' : ''}</td>
-      <td><select data-plan="${u.id}" style="margin:0;min-width:110px">${['free', 'pro', 'elite'].map(p => `<option value="${p}" ${u.plan === p ? 'selected' : ''}>${p === 'free' ? 'Starter' : p === 'pro' ? 'Pro' : 'Elite'}</option>`).join('')}</select></td>
+      <td><select data-plan="${u.id}" style="margin:0;min-width:110px">${['free', 'pro', 'elite', 'ultimate'].map(p => `<option value="${p}" ${u.plan === p ? 'selected' : ''}>${p === 'free' ? 'Starter' : p === 'pro' ? 'Pro' : 'Elite'}</option>`).join('')}</select></td>
       <td>${u.role === 'admin' ? `<span class="pill">Admin</span>${u.id !== ME.id ? ` <button class="small ghost" data-role="${u.id}" data-to="user">Remove admin</button>` : ''}` : `<button class="small ghost" data-role="${u.id}" data-to="admin">Make admin</button>`}</td>
       <td>${u.totp_enabled ? 'yes' : '-'}</td><td>${u.phone_verified ? 'yes' : '-'}</td><td>${date(u.created_at)}</td></tr>`).join('')}</table><div class="err" id="userErr"></div>
     <p class="mu" style="font-size:12.5px">Changing a plan here gives it without payment (for friends, testers or support cases). Paying customers change plans themselves under Plans &amp; billing.</p></div>`,

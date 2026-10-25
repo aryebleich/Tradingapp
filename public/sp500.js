@@ -25,7 +25,7 @@ function drawBands(canvas, bands, perMonth, initial) {
 }
 
 async function sp500(view) {
-  const me = H.me(), paid = me.role === 'admin' || (['pro', 'elite'].includes(me.plan) && ['active', 'trialing', null, undefined].includes(me.planStatus));
+  const me = H.me(), paid = me.role === 'admin' || (['pro', 'elite', 'ultimate'].includes(me.plan) && ['active', 'trialing', null, undefined].includes(me.planStatus));
   const [s, accts] = await Promise.all([H.api('/sp500'), H.accounts()]);
   view.innerHTML = `
   <div class="pagehead"><div><h1>S&amp;P 500</h1><p class="mu" style="margin:4px 0 0">The 500 largest US companies in one fund. The simplest long-term plan: buy a little every month, whatever the market does.</p></div></div>

@@ -12,6 +12,7 @@ import { backtest, projectAnnual, walkForward, optimize, warmupFor, compile, PRE
 import { getBars, getCred, accountSummary, placeOrder, listOrders, portfolioHistory, lastPrice, snapshotEquity, ACCOUNT_IDS } from './src/brokers.js';
 import * as QC from './src/quantconnect.js';
 import { PLANS, TRIAL_DAYS, REFERRAL_CREDIT, isPaid, adjustForCashflow, revenueSummary } from './src/fees.js';
+import { llmEnabled, llmInfo } from './src/llm.js';
 import { taxSummary, harvestCandidates, form8949Csv, scheduleD, scheduleDCsv, markToMarket } from './src/tax.js';
 import { buildStrategy } from './src/ai.js';
 import { handleCommand, userByPhone, normalize, HELP, KNOWN } from './src/commands.js';
@@ -348,7 +349,7 @@ const upgrade = feature => Object.assign(new Error(`${feature} is part of the Pr
 const needPlan = feature => (req, res, next) => (isPaid(req.user) ? next() : next(upgrade(feature)));
 
 api.get('/config', async (req, res) => res.json({
-  plans: PLANS, trialDays: TRIAL_DAYS, presets: PRESETS, twilio: N.twilioEnabled(), stripe: N.stripeEnabled(), ai: !!process.env.ANTHROPIC_API_KEY, email: N.emailEnabled(),
+  plans: PLANS, trialDays: TRIAL_DAYS, presets: PRESETS, twilio: N.twilioEnabled(), stripe: N.stripeEnabled(), ai: llmEnabled(), aiModel: llmInfo(), email: N.emailEnabled(),
   marketData: dataEnabled(), hotline: process.env.TWILIO_FROM || null, broker: brokerEnabled(), oauth: oauthEnabled(), google: googleEnabled(), assistant: aiEnabled(),
 }));
 
@@ -649,7 +650,8 @@ api.get('/admin/setup', U, auth.requireAdmin, async (req, res) => {
     ['Stripe webhook', 'STRIPE_WEBHOOK_SECRET', has('STRIPE_WEBHOOK_SECRET')],
     ['Text messages and hotline (Twilio)', 'TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM', N.twilioEnabled()],
     ['Emails (Resend)', 'RESEND_API_KEY', N.emailEnabled()],
-    ['AI assistant (Claude)', 'ANTHROPIC_API_KEY', aiEnabled()],
+    ['AI assistant, free (Groq or Gemini)', 'GROQ_API_KEY / GEMINI_API_KEY', !!(process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY || process.env.OPENROUTER_API_KEY || process.env.AI_BASE_URL)],
+    ['AI assistant upgrade (Claude)', 'ANTHROPIC_API_KEY', !!process.env.ANTHROPIC_API_KEY],
     ...Object.values(PAY.PROVIDERS).map(p => [`Deposits: ${p.name} (${p.via})`, ({ stripe_ach: 'STRIPE_SECRET_KEY', stripe_card: 'STRIPE_SECRET_KEY', helcim: 'HELCIM_API_TOKEN' })[p.id] || '', p.enabled()]),
     ['Yiddish Labs credit line', 'YIDDISH_CREDIT', has('YIDDISH_CREDIT')],
   ].map(([name, env, on]) => ({ name, env, on: !!on })) });

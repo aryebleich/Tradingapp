@@ -25,7 +25,7 @@ function drawZ(canvas, pts, entry, exit) {
 }
 
 async function pairs(view, q) {
-  const me = H.me(), paid = me.role === 'admin' || (['pro', 'elite'].includes(me.plan) && ['active', 'trialing', null, undefined].includes(me.planStatus));
+  const me = H.me(), paid = me.role === 'admin' || (['pro', 'elite', 'ultimate'].includes(me.plan) && ['active', 'trialing', null, undefined].includes(me.planStatus));
   const [bots, accts] = await Promise.all([H.api('/pairs/bots'), H.accounts()]);
   view.innerHTML = `
   <div class="pagehead"><div><h1>Pairs trading</h1><p class="mu" style="margin:4px 0 0">Two stocks that usually move together. When the gap between them stretches far from normal, sell the expensive one and buy the cheap one, then close when the gap returns.</p></div></div>

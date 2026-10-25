@@ -8,11 +8,11 @@ import { extName } from './ext/brokers.js';
 import { isPaid } from './fees.js';
 import { requireUser, rateLimit } from './auth.js';
 
-export const HOOK_LIMITS = { free: 1, pro: 10, elite: 50 };
+export const HOOK_LIMITS = { free: 1, pro: 10, elite: 25, ultimate: 100 };
 const ACCOUNTS = ACCOUNT_IDS;
 const SIZE_MODES = ['dollars', 'qty', 'signal'];
 const appUrl = () => (process.env.PUBLIC_URL || 'http://localhost:3000').replace(/\/$/, '');
-const limitFor = u => (u.role === 'admin' ? HOOK_LIMITS.elite : isPaid(u) ? HOOK_LIMITS[u.plan] || HOOK_LIMITS.pro : HOOK_LIMITS.free);
+const limitFor = u => (u.role === 'admin' ? HOOK_LIMITS.ultimate : isPaid(u) ? HOOK_LIMITS[u.plan] || HOOK_LIMITS.pro : HOOK_LIMITS.free);
 const bad = (msg, status = 400) => Object.assign(new Error(msg), { status });
 const upgrade = feature => Object.assign(new Error(`${feature} is part of the Pro plan`), { status: 402, upgrade: true, feature });
 

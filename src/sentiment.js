@@ -2,7 +2,7 @@
 // (bullish / bearish tags), an AI daily brief of the news for your symbols, and a short podcast
 // script of it that the browser reads aloud. Works without an AI key (simpler brief).
 import express from 'express';
-import Anthropic from '@anthropic-ai/sdk';
+import { jsonCall, llmEnabled } from './llm.js';
 import { one, run, now } from './db.js';
 import { requireUser, rateLimit } from './auth.js';
 import * as D from './alpaca/data.js';
@@ -55,26 +55,21 @@ export async function sentiment(symbols) {
   return { newsAvailable: D.dataEnabled(), items, bySymbol };
 }
 
-let client;
 export async function brief(symbols) {
   const s = await sentiment(symbols);
   const lines = s.items.slice(0, 25).map(i => `- [${i.label}] ${i.headline} (${(i.symbols || []).join(', ')}, ${i.source})`).join('\n');
   const soc = s.bySymbol.map(b => `${b.symbol}: news ${b.newsLabel || 'n/a'}, StockTwits ${b.social.bullishPct != null ? b.social.bullishPct + '% bullish' : 'n/a'}`).join('; ');
-  if (!process.env.ANTHROPIC_API_KEY || !s.items.length) {
+  if (!llmEnabled() || !s.items.length) {
     const top = s.items.slice(0, 6);
     const text = top.length ? top.map(i => `- **${i.headline}** (${(i.symbols || []).join(', ')}) - ${i.label}`).join('\n') : 'No news found for these symbols right now.';
     const script = `Here is your QuantPocket market brief. ${top.map(i => i.headline + '.').join(' ')} Sentiment: ${soc}. That's the brief. Remember this is information, not advice.`;
     return { brief: text, script, sentiment: s, ai: false };
   }
-  client ||= new Anthropic();
-  const res = await client.beta.messages.create({
-    model: 'claude-opus-5-5', max_tokens: 3000, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
-    output_config: { effort: 'low', format: { type: 'json_schema', schema: { type: 'object', additionalProperties: false, required: ['brief', 'script'], properties: { brief: { type: 'string', description: 'Markdown summary: 4-8 bullets grouped by theme, then one line on overall sentiment' }, script: { type: 'string', description: 'A 2-3 minute spoken podcast script for one host, plain sentences, no stage directions or markdown' } } } } },
+  const out = await jsonCall({
+    schema: { type: 'object', additionalProperties: false, required: ['brief', 'script'], properties: { brief: { type: 'string', description: 'Markdown summary: 4-8 bullets grouped by theme, then one line on overall sentiment' }, script: { type: 'string', description: 'A 2-3 minute spoken podcast script for one host, plain sentences, no stage directions or markdown' } } },
     system: 'You write a short, neutral market news brief for a retail trader from the headlines given. Do not invent facts beyond them, do not give advice, mention sentiment only as reported.',
-    messages: [{ role: 'user', content: `Symbols: ${symbols.join(', ')}\nSentiment: ${soc}\nHeadlines:\n${lines}` }],
+    user: `Symbols: ${symbols.join(', ')}\nSentiment: ${soc}\nHeadlines:\n${lines}`,
   });
-  if (res.stop_reason === 'refusal') throw Object.assign(new Error('The AI declined to write this brief'), { status: 502 });
-  const out = JSON.parse(res.content.find(b => b.type === 'text').text);
   return { ...out, sentiment: s, ai: true };
 }
 

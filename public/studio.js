@@ -36,7 +36,7 @@ async function assistant(view) {
   let draft = null, speak = false;
   try { speak = localStorage.getItem('qp_speak') === '1'; } catch {}
   const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
-  view.innerHTML = `<div class="pagehead"><h1>AI assistant</h1><p class="mu" style="margin:4px 0 0">Ask about markets, a stock's technicals or fundamentals, trading ideas, or have it design a strategy with you. ${st.ai ? '' : '<b>Basic mode:</b> set ANTHROPIC_API_KEY on the server for the full assistant.'}</p></div>
+  view.innerHTML = `<div class="pagehead"><h1>AI assistant</h1><p class="mu" style="margin:4px 0 0">Ask about markets, a stock's technicals or fundamentals, trading ideas, or have it design a strategy with you. ${st.ai ? '' : '<b>Basic mode:</b> set a free AI key on the server (GROQ_API_KEY or GEMINI_API_KEY) for the full assistant.'}</p></div>
   <div class="chatwrap"><div class="card chat"><div id="log" class="chatlog"></div>
     <div class="chips" id="sugg">${SUGGEST.map(s => `<button type="button">${H.esc(s)}</button>`).join('')}</div>
     <form id="ask" class="chatin"><textarea name="q" rows="2" placeholder="Ask anything, or describe a strategy..." aria-label="Message"></textarea>

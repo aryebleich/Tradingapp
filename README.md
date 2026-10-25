@@ -18,7 +18,7 @@ Backtest, paper trade and automate US stock strategies. A multi-user web platfor
 - **Text and phone hotline (Twilio)**: `BAL`, `POS`, `PRICE AAPL`, `BUY 5 AAPL <PIN>`, `DCA $50 SPY WEEKLY <PIN>`, `PAUSE <PIN>`. When calling, you enter your PIN, then use the keypad menu or say commands out loud ("buy five shares of Apple").
 - **Portfolio chart**: the equity line is green above the starting value and red below it.
 - **Tax information**: FIFO realized gains, short and long term, wash-sale flags, an estimated tax using your bracket, a loss carryforward, tax-loss harvesting ideas, and a Form 8949 CSV export.
-- **Revenue**: monthly plans (Starter free, Pro $29, Elite $99) through Stripe Checkout, plus a **performance fee** (20%, 10% or 5% by plan) charged only on new profit above a high-water mark. The admin page shows MRR, fees due and collected, and deposits.
+- **Revenue**: monthly plans (Starter free, Pro $53, Elite $109, Ultimate $320; see docs/pricing-comparison.md) through Stripe Checkout, plus a **performance fee** (20%, 10%, 5% or 2.5% by plan) charged only on new profit above a high-water mark. The admin page shows MRR, fees due and collected, and deposits.
 - **Debit card deposits**: Stripe Checkout. Credit cards are detected and refunded automatically.
 
 ## Alpaca trading (Broker API + Trading API + Market Data)
