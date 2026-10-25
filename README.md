@@ -186,6 +186,20 @@ upgrades to Claude, which adds web search. `AI_PROVIDER` picks one when several 
   and risk notices for options/crypto/margin, budget quotas, graduated limits, margin watch
   (`MARGIN_FEED_URL` optional), and an AI support agent that escalates hacked accounts.
 
+## Yiddish Labs after each update
+
+After each push, new text is translated on the Yiddish Labs website (Quick Action → Translate →
+To Yiddish), one line at a time, with the owner's signed-in session:
+
+    YL_STATE=/safe/place/yl-state.json npm run yiddish:web     # add --dry to only count
+    python3 scripts/pages.py                                    # rebuild the Yiddish homepage
+
+The first time, also pass `YL_EMAIL` and `YL_PASSWORD` in the environment to sign in; the session
+is then kept in `YL_STATE` (outside the repository) and the password is not stored anywhere. Admin
+pages, the README, one- and two-word labels, and text with HTML stay as they are. The run stops when
+credits run out and keeps what it finished. (With an API key in the `YIDDISH_LABS_API_KEY` repository
+secret, the "Yiddish Labs translation" workflow does the same automatically.)
+
 ## Where secret keys go
 
 Never put a key in the code, in GitHub, or in the browser. Every key is an **environment variable**

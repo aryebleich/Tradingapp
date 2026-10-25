@@ -16,7 +16,8 @@
     "yiddish:import": "node scripts/yiddish-labs.mjs import",
     "yiddish:translate": "node scripts/yiddish-labs.mjs translate",
     "yiddish:parts": "node scripts/yiddish-labs.mjs parts",
-    "yiddish:import-parts": "node scripts/yiddish-labs.mjs import-parts"
+    "yiddish:import-parts": "node scripts/yiddish-labs.mjs import-parts",
+    "yiddish:web": "node scripts/yiddish-labs-web.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",
