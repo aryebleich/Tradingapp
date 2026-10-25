@@ -2,10 +2,9 @@ name: Yiddish Labs translation
 # After every push to main, new or changed app and homepage text is translated with Yiddish Labs
 # (while the account has credits) and committed back. Admin pages and the README stay in English.
 # Needs the repository secret YIDDISH_LABS_API_KEY (Yiddish Labs → API Keys); without it, nothing runs.
+# Runs only when started by hand (Actions → Yiddish Labs translation → Run workflow): the owner
+# translates through the website after each update instead (npm run yiddish:web).
 on:
-  push:
-    branches: [main]
-    paths: ['public/**', 'scripts/home.py', 'scripts/yi_home.py']
   workflow_dispatch:
 permissions:
   contents: write
