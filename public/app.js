@@ -10,6 +10,8 @@ import { registerBuild } from './build.js';
 import { registerAnalytics } from './analytics.js';
 import { registerChart } from './chart.js';
 import { registerOptionsLab } from './optionslab.js';
+import { registerProtect, getPasskey } from './protect.js';
+import { attachGlossary } from './glossary.js';
 import { startI18n, setLang, canvasNote, LANGS, current as currentLang } from './i18n.js';
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -20,7 +22,7 @@ const num = (x, d = 2) => (isFinite(x) ? (+x).toFixed(d) : '-');
 const cls = x => (x > 0 ? 'pos' : x < 0 ? 'neg' : '');
 const date = t => new Date(t).toLocaleString();
 
-async function api(path, opts = {}) {
+async function api(path, opts = {}, retried) {
   const r = await fetch('/api' + path, {
     method: opts.method || (opts.body ? 'POST' : 'GET'),
     headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' },
@@ -30,10 +32,57 @@ async function api(path, opts = {}) {
   // Session expired (or signed out in another tab): go back to sign-in instead of showing errors.
   if (r.status === 401 && ME && !path.startsWith('/auth/')) { ME = null; location.hash = '#/login'; }
   if (r.status === 402 && d.upgrade) showUpgrade(d.feature);
+  // Speed bump: read the risk notice (a 10-second wait), then the order is sent again once.
+  if (d.needsAck && !retried && await riskNotice(d.needsAck)) { await api('/learn/ack/' + d.needsAck, { body: {} }); return api(path, opts, true); }
+  if (d.needsLesson && confirm(d.error + ' Open the lesson now?')) location.hash = '#/learn';
+  // Step-up: the session must confirm it is the account holder before trading or moving money.
+  if (d.stepUp && !retried && await stepUpBox()) return api(path, opts, true);
   if (!r.ok) throw new Error(d.error || (r.status >= 500 ? 'The server is busy, please try again.' : r.statusText));
   return d;
 }
 const form = el => Object.fromEntries($$('[name]', el).map(i => [i.name, i.type === 'checkbox' ? i.checked : i.value]));
+
+// A modal with a countdown before the confirm button works (risk notices for options, crypto, margin).
+async function riskNotice(kind) {
+  const notices = (await fetch('/api/learn', { headers: { 'X-Requested-With': 'qp' } }).then(r => r.json()).catch(() => ({}))).notices || {};
+  return new Promise(done => {
+    const d = document.createElement('dialog'); d.className = 'upgrade';
+    d.innerHTML = `<div class="top"><h2>Before you trade ${esc(kind)}</h2></div><div class="body"><p>${esc(notices[kind] || '')}</p><p class="mu">Take a moment. This order will be sent after you confirm.</p>
+      <div class="row" style="justify-content:flex-end"><button class="ghost" value="no">Cancel</button><button value="yes" disabled><b>I understand</b> <span>10</span></button></div></div>`;
+    document.body.append(d); d.showModal();
+    const y = d.querySelector('[value=yes]'); let n = 10;
+    const t = setInterval(() => { n--; y.querySelector('span').textContent = n > 0 ? n : ''; if (n <= 0) { clearInterval(t); y.disabled = false; } }, 1000);
+    d.querySelector('[value=no]').onclick = () => { clearInterval(t); d.close(); d.remove(); done(false); };
+    y.onclick = () => { clearInterval(t); d.close(); d.remove(); done(true); };
+  });
+}
+function stepUpBox() {
+  return new Promise(done => {
+    const d = document.createElement('dialog'); d.className = 'upgrade';
+    d.innerHTML = `<div class="top"><h2>Confirm it is you</h2></div><form class="body" method="dialog"><p class="mu">Something about this session looked unusual, so trading and transfers need your password${ME?.totpEnabled ? ' and 2FA code' : ''}.</p>
+      <label>Password<input name="password" type="password" autocomplete="current-password" required></label>${ME?.totpEnabled ? '<label>2FA code<input name="code" inputmode="numeric"></label>' : ''}
+      <div class="row" style="justify-content:flex-end"><button type="button" class="ghost" value="no">Cancel</button><button value="yes">Confirm</button></div><div class="err"></div></form>`;
+    document.body.append(d); d.showModal();
+    d.querySelector('[value=no]').onclick = () => { d.close(); d.remove(); done(false); };
+    d.querySelector('form').onsubmit = async e => {
+      e.preventDefault();
+      const r = await fetch('/api/security/step-up', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify(form(d)) });
+      if (r.ok) { d.close(); d.remove(); done(true); } else d.querySelector('.err').textContent = (await r.json().catch(() => ({}))).error || 'Try again';
+    };
+  });
+}
+// Typing rhythm (timing only, never which keys): sent with sign-in and about once a minute.
+const kd = { last: 0, down: new Map(), flight: [], dwell: [] };
+addEventListener('keydown', e => { const t = performance.now(); if (kd.last && t - kd.last < 2000) kd.flight.push(t - kd.last); kd.last = t; kd.down.set(e.code, t); }, true);
+addEventListener('keyup', e => { const t0 = kd.down.get(e.code); if (t0) { kd.dwell.push(performance.now() - t0); kd.down.delete(e.code); } }, true);
+const msd = a => { const m = a.reduce((x, y) => x + y, 0) / (a.length || 1); return [m, Math.sqrt(a.reduce((x, y) => x + (y - m) ** 2, 0) / (a.length || 1))]; };
+function typingSample(reset = true) {
+  if (kd.flight.length < 6 || kd.dwell.length < 6) return null;
+  const [fm, fs] = msd(kd.flight), [dm, ds] = msd(kd.dwell), out = { flightMean: fm, flightSd: fs, dwellMean: dm, dwellSd: ds, keys: kd.dwell.length };
+  if (reset) { kd.flight = []; kd.dwell = []; }
+  return out;
+}
+setInterval(() => { if (!ME) return; const x = typingSample(); if (x) api('/security/behavior', { body: x }).catch(() => {}); }, 60e3);
 
 // Wire a button to an async action with an error/ok line under it.
 // Wire a button to an async action with a status line under it ("Working…", then the result or error).
@@ -121,9 +170,9 @@ const NAV = [
   ['Trading', [['dashboard', 'Portfolio'], ['trade', 'Trade'], ['chart', 'Chart'], ['orders', 'Orders'], ['positions', 'Positions'], ['watchlists', 'Watchlists']]],
   ['AI', [['ai', 'AI assistant'], ['agents', 'Forecasts & AI agents'], ['news', 'News & sentiment']]],
   ['Markets', [['sp500', 'S&P 500 plan'], ['markets', 'Markets & news'], ['scanner', 'Scanner'], ['options', 'Options chain'], ['optionslab', 'Options lab'], ['institutions', 'Institutional portfolios'], ['calendar', 'Calendar & events']]],
-  ['Strategies', [['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['code', 'Code lab'], ['portfolios', 'Portfolios'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['marketplace', 'Marketplace'], ['pairs', 'Pairs trading'], ['schedule', 'Scheduled trades'], ['quantconnect', 'Cloud algorithms']]],
-  ['Money', [['insights', 'Insights & journal'], ['risk', 'Risk controls'], ['spend', 'Invest as you spend'], ['halal', 'Halal investing'], ['tax', 'Taxes']]],
-  ['Account', [['brokers', 'Brokerages'], ['account', 'Alpaca account'], ['funding', 'Plans & billing'], ['referrals', 'Invite & earn'], ['text', 'Text & hotline'], ['settings', 'Settings']]],
+  ['Strategies', [['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['code', 'Code lab'], ['portfolios', 'Portfolios'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['marketplace', 'Marketplace'], ['pairs', 'Pairs trading'], ['schedule', 'Scheduled trades'], ['quantconnect', 'Cloud algorithms'], ['workspace', 'Workspace']]],
+  ['Money', [['longterm', 'Long-term view'], ['insights', 'Insights & journal'], ['risk', 'Risk controls'], ['execution', 'Execution & routing'], ['spend', 'Invest as you spend'], ['halal', 'Halal investing'], ['tax', 'Taxes']]],
+  ['Account', [['security', 'Security & help'], ['learn', 'Learn'], ['brokers', 'Brokerages'], ['account', 'Alpaca account'], ['funding', 'Plans & billing'], ['referrals', 'Invite & earn'], ['text', 'Text & hotline'], ['settings', 'Settings']]],
 ];
 // Simple line icons (24x24 paths) for the menu.
 const ICONS = {
@@ -154,6 +203,10 @@ const ICONS = {
   portfolios: '<path d="M12 3v9l7.8 4.5A9 9 0 1 1 12 3z"/><path d="M15 3.5A9 9 0 0 1 20.5 13H15z"/>', fleet: '<circle cx="5" cy="12" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><path d="M7 11l10-5M7 13l10 5"/>',
   marketplace: '<path d="M3 9l2-5h14l2 5M3 9v11h18V9M3 9h18M9 20v-6h6v6"/>', insights: '<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>',
   risk: '<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"/><path d="M12 8v5M12 16h.01"/>', spend: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M16 15h2"/>',
+  security: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>', learn: '<path d="M2 8l10-5 10 5-10 5z"/><path d="M6 10v5c3 3 9 3 12 0v-5"/>',
+  longterm: '<path d="M3 20h18"/><path d="M4 16l5-5 4 3 7-8"/><circle cx="20" cy="6" r="1"/>', execution: '<path d="M4 6h10M4 12h16M4 18h7"/><path d="M17 3l3 3-3 3"/>',
+  workspace: '<rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="5" rx="1"/><rect x="13" y="10" width="8" height="11" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/>',
+  'admin-system': '<path d="M3 12h4l3-7 4 14 3-7h4"/>',
   halal: '<path d="M20 13A8 8 0 1 1 11 4a6.5 6.5 0 0 0 9 9z"/><path d="M17 4l.7 1.5 1.6.2-1.2 1.1.3 1.6L17 7.6l-1.4.8.3-1.6-1.2-1.1 1.6-.2z"/>', star: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
 };
 const icon = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k] || ''}</svg>`;
@@ -183,7 +236,7 @@ async function render() {
   // A new page starts at the top instead of keeping the previous page's scroll position.
   scrollTo(0, 0);
   if (!ME && !['login', 'register', 'mfa', 'forgot', 'reset', 'verify', 'open-account'].includes(route)) { location.hash = '#/login'; return; }
-  $('#top').hidden = !ME; $('#nav').hidden = !ME; $('#tabs').hidden = !ME;
+  $('#top').hidden = !ME; $('#nav').hidden = !ME; $('#tabs').hidden = !ME; $('#lockBtn').hidden = !ME;
   setMenu(false);
   $$('#tabs a[data-r]').forEach(a => a.classList.toggle('on', a.dataset.r === route || (route === '' && a.dataset.r === 'dashboard')));
   if (ME) {
@@ -227,7 +280,7 @@ function labelTables(root) {
     t.classList.add('stack'); t.dataset.labeled = '1';
   }
 }
-new MutationObserver(() => labelTables($('#view'))).observe($('#view'), { childList: true, subtree: true });
+new MutationObserver(() => { labelTables($('#view')); attachGlossary($('#view')); }).observe($('#view'), { childList: true, subtree: true });
 // Shows which Alpaca account trading goes to (sandbox, paper or live).
 let badgeAt = 0;
 async function updateBadge(force) {
@@ -239,6 +292,14 @@ async function updateBadge(force) {
   b.innerHTML = `<span class="long">${kind} · </span>${s.active.live ? 'LIVE' : s.active.type === 'broker' ? 'Sandbox' : 'Paper'}`;
   b.className = 'pill' + (s.active.live ? ' warn' : '');
 }
+// One-tap account lock, on every page.
+$('#lockBtn').onclick = async () => {
+  if (!ME || !confirm('Lock your account now? All orders and withdrawals freeze immediately and open orders are cancelled.')) return;
+  try { await api('/security/lock', { body: { reason: 'header lock button' } }); alert('Your account is locked. Unlock it under Security & help.'); location.hash = '#/security'; } catch (e) { alert(e.message); }
+};
+// Calm mode (default on): no flashing prices or celebratory effects.
+const setCalm = on => { document.body.classList.toggle('calm', on); try { localStorage.setItem('qp_calm', on ? '1' : '0'); } catch {} };
+setCalm((() => { try { return localStorage.getItem('qp_calm') !== '0'; } catch { return true; } })());
 $('#logout').onclick = async () => { await api('/auth/logout', { body: {} }); ME = null; location.href = '/'; };
 
 const accountSwitch = () => `<div class="seg" id="acctseg">${[['paper', 'Paper'], ['alpaca', 'Alpaca'], ...(ACCTS?.list || []).filter(a => a.connected && !['paper', 'alpaca'].includes(a.id)).map(a => [a.id, a.name])].map(([k, t]) => `<button class="${state.account === k ? 'on' : ''}" data-a="${k}">${t}</button>`).join('')}</div>`;
@@ -263,10 +324,16 @@ routes.login = async (view, q) => {
     <label>Email<input name="email" type="email" autocomplete="username" required></label>
     <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
     <button>Sign in</button><div class="err"></div>
+    ${window.PublicKeyCredential ? '<button type="button" class="ghost" id="pkLogin" style="width:100%;margin-top:8px">Sign in with a passkey</button>' : ''}
     <p class="mu"><a href="#/forgot">Forgot password?</a> · New here? <a href="#/register">Create an account</a></p></form>`;
   if (q.get('error')) $('.err', view).textContent = q.get('error');
+  if ($('#pkLogin', view)) act($('#pkLogin', view), async () => {
+    const o = await api('/auth/passkey/options', { body: {} });
+    const response = await getPasskey(o);
+    ME = (await api('/auth/passkey/verify', { body: { challengeId: o.challengeId, response } })).user; location.hash = '#/dashboard';
+  });
   act($('button', view), async () => {
-    const r = await api('/auth/login', { body: form(view) });
+    const r = await api('/auth/login', { body: { ...form(view), kd: typingSample() } });
     if (r.mfaRequired) { location.hash = '#/mfa'; return; }
     ME = r.user; location.hash = '#/dashboard';
   });
@@ -732,6 +799,8 @@ routes.settings = async view => {
   const pw = ME.hasPassword, confirmLabel = what => pw ? `Password to ${what}` : `Type your email to ${what}`, confirmType = pw ? 'password' : 'email';
   view.innerHTML = `<h1>Settings</h1>
   <div class="grid">
+    <div class="card"><h2>Calm mode</h2><label class="chk"><input type="checkbox" id="calmT" ${document.body.classList.contains('calm') ? 'checked' : ''}> No flashing prices, colors or celebrations (recommended)</label>
+      <p class="mu small-print">Trading decisions go better without constant movement on the screen. Your long-term results are on the <a href="#/longterm">Long-term view</a>.</p></div>
     <div class="card" id="language"><h2>Language</h2>
       <p class="mu">The language of the app on this device.</p>
       <div class="langpick" data-no-tr>${Object.entries(LANGS).map(([k, v]) => `<button type="button" class="${k === currentLang() ? 'on' : ''}" data-setlang="${k}" lang="${k}" dir="${v.dir}" aria-pressed="${k === currentLang()}"><b>${v.name}</b><small>${k === 'yi' ? 'איבערגעזעצט פאר אידישע באניצער' : 'Original'}</small></button>`).join('')}</div></div>
@@ -784,11 +853,12 @@ routes.settings = async view => {
     if (!confirm('Delete your account and all data permanently? This cannot be undone. Your Alpaca account is not affected.')) return;
     const v = $('#delpw', view).value; await api('/auth/delete', { body: { password: v, confirm: v } }); location.href = '/';
   });
+  if ($('#calmT', view)) $('#calmT', view).onchange = e => setCalm(e.target.checked);
 };
 
 // ---------- admin ----------
 // Owner pages: one route per section so each has its own place in the menu.
-const ADMIN_TABS = [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-money', 'Money & fees'], ['admin-support', 'Support inbox'], ['admin-setup', 'Setup']];
+const ADMIN_TABS = [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-money', 'Money & fees'], ['admin-support', 'Support inbox'], ['admin-system', 'System health'], ['admin-setup', 'Setup']];
 async function adminPage(view, tab) {
   const [s, msgs, setup] = await Promise.all([api('/admin/summary'), api('/admin/messages'), tab === 'admin-setup' ? api('/admin/setup') : null]);
   const total = (kind, status) => s.byKind.filter(x => x.kind === kind && (!status || x.status === status)).reduce((a, x) => a + x.total, 0);
@@ -844,7 +914,7 @@ async function adminPage(view, tab) {
   $$('[data-role]', view).forEach(b => (b.onclick = () => userCall(b.dataset.role, { role: b.dataset.to })));
   if ($('#userFind', view)) $('#userFind', view).oninput = e => { const q = e.target.value.trim().toLowerCase(); $$('#userTable tr[data-email]', view).forEach(tr => (tr.hidden = !!q && !tr.dataset.email.toLowerCase().includes(q))); };
 }
-for (const [k] of ADMIN_TABS) routes[k] = view => (ME?.role === 'admin' ? adminPage(view, k) : routes.dashboard(view, new URLSearchParams()));
+for (const [k] of ADMIN_TABS.filter(([k]) => k !== 'admin-system')) routes[k] = view => (ME?.role === 'admin' ? adminPage(view, k) : routes.dashboard(view, new URLSearchParams()));
 
 registerStrategies(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, cls, date, api, form, act, render, drawChart, onLeave, me: () => ME });
 registerBrokers(routes, { $, $$, esc, money, api, form, act, render, accounts });
@@ -858,6 +928,7 @@ registerBuild(routes, shared);
 registerAnalytics(routes, shared);
 registerChart(routes, shared);
 registerOptionsLab(routes, shared);
+registerProtect(routes, shared);
 
 (async () => {
   // Remember an invite code from a referral link (/app?ref=CODE) for sign-up.

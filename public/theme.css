@@ -441,3 +441,23 @@ body.popout main { padding: 10px; }
 .optgrid input[type=range] { width: 100%; padding: 0; }
 #legs td input, #legs td select { margin: 0; padding: 6px 8px; }
 @media (max-width: 640px) { .editor .gutter, .editor textarea { font-size: 16px; } .chatin { flex-direction: column; align-items: stretch; } .chatbtns { justify-content: flex-end; } }
+
+/* glossary, lock button, lessons, workspace, execution */
+.gl { display: inline-grid; place-items: center; width: 16px; height: 16px; margin-inline-start: 5px; border-radius: 50%; border: 1px solid var(--bd); color: var(--mu); font-size: 10.5px; font-weight: 700; cursor: help; vertical-align: 1px; text-transform: none; letter-spacing: 0; background: var(--card); }
+.gl:hover, .gl:focus { border-color: var(--ac); color: var(--ac); outline: none; }
+.glpop { position: absolute; z-index: 1000; background: var(--tx); color: var(--card); padding: 10px 12px; border-radius: 10px; font-size: 13px; line-height: 1.45; box-shadow: var(--shadow-lg); }
+.lockbtn { margin: 0; padding: 7px 10px; min-height: 0; color: var(--rd); border-color: color-mix(in srgb, var(--rd) 35%, var(--bd)) !important; }
+.lockbtn:hover:not(:disabled) { background: color-mix(in srgb, var(--rd) 10%, var(--card)) !important; }
+@media (max-width: 640px) { .lockbtn .long { display: none; } }
+.calm .flash-up, .calm .flash-dn { animation: none !important; }
+.lesson fieldset { border: 1px solid var(--bd); border-radius: var(--r-sm); margin: 10px 0; padding: 8px 12px; }
+.lesson legend { font-weight: 600; padding: 0 4px; }
+.lesson ul { padding-inline-start: 18px; }
+.mono { font-family: ui-monospace, Menlo, monospace; font-size: 12px; direction: ltr; }
+.wsgrid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); }
+.wpanel { margin: 0; min-width: 0; }
+@media (min-width: 900px) { .wpanel.s2 { grid-column: span 2; } }
+.whead { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: grab; }
+.whead .grip { color: var(--mu); }
+.whead .wsym { width: 100px; margin: 0; padding: 5px 8px; }
+.wbody table { width: 100%; }

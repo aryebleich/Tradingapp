@@ -34,7 +34,7 @@ function onResize(fn) {
   addEventListener('resize', h); H.onLeave(() => { removeEventListener('resize', h); clearTimeout(t); });
 }
 function every(ms, fn) { const t = setInterval(() => { if (!document.hidden) fn(); }, ms); H.onLeave(() => clearInterval(t)); }
-function flash(el, up) { if (!el) return; el.classList.remove('flash-up', 'flash-dn'); void el.offsetWidth; el.classList.add(up ? 'flash-up' : 'flash-dn'); }
+function flash(el, up) { if (!el || document.body.classList.contains('calm')) return; el.classList.remove('flash-up', 'flash-dn'); void el.offsetWidth; el.classList.add(up ? 'flash-up' : 'flash-dn'); }
 
 // Shown instead of a trading page when no Alpaca account is connected yet.
 async function needConnection(view, title) {

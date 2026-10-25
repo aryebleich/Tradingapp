@@ -102,7 +102,7 @@ async function chartPage(view, q) {
     const sym = cfg.symbols[active] || 'SPY', crypto = sym.includes('/'), alp = accts.find(a => a.id === 'alpaca' && a.connected);
     sideEl.innerHTML = `<div class="card"><h2>Trade ${H.esc(sym)}</h2><form id="tk">
       <div class="seg"><button type="button" class="buy on" data-side="buy">Buy</button><button type="button" class="sell" data-side="sell">Sell</button></div>
-      <label>Account<select name="account">${H.accountOptions(accts, alp ? 'alpaca' : 'paper')}</select></label>
+      <label>Account<select name="account">${H.accountOptions(accts, alp ? 'alpaca' : 'paper')}<option value="smart">Smart route (best of my brokerages)</option></select></label>
       <div class="row"><label>Quantity<input name="qty" type="number" step="any" min="0" value="1"></label><label class="lim">Limit price<input name="limit" type="number" step="any" value="${price ? price.toFixed(price < 10 ? 4 : 2) : ''}" placeholder="market"></label></div>
       <button>Place order</button><div class="err"></div>
       <p class="mu small-print">Pick the $ tool and click the chart, or click a price in the ladder, to set a limit price. Limit orders go to Alpaca; paper and other brokerages fill at market.</p></form></div>
@@ -118,7 +118,7 @@ async function chartPage(view, q) {
         return `Order ${r.status}`;
       }
       const r = await H.api('/orders', { body: { account: f.account, symbol: sym, side: sideV, qty: f.qty } });
-      return `${r.side} ${r.symbol}: ${r.status}${r.price ? ' @ ' + H.money(r.price) : ''}`;
+      return `${r.side} ${r.symbol}: ${r.status}${r.price ? ' @ ' + H.money(r.price) : ''}${r.routedTo ? ' via ' + r.routedTo : ''}${r.notes ? ' · ' + r.notes.join(' ') : ''}`;
     });
     clearInterval(timer);
     const dom = async () => {

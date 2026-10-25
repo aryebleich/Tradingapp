@@ -1,0 +1,28 @@
+name: Chaos drill
+# 10x normal traffic against a fresh server while broker calls fail at random and run slow.
+# Passes when order entry stays available (orders are never shed and the server never errors on them).
+on:
+  workflow_dispatch:
+    inputs:
+      multiplier: { description: 'Traffic multiple of normal', default: '10' }
+      fail_rate: { description: 'Share of broker calls that fail (0-1)', default: '0.2' }
+  schedule:
+    - cron: '17 6 * * 1'
+jobs:
+  drill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Start a staging server with fault injection
+        run: |
+          PORT=3000 NODE_ENV=staging FREE_DATA=off DB_FILE=/tmp/drill.db \
+          CHAOS_FAIL_RATE=${{ github.event.inputs.fail_rate || '0.2' }} CHAOS_LATENCY_MS=300 \
+          node server.js > server.log 2>&1 &
+          for i in $(seq 1 30); do curl -fs localhost:3000/healthz && break; sleep 1; done
+      - run: node scripts/loadtest.mjs --url http://localhost:3000 --users 40 --multiplier ${{ github.event.inputs.multiplier || '10' }} --seconds 60
+      - if: always()
+        run: tail -50 server.log

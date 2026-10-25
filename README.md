@@ -162,3 +162,26 @@ The code is built for the business model you described. Running that business is
 5. **Legal pages** (`scripts/pages.py` generates them) are solid starting templates, not legal advice. Have them reviewed and add your company's legal name and address.
 
 Talk to a securities lawyer before you go live. Until then, keep users on paper trading and on their own Alpaca accounts with their own keys.
+
+## AI (free first)
+
+The assistant, strategy builder, news brief, phone assistant and support agent use a free model by
+default. Set one key (all free, no card needed): `GROQ_API_KEY` (console.groq.com), `GEMINI_API_KEY`
+(aistudio.google.com) or `OPENROUTER_API_KEY`; or point `AI_BASE_URL` at any OpenAI-compatible server
+(e.g. a local Ollama at `http://localhost:11434/v1`, with `AI_MODEL`). Setting `ANTHROPIC_API_KEY`
+upgrades to Claude, which adds web search. `AI_PROVIDER` picks one when several keys are set.
+
+## Reliability, execution and protection
+
+- Load shedding (`SHED_AT`, default 0.85), circuit breakers per brokerage, a durable order queue for
+  automated orders (`ORDER_QUEUE_TTL_SEC`, `ORDER_WORKERS`), `/readyz`, `/metrics` (`METRICS_TOKEN`),
+  and a capacity planner (`BASE_REPLICAS`, `MAX_REPLICAS`, `ECONOMIC_EVENT_DATES`, `VOL_PROXY`).
+  Kubernetes manifests with autoscaling and a predictive scaler are in `deploy/k8s`.
+- Load and chaos drill: `node scripts/loadtest.mjs` against staging (with `CHAOS_FAIL_RATE`,
+  `CHAOS_LATENCY_MS` on the server), or the "Chaos drill" GitHub workflow.
+- Execution log: bid/ask at send and the fill, hash-chained and append-only. `ALPACA_STOCK_FEED=sip`
+  records the consolidated NBBO. Smart routing scores your connected brokerages; `EXEC_DIRECT_BROKERS`
+  lists brokerages that route directly to exchanges without payment for order flow.
+- Passkeys (WebAuthn), typing-rhythm checks (`BEHAVIOR_ANOMALY_AT`), a one-tap account lock, lessons
+  and risk notices for options/crypto/margin, budget quotas, graduated limits, margin watch
+  (`MARGIN_FEED_URL` optional), and an AI support agent that escalates hacked accounts.

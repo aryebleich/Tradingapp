@@ -1,0 +1,76 @@
+# The web app. Every replica serves the API and drains the shared order queue; scheduled jobs
+# claim their time slot in the database, so any number of replicas can run side by side.
+# Needs a shared database: set DATABASE_URL (libSQL / Turso) in the quantpocket-env secret.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: quantpocket
+  namespace: quantpocket
+  labels: { app: quantpocket }
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxSurge: 50%, maxUnavailable: 0 }
+  selector:
+    matchLabels: { app: quantpocket }
+  template:
+    metadata:
+      labels: { app: quantpocket }
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /metrics
+        prometheus.io/port: "3000"
+    spec:
+      terminationGracePeriodSeconds: 30
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector: { matchLabels: { app: quantpocket } }
+      containers:
+        - name: web
+          image: ghcr.io/aryebleich/tradingapp:latest
+          ports: [{ containerPort: 3000, name: http }]
+          envFrom: [{ secretRef: { name: quantpocket-env } }]
+          env:
+            - { name: PORT, value: "3000" }
+            - { name: NODE_ENV, value: production }
+            - { name: SHED_AT, value: "0.85" }
+            - { name: MAX_INFLIGHT, value: "200" }
+            - { name: HEAP_LIMIT_MB, value: "450" }
+            - { name: NODE_OPTIONS, value: "--max-old-space-size=512" }
+          resources:
+            requests: { cpu: 250m, memory: 384Mi }
+            limits: { cpu: "1", memory: 640Mi }
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 5
+            failureThreshold: 2
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+          lifecycle:
+            preStop: { exec: { command: ["sleep", "10"] } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: quantpocket
+  namespace: quantpocket
+spec:
+  selector: { app: quantpocket }
+  ports: [{ port: 80, targetPort: http, name: http }]
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: quantpocket
+  namespace: quantpocket
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: { app: quantpocket }

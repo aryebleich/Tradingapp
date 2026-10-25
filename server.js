@@ -17,6 +17,7 @@ import { securityRouter, passkeyLoginRouter, stepUpGuard } from './src/security.
 import { lessonsRouter } from './src/lessons.js';
 import { execRouter } from './src/execution.js';
 import { marginRouter } from './src/margin.js';
+import { prefsRouter } from './src/settings.js';
 import { longtermRouter } from './src/longterm.js';
 import { shedMiddleware, stats as relStats, metricsText, recommendedReplicas, jobAllowed, load as relLoad } from './src/reliability.js';
 import { drain as drainQueue, queueStats, userQueue } from './src/orderqueue.js';
@@ -370,6 +371,7 @@ api.use('/security', securityRouter({ cancelAlpaca }));
 api.use('/auth/passkey', passkeyLoginRouter());
 api.use('/learn', lessonsRouter);
 api.use('/margin', marginRouter);
+api.use('/prefs', prefsRouter);
 api.use('/longterm', longtermRouter);
 api.use('/exec', execRouter({ accounts: accountsFor }));
 api.use('/risk', riskRouter({ summarize: accountSummary, cancelAlpaca: async id => { const t = await tradingFor(id); return t ? t.cancelAllOrders() : null; } }));

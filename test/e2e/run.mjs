@@ -54,6 +54,12 @@ function harness(p, label) {
   const done = () => { if (errors.length) { failures++; console.log(`  ✗ browser errors: ${errors.join(' | ')}`); } };
   return { step, done };
 }
+// Real-money options and crypto need the lesson and a fresh risk notice; done once per test user.
+const unlockHighRisk = p => p.evaluate(async () => {
+  const post = (u, b) => fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify(b) });
+  await post('/api/learn/crypto', { answers: [1, 1] }); await post('/api/learn/options', { answers: [0, 1, 1] });
+  await post('/api/learn/ack/crypto', {}); await post('/api/learn/ack/options', {});
+});
 const confirmDialog = async (p, tap) => { await p.waitForSelector('dialog[open]'); await p[tap ? 'tap' : 'click']('dialog[open] button[value=yes]'); };
 
 // ---------- desktop ----------
@@ -64,6 +70,7 @@ console.log('Desktop (1360x900)');
   await step('register', async () => {
     await p.goto(B + '/app#/register'); await p.fill('input[name=email]', 'desk@example.com'); await p.fill('input[name=password]', 'Str0ngPassword'); await p.check('input[name=agree]');
     await p.click('button:has-text("Create account")'); await p.waitForSelector('#ticket');
+    await unlockHighRisk(p);
   });
   await step('homepage demo + legal pages', async () => {
     const q = await browser.newPage(); await q.goto(B + '/'); await q.waitForSelector('#demoStats .stat');
@@ -164,6 +171,7 @@ console.log('Desktop (1360x900)');
       await p.click(`#nav a[href="#/${k}"]`); await p.waitForSelector(`.admintabs button.on`); await p.waitForSelector(`text=${h}`);
     }
     await p.screenshot({ path: path.join(OUT, 'admin-setup.png'), fullPage: true });
+    await p.click('#nav a[href="#/admin-system"]'); await p.waitForSelector('text=Capacity plan');
     await p.click('#nav a[href="#/admin-users"]'); await p.fill('#userFind', 'desk'); await p.waitForTimeout(200);
     if ((await p.$$('#userTable tr[data-email]:not([hidden])')).length !== 1) throw new Error('user search');
   });
@@ -196,6 +204,7 @@ console.log('Phone (iPhone 13)');
   await step('register', async () => {
     await p.goto(B + '/app#/register'); await p.fill('input[name=email]', 'phone@example.com'); await p.fill('input[name=password]', 'Str0ngPassword'); await p.check('input[name=agree]');
     await p.tap('button:has-text("Create account")'); await p.waitForSelector('#tabs a.on');
+    await unlockHighRisk(p);
   });
   await step('connect API keys from the menu', async () => {
     await p.tap('#moreTab'); await p.waitForSelector('#nav.open'); await p.tap('#nav a:has-text("Alpaca account")'); await p.waitForSelector('#keysForm');
@@ -293,7 +302,7 @@ console.log('Settings → Language');
     await go('#/chart?symbol=AAPL', '.cpanel canvas'); await p.waitForFunction(() => /Scroll|Daily|Simulated/.test(document.querySelector('.cnote')?.textContent || ''), null, { timeout: 20000 });
     await p.click('[data-tool=trend]'); const b = await p.locator('.cpanel canvas').boundingBox();
     await p.mouse.move(b.x + 100, b.y + 100); await p.mouse.down(); await p.mouse.move(b.x + 300, b.y + 60); await p.mouse.up();
-    await p.click('[data-l="2"]'); await p.waitForSelector('.chartgrid.l2 .cpanel:nth-child(2)');
+    await p.waitForSelector('[data-l="2"][data-locked]'); // 2-chart layouts come with Pro
   });
   await step('options lab template and payoff', async () => {
     await go('#/optionslab?symbol=AAPL', '.tpls'); await p.click('[data-t=bull_call]');
@@ -303,6 +312,20 @@ console.log('Settings → Language');
   });
   await step('tax page shows Schedule D', async () => { await go('#/tax', '.card'); await p.waitForFunction(() => /Schedule D/.test(document.body.textContent)); });
   await step('bots page offers frequency', async () => { await go('#/bots', 'h1'); });
+  await step('lesson, long-term view, workspace, execution log', async () => {
+    await go('#/learn', 'form.lesson'); const f = p.locator('form.lesson[data-id=crypto]');
+    await f.locator('[name=q0][value="1"]').check(); await f.locator('[name=q1][value="1"]').check(); await f.locator('button').click();
+    await p.waitForFunction(() => /lesson complete/.test(document.querySelector('form.lesson[data-id=crypto] .ok')?.textContent || ''), null, { timeout: 15000 });
+    await go('#/longterm', '#ltc'); await go('#/workspace', '.wpanel'); await go('#/execution', '#rt');
+    await p.click('#ver'); await p.waitForFunction(() => /check out/.test(document.querySelector('#vOut')?.textContent || ''), null, { timeout: 15000 });
+  });
+  await step('glossary tooltip explains a term', async () => { await go('#/longterm', '.gl'); await p.click('.gl'); await p.waitForSelector('.glpop:not([hidden])'); });
+  await step('lock from the header, unlock on Security', async () => {
+    await go('#/dashboard', '#lockBtn'); await p.click('#lockBtn'); await p.waitForFunction(() => location.hash === '#/security', null, { timeout: 15000 });
+    await p.waitForSelector('#unl'); await p.fill('#unl input[name=password]', 'Str0ngPassword'); await p.click('#unl button');
+    await p.waitForSelector('#unl .ok, .killcard + .card', { timeout: 15000 });
+    await p.waitForFunction(() => /work again/.test(document.body.textContent), null, { timeout: 15000 });
+  });
   done(); await ctx.close();
 }
 
@@ -319,7 +342,7 @@ for (const [device, width, lang] of [['iPhone 13', 390, 'en'], ['iPhone SE', 320
   await p.evaluate(() => fetch('/api/alpaca/keys', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ keyId: 'AUDIT' + innerWidth, secret: 'S' }) }));
   await p.evaluate(() => localStorage.setItem('qp_account', 'alpaca'));
   const lib = await p.evaluate(() => fetch('/api/library', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ templateId: 'multi_model' }) }).then(r => r.json()));
-  for (const r of ['/', '/yi', '/terms', '/app#/register', '/app#/login', '#/dashboard', '#/trade?symbol=AAPL', '#/orders', '#/positions', '#/watchlists', '#/markets', '#/options?underlying=AAPL', '#/calendar', '#/account', '#/open-account', '#/brokers', '#/strategies', `#/strategy?id=${lib.id}`, '#/signals', '#/pairs', '#/sp500', '#/backtest', '#/bots', '#/schedule', '#/text', '#/tax', '#/funding', '#/settings', '#/chart?symbol=AAPL', '#/ai', '#/agents', '#/code', '#/news', '#/scanner', '#/optionslab', '#/institutions', '#/portfolios', '#/portfolios?tab=mine', '#/fleet', '#/marketplace', '#/insights', '#/insights?tab=journal', '#/risk', '#/spend', '#/halal', '#/halal?tab=zakat']) {
+  for (const r of ['/', '/yi', '/terms', '/app#/register', '/app#/login', '#/dashboard', '#/trade?symbol=AAPL', '#/orders', '#/positions', '#/watchlists', '#/markets', '#/options?underlying=AAPL', '#/calendar', '#/account', '#/open-account', '#/brokers', '#/strategies', `#/strategy?id=${lib.id}`, '#/signals', '#/pairs', '#/sp500', '#/backtest', '#/bots', '#/schedule', '#/text', '#/tax', '#/funding', '#/settings', '#/chart?symbol=AAPL', '#/ai', '#/agents', '#/code', '#/news', '#/scanner', '#/optionslab', '#/institutions', '#/portfolios', '#/portfolios?tab=mine', '#/fleet', '#/marketplace', '#/insights', '#/insights?tab=journal', '#/risk', '#/spend', '#/halal', '#/halal?tab=zakat', '#/security', '#/execution', '#/learn', '#/longterm', '#/workspace']) {
     await step(r, async () => {
       await p.goto(r.startsWith('#') ? B + '/app' + r : B + r); if (r === '#/dashboard') await p.reload();
       await p.waitForTimeout(r.includes('strategy') || r.includes('sp500') ? 3000 : 1300);

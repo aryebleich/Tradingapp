@@ -1,0 +1,49 @@
+# Predictive scaling: every 5 minutes, ask the app how many replicas the next minutes need
+# (market open/close, macro event days from ECONOMIC_EVENT_DATES, volatility spikes, current load)
+# and set it as the autoscaler's floor. The HPA can still scale higher on real load.
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: predictive-scaler, namespace: quantpocket }
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: predictive-scaler, namespace: quantpocket }
+rules:
+  - apiGroups: [autoscaling]
+    resources: [horizontalpodautoscalers]
+    resourceNames: [quantpocket]
+    verbs: [get, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: { name: predictive-scaler, namespace: quantpocket }
+subjects: [{ kind: ServiceAccount, name: predictive-scaler, namespace: quantpocket }]
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: predictive-scaler }
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata: { name: predictive-scaler, namespace: quantpocket }
+spec:
+  schedule: "*/5 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      template:
+        spec:
+          serviceAccountName: predictive-scaler
+          restartPolicy: Never
+          containers:
+            - name: scale
+              image: alpine/k8s:1.31.4
+              envFrom: [{ secretRef: { name: quantpocket-env } }]
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -e
+                  R=$(curl -fsS -H "Authorization: Bearer ${METRICS_TOKEN}" http://quantpocket.quantpocket.svc/internal/capacity | sed -n 's/.*"replicas":\([0-9]*\).*/\1/p')
+                  [ -n "$R" ] || exit 1
+                  kubectl -n quantpocket patch hpa quantpocket --type merge -p "{\"spec\":{\"minReplicas\":$R}}"
+                  echo "minReplicas=$R"
