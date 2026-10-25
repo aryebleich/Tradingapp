@@ -67,7 +67,7 @@ async function translateOne(text) {
   await page.click('text=To Yiddish');
   // Wait until the result changes and stops changing.
   let last = before, same = 0;
-  for (let i = 0; i < 120; i++) {
+  for (let i = 0; i < 180; i++) {
     await page.waitForTimeout(500);
     const t = await resultText();
     if (t && t !== before && !/will appear here/i.test(t)) { if (t === last) { if (++same >= 3) return t; } else { same = 0; last = t; } }
@@ -77,7 +77,8 @@ async function translateOne(text) {
 }
 
 const out = new Map();
-let i = 0, kept = 0;
+let i = 0, kept = 0, sent = 0;
+const why = { html: 0, short: 0, timeout: 0, check: 0 };
 const save = () => {
   const res = { app: {}, home: {} };
   for (const [where, en] of entries) if (out.has(en)) res[where][en] = out.get(en);
@@ -91,10 +92,12 @@ try {
     // The site drops placeholders, so plain text goes as is and every protected name/ticker must come
     // back unchanged; text with HTML, entities or {variables} keeps its hand-written Yiddish.
     const p = protect(en);
-    if (p.saved.some(x => /[<&{]|https?:/.test(x))) { kept++; continue; }
+    if (p.saved.some(x => /[<&{]|https?:/.test(x))) { kept++; why.html++; continue; }
     // One- and two-word labels ("Paper", "Fill rate") lose their trading meaning without context:
     // they keep the reviewed hand-written Yiddish.
-    if (en.trim().split(/\s+/).length <= 2) { kept++; continue; }
+    if (en.trim().split(/\s+/).length <= 2) { kept++; why.short++; continue; }
+    // A long session slows the page down: start fresh every 20 translations.
+    if (++sent % 20 === 0) await page.goto(URL_, { waitUntil: 'networkidle', timeout: 90000 });
     let t = null;
     try { t = await translateOne(en); } catch (e) { if (e.credits) throw e; console.log(`  error on ${i}: ${e.message}`); await page.goto(URL_, { waitUntil: 'networkidle' }); }
     // The site sometimes leaves a timing marker such as <|0:00.0|> in front of the text.
@@ -103,7 +106,7 @@ try {
     const r = clean != null && p.saved.filter(x => /^[A-Z0-9&./#-]+$/.test(x) && /[A-Z]{2}|\d/.test(x)).every(x => clean.includes(x)) ? clean : null;
     if (process.env.YL_DEBUG) console.log(JSON.stringify({ en, sent: p.text, got: t, r }));
     if (r && /[א-ת]/.test(r)) out.set(en, r); else kept++;
-    if (i % 25 === 0) { save(); console.log(`${i} / ${todo.length}: ${out.size} translated, ${kept} kept as before, credits ${await credits()}`); }
+    if (i % 25 === 0) { save(); console.log(`${i} / ${todo.length}: ${out.size} translated, ${kept} kept as before (${JSON.stringify(why)})`); }
   }
 } catch (e) { console.log(`Stopped: ${e.message}`); }
 save();
