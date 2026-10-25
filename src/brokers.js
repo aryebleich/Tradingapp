@@ -5,6 +5,10 @@ import { rng } from './engine.js';
 import { tradingFor, requireTrading } from './alpaca/connections.js';
 import { EXT_IDS, withExt } from './ext/brokers.js';
 import { checkOrder, logOrder } from './risk.js';
+import { breaker, chaos, isOutage, shedding } from './reliability.js';
+import { enqueue, AUTOMATED } from './orderqueue.js';
+import { quoteAt, auditAppend, improvementBps, routePlan } from './execution.js';
+import crypto from 'node:crypto';
 
 // Every account a user can trade: the paper simulator, Alpaca, and the other brokerages.
 export const ACCOUNT_IDS = ['paper', 'alpaca', ...EXT_IDS];
@@ -189,18 +193,67 @@ export async function recordFill(userId, account, symbol, side, qty, price, sour
   });
 }
 
-// order: { symbol, side, qty?, notional? }
+// Annualized 20-day volatility of a symbol, cached for the day (used by the graduated risk limits).
+const volCache = new Map();
+export async function volatility(symbol, userId) {
+  const k = symbol + ':' + new Date().toISOString().slice(0, 10);
+  if (volCache.has(k)) return volCache.get(k);
+  const c = (await getBars(symbol, new Date(Date.now() - 730 * 864e5).toISOString().slice(0, 10), userId)).closes.slice(-21);
+  const r = c.slice(1).map((x, i) => Math.log(x / c[i])), m = r.reduce((a, b) => a + b, 0) / (r.length || 1);
+  const v = r.length > 5 ? Math.sqrt(r.reduce((a, b) => a + (b - m) ** 2, 0) / (r.length - 1)) * Math.sqrt(symbol.includes('/') ? 365 : 252) * 100 : null;
+  if (volCache.size > 2000) volCache.clear();
+  volCache.set(k, v);
+  return v;
+}
+export const riskDeps = userId => ({ summarize: accountSummary, price: s => lastPrice(s, userId), volatility: s => volatility(s, userId) });
+
+// order: { symbol, side, qty?, notional? }. Account "smart" routes to the best connected brokerage.
 export async function placeOrder(userId, account, order, source = 'manual') {
   const symbol = String(order.symbol || '').trim().toUpperCase();
   const side = order.side === 'sell' ? 'sell' : 'buy';
-  const q = +order.qty, n = +order.notional;
+  let q = +order.qty, n = +order.notional;
   if (!validSymbol(symbol)) throw new Error('Invalid symbol');
   if (!(Number.isFinite(q) && q > 0) && !(Number.isFinite(n) && n > 0)) throw new Error('Give a quantity or dollar amount');
-  // Guardrails first (limits, daily loss stop, kill switch), for every source.
-  await checkOrder(userId, account, { symbol, side, qty: q, notional: n }, source, { summarize: accountSummary, price: s => lastPrice(s, userId) });
-  const r = await sendOrder(userId, account, symbol, side, q, n, source, order);
-  await logOrder(userId, account, { symbol, side }, source);
-  return r;
+  if (account === 'smart') return smartOrder(userId, { ...order, symbol, side }, source);
+  // Guardrails first (account lock, limits, speed bumps, daily loss stop, kill switch), for every source.
+  const chk = await checkOrder(userId, account, { symbol, side, qty: q, notional: n }, source, riskDeps(userId));
+  if (chk?.resize) { if (chk.resize.notional) { n = chk.resize.notional; q = 0; } else { q = chk.resize.qty; n = 0; } }
+  // During a surge, automated orders wait in the queue so manual trading and risk controls stay fast.
+  if (AUTOMATED(source) && !order._fromQueue && shedding()) return enqueue(userId, account, { ...order, symbol, side }, source, 'server under heavy load');
+  const ref = crypto.randomUUID(), quote = await quoteAt(symbol, D_ENABLED() ? null : await lastPrice(symbol, userId).catch(() => null));
+  await auditAppend(userId, 'order', { event: 'sent', orderRef: ref, venue: account, symbol, side, qty: q || null, notional: n || null, source, quote, at: now() });
+  let r;
+  try { r = await breaker(account).run(async () => { await chaos(); return sendOrder(userId, account, symbol, side, q, n, source, order); }); }
+  catch (e) {
+    const outage = e.breakerOpen || isOutage(e);
+    await auditAppend(userId, 'order', { event: outage ? 'deferred' : 'rejected', orderRef: ref, venue: account, symbol, side, reason: e.message.slice(0, 200), at: now() });
+    if (outage && AUTOMATED(source) && !order._fromQueue) return enqueue(userId, account, { ...order, symbol, side }, source, e.message);
+    throw e;
+  }
+  const value = n || (q * (r.price || quote.ask || quote.last || 0));
+  await logOrder(userId, account, { symbol, side, value }, source);
+  const filled = r.status === 'filled' && r.price > 0;
+  await auditAppend(userId, 'order', { event: filled ? 'filled' : 'accepted', orderRef: ref, brokerOrderId: r.id ? String(r.id) : null, venue: account, symbol, side, qty: r.qty || q || null, price: r.price || null, status: r.status, improvementBps: filled ? improvementBps(side, quote, r.price) : null, at: now() });
+  return { ...r, ...(chk?.notes?.length ? { notes: chk.notes } : {}) };
+}
+const D_ENABLED = () => !!(process.env.ALPACA_KEY_ID && process.env.ALPACA_SECRET);
+
+// Smart routing: try brokerages in score order; buys fail over to the next one on an outage.
+async function smartOrder(userId, order, source) {
+  const { accountsFor } = await import('./ext/routes.js');
+  const accounts = await accountsFor(userId), holdings = {};
+  if (order.side === 'sell') for (const a of accounts.filter(x => x.connected && x.id !== 'paper')) holdings[a.id] = (await accountSummary(userId, a.id).catch(() => ({ positions: [] }))).positions.find(p => p.symbol === order.symbol)?.qty || 0;
+  const plan = await routePlan(userId, order.symbol, order.side, { accounts, holdings });
+  let last;
+  for (const [i, venue] of plan.order.entries()) {
+    try { const r = await placeOrder(userId, venue, { ...order, _fromQueue: true }, source); return { ...r, routedTo: venue, routing: plan.scores }; }
+    catch (e) {
+      last = e;
+      if (!(plan.failover && (e.breakerOpen || isOutage(e))) || i === plan.order.length - 1) throw e;
+      await auditAppend(userId, 'order', { event: 'failover', from: venue, to: plan.order[i + 1], symbol: order.symbol, side: order.side, reason: e.message.slice(0, 200), at: now() });
+    }
+  }
+  throw last || new Error('No brokerage available');
 }
 // Automations pass the price they expected (expectedPrice) and when the signal fired (signalAt),
 // so the execution report can measure slippage and delay.
@@ -258,6 +311,7 @@ export async function syncAlpacaFills(userId) {
     if (await one('SELECT id FROM fills WHERE broker_order_id = ?', o.id)) continue;
     if (!o.symbol || o.order_class === 'mleg') continue; // spreads: legs are recorded by Alpaca per contract
     await recordFill(userId, 'alpaca', o.symbol, o.side, +o.filled_qty, +o.filled_avg_price, 'alpaca', { brokerId: o.id, at: Date.parse(o.filled_at) || now() });
+    await auditFill(userId, o).catch(() => {});
     added++;
   }
   return added;
@@ -287,4 +341,14 @@ export async function snapshotEquity(userId) {
   const s = await accountSummary(userId, 'paper');
   await run("INSERT INTO equity_history (user_id, account, day, equity) VALUES (?, 'paper', ?, ?) ON CONFLICT DO UPDATE SET equity = excluded.equity", userId, new Date().toISOString().slice(0, 10), s.equity);
   return s;
+}
+
+// A broker fill that arrives later is added to the execution log next to the order it belongs to.
+async function auditFill(userId, o) {
+  const sent = await one("SELECT data FROM exec_audit WHERE user_id = ? AND kind = 'order' AND data LIKE ? ORDER BY id DESC LIMIT 1", userId, `%"brokerOrderId":"${o.id}"%`);
+  const prev = sent ? JSON.parse(sent.data) : null;
+  if (await one("SELECT 1 FROM exec_audit WHERE user_id = ? AND kind = 'fill' AND data LIKE ?", userId, `%"brokerOrderId":"${o.id}"%`)) return;
+  let quote = null;
+  if (prev) { const s0 = await one("SELECT data FROM exec_audit WHERE user_id = ? AND data LIKE ? AND data LIKE '%\"event\":\"sent\"%'", userId, `%"orderRef":"${prev.orderRef}"%`); quote = s0 ? JSON.parse(s0.data).quote : null; }
+  await auditAppend(userId, 'fill', { event: 'filled', orderRef: prev?.orderRef || o.id, brokerOrderId: String(o.id), venue: 'alpaca', symbol: o.symbol, side: o.side, qty: +o.filled_qty, price: +o.filled_avg_price, filledAt: o.filled_at, improvementBps: improvementBps(o.side, quote, +o.filled_avg_price), at: Date.parse(o.filled_at) || now() });
 }

@@ -10,6 +10,7 @@ import { getBars, lastPrice, accountSummary } from './brokers.js';
 import { backtest, warmupFor, compile } from './engine.js';
 import { heuristic } from './ai.js';
 import { snapshot } from './ta.js';
+import { researchTools } from './research.js';
 import { isPaid, AI_LIMITS } from './fees.js';
 import * as D from './alpaca/data.js';
 
@@ -18,7 +19,7 @@ const DSL = `Strategy rules use one condition per line: <operand> <op> <operand>
 Operands: Close, numbers, SMA(n), EMA(n), RSI(n), BBU(n,k), BBL(n,k), HIGH(n), LOW(n), ROC(n), MACD(f,s), MACDSIG(f,s,sig).
 Entry lines must all be true (AND); any exit line closes the trade (OR). Daily bars, long only.`;
 const SYSTEM = `You are the QuantPocket trading assistant inside a trading web app. Help with market questions, technical and fundamental analysis, trading concepts, and designing systematic strategies.
-Use the tools for any number you quote (prices, indicators, backtests, the user's holdings); use web_search for company fundamentals, earnings or recent events, and name your sources.
+Use the tools for any number you quote (prices, indicators, backtests, the user's holdings); use sec_filing to summarize a 10-K or 10-Q and portfolio_stress_test for what-if crash questions; use web_search for company fundamentals, earnings or recent events, and name your sources.
 To design or change a strategy, call propose_strategy with complete rules; the user then backtests, saves or deploys it with buttons. Refine the draft when the user asks.
 ${DSL}
 You cannot place orders. Do not give personal investment advice or promise returns; explain risks plainly. Keep answers short and concrete, use Markdown lists or tables when helpful.
@@ -51,6 +52,7 @@ export function tools(user, ctx) {
         return { shown: true };
       } },
   };
+  Object.assign(defs, researchTools(user));
   for (const [k, f] of Object.entries(ctx.extraTools || {})) defs[k] = f;
   return defs;
 }

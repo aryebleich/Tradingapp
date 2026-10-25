@@ -237,6 +237,17 @@ test('API keys: every order type, modify/cancel, positions, portfolio, watchlist
   assert.equal(lastReq(r => r.path === '/v2/account').headers['apca-api-key-id'], 'UKEY');
   const st = (await call('/alpaca/status')).body;
   assert.deepEqual([st.active.type, st.data, st.broker.enabled, st.oauth.enabled], ['keys', true, true, true]);
+  // Speed bumps: real-money crypto and options need the lesson, then a fresh risk notice.
+  const btc = { symbol: 'BTC/USD', notional: 10, type: 'market', side: 'buy' };
+  let sb = await call('/alpaca/orders', btc);
+  assert.equal(sb.status, 409); assert.equal(sb.body.needsLesson, 'crypto');
+  assert.equal((await call('/learn/crypto', { answers: [0, 0] })).status, 422);
+  assert.equal((await call('/learn/crypto', { answers: [1, 1] })).status, 200);
+  assert.equal((await call('/learn/options', { answers: [0, 1, 1] })).status, 200);
+  sb = await call('/alpaca/orders', btc);
+  assert.equal(sb.status, 409); assert.equal(sb.body.needsAck, 'crypto');
+  assert.equal((await call('/learn/ack/crypto', {})).status, 200);
+  assert.equal((await call('/learn/ack/options', {})).status, 200);
 
   const orders = [
     { symbol: 'AAPL', qty: 1, type: 'market' },

@@ -460,6 +460,54 @@ CREATE TABLE IF NOT EXISTS roundup_tx (
   at INTEGER NOT NULL,
   UNIQUE (user_id, tx_id)
 );
+CREATE TABLE IF NOT EXISTS user_settings (
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  k TEXT NOT NULL,
+  v TEXT NOT NULL,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (user_id, k)
+);
+CREATE TABLE IF NOT EXISTS order_queue (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  account TEXT NOT NULL,
+  payload TEXT NOT NULL,
+  source TEXT NOT NULL,
+  reason TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  attempts INTEGER NOT NULL DEFAULT 0,
+  result TEXT,
+  expires_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS exec_audit (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  kind TEXT NOT NULL,
+  data TEXT NOT NULL,
+  prev_hash TEXT NOT NULL,
+  hash TEXT NOT NULL UNIQUE,
+  at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS passkeys (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  cred_id TEXT NOT NULL UNIQUE,
+  public_key TEXT NOT NULL,
+  counter INTEGER NOT NULL DEFAULT 0,
+  transports TEXT,
+  name TEXT,
+  created_at INTEGER NOT NULL,
+  last_used_at INTEGER
+);
+CREATE TABLE IF NOT EXISTS margin_snapshots (
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  account TEXT NOT NULL,
+  day TEXT NOT NULL,
+  equity REAL, buying_power REAL, maintenance REAL, initial REAL, leverage REAL,
+  PRIMARY KEY (user_id, account, day)
+);
 `;
 
 // Columns added after the first release; ALTER fails harmlessly when they already exist.
@@ -495,6 +543,11 @@ const MIGRATIONS = [
   'CREATE INDEX IF NOT EXISTS scan_hits_scanner ON scan_hits (scanner_id, symbol, day)',
   'CREATE INDEX IF NOT EXISTS channel_signals_channel ON channel_signals (channel_id, id)',
   'CREATE INDEX IF NOT EXISTS roundup_tx_user ON roundup_tx (user_id, status)',
+  'CREATE INDEX IF NOT EXISTS order_queue_status ON order_queue (status, id)',
+  'CREATE INDEX IF NOT EXISTS exec_audit_user ON exec_audit (user_id, id)',
+  // The execution log is append-only: the database itself refuses edits and deletions.
+  "CREATE TRIGGER IF NOT EXISTS exec_audit_no_update BEFORE UPDATE ON exec_audit BEGIN SELECT RAISE(ABORT, 'exec_audit is append-only'); END",
+  "CREATE TRIGGER IF NOT EXISTS exec_audit_no_delete BEFORE DELETE ON exec_audit BEGIN SELECT RAISE(ABORT, 'exec_audit is append-only'); END",
 ];
 
 export const ready = (async () => {

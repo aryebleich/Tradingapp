@@ -13,6 +13,13 @@ import { getBars, getCred, accountSummary, placeOrder, listOrders, portfolioHist
 import * as QC from './src/quantconnect.js';
 import { PLANS, TRIAL_DAYS, REFERRAL_CREDIT, isPaid, adjustForCashflow, revenueSummary } from './src/fees.js';
 import { llmEnabled, llmInfo } from './src/llm.js';
+import { securityRouter, passkeyLoginRouter, stepUpGuard } from './src/security.js';
+import { lessonsRouter } from './src/lessons.js';
+import { execRouter } from './src/execution.js';
+import { marginRouter } from './src/margin.js';
+import { longtermRouter } from './src/longterm.js';
+import { shedMiddleware, stats as relStats, metricsText, recommendedReplicas, jobAllowed, load as relLoad } from './src/reliability.js';
+import { drain as drainQueue, queueStats, userQueue } from './src/orderqueue.js';
 import { taxSummary, harvestCandidates, form8949Csv, scheduleD, scheduleDCsv, markToMarket } from './src/tax.js';
 import { buildStrategy } from './src/ai.js';
 import { handleCommand, userByPhone, normalize, HELP, KNOWN } from './src/commands.js';
@@ -62,6 +69,23 @@ app.use((req, res, next) => {
   next();
 });
 
+// Load shedding: under heavy load, optional work is refused first so trading stays responsive.
+app.use(shedMiddleware);
+// Readiness for Kubernetes: a replica above 95% load stops taking new traffic until it recovers.
+app.get('/readyz', (req, res) => (relLoad() >= 0.95 ? res.status(503).json({ ready: false, load: relLoad() }) : res.json({ ready: true, load: +relLoad().toFixed(3) })));
+// Prometheus metrics (load, in-flight, shed requests, breakers, recommended replicas, order queue).
+app.get('/metrics', async (req, res) => {
+  const tok = process.env.METRICS_TOKEN;
+  if (tok && !safeEqual(req.headers.authorization || '', `Bearer ${tok}`)) return res.status(401).end();
+  const q = await queueStats().catch(() => ({}));
+  res.type('text/plain; version=0.0.4').send(metricsText({ qp_order_queue_pending: q.pending || 0, qp_order_queue_oldest_sec: q.oldestPendingSec || 0 }));
+});
+// Capacity planner for the predictive scaler (deploy/k8s/predictive-scaler.yaml).
+app.get('/internal/capacity', (req, res) => {
+  const tok = process.env.METRICS_TOKEN;
+  if (tok && !safeEqual(req.headers.authorization || '', `Bearer ${tok}`)) return res.status(401).end();
+  res.json(recommendedReplicas());
+});
 app.get('/healthz', async (req, res) => {
   try { await one('SELECT 1 AS ok'); res.json({ ok: true, time: new Date().toISOString() }); }
   catch (e) { res.status(503).json({ ok: false }); }
@@ -316,6 +340,8 @@ api.use('/public', (req, res, next) => {
 api.use(auth.csrfGuard);
 // Only API calls look up the session; static files and pages skip the database round trip.
 api.use(auth.sessionMiddleware);
+// A session flagged by the behavior check confirms itself before trading or moving money.
+api.use(['/orders', '/alpaca/orders', '/alpaca/positions', '/alpaca/broker/transfers', '/fleet/inbox'], stepUpGuard);
 api.use('/auth', auth.router);
 api.use('/alpaca', alpacaRouter);
 api.use('/signals', signalsRouter);
@@ -339,11 +365,20 @@ api.use('/ai', chatRouter({ extraTools: user => ({
   forecast: { description: "AI model forecast: chance the symbol is higher after N days, from a model trained on its history and tested walk-forward. Mention it is a probability, not a promise.", schema: { symbol: { type: 'string' }, horizon: { type: 'number' } }, required: ['symbol'],
     run: async ({ symbol, horizon }) => { const r = await forecastSymbol(user.id, String(symbol).toUpperCase(), { horizon: horizon || 5 }); return { symbol: r.symbol, ...r.forecast, outOfSample: r.metrics, topFeatures: r.importance.slice(0, 4) }; } },
 }) }));
+const cancelAlpaca = async id => { const t = await tradingFor(id); return t ? t.cancelAllOrders() : null; };
+api.use('/security', securityRouter({ cancelAlpaca }));
+api.use('/auth/passkey', passkeyLoginRouter());
+api.use('/learn', lessonsRouter);
+api.use('/margin', marginRouter);
+api.use('/longterm', longtermRouter);
+api.use('/exec', execRouter({ accounts: accountsFor }));
 api.use('/risk', riskRouter({ summarize: accountSummary, cancelAlpaca: async id => { const t = await tradingFor(id); return t ? t.cancelAllOrders() : null; } }));
 const U = auth.requireUser;
+api.get('/admin/system', U, auth.requireAdmin, async (req, res) => res.json({ ...relStats(), capacity: recommendedReplicas(), queue: await queueStats(), replicaId: process.env.HOSTNAME || null }));
+api.get('/queue', U, async (req, res) => res.json(await userQueue(req.user.id)));
 api.get('/accounts', U, async (req, res) => res.json(await accountsFor(req.user.id)));
-const wrap = fn => async (req, res) => Promise.resolve(fn(req, res)).catch(e => res.status(e.status || 400).json({ error: e.message, ...(e.upgrade ? { upgrade: true, feature: e.feature } : {}) }));
-const acct = req => { const a = req.query.account || req.body?.account; return ACCOUNT_IDS.includes(a) ? a : 'paper'; };
+const wrap = fn => async (req, res) => Promise.resolve(fn(req, res)).catch(e => res.status(e.status || 400).json({ error: e.message, ...(e.upgrade ? { upgrade: true, feature: e.feature } : {}), ...(e.needsAck ? { needsAck: e.needsAck } : {}), ...(e.needsLesson ? { needsLesson: e.needsLesson } : {}), ...(e.locked ? { locked: true } : {}) }));
+const acct = req => { const a = req.query.account || req.body?.account; return ACCOUNT_IDS.includes(a) || (a === 'smart' && req.method === 'POST' && req.path === '/orders') ? a : 'paper'; };
 // 402 with upgrade: true makes the app show the upgrade window instead of a plain error.
 const upgrade = feature => Object.assign(new Error(`${feature} is part of the Pro plan`), { status: 402, upgrade: true, feature });
 const needPlan = feature => (req, res, next) => (isPaid(req.user) ? next() : next(upgrade(feature)));
@@ -684,7 +719,7 @@ api.use((req, res) => res.status(404).json({ error: 'Not found' }));
 api.use((err, req, res, _next) => {
   if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'Invalid JSON' });
   if (!err.status || err.status >= 500) console.error(err);
-  res.status(err.status || 400).json({ error: err.expose === false ? 'Something went wrong' : err.message, ...(err.upgrade ? { upgrade: true, feature: err.feature } : {}) });
+  res.status(err.status || 400).json({ error: err.expose === false ? 'Something went wrong' : err.message, ...(err.upgrade ? { upgrade: true, feature: err.feature } : {}), ...(err.needsAck ? { needsAck: err.needsAck } : {}), ...(err.needsLesson ? { needsLesson: err.needsLesson } : {}), ...(err.locked ? { locked: true } : {}), ...(err.shed ? { shed: true } : {}) });
 });
 app.use('/api', api);
 const pub = path.join(here, 'public');

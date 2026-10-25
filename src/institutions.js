@@ -22,7 +22,7 @@ const DATA = () => (process.env.SEC_DATA_URL || 'https://data.sec.gov').replace(
 const WWW = () => (process.env.SEC_WWW_URL || 'https://www.sec.gov').replace(/\/$/, '');
 // The SEC asks automated clients to identify themselves with a contact address.
 const UA = () => ({ 'User-Agent': `QuantPocket ${process.env.SEC_CONTACT || process.env.ADMIN_EMAIL || 'support@quantpocket.app'}`, Accept: 'application/json, text/xml, */*' });
-async function get(url, type = 'json') {
+export async function get(url, type = 'json') {
   const r = await fetch(url, { headers: UA(), signal: AbortSignal.timeout(20000) });
   if (!r.ok) throw Object.assign(new Error(`SEC EDGAR answered ${r.status}`), { status: r.status === 404 ? 404 : 502 });
   return type === 'json' ? r.json() : r.text();
@@ -35,6 +35,7 @@ async function cached(key, ttl, fn) {
   return v;
 }
 
+export { DATA as secData, WWW as secWww, cached as secCached };
 const norm = s => ' ' + String(s || '').toUpperCase().replace(/&/g, ' AND ').replace(/[^A-Z0-9 ]/g, ' ').replace(/\b(THE|INC|INCORPORATED|CORP|CORPORATION|CO|COMPANY|LTD|LIMITED|PLC|HLDGS|HOLDINGS|HOLDING|GROUP|CL|CLASS|COM|NEW|DEL|SA|NV|AG|SE|ADR|SPONSORED|SHS|ORD|A|B|C)\b/g, ' ').replace(/\s+/g, ' ').trim();
 // Company names to tickers, from the SEC's own ticker file.
 async function tickerMap() {

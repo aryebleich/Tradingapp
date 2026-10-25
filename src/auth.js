@@ -37,6 +37,7 @@ export async function createSession(res, req, userId, mfaPending) {
   await run('INSERT INTO sessions (token_hash, user_id, mfa_pending, ip, ua, created_at, expires_at) VALUES (?,?,?,?,?,?,?)',
     sha256(token), userId, mfaPending ? 1 : 0, req.ip, (req.headers['user-agent'] || '').slice(0, 200), now(), now() + ttl);
   setCookie(res, token, ttl);
+  return sha256(token);
 }
 
 // Attaches req.user for fully-authenticated sessions and req.pending for sessions awaiting 2FA.
@@ -128,7 +129,16 @@ router.post('/login', async (req, res) => {
     return res.status(401).json({ error: 'Wrong email or password' });
   }
   await run('UPDATE users SET failed_logins = 0, locked_until = 0 WHERE id = ?', u.id);
-  await createSession(res, req, u.id, !!u.totp_enabled);
+  const sec = await import('./security.js'), { getSetting } = await import('./settings.js');
+  if (await getSetting(u.id, 'passkeyOnly')) return res.status(403).json({ error: 'This account signs in with a passkey only. Use "Sign in with a passkey".', passkeyRequired: true });
+  // Typing rhythm that does not match the account's history asks for the second factor (or a
+  // passkey); without either, the session must confirm itself before trading or moving money.
+  const beh = await sec.checkLoginBehavior(u.id, req.body.kd).catch(() => ({}));
+  const hash = await createSession(res, req, u.id, !!u.totp_enabled);
+  if (beh.unusual) {
+    await audit(u.id, 'login_unusual_typing', { score: beh.score }, req.ip);
+    if (!u.totp_enabled) sec.stepUpSessions.set(hash, 'login');
+  }
   await audit(u.id, u.totp_enabled ? 'login_password_ok' : 'login', null, req.ip);
   res.json(u.totp_enabled ? { mfaRequired: true } : { user: publicUser(u) });
 });

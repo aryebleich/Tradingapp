@@ -5,6 +5,7 @@ import express from 'express';
 import { one, all, run, now, audit } from './db.js';
 import { nyTime, stockSession, isCryptoSymbol } from './time.js';
 import { requireUser } from './auth.js';
+import { getSetting } from './settings.js';
 
 export const DEFAULTS = {
   maxOrderUsd: 0,        // largest single buy, $ (0 = no limit)
@@ -17,6 +18,10 @@ export const DEFAULTS = {
   guardStopPct: 0,       // guardian: sell a position that is down this %
   guardTakePct: 0,       // guardian: sell a position that is up this %
   guardAccounts: ['paper'],
+  maxBuyUsdDay: 0,       // capital deployment quota: new money put to work per day, $
+  maxBuyUsdWeek: 0,      // ... per 7 days
+  cooldownMin: 15,       // after a losing trade, high-risk buys wait this long (0 = off)
+  tiered: true,          // graduated size limits in volatile markets instead of outright bans
 };
 const MANUAL = new Set(['web', 'manual', 'sms', 'hotline']);
 const bad = msg => Object.assign(new Error(msg), { status: 409, risk: true });
@@ -36,6 +41,8 @@ export function cleanSettings(b) {
     maxDailyLossPct: num(b.maxDailyLossPct, 100), maxOrdersPerDay: Math.floor(num(b.maxOrdersPerDay, 10000)),
     allowSymbols: list(b.allowSymbols).slice(0, 500), denySymbols: list(b.denySymbols).slice(0, 500),
     guardStopPct: num(b.guardStopPct, 95), guardTakePct: num(b.guardTakePct, 1000),
+    maxBuyUsdDay: num(b.maxBuyUsdDay, 1e8), maxBuyUsdWeek: num(b.maxBuyUsdWeek, 1e8),
+    cooldownMin: b.cooldownMin === undefined ? 15 : Math.min(1440, Math.max(0, Math.round(+b.cooldownMin || 0))), tiered: b.tiered !== false,
     guardAccounts: (Array.isArray(b.guardAccounts) ? b.guardAccounts : String(b.guardAccounts || 'paper').split(',')).map(s => String(s).trim()).filter(Boolean).slice(0, 10),
   };
 }
@@ -51,25 +58,70 @@ async function dayStart(userId, account, equity) {
   return r?.equity ?? equity;
 }
 
-// Throws a clear error when an order breaks a rule. `summarize` and `price` are injected to avoid
-// an import cycle with brokers.js (which calls this before every order).
-export async function checkOrder(userId, account, order, source, { summarize, price }) {
+// What kind of instrument an order is, for speed bumps and lessons.
+export function assetClass(order) {
+  if (order.order_class === 'mleg' || (order.legs || []).length) return 'options';
+  const sym = String(order.symbol || '').toUpperCase();
+  if (/^[A-Z.]{1,6}\d{6}[CP]\d{8}$/.test(sym)) return 'options';
+  if (sym.includes('/')) return 'crypto';
+  return 'stock';
+}
+// Graduated limits: the more volatile the symbol (annualized 20-day volatility) or the more
+// leveraged the account, the smaller the largest new buy, so traders are slowed down instead of
+// being switched to "sell only".
+export const VOL_TIERS = [
+  { name: 'normal', upTo: 40, maxPct: null },
+  { name: 'elevated', upTo: 80, maxPct: 50 },
+  { name: 'high', upTo: 150, maxPct: 25 },
+  { name: 'extreme', upTo: Infinity, maxPct: 10 },
+];
+export const volTier = v => VOL_TIERS.find(t => (v ?? 0) < t.upTo);
+
+// Throws a clear error when an order breaks a rule; returns { resize, notes } when a graduated
+// limit makes a buy smaller. `summarize`, `price` and `volatility` are injected to avoid an
+// import cycle with brokers.js (which calls this before every order).
+export async function checkOrder(userId, account, order, source, { summarize, price, volatility }) {
+  const lock = await getSetting(userId, 'lock');
+  if (lock?.on) throw Object.assign(bad('Your account is locked: orders and withdrawals are frozen. Unlock it under Security.'), { locked: true });
   const s = await getRisk(userId);
   const side = order.side === 'sell' ? 'sell' : 'buy', symbol = String(order.symbol || '').toUpperCase();
   if (s.kill && (side === 'buy' || !MANUAL.has(source))) throw bad('Kill switch is on: new orders are blocked (you can still sell by hand). Turn it off under Risk controls.');
-  const day = nyTime().day;
+  const day = nyTime().day, out = { notes: [] };
   if (s.maxOrdersPerDay && side === 'buy') { // selling to reduce risk is never capped
     const n = (await one("SELECT COUNT(*) n FROM risk_log WHERE user_id = ? AND day = ? AND kind = 'order' AND detail LIKE '%\"side\":\"buy\"%'", userId, day)).n;
     if (n >= s.maxOrdersPerDay) throw bad(`Daily order limit reached (${s.maxOrdersPerDay})`);
   }
+  const cls = assetClass(order), manual = MANUAL.has(source);
+  // Speed bumps for high-risk instruments on real money: the lesson, a fresh risk acknowledgment,
+  // and a cool-down after a losing trade.
+  if (side === 'buy' && cls !== 'stock' && account !== 'paper' && manual) {
+    const lessons = await getSetting(userId, 'lessons', {});
+    if (!lessons[cls]) throw Object.assign(bad(`Finish the short ${cls} lesson (Learn page) before trading ${cls} with real money.`), { needsLesson: cls });
+    const ack = await getSetting(userId, 'ack:' + cls);
+    if (!ack || Date.now() - ack.at > 12 * 3600e3) throw Object.assign(bad(`Please read and confirm the ${cls} risk notice first.`), { needsAck: cls });
+    if (s.cooldownMin) {
+      const { roundTrips } = await import('./insights.js');
+      const recent = (await all('SELECT * FROM fills WHERE user_id = ? AND at > ? ORDER BY at, id', userId, Date.now() - 30 * 864e5));
+      const lastLoss = roundTrips(recent).filter(t => t.pnl < 0).at(-1);
+      const wait = lastLoss ? lastLoss.closedAt + s.cooldownMin * 60e3 - Date.now() : 0;
+      if (wait > 0) throw Object.assign(bad(`Cool-down after a losing trade: high-risk buys open again in ${Math.ceil(wait / 60e3)} minutes.`), { cooldown: true });
+    }
+  }
   if (side === 'buy') {
     if (s.denySymbols.includes(symbol)) throw bad(`${symbol} is on your blocked list`);
     if (s.allowSymbols.length && !s.allowSymbols.includes(symbol)) throw bad(`${symbol} is not on your allowed list`);
-    const needsPrice = s.maxOrderUsd || s.maxPositionPct;
+    const needsPrice = s.maxOrderUsd || s.maxPositionPct || s.maxBuyUsdDay || s.maxBuyUsdWeek || s.tiered;
     const px = needsPrice && !(+order.notional > 0) ? (+order.limitPrice > 0 ? +order.limitPrice : await price(symbol).catch(() => null)) : null;
     const value = +order.notional > 0 ? +order.notional : +order.qty * (px || 0);
     if (s.maxOrderUsd && value > s.maxOrderUsd + 1e-6) throw bad(`Order of $${value.toFixed(2)} is over your $${s.maxOrderUsd} limit per order`);
-    if (s.maxPositionPct || s.maxDailyLossUsd || s.maxDailyLossPct) {
+    // Capital deployment quotas.
+    for (const [cap, days, label] of [[s.maxBuyUsdDay, 1, 'today'], [s.maxBuyUsdWeek, 7, 'this week']]) {
+      if (!cap) continue;
+      const since = days === 1 ? day : nyTime(Date.now() - 6 * 864e5).day;
+      const used = (await all("SELECT detail FROM risk_log WHERE user_id = ? AND day >= ? AND kind = 'order'", userId, since)).reduce((a, r) => { const d = JSON.parse(r.detail); return a + (d.side === 'buy' ? +d.value || 0 : 0); }, 0);
+      if (used + value > cap + 1e-6) throw bad(`That would put $${(used + value).toFixed(2)} to work ${label}, over your $${cap} quota ($${Math.max(0, cap - used).toFixed(2)} left).`);
+    }
+    if (s.maxPositionPct || s.maxDailyLossUsd || s.maxDailyLossPct || s.tiered) {
       const a = await summarize(userId, account);
       if (s.maxPositionPct && a.equity > 0 && symbol) {
         const held = a.positions.find(p => p.symbol === symbol)?.value || 0;
@@ -81,11 +133,28 @@ export async function checkOrder(userId, account, order, source, { summarize, pr
         if ((s.maxDailyLossUsd && loss >= s.maxDailyLossUsd) || (s.maxDailyLossPct && start > 0 && loss / start * 100 >= s.maxDailyLossPct))
           throw bad(`Daily loss limit reached (down $${loss.toFixed(2)} today): no new buys until tomorrow`);
       }
+      // Graduated limits by volatility and leverage: the buy is made smaller, not refused.
+      if (s.tiered && a.equity > 0 && value > 0 && cls !== 'options') {
+        const v = volatility ? await volatility(symbol).catch(() => null) : null, tier = volTier(v);
+        const invested = a.positions.reduce((x, p) => x + Math.abs(p.value || 0), 0), leverage = invested / a.equity;
+        let maxPct = tier.maxPct, why = tier.maxPct ? `${symbol} is in the ${tier.name} volatility tier (${Math.round(v)}% a year)` : '';
+        if (leverage >= 1.5 && (!maxPct || maxPct > 10)) { maxPct = 10; why = `the account is ${leverage.toFixed(1)}x leveraged`; }
+        if (maxPct) {
+          const cap = a.equity * maxPct / 100;
+          if (value > cap + 1e-6) {
+            if (cap < 1) throw bad(`New buys are limited because ${why}.`);
+            out.resize = +order.notional > 0 ? { notional: +cap.toFixed(2) } : { qty: Math.max(px > 100 ? 1 : 0.0001, +(cap / (px || 1)).toFixed(px > 100 ? 0 : 4)) };
+            out.notes.push(`Order reduced to ${maxPct}% of the account ($${cap.toFixed(2)}) because ${why}.`);
+          }
+        }
+      }
     }
+    out.value = value;
   }
+  return out;
 }
 export async function logOrder(userId, account, order, source) {
-  await run("INSERT INTO risk_log (user_id, day, kind, detail, at) VALUES (?,?, 'order', ?, ?)", userId, nyTime().day, JSON.stringify({ account, symbol: order.symbol, side: order.side, source }), now());
+  await run("INSERT INTO risk_log (user_id, day, kind, detail, at) VALUES (?,?, 'order', ?, ?)", userId, nyTime().day, JSON.stringify({ account, symbol: order.symbol, side: order.side, source, value: +order.value || 0 }), now());
 }
 
 // Kill switch: blocks orders, pauses every automation that checks it, cancels open Alpaca orders.

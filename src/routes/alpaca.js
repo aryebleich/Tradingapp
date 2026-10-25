@@ -7,7 +7,11 @@ import * as D from '../alpaca/data.js';
 import { buildOrder, buildReplace } from '../alpaca/trading.js';
 import { connections, tradingFor, requireTrading, saveCred, oauthEnabled, oauthStartUrl } from '../alpaca/connections.js';
 import { sseHandler, streamEnabled } from '../alpaca/stream.js';
-import { syncAlpacaFills, accountSummary, lastPrice } from '../brokers.js';
+import { syncAlpacaFills, accountSummary, lastPrice, riskDeps } from '../brokers.js';
+import { breaker, chaos } from '../reliability.js';
+import { quoteAt, auditAppend } from '../execution.js';
+import { getSetting } from '../settings.js';
+import crypto from 'node:crypto';
 import { checkOrder, logOrder } from '../risk.js';
 import { isPaid } from '../fees.js';
 import { applyStatus, adoptAccount, history, kycBus, feedStatus } from '../alpaca/kyc.js';
@@ -156,6 +160,7 @@ router.post('/broker/transfers', async (req, res) => {
   const amount = +req.body.amount, direction = req.body.direction === 'OUTGOING' ? 'OUTGOING' : 'INCOMING';
   if (!(amount >= 1 && amount <= 50000)) throw bad('Transfers are $1 - $50,000');
   if (!req.body.relationshipId) throw bad('Pick a linked bank account');
+  if (direction === 'OUTGOING' && (await getSetting(req.user.id, 'lock'))?.on) throw bad('Your account is locked: withdrawals are frozen. Unlock it under Security.', 423);
   const r = await B.createTransfer(await brokerId(req), { transfer_type: 'ach', relationship_id: req.body.relationshipId, amount: amount.toFixed(2), direction, timing: 'immediate' });
   await audit(req.user.id, 'transfer', { amount, direction }, req.ip);
   res.json(r);
@@ -204,10 +209,17 @@ router.post('/orders', async (req, res) => {
   const t = await T(req); await liveGate(req, t);
   if (!rateLimit('order:' + req.user.id, 60, 60e3)) throw Object.assign(new Error('Too many orders in a minute'), { status: 429 });
   const body = buildOrder(req.body || {});
-  await checkOrder(req.user.id, 'alpaca', { symbol: body.symbol || '', side: body.side || 'buy', qty: +body.qty || 0, notional: +body.notional || 0, limitPrice: +body.limit_price || 0 }, 'web', { summarize: accountSummary, price: s => lastPrice(s, req.user.id) });
-  const o = await t.placeOrder(body);
-  await logOrder(req.user.id, 'alpaca', { symbol: body.symbol || 'mleg', side: body.side }, 'web');
+  const chk = await checkOrder(req.user.id, 'alpaca', { symbol: body.symbol || '', side: body.side || 'buy', qty: +body.qty || 0, notional: +body.notional || 0, limitPrice: +body.limit_price || 0, order_class: body.order_class, legs: body.legs }, 'web', riskDeps(req.user.id));
+  if (chk?.resize && !body.order_class) { if (chk.resize.notional && body.notional) body.notional = chk.resize.notional.toFixed(2); else if (chk.resize.qty && body.qty) body.qty = String(chk.resize.qty); }
+  const ref = crypto.randomUUID(), quote = body.symbol ? await quoteAt(body.symbol, null) : null;
+  await auditAppend(req.user.id, 'order', { event: 'sent', orderRef: ref, venue: 'alpaca', symbol: body.symbol || 'mleg', legs: body.legs || null, side: body.side || null, qty: body.qty || null, notional: body.notional || null, type: body.type, limitPrice: body.limit_price || null, source: 'web', quote, at: Date.now() });
+  let o;
+  try { o = await breaker('alpaca').run(async () => { await chaos(); return t.placeOrder(body); }); }
+  catch (e) { await auditAppend(req.user.id, 'order', { event: 'rejected', orderRef: ref, venue: 'alpaca', symbol: body.symbol || 'mleg', reason: String(e.message).slice(0, 200), at: Date.now() }); throw e; }
+  await auditAppend(req.user.id, 'order', { event: 'accepted', orderRef: ref, brokerOrderId: String(o.id), venue: 'alpaca', symbol: o.symbol || 'mleg', side: o.side, status: o.status, at: Date.now() });
+  await logOrder(req.user.id, 'alpaca', { symbol: body.symbol || 'mleg', side: body.side, value: +body.notional || 0 }, 'web');
   await audit(req.user.id, 'alpaca_order', { id: o.id, symbol: o.symbol || 'mleg', side: o.side, type: o.type, class: o.order_class, live: t.live }, req.ip);
+  if (chk?.notes?.length) o.notes = chk.notes;
   setTimeout(() => syncAlpacaFills(req.user.id).catch(() => {}), 4000);
   res.json(o);
 });
