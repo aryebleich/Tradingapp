@@ -7,7 +7,8 @@ import * as D from '../alpaca/data.js';
 import { buildOrder, buildReplace } from '../alpaca/trading.js';
 import { connections, tradingFor, requireTrading, saveCred, oauthEnabled, oauthStartUrl } from '../alpaca/connections.js';
 import { sseHandler, streamEnabled } from '../alpaca/stream.js';
-import { syncAlpacaFills } from '../brokers.js';
+import { syncAlpacaFills, accountSummary, lastPrice } from '../brokers.js';
+import { checkOrder, logOrder } from '../risk.js';
 import { isPaid } from '../fees.js';
 import { applyStatus, adoptAccount, history, kycBus, feedStatus } from '../alpaca/kyc.js';
 
@@ -203,7 +204,9 @@ router.post('/orders', async (req, res) => {
   const t = await T(req); await liveGate(req, t);
   if (!rateLimit('order:' + req.user.id, 60, 60e3)) throw Object.assign(new Error('Too many orders in a minute'), { status: 429 });
   const body = buildOrder(req.body || {});
+  await checkOrder(req.user.id, 'alpaca', { symbol: body.symbol || '', side: body.side || 'buy', qty: +body.qty || 0, notional: +body.notional || 0, limitPrice: +body.limit_price || 0 }, 'web', { summarize: accountSummary, price: s => lastPrice(s, req.user.id) });
   const o = await t.placeOrder(body);
+  await logOrder(req.user.id, 'alpaca', { symbol: body.symbol || 'mleg', side: body.side }, 'web');
   await audit(req.user.id, 'alpaca_order', { id: o.id, symbol: o.symbol || 'mleg', side: o.side, type: o.type, class: o.order_class, live: t.live }, req.ip);
   setTimeout(() => syncAlpacaFills(req.user.id).catch(() => {}), 4000);
   res.json(o);
@@ -293,6 +296,12 @@ router.get('/announcements', async (req, res) => {
 // ---------- market data ----------
 const dataLimit = (req) => { if (!rateLimit('data:' + req.user.id, 240, 60e3)) throw Object.assign(new Error('Too many market data requests'), { status: 429 }); };
 router.get('/data/bars', async (req, res) => { dataLimit(req); res.json(await D.bars(req.query.symbols, { timeframe: req.query.timeframe, start: req.query.start, end: req.query.end, limit: req.query.limit })); });
+router.get('/data/orderbook', async (req, res) => {
+  dataLimit(req);
+  const sym = symParam(req.query.symbol);
+  if (!sym.includes('/')) return res.json({ symbol: sym, depth: false, quote: (await D.latest(sym))[sym]?.quote || null });
+  res.json({ depth: true, ...(await D.orderbook(sym)) });
+});
 router.get('/data/latest', async (req, res) => { dataLimit(req); res.json(await D.latest(req.query.symbols)); });
 router.get('/data/snapshots', async (req, res) => { dataLimit(req); res.json(await D.snapshots(req.query.symbols)); });
 router.get('/data/most-actives', async (req, res) => { dataLimit(req); res.json(await D.mostActives(req.query.by, req.query.top)); });

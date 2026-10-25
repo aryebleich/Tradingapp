@@ -68,6 +68,14 @@ export async function news({ symbols, limit = 20, start, end } = {}) {
   return d.news || [];
 }
 
+// Level II for crypto: the latest order book (bids and asks with sizes). US stock depth is not part
+// of Alpaca's data, so stocks show the best bid and ask only.
+export async function orderbook(symbol) {
+  const d = await get('/v1beta3/crypto/us/latest/orderbooks', { symbols: symbol });
+  const b = d.orderbooks?.[symbol];
+  return b ? { symbol, at: b.t, bids: (b.b || []).slice(0, 25).map(x => ({ price: x.p, size: x.s })), asks: (b.a || []).slice(0, 25).map(x => ({ price: x.p, size: x.s })) } : { symbol, bids: [], asks: [] };
+}
+
 // Option chain for an underlying: one row per contract with quote, Greeks and implied volatility.
 export async function optionChain(underlying, { expiration, type, strikeMin, strikeMax } = {}) {
   const q = { feed: process.env.ALPACA_OPTIONS_FEED || 'indicative', limit: 1000, type, strike_price_gte: strikeMin, strike_price_lte: strikeMax };

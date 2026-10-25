@@ -22,6 +22,7 @@ export function computePerformanceFee({ equity, highWater, rate }) {
 }
 
 export async function adjustForCashflow(userId, account, amount) {
+  await run('INSERT INTO cashflows (user_id, account, amount, at) VALUES (?,?,?,?)', userId, account, amount, Date.now());
   const s = await one('SELECT * FROM fee_state WHERE user_id = ? AND account = ?', userId, account);
   if (!s) await run('INSERT INTO fee_state (user_id, account, high_water, net_contrib) VALUES (?,?,?,?)', userId, account, Math.max(amount, 0), amount);
   else await run('UPDATE fee_state SET high_water = high_water + ?, net_contrib = net_contrib + ? WHERE user_id = ? AND account = ?', amount, amount, userId, account);

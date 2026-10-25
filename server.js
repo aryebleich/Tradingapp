@@ -12,12 +12,26 @@ import { backtest, projectAnnual, walkForward, optimize, warmupFor, compile, PRE
 import { getBars, getCred, accountSummary, placeOrder, listOrders, portfolioHistory, lastPrice, snapshotEquity, ACCOUNT_IDS } from './src/brokers.js';
 import * as QC from './src/quantconnect.js';
 import { PLANS, TRIAL_DAYS, REFERRAL_CREDIT, isPaid, adjustForCashflow, revenueSummary } from './src/fees.js';
-import { taxSummary, harvestCandidates, form8949Csv } from './src/tax.js';
+import { taxSummary, harvestCandidates, form8949Csv, scheduleD, scheduleDCsv, markToMarket } from './src/tax.js';
 import { buildStrategy } from './src/ai.js';
 import { handleCommand, userByPhone, normalize, HELP, KNOWN } from './src/commands.js';
 import { aiEnabled, interpret, toCommand } from './src/assistant.js';
 import { startScheduler, assessAllFees, runDueJobs, snapshotAll } from './src/scheduler.js';
 import { startKycEvents } from './src/alpaca/kyc.js';
+import { riskRouter } from './src/risk.js';
+import { insightsRouter } from './src/insights.js';
+import { mlRouter, forecastSymbol } from './src/ml.js';
+import { chatRouter } from './src/chat.js';
+import { scannerRouter } from './src/scanner.js';
+import { basketsRouter } from './src/baskets.js';
+import { fleetRouter, channelHook } from './src/fleet.js';
+import { marketRouter } from './src/market.js';
+import { optionsRouter } from './src/options.js';
+import { sentimentRouter } from './src/sentiment.js';
+import { halalRouter } from './src/halal.js';
+import { institutionsRouter } from './src/institutions.js';
+import { roundupRouter } from './src/roundup.js';
+import { codeRouter } from './src/code.js';
 import * as N from './src/notify.js';
 import * as PAY from './src/payments.js';
 import { router as alpacaRouter } from './src/routes/alpaca.js';
@@ -228,6 +242,10 @@ app.post('/twilio/voice/status', async (req, res) => { calls.delete(req.body.Cal
 
 // Alerts from TradingView, TrendSpider, Zapier or any script. TradingView sends text/plain unless the
 // message is valid JSON, so any body type is accepted.
+// Signal channels: a leader's TradingView (or other) alerts broadcast to every follower.
+app.post('/hook/c/:token', express.text({ type: () => true, limit: '20kb' }), async (req, res) => {
+  try { await channelHook(req, res); } catch (e) { console.error('channel hook', e); res.status(500).json({ error: 'Could not process the signal' }); }
+});
 app.post('/hook/:token', express.text({ type: () => true, limit: '20kb' }), async (req, res) => {
   try { await receiveSignal(req, res); } catch (e) { console.error('webhook', e); res.status(500).json({ error: 'Could not process the signal' }); }
 });
@@ -303,6 +321,23 @@ api.use('/library', strategiesRouter);
 api.use('/pairs', pairsRouter);
 api.use('/sp500', sp500Router);
 api.use('/brokerages', extRouter);
+api.use('/insights', insightsRouter({ summarize: accountSummary }));
+api.use('/ml', mlRouter);
+api.use('/scanners', scannerRouter);
+api.use('/baskets', basketsRouter);
+api.use('/fleet', fleetRouter);
+api.use('/market', marketRouter);
+api.use('/options', optionsRouter);
+api.use('/news', sentimentRouter);
+api.use('/halal', halalRouter);
+api.use('/institutions', institutionsRouter);
+api.use('/roundups', roundupRouter);
+api.use('/code', codeRouter);
+api.use('/ai', chatRouter({ extraTools: user => ({
+  forecast: { description: "AI model forecast: chance the symbol is higher after N days, from a model trained on its history and tested walk-forward. Mention it is a probability, not a promise.", schema: { symbol: { type: 'string' }, horizon: { type: 'number' } }, required: ['symbol'],
+    run: async ({ symbol, horizon }) => { const r = await forecastSymbol(user.id, String(symbol).toUpperCase(), { horizon: horizon || 5 }); return { symbol: r.symbol, ...r.forecast, outOfSample: r.metrics, topFeatures: r.importance.slice(0, 4) }; } },
+}) }));
+api.use('/risk', riskRouter({ summarize: accountSummary, cancelAlpaca: async id => { const t = await tradingFor(id); return t ? t.cancelAllOrders() : null; } }));
 const U = auth.requireUser;
 api.get('/accounts', U, async (req, res) => res.json(await accountsFor(req.user.id)));
 const wrap = fn => async (req, res) => Promise.resolve(fn(req, res)).catch(e => res.status(e.status || 400).json({ error: e.message, ...(e.upgrade ? { upgrade: true, feature: e.feature } : {}) }));
@@ -375,10 +410,14 @@ api.post('/strategies', U, wrap(async (req, res) => {
 }));
 api.delete('/strategies/:id', U, async (req, res) => { await run('DELETE FROM strategies WHERE id = ? AND user_id = ?', +req.params.id, req.user.id); res.json({ ok: true }); });
 api.post('/strategies/:id/deploy', U, wrap(async (req, res) => {
-  const target = req.body.account === 'alpaca' ? 'alpaca' : req.body.account === 'paper' ? 'paper' : null;
-  if (target === 'alpaca' && !isPaid(req.user)) throw upgrade('Running bots on your brokerage account');
+  const target = ACCOUNT_IDS.includes(req.body.account) ? req.body.account : null;
+  if (target && target !== 'paper' && !isPaid(req.user)) throw upgrade('Running bots on your brokerage account');
   if (target === 'alpaca' && !(await tradingFor(req.user.id))) throw new Error('Connect Alpaca first');
-  await run('UPDATE strategies SET deployed = ?, last_run = NULL WHERE id = ? AND user_id = ?', target, +req.params.id, req.user.id);
+  // How often the bot checks its rules: once a day near the close, hourly, or every 15 minutes
+  // (intraday runs need the market-data source; crypto bots run around the clock).
+  const freq = ['1Hour', '15Min'].includes(req.body.freq) ? req.body.freq : 'daily';
+  if (freq !== 'daily' && !dataEnabled()) throw new Error('Hourly and 15-minute bots need the market-data source (ALPACA_KEY_ID / ALPACA_SECRET)');
+  await run('UPDATE strategies SET deployed = ?, freq = ?, last_run = NULL, last_run_at = NULL WHERE id = ? AND user_id = ?', target, freq, +req.params.id, req.user.id);
   await audit(req.user.id, target ? 'bot_deployed' : 'bot_stopped', { id: +req.params.id, target }, req.ip);
   res.json({ ok: true });
 }));
@@ -568,12 +607,15 @@ api.get('/tax', U, wrap(async (req, res) => {
   const s = taxSummary(fills, { year, bracket: req.user.tax_bracket, stateRate: req.user.state_tax });
   const pos = await accountSummary(req.user.id, a).then(x => x.positions).catch(() => []);
   if (req.query.format === 'csv') return res.type('text/csv').attachment(`form8949-${a}-${year}.csv`).send(form8949Csv(s.rows));
-  res.json({ ...s, harvest: harvestCandidates(pos) });
+  const d = scheduleD(s);
+  if (req.query.format === 'scheduled') return res.type('text/csv').attachment(`schedule-d-${a}-${year}.csv`).send(scheduleDCsv(d));
+  const mtm = markToMarket(fills, year === new Date().getUTCFullYear() ? pos : [], { year, bracket: req.user.tax_bracket, stateRate: req.user.state_tax });
+  res.json({ ...s, harvest: harvestCandidates(pos), scheduleD: d, mtmElection: !!req.user.mtm_election, markToMarket: mtm });
 }));
 api.post('/tax/settings', U, wrap(async (req, res) => {
   const b = +req.body.bracket, st = +req.body.stateTax;
   if (!(b >= 0 && b <= 0.5 && st >= 0 && st <= 0.15)) throw new Error('Out of range');
-  await run('UPDATE users SET tax_bracket = ?, state_tax = ? WHERE id = ?', b, st, req.user.id);
+  await run('UPDATE users SET tax_bracket = ?, state_tax = ?, mtm_election = ? WHERE id = ?', b, st, req.body.mtm ? 1 : 0, req.user.id);
   res.json({ ok: true });
 }));
 

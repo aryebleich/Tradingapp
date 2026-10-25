@@ -1,5 +1,7 @@
 // Background jobs: scheduled orders, auto-trading bots, price alerts, equity snapshots, monthly fees.
 import { one, all, run, now } from './db.js';
+import { nyTime } from './time.js';
+import { runExtraJobs } from './jobs.js';
 import { placeOrder, getBars, lastPrice, snapshotEquity, accountSummary, getCred, syncAlpacaFills } from './brokers.js';
 import { latestSignal } from './engine.js';
 import { sendSms, sendEmail } from './notify.js';
@@ -23,11 +25,6 @@ export function nextRunAfter(t, repeat) {
   return d.getTime();
 }
 
-function nyTime(t = now()) {
-  const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', weekday: 'short' })
-    .formatToParts(new Date(t)).map(x => [x.type, x.value]));
-  return { day: `${p.year}-${p.month}-${p.day}`, minutes: (+p.hour % 24) * 60 + +p.minute, weekday: p.weekday };
-}
 export const marketOpen = (t = now()) => { const n = nyTime(t); return !['Sat', 'Sun'].includes(n.weekday) && n.minutes >= 570 && n.minutes < 960; };
 
 // Text message when the user has a verified phone, otherwise email.
@@ -66,7 +63,7 @@ export async function runScheduledOrders(t = now()) {
 export async function runBots(t = now()) {
   const n = nyTime(t);
   if (['Sat', 'Sun'].includes(n.weekday) || n.minutes < 930 || n.minutes >= 960) return 0;
-  const bots = await all('SELECT s.*, u.plan, u.role, u.plan_status FROM strategies s JOIN users u ON u.id = s.user_id WHERE s.deployed IS NOT NULL AND (s.last_run IS NULL OR s.last_run != ?)', n.day);
+  const bots = await all('SELECT s.*, u.plan, u.role, u.plan_status FROM strategies s JOIN users u ON u.id = s.user_id WHERE s.deployed IS NOT NULL AND (s.freq IS NULL OR s.freq = ?) AND (s.last_run IS NULL OR s.last_run != ?)', 'daily', n.day);
   let ran = 0;
   for (const b of bots) {
     const claim = await run('UPDATE strategies SET last_run = ? WHERE id = ? AND (last_run IS NULL OR last_run != ?)', n.day, b.id, n.day);
@@ -140,6 +137,7 @@ export async function runDueJobs(t = now()) {
   // Monthly fees on the 1st (days 2-3 cover an app that was asleep), never mid-month after a deploy.
   if (+n.day.slice(8) <= 3 && n.minutes >= 600 && await claimOnce('fees:' + n.day.slice(0, 7))) out.fees = (await assessAllFees()).length;
   if (await claimOnce('hourly:' + new Date(t).toISOString().slice(0, 13))) await hourly();
+  out.extra = await runExtraJobs(t, claimOnce);
   return out;
 }
 

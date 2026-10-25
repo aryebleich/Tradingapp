@@ -51,3 +51,30 @@ export function form8949Csv(rows) {
   const head = 'Description,Date acquired,Date sold,Proceeds,Cost basis,Adjustment code,Adjustment,Gain or loss,Term';
   return [head, ...rows.map(r => [`${r.qty} sh ${r.symbol}`, fmt(r.acquired), fmt(r.sold), r.proceeds, r.cost, r.washSale ? 'W' : '', r.washSale ? -r.gain : 0, r.washSale ? 0 : r.gain, r.longTerm ? 'Long' : 'Short'].join(','))].join('\n');
 }
+
+// Schedule D summary from the Form 8949 rows (all lots treated as basis reported to the IRS,
+// boxes A and D). Wash-sale losses are added back as adjustments (code W).
+export function scheduleD(summary) {
+  const part = long => {
+    const rows = summary.rows.filter(r => r.longTerm === long);
+    const proceeds = rows.reduce((a, r) => a + r.proceeds, 0), cost = rows.reduce((a, r) => a + r.cost, 0), adj = rows.filter(r => r.washSale).reduce((a, r) => a - r.gain, 0);
+    return { lots: rows.length, proceeds: +proceeds.toFixed(2), cost: +cost.toFixed(2), adjustments: +adj.toFixed(2), gain: +(proceeds - cost + adj).toFixed(2) };
+  };
+  const st = part(false), lt = part(true), total = +(st.gain + lt.gain).toFixed(2);
+  return { year: summary.year, line1b_shortTerm: st, line7_netShortTerm: st.gain, line8b_longTerm: lt, line15_netLongTerm: lt.gain, line16_total: total, line21_allowedLoss: total < 0 ? Math.max(total, -3000) : null };
+}
+export const scheduleDCsv = d => ['Line,Description,Proceeds,Cost basis,Adjustments,Gain or loss',
+  `1b,Short-term (Form 8949 box A),${d.line1b_shortTerm.proceeds},${d.line1b_shortTerm.cost},${d.line1b_shortTerm.adjustments},${d.line1b_shortTerm.gain}`,
+  `7,Net short-term gain or loss,,,,${d.line7_netShortTerm}`,
+  `8b,Long-term (Form 8949 box D),${d.line8b_longTerm.proceeds},${d.line8b_longTerm.cost},${d.line8b_longTerm.adjustments},${d.line8b_longTerm.gain}`,
+  `15,Net long-term gain or loss,,,,${d.line15_netLongTerm}`,
+  `16,Total,,,,${d.line16_total}`, ...(d.line21_allowedLoss != null ? [`21,Loss allowed this year (max $3000),,,,${d.line21_allowedLoss}`] : [])].join('\n');
+
+// Mark-to-market (Section 475(f) trader election): every gain or loss is ordinary income, wash-sale
+// rules do not apply, and positions still open at year end count as sold at their year-end price.
+export function markToMarket(fills, positions, { year, bracket = 0.24, stateRate = 0.05 }) {
+  const realized = realizedGains(fills).filter(r => new Date(r.sold).getUTCFullYear() === year).reduce((a, r) => a + r.gain, 0);
+  const unrealized = positions.reduce((a, p) => a + (p.pnl || 0), 0);
+  const ordinary = realized + unrealized;
+  return { year, realized: +realized.toFixed(2), markedToMarket: +unrealized.toFixed(2), ordinaryIncome: +ordinary.toFixed(2), estimatedTax: +(ordinary * (bracket + stateRate)).toFixed(2), note: 'Open positions are valued at today\'s price until the year ends. The election must be made with the IRS by the due date of the prior year\'s return.' };
+}

@@ -254,6 +254,212 @@ CREATE TABLE IF NOT EXISTS signals (
   test INTEGER NOT NULL DEFAULT 0,
   at INTEGER NOT NULL
 );
+-- Risk guardrails and kill switch (settings is JSON).
+CREATE TABLE IF NOT EXISTS risk_settings (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  settings TEXT NOT NULL DEFAULT '{}',
+  kill INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS risk_log (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  day TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  detail TEXT,
+  at INTEGER NOT NULL
+);
+-- What an automated order expected to pay, to measure slippage and delay once it fills.
+CREATE TABLE IF NOT EXISTS order_intents (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  account TEXT NOT NULL,
+  broker_order_id TEXT,
+  symbol TEXT NOT NULL,
+  side TEXT NOT NULL,
+  expected_price REAL,
+  signal_at INTEGER,
+  source TEXT,
+  at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS journal_notes (
+  fill_id INTEGER PRIMARY KEY REFERENCES fills(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  note TEXT,
+  tags TEXT,
+  at INTEGER NOT NULL
+);
+-- Trainable AI agents: a model fitted to one symbol, optionally trading it.
+CREATE TABLE IF NOT EXISTS agents (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  symbol TEXT NOT NULL,
+  config TEXT NOT NULL,
+  model TEXT,
+  metrics TEXT,
+  account TEXT,
+  size REAL NOT NULL DEFAULT 25,
+  deployed INTEGER NOT NULL DEFAULT 0,
+  last_run TEXT,
+  last_action TEXT,
+  trained_at INTEGER,
+  created_at INTEGER NOT NULL
+);
+-- Market scanners that run on a schedule (crypto around the clock).
+CREATE TABLE IF NOT EXISTS scanners (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  universe TEXT NOT NULL,
+  rules TEXT NOT NULL,
+  patterns TEXT,
+  every_min INTEGER NOT NULL DEFAULT 60,
+  action TEXT NOT NULL DEFAULT 'alert',
+  account TEXT,
+  notional REAL,
+  active INTEGER NOT NULL DEFAULT 1,
+  last_run_at INTEGER,
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS scan_hits (
+  id INTEGER PRIMARY KEY,
+  scanner_id INTEGER NOT NULL REFERENCES scanners(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL,
+  symbol TEXT NOT NULL,
+  price REAL,
+  day TEXT NOT NULL,
+  result TEXT,
+  at INTEGER NOT NULL
+);
+-- Rule-based portfolios: universe, filters, ranking, weighting, rebalancing, contributions.
+CREATE TABLE IF NOT EXISTS baskets (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  description TEXT,
+  spec TEXT NOT NULL,
+  account TEXT,
+  amount REAL,
+  deployed INTEGER NOT NULL DEFAULT 0,
+  contribution REAL,
+  contrib_day INTEGER,
+  ach_relationship TEXT,
+  public INTEGER NOT NULL DEFAULT 0,
+  source_id INTEGER,
+  follow_updates INTEGER NOT NULL DEFAULT 0,
+  last_rebalance TEXT,
+  last_contrib TEXT,
+  holdings TEXT,
+  stats TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+-- Signal channels: one leader broadcasts, followers mirror into their own accounts.
+CREATE TABLE IF NOT EXISTS channels (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  description TEXT,
+  public INTEGER NOT NULL DEFAULT 1,
+  token_hash TEXT,
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS channel_signals (
+  id INTEGER PRIMARY KEY,
+  channel_id INTEGER NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+  symbol TEXT NOT NULL,
+  side TEXT NOT NULL,
+  size_pct REAL,
+  price REAL,
+  note TEXT,
+  at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS channel_subs (
+  id INTEGER PRIMARY KEY,
+  channel_id INTEGER NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  account TEXT NOT NULL,
+  sizing TEXT NOT NULL DEFAULT 'fixed',
+  amount REAL NOT NULL DEFAULT 100,
+  mode TEXT NOT NULL DEFAULT 'review',
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at INTEGER NOT NULL,
+  UNIQUE (channel_id, user_id, account)
+);
+CREATE TABLE IF NOT EXISTS channel_pending (
+  id INTEGER PRIMARY KEY,
+  sub_id INTEGER NOT NULL REFERENCES channel_subs(id) ON DELETE CASCADE,
+  signal_id INTEGER NOT NULL REFERENCES channel_signals(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL,
+  status TEXT NOT NULL,
+  result TEXT,
+  at INTEGER NOT NULL
+);
+-- Automated option income (covered calls, cash-secured puts, the wheel).
+CREATE TABLE IF NOT EXISTS income_bots (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  underlying TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  config TEXT NOT NULL,
+  active INTEGER NOT NULL DEFAULT 1,
+  state TEXT,
+  last_run TEXT,
+  last_action TEXT,
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS code_scripts (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  code TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+-- Shariah screening data (from the owner's compliance feed).
+CREATE TABLE IF NOT EXISTS halal_data (
+  symbol TEXT PRIMARY KEY,
+  status TEXT NOT NULL,
+  debt_ratio REAL, cash_ratio REAL, receivables_ratio REAL, nonhalal_pct REAL,
+  source TEXT,
+  as_of TEXT,
+  updated_at INTEGER NOT NULL
+);
+-- Money in and out of each account, by date, for time-weighted returns.
+CREATE TABLE IF NOT EXISTS cashflows (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  account TEXT NOT NULL,
+  amount REAL NOT NULL,
+  at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS cache (
+  k TEXT PRIMARY KEY,
+  v TEXT NOT NULL,
+  at INTEGER NOT NULL
+);
+-- Spend-based investing: card purchases turned into share purchases.
+CREATE TABLE IF NOT EXISTS roundup_settings (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  settings TEXT NOT NULL DEFAULT '{}',
+  plaid_token TEXT,
+  cursor TEXT,
+  updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS roundup_tx (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  tx_id TEXT NOT NULL,
+  day TEXT NOT NULL,
+  merchant TEXT,
+  amount REAL NOT NULL,
+  ticker TEXT,
+  invest REAL NOT NULL,
+  status TEXT NOT NULL,
+  result TEXT,
+  at INTEGER NOT NULL,
+  UNIQUE (user_id, tx_id)
+);
 `;
 
 // Columns added after the first release; ALTER fails harmlessly when they already exist.
@@ -277,6 +483,18 @@ const MIGRATIONS = [
   'CREATE INDEX IF NOT EXISTS signals_user ON signals (user_id, id)',
   'CREATE INDEX IF NOT EXISTS broker_events_user ON broker_events (user_id, id)',
   'CREATE UNIQUE INDEX IF NOT EXISTS ledger_ref ON ledger (kind, ref) WHERE ref IS NOT NULL',
+  'ALTER TABLE fills ADD COLUMN expected_price REAL',
+  'ALTER TABLE fills ADD COLUMN signal_at INTEGER',
+  'ALTER TABLE strategies ADD COLUMN freq TEXT',
+  'ALTER TABLE strategies ADD COLUMN last_run_at INTEGER',
+  'ALTER TABLE strategies ADD COLUMN public INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE strategies ADD COLUMN description TEXT',
+  'ALTER TABLE users ADD COLUMN mtm_election INTEGER NOT NULL DEFAULT 0',
+  'CREATE INDEX IF NOT EXISTS risk_log_user ON risk_log (user_id, day)',
+  'CREATE INDEX IF NOT EXISTS order_intents_order ON order_intents (broker_order_id)',
+  'CREATE INDEX IF NOT EXISTS scan_hits_scanner ON scan_hits (scanner_id, symbol, day)',
+  'CREATE INDEX IF NOT EXISTS channel_signals_channel ON channel_signals (channel_id, id)',
+  'CREATE INDEX IF NOT EXISTS roundup_tx_user ON roundup_tx (user_id, status)',
 ];
 
 export const ready = (async () => {

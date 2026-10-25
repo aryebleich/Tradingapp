@@ -4,6 +4,7 @@ import { decrypt } from './crypto.js';
 import { rng } from './engine.js';
 import { tradingFor, requireTrading } from './alpaca/connections.js';
 import { EXT_IDS, withExt } from './ext/brokers.js';
+import { checkOrder, logOrder } from './risk.js';
 
 // Every account a user can trade: the paper simulator, Alpaca, and the other brokerages.
 export const ACCOUNT_IDS = ['paper', 'alpaca', ...EXT_IDS];
@@ -170,17 +171,20 @@ export async function accountSummary(userId, account) {
 
 // Records a fill and updates the average-cost position inside one transaction. `check` runs first
 // in the same transaction, so two simultaneous paper orders cannot both spend the same cash.
-export async function recordFill(userId, account, symbol, side, qty, price, source, { brokerId = null, check, at = now() } = {}) {
+export async function recordFill(userId, account, symbol, side, qty, price, source, { brokerId = null, check, at = now(), expected = null, signalAt = null } = {}) {
   await tx(async ({ one, run }) => {
     if (check) await check(one);
     if (brokerId && await one('SELECT id FROM fills WHERE broker_order_id = ?', brokerId)) return;
+    // An order placed by an automation left its expected price and real source behind.
+    const intent = brokerId ? await one('SELECT expected_price, signal_at, source FROM order_intents WHERE broker_order_id = ?', brokerId) : null;
+    if (intent) { expected ??= intent.expected_price; signalAt ??= intent.signal_at; if (source === 'alpaca' && intent.source) source = intent.source; }
     const p = await one('SELECT * FROM positions WHERE user_id = ? AND account = ? AND symbol = ?', userId, account, symbol);
     const cur = p?.qty || 0, avg = p?.avg_price || 0;
     const nq = +(side === 'buy' ? cur + qty : cur - qty).toFixed(6);
     const navg = side === 'buy' ? (cur * avg + qty * price) / nq : avg;
     await run('INSERT INTO positions (user_id, account, symbol, qty, avg_price) VALUES (?,?,?,?,?) ON CONFLICT(user_id, account, symbol) DO UPDATE SET qty = excluded.qty, avg_price = excluded.avg_price',
       userId, account, symbol, nq, nq ? navg : 0);
-    await run('INSERT INTO fills (user_id, account, symbol, side, qty, price, source, broker_order_id, at) VALUES (?,?,?,?,?,?,?,?,?)', userId, account, symbol, side, qty, price, source, brokerId, at);
+    await run('INSERT INTO fills (user_id, account, symbol, side, qty, price, source, broker_order_id, at, expected_price, signal_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)', userId, account, symbol, side, qty, price, source, brokerId, at, expected, signalAt);
     if (account === 'paper') await run('UPDATE paper_accounts SET cash = cash + ? WHERE user_id = ?', +((side === 'buy' ? -1 : 1) * qty * price).toFixed(6), userId);
   });
 }
@@ -192,6 +196,18 @@ export async function placeOrder(userId, account, order, source = 'manual') {
   const q = +order.qty, n = +order.notional;
   if (!validSymbol(symbol)) throw new Error('Invalid symbol');
   if (!(Number.isFinite(q) && q > 0) && !(Number.isFinite(n) && n > 0)) throw new Error('Give a quantity or dollar amount');
+  // Guardrails first (limits, daily loss stop, kill switch), for every source.
+  await checkOrder(userId, account, { symbol, side, qty: q, notional: n }, source, { summarize: accountSummary, price: s => lastPrice(s, userId) });
+  const r = await sendOrder(userId, account, symbol, side, q, n, source, order);
+  await logOrder(userId, account, { symbol, side }, source);
+  return r;
+}
+// Automations pass the price they expected (expectedPrice) and when the signal fired (signalAt),
+// so the execution report can measure slippage and delay.
+async function sendOrder(userId, account, symbol, side, q, n, source, order) {
+  const expected = +order.expectedPrice > 0 ? +order.expectedPrice : null, signalAt = +order.signalAt || (expected ? now() : null);
+  const intent = (brokerId, acct) => (expected || source !== 'web') && brokerId
+    ? run('INSERT INTO order_intents (user_id, account, broker_order_id, symbol, side, expected_price, signal_at, source, at) VALUES (?,?,?,?,?,?,?,?,?)', userId, acct, String(brokerId), symbol, side, expected, signalAt, source, now()).catch(() => {}) : null;
   if (isExt(account)) {
     return withExt(userId, account, async (b, c, save) => {
       // Other brokerages take whole shares. A sell beyond what is held opens a short; a buy
@@ -202,6 +218,7 @@ export async function placeOrder(userId, account, order, source = 'manual') {
       const kind = side === 'buy' ? (held < 0 ? 'buy_to_cover' : 'buy') : held > 0 ? 'sell' : 'sell_short';
       if (kind === 'sell_short' && !b.shorts) throw new Error(`${b.name} does not support short selling here`);
       const r = await b.place(c, { symbol, side: kind, qty }, save);
+      await intent(r.id, account);
       return { id: r.id, status: r.status, symbol, side, qty, broker: account, live: !!c.live };
     });
   }
@@ -209,6 +226,7 @@ export async function placeOrder(userId, account, order, source = 'manual') {
     const t = await requireTrading(userId);
     const body = { symbol, side, type: 'market', time_in_force: 'day', ...(q > 0 ? { qty: String(q) } : { notional: n.toFixed(2) }) };
     const o = await t.placeOrder(body);
+    await intent(o.id, 'alpaca');
     // Usually fills within seconds; anything still open is picked up later by syncAlpacaFills.
     setTimeout(() => syncAlpacaFills(userId).catch(() => {}), 4000);
     return { id: o.id, status: o.status, symbol, side, broker: 'alpaca', live: t.live };
@@ -216,7 +234,7 @@ export async function placeOrder(userId, account, order, source = 'manual') {
   const price = await lastPrice(symbol, userId);
   const qty = q > 0 ? q : +(n / price).toFixed(6);
   if (!(qty > 0)) throw new Error('Amount is too small');
-  await recordFill(userId, 'paper', symbol, side, qty, price, source, { check: async one => {
+  await recordFill(userId, 'paper', symbol, side, qty, price, source, { expected, signalAt, check: async one => {
     if (side === 'buy') {
       const a = await one('SELECT cash FROM paper_accounts WHERE user_id = ?', userId);
       if (qty * price > a.cash + 1e-6) throw new Error(`Not enough paper cash ($${a.cash.toFixed(2)})`);
