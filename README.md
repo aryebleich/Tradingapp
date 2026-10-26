@@ -304,6 +304,10 @@ What QuantPocket does:
   `NODE_EXTRA_CA_CERTS`, `NODE_OPTIONS` and `SSL_CERT_FILE` are refused.
 - **No PHP** anywhere in the app.
 
+GitHub runners: every workflow uses action versions that run on Node.js 24 (Node.js 20 is retired
+there) and the pinned `ubuntu-24.04` image, so the move of `ubuntu-latest` to Ubuntu 26 changes nothing
+until the browser tests support it. A test fails if an older action or `ubuntu-latest` comes back.
+
 So it does not happen again:
 - **Dependabot** opens weekly update pull requests for npm packages, the Docker image and GitHub Actions.
 - **The Security check workflow** runs every Monday:

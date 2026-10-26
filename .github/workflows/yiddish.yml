@@ -21,17 +21,17 @@ jobs:
   translate:
     # After a push only when switched on, and never for its own commits.
     if: github.event_name == 'workflow_dispatch' || (vars.YL_AUTO == 'true' && !startsWith(github.event.head_commit.message, 'Yiddish Labs:'))
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: { fetch-depth: 0 }
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with: { node-version-file: .node-version, check-latest: true, cache: npm }
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with: { python-version: '3.12' }
       - run: npm ci && npx playwright install --with-deps chromium
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: .yl-session
           key: yl-session-${{ github.run_id }}

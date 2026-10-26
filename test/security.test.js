@@ -48,3 +48,13 @@ test('compressed request bodies are refused; HTTPS cannot be weakened from Admin
     assert.ok(setup.items.some(x => x.name.startsWith('Node.js ')));
   } finally { s.close(); }
 });
+
+test('workflows use actions that run on Node.js 24 and a pinned Ubuntu', () => {
+  // The first major of each action that runs on Node.js 24 (Node.js 20 is retired on GitHub runners).
+  const MIN = { checkout: 5, 'setup-node': 5, 'setup-python': 6, cache: 5, 'upload-artifact': 6, 'configure-pages': 6, 'upload-pages-artifact': 4, 'deploy-pages': 5 };
+  for (const f of fs.readdirSync('.github/workflows')) {
+    const y = fs.readFileSync('.github/workflows/' + f, 'utf8');
+    assert.doesNotMatch(y, /runs-on: ubuntu-latest/, `${f}: pin the runner (ubuntu-24.04)`);
+    for (const [, name, v] of y.matchAll(/uses: actions\/([a-z-]+)@v(\d+)/g)) if (MIN[name]) assert.ok(+v >= MIN[name], `${f}: actions/${name}@v${v} still runs on Node.js 20`);
+  }
+});
