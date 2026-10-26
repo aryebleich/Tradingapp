@@ -28,7 +28,7 @@ jobs:
         with: { fetch-depth: 0 }
       - uses: actions/setup-node@v4
         with: { node-version-file: .node-version, check-latest: true, cache: npm }
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with: { python-version: '3.12' }
       - run: npm ci && npx playwright install --with-deps chromium
       - uses: actions/cache@v4
