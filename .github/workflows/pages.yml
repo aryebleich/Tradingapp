@@ -39,7 +39,7 @@ jobs:
           sed -i "s#content=\"og.png\"#content=\"https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/og.png\"#" *.html
           touch .nojekyll
       - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
       - id: deployment
