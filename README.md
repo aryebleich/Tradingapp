@@ -279,6 +279,39 @@ Then **Admin → Yiddish Labs** shows the last run (translated, kept, credits le
 - From a computer: `YL_STATE=/safe/place/state.json npm run yiddish:web -- --since <commit>`
   (add `--dry` to only count).
 
+## Security updates (Node.js, certificates, dependencies)
+
+The October 2026 advisories were three issues:
+- a TLS hostname-check bypass and a Brotli remote-code-execution flaw in Node.js;
+- the compromised **eMudhra** intermediate certificates.
+
+What QuantPocket does:
+
+- **Patched Node.js only.** `security/node-floor.json` holds the lowest patched release per line
+  (22.23.4, 24.22.1, 26.12.1). Every place follows it:
+  - **`package.json` engines plus `.npmrc` `engine-strict=true`:** installing on an older Node.js fails,
+    so a Render build on it fails and the previous deploy keeps running.
+  - **Render:** `NODE_VERSION=22` and `.node-version` give the newest Node.js 22 at every build. The new
+    release also brings Node.js's updated certificate list, which no longer trusts eMudhra.
+  - **Docker:** the newest `node:22-slim`, a fresh system certificate store, OS security updates, and a
+    build that stops on an older Node.js. Build with `docker build --pull`.
+  - **CI:** the newest Node.js 22 from `.node-version`.
+  - **The server:** in production it refuses to start on an unpatched Node.js, or with
+    `NODE_TLS_REJECT_UNAUTHORIZED=0`. **Admin → Setup** shows the running version.
+- **No compressed request bodies.** Requests with `Content-Encoding` are refused (415), so no
+  decompression code ever runs on what users send.
+- **HTTPS cannot be weakened from Admin → Keys.** Names such as `NODE_TLS_REJECT_UNAUTHORIZED`,
+  `NODE_EXTRA_CA_CERTS`, `NODE_OPTIONS` and `SSL_CERT_FILE` are refused.
+- **No PHP** anywhere in the app.
+
+So it does not happen again:
+- **Dependabot** opens weekly update pull requests for npm packages, the Docker image and GitHub Actions.
+- **The Security check workflow** runs every Monday:
+  - `npm audit` fails on any high or critical advisory and opens an issue;
+  - when nodejs.org marks a newer release as a security release, it raises the floor, tests and commits;
+  - with the `RENDER_DEPLOY_HOOK_URL` secret (Render → service → Settings → Deploy Hook), it rebuilds
+    Render, so the newest Node.js and certificates are live within a week.
+
 ## Automatic checks and fixes after every push
 
 Every push to main runs **CI** (unit tests) and **Run app (end-to-end)** (the app in a real browser).

@@ -113,7 +113,7 @@ adminSiteRouter.post('/env/export', wrap(async (req, res) => {
 // Render's own values apply anyway).
 adminSiteRouter.post('/env/render/pull', wrap(async (req, res) => {
   const env = await S.renderEnv();
-  const keys = Object.keys(env).filter(k => S.validEnvName(k) && !S.needsRestart(k) && !['NODE_ENV', 'PORT'].includes(k));
+  const keys = Object.keys(env).filter(k => S.validEnvName(k) && !S.needsRestart(k) && !S.hostOnly(k));
   for (const k of keys) process.env[k] = env[k];
   await audit(req.user.id, 'env_render_pull', { n: keys.length }, req.ip);
   res.json({ ok: true, keys });

@@ -49,7 +49,7 @@ jobs:
         run: gh run view "$RUN_ID" --log-failed --repo "$GITHUB_REPOSITORY" | tail -400 > failed.log || true
       - uses: actions/setup-node@v4
         if: steps.guard.outputs.go == 'fix'
-        with: { node-version: 22, cache: npm }
+        with: { node-version-file: .node-version, check-latest: true, cache: npm }
       - name: Install
         if: steps.guard.outputs.go == 'fix'
         run: npm ci && npx playwright install --with-deps chromium && pip install --quiet pillow || true

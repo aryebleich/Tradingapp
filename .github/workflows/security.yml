@@ -1,0 +1,56 @@
+name: Security check
+# Every Monday (and by hand):
+#   1. npm audit: fails on any high or critical advisory in the app's dependencies;
+#   2. Node.js: when nodejs.org publishes a newer security release, raises security/node-floor.json
+#      and package.json engines, tests, and commits it (the app then refuses older Node.js);
+#   3. Render: starts a fresh build, so the service always runs the newest Node.js 22 and a fresh
+#      certificate store (needs the RENDER_DEPLOY_HOOK_URL secret: Render → service → Settings → Deploy Hook).
+# Dependabot (.github/dependabot.yml) opens update pull requests for npm packages, the Docker base
+# image and GitHub Actions; this check catches what lands between them.
+on:
+  schedule:
+    - cron: '17 13 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: write
+  issues: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          check-latest: true
+          cache: npm
+      - run: npm ci
+      - name: Dependencies have no high or critical advisories
+        id: audit
+        run: npm audit --omit=dev --audit-level=high
+      - name: Raise the Node.js floor after a new security release
+        run: node scripts/security-check.mjs --update
+      - name: Test and commit a raised floor
+        run: |
+          if git diff --quiet; then echo "Nothing to raise."; exit 0; fi
+          npm test
+          git config user.name "security-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Security: raise the Node.js floor to the newest security release"
+          git push
+          gh workflow run web-ci.yml --ref main
+          gh workflow run e2e.yml --ref main
+      - name: Rebuild on Render (newest Node.js 22, fresh certificates)
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$HOOK" ]; then echo "Add the RENDER_DEPLOY_HOOK_URL secret to rebuild Render every week."; exit 0; fi
+          curl -fsS -X POST "$HOOK" > /dev/null && echo "Render rebuild started."
+      - name: Open an issue when something failed
+        if: failure()
+        run: |
+          gh issue create --title "Security check failed" --body "The weekly security check failed (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}). Run npm audit and update the flagged packages."

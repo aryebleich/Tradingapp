@@ -55,7 +55,9 @@ export const ENV_GROUPS = [
 ];
 export const validEnvName = k => /^[A-Z][A-Z0-9_]{1,63}$/.test(k);
 // Never changed from the app: the host sets these, or changing them would lock out the data.
-const HOST_ONLY = new Set(['NODE_ENV', 'PORT', 'HOSTNAME', 'RENDER', 'RENDER_SERVICE_ID', 'RENDER_EXTERNAL_URL', 'PATH', 'HOME']);
+// Also never: settings that would weaken HTTPS or change how Node.js itself runs.
+const HOST_ONLY = new Set(['NODE_ENV', 'PORT', 'HOSTNAME', 'RENDER', 'RENDER_SERVICE_ID', 'RENDER_EXTERNAL_URL', 'PATH', 'HOME',
+  'NODE_TLS_REJECT_UNAUTHORIZED', 'NODE_EXTRA_CA_CERTS', 'NODE_OPTIONS', 'NODE_PATH', 'SSL_CERT_FILE', 'SSL_CERT_DIR', 'NODE_VERSION', 'ALLOW_UNPATCHED_NODE', 'LD_PRELOAD']);
 // Need a restart to take effect (read once at start-up), or would break stored data if changed live.
 const RESTART = new Set(['ENCRYPTION_KEY', 'DATABASE_URL', 'DATABASE_AUTH_TOKEN', 'DB_FILE']);
 export const isSecretName = k => /SECRET|TOKEN|PASSWORD|_KEY$|_KEY_|KEY_ID|_SID$/.test(k) && !/_URL$/.test(k);
@@ -78,6 +80,7 @@ export function checkEnvChange(k) {
   if (HOST_ONLY.has(k)) throw Object.assign(new Error(`${k} is set by the host and cannot be changed here`), { status: 400 });
 }
 export const needsRestart = k => RESTART.has(k);
+export const hostOnly = k => HOST_ONLY.has(k);
 export const fromHost = k => bootEnv.has(k);
 
 // .env text: KEY=value lines, optional "export", quotes and # comments.

@@ -11,6 +11,9 @@ services:
     autoDeploy: true
     envVars:
       - { key: NODE_ENV, value: production }
+      # The newest Node.js 22 at every build (security fixes); the build refuses anything older
+      # than the patched release (package.json engines + .npmrc engine-strict).
+      - { key: NODE_VERSION, value: "22" }
       - { key: ENCRYPTION_KEY, generateValue: true }
       - { key: CRON_SECRET, generateValue: true }
       - { key: PUBLIC_URL, sync: false }

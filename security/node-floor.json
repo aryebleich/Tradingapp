@@ -1,0 +1,6 @@
+{
+  "note": "Lowest Node.js release with the latest security fixes, per major line. package.json engines, the Docker build, CI and the server's start-up check all read this file. The weekly Security check workflow raises it when Node.js publishes a new security release.",
+  "floors": { "22": "22.23.4", "24": "24.22.1", "26": "26.12.1" },
+  "since": "2026-10-21",
+  "reason": "TLS hostname-check bypass, Brotli decompression remote code execution, and distrust of the compromised eMudhra intermediate certificates"
+}

@@ -55,6 +55,7 @@ import { tokensRouter, mcpHandler } from './src/mcp.js';
 import { wealthRouter } from './src/wealth.js';
 import { news as alpacaNews } from './src/alpaca/data.js';
 import { settings as moneySettings, referralReward, nextMilestone, trialDaysFor } from './src/revenue.js';
+import { nodeStatus } from './src/runtime-check.js';
 import { loadSite, freshSite, applySavedEnv, adviserMode, normalizePhone, siteGet, siteSet } from './src/site.js';
 import { router as signalsRouter, receive as receiveSignal } from './src/signals.js';
 import { router as strategiesRouter } from './src/rotation/routes.js';
@@ -64,6 +65,18 @@ import { router as extRouter, oauthCallback as extOauthCallback, accountsFor } f
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_URL = (process.env.PUBLIC_URL || 'http://localhost:3000').replace(/\/$/, '');
+// Node.js must carry the latest security fixes (security/node-floor.json). In production an
+// unpatched runtime refuses to start, so a deploy on it fails its health check and the previous,
+// patched one keeps serving. ALLOW_UNPATCHED_NODE=1 overrides this in an emergency.
+const runtime = nodeStatus();
+if (!runtime.ok) {
+  console.error(`SECURITY: Node.js ${runtime.version} is older than the patched release ${runtime.min}. Update Node.js (Render: NODE_VERSION or .node-version) and redeploy.`);
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_UNPATCHED_NODE !== '1' && process.argv[1] === fileURLToPath(import.meta.url)) process.exit(1);
+}
+if (process.env.NODE_TLS_REJECT_UNAUTHORIZED === '0') {
+  console.error('SECURITY: NODE_TLS_REJECT_UNAUTHORIZED=0 turns off HTTPS certificate checks. Remove it.');
+  if (process.env.NODE_ENV === 'production' && process.argv[1] === fileURLToPath(import.meta.url)) process.exit(1);
+}
 // Site settings (admins, business mode, keys saved in Admin) load before the first request.
 await loadSite().catch(e => console.warn('site settings', e.message));
 await applySavedEnv();
@@ -184,6 +197,12 @@ app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (r
 });
 
 // Identity documents (base64 images/PDFs) are only accepted on the two onboarding endpoints.
+// Nothing sends us compressed request bodies, so none are unpacked: this closes the door on
+// decompression bugs (e.g. the Brotli flaw patched in October 2026) whatever the runtime.
+app.use((req, res, next) => {
+  const enc = String(req.headers['content-encoding'] || 'identity').toLowerCase().trim();
+  return enc === 'identity' ? next() : res.status(415).json({ error: 'Compressed request bodies are not accepted' });
+});
 app.use(['/api/alpaca/broker/accounts', '/api/alpaca/broker/documents'], express.json({ limit: '30mb' }));
 app.use(express.json({ limit: '200kb' }));
 app.use(express.urlencoded({ extended: false, limit: '50kb' }));
@@ -709,6 +728,7 @@ api.get('/admin/setup', U, auth.requireAdmin, async (req, res) => {
   const has = (...k) => k.every(x => !!process.env[x]);
   res.json({ admins: auth.allAdminEmails(), emailError: siteGet('emailError'), items: [
     ['Admin email', 'ADMIN_EMAIL', auth.allAdminEmails().length > 0],
+    [`Node.js ${runtime.version} (patched: ${runtime.min} or later)`, 'NODE_VERSION / .node-version', runtime.ok],
     ['Database (Turso)', 'DATABASE_URL', has('DATABASE_URL')],
     ['Encryption key', 'ENCRYPTION_KEY', has('ENCRYPTION_KEY')],
     ['Alpaca Broker API (account opening)', 'BROKER_API_KEY, BROKER_API_SECRET', brokerEnabled()],
