@@ -1210,5 +1210,6 @@ export default {
  "Money you receive when opening an options position by selling.": "די פרימיום געלט וואס מ'נעמט איין ביים עפענען א שארט אפשען פאזיציע.",
  "The most you can lose on the trade.": "די מאקסימום מעגליכע פארלוסט וואס קען זיין אויפ'ן טרעיד.",
  "Buying and selling to bring holdings back to their target weights.": "קויפן און פארקויפן אינוועסטמענטס כדי צוריקצוברענגען די האלטונגען פונעם פארטפאליאו צו די באשטימטע צילן וואס מען האט לכתחילה אנגעשטעלט.",
- "How many truly different investments you hold once you account for holdings that move together.": "וויפיל באמת אנדערע סארט אינוועסטמענטס האלטסטו טאקע, איינמאל דו נעמסט אין באטראכט די אלע פאזיציעס וואס גייען סייווי אינאיינעם?"
+ "How many truly different investments you hold once you account for holdings that move together.": "וויפיל באמת אנדערע סארט אינוועסטמענטס האלטסטו טאקע, איינמאל דו נעמסט אין באטראכט די אלע פאזיציעס וואס גייען סייווי אינאיינעם?",
+ "By continuing with Google you agree to the": "מיט'ן גיין ווייטער מיט גוגל, זענט איר מסכים צו די"
 };
