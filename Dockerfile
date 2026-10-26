@@ -1,6 +1,6 @@
 # Always the newest Node.js 22 image (build with --pull so the base is fresh). The build stops if
 # that Node.js is older than the patched release in security/node-floor.json.
-FROM node:22-slim
+FROM node:26-slim
 # Fresh system certificate store (drops distrusted certificate authorities such as the eMudhra
 # intermediates revoked in October 2026) and the latest OS security patches.
 RUN apt-get update && apt-get upgrade -y --no-install-recommends && apt-get install -y --no-install-recommends ca-certificates \
