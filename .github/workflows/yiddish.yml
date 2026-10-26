@@ -32,7 +32,10 @@ jobs:
         with: { python-version: '3.12' }
       - run: npm ci && npx playwright install --with-deps chromium
       - uses: actions/cache@v4
-        with: { path: .yl-session, key: yl-session-${{ github.run_id }}, restore-keys: yl-session- }
+        with:
+          path: .yl-session
+          key: yl-session-${{ github.run_id }}
+          restore-keys: yl-session-
       - name: Translate the new text
         env:
           YL_EMAIL: ${{ secrets.YL_EMAIL }}

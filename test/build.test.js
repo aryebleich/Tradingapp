@@ -78,3 +78,12 @@ test('signal fleet: auto and review followers, channel webhook; marketplace', as
   const copy = (await a(`/market/strategies/${sid}/copy`, {})).body.id;
   assert.equal((await a('/strategies')).body.find(x => x.id === copy).entry, 'SMA(20) crosses_above SMA(100)');
 });
+
+test('every GitHub workflow is valid YAML', async () => {
+  const fs = await import('node:fs');
+  // No YAML parser in the dependencies: catch the usual mistake, ${{ }} inside a { } flow mapping.
+  for (const f of fs.readdirSync('.github/workflows')) {
+    const text = fs.readFileSync('.github/workflows/' + f, 'utf8');
+    for (const [i, line] of text.split('\n').entries()) if (/:\s*\{[^}]*\$\{\{/.test(line)) assert.fail(`${f}:${i + 1} has \${{ }} inside a { } mapping; use block style`);
+  }
+});
