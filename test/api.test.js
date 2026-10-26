@@ -93,9 +93,10 @@ test('password reset, email verification, export and delete', async () => {
   assert.equal((await call('/auth/verify', { token: 'vtok' })).status, 200);
   assert.equal((await call('/auth/me')).body.user.emailVerified, true);
 
-  assert.equal((await call('/auth/forgot', { email: 'nobody@x.co' })).body.ok, true);
-  await call('/auth/forgot', { email: 'r@s.co' });
-  await run('UPDATE users SET reset_hash = ? WHERE id = ?', sha256('rtok'), u.id);
+  // Without an email service the answer says so (the same for every address); nothing is sent.
+  assert.deepEqual((await call('/auth/forgot', { email: 'nobody@x.co' })).body, { ok: true, unavailable: true });
+  assert.deepEqual((await call('/auth/forgot', { email: 'r@s.co' })).body, { ok: true, unavailable: true });
+  await run('UPDATE users SET reset_hash = ?, reset_expires = ? WHERE id = ?', sha256('rtok'), Date.now() + 3600e3, u.id);
   assert.equal((await call('/auth/reset', { token: 'rtok', password: 'N3wPasswordXyz' })).status, 200);
   assert.equal((await call('/auth/me')).body.user, null); // all sessions revoked
   assert.equal((await call('/auth/reset', { token: 'rtok', password: 'N3wPasswordXyz' })).status, 400);

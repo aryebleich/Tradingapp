@@ -1,0 +1,88 @@
+name: Autofix failed runs
+# When the tests (CI) or the end-to-end run fail on main:
+#   1. the failed jobs are re-run once (a one-off network hiccup is not a bug);
+#   2. if they fail again, Claude Code reads the logs, finds the cause, fixes the code (never by
+#      skipping or weakening a test), runs the tests and e2e, and pushes the fix to main. That push
+#      runs CI again, so the loop continues until everything is green.
+# Stops after 3 autofix commits in a row and opens an issue instead, so it can never loop forever.
+# Needs one repository secret: CLAUDE_CODE_OAUTH_TOKEN (run `claude setup-token` with your Claude
+# subscription) or ANTHROPIC_API_KEY. Without either, step 2 only opens an issue.
+on:
+  workflow_run:
+    workflows: ["CI", "Run app (end-to-end)"]
+    types: [completed]
+permissions:
+  contents: write
+  actions: write
+  issues: write
+  id-token: write
+concurrency: { group: autofix-main, cancel-in-progress: false }
+jobs:
+  autofix:
+    if: github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RUN_ID: ${{ github.event.workflow_run.id }}
+      RUN_NAME: ${{ github.event.workflow_run.name }}
+      HAS_CLAUDE: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' || secrets.ANTHROPIC_API_KEY != '' }}
+    steps:
+      - name: Re-run once first
+        if: github.event.workflow_run.run_attempt == 1
+        run: gh run rerun "$RUN_ID" --failed --repo "$GITHUB_REPOSITORY"
+      - uses: actions/checkout@v4
+        if: github.event.workflow_run.run_attempt > 1
+        with: { ref: main, fetch-depth: 20 }
+      - name: Still the newest commit, and not looping?
+        if: github.event.workflow_run.run_attempt > 1
+        id: guard
+        run: |
+          if [ "$(git rev-parse HEAD)" != "${{ github.event.workflow_run.head_sha }}" ]; then echo "A newer commit is on main; its own run decides."; echo "go=no" >> "$GITHUB_OUTPUT"; exit 0; fi
+          streak=0; for s in $(git log -5 --format=%s | sed 's/ /_/g'); do case "$s" in Autofix:*) streak=$((streak+1));; *) break;; esac; done
+          echo "streak=$streak" >> "$GITHUB_OUTPUT"
+          if [ "$streak" -ge 3 ]; then echo "go=issue" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [ "$HAS_CLAUDE" != "true" ]; then echo "go=issue" >> "$GITHUB_OUTPUT"; exit 0; fi
+          echo "go=fix" >> "$GITHUB_OUTPUT"
+      - name: Failure log
+        if: steps.guard.outputs.go == 'fix' || steps.guard.outputs.go == 'issue'
+        run: gh run view "$RUN_ID" --log-failed --repo "$GITHUB_REPOSITORY" | tail -400 > failed.log || true
+      - uses: actions/setup-node@v4
+        if: steps.guard.outputs.go == 'fix'
+        with: { node-version: 22, cache: npm }
+      - name: Install
+        if: steps.guard.outputs.go == 'fix'
+        run: npm ci && npx playwright install --with-deps chromium && pip install --quiet pillow || true
+      - name: Fix with Claude Code
+        if: steps.guard.outputs.go == 'fix'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
+          claude_args: --allowedTools "Bash,Read,Edit,Write,Glob,Grep" --max-turns 60
+          prompt: |
+            The "${{ github.event.workflow_run.name }}" run failed twice on main (run ${{ github.event.workflow_run.id }}, commit ${{ github.event.workflow_run.head_sha }}).
+            The failure log is in failed.log. Do this:
+            1. Read failed.log and reproduce the failure locally (npm test, and npm run e2e for the end-to-end run).
+            2. Find the root cause and fix the code. Never skip, disable, delete or weaken a test, and never just retry.
+               If a test itself is wrong about intended behavior, fix the test with a one-line reason in the commit message.
+            3. Run npm test and npm run e2e until both pass. If public/i18n or scripts/home.py changed, run python3 scripts/pages.py.
+            4. Commit with a message starting with "Autofix: " that names the cause, and push to main (git push origin HEAD:main).
+            Keep the change minimal and in the style of the surrounding code. Do not touch secrets or workflow files.
+      # Pushes made with the workflow token do not start other workflows, so start them here.
+      - name: Run CI and e2e again on the fix
+        if: steps.guard.outputs.go == 'fix'
+        run: |
+          git fetch -q origin main
+          if [ "$(git rev-parse origin/main)" != "${{ github.event.workflow_run.head_sha }}" ]; then
+            gh workflow run web-ci.yml --ref main --repo "$GITHUB_REPOSITORY"
+            gh workflow run e2e.yml --ref main --repo "$GITHUB_REPOSITORY"
+          else echo "No fix was pushed."; fi
+      - name: Open an issue instead
+        if: steps.guard.outputs.go == 'issue'
+        run: |
+          why="Autofix is not set up (add the CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret)."
+          [ "${{ steps.guard.outputs.streak }}" -ge 3 ] && why="Autofix tried 3 times in a row without getting it green."
+          { echo "The **$RUN_NAME** run failed on main: ${{ github.event.workflow_run.html_url }}"; echo; echo "$why"; echo; echo '```'; tail -80 failed.log; echo '```'; } > body.md
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "Run failed on main: $RUN_NAME" --body-file body.md

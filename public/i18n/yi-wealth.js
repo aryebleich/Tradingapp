@@ -96,6 +96,19 @@ export const strings = {
   'Name, e.g. Claude Desktop': 'נאמען, למשל Claude Desktop',
   'Copy it now; it is shown only once:': 'קאפירט עס יעצט; עס ווערט געוויזן נאר איינמאל:',
 
+  // free-plan limits and password reset
+  'Trading and alerts by text and phone, QuantConnect and bank-card linking': 'טרעידן און אלערטס דורך טעקסט און טעלעפאן, QuantConnect און פארבינדן א באנק קארטל',
+  'Texting and calling QuantPocket is part of Pro. You can try the commands below here in the app;': 'טעקסטן און רופן QuantPocket איז א טייל פון Pro. איר קענט פרובירן די קאמאנדס אונטן דא אין דער עפּ;',
+  'start a free trial': 'הייבט אן א בחינם טרייעל', 'to use them from your phone and get alerts by text.': 'צו ניצן זיי פון אייער טעלעפאן און באקומען אלערטס דורך טעקסט.',
+  'No email?': 'קיין אימעיל?', 'Get a code by text message': 'באקומט א קאוד דורך א טעקסט מעסעדזש', '(for accounts with a verified phone).': '(פאר קאנטעס מיט א באשטעטיגטן טעלעפאן).', '(for accounts with a verified phone). ·': '(פאר קאנטעס מיט א באשטעטיגטן טעלעפאן). ·',
+  'Reset by text message': 'שטעלט צוריק דורך א טעקסט מעסעדזש', 'Save password': 'היט אפ דעם פאסווארט', 'New password (10+ chars, upper, lower, digit)': 'נייער פאסווארט (10+ אותיות, גרויסע, קליינע, א ציפער)',
+  'Reset emails are not available right now. Use a text message code, or write to support from the Contact page.': 'צוריקשטעלן דורך אימעיל ארבעט נישט יעצט. ניצט א קאוד דורך טעקסט, אדער שרייבט צו סופּארט פונעם קאנטאקט זייטל.',
+  'If that email has an account, a reset link is on its way. Check your spam folder too.': 'אויב דער אימעיל האט א קאנטע, איז א לינק צו צוריקשטעלן אויפן וועג. קוקט אויך אין ספאם.',
+  'Text messages are not available right now. Use the email link instead.': 'טעקסט מעסעדזשעס ארבעטן נישט יעצט. ניצט אנשטאט דעם דעם אימעיל לינק.',
+  'If that number belongs to an account, a code is on its way.': 'אויב דער נומער געהערט צו א קאנטע, איז א קאוד אויפן וועג.', 'Wrong or expired code': 'אומריכטיגער אדער אויסגעגאנגענער קאוד',
+  'Trading and questions by text are part of QuantPocket Pro. Start a free trial in the app under Plans & billing.': 'טרעידן און פרעגן דורך טעקסט איז א טייל פון QuantPocket Pro. הייבט אן א בחינם טרייעל אין דער עפּ אונטער פלענער און באצאלונג.',
+  'Linking your bank card is part of Pro (CSV import stays free)': 'פארבינדן אייער באנק קארטל איז א טייל פון Pro (CSV אימפארט בלייבט בחינם)', 'Linking your bank card': 'פארבינדן אייער באנק קארטל',
+  'Connecting QuantConnect': 'פארבינדן QuantConnect', 'Trading by text and phone': 'טרעידן דורך טעקסט און טעלעפאן',
   // referrals
   'Bonus milestones': 'באנוס שטאפלען', 'friends': 'פריינט', 'You reached every bonus. Thank you!': 'איר האט דערגרייכט יעדן באנוס. א דאנק!',
 };

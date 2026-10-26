@@ -8,7 +8,7 @@ export const stripeEnabled = () => !!env('STRIPE_SECRET_KEY');
 export async function sendSms(to, body) {
   if (!twilioEnabled()) { console.log(`[sms disabled] to ${to}: ${body}`); return { simulated: true }; }
   const sid = env('TWILIO_ACCOUNT_SID');
-  const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
+  const r = await fetch(`${(env('TWILIO_API_URL') || 'https://api.twilio.com').replace(/\/$/, '')}/2010-04-01/Accounts/${sid}/Messages.json`, {
     method: 'POST',
     headers: { Authorization: 'Basic ' + Buffer.from(`${sid}:${env('TWILIO_AUTH_TOKEN')}`).toString('base64'), 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ To: to, From: env('TWILIO_FROM'), Body: body.slice(0, 1500) }),
@@ -97,7 +97,7 @@ export function verifyStripe(raw, header) {
 export const emailEnabled = () => !!env('RESEND_API_KEY');
 export async function sendEmail(to, subject, text) {
   if (!emailEnabled()) { console.log(`[email disabled] to ${to}: ${subject}\n${text}`); return { simulated: true }; }
-  const r = await fetch('https://api.resend.com/emails', {
+  const r = await fetch(`${(env('RESEND_API_URL') || 'https://api.resend.com').replace(/\/$/, '')}/emails`, {
     method: 'POST',
     headers: { Authorization: 'Bearer ' + env('RESEND_API_KEY'), 'Content-Type': 'application/json' },
     body: JSON.stringify({ from: env('EMAIL_FROM') || 'QuantPocket <onboarding@resend.dev>', to: [to], subject, text }),

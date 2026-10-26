@@ -212,7 +212,7 @@ const ICONS = {
   'admin-setup': '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
   admin: '<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"/>',
   wealth: '<path d="M3 20h18M5 20V10M10 20V6M15 20v-8M20 20V4"/>', 'alpaca-tools': '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
-  'admin-alpaca': '<path d="M4 19V5l8 7 8-7v14"/>', 'admin-business': '<path d="M3 7h18v13H3zM8 7V4h8v3"/>', 'admin-admins': '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>', 'admin-keys': '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/>',
+  'admin-alpaca': '<path d="M4 19V5l8 7 8-7v14"/>', 'admin-yiddish': '<path d="M4 5h8M8 3v2M5 5c1 4 4 7 7 8M11 5c-1 4-4 7-7 8M13 21l4-10 4 10M14.5 17h5"/>', 'admin-business': '<path d="M3 7h18v13H3zM8 7V4h8v3"/>', 'admin-admins': '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>', 'admin-keys': '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/>',
   chart: '<path d="M7 4v16M17 6v12M4 8h6v8H4zM14 9h6v6h-6z"/>', ai: '<path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
   agents: '<path d="M3 17l6-6 4 4 8-8"/><circle cx="21" cy="7" r="1"/><path d="M3 21h18"/>', news: '<path d="M4 5h13v14H6a2 2 0 0 1-2-2zM17 9h3v8a2 2 0 0 1-2 2"/><path d="M8 9h5M8 13h5"/>',
   scanner: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5M8 11h6M11 8v6"/>', optionslab: '<path d="M3 18c4 0 5-12 9-12s5 12 9 12"/><path d="M3 21h18"/>',
@@ -451,10 +451,35 @@ routes['login-phone'] = view => {
   });
 };
 routes.forgot = view => {
-  view.innerHTML = `<form class="card auth"><h2>Reset your password</h2><p class="mu">Enter your email and we will send you a reset link.</p>
+  view.innerHTML = `<form class="card auth" id="fe"><h2>Reset your password</h2><p class="mu">Enter your email and we will send you a reset link.</p>
     <label>Email<input name="email" type="email" autocomplete="username" required></label>
-    <button>Send reset link</button><div class="err"></div><p class="mu"><a href="#/login">Back to sign in</a></p></form>`;
-  act($('button', view), async () => { await api('/auth/forgot', { body: form(view) }); return 'If that email has an account, a reset link is on its way.'; });
+    <button>Send reset link</button><div class="err"></div>
+    <p class="mu">No email? <a href="#" id="byPhone">Get a code by text message</a> (for accounts with a verified phone). · <a href="#/login">Back to sign in</a></p></form>
+    <form class="card auth" id="fp" hidden><h2>Reset by text message</h2>
+    <label>Phone number<input name="phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="845 555 1234" required></label>
+    <button>Text me a code</button><div class="err"></div>
+    <div id="fpCode" hidden><label>Code<input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></label>
+      <label>New password (10+ chars, upper, lower, digit)<input name="password" type="password" autocomplete="new-password"></label>
+      <button type="button" id="fpSave">Save password</button><div class="err"></div></div>
+    <p class="mu"><a href="#/login">Back to sign in</a></p></form>`;
+  const fe = $('#fe', view), fp = $('#fp', view);
+  $('#byPhone', view).onclick = e => { e.preventDefault(); fe.hidden = true; fp.hidden = false; };
+  act($('button', fe), async () => {
+    const r = await api('/auth/forgot', { body: { email: fe.email.value } });
+    if (r.unavailable) throw new Error('Reset emails are not available right now. Use a text message code, or write to support from the Contact page.');
+    return 'If that email has an account, a reset link is on its way. Check your spam folder too.';
+  });
+  act($('button', fp), async () => {
+    const r = await api('/auth/forgot', { body: { phone: fp.phone.value } });
+    if (r.unavailable) throw new Error('Text messages are not available right now. Use the email link instead.');
+    $('#fpCode', fp).hidden = false; fp.code.focus();
+    return r.devCode ? `Test mode (texts are off): your code is ${r.devCode}` : 'If that number belongs to an account, a code is on its way.';
+  });
+  act($('#fpSave', fp), async () => {
+    await api('/auth/reset', { body: { phone: fp.phone.value, code: fp.code.value, password: fp.password.value } });
+    setTimeout(() => (location.hash = '#/login'), 1500);
+    return 'Password changed. You can sign in now.';
+  });
 };
 routes.reset = (view, q) => {
   view.innerHTML = `<form class="card auth"><h2>Choose a new password</h2>
@@ -738,6 +763,7 @@ routes.text = async view => {
   CFG ||= await api('/config');
   const { help } = await api('/command/help');
   view.innerHTML = `<h1>Text & Hotline</h1>
+  ${isPaid(ME) ? '' : '<div class="banner">Texting and calling QuantPocket is part of Pro. You can try the commands below here in the app; <a href="#/funding">start a free trial</a> to use them from your phone and get alerts by text.</div>'}
   <div class="grid">
     <div class="card"><h2>Manage your account by SMS or phone</h2>
       ${CFG.hotline ? `<div class="hotline"><span class="mu">QuantPocket's number</span><b dir="ltr">${esc(CFG.hotline)}</b><div class="row" style="gap:8px"><a href="sms:${esc(CFG.hotline)}"><button type="button">Text us</button></a><a href="tel:${esc(CFG.hotline)}"><button type="button" class="ghost">Call</button></a></div></div>
@@ -954,7 +980,7 @@ routes.settings = async view => {
 
 // ---------- admin ----------
 // Owner pages: one route per section so each has its own place in the menu.
-const ADMIN_TABS = [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-money', 'Money & fees'], ['admin-business', 'Business mode'], ['admin-alpaca', 'Alpaca plans'], ['admin-admins', 'Admins'], ['admin-keys', 'Keys'], ['admin-support', 'Support inbox'], ['admin-system', 'System health'], ['admin-setup', 'Setup']];
+const ADMIN_TABS = [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-money', 'Money & fees'], ['admin-business', 'Business mode'], ['admin-alpaca', 'Alpaca plans'], ['admin-yiddish', 'Yiddish Labs'], ['admin-admins', 'Admins'], ['admin-keys', 'Keys'], ['admin-support', 'Support inbox'], ['admin-system', 'System health'], ['admin-setup', 'Setup']];
 // Pages with their own module (owner.js, protect.js) draw themselves under the same tabs.
 const adminTabs = current => `<div class="chips admintabs">${ADMIN_TABS.map(([k, t]) => `<a href="#/${k}"><button type="button" class="${k === current ? 'on' : ''}">${t}</button></a>`).join('')}</div>`;
 async function adminPage(view, tab) {
@@ -1000,9 +1026,13 @@ async function adminPage(view, tab) {
     'admin-setup': () => `
   <div class="card"><h2>Setup</h2><p class="mu" style="margin-top:0">What is switched on, from the environment variables in Render (values are never shown). Admins: <b data-no-tr>${esc(setup.admins.join(', ') || 'none')}</b></p>
     <div class="setup">${setup.items.map(x => `<div class="setup-row"><span class="dot ${x.on ? 'on' : ''}"></span><span class="setup-name">${esc(x.name)}</span><code data-no-tr>${esc(x.env)}</code><span class="pill ${x.on ? '' : 'warn'}">${x.on ? 'On' : 'Not set'}</span></div>`).join('')}</div>
+    ${setup.emailError?.msg ? `<p class="banner err">Last email failed: ${esc(setup.emailError.msg)}</p>` : ''}
+    <p><button class="ghost" id="testEmail">Send me a test email</button><span class="err"></span></p>
+    <p class="mu small-print">Password-reset emails need RESEND_API_KEY and EMAIL_FROM on a domain you verified at resend.com (e.g. <span data-no-tr>QuantPocket &lt;no-reply@yourdomain.com&gt;</span>). Without EMAIL_FROM, Resend's test sender only delivers to your own Resend address.</p>
     <p class="mu" style="font-size:12.5px">To change one: open <a href="#/admin-keys">Keys</a> (saves here and on Render), or Render → your service → Environment → add or edit the variable → Save.</p></div>`,
   };
   view.innerHTML = `<h1>Admin</h1>${tabs}${sections[tab]()}`;
+  if ($('#testEmail', view)) act($('#testEmail', view), async () => `Sent to ${(await api('/admin/test-email', { body: {} })).to}. Check the inbox (and spam).`, $('#testEmail', view).nextElementSibling);
   if ($('#assess', view)) act($('#assess', view), async () => { const r = await api('/admin/assess-fees', { body: {} }); setTimeout(render, 1200); return `Assessed ${r.length} accounts, ${money(r.reduce((a, x) => a + (x.fee || 0), 0))} in new fees`; });
   $$('[data-l]', view).forEach(b => (b.onclick = async () => { await api('/admin/ledger/' + b.dataset.l, { body: { status: b.dataset.s } }); render(); }));
   $$('[data-m]', view).forEach(b => (b.onclick = async () => { await api('/admin/messages/' + b.dataset.m, { body: {} }); render(); }));
@@ -1012,7 +1042,7 @@ async function adminPage(view, tab) {
   $$('[data-role]', view).forEach(b => (b.onclick = () => userCall(b.dataset.role, { role: b.dataset.to })));
   if ($('#userFind', view)) $('#userFind', view).oninput = e => { const q = e.target.value.trim().toLowerCase(); $$('#userTable tr[data-email]', view).forEach(tr => (tr.hidden = !!q && !tr.dataset.email.toLowerCase().includes(q))); };
 }
-for (const [k] of ADMIN_TABS.filter(([k]) => !['admin-system', 'admin-business', 'admin-alpaca', 'admin-admins', 'admin-keys'].includes(k))) routes[k] = view => (ME?.role === 'admin' ? adminPage(view, k) : routes.dashboard(view, new URLSearchParams()));
+for (const [k] of ADMIN_TABS.filter(([k]) => !['admin-system', 'admin-business', 'admin-alpaca', 'admin-yiddish', 'admin-admins', 'admin-keys'].includes(k))) routes[k] = view => (ME?.role === 'admin' ? adminPage(view, k) : routes.dashboard(view, new URLSearchParams()));
 
 registerStrategies(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, cls, date, api, form, act, render, drawChart, onLeave, me: () => ME });
 registerBrokers(routes, { $, $$, esc, money, api, form, act, render, accounts });

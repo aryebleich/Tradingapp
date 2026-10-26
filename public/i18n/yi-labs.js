@@ -1308,5 +1308,11 @@ export default {
  "About 65 tools for trading, market data and account management in Claude, Cursor or VS Code. Runs on your computer with your Alpaca keys (never paste keys into a chat).": "באקומט צוטריט צו בערך 65 פארשידענע טולס פאר טרעידינג, מארקעט דעיטא, און אקאונט מענעדזשמענט, דירעקט אינעווייניג אין Claude, Cursor, אדער VS Code. דאס ארבעט לאקאל ביי דיר אויפן קאמפיוטער ניצנדיג דיינע אייגענע Alpaca API קיס (לייג קיינמאל נישט אריין דיינע קיס אין א טשעט).",
  "Trade from the terminal, also usable by AI agents.": "טרעידט דירעקט פונעם טערמינאל, מיט פולקאמע סופארט פאר עי-איי (AI) עידזשענטס.",
  "Copy it now; it is shown only once:": "קאפירט עס שוין יעצט; מ'ווייזט עס נאר איין איינציג מאל:",
- "You reached every bonus. Thank you!": "דו האסט דערגרייכט יעדע באנוס. א גרויסן דאנק!"
+ "You reached every bonus. Thank you!": "דו האסט דערגרייכט יעדע באנוס. א גרויסן דאנק!",
+ "start a free trial": "הייב אן אן אומזיסטע טרייעל",
+ "Get a code by text message": "באקומט א קאוד דורך א טעקסט מעסעדזש",
+ "(for accounts with a verified phone).": "(פאר אקאונטס מיט א באשטעטיגטן טעלעפאן נומער)",
+ "Reset by text message": "ריסעט דורך א טעקסט מעסעדזש",
+ "Reset emails are not available right now. Use a text message code, or write to support from the Contact page.": "די אימעילס צו ריסעטן די פאסווארד זענען צייטווייליג נישט אוועילעבל. ביטע ניצט אנשטאט דעם א וועריפיקאציע קאוד דורך טעקסט מעסעדזש, אדער פארבינדט זיך מיט אונזער סאפארט טיעם דורך די קאנטאקט פעידזש.",
+ "If that email has an account, a reset link is on its way. Check your spam folder too.": "אויב עס איז דא אן אקאונט פארבונדן מיט דעם אימעיל אדרעס, איז א ריסעט לינק ארויסגעשיקט געווארן. מאכט זיכער איבערצוגוקן אייער ספעם פאלדער אויך."
 };

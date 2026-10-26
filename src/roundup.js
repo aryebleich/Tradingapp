@@ -147,6 +147,7 @@ export const roundupRouter = (() => {
     res.json({ orders: await investPending(req.user.id) });
   });
   r.post('/plaid/link-token', async (req, res) => {
+    if (!isPaid(req.user)) throw Object.assign(bad('Linking your bank card is part of Pro (CSV import stays free)'), { status: 402, upgrade: true, feature: 'Linking your bank card' });
     if (!plaidEnabled()) throw bad('Card linking is not set up on this server (PLAID_CLIENT_ID / PLAID_SECRET)', 503);
     const d = await plaid('/link/token/create', { user: { client_user_id: String(req.user.id) }, client_name: 'QuantPocket', products: ['transactions'], country_codes: ['US'], language: 'en' });
     res.json({ linkToken: d.link_token });

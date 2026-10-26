@@ -55,7 +55,7 @@ import { tokensRouter, mcpHandler } from './src/mcp.js';
 import { wealthRouter } from './src/wealth.js';
 import { news as alpacaNews } from './src/alpaca/data.js';
 import { settings as moneySettings, referralReward, nextMilestone, trialDaysFor } from './src/revenue.js';
-import { loadSite, freshSite, applySavedEnv, adviserMode, normalizePhone } from './src/site.js';
+import { loadSite, freshSite, applySavedEnv, adviserMode, normalizePhone, siteGet, siteSet } from './src/site.js';
 import { router as signalsRouter, receive as receiveSignal } from './src/signals.js';
 import { router as strategiesRouter } from './src/rotation/routes.js';
 import { router as pairsRouter } from './src/pairs.js';
@@ -197,6 +197,7 @@ app.post('/twilio/sms', async (req, res) => {
   const user = await userByPhone(req.body.From);
   let reply;
   if (!user) reply = 'This number is not linked to a QuantPocket account. Add it under Settings > Phone.';
+  else if (!isPaid(user)) reply = 'Trading and questions by text are part of QuantPocket Pro. Start a free trial in the app under Plans & billing.';
   else if (!auth.rateLimit('sms:' + user.id, 30, 3600e3)) reply = 'Too many messages, try again later.';
   else {
     try { reply = await smsReply(user, String(req.body.Body || '')); } catch (e) { reply = 'Error: ' + e.message; }
@@ -223,6 +224,7 @@ app.post('/twilio/voice', async (req, res) => {
   if (!twilioOk(req)) return res.status(403).send('forbidden');
   const user = await userByPhone(req.body.From);
   if (!user || !user.pin_hash) return twiml(res, '<Say>This phone number is not linked to an account with a PIN. Goodbye.</Say><Hangup/>');
+  if (!isPaid(user)) return twiml(res, '<Say>The QuantPocket phone line is part of the Pro plan. You can start a free trial in the app. Goodbye.</Say><Hangup/>');
   calls.set(req.body.CallSid, { userId: user.id, tries: 0, ok: false, at: now() });
   twiml(res, '<Gather input="dtmf" finishOnKey="#" action="/twilio/voice/pin" timeout="8"><Say>Welcome to QuantPocket. Enter your PIN, then press pound.</Say></Gather><Say>No input. Goodbye.</Say>');
 });
@@ -550,7 +552,7 @@ api.post('/integrations/alpaca', U, wrap(async (req, res) => {
   await audit(req.user.id, 'alpaca_connected', { live: c.live }, req.ip);
   res.json({ ok: true, equity: +a.equity });
 }));
-api.post('/integrations/quantconnect', U, wrap(async (req, res) => {
+api.post('/integrations/quantconnect', U, needPlan('Connecting QuantConnect'), wrap(async (req, res) => {
   const c = { userId: String(req.body.userId).trim(), token: String(req.body.token).trim() };
   await QC.qc(c, '/authenticate');
   await run('INSERT INTO credentials (user_id, provider, blob) VALUES (?,?,?) ON CONFLICT DO UPDATE SET blob = excluded.blob', req.user.id, 'quantconnect', encrypt(c));
@@ -590,7 +592,7 @@ api.post('/phone/verify', U, wrap(async (req, res) => {
   await audit(req.user.id, 'phone_verified', null, req.ip);
   res.json({ ok: true });
 }));
-api.post('/pin', U, wrap(async (req, res) => {
+api.post('/pin', U, needPlan('Trading by text and phone'), wrap(async (req, res) => {
   if (!verifySecret(String(req.body.password || ''), req.user.pass_hash)) throw new Error('Wrong password');
   if (!/^\d{4,8}$/.test(String(req.body.pin))) throw new Error('PIN must be 4-8 digits');
   await run('UPDATE users SET pin_hash = ? WHERE id = ?', hashSecret(String(req.body.pin)), req.user.id);
@@ -705,7 +707,7 @@ api.post('/admin/assess-fees', U, auth.requireAdmin, wrap(async (req, res) => re
 // Which services are set up in the environment (names only, never the values).
 api.get('/admin/setup', U, auth.requireAdmin, async (req, res) => {
   const has = (...k) => k.every(x => !!process.env[x]);
-  res.json({ admins: auth.allAdminEmails(), items: [
+  res.json({ admins: auth.allAdminEmails(), emailError: siteGet('emailError'), items: [
     ['Admin email', 'ADMIN_EMAIL', auth.allAdminEmails().length > 0],
     ['Database (Turso)', 'DATABASE_URL', has('DATABASE_URL')],
     ['Encryption key', 'ENCRYPTION_KEY', has('ENCRYPTION_KEY')],
@@ -718,13 +720,22 @@ api.get('/admin/setup', U, auth.requireAdmin, async (req, res) => {
     ['Plans and card payments (Stripe)', 'STRIPE_SECRET_KEY', N.stripeEnabled()],
     ['Stripe webhook', 'STRIPE_WEBHOOK_SECRET', has('STRIPE_WEBHOOK_SECRET')],
     ['Text messages and hotline (Twilio)', 'TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM', N.twilioEnabled()],
-    ['Emails (Resend)', 'RESEND_API_KEY', N.emailEnabled()],
+    ['Emails (Resend): password resets, welcome emails', 'RESEND_API_KEY', N.emailEnabled()],
+    ['Email sender on your own verified domain', 'EMAIL_FROM', has('EMAIL_FROM')],
     ['AI assistant, free (Groq or Gemini)', 'GROQ_API_KEY / GEMINI_API_KEY', !!(process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY || process.env.OPENROUTER_API_KEY || process.env.AI_BASE_URL)],
     ['AI assistant upgrade (Claude)', 'ANTHROPIC_API_KEY', !!process.env.ANTHROPIC_API_KEY],
     ...Object.values(PAY.PROVIDERS).map(p => [`Deposits: ${p.name} (${p.via})`, ({ stripe_ach: 'STRIPE_SECRET_KEY', stripe_card: 'STRIPE_SECRET_KEY', helcim: 'HELCIM_API_TOKEN' })[p.id] || '', p.enabled()]),
     ['Yiddish Labs credit line', 'YIDDISH_CREDIT', has('YIDDISH_CREDIT')],
   ].map(([name, env, on]) => ({ name, env, on: !!on })) });
 });
+// Sends a test email to the signed-in owner and reports exactly what the email service answered.
+api.post('/admin/test-email', U, auth.requireAdmin, wrap(async (req, res) => {
+  if (!N.emailEnabled()) throw new Error('RESEND_API_KEY is not set (Admin → Keys).');
+  try { await N.sendEmail(req.user.email, 'QuantPocket test email', 'Emails from QuantPocket work. Password resets will arrive.'); }
+  catch (e) { await siteSet('emailError', { msg: e.message.slice(0, 300), at: now() }); throw new Error(`The email service refused it: ${e.message}`); }
+  await siteSet('emailError', null);
+  res.json({ ok: true, to: req.user.email });
+}));
 // Change a user's plan (e.g. a free Pro account for a friend) or admin role.
 api.post('/admin/users/:id', U, auth.requireAdmin, wrap(async (req, res) => {
   const u = await one('SELECT id, email, role FROM users WHERE id = ?', +req.params.id);

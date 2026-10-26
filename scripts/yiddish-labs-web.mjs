@@ -51,6 +51,7 @@ const entries = [...Object.entries(app).filter(([en]) => !before || !(en in befo
   .filter(([where, en, yi]) => !/\n/.test(en) && /[A-Za-z]{2}/.test(en) && yi !== en && !(where === 'app' ? labsApp[en] : labsHome[en]) && !(where === 'app' && (adminOnly.has(en) || adminSrc.includes(en))));
 const todo = [...new Set(entries.map(([, en]) => en))].slice(0, limit);
 console.log(`${todo.length} strings to translate on the Yiddish Labs website.`);
+if (dry && process.env.YL_STATUS) fs.writeFileSync(process.env.YL_STATUS, JSON.stringify({ at: Date.now(), since, pending: todo.length, dry: true }, null, 1) + '\n');
 if (dry || !todo.length) process.exit(0);
 
 // ---------- the website ----------
@@ -112,8 +113,8 @@ async function translateOne(text) {
 }
 
 const out = new Map();
-let i = 0, kept = 0, sent = 0;
-const why = { html: 0, short: 0, timeout: 0, check: 0 };
+let i = 0, kept = 0, sent = 0, stopped = null;
+const why = { html: 0, short: 0, check: 0 };
 const save = () => {
   const res = { app: {}, home: {} };
   for (const [where, en] of entries) if (out.has(en)) res[where][en] = out.get(en);
@@ -121,30 +122,57 @@ const save = () => {
   fs.writeFileSync(appFile, `// Translations made with Yiddish Labs (https://app.yiddishlabs.com), written by\n// scripts/yiddish-labs.mjs. They take precedence over the hand-written strings in yi.js.\nexport default ${JSON.stringify({ ...labsApp, ...res.app }, null, 1)};\n`);
   fs.writeFileSync(homeFile, JSON.stringify({ ...labsHome, ...res.home }, null, 1) + '\n');
 };
+// The site sometimes leaves a timing marker such as <|0:00.0|> in front of the text.
+const tidy = t => unmarkdown(t).replace(/<\|[^|]*\|>/g, '').replace(/\n+/g, ' ').trim();
+// Tickers and codes (all capitals or digits) must come back exactly; brand names may be written in
+// Yiddish letters. A translation must contain Yiddish.
+function accept(en, t) {
+  const p = protect(en), r = t == null ? null : tidy(t);
+  const ok = r && /[א-ת]/.test(r) && p.saved.filter(x => /^[A-Z0-9&./#-]+$/.test(x) && /[A-Z]{2}|\d/.test(x)).every(x => r.includes(x));
+  if (process.env.YL_DEBUG) console.log(JSON.stringify({ en, got: t, ok: !!ok }));
+  if (ok) out.set(en, r); else { kept++; why.check++; }
+  return !!ok;
+}
+async function send(text) {
+  // A long session slows the page down: start fresh every 20 requests.
+  if (++sent % 20 === 0) { await page.goto(URL_, { waitUntil: 'networkidle', timeout: 90000 }); await closePopups(); }
+  try { return await translateOne(text); }
+  catch (e) { if (e.credits) throw e; console.log(`  error: ${e.message}`); await page.goto(URL_, { waitUntil: 'networkidle' }); return null; }
+}
+// Which strings go: text with HTML, entities or {variables} keeps its hand-written Yiddish (the
+// site drops placeholders); one- and two-word labels ("Paper", "Fill rate") lose their trading
+// meaning without context. Whole sentences travel together, numbered [[1]] [[2]] …, up to 8 at a
+// time (about 160 words), so the site sees more context and fewer requests are needed.
+const work = [];
+for (const en of todo) {
+  if (protect(en).saved.some(x => /[<&{]|https?:/.test(x))) { kept++; why.html++; continue; }
+  const words = en.trim().split(/\s+/).length;
+  if (words <= 2) { kept++; why.short++; continue; }
+  work.push({ en, words, sentence: words >= 4 && /[.!?:)]$/.test(en.trim()) && !/^[.,;]/.test(en) });
+}
+const batches = [];
+for (const w of work) {
+  const last = batches.at(-1);
+  if (w.sentence && last?.sentence && last.items.length < 8 && last.words + w.words <= 160) { last.items.push(w); last.words += w.words; }
+  else batches.push({ sentence: w.sentence, items: [w], words: w.words });
+}
 try {
-  for (const en of todo) {
-    i++;
-    // The site drops placeholders, so plain text goes as is and every protected name/ticker must come
-    // back unchanged; text with HTML, entities or {variables} keeps its hand-written Yiddish.
-    const p = protect(en);
-    if (p.saved.some(x => /[<&{]|https?:/.test(x))) { kept++; why.html++; continue; }
-    // One- and two-word labels ("Paper", "Fill rate") lose their trading meaning without context:
-    // they keep the reviewed hand-written Yiddish.
-    if (en.trim().split(/\s+/).length <= 2) { kept++; why.short++; continue; }
-    // A long session slows the page down: start fresh every 20 translations.
-    if (++sent % 20 === 0) await page.goto(URL_, { waitUntil: 'networkidle', timeout: 90000 });
-    let t = null;
-    try { t = await translateOne(en); } catch (e) { if (e.credits) throw e; console.log(`  error on ${i}: ${e.message}`); await page.goto(URL_, { waitUntil: 'networkidle' }); }
-    // The site sometimes leaves a timing marker such as <|0:00.0|> in front of the text.
-    const clean = t == null ? null : unmarkdown(t).replace(/<\|[^|]*\|>/g, '').replace(/\n+/g, ' ').trim();
-    // Tickers and codes (all capitals or digits) must stay exactly; brand names may be written in Yiddish letters.
-    const r = clean != null && p.saved.filter(x => /^[A-Z0-9&./#-]+$/.test(x) && /[A-Z]{2}|\d/.test(x)).every(x => clean.includes(x)) ? clean : null;
-    if (process.env.YL_DEBUG) console.log(JSON.stringify({ en, sent: p.text, got: t, r }));
-    if (r && /[א-ת]/.test(r)) out.set(en, r); else kept++;
-    if (i % 25 === 0) { save(); console.log(`${i} / ${todo.length}: ${out.size} translated, ${kept} kept as before (${JSON.stringify(why)})`); }
+  for (const b of batches) {
+    if (b.items.length === 1) { accept(b.items[0].en, await send(b.items[0].en)); i++; }
+    else {
+      const raw = await send(b.items.map((w, k) => `[[${k + 1}]] ${w.en}`).join('\n'));
+      const lines = new Map();
+      for (const line of String(raw || '').split('\n')) { const m = /^\s*\[\[\s*(\d+)\s*\]\]\s*(.*)$/.exec(unmarkdown(line)); if (m) lines.set(+m[1], m[2]); }
+      // A line the site dropped or merged is sent again on its own.
+      for (const [k, w] of b.items.entries()) { if (!(lines.has(k + 1) && accept(w.en, lines.get(k + 1)))) { if (lines.has(k + 1)) { kept--; why.check--; } accept(w.en, await send(w.en)); } i++; }
+    }
+    if (Math.floor(i / 25) !== Math.floor((i - b.items.length) / 25)) { save(); console.log(`${i} / ${work.length}: ${out.size} translated, ${kept} kept as before (${JSON.stringify(why)})`); }
   }
-} catch (e) { console.log(`Stopped: ${e.message}`); }
+} catch (e) { stopped = e.message; console.log(`Stopped: ${e.message}`); }
 save();
-console.log(`Done: ${out.size} translated, ${kept} kept as before, ${todo.length - i} not reached. Credits left: ${await credits()}`);
+const left = await credits().catch(() => null);
+console.log(`Done: ${out.size} translated, ${kept} kept as before, ${work.length - i} not reached. Credits left: ${left}`);
+// A small status file for Admin → Yiddish Labs.
+if (process.env.YL_STATUS) fs.writeFileSync(process.env.YL_STATUS, JSON.stringify({ at: Date.now(), since, translated: out.size, kept, notReached: work.length - i, requests: sent, credits: left, stopped }, null, 1) + '\n');
 await ctx.storageState({ path: STATE });
 await browser.close();

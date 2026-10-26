@@ -3,8 +3,10 @@ import express from 'express';
 import crypto from 'node:crypto';
 import { one, all, run, now, audit, tx } from './db.js';
 import { hashSecret, verifySecret, randomToken, sha256, newTotpSecret, verifyTotp } from './crypto.js';
-import { sendEmail, emailEnabled, sendSms } from './notify.js';
-import { OWNER_EMAILS, addedAdminEmails, isAdminPhone, normalizePhone, freshSite } from './site.js';
+import { sendEmail, emailEnabled, sendSms, twilioEnabled as smsEnabled } from './notify.js';
+import { OWNER_EMAILS, addedAdminEmails, isAdminPhone, normalizePhone, freshSite, siteSet } from './site.js';
+// The last email the service refused (wrong sender, unverified domain), shown in Admin → Setup.
+const noteEmailError = msg => siteSet('emailError', { msg: String(msg).slice(0, 300), at: now() }).catch(() => {});
 
 // Signed-in sessions last 30 days and renew themselves while used, so a refresh never asks again.
 const SESSION_MS = 30 * 86400e3;
@@ -128,15 +130,14 @@ router.post('/register', async (req, res) => {
   const id = await createUser({ email, password, ref: req.body.ref });
   await audit(id, 'register', null, req.ip);
   // No confirmation step: the account works at once. A welcome email points to the first steps.
-  sendEmail(email, 'Welcome to QuantPocket', `Your account is ready, with a $100,000 paper account to practice.\n\nGet started: ${appUrl()}/app#/dashboard\n\nIf you did not sign up, reply to this email and we will remove the account.`).catch(e => console.warn('welcome email', e.message));
+  sendEmail(email, 'Welcome to QuantPocket', `Your account is ready, with a $100,000 paper account to practice.\n\nGet started: ${appUrl(req)}/app#/dashboard\n\nIf you did not sign up, reply to this email and we will remove the account.`).catch(e => console.warn('welcome email', e.message));
   await createSession(res, req, id, false);
   res.json({ user: publicUser(await one('SELECT * FROM users WHERE id = ?', id)) });
 });
 
 router.post('/login', async (req, res) => {
-  const email = String(req.body.email || '').trim().toLowerCase();
   if (!rateLimit('login:' + req.ip, 20, 15 * 60e3)) return res.status(429).json({ error: 'Too many attempts, try later' });
-  const u = await one('SELECT * FROM users WHERE email = ?', email);
+  const u = await userByEmail(req.body.email);
   if (u && u.locked_until > now()) return res.status(423).json({ error: 'Account temporarily locked after failed attempts' });
   // Hash against a dummy when the email is unknown so response time does not reveal registered emails.
   if (!verifySecret(String(req.body.password || ''), u?.pass_hash || DUMMY_HASH) || !u) {
@@ -265,7 +266,17 @@ router.get('/audit', requireUser, async (req, res) => {
   res.json(await all('SELECT event, detail, ip, at FROM audit_log WHERE user_id = ? ORDER BY id DESC LIMIT 50', req.user.id));
 });
 
-const appUrl = () => (process.env.PUBLIC_URL || 'http://localhost:3000').replace(/\/$/, '');
+// Links in emails point at PUBLIC_URL; without it, at the address the request came in on (never localhost on a real host).
+const appUrl = req => (process.env.PUBLIC_URL || (req ? `${req.protocol}://${req.get('host')}` : 'http://localhost:3000')).replace(/\/$/, '');
+// Finds an account by email the way people type it: any case, and for Gmail with or without dots or +tags.
+export async function userByEmail(email) {
+  const e = String(email || '').trim().toLowerCase();
+  const exact = await one('SELECT * FROM users WHERE email = ?', e);
+  if (exact || !/@(gmail|googlemail)\.com$/.test(e)) return exact;
+  const want = canonicalEmail(e);
+  for (const u of await all("SELECT * FROM users WHERE email LIKE '%@gmail.com' OR email LIKE '%@googlemail.com'")) if (canonicalEmail(u.email) === want) return u;
+  return null;
+}
 
 async function sendVerification(userId, email) {
   const token = randomToken();
@@ -288,22 +299,49 @@ router.post('/verify', async (req, res) => {
 });
 
 // Always answers the same way so the form cannot be used to discover registered emails.
+// Always answers the same way, so the form cannot reveal who has an account. By email: a link
+// valid for an hour. By phone (an account's verified number): a 6-digit code valid for 15 minutes.
 router.post('/forgot', async (req, res) => {
-  const email = String(req.body.email || '').trim().toLowerCase();
   if (!rateLimit('forgot:' + req.ip, 5, 3600e3)) return res.status(429).json({ error: 'Too many requests, try later' });
-  const u = await one('SELECT id FROM users WHERE email = ?', email);
+  if (req.body.phone) {
+    const phone = normalizePhone(req.body.phone);
+    if (!/^\+\d{10,15}$/.test(phone)) return res.status(400).json({ error: 'Enter your phone number, e.g. 845 555 1234' });
+    if (!smsEnabled()) return res.json({ ok: true, unavailable: true });
+    const u = await one('SELECT id FROM users WHERE phone = ? AND phone_verified = 1', phone);
+    let devCode;
+    if (u && rateLimit('forgotsms:' + phone, 3, 3600e3)) {
+      const code = String(crypto.randomInt(100000, 1000000));
+      await run('UPDATE users SET reset_hash = ?, reset_expires = ? WHERE id = ?', sha256('sms:' + code), now() + 15 * 60e3, u.id);
+      const sent = await sendSms(phone, `QuantPocket password reset code: ${code} (valid 15 minutes)`).catch(e => { console.warn('reset sms', e.message); return {}; });
+      if (sent.simulated && process.env.NODE_ENV !== 'production') devCode = code;
+      await audit(u.id, 'password_reset_requested', { by: 'sms' }, req.ip);
+    }
+    return res.json({ ok: true, devCode });
+  }
+  // Without an email service nothing could arrive: say so (the same for every address).
+  if (!emailEnabled()) { console.warn('Password reset requested but RESEND_API_KEY is not set'); return res.json({ ok: true, unavailable: true }); }
+  const u = await userByEmail(req.body.email);
   if (u) {
     const token = randomToken();
     await run('UPDATE users SET reset_hash = ?, reset_expires = ? WHERE id = ?', sha256(token), now() + 3600e3, u.id);
-    await sendEmail(email, 'Reset your QuantPocket password',
-      `Someone asked to reset your password.\n\nChoose a new one (link valid for 1 hour):\n${appUrl()}/app#/reset?token=${token}\n\nIf this was not you, ignore this message.`).catch(e => console.warn('reset email', e.message));
+    await sendEmail(u.email, 'Reset your QuantPocket password',
+      `Someone asked to reset your password.\n\nChoose a new one (link valid for 1 hour):\n${appUrl(req)}/app#/reset?token=${token}\n\nIf this was not you, ignore this message.`)
+      .catch(e => { console.warn('reset email', e.message); noteEmailError(e.message); });
     await audit(u.id, 'password_reset_requested', null, req.ip);
   }
   res.json({ ok: true });
 });
 router.post('/reset', async (req, res) => {
-  const u = await one('SELECT * FROM users WHERE reset_hash = ? AND reset_expires > ?', sha256(String(req.body.token || '')), now());
-  if (!u) return res.status(400).json({ error: 'This link is invalid or expired' });
+  // A link token, or a texted code together with the phone number it was sent to.
+  let u;
+  if (req.body.phone) {
+    if (!rateLimit('resetcode:' + req.ip, 10, 15 * 60e3)) return res.status(429).json({ error: 'Too many attempts, try later' });
+    u = await one('SELECT * FROM users WHERE phone = ? AND phone_verified = 1 AND reset_hash = ? AND reset_expires > ?', normalizePhone(req.body.phone), sha256('sms:' + String(req.body.code || '').trim()), now());
+    if (!u) return res.status(400).json({ error: 'Wrong or expired code' });
+  } else {
+    u = await one('SELECT * FROM users WHERE reset_hash = ? AND reset_expires > ?', sha256(String(req.body.token || '')), now());
+    if (!u) return res.status(400).json({ error: 'This link is invalid or expired' });
+  }
   if (!validPassword(req.body.password)) return res.status(400).json({ error: 'Password needs 10+ characters with upper, lower and a digit' });
   await run('UPDATE users SET pass_hash = ?, password_set = 1, reset_hash = NULL, reset_expires = NULL, failed_logins = 0, locked_until = 0, email_verified = 1 WHERE id = ?', hashSecret(req.body.password), u.id);
   await run('DELETE FROM sessions WHERE user_id = ?', u.id);

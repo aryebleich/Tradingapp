@@ -380,6 +380,7 @@ YI = {
 }
 
 YI.update({
+ 'Trading and alerts by text and phone, QuantConnect and bank-card linking': 'טרעידן און אלערטס דורך טעקסט און טעלעפאן, QuantConnect און פארבינדן א באנק קארטל',
  'Wealth builder': 'עשירות בויער',
  'Index funds, compound growth, automatic monthly investing, dividend reinvestment and rebalancing, each with a tool.': 'אינדעקס פאנדס, קאמפאונד וואוקס, אויטאמאטיש חודש\'לעכע אינוועסטירן, ווידער-אינוועסטירן דיווידענדן און ווידער באלאנסירן, יעדעס מיט א געצייג.',
  'Bonds &amp; Treasuries': 'באנדס און טרעזשוריס',

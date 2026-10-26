@@ -254,19 +254,45 @@ upgrades to Claude, which adds web search. `AI_PROVIDER` picks one when several 
   and risk notices for options/crypto/margin, budget quotas, graduated limits, margin watch
   (`MARGIN_FEED_URL` optional), and an AI support agent that escalates hacked accounts.
 
-## Yiddish Labs after each update
+## Yiddish Labs translation (its own workflow, managed in Admin)
 
-After each push, new text is translated on the Yiddish Labs website (Quick Action → Translate →
-To Yiddish), one line at a time, with the owner's signed-in session:
+The app's new English text is translated on the Yiddish Labs website by the **Yiddish Labs
+translation** GitHub workflow. It runs on its own, apart from every other job.
 
-    YL_STATE=/safe/place/yl-state.json npm run yiddish:web     # add --dry to only count
-    python3 scripts/pages.py                                    # rebuild the Yiddish homepage
+- **What is sent:** only text added since the last run (`scripts/yl-last-ref.txt`).
+- **What is never sent:** the homepage, Admin and the README.
+- **Kept as hand-written Yiddish:** one- and two-word labels, and text with HTML or links.
+- **How:** whole sentences go together, up to 8 at a time (about 160 words), numbered `[[1]] [[2]] …`.
+  Anything the site drops is sent again on its own.
 
-The first time, also pass `YL_EMAIL` and `YL_PASSWORD` in the environment to sign in; the session
-is then kept in `YL_STATE` (outside the repository) and the password is not stored anywhere. Admin
-pages, the README, one- and two-word labels, and text with HTML stay as they are. The run stops when
-credits run out and keeps what it finished. (With an API key in the `YIDDISH_LABS_API_KEY` repository
-secret, the "Yiddish Labs translation" workflow does the same automatically.)
+One-time setup:
+1. GitHub → the repository → **Settings → Secrets and variables → Actions** → add the secrets
+   `YL_EMAIL` and `YL_PASSWORD` (your Yiddish Labs sign-in). The browser session is cached between
+   runs, so the password is only used when it expires.
+2. In **Admin → Keys**, add `GITHUB_TOKEN`: a fine-grained token for this repository with
+   **Actions** and **Variables** set to read and write.
+
+Then **Admin → Yiddish Labs** shows the last run (translated, kept, credits left) and the recent runs:
+- **Translate new text now** starts a run (optionally from a given commit, or limited to N lines).
+- **Run automatically after every push to main** switches the automatic run on or off.
+- Without the token, start it on GitHub: Actions → Yiddish Labs translation → Run workflow.
+- From a computer: `YL_STATE=/safe/place/state.json npm run yiddish:web -- --since <commit>`
+  (add `--dry` to only count).
+
+## Automatic checks and fixes after every push
+
+Every push to main runs **CI** (unit tests) and **Run app (end-to-end)** (the app in a real browser).
+When one fails, the **Autofix failed runs** workflow takes over:
+
+1. It re-runs the failed jobs once, so a one-off hiccup does not count.
+2. If they fail again, Claude Code reads the failure log, finds the cause and fixes the code. It never
+   skips or weakens a test.
+3. It runs the tests and the e2e run, pushes an `Autofix: …` commit, and starts both runs again, until
+   everything is green.
+4. After 3 autofix commits in a row, or without a Claude key, it opens a GitHub issue with the log.
+
+Setup: add the repository secret `CLAUDE_CODE_OAUTH_TOKEN` (run `claude setup-token` with your Claude
+subscription) or `ANTHROPIC_API_KEY`.
 
 ## Where secret keys go
 
@@ -284,6 +310,21 @@ on the server:
 
 The owner's **Admin → Setup** page shows which ones are switched on (never their values), and
 **Admin → Keys** edits them, imports or exports a `.env` file and syncs with Render (see above).
+
+## Password resets and emails
+
+**Forgot password** sends a reset link by email. People with a verified phone can get a 6-digit code
+by text instead.
+
+For emails to arrive:
+1. resend.com → add and verify your own domain (DNS records).
+2. Set `RESEND_API_KEY` and `EMAIL_FROM`, e.g. `QuantPocket <no-reply@yourdomain.com>`.
+   Without `EMAIL_FROM`, Resend's test sender only delivers to your own Resend address.
+3. Set `PUBLIC_URL` to your site's address so the links point to it. Without it, links use the
+   address the request came in on.
+4. **Admin → Setup → Send me a test email** checks it. A refused email shows its reason there.
+
+Without an email service, the reset page says so and offers the text-message code.
 
 ## Connecting Stripe (payments and subscriptions)
 

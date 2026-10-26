@@ -51,6 +51,7 @@ export const ENV_GROUPS = [
   ['Other brokerages', ['SCHWAB_APP_KEY', 'SCHWAB_APP_SECRET', 'TRADESTATION_CLIENT_ID', 'TRADESTATION_CLIENT_SECRET', 'PLAID_CLIENT_ID', 'PLAID_SECRET', 'PLAID_ENV']],
   ['Extras', ['YIDDISH_CREDIT', 'HALAL_FEED_URL', 'HALAL_FEED_TOKEN', 'MARGIN_FEED_URL', 'METRICS_TOKEN', 'SEC_CONTACT']],
   ['Render', ['RENDER_API_KEY', 'RENDER_SERVICE_ID']],
+  ['GitHub (Yiddish Labs runs)', ['GITHUB_TOKEN', 'GITHUB_REPO']],
 ];
 export const validEnvName = k => /^[A-Z][A-Z0-9_]{1,63}$/.test(k);
 // Never changed from the app: the host sets these, or changing them would lock out the data.

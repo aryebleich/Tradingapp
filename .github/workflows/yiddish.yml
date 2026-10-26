@@ -1,38 +1,61 @@
 name: Yiddish Labs translation
-# After every push to main, new or changed app and homepage text is translated with Yiddish Labs
-# (while the account has credits) and committed back. Admin pages and the README stay in English.
-# Needs the repository secret YIDDISH_LABS_API_KEY (Yiddish Labs → API Keys); without it, nothing runs.
-# Runs only when started by hand (Actions → Yiddish Labs translation → Run workflow): the owner
-# translates through the website after each update instead (npm run yiddish:web).
+# Translates the app's new English text with the Yiddish Labs website, on its own, apart from every
+# other job. Only text added since the last run is sent (scripts/yl-last-ref.txt); the homepage,
+# Admin and the README are never sent. Whole sentences go several at a time.
+# Started from Admin → Yiddish Labs ("Translate new text now"), by hand here (Run workflow), or after
+# each push to main when Admin switches on "after every push" (the YL_AUTO repository variable).
+# Needs the repository secrets YL_EMAIL and YL_PASSWORD (your Yiddish Labs sign-in). The browser
+# session is cached between runs, so the password is only used when the session has expired.
 on:
   workflow_dispatch:
+    inputs:
+      since: { description: 'Translate text added since this commit (empty = since the last run)', required: false, default: '' }
+      limit: { description: 'At most this many lines (empty = all)', required: false, default: '' }
+  push:
+    branches: [main]
+    paths: ['public/**/*.js', '!public/i18n/yi-labs.js']
 permissions:
   contents: write
 concurrency: { group: yiddish-labs, cancel-in-progress: false }
 jobs:
   translate:
+    # After a push only when switched on, and never for its own commits.
+    if: github.event_name == 'workflow_dispatch' || (vars.YL_AUTO == 'true' && !startsWith(github.event.head_commit.message, 'Yiddish Labs:'))
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
-      - run: npm ci
-      - name: Translate new strings
+      - run: npm ci && npx playwright install --with-deps chromium
+      - uses: actions/cache@v4
+        with: { path: .yl-session, key: yl-session-${{ github.run_id }}, restore-keys: yl-session- }
+      - name: Translate the new text
         env:
-          YIDDISH_LABS_API_KEY: ${{ secrets.YIDDISH_LABS_API_KEY }}
-        run: node scripts/yiddish-labs.mjs translate --new
-      - name: Rebuild the Yiddish homepage
-        run: python3 scripts/pages.py
+          YL_EMAIL: ${{ secrets.YL_EMAIL }}
+          YL_PASSWORD: ${{ secrets.YL_PASSWORD }}
+          YL_STATE: .yl-session/state.json
+          YL_STATUS: scripts/yl-status.json
+          SINCE: ${{ github.event.inputs.since }}
+          LIMIT: ${{ github.event.inputs.limit }}
+        run: |
+          mkdir -p .yl-session
+          since="${SINCE:-$(cat scripts/yl-last-ref.txt 2>/dev/null || echo HEAD~1)}"
+          git cat-file -e "$since^{commit}" 2>/dev/null || since=HEAD~1
+          echo "Translating text added since $since"
+          node scripts/yiddish-labs-web.mjs --since "$since" ${LIMIT:+--limit "$LIMIT"}
+          git rev-parse HEAD > scripts/yl-last-ref.txt
       - name: Check the app still loads its dictionary
         run: node -e "import('./public/i18n/yi.js').then(m => console.log(Object.keys(m.strings).length, 'strings'))"
       - name: Commit
         run: |
-          if git diff --quiet; then echo "No new translations."; exit 0; fi
           git config user.name "yiddish-labs-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/i18n/yi-labs.js scripts/yi_labs.json public/yi.html public/index.html
-          git commit -m "Yiddish Labs: translate new strings"
-          git push
+          git add public/i18n/yi-labs.js scripts/yl-status.json scripts/yl-last-ref.txt
+          if git diff --cached --quiet; then echo "Nothing new."; exit 0; fi
+          git commit -m "Yiddish Labs: translate new text"
+          for i in 1 2 3; do git pull --rebase -q origin main && git push && exit 0; sleep 5; done
+          exit 1

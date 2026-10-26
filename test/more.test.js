@@ -111,6 +111,8 @@ test('spend-based investing: CSV, Plaid link and weekly buys', async () => {
   const c = srv.client(); await c.signup('spend@example.com');
   await c('/roundups', { mode: 'both', multiplier: 1, brandPct: 10, defaultSymbol: 'SPY', account: 'paper', weeklyCap: 100, minBatch: 1 }, 'PUT');
   assert.equal((await c('/roundups/import', { csv: '2026-10-20,AMAZON MKTPLACE,23.40\n2026-10-21,Local diner,12.75\nnot a line' })).body.purchases, 2);
+  assert.equal((await c('/roundups/plaid/link-token', {})).status, 402); // linking a card is part of Pro
+  await run("UPDATE users SET plan = 'pro', plan_status = 'active' WHERE email = 'spend@example.com'");
   assert.equal((await c('/roundups/plaid/link-token', {})).body.linkToken, 'link-sandbox-123');
   const ex = (await c('/roundups/plaid/exchange', { publicToken: 'public-sandbox' })).body;
   assert.equal(ex.linked, true); assert.ok(ex.added >= 3);
