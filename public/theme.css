@@ -464,3 +464,75 @@ body.popout main { padding: 10px; }
 .viewas { width: auto; margin: 0; padding: 6px 10px; font-size: 13px; max-width: 190px; }
 .viewas.on { border-color: var(--warn); color: var(--warn); font-weight: 650; }
 @media (max-width: 640px) { .viewas { max-width: 120px; font-size: 16px; } }
+
+/* ---------- sign-in buttons: GitHub and text-message code ---------- */
+.oauth { display: grid; gap: 10px; }
+.gbtn.ghbtn { background: #24292f; border-color: #24292f; color: #fff; }
+.gbtn.ghbtn:hover { background: #32383f; }
+.gbtn.phonebtn { margin-top: 10px; background: transparent; color: var(--tx); border-color: var(--bd); }
+.gbtn.phonebtn:hover { background: var(--bg2); }
+
+/* ---------- owner pages ---------- */
+.modes { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); margin-bottom: 8px; }
+.mode { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 10px; align-items: center; border: 1px solid var(--bd); border-radius: var(--r); padding: 14px; cursor: pointer; color: var(--tx); font-size: 15px; margin: 0; transition: border-color .15s, box-shadow .15s, background .15s; }
+.mode input { width: auto; margin: 0; }
+.mode .mu { grid-column: 1 / -1; font-size: 13.5px; }
+.mode .pill:empty { display: none; }
+.mode:has(input:checked) { border-color: var(--ac); box-shadow: 0 0 0 3px var(--acs); background: color-mix(in srgb, var(--ac) 5%, var(--card)); }
+.levers { display: grid; gap: 4px 18px; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); margin-top: 14px; }
+.lever { display: flex; gap: 12px; align-items: flex-start; padding: 8px 0; }
+.lever .dot { margin-top: 8px; }
+.lever p { margin: 2px 0 0; font-size: 13.5px; }
+.tips { padding-left: 20px; color: var(--mu); } .tips li { margin: 4px 0; }
+.adminlist { list-style: none; padding: 0; margin: 0 0 12px; }
+.adminlist li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--bd); overflow-wrap: anywhere; }
+.adminlist li:last-child { border-bottom: 0; }
+.adminlist + form.row { flex-wrap: nowrap; align-items: center; }
+.adminlist + form.row input { margin: 0; }
+.adminlist + form.row button { margin: 0; flex: 0 0 auto; }
+table.keys td { vertical-align: middle; }
+table.keys td.val { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+.keyset { display: flex; gap: 6px; align-items: center; min-width: 260px; }
+.keyset input { margin: 0; padding: 6px 9px; }
+.keyset button { margin: 0; flex: 0 0 auto; }
+@media (max-width: 640px) {
+  table.keys tr { display: grid; grid-template-columns: 1fr auto; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--bd); }
+  table.keys td { border: 0; padding: 0; white-space: normal; }
+  table.keys td.val { grid-column: 1 / -1; max-width: none; }
+  table.keys td:last-child { grid-column: 1 / -1; }
+  .keyset { min-width: 0; }
+  .admintabs { flex-wrap: nowrap; overflow-x: auto; }
+}
+
+/* ---------- motion: pages fade in, cards lift, live dots pulse ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  #view > .enter > * { animation: pagein .35s cubic-bezier(.2, .7, .2, 1) both; }
+  #view > .enter > *:nth-child(2) { animation-delay: .04s; } #view > .enter > *:nth-child(3) { animation-delay: .08s; } #view > .enter > *:nth-child(4) { animation-delay: .12s; } #view > .enter > *:nth-child(n+5) { animation-delay: .16s; }
+  @keyframes pagein { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .card { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+  .grid > .card:hover, .plans > .card:hover, .stats > .stat:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+  .stat { transition: transform .2s ease, box-shadow .2s ease; }
+  button { transition: filter .15s, transform .08s, box-shadow .15s, background .15s; }
+  button:active:not(:disabled) { transform: scale(.97); }
+  .dot.on { animation: pulse 2.4s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--gr) 25%, transparent); } 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--gr) 8%, transparent); } }
+  #nav a { transition: background .15s, color .15s, padding .15s; }
+  #nav a:hover { padding-inline-start: 14px; }
+  .card.plan.best { animation: planglow 4s ease-in-out infinite; }
+  @keyframes planglow { 0%, 100% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--ac) 45%, transparent), var(--shadow); } 50% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--ac2) 70%, transparent), 0 14px 40px color-mix(in srgb, var(--ac2) 25%, transparent); } }
+  .kpi { background: linear-gradient(110deg, var(--ac), #06b6d4, var(--ac2), var(--ac)); background-size: 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: kpi 8s linear infinite; }
+  @keyframes kpi { to { background-position: 300% 0; } }
+}
+/* Phones: the owner's "View as" picker shrinks so the header never runs off the screen. */
+@media (max-width: 640px) {
+  header { gap: 8px; }
+  .viewas { max-width: 92px; min-width: 0; padding: 6px 6px; font-size: 16px; margin: 0; text-overflow: ellipsis; }
+  header .brand img + b { display: none; }
+  #connBadge { max-width: 30vw; }
+}
+@media (min-width: 380px) and (max-width: 640px) { header .brand img + b { display: inline; } .viewas { max-width: 84px; } }
+@media (max-width: 640px) {
+  .stat b { font-size: clamp(14px, 4.4vw, 18px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .admintabs button { white-space: nowrap; }
+}
+@media (max-width: 420px) { .viewas { max-width: 64px; } #connBadge { max-width: 22vw; } header { gap: 6px; } }

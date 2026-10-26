@@ -139,6 +139,10 @@ for (const box of document.querySelectorAll('[data-tabs]')) {
 if (!standalone) {
   fetch(API + '/api/public/features').then(r => r.json()).then(f => {
     if (f.google) document.querySelectorAll('[data-google]').forEach(el => { el.hidden = false; if (el.tagName === 'A') el.href = `${API}/auth/google${ref ? '?ref=' + ref : ''}`; });
+    if (f.github) document.querySelectorAll('[data-github]').forEach(el => { el.hidden = false; el.href = `${API}/auth/github${ref ? '?ref=' + ref : ''}`; });
+    if (f.google || f.github) document.querySelectorAll('[data-oauth]').forEach(el => { el.hidden = false; });
+    // Registered-adviser mode shows the performance fee on the plans.
+    if (f.adviser) document.querySelectorAll('[data-adviser]').forEach(el => { el.hidden = false; });
     if (f.phone) document.querySelectorAll('[data-phone]').forEach(el => {
       el.hidden = false;
       const a = el.querySelector('[data-phone-link]');
@@ -172,3 +176,15 @@ if (start) start.addEventListener('submit', e => {
   const email = String(new FormData(start).get('email') || '').trim();
   location.href = standalone ? 'contact.html' : `${API || '.'}/app${ref ? '?ref=' + ref : ''}#/register?email=${encodeURIComponent(email)}`;
 });
+
+// Sections and cards slide in as they scroll into view (skipped when the device asks for less motion).
+if ('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  const items = document.querySelectorAll('h2.sec, p.sub, .feature, .plan, .libcard, .ipanel, .split > div, .faq details, .stats > *');
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px' });
+  items.forEach(el => {
+    if (el.closest('.hero')) return;
+    const sibs = [...el.parentElement.children].filter(x => x.matches('.feature, .plan, .libcard, details'));
+    el.style.setProperty('--d', `${Math.max(0, Math.min(sibs.indexOf(el), 6)) * 0.07}s`);
+    el.classList.add('reveal'); io.observe(el);
+  });
+}

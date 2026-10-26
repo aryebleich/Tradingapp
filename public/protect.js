@@ -173,7 +173,7 @@ async function allAccounts(view) {
 async function system(view) {
   if (H.me()?.role !== 'admin') { location.hash = '#/dashboard'; return; }
   const d = await H.api('/admin/system');
-  view.innerHTML = `<h1>System health</h1>
+  view.innerHTML = `<h1>Admin</h1>${H.adminTabs ? H.adminTabs('admin-system') : ''}<h2>System health</h2>
   <div class="stats">${stat('Load', Math.round(d.load * 100) + '%', d.load >= d.shedAt ? 'neg' : '')}${stat('Shedding', d.shedding ? 'yes' : 'no')}${stat('Requests in flight', `${d.inflight} / ${d.maxInflight}`)}${stat('Event loop delay (p99)', d.eventLoopP99Ms + ' ms')}${stat('Memory', `${d.heapMb} / ${d.heapLimitMb} MB`)}${stat('Requests refused under load', d.shed)}</div>
   <div class="card"><h2>Capacity plan</h2><p>Recommended replicas: <b>${d.capacity.replicas}</b> (base ${d.capacity.base}, max ${d.capacity.max}) · ${d.capacity.reasons.map(H.esc).join(', ')}</p><p class="mu small-print">On Kubernetes the predictive scaler sets this as the autoscaler floor every 5 minutes (deploy/k8s). Add macro event days in ECONOMIC_EVENT_DATES.</p></div>
   <div class="card"><h2>Brokerage circuit breakers</h2><div class="tablewrap"><table><tr><th>Brokerage</th><th>State</th><th>Recent failures</th><th>Times tripped</th></tr>${d.breakers.map(b => `<tr><td>${H.esc(b.name)}</td><td>${b.state === 'open' ? '<span class="pill warn">open</span>' : H.esc(b.state)}</td><td>${b.recentFailures}</td><td>${b.trips}</td></tr>`).join('') || '<tr><td colspan="4" class="mu">No broker calls yet</td></tr>'}</table></div></div>

@@ -358,7 +358,7 @@ YI = {
  "Yes. Both can call a webhook URL. Use your QuantPocket webhook URL with the fields <code>ticker</code>, <code>action</code> and <code>quantity</code>.": "יא. ביידע קענען רופן א וועבהוק URL. ניצט אייער QuantPocket וועבהוק URL מיט די פעלדער <code>ticker</code>, <code>action</code> און <code>quantity</code>.",
  "Yes. Cancel from <b>Manage billing</b> in the app; you keep access until the end of the period you paid for. You can also export or delete all your data from Settings.": "יא. אנולירט ביי <b>פירט די באצאלונג</b> אין דער עפּ; איר בלייבט מיט צוטריט ביזן סוף פון דער צייט וואס איר האט באצאלט. איר קענט אויך ארויסנעמען אדער אויסמעקן אלע אייערע דאטא אין סעטינגס.",
  "Yes. Choose <b>Sign up with Google</b> and your account is ready in seconds. You can add a password later in Settings.": "יא. קלייבט <b>עפנט א קאנטע מיט Google</b> און אייער קאנטע איז גרייט אין סעקונדעס. איר קענט שפעטער צולייגן א פאסווארט אין סעטינגס.",
- "Yes. Choose ייִדיש at the top of this page or in the app. The whole app switches to Yiddish, written right-to-left.": "יא. קלייבט ייִדיש אויבן אויף דעם זייטל אדער אין דער עפּ. די גאנצע עפּ ווערט אויף אידיש, געשריבן פון רעכטס צו לינקס.",
+ "Yes. In the app, open Settings → Language and choose אידיש (full translation). The whole app switches to Yiddish, written right-to-left.": "יא. אין דער עפּ, עפנט סעטינגס ← שפראך און קלייבט אידיש (פולע איבערזעצונג). די גאנצע עפּ ווערט אויף אידיש, געשריבן פון רעכטס צו לינקס.",
  "Yes. Create a webhook under <b>Alerts to trades</b>, paste its URL into the alert&rsquo;s <b>Webhook URL</b> field, and use our message template. Strategy alerts can pass the direction and size with <code>{{strategy.order.action}}</code> and <code>{{strategy.order.contracts}}</code>.": "יא. שאפט א וועבהוק אונטער <b>אלערטס צו טרעידס</b>, לייגט אריין זיין URL אינעם אלערט'ס <b>Webhook URL</b> פעלד, און ניצט אונזער מעסעדזש מוסטער. סטראטעגיע אלערטס קענען שיקן די ריכטונג און גרייס מיט <code>{{strategy.order.action}}</code> און <code>{{strategy.order.contracts}}</code>.",
  "Yes. Place a bracket order (entry, stop-loss and take-profit) as good-till-canceled. The exit orders wait at your broker even while you are offline.": "יא. שטעלט א bracket ארדער (אריינגאנג, סטאפ-לאס און געווינס-נעמען) ביז אנולירט. די ארויסגאנג ארדערס ווארטן ביי אייער בראוקער אפילו ווען איר זענט נישט אנליין.",
  "Yes. Webhooks can send each alert to several accounts at once (paper, Alpaca, Schwab, tastytrade, Tradier, TradeStation), with the same risk rules.": "יא. וועבהוקס קענען שיקן יעדן אלערט צו עטליכע קאנטעס אויף איינמאל (פּעיפּער, Alpaca, Schwab, tastytrade, Tradier, TradeStation), מיט די זעלבע ריזיקע כללים.",
@@ -378,6 +378,15 @@ YI = {
  "put $200 into the S&amp;P every month": "לייג אריין $200 אין S&amp;P יעדן חודש",
  "very high risk": "זייער הויכע ריזיקע",
 }
+
+YI.update({
+ 'Sign up with GitHub': 'עפנט א קאנטע מיט GitHub',
+ 'Every paid plan starts with a 14-day free trial. One simple monthly price, live trading on every plan, cancel anytime.': 'יעדער באצאלטער פלאן הייבט זיך אן מיט א 14-טאגיגן בחינם טרייעל. איין איינפאכער חודש\'לעכער פרייז, לייוו טרעידינג אויף יעדן פלאן, קענסלט צו יעדער צייט.',
+ 'Can I trade with real money on the free plan?': 'קען איך טרעידן מיט עכטע געלט אויפן בחינם פלאן?',
+ 'Yes. Connect your own brokerage account and place your own orders on any plan, including Starter. Automatic strategies, bots and webhooks on real accounts are part of the paid plans.': 'יא. פארבינדט אייער אייגענע בראוקער קאנטע און שטעלט אריין אייערע אייגענע ארדערס אויף יעדן פלאן, אויך סטארטער. אויטאמאטישע סטראטעגיעס, באטס און וועבהוקס אויף עכטע קאנטעס זענען א טייל פון די באצאלטע פלענער.',
+ 'Live trading on your own brokerage (your own orders)': 'לייוו טרעידינג אויף אייער אייגענע בראוקערעדזש (אייערע אייגענע ארדערס)',
+ 'Automated trading on Alpaca, Schwab, tastytrade, Tradier &amp; TradeStation': 'אויטאמאטישע טרעידינג אויף Alpaca, Schwab, tastytrade, Tradier און TradeStation',
+})
 
 # Translations made with Yiddish Labs (npm run yiddish:import) take precedence.
 import json as _json, os as _os

@@ -35,7 +35,8 @@ export async function handleCommand(user, text, { pinVerified = false } = {}) {
   const word = t.find(x => ACCOUNT_WORDS[x]);
   const args = t.filter(x => !ACCOUNT_WORDS[x]);
   const account = word ? ACCOUNT_WORDS[word] : 'paper';
-  if (account !== 'paper' && !isPaid(user) && ['BUY', 'SELL', 'DCA'].includes(cmd)) return 'Trading a brokerage account by text is part of Pro. Try it free for 14 days in the app under Plans & billing.';
+  // Placing your own orders by text works on every plan; recurring buys (DCA) on a real account are automation (Pro).
+  if (account !== 'paper' && !isPaid(user) && cmd === 'DCA') return 'Recurring buys on a brokerage account are part of Pro. Try it free for 14 days in the app under Plans & billing.';
   const pinOk = () => pinVerified || (user.pin_hash && verifySecret(args[args.length - 1], user.pin_hash));
   const needPin = 'That needs your PIN at the end. Set one in Settings > Phone.';
 

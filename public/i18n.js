@@ -4,7 +4,7 @@
 // Right-to-left languages flip the layout with dir="rtl".
 export const LANGS = {
   en: { name: 'English', dir: 'ltr' },
-  yi: { name: 'ייִדיש', dir: 'rtl', load: () => import('./i18n/yi.js') },
+  yi: { name: 'אידיש', dir: 'rtl', load: () => import('./i18n/yi.js') },
   // Simple translations (menus and main buttons): ./i18n/simple.js
   es: { name: 'Español', dir: 'ltr', simple: true, load: () => import('./i18n/simple.js').then(m => m.forLang('es')) },
   fr: { name: 'Français', dir: 'ltr', simple: true, load: () => import('./i18n/simple.js').then(m => m.forLang('fr')) },
@@ -70,10 +70,15 @@ export async function startI18n() {
 export const t = s => (dict && tr(s)) || s;
 
 // A one-line message drawn on a chart canvas, which the page translation cannot reach.
+// A short note drawn on an empty chart, wrapped to the chart's width (phones are narrow).
 export function canvasNote(g, text) {
   g.font = '14px ' + getComputedStyle(document.body).fontFamily;
-  if (rtl) { g.direction = 'rtl'; g.textAlign = 'right'; g.fillText(t(text), g.canvas.width / (devicePixelRatio || 1) - 12, 28); }
-  else g.fillText(t(text), 12, 28);
+  const w = g.canvas.width / (devicePixelRatio || 1), max = w - 24, lines = [];
+  let cur = '';
+  for (const word of t(text).split(' ')) { const next = cur ? cur + ' ' + word : word; if (cur && g.measureText(next).width > max) { lines.push(cur); cur = word; } else cur = next; }
+  if (cur) lines.push(cur);
+  if (rtl) { g.direction = 'rtl'; g.textAlign = 'right'; }
+  lines.forEach((l, i) => g.fillText(l, rtl ? w - 12 : 12, 28 + i * 20));
 }
 
 export function setLang(l) {

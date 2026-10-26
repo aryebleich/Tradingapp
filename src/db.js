@@ -501,6 +501,11 @@ CREATE TABLE IF NOT EXISTS passkeys (
   created_at INTEGER NOT NULL,
   last_used_at INTEGER
 );
+CREATE TABLE IF NOT EXISTS site_settings (
+  k TEXT PRIMARY KEY,
+  v TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS margin_snapshots (
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   account TEXT NOT NULL,
@@ -529,6 +534,8 @@ const MIGRATIONS = [
   'ALTER TABLE users ADD COLUMN password_set INTEGER NOT NULL DEFAULT 1',
   'CREATE UNIQUE INDEX IF NOT EXISTS users_google_sub ON users (google_sub) WHERE google_sub IS NOT NULL',
   'CREATE INDEX IF NOT EXISTS signals_user ON signals (user_id, id)',
+  'ALTER TABLE users ADD COLUMN github_id TEXT',
+  'CREATE UNIQUE INDEX IF NOT EXISTS users_github_id ON users (github_id) WHERE github_id IS NOT NULL',
   'CREATE INDEX IF NOT EXISTS broker_events_user ON broker_events (user_id, id)',
   'CREATE UNIQUE INDEX IF NOT EXISTS ledger_ref ON ledger (kind, ref) WHERE ref IS NOT NULL',
   'ALTER TABLE fills ADD COLUMN expected_price REAL',

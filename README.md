@@ -61,6 +61,74 @@ Tests run the whole integration against a local mock of Alpaca (`test/mock-alpac
 
 New Google users get a confirmed email and no password (they can add one in Settings). A Google sign-in with the same email as an existing account links to it; if that account's email was never confirmed, its old password is discarded first.
 
+## Sign in with GitHub
+
+1. On GitHub: **Settings → Developer settings → OAuth Apps → New OAuth App**.
+2. Homepage URL: your `PUBLIC_URL`. Authorization callback URL: `https://YOUR_APP/auth/github/callback`.
+3. Generate a client secret, then set `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` (Render → Environment,
+   or Admin → Keys). The GitHub buttons appear by themselves.
+
+Only a **verified** email on GitHub is used. An existing account with the same email is linked, with the
+same safety rule as Google.
+
+## Admins and signing in by text message
+
+- Built-in admins: `aryebleich@gmail.com`, `kk5185920061@gmail.com` and the phone `+1 845-772-8111`.
+  `ADMIN_EMAIL` (comma-separated) still works too.
+- **Admin → Admins** adds more admin emails and phones, with no restart.
+- **Sign in → "Sign in with a text message code"** sends a 6-digit code to a verified phone. The owner's
+  admin phones sign in to the owner account even before the number is linked. Real texts need Twilio.
+
+## Admin → Keys: every key in one place, with .env import/export and Render
+
+- Lists every setting by group. Secrets show masked (`sk_•••1234`).
+- **Save** a value: it works at once and is kept encrypted in the database.
+- **Import a .env file:** paste it or choose the file.
+- **Export as .env:** downloads all real values. Your password is needed first.
+- **Connect Render** once, so values are also written to Render and survive restarts:
+  1. Render → **Account settings → API keys → Create API key**.
+  2. Save it here as `RENDER_API_KEY`. On Render, `RENDER_SERVICE_ID` is already set; elsewhere, add it
+     (the `srv-…` id from the service URL).
+  3. Then **Load from Render**, **Send all to Render** (with an optional restart) and **Restart (deploy)**
+     work from the page.
+
+`ENCRYPTION_KEY`, `DATABASE_URL` and `DATABASE_AUTH_TOKEN` are only read at start-up: change them on
+Render and restart. Changing `ENCRYPTION_KEY` makes stored broker keys unreadable.
+
+## Business mode: software only (no license) or registered adviser
+
+**Admin → Business mode** has two settings:
+
+- **Software only** (default). Everything a license would require is turned off:
+  - no performance fee;
+  - no managed accounts;
+  - no personal advice.
+
+  Users run their own strategies on their own brokerage accounts. You earn from:
+  - the plans (monthly or yearly);
+  - the deposit service fee (`DEPOSIT_FEE_PERCENT` / `DEPOSIT_FEE_FIXED`);
+  - referrals.
+
+  **Live trading is open on every plan.** Free users place their own orders on their real accounts;
+  automation on real money (bots, webhooks, automatic strategies, mirroring) is what they pay for.
+- **Registered investment adviser.** Turn this on after registration is approved. You confirm the
+  registration and enter the CRD number. It adds:
+  - the performance fee on each plan;
+  - the monthly fee assessment;
+  - the fee pages and lines on the homepage.
+
+**Is there a way to charge a performance fee without a license?** Not safely. A fee based on a client's
+profits pays for investment results, which makes the business an investment adviser. Even registered
+advisers may charge it only to **qualified clients** (Rule 205-3). Per-trade commissions raise
+broker-dealer questions too.
+
+Ways to earn more without a license:
+
+- Raise plan prices, and push the yearly plan.
+- Charge for add-ons: more strategies, webhooks or AI messages.
+- Keep the deposit service fee.
+- Ask Alpaca about partner revenue sharing on the Broker API accounts you open (by contract with them).
+
 ## Alerts to trades (webhooks)
 
 Under **Alerts to trades** each user creates private webhook URLs for TradingView, TrendSpider, Zapier, scripts or AI agents. Each webhook has its accounts (paper and/or Alpaca), sizing (dollars, shares or from the alert) and risk rules (max position per ticker, max trades per day, allowed tickers; long-only). Messages can be JSON such as `{"ticker":"{{ticker}}","action":"{{strategy.order.action}}","quantity":"{{strategy.order.contracts}}"}` or text like `buy AAPL 10`. Free: 1 webhook, paper only. Pro: 10, including Alpaca. Elite: 50.
@@ -214,7 +282,8 @@ on the server:
 - **GitHub Actions secrets** (only for the scheduled jobs and Yiddish Labs): the repository →
   **Settings → Secrets and variables → Actions → New repository secret**.
 
-The owner's **Admin → Setup** page shows which ones are switched on (never their values).
+The owner's **Admin → Setup** page shows which ones are switched on (never their values), and
+**Admin → Keys** edits them, imports or exports a `.env` file and syncs with Render (see above).
 
 ## Connecting Stripe (payments and subscriptions)
 
@@ -281,6 +350,8 @@ Whether QuantPocket needs registration depends on what it does. Software that le
 own strategies, with impersonal and general content, can fall under the **publisher's exclusion**.
 Giving **personalized advice**, **managing accounts**, or running followed strategies for pay usually
 makes the business an **investment adviser**.
+
+Until then, keep **Admin → Business mode** on **Software only**; switch it once approved.
 
 **Performance fees:** under Advisers Act Rule 205-3, a registered adviser may charge a share of profits
 only to **qualified clients** — roughly $1.1M+ under management with the adviser or $2.2M+ net worth;

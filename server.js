@@ -49,6 +49,9 @@ import { oauthCallback, oauthEnabled, tradingFor } from './src/alpaca/connection
 import { brokerEnabled } from './src/alpaca/broker.js';
 import { dataEnabled } from './src/alpaca/data.js';
 import { router as googleRouter, googleEnabled } from './src/google.js';
+import { router as githubRouter, githubEnabled } from './src/github.js';
+import { adminSiteRouter } from './src/admin-site.js';
+import { loadSite, freshSite, applySavedEnv, adviserMode, normalizePhone } from './src/site.js';
 import { router as signalsRouter, receive as receiveSignal } from './src/signals.js';
 import { router as strategiesRouter } from './src/rotation/routes.js';
 import { router as pairsRouter } from './src/pairs.js';
@@ -57,6 +60,9 @@ import { router as extRouter, oauthCallback as extOauthCallback, accountsFor } f
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_URL = (process.env.PUBLIC_URL || 'http://localhost:3000').replace(/\/$/, '');
+// Site settings (admins, business mode, keys saved in Admin) load before the first request.
+await loadSite().catch(e => console.warn('site settings', e.message));
+await applySavedEnv();
 export const app = express();
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
@@ -278,6 +284,7 @@ app.post('/hook/:token', express.text({ type: () => true, limit: '20kb' }), asyn
   try { await receiveSignal(req, res); } catch (e) { console.error('webhook', e); res.status(500).json({ error: 'Could not process the signal' }); }
 });
 app.use('/auth/google', googleRouter);
+app.use('/auth/github', githubRouter);
 app.get(['/oauth/schwab/callback', '/oauth/tradestation/callback'], auth.sessionMiddleware, extOauthCallback);
 
 // OAuth2 redirect target after the user approves access in Alpaca.
@@ -339,6 +346,7 @@ api.use('/public', (req, res, next) => {
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
+api.use((req, res, next) => { freshSite().then(() => next(), next); });
 api.use(auth.csrfGuard);
 // Only API calls look up the session; static files and pages skip the database round trip.
 api.use(auth.sessionMiddleware);
@@ -368,6 +376,7 @@ api.use('/ai', chatRouter({ extraTools: user => ({
     run: async ({ symbol, horizon }) => { const r = await forecastSymbol(user.id, String(symbol).toUpperCase(), { horizon: horizon || 5 }); return { symbol: r.symbol, ...r.forecast, outOfSample: r.metrics, topFeatures: r.importance.slice(0, 4) }; } },
 }) }));
 const cancelAlpaca = async id => { const t = await tradingFor(id); return t ? t.cancelAllOrders() : null; };
+api.use('/admin/site', adminSiteRouter);
 api.use('/security', securityRouter({ cancelAlpaca }));
 api.use('/auth/passkey', passkeyLoginRouter());
 api.use('/learn', lessonsRouter);
@@ -394,11 +403,11 @@ const needPlan = feature => (req, res, next) => (isPaid(req.user) ? next() : nex
 
 api.get('/config', async (req, res) => res.json({
   plans: PLANS, trialDays: TRIAL_DAYS, presets: PRESETS, twilio: N.twilioEnabled(), stripe: N.stripeEnabled(), ai: llmEnabled(), aiModel: llmInfo(), email: N.emailEnabled(),
-  marketData: dataEnabled(), hotline: process.env.TWILIO_FROM || null, broker: brokerEnabled(), oauth: oauthEnabled(), google: googleEnabled(), assistant: aiEnabled(),
+  marketData: dataEnabled(), hotline: process.env.TWILIO_FROM || null, broker: brokerEnabled(), oauth: oauthEnabled(), google: googleEnabled(), github: githubEnabled(), assistant: aiEnabled(), adviser: adviserMode(),
 }));
 
 // Lets the landing page (also the GitHub Pages copy) show only sign-up options that work.
-api.get('/public/features', (req, res) => res.json({ google: googleEnabled(), phone: N.twilioEnabled() ? process.env.TWILIO_FROM : null, ai: aiEnabled(), yiddishCredit: process.env.YIDDISH_CREDIT || null }));
+api.get('/public/features', (req, res) => res.json({ google: googleEnabled(), github: githubEnabled(), adviser: adviserMode(), phone: N.twilioEnabled() ? process.env.TWILIO_FROM : null, ai: aiEnabled(), yiddishCredit: process.env.YIDDISH_CREDIT || null }));
 // Public, rate-limited demo backtest used by the landing page (also from the GitHub Pages copy).
 api.post('/public/backtest', async (req, res) => {
   if (!auth.rateLimit('pub:' + req.ip, 20, 600e3)) return res.status(429).json({ error: 'Demo limit reached - create a free account for unlimited backtests' });
@@ -475,7 +484,6 @@ api.get('/account', U, wrap(async (req, res) => {
 api.get('/orders', U, wrap(async (req, res) => res.json(await listOrders(req.user.id, acct(req)))));
 api.post('/orders', U, wrap(async (req, res) => {
   const a = acct(req);
-  if (a !== 'paper' && !isPaid(req.user)) throw upgrade('Trading your brokerage account from the simulator page');
   const r = await placeOrder(req.user.id, a, req.body, 'web');
   await audit(req.user.id, 'order', { ...r }, req.ip);
   res.json(r);
@@ -551,8 +559,8 @@ api.get('/qc/live', U, wrap(async (req, res) => res.json(await QC.listLive(await
 
 // --- phone + PIN for SMS / hotline ---
 api.post('/phone', U, wrap(async (req, res) => {
-  const phone = String(req.body.phone || '').replace(/[^\d+]/g, '');
-  if (!/^\+\d{10,15}$/.test(phone)) throw new Error('Use international format, e.g. +17185551234');
+  const phone = normalizePhone(req.body.phone);
+  if (!/^\+\d{10,15}$/.test(phone)) throw new Error('Enter your phone number, e.g. 718 555 1234 or +17185551234');
   if (await one('SELECT id FROM users WHERE phone = ? AND id != ?', phone, req.user.id)) throw new Error('Number already linked to another account');
   if (!auth.rateLimit('phone:' + req.user.id, 5, 3600e3)) throw new Error('Too many codes requested');
   const code = String(crypto.randomInt(100000, 1000000));
@@ -643,7 +651,7 @@ api.get('/ledger', U, async (req, res) => res.json(await all('SELECT * FROM ledg
 api.get('/fees', U, wrap(async (req, res) => {
   const rows = await all('SELECT * FROM fee_state WHERE user_id = ?', req.user.id);
   const plan = PLANS[req.user.plan];
-  res.json({ plan: req.user.plan, rate: plan.perfFee, monthly: plan.monthly, accounts: rows });
+  res.json({ plan: req.user.plan, rate: adviserMode() ? plan.perfFee : 0, adviser: adviserMode(), monthly: plan.monthly, accounts: rows });
 }));
 
 // --- tax ---
@@ -672,7 +680,7 @@ api.get('/admin/summary', U, auth.requireAdmin, async (req, res) => res.json({
   funnel: await funnel(),
   pendingTransfers: await all("SELECT l.*, u.email FROM ledger l JOIN users u ON u.id = l.user_id WHERE l.kind = 'deposit' AND l.status = 'received' ORDER BY l.id DESC"),
   feesDue: await all("SELECT l.*, u.email FROM ledger l JOIN users u ON u.id = l.user_id WHERE l.kind = 'performance_fee' AND l.status = 'due' ORDER BY l.id DESC"),
-  users: await all('SELECT id, email, plan, plan_status, role, totp_enabled, phone_verified, google_sub IS NOT NULL AS google, created_at FROM users ORDER BY id DESC LIMIT 500'),
+  users: await all('SELECT id, email, plan, plan_status, role, totp_enabled, phone_verified, google_sub IS NOT NULL AS google, github_id IS NOT NULL AS github, phone, created_at FROM users ORDER BY id DESC LIMIT 500'),
   payments: Object.values(PAY.PROVIDERS).map(p => ({ id: p.id, name: p.name, via: p.via, cost: p.cost, enabled: p.enabled(), on500: +p.costOf(500).toFixed(2) })),
   depositFee: { ...PAY.feeTerms(), collected: (await one("SELECT COALESCE(SUM(amount), 0) n FROM ledger WHERE kind = 'deposit_fee' AND status = 'collected'")).n },
 }));
@@ -682,14 +690,16 @@ api.post('/admin/assess-fees', U, auth.requireAdmin, wrap(async (req, res) => re
 // Which services are set up in the environment (names only, never the values).
 api.get('/admin/setup', U, auth.requireAdmin, async (req, res) => {
   const has = (...k) => k.every(x => !!process.env[x]);
-  res.json({ admins: auth.adminEmails(), items: [
-    ['Admin email', 'ADMIN_EMAIL', auth.adminEmails().length > 0],
+  res.json({ admins: auth.allAdminEmails(), items: [
+    ['Admin email', 'ADMIN_EMAIL', auth.allAdminEmails().length > 0],
     ['Database (Turso)', 'DATABASE_URL', has('DATABASE_URL')],
     ['Encryption key', 'ENCRYPTION_KEY', has('ENCRYPTION_KEY')],
     ['Alpaca Broker API (account opening)', 'BROKER_API_KEY, BROKER_API_SECRET', brokerEnabled()],
     ['Alpaca market data', 'ALPACA_KEY_ID, ALPACA_SECRET', dataEnabled()],
     ['Connect existing Alpaca accounts (OAuth)', 'ALPACA_OAUTH_CLIENT_ID, ALPACA_OAUTH_CLIENT_SECRET', oauthEnabled()],
     ['Sign in with Google', 'GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET', googleEnabled()],
+    ['Sign in with GitHub', 'GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET', githubEnabled()],
+    ['Keys sync with Render', 'RENDER_API_KEY', !!(process.env.RENDER_API_KEY && process.env.RENDER_SERVICE_ID)],
     ['Plans and card payments (Stripe)', 'STRIPE_SECRET_KEY', N.stripeEnabled()],
     ['Stripe webhook', 'STRIPE_WEBHOOK_SECRET', has('STRIPE_WEBHOOK_SECRET')],
     ['Text messages and hotline (Twilio)', 'TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM', N.twilioEnabled()],
@@ -711,7 +721,7 @@ api.post('/admin/users/:id', U, auth.requireAdmin, wrap(async (req, res) => {
   }
   if (role !== undefined) {
     if (!['user', 'admin'].includes(role)) throw new Error('Unknown role');
-    if (role === 'user' && (u.id === req.user.id || auth.isAdminEmail(u.email))) throw new Error(u.id === req.user.id ? 'You cannot remove your own admin access' : 'This address is in ADMIN_EMAIL; remove it there first');
+    if (role === 'user' && (u.id === req.user.id || auth.isAdminEmail(u.email))) throw new Error(u.id === req.user.id ? 'You cannot remove your own admin access' : 'This address is on the admin list; remove it under Admin → Admins first');
     await run('UPDATE users SET role = ? WHERE id = ?', role, u.id);
   }
   await audit(req.user.id, 'admin_user_update', { user: u.id, plan, role }, req.ip);

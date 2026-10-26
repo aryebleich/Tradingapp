@@ -23,10 +23,6 @@ const T = req => { const a = req.query.acct || req.body?.acct; return a && a !==
 const bad = msg => Object.assign(new Error(msg), { status: 400 });
 const symParam = s => { const v = String(s || '').trim().toUpperCase(); if (!/^[A-Z0-9.\-]{1,21}(\/[A-Z]{3,4})?$/.test(v)) throw bad('Invalid symbol'); return v; };
 
-// Live-money trading is a paid feature; paper, sandbox and simulated trading are free.
-async function liveGate(req, t) {
-  if (t.live && !isPaid(req.user)) throw Object.assign(new Error('Live-money trading is part of the Pro plan'), { status: 402, upgrade: true, feature: 'Live-money trading' });
-}
 
 // ---------- connection status ----------
 router.get('/status', async (req, res) => {
@@ -207,7 +203,7 @@ router.get('/orders', async (req, res) => {
 });
 router.get('/orders/:id', async (req, res) => res.json(await (await T(req)).order(req.params.id)));
 router.post('/orders', async (req, res) => {
-  const t = await T(req); await liveGate(req, t);
+  const t = await T(req);
   if (!rateLimit('order:' + req.user.id, 60, 60e3)) throw Object.assign(new Error('Too many orders in a minute'), { status: 429 });
   const body = buildOrder(req.body || {});
   const chk = await checkOrder(req.user.id, 'alpaca', { symbol: body.symbol || '', side: body.side || 'buy', qty: +body.qty || 0, notional: +body.notional || 0, limitPrice: +body.limit_price || 0, order_class: body.order_class, legs: body.legs }, 'web', riskDeps(req.user.id));
@@ -225,7 +221,7 @@ router.post('/orders', async (req, res) => {
   res.json(o);
 });
 router.patch('/orders/:id', async (req, res) => {
-  const t = await T(req); await liveGate(req, t);
+  const t = await T(req);
   const o = await t.replaceOrder(req.params.id, buildReplace(req.body || {}));
   await audit(req.user.id, 'alpaca_order_replaced', { id: req.params.id, newId: o.id }, req.ip);
   res.json(o);
@@ -247,7 +243,7 @@ router.get('/positions', async (req, res) => {
   })));
 });
 router.delete('/positions/:symbol', async (req, res) => {
-  const t = await T(req); await liveGate(req, t);
+  const t = await T(req);
   const q = {};
   if (req.query.qty) { if (!(+req.query.qty > 0)) throw bad('Quantity must be positive'); q.qty = String(+req.query.qty); }
   else if (req.query.percentage) { const p = +req.query.percentage; if (!(p > 0 && p <= 100)) throw bad('Percentage must be 1-100'); q.percentage = String(p); }
@@ -256,7 +252,7 @@ router.delete('/positions/:symbol', async (req, res) => {
   res.json(o);
 });
 router.delete('/positions', async (req, res) => {
-  const t = await T(req); await liveGate(req, t);
+  const t = await T(req);
   const r = await t.closeAllPositions(true);
   await audit(req.user.id, 'positions_closed_all', null, req.ip);
   res.json(r || []);
@@ -336,7 +332,8 @@ router.post('/accounts', async (req, res) => {
   if (!keyId || !secret) throw bad('Key id and secret are required');
   const list = await extraAlpaca(req.user.id);
   if (list.length >= 20) throw bad('Up to 20 extra Alpaca accounts');
-  if (live && !isPaid(req.user)) throw Object.assign(new Error('Live Alpaca accounts are part of Pro'), { status: 402, upgrade: true, feature: 'Several live Alpaca accounts' });
+  // Live trading is on every plan; the free plan links one extra live account, paid plans up to 20.
+  if (live && !isPaid(req.user) && list.some(x => x.live)) throw Object.assign(new Error('More than one extra live Alpaca account is part of Pro'), { status: 402, upgrade: true, feature: 'Several live Alpaca accounts' });
   const c = { type: 'keys', k: String(keyId).trim(), s: String(secret).trim(), live: !!live };
   if (list.some(x => x.k === c.k)) throw bad('These keys are already connected');
   const { Trading } = await import('../alpaca/trading.js');

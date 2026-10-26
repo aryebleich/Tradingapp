@@ -75,7 +75,7 @@ test('execution log: quote at send, fills, hash chain that cannot be edited; rou
   await assert.rejects(run('DELETE FROM exec_audit WHERE id = ?', sent.id), /append-only/);
   const p = (await c('/exec/routing', { directOnly: true, weights: { price: 2, fillRate: 1, speed: 1 } }, 'PUT')).body;
   assert.equal(p.directOnly, true); assert.equal(p.weights.price, 0.5);
-  assert.match((await c('/orders', { account: 'smart', symbol: 'AAPL', side: 'buy', notional: 50 })).body.error, /Pro plan/); // smart routing uses real brokerages
+  assert.match((await c('/orders', { account: 'smart', symbol: 'AAPL', side: 'buy', notional: 50 })).body.error, /direct exchange routing/); // smart routing uses real brokerages
   assert.equal(improvementBps('buy', { ask: 100 }, 99.9), 10);
   const sc = scoreVenues(['alpaca', 'tradier'], [{ venue: 'alpaca', sent: 10, fillRate: 100, avgImprovementBps: 2, medianFillMs: 300 }]);
   assert.equal(sc[0].venue, 'alpaca');

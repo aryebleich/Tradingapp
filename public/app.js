@@ -11,6 +11,7 @@ import { registerAnalytics } from './analytics.js';
 import { registerChart } from './chart.js';
 import { registerOptionsLab } from './optionslab.js';
 import { registerProtect, getPasskey } from './protect.js';
+import { registerOwner } from './owner.js';
 import { attachGlossary } from './glossary.js';
 import { startI18n, setLang, canvasNote, LANGS, current as currentLang } from './i18n.js';
 const $ = (s, el = document) => el.querySelector(s);
@@ -111,8 +112,11 @@ const accountOptions = (list, selected, paid = true) => list.filter(a => a.conne
   .map(a => `<option value="${a.id}" ${a.id === selected ? 'selected' : ''}>${esc(acctLabel(a))}${a.id !== 'paper' && !paid ? ' · Pro' : ''}${!a.connected ? ' · not connected' : ''}</option>`).join('');
 const state = { account: localStorage.getItem('qp_account') || 'paper' };
 
-// ---------- chart: line is green above the starting value and red below it ----------
+// ---------- chart: a multi-color gradient line that draws itself in ----------
+const CHART_HUES = ['#7c5cff', '#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#ec4899'];
+const calmMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 function drawChart(canvas, series, { base, compare } = {}) {
+  cancelAnimationFrame(canvas.__anim || 0);
   const dpr = window.devicePixelRatio || 1, w = canvas.clientWidth, h = canvas.clientHeight;
   canvas.width = w * dpr; canvas.height = h * dpr;
   const g = canvas.getContext('2d'); g.scale(dpr, dpr);
@@ -121,17 +125,26 @@ function drawChart(canvas, series, { base, compare } = {}) {
   base ??= series[0];
   const all = [...series, ...(compare || []), base];
   let lo = Math.min(...all), hi = Math.max(...all); if (hi === lo) { hi += 1; lo -= 1; }
-  const pad = 8, X = i => pad + (i / Math.max(series.length - 1, 1)) * (w - 2 * pad), Y = v => pad + (1 - (v - lo) / (hi - lo)) * (h - 2 * pad);
+  const pad = 10, X = i => pad + (i / Math.max(series.length - 1, 1)) * (w - 2 * pad), Y = v => pad + (1 - (v - lo) / (hi - lo)) * (h - 2 * pad);
   const yb = Y(base);
-  g.strokeStyle = C('--bd'); g.setLineDash([4, 4]); g.beginPath(); g.moveTo(0, yb); g.lineTo(w, yb); g.stroke(); g.setLineDash([]);
-  if (compare) { g.strokeStyle = C('--mu'); g.lineWidth = 1; g.beginPath(); compare.forEach((v, i) => (i ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v)))); g.stroke(); }
+  const line = g.createLinearGradient(0, 0, w, 0), fill = g.createLinearGradient(0, 0, w, 0);
+  CHART_HUES.forEach((c, i) => { line.addColorStop(i / (CHART_HUES.length - 1), c); fill.addColorStop(i / (CHART_HUES.length - 1), c + '33'); });
   const path = () => { g.beginPath(); series.forEach((v, i) => (i ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v)))); };
-  for (const [color, y0, y1] of [[C('--gr'), 0, yb], [C('--rd'), yb, h]]) {
-    g.save(); g.beginPath(); g.rect(0, y0, w, y1 - y0); g.clip();
-    path(); g.lineTo(X(series.length - 1), yb); g.lineTo(X(0), yb); g.closePath();
-    g.globalAlpha = 0.14; g.fillStyle = color; g.fill(); g.globalAlpha = 1;
-    path(); g.lineWidth = 2; g.strokeStyle = color; g.stroke(); g.restore();
-  }
+  const frame = t => {
+    g.clearRect(0, 0, w, h);
+    g.strokeStyle = C('--bd'); g.lineWidth = 1; g.setLineDash([4, 4]); g.beginPath(); g.moveTo(0, yb); g.lineTo(w, yb); g.stroke(); g.setLineDash([]);
+    if (compare) { g.strokeStyle = C('--mu'); g.globalAlpha = 0.7; g.lineWidth = 1.2; g.beginPath(); compare.forEach((v, i) => (i ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v)))); g.stroke(); g.globalAlpha = 1; }
+    g.save(); g.beginPath(); g.rect(0, 0, pad + t * (w - pad), h); g.clip();
+    // Area under the line, in the same colors.
+    path(); g.lineTo(X(series.length - 1), h); g.lineTo(X(0), h); g.closePath();
+    g.fillStyle = fill; g.fill();
+    path(); g.lineWidth = 2.5; g.lineJoin = 'round'; g.strokeStyle = line; g.shadowColor = 'rgba(124,92,255,.35)'; g.shadowBlur = 8; g.stroke(); g.shadowBlur = 0;
+    g.restore();
+    if (t >= 1) { const x = X(series.length - 1), y = Y(series[series.length - 1]); g.fillStyle = CHART_HUES[CHART_HUES.length - 1]; g.beginPath(); g.arc(x - 1, y, 4, 0, 7); g.fill(); g.globalAlpha = 0.25; g.beginPath(); g.arc(x - 1, y, 9, 0, 7); g.fill(); g.globalAlpha = 1; }
+  };
+  if (calmMotion()) return frame(1);
+  const t0 = performance.now(), run = now => { const t = Math.min(1, (now - t0) / 700); frame(1 - (1 - t) ** 3); if (t < 1) canvas.__anim = requestAnimationFrame(run); };
+  canvas.__anim = requestAnimationFrame(run);
 }
 
 // ---------- theme: auto (device), light or dark ----------
@@ -233,10 +246,12 @@ async function render() {
   // Each render gets a fresh container: requests still in flight from the previous page then
   // write into a detached element instead of overwriting the page the user moved to.
   const view = document.createElement('div');
+  // Moving to another page fades its cards in; re-drawing the same page does not.
+  if (route !== render.last) { view.className = 'enter'; render.last = route; }
   $('#view').replaceChildren(view);
   // A new page starts at the top instead of keeping the previous page's scroll position.
   scrollTo(0, 0);
-  if (!ME && !['login', 'register', 'mfa', 'forgot', 'reset', 'verify', 'open-account'].includes(route)) { location.hash = '#/login'; return; }
+  if (!ME && !['login', 'login-phone', 'register', 'mfa', 'forgot', 'reset', 'verify', 'open-account'].includes(route)) { location.hash = '#/login'; return; }
   $('#top').hidden = !ME; $('#nav').hidden = !ME; $('#tabs').hidden = !ME; $('#lockBtn').hidden = !ME;
   // Owner: switch between the full owner view and the view of each plan.
   const va = $('#viewAs'); va.hidden = ME?.role !== 'admin';
@@ -319,14 +334,17 @@ function wireAccountSwitch(view) {
 // ---------- auth ----------
 // "Continue with Google" (shown only when the server has Google sign-in set up).
 const G_LOGO = '<svg viewBox="0 0 48 48" width="20" height="20" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
-async function googleButton(label) {
+const GH_LOGO = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.42-2.69 5.39-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z"/></svg>';
+// Google and GitHub buttons, each shown only when the server has it set up.
+async function oauthButtons(verb) {
   CFG ||= await api('/config').catch(() => null);
-  if (!CFG?.google) return '';
   let ref = null; try { ref = localStorage.getItem('qp_ref'); } catch {}
-  return `<a class="gbtn" href="/auth/google${ref ? '?ref=' + encodeURIComponent(ref) : ''}">${G_LOGO}<span>${label}</span></a><div class="or"><span>or</span></div>`;
+  const q = ref ? '?ref=' + encodeURIComponent(ref) : '';
+  const b = [CFG?.google ? `<a class="gbtn" href="/auth/google${q}">${G_LOGO}<span>${verb} with Google</span></a>` : '', CFG?.github ? `<a class="gbtn ghbtn" href="/auth/github${q}">${GH_LOGO}<span>${verb} with GitHub</span></a>` : ''].join('');
+  return b ? `<div class="oauth">${b}</div><div class="or"><span>or</span></div>` : '';
 }
 routes.login = async (view, q) => {
-  const g = await googleButton('Continue with Google');
+  const g = await oauthButtons('Continue');
   view.innerHTML = `
   <div class="hero"><h1 data-no-tr>Quant<span style="color:var(--ac)">Pocket</span></h1><p class="mu">Backtest, paper trade and automate stock strategies. Connect your brokerage, trade by text or phone.</p></div>
   <form class="card auth"><h2>Sign in</h2>${g}
@@ -334,6 +352,7 @@ routes.login = async (view, q) => {
     <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
     <button>Sign in</button><div class="err"></div>
     ${window.PublicKeyCredential ? '<button type="button" class="ghost" id="pkLogin" style="width:100%;margin-top:8px">Sign in with a passkey</button>' : ''}
+    <a href="#/login-phone" class="gbtn phonebtn"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Sign in with a text message code</span></a>
     <p class="mu"><a href="#/forgot">Forgot password?</a> · New here? <a href="#/register">Create an account</a></p></form>`;
   if (q.get('error')) $('.err', view).textContent = q.get('error');
   if ($('#pkLogin', view)) act($('#pkLogin', view), async () => {
@@ -348,10 +367,10 @@ routes.login = async (view, q) => {
   });
 };
 routes.register = async (view, q) => {
-  const g = await googleButton('Sign up with Google');
+  const g = await oauthButtons('Sign up');
   view.innerHTML = `
   <form class="card auth"><h2>Create account</h2>
-    ${g ? g.replace('<div class="or">', '<p class="mu small-print">By continuing with Google you agree to the <a href="/terms" target="_blank">Terms</a> and <a href="/privacy" target="_blank">Privacy Policy</a> and have read the <a href="/risk" target="_blank">Risk Disclosure</a>.</p><div class="or">') : ''}
+    ${g ? g.replace('<div class="or">', '<p class="mu small-print">By continuing with Google or GitHub you agree to the <a href="/terms" target="_blank">Terms</a> and <a href="/privacy" target="_blank">Privacy Policy</a> and have read the <a href="/risk" target="_blank">Risk Disclosure</a>.</p><div class="or">') : ''}
     <label>Email<input name="email" type="email" autocomplete="username" required></label>
     <label>Password (10+ chars, upper, lower, digit)<input name="password" type="password" autocomplete="new-password" required></label>
     <label><input type="checkbox" name="agree" style="width:auto"> I agree to the <a href="/terms" target="_blank">Terms</a> and <a href="/privacy" target="_blank">Privacy Policy</a> and have read the <a href="/risk" target="_blank">Risk Disclosure</a>.</label>
@@ -363,6 +382,28 @@ routes.register = async (view, q) => {
     if (!f.agree) throw new Error('Please accept the Terms to continue');
     let ref = null; try { ref = localStorage.getItem('qp_ref'); } catch {}
     ME = (await api('/auth/register', { body: { ...f, ref } })).user; location.hash = '#/dashboard';
+  });
+};
+// Sign in with a code sent by text message to a verified phone number.
+routes['login-phone'] = view => {
+  let phone = '';
+  view.innerHTML = `<form class="card auth" id="ph"><h2>Sign in by text message</h2><p class="mu">For accounts with a verified phone number (Settings → Phone).</p>
+    <label>Phone number<input name="phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="845 555 1234" required></label>
+    <button>Text me a code</button><div class="err"></div><p class="mu"><a href="#/login">Back to sign in</a></p></form>
+    <form class="card auth" id="pc" hidden><h2>Enter the code</h2><p class="mu" id="pcNote">We sent a 6-digit code if this number has an account.</p>
+    <label>Code<input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required></label>
+    <button>Sign in</button><div class="err"></div></form>`;
+  act($('#ph button', view), async () => {
+    phone = form($('#ph', view)).phone;
+    const r = await api('/auth/phone/start', { body: { phone } });
+    $('#ph', view).hidden = true; $('#pc', view).hidden = false;
+    if (r.devCode) $('#pcNote', view).textContent = `Test mode (texts are off): your code is ${r.devCode}`;
+    $('#pc [name=code]', view).focus();
+  });
+  act($('#pc button', view), async () => {
+    const r = await api('/auth/phone/verify', { body: { phone, code: form($('#pc', view)).code } });
+    if (r.mfaRequired) { location.hash = '#/mfa'; return; }
+    ME = r.user; location.hash = '#/dashboard';
   });
 };
 routes.forgot = view => {
@@ -420,7 +461,6 @@ routes.dashboard = async (view, q) => {
       <div class="stat"><span>Positions</span><b>${a.positions.length}</b></div>
     </div>
     <canvas id="eqc"></canvas>
-    <p class="mu" style="font-size:12px">The line turns green above your starting value and red below it.</p>
   </div>
   <div class="grid">
     <div class="card"><h2>Positions</h2><div class="tablewrap"><table><tr><th>Symbol</th><th>Qty</th><th>Avg</th><th>Price</th><th>Value</th><th>P/L</th></tr>
@@ -524,7 +564,7 @@ function resultHtml(r) {
       <div class="stat"><span>Profit factor</span><b>${num(m.profitFactor)}</b></div>
       <div class="stat"><span>Time in market</span><b>${num(m.exposure, 0)}%</b></div>
     </div>
-    <canvas id="btc"></canvas><p class="mu" style="font-size:12px">Colored line: strategy (green above starting capital, red below). Grey: buy & hold. ${r.holding ? 'Currently in a position.' : 'Currently flat.'}</p></div>
+    <canvas id="btc"></canvas><p class="mu" style="font-size:12px">Colored line: strategy. Grey: buy & hold. Dashed: starting capital. ${r.holding ? 'Currently in a position.' : 'Currently flat.'}</p></div>
   <div class="grid">
     ${p ? `<div class="card"><h2>Projected next-year return</h2>
       <p class="mu" style="font-size:13px">2,000 simulated years built by resampling this strategy's own daily returns. A range of outcomes, not a promise.</p>
@@ -725,7 +765,7 @@ routes.funding = routes.billing = async (view, q) => {
         <h2 style="margin:0">${esc(p.name)} ${cur ? '<span class="pill">Current</span>' : ''}</h2><div class="mu" style="font-size:14px">${esc(p.tagline || '')}</div>
         <div class="price">${price ? '$' + price : '$0'}<small>${price ? (yearly ? '/year' : '/month') : ' forever'}</small></div>
         ${yearly && p.yearly ? `<div class="mu" style="font-size:13px">$${(p.yearly / 12).toFixed(2)}/month billed yearly</div>` : '<div style="height:19px"></div>'}
-        <div class="mu" style="font-size:13px;margin-top:6px">+ ${p.perfFee * 100}% of new profits above your high-water mark</div>
+        ${CFG.adviser ? `<div class="mu" style="font-size:13px;margin-top:6px">+ ${p.perfFee * 100}% of new profits above your high-water mark</div>` : ''}
         <ul>${p.features.map(f => `<li>${esc(f)}</li>`).join('')}</ul>
         ${p.monthly && !cur ? `<button data-plan="${k}" class="${p.popular ? '' : 'ghost'}">${trial ? `Start ${days}-day free trial` : `Choose ${esc(p.name)}`}</button>` : cur ? '<button class="ghost" disabled>Your plan</button>' : ''}</div>`;
     }).join('')}</div>
@@ -742,8 +782,8 @@ routes.funding = routes.billing = async (view, q) => {
         <p class="mu" id="feeLine" style="font-size:13px"></p>
         <input type="hidden" name="account" value="${esc(accts.find(a => a.connected && a.id !== 'paper')?.id || 'alpaca')}">
         <button>Continue to payment</button><div class="err"></div>` : '<p class="mu">Card and bank deposits are not set up on this server yet. You can fund your brokerage account by bank transfer on the <a href="#/account">Alpaca account</a> page.</p>'}</form>
-      <div class="card"><h2>Performance fee</h2><p>Your rate: <b>${fees.rate * 100}%</b> of new profit. You only pay when an account is above its previous peak, after deposits and withdrawals.</p>
-        ${fees.accounts.map(a => `<p class="mu">${esc(a.account)}: high-water mark ${money(a.high_water)}</p>`).join('')}</div>
+      ${fees.adviser ? `<div class="card"><h2>Performance fee</h2><p>Your rate: <b>${fees.rate * 100}%</b> of new profit. You only pay when an account is above its previous peak, after deposits and withdrawals.</p>
+        ${fees.accounts.map(a => `<p class="mu">${esc(a.account)}: high-water mark ${money(a.high_water)}</p>`).join('')}</div>` : ''}
     </div>
     <div class="card tablewrap"><h2>Billing history</h2><table><tr><th>Date</th><th>Type</th><th>Amount</th><th>Status</th><th>Note</th></tr>
       ${ledger.map(l => `<tr><td>${date(l.at)}</td><td>${esc(l.kind.replace(/_/g, ' '))}</td><td>${money(l.amount)}</td><td>${esc(l.status)}</td><td>${esc(l.memo || '')}</td></tr>`).join('') || '<tr><td colspan="5" class="mu">Nothing yet</td></tr>'}</table></div>`;
@@ -832,7 +872,7 @@ routes.settings = async view => {
     <form class="card" id="taxs"><h2>Tax rates</h2>
       <label>Federal bracket<select name="bracket">${[0.10, 0.12, 0.22, 0.24, 0.32, 0.35, 0.37].map(b => `<option value="${b}" ${b === ME.taxBracket ? 'selected' : ''}>${b * 100}%</option>`).join('')}</select></label>
       <label>State rate %<input name="stateTax" type="number" step="0.1" value="${ME.stateTax * 100}"></label><button>Save</button><div class="err"></div></form>
-    <form class="card" id="pw"><h2>${pw ? 'Password' : 'Add a password'}</h2>${ME.google ? '<p class="mu"><span class="pill">Google</span> Sign in with Google is connected.</p>' : ''}
+    <form class="card" id="pw"><h2>${pw ? 'Password' : 'Add a password'}</h2>${ME.google ? '<p class="mu"><span class="pill">Google</span> Sign in with Google is connected.</p>' : ''}${ME.github ? '<p class="mu"><span class="pill">GitHub</span> Sign in with GitHub is connected.</p>' : ''}
       ${pw ? '<label>Current<input type="password" name="current" autocomplete="current-password"></label>' : '<p class="mu">Add one to also sign in with your email and password.</p>'}<label>New<input type="password" name="next" autocomplete="new-password"></label><button>${pw ? 'Change password' : 'Save password'}</button><div class="err"></div>
       <p class="mu" style="font-size:12px">${pw ? 'Changing it signs out every other device.' : '10+ characters with upper, lower and a digit.'}</p></form>
   </div>
@@ -868,7 +908,9 @@ routes.settings = async view => {
 
 // ---------- admin ----------
 // Owner pages: one route per section so each has its own place in the menu.
-const ADMIN_TABS = [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-money', 'Money & fees'], ['admin-support', 'Support inbox'], ['admin-system', 'System health'], ['admin-setup', 'Setup']];
+const ADMIN_TABS = [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-money', 'Money & fees'], ['admin-business', 'Business mode'], ['admin-admins', 'Admins'], ['admin-keys', 'Keys'], ['admin-support', 'Support inbox'], ['admin-system', 'System health'], ['admin-setup', 'Setup']];
+// Pages with their own module (owner.js, protect.js) draw themselves under the same tabs.
+const adminTabs = current => `<div class="chips admintabs">${ADMIN_TABS.map(([k, t]) => `<a href="#/${k}"><button type="button" class="${k === current ? 'on' : ''}">${t}</button></a>`).join('')}</div>`;
 async function adminPage(view, tab) {
   const [s, msgs, setup] = await Promise.all([api('/admin/summary'), api('/admin/messages'), tab === 'admin-setup' ? api('/admin/setup') : null]);
   const total = (kind, status) => s.byKind.filter(x => x.kind === kind && (!status || x.status === status)).reduce((a, x) => a + x.total, 0);
@@ -891,7 +933,7 @@ async function adminPage(view, tab) {
     ${steps.map(([t, n]) => `<div class="bar"><span>${t}</span><i style="width:${f.signups ? Math.max(1, n / f.signups * 100) : 0}%"></i><b>${n}</b></div>`).join('')}</div></div>`,
     'admin-users': () => `
   <div class="card tablewrap"><div class="row" style="justify-content:space-between;align-items:center"><h2>Users</h2><input id="userFind" type="search" placeholder="Search email" style="max-width:260px;margin:0"></div>
-    <table id="userTable"><tr><th>Email</th><th>Plan</th><th>Role</th><th>2FA</th><th>Phone</th><th>Joined</th></tr>${s.users.map(u => `<tr data-email="${esc(u.email)}"><td data-no-tr>${esc(u.email)}${u.google ? ' <span class="pill">Google</span>' : ''}</td>
+    <table id="userTable"><tr><th>Email</th><th>Plan</th><th>Role</th><th>2FA</th><th>Phone</th><th>Joined</th></tr>${s.users.map(u => `<tr data-email="${esc(u.email)}"><td data-no-tr>${esc(u.email)}${u.google ? ' <span class="pill">Google</span>' : ''}${u.github ? ' <span class="pill">GitHub</span>' : ''}</td>
       <td><select data-plan="${u.id}" style="margin:0;min-width:110px">${['free', 'pro', 'elite', 'ultimate'].map(p => `<option value="${p}" ${u.plan === p ? 'selected' : ''}>${{ free: 'Starter', pro: 'Pro', elite: 'Elite', ultimate: 'Ultimate' }[p]}</option>`).join('')}</select></td>
       <td>${u.role === 'admin' ? `<span class="pill">Admin</span>${u.id !== ME.id ? ` <button class="small ghost" data-role="${u.id}" data-to="user">Remove admin</button>` : ''}` : `<button class="small ghost" data-role="${u.id}" data-to="admin">Make admin</button>`}</td>
       <td>${u.totp_enabled ? 'yes' : '-'}</td><td>${u.phone_verified ? 'yes' : '-'}</td><td>${date(u.created_at)}</td></tr>`).join('')}</table><div class="err" id="userErr"></div>
@@ -912,7 +954,7 @@ async function adminPage(view, tab) {
     'admin-setup': () => `
   <div class="card"><h2>Setup</h2><p class="mu" style="margin-top:0">What is switched on, from the environment variables in Render (values are never shown). Admins: <b data-no-tr>${esc(setup.admins.join(', ') || 'none')}</b></p>
     <div class="setup">${setup.items.map(x => `<div class="setup-row"><span class="dot ${x.on ? 'on' : ''}"></span><span class="setup-name">${esc(x.name)}</span><code data-no-tr>${esc(x.env)}</code><span class="pill ${x.on ? '' : 'warn'}">${x.on ? 'On' : 'Not set'}</span></div>`).join('')}</div>
-    <p class="mu" style="font-size:12.5px">To change one: Render → your service → Environment → add or edit the variable → Save. The server restarts by itself.</p></div>`,
+    <p class="mu" style="font-size:12.5px">To change one: open <a href="#/admin-keys">Keys</a> (saves here and on Render), or Render → your service → Environment → add or edit the variable → Save.</p></div>`,
   };
   view.innerHTML = `<h1>Admin</h1>${tabs}${sections[tab]()}`;
   if ($('#assess', view)) act($('#assess', view), async () => { const r = await api('/admin/assess-fees', { body: {} }); setTimeout(render, 1200); return `Assessed ${r.length} accounts, ${money(r.reduce((a, x) => a + (x.fee || 0), 0))} in new fees`; });
@@ -924,7 +966,7 @@ async function adminPage(view, tab) {
   $$('[data-role]', view).forEach(b => (b.onclick = () => userCall(b.dataset.role, { role: b.dataset.to })));
   if ($('#userFind', view)) $('#userFind', view).oninput = e => { const q = e.target.value.trim().toLowerCase(); $$('#userTable tr[data-email]', view).forEach(tr => (tr.hidden = !!q && !tr.dataset.email.toLowerCase().includes(q))); };
 }
-for (const [k] of ADMIN_TABS.filter(([k]) => k !== 'admin-system')) routes[k] = view => (ME?.role === 'admin' ? adminPage(view, k) : routes.dashboard(view, new URLSearchParams()));
+for (const [k] of ADMIN_TABS.filter(([k]) => !['admin-system', 'admin-business', 'admin-admins', 'admin-keys'].includes(k))) routes[k] = view => (ME?.role === 'admin' ? adminPage(view, k) : routes.dashboard(view, new URLSearchParams()));
 
 registerStrategies(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, cls, date, api, form, act, render, drawChart, onLeave, me: () => ME });
 registerBrokers(routes, { $, $$, esc, money, api, form, act, render, accounts });
@@ -932,13 +974,14 @@ registerSp500(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, 
 registerPairs(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, cls, api, form, act, render, drawChart, me: () => ME });
 registerSignals(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, date, api, form, act, render, me: () => ME });
 registerTrading(routes, { $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, updateBadge, me: () => ME, state });
-const shared = { $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, accounts, accountOptions, acctLabel, state, me: () => ME, paid: () => isPaid(ME) };
+const shared = { $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, accounts, accountOptions, acctLabel, state, adminTabs, me: () => ME, paid: () => isPaid(ME) };
 registerStudio(routes, shared);
 registerBuild(routes, shared);
 registerAnalytics(routes, shared);
 registerChart(routes, shared);
 registerOptionsLab(routes, shared);
 registerProtect(routes, shared);
+registerOwner(routes, shared);
 
 (async () => {
   // Remember an invite code from a referral link (/app?ref=CODE) for sign-up.

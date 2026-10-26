@@ -6,6 +6,7 @@ import { placeOrder, getBars, lastPrice, snapshotEquity, accountSummary, getCred
 import { latestSignal } from './engine.js';
 import { sendSms, sendEmail } from './notify.js';
 import { assessFee, isPaid } from './fees.js';
+import { adviserMode } from './site.js';
 import { tradingFor } from './alpaca/connections.js';
 import { getAccount, brokerEnabled, FINAL_STATUSES } from './alpaca/broker.js';
 import { applyStatus } from './alpaca/kyc.js';
@@ -110,6 +111,8 @@ export async function snapshotAll() {
 // Monthly: assess performance fees on every account with a high-water mark.
 export async function assessAllFees() {
   const out = [];
+  // Software-only mode charges no performance fee (that needs a registered investment adviser).
+  if (!adviserMode()) return out;
   for (const s of await all('SELECT user_id, account FROM fee_state')) {
     try {
       if (s.account === 'alpaca' && !(await tradingFor(s.user_id))) continue;

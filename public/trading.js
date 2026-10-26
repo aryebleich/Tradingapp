@@ -389,7 +389,6 @@ async function portfolio(view, q, accountSwitch, wireSwitch) {
     </div>
     <div class="chips" id="periods" style="margin-top:12px">${['1D', '1W', '1M', '3M', '6M', '1A', 'all'].map(p => `<button data-p="${p}" class="${p === period ? 'on' : ''}">${p === '1A' ? '1Y' : p === 'all' ? 'All' : p}</button>`).join('')}</div>
     <canvas id="eq"></canvas>
-    <p class="mu" style="font-size:12px">Green above the period's starting value, red below.</p>
   </div>
   <div class="grid">
     <div class="card"><h2>Balances & margin</h2><div class="kv">

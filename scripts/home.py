@@ -87,6 +87,11 @@ def gbtn(label='Sign up with Google', cls='lg'):
     # Shown only when the app has Google sign-in set up (site.js checks and fills in the link).
     return f'<a class="btn google {cls}" data-google hidden href="app#/register">{GOOGLE}<span>{T(label)}</span></a>'
 
+GITHUB = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.42-2.69 5.39-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z"/></svg>'
+def ghbtn(label='Sign up with GitHub', cls='lg'):
+    # Shown only when the app has GitHub sign-in set up.
+    return f'<a class="btn github {cls}" data-github hidden href="app#/register">{GITHUB}<span>{T(label)}</span></a>'
+
 # "What do you want to do?" picker: (id, chip, icon, title, text, bullets)
 INTENTS = [
  ('alert', 'Turn my alert into a trade', 'hook', 'Your alert fires. The order goes out.',
@@ -163,13 +168,13 @@ FEATURES = [
 
 PLANS = [
  ('Starter', 'Learn and practice', '$0', None, '/forever', None, '+ 20% of new profits',
-  ['$100,000 paper account', '1 chart per layout, every indicator', 'Strategy library by hand + 1 automatic strategy on paper', 'Unlimited backtests', '1 alert webhook (paper)', '2 scanners, checked hourly', 'AI assistant: 30 messages a day'], 'Start free', False),
+  ['$100,000 paper account', 'Live trading on your own brokerage (your own orders)', '1 chart per layout, every indicator', 'Strategy library by hand + 1 automatic strategy on paper', 'Unlimited backtests', '1 alert webhook (paper)', '2 scanners, checked hourly', 'AI assistant: 30 messages a day'], 'Start free', False),
  ('Pro', 'Automate your real accounts', '$53', '$530', '/month', '/year', '+ 10% of new profits',
-  ['Everything in Starter', 'Live trading on Alpaca, Schwab, tastytrade, Tradier &amp; TradeStation', '2-chart layouts', '5 automatic strategies with Reality Check auto-throttle', '10 alert webhooks', 'Scanners every 5 minutes, portfolios &amp; signal mirroring', 'AI assistant: 300 messages a day', 'Optimizer, walk-forward testing &amp; code lab'], 'Start 14-day free trial', True),
+  ['Everything in Starter', 'Automated trading on Alpaca, Schwab, tastytrade, Tradier &amp; TradeStation', '2-chart layouts', '5 automatic strategies with Reality Check auto-throttle', '10 alert webhooks', 'Scanners every 5 minutes, portfolios &amp; signal mirroring', 'AI assistant: 300 messages a day', 'Optimizer, walk-forward testing &amp; code lab'], 'Start 14-day free trial', True),
  ('Elite', 'For active traders', '$109', '$1,090', '/month', '/year', '+ 5% of new profits',
   ['Everything in Pro', '4-chart layouts and pop-out windows', '25 automatic strategies &amp; 25 webhooks', 'Option income bots &amp; multi-leg orders', 'Market-neutral pairs (long + short)', 'Tax-loss harvesting &amp; Schedule D', 'AI assistant: 1,000 messages a day'], 'Start 14-day free trial', False),
  ('Ultimate', 'For serious capital', '$320', '$3,200', '/month', '/year', '+ 2.5% of new profits',
-  ['Everything in Elite', 'Lowest performance fee (2.5%)', '100 automatic strategies &amp; 100 webhooks', 'Unlimited scanners and AI agents', 'AI assistant: 3,000 messages a day', 'Priority support'], 'Start 14-day free trial', False),
+  ['Everything in Elite', '100 automatic strategies &amp; 100 webhooks', 'Unlimited scanners and AI agents', 'AI assistant: 3,000 messages a day', 'Priority support'], 'Start 14-day free trial', False),
 ]
 
 FAQ_AUTO = [
@@ -184,9 +189,10 @@ FAQ_AUTO = [
 ]
 FAQ_ACCOUNT = [
  ('Will I make money?', 'Nobody can promise that. Most active strategies underperform simply holding an index after costs. QuantPocket shows how an idea behaved in the past, how it is doing live, and the range of outcomes to expect, so you can decide with your eyes open.'),
- ('Can I use QuantPocket in Yiddish?', 'Yes. Choose ייִדיש at the top of this page or in the app. The whole app switches to Yiddish, written right-to-left.'),
+ ('Can I use QuantPocket in Yiddish?', 'Yes. In the app, open Settings → Language and choose אידיש (full translation). The whole app switches to Yiddish, written right-to-left.'),
  ('Which brokerages can I connect?', 'Alpaca (you can also open a new account inside QuantPocket), Charles Schwab, tastytrade, Tradier and TradeStation. Your money always stays at your broker.'),
  ('Can I sign up with Google?', 'Yes. Choose <b>Sign up with Google</b> and your account is ready in seconds. You can add a password later in Settings.'),
+ ('Can I trade with real money on the free plan?', 'Yes. Connect your own brokerage account and place your own orders on any plan, including Starter. Automatic strategies, bots and webhooks on real accounts are part of the paid plans.'),
  ('How does the free trial work?', 'Every paid plan starts with 14 days free. Cancel before the trial ends and you are not charged. The free Starter plan has no time limit.'),
  ('How does the performance fee work?', 'Each month we compare your account to its previous peak, adjusted for deposits and withdrawals. You pay the plan&rsquo;s percentage only on value above that peak. Losses must be recovered before any new fee is charged.'),
  ('Is texting trades secure?', 'Commands only work from the phone number you verified, every order needs your personal PIN, and phone calls read the order back before it is placed.'),
@@ -213,9 +219,9 @@ def index(lang='en'):
                         for n, (t, h, d, b) in enumerate(USECASES))
     feats = ''.join(f'<div class="feature"><div class="ic">{ic(i)}</div><h3>{T(t)}</h3><p>{T(d)}</p></div>' for i, t, d in FEATURES)
     lib = ''.join(f'<div class="libcard"><div class="lh"><b>{n}</b><span class="risk {RISK[r]}">{T(r + " risk")}</span></div><p>{T(tg)}</p><span class="reb">{T(rb)}</span></div>' for n, tg, rb, r in LIBRARY)
-    faq = lambda items: ''.join(f'<details><summary>{T(q)}</summary><p>{T(a)}</p></details>' for q, a in items)
+    faq = lambda items: ''.join(f'<details{" data-adviser hidden" if q.startswith("How does the performance fee") else ""}><summary>{T(q)}</summary><p>{T(a)}</p></details>' for q, a in items)
     plans = ''.join(f'''<div class="plan{' best' if best else ''}">{'<div class="ribbon">' + T('Most popular') + '</div>' if best else ''}<h3>{T(n)}</h3><p class="tag">{T(tg)}</p>
-      <div class="price"{f' data-m="{pm}" data-y="{py}"' if py else ''}>{pm}<small{f' data-m="{T(sm)}" data-y="{T(sy)}"' if sy else ''}>{T(sm)}</small></div><p class="fee">{T(fee)}</p>
+      <div class="price"{f' data-m="{pm}" data-y="{py}"' if py else ''}>{pm}<small{f' data-m="{T(sm)}" data-y="{T(sy)}"' if sy else ''}>{T(sm)}</small></div><p class="fee" data-adviser hidden>{T(fee)}</p>
       <ul>{''.join(f'<li>{T(x)}</li>' for x in feats_)}</ul><a class="btn{'' if best else ' ghost'}" data-app="#/register" href="app">{T(cta)}</a></div>''' for n, tg, pm, py, sm, sy, fee, feats_, cta, best in PLANS)
     body = f'''
 <section class="hero"><div class="wrap hero-grid">
@@ -223,13 +229,14 @@ def index(lang='en'):
     <a class="eyebrow" href="#reality"><span>{T('New')}</span> {T('Reality Check tells you when a strategy stops working')} &rarr;</a>
     <h1>{T('Every trade you take, <span>executed from one place.</span>')}</h1>
     <p class="lead">{T('Stocks, ETFs, options and crypto through your own brokerage account. Ready-made strategies, webhook alerts, pairs trading and an S&amp;P 500 plan: test them, paper trade them and automate them on one platform.')}</p>
-    <div class="cta">{gbtn()}<a class="btn outline lg" data-app="#/register" href="app">{T('Start free with email')}</a></div>
+    <div class="cta">{gbtn()}{ghbtn()}<a class="btn outline lg" data-app="#/register" href="app">{T('Start free with email')}</a></div>
     <ul class="ticks"><li>{T('Set up in 3 minutes')}</li><li>{T('$100,000 paper account')}</li><li>{T('No card needed')}</li></ul>
     <p class="acctlink"><a data-app="#/open-account" href="app">{T('Open a brokerage account')} &rarr;</a> <span>{T('Commission-free, held at Alpaca Securities LLC (FINRA/SIPC)')}</span></p>
     <p class="phoneline hero-phone" data-phone hidden>{ic('msg', 16)} {T('Text or call us:')} <a data-phone-link dir="ltr"></a></p>
   </div>
   <figure class="shot"><div class="frame"><i></i><i></i><i></i></div><img src="hero-app.webp" width="1600" height="1000" alt="{T('QuantPocket portfolio dashboard with equity chart, positions and order ticket')}" fetchpriority="high"><figcaption>{T('Illustrative paper-trading account')}</figcaption></figure>
 </div>
+<div class="marquee" aria-hidden="true"><div class="track">{''.join(f'<span>{ic(i, 16)}{T(t)}</span>' for i, t, d in FEATURES) * 2}</div></div>
 <div class="wrap"><div class="logos"><span>{T('Brokers:')} <b>Alpaca</b> · <b>Schwab</b> · <b>tastytrade</b> · <b>Tradier</b> · <b>TradeStation</b></span><span>{T('Payments by')} <b>Stripe</b> &amp; <b>Helcim</b></span></div></div>
 </section>
 
@@ -373,7 +380,7 @@ def index(lang='en'):
 
 <section class="alt" id="pricing"><div class="wrap">
   <h2 class="sec center">{T('Simple pricing. Start free.')}</h2>
-  <p class="sub center">{T('Every paid plan starts with a 14-day free trial. Plus a small share of new profits above your high-water mark, so you only pay more when your account reaches new highs.')}</p>
+  <p class="sub center">{T('Every paid plan starts with a 14-day free trial. One simple monthly price, live trading on every plan, cancel anytime.')}</p>
   <div class="toggle" id="billing"><button class="on" data-i="m">{T('Monthly')}</button><button data-i="y">{T('Yearly')} <em>{T('2 months free')}</em></button></div>
   <div class="plans">{plans}</div>
   <p class="fine">{T('Secure checkout by Stripe. Cancel anytime. Trading involves risk; see the')} <a href="risk.html">{T('Risk Disclosure')}</a>.</p>
@@ -391,8 +398,8 @@ def index(lang='en'):
   <div><h2>{T('You&rsquo;re 3 minutes away from your first trade.')}</h2>
     <ul class="ticks"><li>{T('Free version')}</li><li>{T('Set up in 3 minutes')}</li><li>{T('Paper account for testing')}</li></ul></div>
   <div class="startbox">
-    {gbtn('Sign up with Google', 'wide')}
-    <div class="or" data-google hidden><span>{T('or')}</span></div>
+    {gbtn('Sign up with Google', 'wide')}{ghbtn('Sign up with GitHub', 'wide')}
+    <div class="or" data-oauth hidden><span>{T('or')}</span></div>
     <form id="startForm"><input type="email" name="email" placeholder="{T('Email address')}" autocomplete="email" aria-label="{T('Email address')}" required dir="ltr"><button class="btn light">{T('Start free')}</button></form>
   </div>
 </div></div></section>

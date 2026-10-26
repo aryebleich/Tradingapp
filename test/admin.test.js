@@ -30,7 +30,7 @@ test('ADMIN_EMAIL: several addresses, any case, also for accounts made before it
   assert.equal((await owner('/auth/me')).body.user.role, 'admin');
   assert.equal((await owner('/admin/summary')).status, 200);
   const setup = (await owner('/admin/setup')).body;
-  assert.deepEqual(setup.admins, ['boss@example.com', 'owner@example.com']);
+  for (const e of ['boss@example.com', 'owner@example.com', 'aryebleich@gmail.com', 'kk5185920061@gmail.com']) assert.ok(setup.admins.includes(e), e);
   assert.ok(setup.items.find(x => x.name === 'Admin email').on);
   assert.equal(JSON.stringify(setup).includes('Str0ng'), false);
 
@@ -50,7 +50,7 @@ test('ADMIN_EMAIL: several addresses, any case, also for accounts made before it
   const me = (await owner('/auth/me')).body.user.id;
   assert.match((await owner('/admin/users/' + me, { role: 'user' })).body.error, /own admin/);
   const bid = (await owner('/admin/summary')).body.users.find(u => u.email === 'boss@example.com').id;
-  assert.match((await owner('/admin/users/' + bid, { role: 'user' })).body.error, /ADMIN_EMAIL/);
+  assert.match((await owner('/admin/users/' + bid, { role: 'user' })).body.error, /admin list/);
 });
 
 test('Gmail admin matches with dots and +tags (Google sign-in); owner can view the app as each plan', async () => {
@@ -67,7 +67,7 @@ test('Gmail admin matches with dots and +tags (Google sign-in); owner can view t
     assert.equal((await c('/admin/preview-plan', { plan: 'free' }, 'PUT')).body.previewPlan, 'free');
     const asFree = (await c('/auth/me')).body.user;
     assert.equal(asFree.plan, 'free'); assert.equal(asFree.previewPlan, 'free'); assert.equal(asFree.role, 'admin');
-    assert.equal((await c('/alpaca/accounts', { keyId: 'X', secret: 'Y', live: true })).status, 402); // gated like a Starter user
+    assert.equal((await c('/schedule', { symbol: 'SPY', side: 'buy', qty: 1 })).status, 402); // gated like a Starter user
     await c('/admin/preview-plan', { plan: 'ultimate' }, 'PUT');
     assert.equal((await c('/auth/me')).body.user.plan, 'ultimate');
     assert.equal((await c('/admin/preview-plan', { plan: null }, 'PUT')).body.previewPlan, null);

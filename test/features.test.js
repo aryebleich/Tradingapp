@@ -180,8 +180,9 @@ test('other brokerages: Tradier connect, summary, orders and shorts', async () =
   assert.ok(accts.find(a => a.id === 'tradier' && a.connected));
   const s = (await call('/account?account=tradier')).body;
   assert.equal(s.equity, 25000); assert.equal(s.positions[0].price, 65); assert.equal(s.positions[0].pnl, 50);
-  // Free users cannot send orders to brokerages; an upgraded user can, and selling more than held opens a short.
-  assert.equal((await call('/orders', { account: 'tradier', symbol: 'KO', side: 'buy', qty: 1 })).status, 402);
+  // Free users place their own orders on a real brokerage too; automation there needs a paid plan.
+  assert.equal((await call('/schedule', { account: 'tradier', symbol: 'KO', side: 'buy', qty: 1 })).status, 402);
+  // An upgraded user's sell of more than held opens a short.
   await run("UPDATE users SET plan = 'pro', plan_status = 'active' WHERE email = 'broker@example.com'");
   const o = (await call('/orders', { account: 'tradier', symbol: 'PEP', side: 'sell', qty: 3 })).body;
   assert.equal(o.id, '777');

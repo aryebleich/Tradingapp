@@ -119,7 +119,7 @@ if (cmd === 'export') {
 // English text of the owner's admin pages, which stay in English.
 function adminStrings() {
   const src = fs.readFileSync(path.join(root, 'public/app.js'), 'utf8'), prot = fs.readFileSync(path.join(root, 'public/protect.js'), 'utf8');
-  const sections = [src.slice(src.indexOf('async function adminPage'), src.indexOf('\nfor (const [k] of ADMIN_TABS')), prot.slice(prot.indexOf('async function system'))];
+  const sections = [src.slice(src.indexOf('async function adminPage'), src.indexOf('\nfor (const [k] of ADMIN_TABS')), prot.slice(prot.indexOf('async function system')), fs.readFileSync(path.join(root, 'public/owner.js'), 'utf8')];
   const out = new Set();
   for (const s of sections) for (const m of s.matchAll(/(['"`])((?:(?!\1)[^\\]|\\.)*?)\1/g)) for (const piece of m[2].split(/<[^>]+>|\$\{[^}]*\}/)) { const t = piece.trim().replace(/\s+/g, ' '); if (/[A-Za-z]{2}/.test(t)) out.add(t); }
   return out;

@@ -1,8 +1,10 @@
 // Accounts, sessions, TOTP two-factor, lockout, rate limits, CSRF guard.
 import express from 'express';
+import crypto from 'node:crypto';
 import { one, all, run, now, audit, tx } from './db.js';
 import { hashSecret, verifySecret, randomToken, sha256, newTotpSecret, verifyTotp } from './crypto.js';
-import { sendEmail, emailEnabled } from './notify.js';
+import { sendEmail, emailEnabled, sendSms } from './notify.js';
+import { OWNER_EMAILS, addedAdminEmails, isAdminPhone, normalizePhone, freshSite } from './site.js';
 
 const SESSION_MS = 12 * 3600e3;
 const MFA_MS = 5 * 60e3;
@@ -49,7 +51,8 @@ export async function sessionMiddleware(req, _res, next) {
       req.sessionHash = s.token_hash;
       const u = await one('SELECT * FROM users WHERE id = ?', s.user_id);
       // ADMIN_EMAIL counts on every visit, so an account made before it was set becomes admin too.
-      if (u && u.role !== 'admin' && isAdminEmail(u.email)) { await run("UPDATE users SET role = 'admin' WHERE id = ?", u.id); u.role = 'admin'; }
+      await freshSite();
+      if (u && u.role !== 'admin' && (isAdminEmail(u.email) || (u.phone_verified && isAdminPhone(u.phone)))) { await run("UPDATE users SET role = 'admin' WHERE id = ?", u.id); u.role = 'admin'; }
       // "View as plan": the owner sees the app (menus, limits, upgrade prompts) exactly as a user on that plan would.
       if (u?.role === 'admin') { const pv = await one("SELECT v FROM user_settings WHERE user_id = ? AND k = 'previewPlan'", u.id).catch(() => null); const plan = pv ? JSON.parse(pv.v) : null; if (plan) { u.previewPlan = plan; u.plan = plan; u.plan_status = plan === 'free' ? null : 'active'; } }
       if (s.mfa_pending) req.pending = u; else req.user = u;
@@ -74,14 +77,16 @@ export const canonicalEmail = e => {
   return ['gmail.com', 'googlemail.com'].includes(domain) ? `${name.split('+')[0].replace(/\./g, '')}@gmail.com` : `${name}@${domain}`;
 };
 export const adminEmails = () => String(process.env.ADMIN_EMAIL || '').split(/[,;\s]+/).map(e => e.trim().toLowerCase()).filter(Boolean);
-export const isAdminEmail = email => !!email && adminEmails().map(canonicalEmail).includes(canonicalEmail(email));
+// Admins: ADMIN_EMAIL, the owner's built-in addresses, and addresses added in Admin → Admins.
+export const allAdminEmails = () => [...new Set([...OWNER_EMAILS, ...adminEmails(), ...addedAdminEmails()].map(e => e.trim().toLowerCase()))];
+export const isAdminEmail = email => !!email && allAdminEmails().map(canonicalEmail).includes(canonicalEmail(email));
 
 export const requireUser = (req, res, next) => req.user ? next() : res.status(401).json({ error: 'Not signed in' });
 export const requireAdmin = (req, res, next) => req.user?.role === 'admin' ? next() : res.status(403).json({ error: 'Admin only' });
 
 export const publicUser = u => u && ({
   id: u.id, email: u.email, role: u.role, totpEnabled: !!u.totp_enabled, phone: u.phone, phoneVerified: !!u.phone_verified,
-  previewPlan: u.previewPlan || null, hasPin: !!u.pin_hash, hasPassword: u.password_set !== 0, google: !!u.google_sub, emailVerified: !!u.email_verified, planStatus: u.plan_status, planInterval: u.plan_interval, trialUsed: !!u.trial_used, refCode: u.ref_code, plan: u.plan, planRenews: u.plan_renews, taxBracket: u.tax_bracket, stateTax: u.state_tax,
+  previewPlan: u.previewPlan || null, hasPin: !!u.pin_hash, hasPassword: u.password_set !== 0, google: !!u.google_sub, github: !!u.github_id, emailVerified: !!u.email_verified, planStatus: u.plan_status, planInterval: u.plan_interval, trialUsed: !!u.trial_used, refCode: u.ref_code, plan: u.plan, planRenews: u.plan_renews, taxBracket: u.tax_bracket, stateTax: u.state_tax,
 });
 
 export const router = express.Router();
@@ -92,8 +97,7 @@ const DUMMY_HASH = hashSecret('timing-equalizer');
 // hash is of a random secret nobody knows, so password sign-in stays impossible until one is set.
 export async function createUser({ email, password, ref, googleSub = null, verified = false }) {
   // Admin is whoever matches ADMIN_EMAIL; outside production the first account also qualifies.
-  const admin = adminEmails().length ? isAdminEmail(email)
-    : process.env.NODE_ENV !== 'production' && !await one('SELECT id FROM users LIMIT 1');
+  const admin = isAdminEmail(email) || (!adminEmails().length && process.env.NODE_ENV !== 'production' && !await one('SELECT id FROM users LIMIT 1'));
   // Referral: ?ref=CODE on the sign-up link credits whoever invited this user once they pay.
   const referrer = /^[a-z0-9]{6,12}$/.test(String(ref || '')) ? await one('SELECT id FROM users WHERE ref_code = ?', ref) : null;
   const r = await run('INSERT INTO users (email, pass_hash, password_set, google_sub, email_verified, role, created_at, ref_code, referred_by) VALUES (?,?,?,?,?,?,?,?,?)',
@@ -104,7 +108,7 @@ export async function createUser({ email, password, ref, googleSub = null, verif
   return id;
 }
 // Sensitive actions re-check the password; accounts created with Google confirm with their email instead.
-const confirmsIdentity = (u, body) => u.password_set === 0
+export const confirmsIdentity = (u, body) => u.password_set === 0
   ? String(body.confirm || '').trim().toLowerCase() === u.email
   : verifySecret(String(body.password || ''), u.pass_hash);
 
@@ -161,6 +165,49 @@ router.post('/mfa', async (req, res) => {
   await createSession(res, req, u.id, false);
   await audit(u.id, 'login', { mfa: true }, req.ip);
   res.json({ user: publicUser(u) });
+});
+
+// Sign in with a text-message code, for accounts with a verified phone. The owner's phone numbers
+// (Admin → Admins) sign in to the owner account even before the number is linked to it.
+const phoneCodes = new Map(); // phone -> { userId, hash, exp, tries }
+router.post('/phone/start', async (req, res) => {
+  const phone = normalizePhone(req.body.phone);
+  if (!/^\+\d{10,15}$/.test(phone)) return res.status(400).json({ error: 'Enter your phone number, e.g. 845 555 1234' });
+  if (!rateLimit('plogin:' + req.ip, 10, 3600e3) || !rateLimit('plogin:' + phone, 5, 3600e3)) return res.status(429).json({ error: 'Too many codes requested, try later' });
+  let u = await one('SELECT id FROM users WHERE phone = ? AND phone_verified = 1', phone);
+  if (!u && isAdminPhone(phone)) {
+    const emails = allAdminEmails();
+    // The owner's account (an admin email, made admin on its next visit if not yet), or a new one.
+    u = await one(`SELECT id FROM users WHERE email IN (${emails.map(() => '?').join(',')}) ORDER BY role = 'admin' DESC, id LIMIT 1`, ...emails)
+      || { id: await createUser({ email: OWNER_EMAILS[0], verified: true }) };
+  }
+  // Same answer whether or not the number has an account, so the form cannot reveal who signed up.
+  let devCode;
+  if (u) {
+    const code = String(crypto.randomInt(100000, 1000000));
+    phoneCodes.set(phone, { userId: u.id, hash: sha256(code), exp: now() + 10 * 60e3, tries: 0 });
+    const sent = await sendSms(phone, `QuantPocket sign-in code: ${code}`).catch(e => { console.warn('sms', e.message); return {}; });
+    if (sent.simulated && process.env.NODE_ENV !== 'production') devCode = code;
+  }
+  res.json({ ok: true, devCode });
+});
+router.post('/phone/verify', async (req, res) => {
+  const phone = normalizePhone(req.body.phone), p = phoneCodes.get(phone);
+  if (!p || p.exp < now()) return res.status(400).json({ error: 'This code expired. Request a new one.' });
+  if (++p.tries > 5) { phoneCodes.delete(phone); return res.status(429).json({ error: 'Too many attempts. Request a new code.' }); }
+  if (sha256(String(req.body.code || '').trim()) !== p.hash) return res.status(401).json({ error: 'Wrong code' });
+  phoneCodes.delete(phone);
+  const u = await one('SELECT * FROM users WHERE id = ?', p.userId);
+  if (!u) return res.status(400).json({ error: 'Account not found' });
+  if (u.locked_until > now()) return res.status(423).json({ error: 'Account temporarily locked after failed attempts' });
+  // The code proved the number belongs to this person: link it if the account has none yet.
+  if (!u.phone || u.phone === phone) {
+    await run('UPDATE users SET phone = NULL WHERE phone = ? AND id != ? AND phone_verified = 0', phone, u.id);
+    await run('UPDATE users SET phone = ?, phone_verified = 1 WHERE id = ?', phone, u.id);
+  }
+  await createSession(res, req, u.id, !!u.totp_enabled);
+  await audit(u.id, u.totp_enabled ? 'login_phone_ok' : 'login', { phone: true }, req.ip);
+  res.json(u.totp_enabled ? { mfaRequired: true } : { user: publicUser(await one('SELECT * FROM users WHERE id = ?', u.id)) });
 });
 
 router.post('/logout', async (req, res) => {

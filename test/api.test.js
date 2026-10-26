@@ -64,8 +64,14 @@ test('register, trade, schedule, tax, 2FA login', async () => {
   assert.equal((await call('/account')).status, 200);
 
   run("UPDATE paper_accounts SET cash = cash + 5000 WHERE user_id = 1");
-  const fees = await call('/admin/assess-fees', {});
-  assert.ok(fees.body.find(f => f.account === 'paper').fee > 0);
+  // Software-only mode (the default) charges no performance fee; registered-adviser mode does.
+  assert.deepEqual((await call('/admin/assess-fees', {})).body, []);
+  const { siteSet } = await import('../src/site.js');
+  await siteSet('adviserMode', true);
+  try {
+    const fees = await call('/admin/assess-fees', {});
+    assert.ok(fees.body.find(f => f.account === 'paper').fee > 0);
+  } finally { await siteSet('adviserMode', false); }
 });
 
 test('lockout after repeated bad passwords', async () => {
