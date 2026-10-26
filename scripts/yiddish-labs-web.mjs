@@ -98,7 +98,8 @@ async function translateOne(text) {
   await page.keyboard.insertText(text);
   const before = await resultText();
   await page.click('button:has-text("Translate...")');
-  await page.click('text=To Yiddish');
+  // Exact text: after the first run the result panel also says "Translate to Yiddish".
+  await page.click('text="To Yiddish"');
   // Wait until the result changes and stops changing.
   let last = before, same = 0;
   for (let i = 0; i < 180; i++) {
