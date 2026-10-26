@@ -55,12 +55,23 @@ if (!(await page.locator('[contenteditable=true]').count())) {
   await page.locator('[contenteditable=true]').waitFor({ timeout: 30000 });
 }
 await ctx.storageState({ path: STATE });
+// The site sometimes opens a pop-up (e.g. "what's new"); close it so it does not block the editor.
+async function closePopups() {
+  for (let i = 0; i < 3; i++) {
+    if (!(await page.locator('.p-dialog-mask').count())) return;
+    const close = page.locator('.p-dialog-mask button[aria-label="Close"], .p-dialog-mask .p-dialog-header-close, .p-dialog-mask button:has-text("Close"), .p-dialog-mask button:has-text("Got it")').first();
+    if (await close.count()) await close.click({ timeout: 3000 }).catch(() => {}); else await page.keyboard.press('Escape');
+    await page.waitForTimeout(400);
+  }
+}
+await closePopups();
 const credits = async () => +((await page.evaluate(() => (document.body.innerText.match(/([\d,]+)\s*\n?\s*Available credits/i) || [])[1] || '')) || '').replace(/,/g, '') || null;
 const resultText = () => page.evaluate(() => {
   const h = [...document.querySelectorAll('span')].find(e => e.textContent.trim() === 'Result');
   return (h?.parentElement?.nextElementSibling?.innerText || '').trim();
 });
 async function translateOne(text) {
+  await closePopups();
   const ed = page.locator('[contenteditable=true]').first();
   await ed.click(); await page.keyboard.press('Control+A'); await page.keyboard.press('Delete');
   await page.keyboard.insertText(text);
