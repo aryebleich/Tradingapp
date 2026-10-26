@@ -1211,5 +1211,6 @@ export default {
  "The most you can lose on the trade.": "די מאקסימום מעגליכע פארלוסט וואס קען זיין אויפ'ן טרעיד.",
  "Buying and selling to bring holdings back to their target weights.": "קויפן און פארקויפן אינוועסטמענטס כדי צוריקצוברענגען די האלטונגען פונעם פארטפאליאו צו די באשטימטע צילן וואס מען האט לכתחילה אנגעשטעלט.",
  "How many truly different investments you hold once you account for holdings that move together.": "וויפיל באמת אנדערע סארט אינוועסטמענטס האלטסטו טאקע, איינמאל דו נעמסט אין באטראכט די אלע פאזיציעס וואס גייען סייווי אינאיינעם?",
- "By continuing with Google you agree to the": "מיט'ן גיין ווייטער מיט גוגל, זענט איר מסכים צו די"
+ "By continuing with Google you agree to the": "מיט'ן גיין ווייטער מיט גוגל, זענט איר מסכים צו די",
+ "for one symbol: return a position (0 to 1) for each day.": "פאר איין איינציגן סימבאל, זאלסטו צוריקגעבן א פאזיציע וועליו צווישן 0 און 1 פאר יעדן טאג."
 };
