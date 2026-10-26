@@ -8,7 +8,8 @@ import { URLS, request } from './http.js';
 const env = k => process.env[k];
 const oauthCreds = () => (env('BROKER_CLIENT_ID') && env('BROKER_CLIENT_SECRET') ? [env('BROKER_CLIENT_ID'), env('BROKER_CLIENT_SECRET')] : null);
 export const brokerEnabled = () => !!((env('BROKER_API_KEY') && env('BROKER_API_SECRET')) || oauthCreds());
-export const tokenUrl = () => env('BROKER_TOKEN_URL') || 'https://authx.alpaca.markets/v1/oauth2/token';
+// The token service matches the Broker API environment: sandbox credentials get sandbox tokens.
+export const tokenUrl = () => env('BROKER_TOKEN_URL') || (/sandbox/.test(env('BROKER_BASE_URL') || 'sandbox') ? 'https://authx.sandbox.alpaca.markets/v1/oauth2/token' : 'https://authx.alpaca.markets/v1/oauth2/token');
 
 let token = null; // { value, until, key }
 async function bearer() {

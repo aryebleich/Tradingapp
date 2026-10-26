@@ -12,6 +12,8 @@ import { registerChart } from './chart.js';
 import { registerOptionsLab } from './optionslab.js';
 import { registerProtect, getPasskey } from './protect.js';
 import { registerOwner } from './owner.js';
+import { registerWealth } from './wealth.js';
+import { registerTools } from './tools.js';
 import { attachGlossary } from './glossary.js';
 import { startI18n, setLang, canvasNote, LANGS, current as currentLang } from './i18n.js';
 const $ = (s, el = document) => el.querySelector(s);
@@ -182,9 +184,9 @@ async function showUpgrade(feature) {
 const NAV = [
   ['Trading', [['dashboard', 'Portfolio'], ['trade', 'Trade'], ['chart', 'Chart'], ['orders', 'Orders'], ['positions', 'Positions'], ['watchlists', 'Watchlists']]],
   ['AI', [['ai', 'AI assistant'], ['agents', 'Forecasts & AI agents'], ['news', 'News & sentiment']]],
-  ['Markets', [['sp500', 'S&P 500 plan'], ['markets', 'Markets & news'], ['scanner', 'Scanner'], ['options', 'Options chain'], ['optionslab', 'Options lab'], ['institutions', 'Institutional portfolios'], ['calendar', 'Calendar & events']]],
+  ['Markets', [['sp500', 'S&P 500 plan'], ['alpaca-tools', 'Bonds, crypto & AI'], ['markets', 'Markets & news'], ['scanner', 'Scanner'], ['options', 'Options chain'], ['optionslab', 'Options lab'], ['institutions', 'Institutional portfolios'], ['calendar', 'Calendar & events']]],
   ['Strategies', [['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['code', 'Code lab'], ['portfolios', 'Portfolios'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['marketplace', 'Marketplace'], ['pairs', 'Pairs trading'], ['schedule', 'Scheduled trades'], ['quantconnect', 'Cloud algorithms'], ['workspace', 'Workspace']]],
-  ['Money', [['longterm', 'Long-term view'], ['insights', 'Insights & journal'], ['risk', 'Risk controls'], ['execution', 'Execution & routing'], ['spend', 'Invest as you spend'], ['halal', 'Halal investing'], ['tax', 'Taxes']]],
+  ['Money', [['wealth', 'Wealth builder'], ['longterm', 'Long-term view'], ['insights', 'Insights & journal'], ['risk', 'Risk controls'], ['execution', 'Execution & routing'], ['spend', 'Invest as you spend'], ['halal', 'Halal investing'], ['tax', 'Taxes']]],
   ['Account', [['security', 'Security & help'], ['learn', 'Learn'], ['accounts', 'All accounts'], ['brokers', 'Brokerages'], ['account', 'Alpaca account'], ['funding', 'Plans & billing'], ['referrals', 'Invite & earn'], ['text', 'Text & hotline'], ['settings', 'Settings']]],
 ];
 // Simple line icons (24x24 paths) for the menu.
@@ -209,6 +211,8 @@ const ICONS = {
   'admin-support': '<path d="M4 5h16v11H8l-4 4z"/><path d="M8 9h8M8 12.5h5"/>',
   'admin-setup': '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
   admin: '<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"/>',
+  wealth: '<path d="M3 20h18M5 20V10M10 20V6M15 20v-8M20 20V4"/>', 'alpaca-tools': '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+  'admin-alpaca': '<path d="M4 19V5l8 7 8-7v14"/>', 'admin-business': '<path d="M3 7h18v13H3zM8 7V4h8v3"/>', 'admin-admins': '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>', 'admin-keys': '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/>',
   chart: '<path d="M7 4v16M17 6v12M4 8h6v8H4zM14 9h6v6h-6z"/>', ai: '<path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
   agents: '<path d="M3 17l6-6 4 4 8-8"/><circle cx="21" cy="7" r="1"/><path d="M3 21h18"/>', news: '<path d="M4 5h13v14H6a2 2 0 0 1-2-2zM17 9h3v8a2 2 0 0 1-2 2"/><path d="M8 9h5M8 13h5"/>',
   scanner: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5M8 11h6M11 8v6"/>', optionslab: '<path d="M3 18c4 0 5-12 9-12s5 12 9 12"/><path d="M3 21h18"/>',
@@ -265,9 +269,11 @@ async function render() {
   $$('#tabs a[data-r]').forEach(a => a.classList.toggle('on', a.dataset.r === route || (route === '' && a.dataset.r === 'dashboard')));
   if (ME) {
     const groups = ME.role === 'admin' ? [['Owner', ADMIN_TABS], ...NAV] : NAV;
-    $('#nav').innerHTML = groups.map(([g, items]) => `<div class="grp">${g}</div>` + items.map(([k, t]) => `<a href="#/${k}" class="${k === route ? 'on' : ''}">${icon(k)}${t}</a>`).join('')).join('')
+    await accounts();
+    $('#nav').innerHTML = modeSwitch() + groups.map(([g, items]) => `<div class="grp">${g}</div>` + items.map(([k, t]) => `<a href="#/${k}" class="${k === route ? 'on' : ''}">${icon(k)}${t}</a>`).join('')).join('')
       + (isPaid(ME) ? '' : `<a href="#/funding" class="upsell">${icon('star')}${ME.trialUsed ? 'Upgrade to Pro' : 'Try Pro free for 14 days'}</a>`)
       + `<div class="grp">${esc(ME.email)}</div><a href="#" id="navLogout">${icon('account')}Sign out</a>`;
+    wireModeSwitch();
     $('#navLogout').onclick = e => { e.preventDefault(); $('#logout').click(); };
     updateBadge();
   }
@@ -278,6 +284,32 @@ async function render() {
   catch (e) { view.innerHTML = `<div class="card err">${esc(e.message)}</div>`; }
 }
 window.addEventListener('hashchange', render);
+
+// ---------- news pop-ups: today's headlines about the stocks in the open account ----------
+const newsToasts = { list: [], at: 0, acct: null, timer: null, shown: new Set(JSON.parse(sessionStorage.getItem('qp_news_seen') || '[]')) };
+const toastsOn = () => { try { return localStorage.getItem('qp_news_toasts') !== '0'; } catch { return true; } };
+async function nextNewsToast() {
+  if (!ME || !toastsOn() || document.hidden || document.querySelector('.newstoast')) return;
+  if (newsToasts.acct !== state.account || Date.now() - newsToasts.at > 10 * 60e3) {
+    newsToasts.acct = state.account; newsToasts.at = Date.now();
+    newsToasts.list = await api('/wealth/holdings-news?account=' + state.account).catch(() => []);
+  }
+  const n = newsToasts.list.find(x => !newsToasts.shown.has(x.id));
+  if (!n) return;
+  newsToasts.shown.add(n.id); try { sessionStorage.setItem('qp_news_seen', JSON.stringify([...newsToasts.shown].slice(-200))); } catch {}
+  const t = document.createElement('div'); t.className = 'newstoast'; t.setAttribute('role', 'status');
+  t.innerHTML = `<div class="nt-top"><span class="nt-syms" data-no-tr>${n.symbols.map(esc).join(' · ')}</span><span class="mu">${esc(n.source || '')} · ${new Date(n.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span><button class="nt-x" aria-label="Close">×</button></div>
+    <a href="${esc(n.url || '#/news')}" target="_blank" rel="noopener" class="nt-head" data-no-tr>${esc(n.headline)}</a>
+    <div class="nt-foot"><a href="#/news" class="mu">More news</a><button class="nt-off ghost small">Turn off pop-ups</button></div>`;
+  document.body.append(t);
+  requestAnimationFrame(() => t.classList.add('in'));
+  const close = () => { t.classList.remove('in'); setTimeout(() => t.remove(), 400); };
+  t.querySelector('.nt-x').onclick = close;
+  t.querySelector('.nt-off').onclick = () => { try { localStorage.setItem('qp_news_toasts', '0'); } catch {} close(); };
+  let hide = setTimeout(close, 12000);
+  t.onmouseenter = () => clearTimeout(hide); t.onmouseleave = () => (hide = setTimeout(close, 5000));
+}
+setTimeout(() => { nextNewsToast(); newsToasts.timer = setInterval(nextNewsToast, 45000); }, 8000);
 // Phone layout: the sidebar becomes a drawer opened from the header or the bottom "Menu" tab.
 function setMenu(open) {
   $('#nav').classList.toggle('open', open); $('#scrim').hidden = !open;
@@ -326,9 +358,22 @@ const setCalm = on => { document.body.classList.toggle('calm', on); try { localS
 setCalm((() => { try { return localStorage.getItem('qp_calm') !== '0'; } catch { return true; } })());
 $('#logout').onclick = async () => { await api('/auth/logout', { body: {} }); ME = null; location.href = '/'; };
 
-const accountSwitch = () => `<div class="seg" id="acctseg">${[['paper', 'Paper'], ['alpaca', 'Alpaca'], ...(ACCTS?.list || []).filter(a => a.connected && !['paper', 'alpaca'].includes(a.id)).map(a => [a.id, a.name])].map(([k, t]) => `<button class="${state.account === k ? 'on' : ''}" data-a="${k}">${t}</button>`).join('')}</div>`;
-function wireAccountSwitch(view) {
-  $$('#acctseg button', view).forEach(b => (b.onclick = () => { state.account = b.dataset.a; localStorage.setItem('qp_account', state.account); render(); }));
+// Paper or live, chosen once in the side panel for every page. "Live" is the brokerage account
+// (Alpaca, or another connected broker picked in the list under it).
+function modeSwitch() {
+  const live = (ACCTS?.list || []).filter(a => a.id !== 'paper' && (a.connected || a.id === 'alpaca'));
+  const isLive = state.account !== 'paper';
+  return `<div class="modeswitch"><div class="seg" id="modeSeg"><button class="${isLive ? '' : 'on'}" data-mode="paper">Paper</button><button class="${isLive ? 'on live' : ''}" data-mode="live">Live</button></div>
+    ${isLive && live.filter(a => a.connected).length > 1 ? `<select id="liveAcct" aria-label="Live account">${live.filter(a => a.connected).map(a => `<option value="${a.id}" ${a.id === state.account ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select>` : ''}</div>`;
+}
+function setAccount(id) { state.account = id; try { localStorage.setItem('qp_account', id); if (id !== 'paper') localStorage.setItem('qp_live_account', id); } catch {} render(); }
+function wireModeSwitch() {
+  $$('#modeSeg button').forEach(b => (b.onclick = () => {
+    if (b.dataset.mode === 'paper') return setAccount('paper');
+    let last = 'alpaca'; try { last = localStorage.getItem('qp_live_account') || 'alpaca'; } catch {}
+    setAccount((ACCTS?.list || []).some(a => a.id === last && a.connected) ? last : 'alpaca');
+  }));
+  if ($('#liveAcct')) $('#liveAcct').onchange = e => setAccount(e.target.value);
 }
 
 // ---------- auth ----------
@@ -352,7 +397,6 @@ routes.login = async (view, q) => {
     <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
     <button>Sign in</button><div class="err"></div>
     ${window.PublicKeyCredential ? '<button type="button" class="ghost" id="pkLogin" style="width:100%;margin-top:8px">Sign in with a passkey</button>' : ''}
-    <a href="#/login-phone" class="gbtn phonebtn"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Sign in with a text message code</span></a>
     <p class="mu"><a href="#/forgot">Forgot password?</a> · New here? <a href="#/register">Create an account</a></p></form>`;
   if (q.get('error')) $('.err', view).textContent = q.get('error');
   if ($('#pkLogin', view)) act($('#pkLogin', view), async () => {
@@ -432,11 +476,11 @@ routes.mfa = view => {
 // ---------- portfolio ----------
 routes.dashboard = async (view, q) => {
   await accounts();
-  if (state.account === 'alpaca') return routes.portfolio(view, q, accountSwitch, wireAccountSwitch);
+  if (state.account === 'alpaca') return routes.portfolio(view, q);
   const a = await api('/account?account=' + state.account).catch(e => ({ error: e.message }));
   if (a.error) {
-    view.innerHTML = `<div class="row" style="justify-content:space-between"><h1>Portfolio</h1>${accountSwitch()}</div><div class="card"><p class="err">${esc(a.error)}</p><a href="#/settings">Open Settings</a></div>`;
-    return wireAccountSwitch(view);
+    view.innerHTML = `<h1>Portfolio</h1><div class="card"><p class="err">${esc(a.error)}</p><a href="#/settings">Open Settings</a></div>`;
+    return;
   }
   const base = a.startCash ?? a.history[0]?.equity ?? a.equity;
   const pnl = a.equity - base, pnlPct = base ? pnl / base * 100 : 0;
@@ -451,7 +495,7 @@ routes.dashboard = async (view, q) => {
   ${todo ? `<div class="card onboard"><div class="ob-head"><div><h2>Get started</h2><p class="mu">${steps.filter(x => x[0]).length} of ${steps.length} done</p></div><button class="ghost small" id="hideOnboard">Hide</button></div>
     <div class="ob-bar"><i style="width:${Math.round(steps.filter(x => x[0]).length / steps.length * 100)}%"></i></div>
     <div class="ob-list">${steps.map(([done, t, href]) => `<a class="ob-item${done ? ' done' : ''}" href="${href}"><span class="ob-check" aria-hidden="true"></span><span class="ob-t">${t}</span><span class="ob-go" aria-hidden="true">→</span></a>`).join('')}</div></div>` : ''}
-  <div class="row" style="justify-content:space-between"><h1>Portfolio ${a.live ? '<span class="pill warn">LIVE MONEY</span>' : state.account === 'alpaca' ? '<span class="pill">Alpaca paper</span>' : '<span class="pill">Simulated</span>'}</h1>${accountSwitch()}</div>
+  <div class="row" style="justify-content:space-between"><h1>Portfolio ${a.live ? '<span class="pill warn">LIVE MONEY</span>' : state.account === 'paper' ? '<span class="pill">Paper</span>' : '<span class="pill">Live account, test money</span>'}</h1></div>
   <div class="card">
     <div class="stats">
       <div class="stat"><span>Equity</span><b>${money(a.equity)}</b></div>
@@ -476,7 +520,6 @@ routes.dashboard = async (view, q) => {
   </div>
   <div class="card"><h2>Recent orders</h2><div class="tablewrap" id="orders"><p class="mu">Loading…</p></div>
     ${state.account === 'paper' ? '<button class="ghost small" id="reset">Reset paper account</button>' : ''}</div>`;
-  wireAccountSwitch(view);
   if ($('#hideOnboard', view)) $('#hideOnboard', view).onclick = () => { try { localStorage.setItem('qp_onboard_done', '1'); } catch {} render(); };
   drawChart($('#eqc', view), a.history.map(x => x.equity), { base });
   const t = $('#ticket', view);
@@ -713,7 +756,7 @@ routes.text = async view => {
 routes.tax = async (view, q) => {
   const year = +(q.get('year') || new Date().getFullYear());
   const t = await api(`/tax?account=${state.account}&year=${year}`);
-  view.innerHTML = `<div class="row" style="justify-content:space-between"><h1>Tax information</h1>${accountSwitch()}</div>
+  view.innerHTML = `<div class="row" style="justify-content:space-between"><h1>Tax information</h1></div>
   <div class="banner">Estimates for planning only (US federal + flat state rate, FIFO lots). Your broker's 1099-B is the official record; check with a tax professional.</div>
   <div class="card"><div class="row"><label>Year<select id="yr">${[0, 1, 2, 3].map(i => new Date().getFullYear() - i).map(y => `<option ${y === year ? 'selected' : ''}>${y}</option>`).join('')}</select></label>
     <a href="/api/tax?account=${state.account}&year=${year}&format=csv"><button type="button" class="ghost">Download Form 8949 CSV</button></a>
@@ -739,7 +782,6 @@ routes.tax = async (view, q) => {
   <div class="card tablewrap"><h2>Realized sales</h2><table><tr><th>Symbol</th><th>Qty</th><th>Acquired</th><th>Sold</th><th>Proceeds</th><th>Cost</th><th>Gain</th><th>Term</th><th></th></tr>
     ${t.rows.map(r => `<tr><td>${esc(r.symbol)}</td><td>${num(r.qty, 4)}</td><td>${new Date(r.acquired).toLocaleDateString()}</td><td>${new Date(r.sold).toLocaleDateString()}</td><td>${money(r.proceeds)}</td><td>${money(r.cost)}</td><td class="${cls(r.gain)}">${money(r.gain)}</td><td>${r.longTerm ? 'Long' : 'Short'}</td><td>${r.washSale ? '<span class="pill warn">wash sale</span>' : ''}</td></tr>`).join('') || '<tr><td colspan="9" class="mu">No sales this year</td></tr>'}
   </table></div>`;
-  wireAccountSwitch(view);
   $('#yr', view).onchange = e => (location.hash = '#/tax?year=' + e.target.value);
   if ($('#mtm', view)) $('#mtm', view).onchange = async e => {
     try { await api('/tax/settings', { body: { bracket: t.bracket, stateTax: t.stateRate, mtm: e.target.checked } }); render(); }
@@ -830,13 +872,15 @@ function helcimPay(checkoutToken, ledgerId) {
 routes.referrals = async view => {
   const r = await api('/referrals');
   view.innerHTML = `<h1>Invite & earn</h1>
-  <div class="card" style="background:var(--grad);color:#fff;border:0"><h2 style="color:#fff;font-size:20px">Give your friends a head start. Get $${r.reward} for each one who subscribes.</h2>
-    <p style="margin:0;opacity:.9">Share your link. When someone signs up with it and starts a paid plan, $${r.reward} is credited to your account and taken off your next bill.</p></div>
+  <div class="card" style="background:var(--grad);color:#fff;border:0"><h2 style="color:#fff;font-size:20px">Give your friends ${r.friendDays} days free. Get $${r.reward} for each one who subscribes.</h2>
+    <p style="margin:0;opacity:.9">Share your link. Friends who sign up with it get a ${r.friendDays}-day free trial. When one starts a paid plan, $${r.reward} is credited to your account and taken off your next bill.</p></div>
   <div class="card"><h2>Your invite link</h2><div class="refbox"><input id="reflink" readonly value="${esc(r.link)}"><button id="copy">Copy</button>${navigator.share ? '<button class="ghost" id="share">Share</button>' : ''}</div><div class="err"></div></div>
   <div class="card"><div class="stats">
     <div class="stat"><span>Friends who joined</span><b>${r.invited}</b></div>
     <div class="stat"><span>Friends who subscribed</span><b>${r.paying}</b></div>
-    <div class="stat"><span>Credit earned</span><b class="pos">${money(r.credit)}</b></div></div></div>`;
+    <div class="stat"><span>Credit earned</span><b class="pos">${money(r.credit)}</b></div></div></div>
+  ${r.milestones?.length ? `<div class="card"><h2>Bonus milestones</h2>${r.next ? `<p class="mu">${r.next.at - r.paying} more subscribed ${r.next.at - r.paying === 1 ? 'friend' : 'friends'} to your next bonus of <b>$${r.next.bonus}</b>.</p><div class="ob-bar"><i style="width:${Math.round(r.paying / r.next.at * 100)}%"></i></div>` : '<p class="mu">You reached every bonus. Thank you!</p>'}
+    <div class="milestones">${r.milestones.map(m => `<div class="milestone ${r.paying >= m.at ? 'done' : ''}"><b>${m.at}</b><span>friends</span><em>+$${m.bonus}</em></div>`).join('')}</div></div>` : ''}`;
   act($('#copy', view), async () => { await navigator.clipboard.writeText(r.link).catch(() => { $('#reflink', view).select(); document.execCommand('copy'); }); return 'Link copied'; });
   if ($('#share', view)) $('#share', view).onclick = () => navigator.share({ title: 'QuantPocket', text: 'Backtest and automate your trading ideas with QuantPocket:', url: r.link }).catch(() => {});
 };
@@ -848,6 +892,7 @@ routes.settings = async view => {
   const pw = ME.hasPassword, confirmLabel = what => pw ? `Password to ${what}` : `Type your email to ${what}`, confirmType = pw ? 'password' : 'email';
   view.innerHTML = `<h1>Settings</h1>
   <div class="grid">
+    <div class="card"><h2>News pop-ups</h2><label class="chk"><input type="checkbox" id="newsT" ${toastsOn() ? 'checked' : ''}> Show today's headlines about the stocks I own</label></div>
     <div class="card"><h2>Calm mode</h2><label class="chk"><input type="checkbox" id="calmT" ${document.body.classList.contains('calm') ? 'checked' : ''}> No flashing prices, colors or celebrations (recommended)</label>
       <p class="mu small-print">Trading decisions go better without constant movement on the screen. Your long-term results are on the <a href="#/longterm">Long-term view</a>.</p></div>
     <div class="card" id="language"><h2>Language</h2>
@@ -904,11 +949,12 @@ routes.settings = async view => {
     const v = $('#delpw', view).value; await api('/auth/delete', { body: { password: v, confirm: v } }); location.href = '/';
   });
   if ($('#calmT', view)) $('#calmT', view).onchange = e => setCalm(e.target.checked);
+  if ($('#newsT', view)) $('#newsT', view).onchange = e => { try { localStorage.setItem('qp_news_toasts', e.target.checked ? '1' : '0'); } catch {} };
 };
 
 // ---------- admin ----------
 // Owner pages: one route per section so each has its own place in the menu.
-const ADMIN_TABS = [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-money', 'Money & fees'], ['admin-business', 'Business mode'], ['admin-admins', 'Admins'], ['admin-keys', 'Keys'], ['admin-support', 'Support inbox'], ['admin-system', 'System health'], ['admin-setup', 'Setup']];
+const ADMIN_TABS = [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-money', 'Money & fees'], ['admin-business', 'Business mode'], ['admin-alpaca', 'Alpaca plans'], ['admin-admins', 'Admins'], ['admin-keys', 'Keys'], ['admin-support', 'Support inbox'], ['admin-system', 'System health'], ['admin-setup', 'Setup']];
 // Pages with their own module (owner.js, protect.js) draw themselves under the same tabs.
 const adminTabs = current => `<div class="chips admintabs">${ADMIN_TABS.map(([k, t]) => `<a href="#/${k}"><button type="button" class="${k === current ? 'on' : ''}">${t}</button></a>`).join('')}</div>`;
 async function adminPage(view, tab) {
@@ -966,7 +1012,7 @@ async function adminPage(view, tab) {
   $$('[data-role]', view).forEach(b => (b.onclick = () => userCall(b.dataset.role, { role: b.dataset.to })));
   if ($('#userFind', view)) $('#userFind', view).oninput = e => { const q = e.target.value.trim().toLowerCase(); $$('#userTable tr[data-email]', view).forEach(tr => (tr.hidden = !!q && !tr.dataset.email.toLowerCase().includes(q))); };
 }
-for (const [k] of ADMIN_TABS.filter(([k]) => !['admin-system', 'admin-business', 'admin-admins', 'admin-keys'].includes(k))) routes[k] = view => (ME?.role === 'admin' ? adminPage(view, k) : routes.dashboard(view, new URLSearchParams()));
+for (const [k] of ADMIN_TABS.filter(([k]) => !['admin-system', 'admin-business', 'admin-alpaca', 'admin-admins', 'admin-keys'].includes(k))) routes[k] = view => (ME?.role === 'admin' ? adminPage(view, k) : routes.dashboard(view, new URLSearchParams()));
 
 registerStrategies(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, cls, date, api, form, act, render, drawChart, onLeave, me: () => ME });
 registerBrokers(routes, { $, $$, esc, money, api, form, act, render, accounts });
@@ -982,6 +1028,11 @@ registerChart(routes, shared);
 registerOptionsLab(routes, shared);
 registerProtect(routes, shared);
 registerOwner(routes, shared);
+registerWealth(routes, shared);
+registerTools(routes, shared);
+
+// Static files are cached for instant repeat visits (sw.js); pages and data always come fresh.
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});
 
 (async () => {
   // Remember an invite code from a referral link (/app?ref=CODE) for sign-up.
@@ -989,7 +1040,14 @@ registerOwner(routes, shared);
   if (ref && /^[a-z0-9]{6,12}$/.test(ref)) { try { localStorage.setItem('qp_ref', ref); } catch {} }
   // Language: chosen in Settings → Language.
   await startI18n().catch(e => console.warn('i18n', e));
-  const me = await api('/auth/me').catch(() => ({}));
+  // A server that is waking up (free hosting sleeps) answers late or with an error: keep trying
+  // for a while instead of sending a signed-in user back to the sign-in page.
+  let me = null;
+  for (let i = 0; i < 8 && !me; i++) {
+    me = await fetch('/api/auth/me', { headers: { 'X-Requested-With': 'qp' } }).then(r => (r.ok ? r.json() : null)).catch(() => null);
+    if (!me) { $('#view').innerHTML = '<div class="card auth"><p class="mu">Connecting to QuantPocket…</p></div>'; await new Promise(r => setTimeout(r, 1500 * (i + 1))); }
+  }
+  me ||= {};
   ME = me.user;
   if (!ME && me.mfaPending) location.hash = '#/mfa';
   render();

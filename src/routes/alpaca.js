@@ -14,6 +14,7 @@ import { getSetting } from '../settings.js';
 import crypto from 'node:crypto';
 import { checkOrder, logOrder } from '../risk.js';
 import { isPaid } from '../fees.js';
+import { recordCommission } from '../revenue.js';
 import { applyStatus, adoptAccount, history, kycBus, feedStatus } from '../alpaca/kyc.js';
 
 export const router = express.Router();
@@ -214,6 +215,7 @@ router.post('/orders', async (req, res) => {
   try { o = await breaker('alpaca').run(async () => { await chaos(); return t.placeOrder(body); }); }
   catch (e) { await auditAppend(req.user.id, 'order', { event: 'rejected', orderRef: ref, venue: 'alpaca', symbol: body.symbol || 'mleg', reason: String(e.message).slice(0, 200), at: Date.now() }); throw e; }
   await auditAppend(req.user.id, 'order', { event: 'accepted', orderRef: ref, brokerOrderId: String(o.id), venue: 'alpaca', symbol: o.symbol || 'mleg', side: o.side, status: o.status, at: Date.now() });
+  if (t.type === 'broker') await recordCommission(req.user.id, o, quote?.ask || quote?.price).catch(() => {});
   await logOrder(req.user.id, 'alpaca', { symbol: body.symbol || 'mleg', side: body.side, value: +body.notional || 0 }, 'web');
   await audit(req.user.id, 'alpaca_order', { id: o.id, symbol: o.symbol || 'mleg', side: o.side, type: o.type, class: o.order_class, live: t.live }, req.ip);
   if (chk?.notes?.length) o.notes = chk.notes;
@@ -311,6 +313,8 @@ router.get('/data/orderbook', async (req, res) => {
   if (!sym.includes('/')) return res.json({ symbol: sym, depth: false, quote: (await D.latest(sym))[sym]?.quote || null });
   res.json({ depth: true, ...(await D.orderbook(sym)) });
 });
+router.get('/data/fixed-income', async (req, res) => { dataLimit(req); res.json(await D.fixedIncome(req.query.isins)); });
+router.get('/data/crypto-venues', async (req, res) => { dataLimit(req); res.json(await D.cryptoQuotes(req.query.symbols)); });
 router.get('/data/latest', async (req, res) => { dataLimit(req); res.json(await D.latest(req.query.symbols)); });
 router.get('/data/snapshots', async (req, res) => { dataLimit(req); res.json(await D.snapshots(req.query.symbols)); });
 router.get('/data/most-actives', async (req, res) => { dataLimit(req); res.json(await D.mostActives(req.query.by, req.query.top)); });

@@ -99,3 +99,26 @@ export function parseOcc(sym) {
 
 export const corporateActions = ({ symbols, types, start, end, limit = 100 } = {}) =>
   get('/v1/corporate-actions', { symbols: list(symbols), types, start, end, limit: Math.min(+limit || 100, 1000) }).then(d => d.corporate_actions || {});
+
+// ---------- bonds and Treasuries (Fixed Income Data API, beta), by ISIN ----------
+const isins = v => list(v).filter(x => /^[A-Z]{2}[A-Z0-9]{9}\d$/.test(x)).slice(0, 50);
+export async function fixedIncome(ids) {
+  const want = isins(ids);
+  if (!want.length) throw Object.assign(new Error('Enter one or more ISINs, e.g. US912797KJ59'), { status: 400 });
+  const [p, q] = await Promise.all([get('/v1beta1/fixed_income/latest/prices', { isins: want }).catch(() => ({})), get('/v1beta1/fixed_income/latest/quotes', { isins: want }).catch(() => ({}))]);
+  return want.map(isin => ({ isin, price: p.prices?.[isin] || null, quote: q.quotes?.[isin] || null }));
+}
+
+// ---------- crypto from several liquidity sources (v1beta3) ----------
+// us: Alpaca US · us-1: Kraken US · eu-1: Kraken EU
+export const CRYPTO_LOCATIONS = { us: 'Alpaca US', 'us-1': 'Kraken US', 'eu-1': 'Kraken EU' };
+export async function cryptoQuotes(symbols, locations = Object.keys(CRYPTO_LOCATIONS)) {
+  const syms = list(symbols).filter(isCrypto).slice(0, 20);
+  if (!syms.length) throw Object.assign(new Error('Enter crypto pairs such as BTC/USD'), { status: 400 });
+  const out = {};
+  await Promise.all(locations.filter(l => CRYPTO_LOCATIONS[l]).map(async l => {
+    const d = await get(`/v1beta3/crypto/${l}/latest/quotes`, { symbols: syms }).catch(() => ({}));
+    for (const [s, q] of Object.entries(d.quotes || {})) (out[s] ||= {})[l] = q;
+  }));
+  return syms.map(s => ({ symbol: s, venues: Object.entries(out[s] || {}).map(([loc, q]) => ({ location: loc, name: CRYPTO_LOCATIONS[loc], bid: q.bp, ask: q.ap, bidSize: q.bs, askSize: q.as, at: q.t })) }));
+}

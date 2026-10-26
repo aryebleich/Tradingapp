@@ -1,6 +1,8 @@
 // Translate new app and homepage text through the Yiddish Labs website (Quick Action → Translate →
 // To Yiddish), one string at a time, using the owner's own browser session. Run after each push:
-//   YL_STATE=/path/to/state.json node scripts/yiddish-labs-web.mjs [--limit N] [--dry]
+//   YL_STATE=/path/to/state.json node scripts/yiddish-labs-web.mjs [--since REF] [--limit N] [--dry]
+// --since REF: only the app text added since that commit (e.g. the last pushed commit before this
+// update). The homepage, Admin and the README are never sent in that mode.
 // YL_STATE is a Playwright storage-state file of a signed-in session (kept outside the repository).
 // If it is missing or expired, sign in once with YL_EMAIL and YL_PASSWORD in the environment; the
 // session is then saved to YL_STATE. Passwords are never written anywhere.
@@ -10,6 +12,7 @@
 //   python3 scripts/pages.py
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
@@ -17,6 +20,7 @@ import { protect, unmarkdown } from './yiddish-labs-lib.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2), limit = +(args[args.indexOf('--limit') + 1]) || Infinity, dry = args.includes('--dry');
+const since = args.includes('--since') ? args[args.indexOf('--since') + 1] : null;
 const STATE = process.env.YL_STATE;
 const URL_ = (process.env.YIDDISH_LABS_URL || 'https://app.yiddishlabs.com') + '/app/quick-action';
 
@@ -35,7 +39,15 @@ function adminStrings() {
 const adminOnly = adminStrings();
 // Any text that appears inside the admin pages' code stays English too.
 const adminSrc = (() => { const a = fs.readFileSync(path.join(root, 'public/app.js'), 'utf8'), b = fs.readFileSync(path.join(root, 'public/protect.js'), 'utf8'); return a.slice(a.indexOf('async function adminPage'), a.indexOf('\nfor (const [k] of ADMIN_TABS')) + b.slice(b.indexOf('async function system')) + fs.readFileSync(path.join(root, 'public/owner.js'), 'utf8'); })();
-const entries = [...Object.entries(app).map(([en, yi]) => ['app', en, yi]), ...Object.entries(home).map(([en, yi]) => ['home', en, yi])]
+// The app's Yiddish strings as they were at REF (the i18n files from that commit, loaded from a temp copy).
+async function appStringsAt(ref) {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'yl-since-'));
+  for (const f of execFileSync('git', ['ls-tree', '--name-only', ref, 'public/i18n/'], { cwd: root, encoding: 'utf8' }).split('\n').filter(f => f.endsWith('.js')))
+    fs.writeFileSync(path.join(tmp, path.basename(f)), execFileSync('git', ['show', `${ref}:${f}`], { cwd: root }));
+  try { return (await import(pathToFileURL(path.join(tmp, 'yi.js')))).strings; } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+const before = since ? await appStringsAt(since) : null;
+const entries = [...Object.entries(app).filter(([en]) => !before || !(en in before)).map(([en, yi]) => ['app', en, yi]), ...(since ? [] : Object.entries(home).map(([en, yi]) => ['home', en, yi]))]
   .filter(([where, en, yi]) => !/\n/.test(en) && /[A-Za-z]{2}/.test(en) && yi !== en && !(where === 'app' ? labsApp[en] : labsHome[en]) && !(where === 'app' && (adminOnly.has(en) || adminSrc.includes(en))));
 const todo = [...new Set(entries.map(([, en]) => en))].slice(0, limit);
 console.log(`${todo.length} strings to translate on the Yiddish Labs website.`);
@@ -55,13 +67,22 @@ if (!(await page.locator('[contenteditable=true]').count())) {
   await page.locator('[contenteditable=true]').waitFor({ timeout: 30000 });
 }
 await ctx.storageState({ path: STATE });
-// The site sometimes opens a pop-up (e.g. "what's new"); close it so it does not block the editor.
+// The site sometimes opens a pop-up (e.g. "what's new"); close it with the X at its top right so it
+// does not block the editor.
 async function closePopups() {
   for (let i = 0; i < 3; i++) {
-    if (!(await page.locator('.p-dialog-mask').count())) return;
-    const close = page.locator('.p-dialog-mask button[aria-label="Close"], .p-dialog-mask .p-dialog-header-close, .p-dialog-mask button:has-text("Close"), .p-dialog-mask button:has-text("Got it")').first();
-    if (await close.count()) await close.click({ timeout: 3000 }).catch(() => {}); else await page.keyboard.press('Escape');
-    await page.waitForTimeout(400);
+    if (!(await page.locator('.p-dialog-mask, [role=dialog]').count())) return;
+    // The X: the right-most clickable element in the top part of the dialog.
+    const box = await page.evaluate(() => {
+      const d = document.querySelector('.p-dialog-mask .p-dialog, .p-dialog, [role=dialog]');
+      if (!d) return null;
+      const r = d.getBoundingClientRect();
+      const xs = [...d.querySelectorAll('button, [role=button], .p-dialog-header-close, svg')].map(e => e.getBoundingClientRect()).filter(b => b.width && b.top < r.top + 90);
+      const b = xs.sort((a, c) => c.right - a.right)[0];
+      return b ? { x: b.left + b.width / 2, y: b.top + b.height / 2 } : null;
+    });
+    if (box) await page.mouse.click(box.x, box.y); else await page.keyboard.press('Escape');
+    await page.waitForTimeout(500);
   }
 }
 await closePopups();

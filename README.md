@@ -76,7 +76,7 @@ same safety rule as Google.
 - Built-in admins: `aryebleich@gmail.com`, `kk5185920061@gmail.com` and the phone `+1 845-772-8111`.
   `ADMIN_EMAIL` (comma-separated) still works too.
 - **Admin → Admins** adds more admin emails and phones, with no restart.
-- **Sign in → "Sign in with a text message code"** sends a 6-digit code to a verified phone. The owner's
+- **`/app#/login-phone`** (not linked from the sign-in page) sends a 6-digit code to a verified phone. The owner's
   admin phones sign in to the owner account even before the number is linked. Real texts need Twilio.
 
 ## Admin → Keys: every key in one place, with .env import/export and Render
@@ -326,9 +326,16 @@ have an Alpaca account connect it themselves with OAuth or their own API keys; n
 
 1. Apply at alpaca.markets/broker → **Get started**. You get a **sandbox** right away; going live needs
    Alpaca's review of your business, compliance setup and agreements (weeks).
-2. Broker dashboard (sandbox) → **API Keys** → generate. In Render set `BROKER_API_KEY`,
-   `BROKER_API_SECRET` and `BROKER_BASE_URL=https://broker-api.sandbox.alpaca.markets`.
-   If Alpaca gives you OAuth client credentials instead, set `BROKER_CLIENT_ID` / `BROKER_CLIENT_SECRET`.
+2. Credentials. Either kind works; use one:
+   - **Client ID and client secret** (what newer Broker dashboards give out). Set `BROKER_CLIENT_ID`
+     and `BROKER_CLIENT_SECRET`, and leave `BROKER_API_KEY` / `BROKER_API_SECRET` empty.
+     - QuantPocket exchanges them for a short-lived token (OAuth client-credentials) and renews it by itself.
+     - It uses the sandbox token service while `BROKER_BASE_URL` is the sandbox, and the live one after.
+   - **API key and secret** (Broker dashboard → API Keys → generate). Set `BROKER_API_KEY` and
+     `BROKER_API_SECRET`.
+
+   Also set `BROKER_BASE_URL=https://broker-api.sandbox.alpaca.markets`. Enter them in **Admin → Keys**
+   (they are saved on Render too), or in Render → Environment.
 3. Market data for charts, scanners and options: a Trading API key pair in `ALPACA_KEY_ID` /
    `ALPACA_SECRET` (free IEX data; `ALPACA_STOCK_FEED=sip` once you pay for the full feed).
 4. "Connect with Alpaca" for existing Alpaca users: alpaca.markets → OAuth Apps → create an app with
@@ -341,6 +348,54 @@ have an Alpaca account connect it themselves with OAuth or their own API keys; n
 
 Several Alpaca accounts per user (a main account and sub accounts): each user adds them under
 **All accounts** with each account's own API keys; the page shows every account and totals for the live ones.
+
+## Money levers (Admin → Business mode)
+
+- **Deposit service fee:** a percent plus a fixed amount, with an optional cap per deposit. It is shown
+  to the customer before paying.
+- **Referrals:**
+  - a credit for each invited friend who pays;
+  - extra free-trial days for invited friends (30 days instead of 14 by default);
+  - bonus credits at milestones (5, 10, 25 paying friends);
+  - a top-referrers list.
+- **Partner commission (Alpaca Broker API):**
+  - Added to orders in accounts opened through QuantPocket, in basis points, dollars per order or
+    dollars per share. Alpaca collects it for you.
+  - Kept small by design. Check with Alpaca and a lawyer before turning it on.
+  - Other revenue sharing (cash interest) is set in your Alpaca contract.
+- **Upgrade to a registered investment adviser:** a checklist of the steps, with links, ticked off as
+  you go.
+- **Admin → Alpaca plans** shows your own Alpaca account against each plan's requirements, with a
+  button to Alpaca's dashboard for each:
+  - Alpaca Elite: $30k net deposits;
+  - the $100k tier;
+  - the market data plan;
+  - the options level;
+  - high-yield cash.
+
+## Wealth builder, bonds & AI assistants
+
+- **Wealth builder** (Money → Wealth builder), with a tool for each habit:
+  - index funds compared by cost and 5/10-year record;
+  - compound growth, early start against late start;
+  - automatic investing in a fund mix (weekly or monthly);
+  - a buy-and-hold check of your own trades, with the extra tax;
+  - automatic dividend reinvestment (Pro);
+  - a fundamentals checklist from SEC filings;
+  - a tax-advantaged account planner (2026 limits);
+  - a core-and-satellite portfolio that rebalances itself;
+  - sector and region diversification;
+  - twice-yearly rebalance reminders.
+- **Bonds, crypto & AI** (Markets):
+  - Treasury and bond prices by ISIN (Alpaca Fixed Income Data API, beta);
+  - crypto quotes from Alpaca US, Kraken US and Kraken EU;
+  - setup for Alpaca's Trading MCP server and CLI;
+  - multi-leg options.
+- **QuantPocket MCP server** (Pro):
+  - A user creates a token on that page and adds `https://YOUR_APP/mcp` to Claude, Cursor or VS Code.
+  - Tools: account, positions, orders, quotes, news, and orders on the **paper** account only.
+- **News pop-ups:** today's headlines about the stocks in the open account slide in every so often.
+  They can be turned off in Settings.
 
 ## Becoming a registered investment adviser (United States)
 

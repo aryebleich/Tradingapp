@@ -11,7 +11,7 @@ import crypto from 'node:crypto';
 import { backtest, projectAnnual, walkForward, optimize, warmupFor, compile, PRESETS } from './src/engine.js';
 import { getBars, getCred, accountSummary, placeOrder, listOrders, portfolioHistory, lastPrice, snapshotEquity, ACCOUNT_IDS } from './src/brokers.js';
 import * as QC from './src/quantconnect.js';
-import { PLANS, TRIAL_DAYS, REFERRAL_CREDIT, isPaid, adjustForCashflow, revenueSummary } from './src/fees.js';
+import { PLANS, TRIAL_DAYS, isPaid, adjustForCashflow, revenueSummary } from './src/fees.js';
 import { llmEnabled, llmInfo } from './src/llm.js';
 import { securityRouter, passkeyLoginRouter, stepUpGuard } from './src/security.js';
 import { lessonsRouter } from './src/lessons.js';
@@ -51,6 +51,10 @@ import { dataEnabled } from './src/alpaca/data.js';
 import { router as googleRouter, googleEnabled } from './src/google.js';
 import { router as githubRouter, githubEnabled } from './src/github.js';
 import { adminSiteRouter } from './src/admin-site.js';
+import { tokensRouter, mcpHandler } from './src/mcp.js';
+import { wealthRouter } from './src/wealth.js';
+import { news as alpacaNews } from './src/alpaca/data.js';
+import { settings as moneySettings, referralReward, nextMilestone, trialDaysFor } from './src/revenue.js';
 import { loadSite, freshSite, applySavedEnv, adviserMode, normalizePhone } from './src/site.js';
 import { router as signalsRouter, receive as receiveSignal } from './src/signals.js';
 import { router as strategiesRouter } from './src/rotation/routes.js';
@@ -277,6 +281,10 @@ app.post('/twilio/voice/status', async (req, res) => { calls.delete(req.body.Cal
 // Alerts from TradingView, TrendSpider, Zapier or any script. TradingView sends text/plain unless the
 // message is valid JSON, so any body type is accepted.
 // Signal channels: a leader's TradingView (or other) alerts broadcast to every follower.
+// AI assistants (Claude, Cursor, VS Code) reach the user's account here with a personal token.
+const mcp = mcpHandler({ accountSummary, accountsFor, lastPrice, listOrders, placeOrder, news: alpacaNews });
+app.post('/mcp', (req, res, next) => mcp(req, res).catch(next));
+app.get('/mcp', (req, res) => res.status(405).set('Allow', 'POST').json({ error: 'Use POST with JSON-RPC (MCP Streamable HTTP)' }));
 app.post('/hook/c/:token', express.text({ type: () => true, limit: '20kb' }), async (req, res) => {
   try { await channelHook(req, res); } catch (e) { console.error('channel hook', e); res.status(500).json({ error: 'Could not process the signal' }); }
 });
@@ -310,11 +318,15 @@ async function rewardReferral(u) {
   if (!claim.changes) return;
   const ref = await one('SELECT id, stripe_customer FROM users WHERE id = ?', u.referred_by);
   if (!ref) return;
-  let status = 'earned';
-  if (ref.stripe_customer && N.stripeEnabled()) {
-    try { await N.creditCustomer(ref.stripe_customer, REFERRAL_CREDIT, 'Referral credit'); status = 'applied'; } catch (e) { console.warn('referral credit', e.message); }
+  const r = await referralReward(ref.id);
+  for (const [amount, memo] of [[r.credit, 'A friend you invited subscribed'], [r.bonus, `Bonus: ${r.paying} paying friends`]]) {
+    if (!(amount > 0)) continue;
+    let status = 'earned';
+    if (ref.stripe_customer && N.stripeEnabled()) {
+      try { await N.creditCustomer(ref.stripe_customer, amount, memo); status = 'applied'; } catch (e) { console.warn('referral credit', e.message); }
+    }
+    await run('INSERT INTO ledger (user_id, kind, amount, status, memo, at) VALUES (?,?,?,?,?,?)', ref.id, 'referral_credit', amount, status, memo, now());
   }
-  await run('INSERT INTO ledger (user_id, kind, amount, status, memo, at) VALUES (?,?,?,?,?,?)', ref.id, 'referral_credit', REFERRAL_CREDIT, status, 'A friend you invited subscribed', now());
 }
 
 // Owner metrics: where people drop off between signing up and paying.
@@ -328,7 +340,7 @@ async function funnel() {
   const paying = await n("SELECT COUNT(*) n FROM users WHERE plan != 'free' AND COALESCE(plan_status, 'active') = 'active'");
   const rows = await all("SELECT plan, plan_interval, COUNT(*) n FROM users WHERE plan != 'free' AND COALESCE(plan_status, 'active') = 'active' GROUP BY plan, plan_interval");
   const mrr = rows.reduce((a, r) => a + r.n * (r.plan_interval === 'year' ? (PLANS[r.plan]?.yearly || 0) / 12 : PLANS[r.plan]?.monthly || 0), 0);
-  const revenue30 = (await one("SELECT COALESCE(SUM(amount), 0) n FROM ledger WHERE kind IN ('subscription', 'performance_fee', 'deposit_fee') AND status IN ('paid', 'collected') AND at > ?", since(30))).n;
+  const revenue30 = (await one("SELECT COALESCE(SUM(amount), 0) n FROM ledger WHERE (kind IN ('subscription', 'performance_fee', 'deposit_fee') AND status IN ('paid', 'collected') OR kind = 'broker_commission') AND at > ?", since(30))).n;
   return { signups, signups30, connected, traded, trialing, paying, mrr: +mrr.toFixed(2), arr: +(mrr * 12).toFixed(2), revenue30, conversion: signups ? +(paying / signups * 100).toFixed(1) : 0 };
 }
 
@@ -377,6 +389,8 @@ api.use('/ai', chatRouter({ extraTools: user => ({
 }) }));
 const cancelAlpaca = async id => { const t = await tradingFor(id); return t ? t.cancelAllOrders() : null; };
 api.use('/admin/site', adminSiteRouter);
+api.use('/tokens', tokensRouter);
+api.use('/wealth', wealthRouter);
 api.use('/security', securityRouter({ cancelAlpaca }));
 api.use('/auth/passkey', passkeyLoginRouter());
 api.use('/learn', lessonsRouter);
@@ -591,7 +605,7 @@ api.post('/billing/checkout', U, wrap(async (req, res) => {
   if (!N.stripeEnabled()) throw new Error('Payments are not configured (STRIPE_SECRET_KEY)');
   const interval = req.body.interval === 'year' ? 'year' : 'month';
   const s = await N.checkoutSubscription({
-    plan: req.body.plan, interval, trialDays: req.user.trial_used ? 0 : TRIAL_DAYS,
+    plan: req.body.plan, interval, trialDays: req.user.trial_used ? 0 : trialDaysFor(req.user, TRIAL_DAYS),
     email: req.user.email, customer: req.user.stripe_customer || undefined, userId: req.user.id, baseUrl: PUBLIC_URL,
   });
   await audit(req.user.id, 'checkout_started', { plan: req.body.plan, interval }, req.ip);
@@ -609,7 +623,8 @@ api.get('/referrals', U, wrap(async (req, res) => {
   if (!code) { code = crypto.randomBytes(6).toString('hex').slice(0, 8); await run('UPDATE users SET ref_code = ? WHERE id = ?', code, req.user.id); }
   const invited = await one('SELECT COUNT(*) n, SUM(CASE WHEN referral_rewarded = 1 THEN 1 ELSE 0 END) paid FROM users WHERE referred_by = ?', req.user.id);
   const credit = await one("SELECT COALESCE(SUM(amount), 0) total FROM ledger WHERE user_id = ? AND kind = 'referral_credit'", req.user.id);
-  res.json({ code, link: `${PUBLIC_URL}/?ref=${code}`, invited: invited.n || 0, paying: invited.paid || 0, credit: credit.total, reward: REFERRAL_CREDIT });
+  const m = moneySettings();
+  res.json({ code, link: `${PUBLIC_URL}/?ref=${code}`, invited: invited.n || 0, paying: invited.paid || 0, credit: credit.total, reward: m.referralCredit, friendDays: TRIAL_DAYS + m.friendTrialBonusDays, milestones: m.milestones, next: nextMilestone(invited.paid || 0) });
 }));
 api.post('/funding/deposit', U, wrap(async (req, res) => {
   const amount = +req.body.amount, a = acct(req);
@@ -749,7 +764,21 @@ const page = file => async (req, res) => {
     htmlCache.set(file, (await fs.readFile(path.join(pub, file), 'utf8')).replace('content="og.png"', `content="${PUBLIC_URL}/og.png"`));
   res.type('html').send(htmlCache.get(file));
 };
-app.get('/app', async (req, res) => res.sendFile(path.join(pub, 'app.html')));
+// The app page lists every module it imports (modulepreload), so the browser downloads them all at
+// once instead of one import level after another.
+let appHtml = null;
+const BUILD = process.env.RENDER_GIT_COMMIT || String(Date.now());
+async function appPage() {
+  const html = await fs.readFile(path.join(pub, 'app.html'), 'utf8'), main = await fs.readFile(path.join(pub, 'app.js'), 'utf8');
+  const mods = new Set(['app.js']);
+  for (const m of main.matchAll(/from '\.\/([\w.-]+\.js)'/g)) mods.add(m[1]);
+  for (const f of [...mods]) for (const m of (await fs.readFile(path.join(pub, f), 'utf8').catch(() => '')).matchAll(/from '\.\/([\w.-]+\.js)'/g)) mods.add(m[1]);
+  return html.replace('</head>', [...mods].map(m => `  <link rel="modulepreload" href="/${m}">`).join('\n') + '\n</head>');
+}
+app.get('/app', async (req, res) => {
+  if (!appHtml || process.env.NODE_ENV !== 'production') appHtml = await appPage();
+  res.type('html').set({ 'Cache-Control': 'no-cache', 'X-QP-Build': BUILD }).send(appHtml);
+});
 app.get(['/', '/index.html', '/pricing'], page('index.html'));
 app.get(['/yi', '/yi.html'], page('yi.html'));
 for (const p of ['terms', 'privacy', 'risk', 'contact']) app.get(['/' + p, `/${p}.html`], page(p + '.html'));

@@ -6,7 +6,9 @@ import { hashSecret, verifySecret, randomToken, sha256, newTotpSecret, verifyTot
 import { sendEmail, emailEnabled, sendSms } from './notify.js';
 import { OWNER_EMAILS, addedAdminEmails, isAdminPhone, normalizePhone, freshSite } from './site.js';
 
-const SESSION_MS = 12 * 3600e3;
+// Signed-in sessions last 30 days and renew themselves while used, so a refresh never asks again.
+const SESSION_MS = 30 * 86400e3;
+const RENEW_MS = 86400e3;
 const MFA_MS = 5 * 60e3;
 const MAX_FAILS = 5;
 const LOCK_MS = 15 * 60e3;
@@ -43,12 +45,16 @@ export async function createSession(res, req, userId, mfaPending) {
 }
 
 // Attaches req.user for fully-authenticated sessions and req.pending for sessions awaiting 2FA.
-export async function sessionMiddleware(req, _res, next) {
+export async function sessionMiddleware(req, res, next) {
   const token = parseCookies(req)[COOKIE];
   if (token) {
     const s = await one('SELECT * FROM sessions WHERE token_hash = ?', sha256(token));
     if (s && s.expires_at > now()) {
       req.sessionHash = s.token_hash;
+      if (!s.mfa_pending && s.expires_at - now() < SESSION_MS - RENEW_MS) {
+        await run('UPDATE sessions SET expires_at = ? WHERE token_hash = ?', now() + SESSION_MS, s.token_hash);
+        setCookie(res, token, SESSION_MS);
+      }
       const u = await one('SELECT * FROM users WHERE id = ?', s.user_id);
       // ADMIN_EMAIL counts on every visit, so an account made before it was set becomes admin too.
       await freshSite();
@@ -329,7 +335,7 @@ router.post('/delete', requireUser, async (req, res) => {
   // Explicit deletes: hosted libSQL does not always enforce ON DELETE CASCADE.
   await tx(async ({ run }) => {
     await run('DELETE FROM strategy_days WHERE strategy_id IN (SELECT id FROM user_strategies WHERE user_id = ?)', req.user.id);
-    for (const t of ['sessions', 'credentials', 'strategies', 'paper_accounts', 'positions', 'fills', 'equity_history', 'scheduled_orders', 'fee_state', 'ledger', 'alerts', 'signal_hooks', 'signals', 'user_strategies', 'strategy_runs', 'pair_bots'])
+    for (const t of ['sessions', 'api_tokens', 'drip_log', 'credentials', 'strategies', 'paper_accounts', 'positions', 'fills', 'equity_history', 'scheduled_orders', 'fee_state', 'ledger', 'alerts', 'signal_hooks', 'signals', 'user_strategies', 'strategy_runs', 'pair_bots'])
       await run(`DELETE FROM ${t} WHERE user_id = ?`, req.user.id);
     await run('DELETE FROM users WHERE id = ?', req.user.id);
   });

@@ -114,6 +114,7 @@ dialog.upgrade .top h2 { font-size: 21px; margin: 0 0 4px; color: #fff; }
 dialog.upgrade .body { padding: 20px 24px 24px; }
 dialog { border-radius: 18px; box-shadow: var(--shadow-lg); }
 .refbox { display: flex; gap: 8px; } .refbox input { margin: 0; font-family: ui-monospace, Menlo, monospace; font-size: 14px; }
+@media (max-width: 640px) { .refbox input { font-size: 16px; } }
 .kpi { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; }
 .funnel { display: grid; gap: 8px; }
 .funnel .bar { display: grid; grid-template-columns: 140px 1fr 60px; gap: 10px; align-items: center; font-size: 14px; }
@@ -536,3 +537,56 @@ table.keys td.val { font-family: ui-monospace, Menlo, Consolas, monospace; font-
   .admintabs button { white-space: nowrap; }
 }
 @media (max-width: 420px) { .viewas { max-width: 64px; } #connBadge { max-width: 22vw; } header { gap: 6px; } }
+
+/* ---------- side panel: Paper / Live ---------- */
+.modeswitch { padding: 6px 6px 10px; border-bottom: 1px solid var(--bd); margin-bottom: 6px; }
+.modeswitch .seg { display: flex; width: 100%; }
+.modeswitch .seg button { flex: 1; min-height: 36px; font-weight: 650; }
+.modeswitch .seg button.on.live { background: var(--warn); color: #fff; }
+.modeswitch select { margin-top: 8px; padding: 6px 8px; }
+
+/* ---------- news pop-ups ---------- */
+.newstoast { position: fixed; z-index: 40; left: 20px; bottom: 20px; width: min(380px, calc(100vw - 32px)); background: var(--card); border: 1px solid var(--bd); border-left: 4px solid var(--ac); border-radius: var(--r); box-shadow: var(--shadow-lg); padding: 12px 14px; transform: translateY(140%); opacity: 0; transition: transform .45s cubic-bezier(.2, .8, .2, 1), opacity .3s; }
+.newstoast.in { transform: none; opacity: 1; }
+.newstoast .nt-top { display: flex; gap: 8px; align-items: center; font-size: 12px; }
+.newstoast .nt-syms { font-weight: 750; color: var(--ac); }
+.newstoast .nt-x { margin: 0 0 0 auto; background: transparent; color: var(--mu); border: 0; padding: 0 4px; font-size: 20px; line-height: 1; min-height: 0; }
+.newstoast .nt-head { display: block; color: var(--tx); font-weight: 650; margin: 6px 0 8px; text-decoration: none; line-height: 1.35; }
+.newstoast .nt-head:hover { color: var(--ac); }
+.newstoast .nt-foot { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+.newstoast .nt-off { margin: 0; min-height: 0; padding: 3px 8px; font-size: 12px; }
+html[dir="rtl"] .newstoast { left: auto; right: 20px; border-left: 1px solid var(--bd); border-right: 4px solid var(--ac); }
+@media (max-width: 900px) { .newstoast { left: 16px; bottom: calc(76px + env(safe-area-inset-bottom)); } html[dir="rtl"] .newstoast { right: 16px; } }
+@media (prefers-reduced-motion: reduce) { .newstoast { transition: none; } }
+
+/* ---------- wealth builder ---------- */
+.wtabs { margin-bottom: 12px; }
+.lesson { border-left: 4px solid var(--ac); background: color-mix(in srgb, var(--ac) 5%, var(--card)); }
+.lesson p { margin: 6px 0 0; }
+.dbar { display: grid; grid-template-columns: 130px 1fr 52px; gap: 10px; align-items: center; margin: 8px 0; font-size: 14px; }
+.dbar i { display: block; height: 10px; border-radius: 99px; }
+.dbar b { text-align: right; font-variant-numeric: tabular-nums; }
+.checks .checkrow { display: grid; grid-template-columns: 10px 220px 1fr; gap: 10px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--bd); }
+.dot.bad { background: var(--rd); }
+.themes { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 4px 14px; }
+.txsteps li { margin: 6px 0; }
+.mixrow { margin-bottom: 4px; }
+@media (max-width: 640px) { .checks .checkrow { grid-template-columns: 10px 1fr; } .checks .checkrow .mu { grid-column: 2; } .dbar { grid-template-columns: 96px 1fr 44px; } }
+
+/* ---------- bonds, crypto & AI ---------- */
+.firow { display: grid; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--bd); }
+.kvp { display: inline-flex; gap: 6px; margin-right: 14px; font-size: 14px; }
+pre code { font-size: 12.5px; }
+
+/* ---------- referrals and owner pages ---------- */
+.milestones { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.milestone { flex: 1 1 90px; text-align: center; border: 1px solid var(--bd); border-radius: var(--r-sm); padding: 10px; }
+.milestone b { display: block; font-size: 22px; } .milestone span { font-size: 12px; color: var(--mu); } .milestone em { display: block; font-style: normal; font-weight: 700; color: var(--gr); }
+.milestone.done { border-color: var(--gr); background: color-mix(in srgb, var(--gr) 8%, var(--card)); }
+.riasteps { display: grid; gap: 4px; margin-top: 10px; }
+.riastep { align-items: flex-start !important; padding: 6px 0; }
+.riastep.done span { color: var(--mu); text-decoration: line-through; }
+.riastep a { white-space: nowrap; }
+.aplan { display: flex; flex-direction: column; } .aplan > a { margin-top: auto; }
+@media (max-width: 640px) { .chips button { white-space: nowrap; } }
+pre, pre code { direction: ltr; text-align: left; unicode-bidi: isolate; }

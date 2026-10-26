@@ -5,6 +5,7 @@
 //            live under /v1/trading/accounts/{id} and use the broker's Basic auth.
 import { URLS, request } from './http.js';
 import { brokerAuth } from './broker.js';
+import { withCommission } from '../revenue.js';
 
 const enc = encodeURIComponent;
 
@@ -35,7 +36,8 @@ export class Trading {
 
   orders(query) { return this.acct('/orders', { query: { status: 'all', limit: 100, nested: true, ...query } }); }
   order(id) { return this.acct(`/orders/${enc(id)}`, { query: { nested: true } }); }
-  placeOrder(body) { return this.acct('/orders', { method: 'POST', body }); }
+  // Accounts opened through QuantPocket carry the partner commission set in Admin.
+  placeOrder(body) { return this.acct('/orders', { method: 'POST', body: this.type === 'broker' ? withCommission(body) : body }); }
   replaceOrder(id, body) { return this.acct(`/orders/${enc(id)}`, { method: 'PATCH', body }); }
   cancelOrder(id) { return this.acct(`/orders/${enc(id)}`, { method: 'DELETE' }); }
   cancelAllOrders() { return this.acct('/orders', { method: 'DELETE' }); }
@@ -48,6 +50,11 @@ export class Trading {
   exerciseOption(symbol) { return this.acct(`/positions/${enc(symbol)}/exercise`, { method: 'POST' }); }
 
   portfolioHistory(query) { return this.acct('/account/portfolio/history', { query }); }
+  // Cash in/out (CSD, CSW), dividends (DIV) and other account events.
+  activities(query) {
+    if (this.type === 'broker') return this.global('/accounts/activities', { query: { account_id: this.conn.accountId, ...query } });
+    return this.acct('/account/activities', { query });
+  }
 
   watchlists() { return this.acct('/watchlists'); }
   watchlist(id) { return this.acct(`/watchlists/${enc(id)}`); }

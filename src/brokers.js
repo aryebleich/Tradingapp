@@ -1,4 +1,5 @@
 // Market data + broker adapters: Alpaca (paper/live) and the built-in paper simulator.
+import { recordCommission } from './revenue.js';
 import { one, all, run, now, tx } from './db.js';
 import { decrypt } from './crypto.js';
 import { rng } from './engine.js';
@@ -284,6 +285,7 @@ async function sendOrder(userId, account, symbol, side, q, n, source, order) {
     const body = { symbol, side, type: 'market', time_in_force: 'day', ...(q > 0 ? { qty: String(q) } : { notional: n.toFixed(2) }) };
     const o = await t.placeOrder(body);
     await intent(o.id, account);
+    if (t.type === 'broker') await recordCommission(userId, o, +order.expectedPrice || 0).catch(() => {});
     // Usually fills within seconds; anything still open is picked up later by syncAlpacaFills.
     setTimeout(() => syncAlpacaFills(userId, account).catch(() => {}), 4000);
     return { id: o.id, status: o.status, symbol, side, broker: account, live: t.live };

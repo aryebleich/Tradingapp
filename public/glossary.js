@@ -51,13 +51,15 @@ function show(btn) {
   pop.style.left = Math.max(12, Math.min(innerWidth - w - 12, r.left + r.width / 2 - w / 2)) + 'px';
   pop.style.top = (r.bottom + scrollY + 6) + 'px';
   pop.hidden = false;
+  pop.shownAt = Date.now();
 }
 addEventListener('click', e => {
   const b = e.target.closest('.gl');
   if (b) { e.preventDefault(); e.stopPropagation(); if (pop && !pop.hidden && pop.dataset.for === b.dataset.term) { pop.hidden = true; return; } show(b); pop.dataset.for = b.dataset.term; return; }
   if (pop) pop.hidden = true;
 }, true);
-addEventListener('scroll', () => { if (pop) pop.hidden = true; }, { passive: true });
+// Scrolling closes it, except the scroll that brought the "?" into view just before the tap.
+addEventListener('scroll', () => { if (pop && Date.now() - pop.shownAt > 400) pop.hidden = true; }, { passive: true });
 
 export function attachGlossary(root) {
   for (const el of root.querySelectorAll('.stat > span:first-child, th, h2, h3, label:not(.chk)')) {

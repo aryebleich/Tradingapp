@@ -371,13 +371,13 @@ async function renderConfig(box) {
 // =====================================================================
 // Portfolio: balances, margin, equity history, positions summary
 // =====================================================================
-async function portfolio(view, q, accountSwitch, wireSwitch) {
+async function portfolio(view, q) {
   const s = await needConnection(view, 'Portfolio');
-  if (!s) { if (accountSwitch) { view.querySelector('h1').insertAdjacentHTML('afterend', accountSwitch()); wireSwitch(view); } return; }
+  if (!s) return;
   const period = q.get('period') || localStorage.getItem('qp_period') || '1M';
   const [a, h, ps, clock] = await Promise.all([A('/account'), A('/portfolio/history?period=' + period).catch(() => ({ points: [] })), A('/positions'), A('/clock').catch(() => null)]);
   const day = a.lastEquity ? a.equity - a.lastEquity : null;
-  view.innerHTML = `<div class="row" style="justify-content:space-between"><h1>Portfolio <span class="pill ${a.connection.live ? 'warn' : ''}">${a.connection.live ? 'LIVE' : a.connection.type === 'broker' ? 'Sandbox' : 'Paper'}</span></h1>${accountSwitch ? accountSwitch() : ''}</div>
+  view.innerHTML = `<div class="row" style="justify-content:space-between"><h1>Portfolio <span class="pill ${a.connection.live ? 'warn' : ''}">${a.connection.live ? 'LIVE' : a.connection.type === 'broker' ? 'Sandbox' : 'Paper'}</span></h1></div>
   ${clock ? `<p class="mu">Market is <b class="${clock.is_open ? 'pos' : ''}">${clock.is_open ? 'open' : 'closed'}</b> · ${clock.is_open ? 'closes ' + new Date(clock.next_close).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'opens ' + new Date(clock.next_open).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}</p>` : ''}
   ${a.tradingBlocked ? '<div class="banner err">Trading is blocked on this account. Check your brokerage account status.</div>' : ''}
   <div class="card">
@@ -402,7 +402,6 @@ async function portfolio(view, q, accountSwitch, wireSwitch) {
       <div class="tablewrap"><table><tr><th>Symbol</th><th class="num">Value</th><th class="num">Today</th><th class="num">Total P/L</th></tr>
       ${ps.slice(0, 8).map(p => `<tr><td><a href="#/trade?symbol=${encodeURIComponent(p.symbol)}">${H.esc(p.symbol)}</a></td><td class="num">${usd(p.marketValue)}</td><td class="num ${H.cls(p.todayPl)}">${usd(p.todayPl)}</td><td class="num ${H.cls(p.unrealizedPl)}">${usd(p.unrealizedPl)} (${H.pct(p.unrealizedPlPct)})</td></tr>`).join('') || '<tr><td colspan="4" class="mu">No positions. <a href="#/trade">Place a trade</a></td></tr>'}</table></div></div>
   </div>`;
-  if (accountSwitch) wireSwitch(view);
   const pts = h.points;
   const drawEq = () => H.drawChart(H.$('#eq', view), pts.map(p => p.equity), { base: h.baseValue || pts[0]?.equity });
   drawEq(); onResize(drawEq);

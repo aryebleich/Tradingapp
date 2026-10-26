@@ -501,6 +501,24 @@ CREATE TABLE IF NOT EXISTS passkeys (
   created_at INTEGER NOT NULL,
   last_used_at INTEGER
 );
+CREATE TABLE IF NOT EXISTS api_tokens (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  hint TEXT,
+  created_at INTEGER NOT NULL,
+  last_used_at INTEGER
+);
+CREATE TABLE IF NOT EXISTS drip_log (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  activity_id TEXT NOT NULL,
+  symbol TEXT NOT NULL,
+  amount REAL NOT NULL,
+  at INTEGER NOT NULL,
+  UNIQUE (user_id, activity_id)
+);
 CREATE TABLE IF NOT EXISTS site_settings (
   k TEXT PRIMARY KEY,
   v TEXT NOT NULL,

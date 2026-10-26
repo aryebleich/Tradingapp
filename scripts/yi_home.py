@@ -380,6 +380,12 @@ YI = {
 }
 
 YI.update({
+ 'Wealth builder': 'עשירות בויער',
+ 'Index funds, compound growth, automatic monthly investing, dividend reinvestment and rebalancing, each with a tool.': 'אינדעקס פאנדס, קאמפאונד וואוקס, אויטאמאטיש חודש\'לעכע אינוועסטירן, ווידער-אינוועסטירן דיווידענדן און ווידער באלאנסירן, יעדעס מיט א געצייג.',
+ 'Bonds &amp; Treasuries': 'באנדס און טרעזשוריס',
+ 'Latest bond and T-bill prices and yields by ISIN, next to your stocks and crypto.': 'לעצטע באנד און T-bill פרייזן און יעלדס לויט ISIN, לעבן אייערע סטאקס און קריפטא.',
+ 'AI assistants': 'AI אסיסטענטן',
+ 'Connect Claude, Cursor or VS Code to your account: ask about your portfolio and practice trades on paper.': 'פארבינדט Claude, Cursor אדער VS Code מיט אייער קאנטע: פרעגט וועגן אייער פארטפאליא און פרובירט טרעידס אויף פּעיפּער.',
  'Sign up with GitHub': 'עפנט א קאנטע מיט GitHub',
  'Every paid plan starts with a 14-day free trial. One simple monthly price, live trading on every plan, cancel anytime.': 'יעדער באצאלטער פלאן הייבט זיך אן מיט א 14-טאגיגן בחינם טרייעל. איין איינפאכער חודש\'לעכער פרייז, לייוו טרעידינג אויף יעדן פלאן, קענסלט צו יעדער צייט.',
  'Can I trade with real money on the free plan?': 'קען איך טרעידן מיט עכטע געלט אויפן בחינם פלאן?',

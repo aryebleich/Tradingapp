@@ -3,6 +3,7 @@
 import labs from './yi-labs.js';
 import * as features from './yi-features.js';
 import * as protect from './yi-protect.js';
+import * as wealth from './yi-wealth.js';
 
 export const credit = '';
 
@@ -339,7 +340,7 @@ export const strings = {
   'Admin user update': 'אדמין האט געטוישט א באניצער',
 };
 
-Object.assign(strings, features.strings, protect.strings, labs);
+Object.assign(strings, features.strings, protect.strings, wealth.strings, labs);
 
 // Sentences that contain numbers or names.
 export const patterns = [
@@ -366,5 +367,6 @@ export const patterns = [
   [/^Sign in with (.+)$/, 'לאגירט זיך איין מיט $1'],
   [/^Choose (.+)$/, 'קלייבט $1'],
   ...protect.patterns,
+  ...wealth.patterns,
   ...features.patterns,
 ];

@@ -12,6 +12,7 @@ import { runBaskets } from './baskets.js';
 import { runIncomeBots } from './options.js';
 import { runRoundups } from './roundup.js';
 import { refreshFeed } from './halal.js';
+import { runDrip, rebalanceReminders } from './wealth.js';
 
 const slot = (t, min) => Math.floor(t / (min * 60e3));
 export const JOBS = [
@@ -44,6 +45,10 @@ export const JOBS = [
   }],
   // Margin and buying-power snapshots for the liquidity forecast, once a day.
   ['margin', 1440, () => snapshotMargins()],
+  // Dividends paid in the last week are bought back into the same stock (opt-in), every 6 hours.
+  ['drip', 360, () => runDrip()],
+  // Opt-in reminder to rebalance, on January 15 and July 15.
+  ['rebalremind', 1440, t => rebalanceReminders(t)],
   // The owner's Shariah compliance feed (HALAL_FEED_URL), once a day.
   ['halalfeed', 1440, () => refreshFeed()],
 ];

@@ -16,12 +16,8 @@ export const PROVIDERS = {
   stripe_card: { id: 'stripe_card', name: 'Debit card', via: 'Stripe', cost: '2.9% + 30¢', note: 'Instant. Credit cards are refunded automatically.', enabled: () => !!env('STRIPE_SECRET_KEY'), costOf: a => a * 0.029 + 0.3 },
 };
 
-// The owner's service fee on a deposit.
-export function serviceFee(amount) {
-  const pct = Math.max(0, +env('DEPOSIT_FEE_PERCENT') || 0), fixed = Math.max(0, +env('DEPOSIT_FEE_FIXED') || 0);
-  return +(amount * pct / 100 + (pct || fixed ? fixed : 0)).toFixed(2);
-}
-export const feeTerms = () => ({ percent: Math.max(0, +env('DEPOSIT_FEE_PERCENT') || 0), fixed: Math.max(0, +env('DEPOSIT_FEE_FIXED') || 0) });
+// The owner's service fee on a deposit (set in Admin → Business mode).
+export { serviceFee, feeTerms } from './revenue.js';
 
 export const methods = () => Object.values(PROVIDERS).filter(p => p.enabled()).map(({ id, name, via, cost, note }) => ({ id, name, via, cost, note }));
 

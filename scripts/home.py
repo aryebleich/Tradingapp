@@ -163,6 +163,9 @@ FEATURES = [
  ('shield', 'Risk rules', 'Position limits, trade limits, allowed tickers, trailing stops and brackets.'),
  ('chart', 'Backtesting', 'Years of daily data, costs, drawdowns, walk-forward checks and an optimizer.'),
  ('doc', 'Tax center', 'Gains by lot, wash-sale flags, an estimated tax bill and Form 8949 export.'),
+ ('up', 'Wealth builder', 'Index funds, compound growth, automatic monthly investing, dividend reinvestment and rebalancing, each with a tool.'),
+ ('bank', 'Bonds &amp; Treasuries', 'Latest bond and T-bill prices and yields by ISIN, next to your stocks and crypto.'),
+ ('bolt', 'AI assistants', 'Connect Claude, Cursor or VS Code to your account: ask about your portfolio and practice trades on paper.'),
  ('globe', 'English &amp; Yiddish', 'The whole app and this site in English or Yiddish, right-to-left.'),
 ]
 

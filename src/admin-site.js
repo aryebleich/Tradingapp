@@ -1,7 +1,7 @@
 // Admin → Admins, Business mode and Keys: who is an admin, software-only or registered-adviser
 // mode, and every environment value (API keys), with .env import/export and Render sync.
 import express from 'express';
-import { all, run, audit } from './db.js';
+import { one, all, run, audit } from './db.js';
 import { requireUser, requireAdmin, confirmsIdentity, adminEmails, allAdminEmails, canonicalEmail } from './auth.js';
 import * as S from './site.js';
 
@@ -130,4 +130,75 @@ adminSiteRouter.post('/env/render/deploy', wrap(async (req, res) => {
   const d = await S.renderDeploy();
   await audit(req.user.id, 'render_deploy', null, req.ip);
   res.json({ ok: true, deploy: d?.id || null });
+}));
+
+// ---------- money levers: deposit fee, referrals, partner commission ----------
+adminSiteRouter.get('/money', wrap(async (req, res) => {
+  const { settings } = await import('./revenue.js');
+  const sum = async (kind, statuses) => (await one(`SELECT COALESCE(SUM(amount), 0) n FROM ledger WHERE kind = ? AND status IN (${statuses.map(() => '?').join(',')})`, kind, ...statuses)).n;
+  res.json({
+    settings: settings(),
+    stats: {
+      depositFees: await sum('deposit_fee', ['collected']), commissions: await sum('broker_commission', ['pending', 'collected']),
+      referralCredits: await sum('referral_credit', ['earned', 'applied']), referredPaying: (await one('SELECT COUNT(*) n FROM users WHERE referral_rewarded = 1')).n,
+      referredSignups: (await one('SELECT COUNT(*) n FROM users WHERE referred_by IS NOT NULL')).n,
+    },
+    leaders: await all(`SELECT u.email, COUNT(f.id) invited, SUM(CASE WHEN f.referral_rewarded = 1 THEN 1 ELSE 0 END) paying FROM users u JOIN users f ON f.referred_by = u.id
+      GROUP BY u.id ORDER BY paying DESC, invited DESC LIMIT 10`),
+  });
+}));
+adminSiteRouter.put('/money', wrap(async (req, res) => {
+  const { saveSettings } = await import('./revenue.js');
+  const s = await saveSettings(req.body || {});
+  await audit(req.user.id, 'money_settings', s, req.ip);
+  res.json({ settings: s });
+}));
+
+// ---------- becoming a registered adviser: the steps, ticked off as they are done ----------
+export const RIA_STEPS = [
+  ['entity', 'Form the business (LLC or corporation), get an EIN and a business bank account', 'https://www.irs.gov/businesses/small-businesses-self-employed/apply-for-an-employer-identification-number-ein-online'],
+  ['regulator', 'Pick the regulator: your state (under $100M) or the SEC (internet adviser exemption)', 'https://www.sec.gov/divisions/investment/iaregulation/memoia.htm'],
+  ['exam', 'Pass the Series 65 exam (each adviser representative)', 'https://www.finra.org/registration-exams-ce/qualification-exams/series65'],
+  ['iard', 'Open and fund an IARD account (FINRA)', 'https://www.iard.com/'],
+  ['adv', 'File Form ADV Part 1, Part 2A brochure, Part 2B and Form CRS; each person files a Form U4', 'https://www.sec.gov/iard/iard-forms'],
+  ['compliance', 'Write the compliance manual, code of ethics, privacy and cybersecurity policies; name a CCO', 'https://www.sec.gov/investment/compliance-programs'],
+  ['approval', 'Registration approved (CRD number received)', 'https://adviserinfo.sec.gov/'],
+  ['contracts', 'Advisory agreement and qualified-client check ready for performance fees (Rule 205-3)', 'https://www.ecfr.gov/current/title-17/chapter-II/part-275/section-275.205-3'],
+];
+adminSiteRouter.get('/ria', (req, res) => {
+  const done = S.siteGet('riaSteps', {});
+  res.json({ steps: RIA_STEPS.map(([id, text, link]) => ({ id, text, link, done: !!done[id] })), crd: S.siteGet('adviserCrd', ''), adviser: S.adviserMode() });
+});
+adminSiteRouter.put('/ria', wrap(async (req, res) => {
+  const id = String(req.body?.id || '');
+  if (!RIA_STEPS.some(([k]) => k === id)) throw bad('Unknown step');
+  await S.siteSet('riaSteps', { ...S.siteGet('riaSteps', {}), [id]: !!req.body.done });
+  res.json({ ok: true });
+}));
+
+// ---------- the owner's Alpaca account: Elite, trading plan, market data, options, high-yield cash ----------
+// Alpaca changes these in its own dashboard; this page shows where the account stands and links there.
+adminSiteRouter.get('/alpaca-plans', wrap(async (req, res) => {
+  const { tradingFor } = await import('./alpaca/connections.js');
+  const { Trading } = await import('./alpaca/trading.js');
+  const t = (await tradingFor(req.user.id)) || (process.env.ALPACA_KEY_ID && process.env.ALPACA_SECRET ? new Trading({ type: 'keys', k: process.env.ALPACA_KEY_ID, s: process.env.ALPACA_SECRET, live: !/paper/.test(process.env.ALPACA_TRADING_URL || 'paper') }) : null);
+  if (!t) return res.json({ connected: false });
+  const a = await t.account().catch(e => ({ error: e.message }));
+  if (a.error) return res.json({ connected: true, error: a.error });
+  // Net deposits: money in minus money out, from the account's cash activity.
+  const acts = await t.activities({ activity_types: 'CSD,CSW', page_size: 100 }).catch(() => []);
+  const net = (Array.isArray(acts) ? acts : []).reduce((s, x) => s + (+x.net_amount || 0), 0);
+  // Market data plan: the full SIP feed answers only on a paid subscription.
+  let sip = null;
+  if (process.env.ALPACA_KEY_ID && process.env.ALPACA_SECRET) {
+    const r = await fetch(`${(process.env.ALPACA_DATA_URL || 'https://data.alpaca.markets').replace(/\/$/, '')}/v2/stocks/SPY/quotes/latest?feed=sip`, { headers: { 'APCA-API-KEY-ID': process.env.ALPACA_KEY_ID, 'APCA-API-SECRET-KEY': process.env.ALPACA_SECRET }, signal: AbortSignal.timeout(8000) }).catch(() => null);
+    sip = r ? r.ok : null;
+  }
+  res.json({
+    connected: true, live: t.live, accountNumber: a.account_number, equity: +a.equity, cash: +a.cash, netDeposits: +net.toFixed(2),
+    elite: { threshold: 30000, unlocked: net >= 30000 }, premium: { threshold: 100000, unlocked: net >= 100000 },
+    options: { approved: +a.options_approved_level || 0, trading: +a.options_trading_level || 0 },
+    marketData: sip === null ? 'unknown' : sip ? 'Algo Trader Plus (SIP)' : 'Basic (IEX)',
+    multiplier: +a.multiplier || 1, patternDayTrader: !!a.pattern_day_trader,
+  });
 }));
