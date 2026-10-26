@@ -1268,5 +1268,20 @@ export default {
  "Very active: frequent trading usually loses to holding a fund, after taxes and costs.": "איבערגעטריבענע אקטיוויטעט: צו פיל ארומטוישן די אינוועסטמענטס כסדר, ברענגט געווענליך שוואכערע רעזולטאטן ווי פשוט'ערהייט האלטן דעם פאנד רואיג, איינמאל מ'נעמט אריין אין חשבון די טעקסעס און די הוצאות (עקספענסעס).",
  "Most sales come within a year, taxed at your full rate. Holding over a year cuts the tax.": "רוב סעילס קומען פאר אינערהאלב א יאר, און מען צאלט דערויף די פולע טעקס ראטע. אבער אויב מען האלט דעם נכס פאר לענגער ווי א יאר, ווערט די טעקס פיל נידריגער.",
  "Good: you hold for the long term.": "זייער פיין: איר האלט דאס אויף די לאנגע טערמין.",
- "Missing just the 10 best days of a 20-year stretch roughly halves the result, and the best days often come right after the worst.": "אויב מען פארפאסט סך הכל די צען בעסטע טעג דורכאויס א תקופה פון צוואנציג יאר, שניידט עס אפ די רווחים אויף די העלפט, און די דאזיגע סאמע בעסטע טעג פאסירן אפטמאל גלייך נאכדעם וואס די ערגסטע טעג גייען דורך."
+ "Missing just the 10 best days of a 20-year stretch roughly halves the result, and the best days often come right after the worst.": "אויב מען פארפאסט סך הכל די צען בעסטע טעג דורכאויס א תקופה פון צוואנציג יאר, שניידט עס אפ די רווחים אויף די העלפט, און די דאזיגע סאמע בעסטע טעג פאסירן אפטמאל גלייך נאכדעם וואס די ערגסטע טעג גייען דורך.",
+ "Calm mode (Settings) hides flashing prices so short moves are easier to ignore.": "די \"קאלם מאוד\" אפציע (אין די סעטינגס) באהאלט די פרייזן וואס בלינקען, כדי עס זאל זיין גרינגער צו איגנארירן קליינע טוישונגען.",
+ "Reinvest dividends automatically (DRIP)": "זיך איינשרייבן אין א דיווידענד רי-אינוועסטמענט פלאן (DRIP)",
+ "Connect a brokerage account first (dividends are not simulated on paper).": "ביטע פארבינדט קודם א בראקערעדזש אקאונט, היות מ'קען נישט סימולירן קיין דיווידענדס ביי פעיפער טרעידינג.",
+ "Every few hours QuantPocket checks for dividends paid in the last week and buys the same stock with the cash (fractional shares, $1 and up). Part of Pro.": "יעדע פאר שעה טשעקט 'קוואנט-פאקעט' (QuantPocket) אויב ס'איז אריינגעקומען סיי וועלכע דיווידענדס (dividends) במשך די לעצטע וואך, און ער לייגט די געלט אויטאמאטיש צוריק אריין אינעם זעלבן סטאק. דאס ארבעט אפילו מיט 'פרעקשאנעל שערס' (fractional shares) אנגעהויבן פון בלויז איין דאלאר ($1). דאס איז אריינגערעכנט אלס חלק פון 'פראו' (Pro).",
+ "From the company's own annual reports (10-K) filed with the SEC. Numbers can be restated; read the filing before you buy.": "גענומען געווארן דירעקט פון די פירמע'ס יערליכע SEC באריכטן (פארם 10-K). די ציפערן קענען מעגליך איבערגעמאכט ווערן; ביטע קוקט איבער דעם גאנצן באריכט בעפאר'ן מאכן אן אינוועסטמענט.",
+ "Earnings per share growing": "די פארדינסטן פער שער וואקסן.",
+ "Earnings every year": "יערליכע פארדינסטן",
+ "Not enough positive years": "א מאנגל אין גוטע יארן",
+ "Ask yourself: how does it make money, and why can competitors not easily take that away (its moat)?": "פרעג זיך אליין: וויאזוי מאכט עס למעשה געלט, און פארוואס קענען קאמפעטיטערס נישט אזוי גרינג אוועקכאפן די מעלה (זיין עקאנאמישע פעסטונג)?",
+ "Fill the tax-advantaged accounts first": "לייג פריאריטעט קודם כל אריינצולייגן געלט אין דיינע טעקס-עדווענטעדזשד אקאונטס.",
+ "Yearly salary ($)": "יערליכע געהאלט (יו. עס. דאלער)",
+ "Employer match (% of salary)": "מעטשינג קאנטריביושן פונעם בעל הבית (פראצענט פונעם געהאלט)",
+ "You can invest a year ($)": "דו קענסט אינוועסטירן א יאר ($)",
+ "Tax bracket (%)": "די טעקס ברעקעט (פראצענטן)",
+ "401(k) up to the employer match:": "לייג אריין אין א 401(k) ביז וויפיל דער עמפלויער מעטשט:"
 };
