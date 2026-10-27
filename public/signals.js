@@ -70,7 +70,7 @@ async function signals(view, q) {
         ${h.sizeMode === 'signal' ? 'Size from alert' : h.sizeMode === 'qty' ? `${h.size} shares` : `${H.money(h.size)} per order`}
         ${h.maxPosition ? ` · max ${H.money(h.maxPosition)}/ticker` : ''}${h.maxTradesDay ? ` · ${h.maxTradesDay} trades/day` : ''}${h.symbols ? ` · ${H.esc(h.symbols)}` : ''}</div></div>
         <label class="switch" title="${h.enabled ? 'On' : 'Paused'}"><input type="checkbox" data-pause ${h.enabled ? 'checked' : ''}><i></i></label></div>
-      <div class="refbox"><input readonly value="${H.esc(h.url)}" aria-label="Webhook URL"><button class="small" data-copy="${H.esc(h.url)}">Copy URL</button></div>
+      ${h.broken ? '<p class="err">This webhook\'s URL can no longer be read (the server\'s encryption key changed). Delete it and create a new one.</p>' : `<div class="refbox"><input readonly value="${H.esc(h.url)}" aria-label="Webhook URL"><button class="small" data-copy="${H.esc(h.url)}">Copy URL</button></div>`}
       <p class="mu" style="font-size:12px;margin:6px 0 0">Keep this URL private: anyone who has it can send orders within this webhook's rules. ${h.lastAt ? 'Last signal ' + H.date(h.lastAt) : 'No signals yet'}.</p>
       <div class="row" style="margin-top:12px"><button class="small ghost" data-test>Send test signal</button><a class="small" href="#/signals?edit=${h.id}"><button class="small ghost" type="button">Edit</button></a><button class="small ghost" data-rotate>New URL</button><button class="small ghost danger-t" data-del>Delete</button></div>
     </div>`).join('') || ''}</div>

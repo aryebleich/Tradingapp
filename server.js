@@ -20,7 +20,7 @@ import { marginRouter } from './src/margin.js';
 import { setSetting } from './src/settings.js';
 import { prefsRouter } from './src/settings.js';
 import { longtermRouter } from './src/longterm.js';
-import { shedMiddleware, stats as relStats, metricsText, recommendedReplicas, jobAllowed, load as relLoad } from './src/reliability.js';
+import { shedMiddleware, countUnhandled, stats as relStats, metricsText, recommendedReplicas, jobAllowed, load as relLoad } from './src/reliability.js';
 import { drain as drainQueue, queueStats, userQueue } from './src/orderqueue.js';
 import { taxSummary, harvestCandidates, form8949Csv, scheduleD, scheduleDCsv, markToMarket } from './src/tax.js';
 import { buildStrategy } from './src/ai.js';
@@ -822,6 +822,9 @@ app.use(express.static(pub, {
 app.use(async (req, res) => res.status(404).sendFile(path.join(pub, '404.html')));
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  // A promise somebody forgot to catch (a background job, a fire-and-forget email) is logged and
+  // counted, instead of stopping the whole server as Node.js does by default.
+  process.on('unhandledRejection', e => { countUnhandled(); console.error('Unhandled promise rejection (server keeps running):', e?.stack || e); });
   const port = +process.env.PORT || 3000;
   const server = app.listen(port, () => console.log(`QuantPocket on http://localhost:${port}`));
   const timer = startScheduler();

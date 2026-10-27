@@ -17,7 +17,7 @@ export let SHED_AT = SHED_ENV();
 
 const lag = monitorEventLoopDelay({ resolution: 20 }); lag.enable();
 let inflight = 0, forced = null;
-const counters = { requests: 0, shed: 0, errors5xx: 0, jobsSkipped: 0 };
+const counters = { requests: 0, shed: 0, errors5xx: 0, jobsSkipped: 0, unhandledRejections: 0 };
 
 export function load() {
   if (forced != null) return forced;
@@ -111,6 +111,8 @@ export function recommendedReplicas(t = Date.now(), { base = +process.env.BASE_R
   return { replicas: Math.min(max, Math.max(base, Math.ceil(base * f))), base, max, factor: +f.toFixed(2), reasons: reasons.length ? reasons : ['normal'] };
 }
 
+// Promises nobody caught: logged and counted (Admin → System health, /metrics) instead of crashing.
+export const countUnhandled = () => { counters.unhandledRejections++; };
 export function stats() {
   const mem = process.memoryUsage();
   return { load: +load().toFixed(3), shedding: shedding(), shedAt: SHED_ENV(), inflight, maxInflight: MAX_INFLIGHT, eventLoopP99Ms: +(lag.percentile(99) / 1e6).toFixed(1), heapMb: Math.round(mem.heapUsed / 1048576), heapLimitMb: HEAP_LIMIT_MB, uptimeSec: Math.round(process.uptime()), ...counters, breakers: breakerStates() };

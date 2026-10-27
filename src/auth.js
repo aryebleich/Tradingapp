@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import { one, all, run, now, audit, tx } from './db.js';
 import { hashSecret, verifySecret, randomToken, sha256, newTotpSecret, verifyTotp } from './crypto.js';
 import { sendEmail, emailEnabled, sendSms, twilioEnabled as smsEnabled } from './notify.js';
+import { PLANS } from './fees.js';
 import { OWNER_EMAILS, addedAdminEmails, isAdminPhone, normalizePhone, freshSite, siteSet } from './site.js';
 // The last email the service refused (wrong sender, unverified domain), shown in Admin → Setup.
 const noteEmailError = msg => siteSet('emailError', { msg: String(msg).slice(0, 300), at: now() }).catch(() => {});
@@ -62,11 +63,18 @@ export async function sessionMiddleware(req, res, next) {
       await freshSite();
       if (u && u.role !== 'admin' && (isAdminEmail(u.email) || (u.phone_verified && isAdminPhone(u.phone)))) { await run("UPDATE users SET role = 'admin' WHERE id = ?", u.id); u.role = 'admin'; }
       // "View as plan": the owner sees the app (menus, limits, upgrade prompts) exactly as a user on that plan would.
-      if (u?.role === 'admin') { const pv = await one("SELECT v FROM user_settings WHERE user_id = ? AND k = 'previewPlan'", u.id).catch(() => null); const plan = pv ? JSON.parse(pv.v) : null; if (plan) { u.previewPlan = plan; u.plan = plan; u.plan_status = plan === 'free' ? null : 'active'; } }
+      // A stale or damaged saved value (or a plan that no longer exists) is ignored, never an error.
+      if (u?.role === 'admin') { const plan = await savedPreviewPlan(u.id); if (typeof plan === 'string' && Object.hasOwn(PLANS, plan)) { u.previewPlan = plan; u.plan = plan; u.plan_status = plan === 'free' ? null : 'active'; } }
       if (s.mfa_pending) req.pending = u; else req.user = u;
     }
   }
   next();
+}
+
+// The owner's "view as plan" choice; anything unreadable counts as none.
+async function savedPreviewPlan(userId) {
+  const r = await one("SELECT v FROM user_settings WHERE user_id = ? AND k = 'previewPlan'", userId).catch(() => null);
+  try { return r ? JSON.parse(r.v) : null; } catch { return null; }
 }
 
 // State-changing API calls must carry a custom header, which cross-site forms cannot set.

@@ -109,6 +109,7 @@ export const strings = {
   'Trading and questions by text are part of QuantPocket Pro. Start a free trial in the app under Plans & billing.': 'טרעידן און פרעגן דורך טעקסט איז א טייל פון QuantPocket Pro. הייבט אן א בחינם טרייעל אין דער עפּ אונטער פלענער און באצאלונג.',
   'Linking your bank card is part of Pro (CSV import stays free)': 'פארבינדן אייער באנק קארטל איז א טייל פון Pro (CSV אימפארט בלייבט בחינם)', 'Linking your bank card': 'פארבינדן אייער באנק קארטל',
   'Connecting QuantConnect': 'פארבינדן QuantConnect', 'Trading by text and phone': 'טרעידן דורך טעקסט און טעלעפאן',
+  "This webhook's URL can no longer be read (the server's encryption key changed). Delete it and create a new one.": 'דעם וועבהוק\'ס URL קען מען מער נישט לייענען (דער סערווער\'ס פארשליסלונג שליסל האט זיך געטוישט). מעקט עס אויס און שאפט א נייעם.',
   // referrals
   'Bonus milestones': 'באנוס שטאפלען', 'friends': 'פריינט', 'You reached every bonus. Thank you!': 'איר האט דערגרייכט יעדן באנוס. א דאנק!',
 };

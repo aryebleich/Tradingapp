@@ -37,6 +37,13 @@ export function decrypt(blob) {
   return JSON.parse(Buffer.concat([d.update(data), d.final()]).toString('utf8'));
 }
 
+// The same, but a value that cannot be read (damaged, or saved under another ENCRYPTION_KEY) gives
+// null instead of an error, so one bad row never breaks a page; the caller asks to reconnect.
+export function tryDecrypt(blob, what = 'value') {
+  if (!blob) return null;
+  try { return decrypt(blob); } catch { console.warn(`An encrypted ${what} cannot be read (damaged, or ENCRYPTION_KEY changed)`); return null; }
+}
+
 // Constant-time string comparison for secrets.
 export function safeEqual(a, b) {
   const x = crypto.createHash('sha256').update(String(a)).digest(), y = crypto.createHash('sha256').update(String(b)).digest();

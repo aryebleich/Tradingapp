@@ -2,7 +2,7 @@
 // private URL and it becomes orders in every account that webhook routes to, inside its risk rules.
 import express from 'express';
 import { one, all, run, now } from './db.js';
-import { encrypt, decrypt, randomToken, sha256 } from './crypto.js';
+import { encrypt, tryDecrypt, randomToken, sha256 } from './crypto.js';
 import { placeOrder, accountSummary, lastPrice, validSymbol, ACCOUNT_IDS } from './brokers.js';
 import { extName } from './ext/brokers.js';
 import { isPaid } from './fees.js';
@@ -117,10 +117,14 @@ export async function receive(req, res) {
 
 // ---------- managing webhooks (JSON API, signed-in user) ----------
 
-const view = h => ({
-  id: h.id, name: h.name, url: `${appUrl()}/hook/${decrypt(h.token_enc).t}`, accounts: JSON.parse(h.accounts), sizeMode: h.size_mode, size: h.size,
+const parseList = v => { try { const a = JSON.parse(v); return Array.isArray(a) ? a : ['paper']; } catch { return ['paper']; } };
+const view = h => {
+  const tok = tryDecrypt(h.token_enc, 'webhook token');
+  return {
+  id: h.id, name: h.name, url: tok?.t ? `${appUrl()}/hook/${tok.t}` : null, broken: !tok?.t, accounts: parseList(h.accounts), sizeMode: h.size_mode, size: h.size,
   maxPosition: h.max_position, maxTradesDay: h.max_trades_day, symbols: h.symbols || '', enabled: !!h.enabled, lastAt: h.last_at, createdAt: h.created_at,
-});
+  };
+};
 function settings(b, user) {
   const name = String(b.name ?? '').trim().slice(0, 60);
   if (!name) throw bad('Give the webhook a name');

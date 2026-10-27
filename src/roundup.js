@@ -5,7 +5,7 @@
 import express from 'express';
 import { one, all, run, now, audit } from './db.js';
 import { requireUser, rateLimit } from './auth.js';
-import { encrypt, decrypt } from './crypto.js';
+import { encrypt, tryDecrypt } from './crypto.js';
 import { placeOrder, ACCOUNT_IDS } from './brokers.js';
 import { nyTime, stockSession } from './time.js';
 import { isPaid } from './fees.js';
@@ -38,7 +38,9 @@ export function plan(tx, s) {
 async function getSettings(userId) {
   const r = await one('SELECT * FROM roundup_settings WHERE user_id = ?', userId);
   let s = {}; try { s = JSON.parse(r?.settings || '{}'); } catch {}
-  return { settings: { ...DEFAULTS, ...s }, linked: !!r?.plaid_token, cursor: r?.cursor || null, token: r?.plaid_token ? decrypt(r.plaid_token).token : null };
+  // A card link that cannot be read any more counts as not linked: the user links the card again.
+  const token = tryDecrypt(r?.plaid_token, 'card link')?.token || null;
+  return { settings: { ...DEFAULTS, ...s }, linked: !!token, cursor: r?.cursor || null, token };
 }
 export async function addTransactions(userId, txs, settings) {
   let added = 0;
