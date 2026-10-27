@@ -78,6 +78,7 @@ ICON = {
  'pair': '<path d="M7 4v16M17 4v16M4 8h6M14 16h6"/>',
  'up': '<path d="M3 17l5-5 4 4 8-9"/><path d="M14 7h6v6"/>',
  'radar': '<circle cx="12" cy="12" r="9"/><path d="M12 12l6-4M12 3v3M12 18v3M3 12h3M18 12h3"/>',
+ 'lock': '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
  'globe': '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
 }
 def ic(k, size=20):
@@ -180,6 +181,52 @@ PLANS = [
   ['Everything in Elite', '100 automatic strategies &amp; 100 webhooks', 'Unlimited scanners and AI agents', 'AI assistant: 3,000 messages a day', 'Priority support'], 'Start 14-day free trial', False),
 ]
 
+# Why it is different: (kind of tool, what it usually leaves out, what QuantPocket adds)
+DIFFERENT = [
+ ('a simple trading app', 'Lets you buy and sell, then leaves the rest to you.', 'Ready-made strategies, backtests, risk rules and automation on the brokerage account you already have.'),
+ ('a backtesting-only tool', 'Shows a great backtest and stops there.', 'The same rules trade on paper or live, and Reality Check compares live results with the backtest every day.'),
+ ('an AI stock-pick app', 'Tells you what to buy and asks you to trust it.', 'An AI assistant that explains and helps, while every rule is visible, editable and inside your limits.'),
+]
+
+# Security and control: (icon, title, text)
+TRUST = [
+ ('bank', 'Your money stays at your broker', 'QuantPocket never holds your money. Orders go to your own brokerage account, and you can disconnect at any time.'),
+ ('shield', 'Encrypted keys', 'Broker keys and card links are stored with AES-256 encryption and are only used on our servers, never in your browser.'),
+ ('lock', 'Two-factor and passkeys', 'Turn on an authenticator code or sign in with a passkey (Face ID, Touch ID or a security key).'),
+ ('bolt', 'One-tap account lock', 'Freeze every order and withdrawal, cancel open orders and stop all automation at once.'),
+ ('list', 'Every action on record', 'Every order, signal and change is logged with its time and result, so you can review exactly what happened.'),
+ ('msg', 'AI helps, you decide', 'The assistant explains and suggests. Real trades need your PIN and stay inside your risk rules.'),
+]
+
+# Plan comparison table: (row, Starter, Pro, Elite, Ultimate). True = included, False = not included.
+MATRIX = [
+ ('$100,000 paper account', True, True, True, True),
+ ('Live trading on your own brokerage', True, True, True, True),
+ ('Strategy library and backtests', True, True, True, True),
+ ('Automatic strategies', '1 (paper)', '5', '25', '100'),
+ ('Alert webhooks', '1 (paper)', '10', '25', '100'),
+ ('Charts per layout', '1', '2', '4', '4'),
+ ('Scanners', '2, hourly', 'Every 5 minutes', 'Every 5 minutes', 'Unlimited'),
+ ('AI assistant messages a day', '30', '300', '1,000', '3,000'),
+ ('Automation on real accounts', False, True, True, True),
+ ('Reality Check auto-throttle', False, True, True, True),
+ ('Trading and alerts by text and phone', False, True, True, True),
+ ('Optimizer, walk-forward testing &amp; code lab', False, True, True, True),
+ ('Option income bots &amp; multi-leg orders', False, False, True, True),
+ ('Tax-loss harvesting &amp; Schedule D', False, False, True, True),
+ ('Priority support', False, False, False, True),
+]
+
+# Learn the basics: (icon, title, text). Short, plain explainers.
+LEARN = [
+ ('bolt', 'Start with paper trading', 'Paper trading uses pretend money with real prices. Run a strategy on paper for a few weeks, size it like you would with real money, and check its results before going live.'),
+ ('shield', 'How risk rules work', 'Before any order goes out, QuantPocket checks your limits: the most per ticker, trades per day, allowed tickers and loss limits. An order that breaks a rule is blocked and logged with the reason.'),
+ ('chart', 'Why a backtest can mislead', 'A backtest shows how rules would have done in the past. Rules tuned too closely to old data often do worse live, which is why Reality Check keeps comparing the two.'),
+ ('doc', 'Tax lots, simply', 'Each buy is its own lot with its own price and date. When you sell, the lot decides your gain and whether it is short or long term. The tax center tracks lots and flags wash sales.'),
+ ('msg', 'What the AI assistant can and cannot do', 'It can explain your account, look up prices and news, and prepare orders for you to confirm. It cannot promise returns, and it never trades without your PIN or outside your rules.'),
+ ('hook', 'From alert to order', 'Your charting tool sends an alert to your private webhook URL. QuantPocket reads the ticker, side and size, checks your risk rules and sends the order to the accounts you chose.'),
+]
+
 FAQ_AUTO = [
  ('Can I turn my chart alerts into trades?', 'Yes. Create a webhook under <b>Alerts to trades</b>, paste its URL into the alert&rsquo;s <b>Webhook URL</b> field, and use our message template. Strategy alerts can pass the direction and size with <code>{{strategy.order.action}}</code> and <code>{{strategy.order.contracts}}</code>.'),
  ('Where do the ready-made strategies come from?', 'They are rotation strategies from a trading spreadsheet that tracks cloud backtests. We show each backtest next to its live results, and Reality Check keeps watching them for you. A great backtest is not a promise: several of them did much worse live.'),
@@ -188,10 +235,14 @@ FAQ_AUTO = [
  ('Can my AI agent place real trades?', 'Any program that can send an HTTPS request can use a webhook, AI agents included. It can only do what that webhook allows: its accounts, sizes and risk rules. Start on paper.'),
  ('Can I set a swing trade and walk away?', 'Yes. Place a bracket order (entry, stop-loss and take-profit) as good-till-canceled. The exit orders wait at your broker even while you are offline.'),
  ('Can my strategy run fully hands-off?', 'Automatic strategies, pair bots and webhooks run without you. Automation can still fail or act on bad data, so check your account regularly.'),
+ ('What happens if my broker or market data has a problem?', 'If a broker keeps failing, orders to it pause for a short cool-down instead of piling up, and you see the error in the app. Market data can be delayed or missing at times, so keep stop-loss orders at your broker for anything important.'),
  ('Can I trigger trades from automation tools?', 'Yes. Any tool that can call a webhook URL works. Use your QuantPocket webhook URL with the fields <code>ticker</code>, <code>action</code> and <code>quantity</code>.'),
 ]
 FAQ_ACCOUNT = [
  ('Will I make money?', 'Nobody can promise that. Most active strategies underperform simply holding an index after costs. QuantPocket shows how an idea behaved in the past, how it is doing live, and the range of outcomes to expect, so you can decide with your eyes open.'),
+ ('Can I try it without linking a broker?', 'Yes. Every account starts with a $100,000 paper account using real market prices. You can test strategies, webhooks and the assistant without connecting anything.'),
+ ('Are my broker keys and password safe?', 'Passwords are hashed, broker keys are encrypted with AES-256, and keys are only used on our servers. You can add two-factor sign-in or a passkey, and lock the account with one tap.'),
+ ('Is QuantPocket for beginners or experienced traders?', 'Both. Beginners can practice on paper and follow ready-made plans like the S&amp;P 500 autopilot. Experienced traders get webhooks, pairs trading, options, the code lab and automation across several brokers.'),
  ('Can I use QuantPocket in Yiddish?', 'Yes. In the app, open Settings → Language and choose אידיש (full translation). The whole app switches to Yiddish, written right-to-left.'),
  ('Which brokerages can I connect?', 'Alpaca (you can also open a new account inside QuantPocket), Charles Schwab, tastytrade, Tradier and TradeStation. Your money always stays at your broker.'),
  ('Can I sign up with Google?', 'Yes. Choose <b>Sign up with Google</b> and your account is ready in seconds. You can add a password later in Settings.'),
@@ -222,6 +273,11 @@ def index(lang='en'):
                         for n, (t, h, d, b) in enumerate(USECASES))
     feats = ''.join(f'<div class="feature"><div class="ic">{ic(i)}</div><h3>{T(t)}</h3><p>{T(d)}</p></div>' for i, t, d in FEATURES)
     lib = ''.join(f'<div class="libcard"><div class="lh"><b>{n}</b><span class="risk {RISK[r]}">{T(r + " risk")}</span></div><p>{T(tg)}</p><span class="reb">{T(rb)}</span></div>' for n, tg, rb, r in LIBRARY)
+    diff = ''.join(f'<div class="diffcard"><span class="kicker">{T("Unlike")} {T(k)}</span><p class="was">{T(w)}</p><p class="now">{ic('up', 16)} {T(n)}</p></div>' for k, w, n in DIFFERENT)
+    trust = ''.join(f'<div class="feature"><div class="ic">{ic(i)}</div><h3>{T(t)}</h3><p>{T(d)}</p></div>' for i, t, d in TRUST)
+    cell = lambda v: (f'<td class="y" aria-label="{T("Included")}">&#10003;</td>' if v else f'<td class="n" aria-label="{T("Not included")}">&ndash;</td>') if isinstance(v, bool) else f'<td>{v if v.replace(",", "").isdigit() else T(v)}</td>'
+    matrix = ''.join(f'<tr><th scope="row">{T(r)}</th>{"".join(cell(v) for v in vs)}</tr>' for r, *vs in MATRIX)
+    learn = ''.join(f'<details class="learn"><summary><span class="ic">{ic(i, 18)}</span>{T(t)}</summary><p>{T(d)}</p></details>' for i, t, d in LEARN)
     faq = lambda items: ''.join(f'<details{" data-adviser hidden" if q.startswith("How does the performance fee") else ""}><summary>{T(q)}</summary><p>{T(a)}</p></details>' for q, a in items)
     plans = ''.join(f'''<div class="plan{' best' if best else ''}">{'<div class="ribbon">' + T('Most popular') + '</div>' if best else ''}<h3>{T(n)}</h3><p class="tag">{T(tg)}</p>
       <div class="price"{f' data-m="{pm}" data-y="{py}"' if py else ''}>{pm}<small{f' data-m="{T(sm)}" data-y="{T(sy)}"' if sy else ''}>{T(sm)}</small></div><p class="fee" data-adviser hidden>{T(fee)}</p>
@@ -234,6 +290,7 @@ def index(lang='en'):
     <p class="lead">{T('Stocks, ETFs, options and crypto through your own brokerage account. Ready-made strategies, webhook alerts, pairs trading and an S&amp;P 500 plan: test them, paper trade them and automate them on one platform.')}</p>
     <div class="cta">{gbtn()}{ghbtn()}<a class="btn outline lg" data-app="#/register" href="app">{T('Start free with email')}</a></div>
     <ul class="ticks"><li>{T('Set up in 3 minutes')}</li><li>{T('$100,000 paper account')}</li><li>{T('No card needed')}</li></ul>
+    <p class="demolink"><a href="#demo">{T('Try the live demo, no sign-up')} &darr;</a></p>
     <p class="acctlink"><a data-app="#/open-account" href="app">{T('Open a brokerage account')} &rarr;</a> <span>{T('Commission-free, held at Alpaca Securities LLC (FINRA/SIPC)')}</span></p>
     <p class="phoneline hero-phone" data-phone hidden>{ic('msg', 16)} {T('Text or call us:')} <a data-phone-link dir="ltr"></a></p>
   </div>
@@ -249,7 +306,13 @@ def index(lang='en'):
   <div class="intents" data-tabs><div class="ichips" role="tablist" aria-label="{T('What do you want to do?')}">{chips}</div>{panels}</div>
 </div></section>
 
-<section class="alt" id="strategies"><div class="wrap split">
+<section class="alt" id="different"><div class="wrap">
+  <h2 class="sec center">{T('Why QuantPocket is different')}</h2>
+  <p class="sub center">{T('Test an idea, run it on paper, then automate it on your own brokerage, with honest numbers and risk rules at every step.')}</p>
+  <div class="diffs">{diff}</div>
+</div></section>
+
+<section id="strategies"><div class="wrap split">
   <div>
     <span class="kicker">{T('Strategy library')}</span>
     <h2 class="sec">{T('Ready-made strategies. Every number in your hands.')}</h2>
@@ -363,6 +426,13 @@ def index(lang='en'):
   <div class="features">{feats}</div>
 </div></section>
 
+<section class="dark" id="trust"><div class="wrap">
+  <span class="kicker light">{T('Security first')}</span>
+  <h2 class="sec">{T('You stay in control.')}</h2>
+  <p class="sub">{T('Your money, your broker, your rules. QuantPocket does the work, and you can see and stop everything.')}</p>
+  <div class="features trust">{trust}</div>
+</div></section>
+
 <section id="demo"><div class="wrap">
   <h2 class="sec">{T('Live demo: test a strategy now')}</h2>
   <p class="sub">{T('Pick a ticker and a classic strategy. It runs on the same engine as the app, using market data since 2015.')}</p>
@@ -386,10 +456,19 @@ def index(lang='en'):
   <p class="sub center">{T('Every paid plan starts with a 14-day free trial. One simple monthly price, live trading on every plan, cancel anytime.')}</p>
   <div class="toggle" id="billing"><button class="on" data-i="m">{T('Monthly')}</button><button data-i="y">{T('Yearly')} <em>{T('2 months free')}</em></button></div>
   <div class="plans">{plans}</div>
+  <details class="matrix"><summary>{T('Compare all plans')}</summary>
+    <div class="mxwrap"><table><thead><tr><th scope="col">{T('Feature')}</th>{''.join(f'<th scope="col">{T(p[0])}</th>' for p in PLANS)}</tr></thead><tbody>{matrix}</tbody></table></div>
+  </details>
   <p class="fine">{T('Secure checkout by Stripe. Cancel anytime. Trading involves risk; see the')} <a href="risk.html">{T('Risk Disclosure')}</a>.</p>
 </div></section>
 
-<section id="faq"><div class="wrap faq" style="max-width:860px">
+<section id="learn"><div class="wrap">
+  <h2 class="sec center">{T('Learn the basics')}</h2>
+  <p class="sub center">{T('Short, plain answers to the things every new trader asks.')}</p>
+  <div class="learns">{learn}</div>
+</div></section>
+
+<section class="alt" id="faq"><div class="wrap faq" style="max-width:860px">
   <h2 class="sec center">{T('Popular questions')}</h2>
   <div data-tabs>
     <div class="toggle" role="tablist" aria-label="{T('Question topics')}">{tab('fa', T('Automation'), True)}{tab('fb', T('Account &amp; pricing'), False)}</div>

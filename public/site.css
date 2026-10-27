@@ -417,3 +417,34 @@ html[dir="rtl"] .acctlink a { margin: 0 0 0 6px; }
 }
 .btn.github { background: #24292f; color: #fff; }
 .btn.github:hover { background: #32383f; }
+
+/* why different, security, plan comparison, learn */
+.demolink { margin: 6px 0 0; font-weight: 600; }
+.demolink a { text-decoration: none; }
+.diffs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 18px; }
+.diffcard { background: var(--card); border: 1px solid var(--bd); border-radius: 16px; padding: 24px; box-shadow: var(--shadow); }
+.diffcard .kicker { margin-bottom: 12px; }
+.diffcard .was { color: var(--mu); margin: 0 0 12px; text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--mu) 50%, transparent); }
+.diffcard .now { margin: 0; font-weight: 600; display: flex; gap: 8px; align-items: flex-start; }
+.diffcard .now svg { flex: none; margin-top: 4px; color: var(--ac); }
+section.dark .trust .feature { background: rgba(255, 255, 255, .04); border-color: rgba(255, 255, 255, .1); box-shadow: none; }
+section.dark .trust .feature p { color: #b9c2dc; }
+.matrix { margin-top: 28px; }
+.matrix summary { cursor: pointer; font-weight: 650; text-align: center; color: var(--ac); list-style: none; }
+.matrix summary::after { content: ' +'; }
+.matrix[open] summary::after { content: ' –'; }
+.mxwrap { overflow-x: auto; margin-top: 16px; border: 1px solid var(--bd); border-radius: 14px; background: var(--card); }
+.mxwrap table { width: 100%; border-collapse: collapse; font-size: 15px; min-width: 560px; }
+.mxwrap th, .mxwrap td { padding: 11px 14px; border-bottom: 1px solid var(--bd); text-align: center; }
+.mxwrap th[scope="row"] { text-align: start; font-weight: 500; }
+.mxwrap thead th { font-weight: 700; background: var(--bg2); }
+.mxwrap tr:last-child th, .mxwrap tr:last-child td { border-bottom: 0; }
+.mxwrap td.y { color: var(--gr); font-weight: 700; }
+.mxwrap td.n { color: var(--mu); }
+.learns { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 14px; align-items: start; }
+.learn { background: var(--card); border: 1px solid var(--bd); border-radius: 14px; padding: 16px 18px; }
+.learn summary { cursor: pointer; font-weight: 650; display: flex; align-items: center; gap: 10px; list-style: none; }
+.learn summary::-webkit-details-marker, .matrix summary::-webkit-details-marker { display: none; }
+.learn summary .ic { width: 32px; height: 32px; flex: none; border-radius: 9px; display: grid; place-items: center; background: color-mix(in srgb, var(--ac) 12%, transparent); color: var(--ac); }
+.learn p { margin: 12px 0 0; color: var(--mu); }
+@media (max-width: 640px) { .mxwrap table { font-size: 14px; } .mxwrap th, .mxwrap td { padding: 9px 10px; } }

@@ -87,3 +87,12 @@ test('every GitHub workflow is valid YAML', async () => {
     for (const [i, line] of text.split('\n').entries()) if (/:\s*\{[^}]*\$\{\{/.test(line)) assert.fail(`${f}:${i + 1} has \${{ }} inside a { } mapping; use block style`);
   }
 });
+
+test('homepage has the why-different, security, plan comparison and learn sections in both languages', async () => {
+  const fs = await import('node:fs');
+  for (const f of ['public/index.html', 'public/yi.html']) {
+    const h = fs.readFileSync(f, 'utf8');
+    for (const id of ['different', 'trust', 'learn', 'faq', 'demo']) assert.match(h, new RegExp(`id="${id}"`), `${f}: #${id}`);
+    assert.match(h, /<details class="matrix">/, f);
+  }
+});
