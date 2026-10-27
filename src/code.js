@@ -5,6 +5,7 @@ import { one, all, run, now } from './db.js';
 import { requireUser, rateLimit } from './auth.js';
 import { getBars } from './brokers.js';
 import { isPaid } from './fees.js';
+import { limitsFor } from './statarb.js';
 
 export const codeRouter = (() => {
   const r = express.Router();
@@ -12,7 +13,7 @@ export const codeRouter = (() => {
   const bad = (m, s = 400) => Object.assign(new Error(m), { status: s });
   r.get('/prices', async (req, res) => {
     if (!rateLimit('codeprices:' + req.user.id, 120, 3600e3)) throw bad('Too many data requests this hour', 429);
-    const syms = String(req.query.symbols || 'SPY').split(/[\s,]+/).map(s => s.trim().toUpperCase()).filter(Boolean).slice(0, 10);
+    const syms = String(req.query.symbols || 'SPY').split(/[\s,]+/).map(s => s.trim().toUpperCase()).filter(Boolean).slice(0, Math.max(10, limitsFor(req.user).symbols));
     const start = /^\d{4}-\d{2}-\d{2}$/.test(req.query.start || '') ? req.query.start : '2016-01-01';
     const out = {};
     for (const s of syms) { const b = await getBars(s, start, req.user.id); out[s] = { dates: b.dates, close: b.closes, source: b.source }; }

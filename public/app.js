@@ -185,7 +185,7 @@ const NAV = [
   ['Trading', [['dashboard', 'Portfolio'], ['trade', 'Trade'], ['chart', 'Chart'], ['orders', 'Orders'], ['positions', 'Positions'], ['watchlists', 'Watchlists']]],
   ['AI', [['ai', 'AI assistant'], ['agents', 'Forecasts & AI agents'], ['news', 'News & sentiment']]],
   ['Markets', [['sp500', 'S&P 500 plan'], ['alpaca-tools', 'Bonds, crypto & AI'], ['markets', 'Markets & news'], ['scanner', 'Scanner'], ['options', 'Options chain'], ['optionslab', 'Options lab'], ['institutions', 'Institutional portfolios'], ['calendar', 'Calendar & events']]],
-  ['Strategies', [['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['code', 'Code lab'], ['portfolios', 'Portfolios'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['marketplace', 'Marketplace'], ['pairs', 'Pairs trading'], ['schedule', 'Scheduled trades'], ['quantconnect', 'Cloud algorithms'], ['workspace', 'Workspace']]],
+  ['Strategies', [['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['code', 'Code lab'], ['portfolios', 'Portfolios'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['marketplace', 'Marketplace'], ['pairs', 'Pairs trading'], ['statarb', 'Statistical arbitrage'], ['schedule', 'Scheduled trades'], ['quantconnect', 'Cloud algorithms'], ['workspace', 'Workspace']]],
   ['Money', [['wealth', 'Wealth builder'], ['longterm', 'Long-term view'], ['insights', 'Insights & journal'], ['risk', 'Risk controls'], ['execution', 'Execution & routing'], ['spend', 'Invest as you spend'], ['halal', 'Halal investing'], ['tax', 'Taxes']]],
   ['Account', [['security', 'Security & help'], ['learn', 'Learn'], ['accounts', 'All accounts'], ['brokers', 'Brokerages'], ['account', 'Alpaca account'], ['funding', 'Plans & billing'], ['referrals', 'Invite & earn'], ['text', 'Text & hotline'], ['settings', 'Settings']]],
 ];
@@ -194,6 +194,7 @@ const ICONS = {
   brokers: '<path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/>',
   sp500: '<path d="M3 17l5-5 4 4 8-9"/><path d="M14 7h6v6"/>',
   pairs: '<path d="M7 4v16M17 4v16M4 8h6M14 16h6"/>',
+  statarb: '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>',
   strategies: '<path d="M12 3v18M5 8h14M7 13h10M9 18h6"/>',
   signals: '<path d="M4 12h4l3-8 4 16 3-8h2"/>',
   dashboard: '<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/>', trade: '<path d="M7 17 17 7M9 7h8v8"/>',
@@ -323,7 +324,7 @@ addEventListener('keydown', e => { if (e.key === 'Escape') setMenu(false); });
 // On phones, tables render as stacked cards. Each cell gets its column name as a label; a
 // MutationObserver keeps labels on tables that pages re-render (e.g. auto-refreshing orders).
 function labelTables(root) {
-  for (const t of root.querySelectorAll('table:not(.chain):not([data-labeled])')) {
+  for (const t of root.querySelectorAll('table:not(.chain):not(.heat):not([data-labeled])')) {
     const head = [...t.rows].find(r => r.querySelector('th'));
     if (!head) continue;
     const names = [];
@@ -781,7 +782,7 @@ routes.text = async view => {
 // ---------- tax ----------
 routes.tax = async (view, q) => {
   const year = +(q.get('year') || new Date().getFullYear());
-  const t = await api(`/tax?account=${state.account}&year=${year}`);
+  const [t, bk] = await Promise.all([api(`/tax?account=${state.account}&year=${year}`), api(`/tax/books?account=${state.account}&year=${year}`).catch(() => null)]);
   view.innerHTML = `<div class="row" style="justify-content:space-between"><h1>Tax information</h1></div>
   <div class="banner">Estimates for planning only (US federal + flat state rate, FIFO lots). Your broker's 1099-B is the official record; check with a tax professional.</div>
   <div class="card"><div class="row"><label>Year<select id="yr">${[0, 1, 2, 3].map(i => new Date().getFullYear() - i).map(y => `<option ${y === year ? 'selected' : ''}>${y}</option>`).join('')}</select></label>
@@ -796,6 +797,15 @@ routes.tax = async (view, q) => {
       <div class="stat"><span>Loss carryforward</span><b>${money(t.carryforward)}</b></div>
     </div>
     <p class="mu" style="font-size:13px">Rates used: ordinary ${num(t.bracket * 100, 0)}%, long-term ${num(t.ltRate * 100, 0)}%, state ${num(t.stateRate * 100, 1)}%. Change them in Settings.</p></div>
+  ${bk ? `<div class="card" id="books"><div class="row" style="justify-content:space-between;align-items:center"><h2>Monthly bookkeeping</h2>
+    <a href="/api/tax/books?account=${state.account}&year=${year}&format=csv"><button type="button" class="ghost">Download books CSV</button></a></div>
+    <p class="mu" style="margin-top:0">Every month's trades, gains, dividends, interest and deposits, with how much to set aside for taxes so far this year.</p>
+    <div class="tablewrap"><table><tr><th>Month</th><th>Trades</th><th>Short-term</th><th>Long-term</th><th>Dividends</th><th>Interest</th><th>Deposits</th><th>Realized this year</th><th>Set aside so far</th></tr>
+    ${bk.months.filter(m => m.trades || m.dividends || m.interest || m.deposits || m.withdrawals).map(m => `<tr><td>${new Date(m.month + '-15').toLocaleString(undefined, { month: 'long' })}</td><td>${m.trades}</td><td class="${cls(m.shortTerm)}">${money(m.shortTerm)}</td><td class="${cls(m.longTerm)}">${money(m.longTerm)}</td><td>${money(m.dividends)}</td><td>${money(m.interest)}</td><td>${money(m.deposits)}</td><td class="${cls(m.ytdRealized)}">${money(m.ytdRealized)}</td><td>${money(m.ytdSetAside)}</td></tr>`).join('') || '<tr><td colspan="9" class="mu">Nothing recorded this year yet</td></tr>'}</table></div>
+    <h3 style="margin:16px 0 6px">Estimated tax payments (Form 1040-ES)</h3>
+    <div class="stats">${bk.quarters.map(x => `<div class="stat"><span>Q${x.q} · due ${new Date(x.due + 'T12:00').toLocaleDateString()}</span><b>${money(x.estimatedTax)}</b></div>`).join('')}</div>
+    <label class="chk" style="margin-top:12px"><input type="checkbox" id="booksMail" ${bk.email ? 'checked' : ''}> Email me last month's books on the 1st of every month</label>
+    <p class="mu" style="font-size:12.5px">Set-aside amounts use your rates above and count dividends and interest as ordinary income. You may owe no estimated tax if your withholding covers it; check with a tax professional.</p><div class="err"></div></div>` : ''}
   ${t.scheduleD ? `<div class="card"><h2>Schedule D summary</h2><div class="tablewrap"><table><tr><th>Line</th><th>Lots</th><th>Proceeds</th><th>Cost</th><th>Wash-sale adjustments</th><th>Gain or loss</th></tr>
     <tr><td>1b / 7: Short-term (Form 8949 box A)</td><td>${t.scheduleD.line1b_shortTerm.lots}</td><td>${money(t.scheduleD.line1b_shortTerm.proceeds)}</td><td>${money(t.scheduleD.line1b_shortTerm.cost)}</td><td>${money(t.scheduleD.line1b_shortTerm.adjustments)}</td><td class="${cls(t.scheduleD.line7_netShortTerm)}">${money(t.scheduleD.line7_netShortTerm)}</td></tr>
     <tr><td>8b / 15: Long-term (Form 8949 box D)</td><td>${t.scheduleD.line8b_longTerm.lots}</td><td>${money(t.scheduleD.line8b_longTerm.proceeds)}</td><td>${money(t.scheduleD.line8b_longTerm.cost)}</td><td>${money(t.scheduleD.line8b_longTerm.adjustments)}</td><td class="${cls(t.scheduleD.line15_netLongTerm)}">${money(t.scheduleD.line15_netLongTerm)}</td></tr>
@@ -809,6 +819,10 @@ routes.tax = async (view, q) => {
     ${t.rows.map(r => `<tr><td>${esc(r.symbol)}</td><td>${num(r.qty, 4)}</td><td>${new Date(r.acquired).toLocaleDateString()}</td><td>${new Date(r.sold).toLocaleDateString()}</td><td>${money(r.proceeds)}</td><td>${money(r.cost)}</td><td class="${cls(r.gain)}">${money(r.gain)}</td><td>${r.longTerm ? 'Long' : 'Short'}</td><td>${r.washSale ? '<span class="pill warn">wash sale</span>' : ''}</td></tr>`).join('') || '<tr><td colspan="9" class="mu">No sales this year</td></tr>'}
   </table></div>`;
   $('#yr', view).onchange = e => (location.hash = '#/tax?year=' + e.target.value);
+  if ($('#booksMail', view)) $('#booksMail', view).onchange = async e => {
+    try { await api('/tax/books/email', { method: 'PUT', body: { on: e.target.checked } }); }
+    catch (x) { e.target.checked = !e.target.checked; $('#books .err', view).textContent = x.message; }
+  };
   if ($('#mtm', view)) $('#mtm', view).onchange = async e => {
     try { await api('/tax/settings', { body: { bracket: t.bracket, stateTax: t.stateRate, mtm: e.target.checked } }); render(); }
     catch (x) { e.target.closest('.card').querySelector('.err').textContent = x.message; }
@@ -980,7 +994,7 @@ routes.settings = async view => {
 
 // ---------- admin ----------
 // Owner pages: one route per section so each has its own place in the menu.
-const ADMIN_TABS = [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-money', 'Money & fees'], ['admin-business', 'Business mode'], ['admin-alpaca', 'Alpaca plans'], ['admin-yiddish', 'Yiddish Labs'], ['admin-admins', 'Admins'], ['admin-keys', 'Keys'], ['admin-support', 'Support inbox'], ['admin-system', 'System health'], ['admin-setup', 'Setup']];
+const ADMIN_TABS = [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-money', 'Money & fees'], ['admin-business', 'Business mode'], ['admin-alpaca', 'Alpaca plans'], ['admin-yiddish', 'Yiddish Labs'], ['admin-phone', 'Phone line'], ['admin-admins', 'Admins'], ['admin-keys', 'Keys'], ['admin-support', 'Support inbox'], ['admin-system', 'System health'], ['admin-setup', 'Setup']];
 // Pages with their own module (owner.js, protect.js) draw themselves under the same tabs.
 const adminTabs = current => `<div class="chips admintabs">${ADMIN_TABS.map(([k, t]) => `<a href="#/${k}"><button type="button" class="${k === current ? 'on' : ''}">${t}</button></a>`).join('')}</div>`;
 async function adminPage(view, tab) {

@@ -468,8 +468,7 @@ body.popout main { padding: 10px; }
 
 /* ---------- sign-in buttons: GitHub and text-message code ---------- */
 .oauth { display: grid; gap: 10px; }
-.gbtn.ghbtn { background: #24292f; border-color: #24292f; color: #fff; }
-.gbtn.ghbtn:hover { background: #32383f; }
+/* GitHub uses the same white button as Google (both brands allow their logo on white). */
 .gbtn.phonebtn { margin-top: 10px; background: transparent; color: var(--tx); border-color: var(--bd); }
 .gbtn.phonebtn:hover { background: var(--bg2); }
 
@@ -590,3 +589,20 @@ pre code { font-size: 12.5px; }
 .aplan { display: flex; flex-direction: column; } .aplan > a { margin-top: auto; }
 @media (max-width: 640px) { .chips button { white-space: nowrap; } }
 pre, pre code { direction: ltr; text-align: left; unicode-bidi: isolate; }
+
+/* statistical arbitrage: pair heat map and s-score bars */
+table.heat { border-collapse: separate; border-spacing: 2px; width: auto; }
+table.heat th { font-size: 12px; padding: 4px 6px; white-space: nowrap; }
+table.heat td { min-width: 46px; height: 34px; text-align: center; font-size: 12.5px; font-variant-numeric: tabular-nums; color: #1f2937; border-radius: 6px; cursor: pointer; padding: 2px 4px; transition: transform .12s; }
+table.heat td:hover { transform: scale(1.08); box-shadow: var(--shadow); }
+table.heat td.diag { background: var(--bg2); cursor: default; }
+table.heat td.diag:hover { transform: none; box-shadow: none; }
+table.heat td.co { font-weight: 700; outline: 2px solid #2563eb; outline-offset: -2px; }
+.sbar { position: relative; height: 10px; background: var(--bg2); border-radius: 99px; }
+.sbar::after { content: ''; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--mu); }
+.sbar i { position: absolute; top: 0; bottom: 0; border-radius: 99px; }
+.sbar i.lo { background: #3b82f6; }
+.sbar i.hi { background: #f97316; }
+.ivrtree { white-space: pre-wrap; font-size: 13.5px; line-height: 1.6; background: var(--bg2); padding: 14px; border-radius: 10px; }
+#metric { display: flex; flex-wrap: wrap; max-width: 100%; } #metric button { white-space: normal; }
+@media (max-width: 640px) { #sf .pairrow label[style*='span 2'] { grid-column: auto !important; } table.heat td { min-width: 40px; font-size: 11.5px; } }

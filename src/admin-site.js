@@ -242,3 +242,23 @@ adminSiteRouter.put('/yiddish/auto', wrap(async (req, res) => {
   await audit(req.user.id, 'yiddish_auto', { on: value === 'true' }, req.ip);
   res.json({ auto: value === 'true' });
 }));
+
+// ---------- phone line (IVR) ----------
+adminSiteRouter.get('/phone', wrap(async (req, res) => {
+  const H = await import('./hotline.js'), N = await import('./notify.js');
+  const base = (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+  const since = Date.now() - 30 * 86400e3;
+  const counts = Object.fromEntries((await all("SELECT event, COUNT(*) n FROM audit_log WHERE event LIKE 'hotline%' AND at > ? GROUP BY event", since)).map(r => [r.event, r.n]));
+  const log = await all("SELECT a.event, a.detail, a.ip, a.at, u.email FROM audit_log a LEFT JOIN users u ON u.id = a.user_id WHERE a.event LIKE 'hotline%' ORDER BY a.id DESC LIMIT 60");
+  res.json({
+    settings: H.settings(), defaults: H.DEFAULTS, counts, log: log.map(l => ({ ...l, detail: l.detail ? JSON.parse(l.detail) : null })),
+    number: process.env.TWILIO_FROM || null, twilio: N.twilioEnabled(), signed: !!process.env.TWILIO_AUTH_TOKEN,
+    voiceUrl: `${base}/twilio/voice`, statusUrl: `${base}/twilio/voice/status`, smsUrl: `${base}/twilio/sms`, publicUrl: !!process.env.PUBLIC_URL,
+  });
+}));
+adminSiteRouter.put('/phone', wrap(async (req, res) => {
+  const H = await import('./hotline.js');
+  const s = await H.saveSettings(req.body || {});
+  await audit(req.user.id, 'hotline_settings', s, req.ip);
+  res.json({ settings: s });
+}));

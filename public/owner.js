@@ -5,7 +5,7 @@ let H;
 export function registerOwner(routes, helpers) {
   H = helpers;
   const guard = fn => view => (H.me()?.role === 'admin' ? fn(view) : (location.hash = '#/dashboard'));
-  Object.assign(routes, { 'admin-business': guard(business), 'admin-alpaca': guard(alpacaPlans), 'admin-yiddish': guard(yiddish), 'admin-admins': guard(admins), 'admin-keys': guard(keys) });
+  Object.assign(routes, { 'admin-business': guard(business), 'admin-alpaca': guard(alpacaPlans), 'admin-yiddish': guard(yiddish), 'admin-phone': guard(phoneLine), 'admin-admins': guard(admins), 'admin-keys': guard(keys) });
 }
 
 async function business(view) {
@@ -197,4 +197,46 @@ async function yiddish(view) {
     <td><a href="${r.url}" target="_blank" rel="noopener">Open log ↗</a></td></tr>`).join('')}</table></div>` : ''}`;
   if (H.$('#ylRun', view)) H.act(H.$('#ylRun', view), async () => { await H.api('/admin/site/yiddish/run', { body: { since: H.$('#ylSince', view).value, limit: H.$('#ylLimit', view).value } }); setTimeout(H.render, 4000); return 'Started on GitHub. It shows up below in a few seconds.'; });
   if (H.$('#ylAuto', view)) H.$('#ylAuto', view).onchange = async e => { try { await H.api('/admin/site/yiddish/auto', { method: 'PUT', body: { on: e.target.checked } }); } catch (x) { e.target.checked = !e.target.checked; alert(x.message); } };
+}
+
+// Phone line (IVR): settings, what callers hear, the Twilio links and the call log.
+const LOGNAMES = { hotline_call: 'Call', hotline_order: 'Order', hotline_cancel_all: 'Cancel all orders', hotline_close_all: 'Close all positions', hotline_pin_failed: 'Wrong PIN', hotline_signup: 'Account opened by phone', hotline_ai: 'Asked the assistant', hotline_settings: 'Settings changed' };
+async function phoneLine(view) {
+  const d = await H.api('/admin/site/phone'), s = d.settings, c = d.counts;
+  const tree = `Welcome: "${s.greeting}"
+  New number → 1 open a free account (texted code, then a 4-digit PIN)
+  ▸ 1 Paper trading   ▸ 2 Live trading${s.freePaper ? ' (free plan: paper only)' : ''}
+Main menu
+  ▸ 1 Account info   ▸ 2 Positions   ▸ 3 Market clock   ▸ 4 Place a trade
+  ▸ 5 Cancel open orders (PIN)   ▸ 6 Close ALL positions (confirm + PIN)
+  ▸ 7 Ask the assistant (when AI is on)   ▸ 9 Switch paper/live   ▸ 0 Hang up
+Trade
+  ▸ Pick a stock: ${s.tickers.map((t, i) => `${i + 1} ${t}`).join(', ')}
+  ▸ 1 buy / 2 sell ▸ shares + # (up to ${Number(s.maxQty).toLocaleString()}) ▸ 1 confirm / 2 cancel ▸ PIN ▸ market order`;
+  view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-phone')}
+  <div class="card"><h2>Phone line</h2>
+    <div class="stats"><div class="stat"><span>Number</span><b data-no-tr>${H.esc(d.number || 'not set')}</b></div><div class="stat"><span>Calls (30 days)</span><b>${c.hotline_call || 0}</b></div>
+      <div class="stat"><span>Orders by phone</span><b>${c.hotline_order || 0}</b></div><div class="stat"><span>Accounts opened</span><b>${c.hotline_signup || 0}</b></div><div class="stat"><span>Wrong PINs</span><b class="${c.hotline_pin_failed ? 'neg' : ''}">${c.hotline_pin_failed || 0}</b></div></div>
+    ${d.twilio ? '' : '<p class="banner">Twilio is not set up: add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_FROM in <a href="#/admin-keys">Keys</a>.</p>'}
+    <p class="${d.signed ? 'mu' : 'banner err'}">${d.signed ? '✓ Every request is checked against Twilio\'s signature (TWILIO_AUTH_TOKEN), so nobody else can drive the menus.' : 'Without TWILIO_AUTH_TOKEN the server refuses phone-line requests in production.'}</p>
+    ${d.publicUrl ? '' : '<p class="banner">Set PUBLIC_URL in Keys: the signature check uses it, and it must match the address Twilio calls.</p>'}
+    <p class="mu small-print">In Twilio → Phone Numbers → your number → Voice: "A call comes in" → Webhook (POST) <code data-no-tr>${H.esc(d.voiceUrl)}</code>, Call status changes → <code data-no-tr>${H.esc(d.statusUrl)}</code>. Messaging → <code data-no-tr>${H.esc(d.smsUrl)}</code>.</p></div>
+  <form class="card" id="ivrf"><h2>Settings</h2>
+    <label class="check"><input type="checkbox" name="enabled" ${s.enabled ? 'checked' : ''}> Phone line on</label>
+    <label class="check"><input type="checkbox" name="allowSignup" ${s.allowSignup ? 'checked' : ''}> New callers can open a free account by phone</label>
+    <label class="check"><input type="checkbox" name="freePaper" ${s.freePaper ? 'checked' : ''}> Free-plan callers may use the paper menu (you pay the call minutes)</label>
+    <label>Greeting<input name="greeting" maxlength="200" value="${H.esc(s.greeting)}"></label>
+    <label>Stocks for keys 1 to 9 (in order)<input name="tickers" value="${H.esc(s.tickers.join(', '))}" data-no-tr></label>
+    <div class="row"><label>Most shares per order<input name="maxQty" type="number" min="1" max="10000" value="${s.maxQty}"></label>
+      <label>Voice<select name="voice">${['Polly.Joanna', 'Polly.Matthew', 'Polly.Salli', 'Polly.Joey', 'woman', 'man'].map(v => `<option ${v === s.voice ? 'selected' : ''}>${v}</option>`).join('')}</select></label></div>
+    <button>Save</button><div class="err"></div></form>
+  <div class="card"><h2>What callers hear</h2><pre class="ivrtree" data-no-tr>${H.esc(tree)}</pre>
+    <p class="mu small-print">Safety: a PIN on every action that changes an account, an extra confirmation before closing everything, ${Number(s.maxQty).toLocaleString()} shares at most per order, the account's own risk rules on every order, and the call ends after 3 wrong PINs (the owner of the number gets a text).</p></div>
+  <div class="card tablewrap"><h2>Call log</h2><table><tr><th>When</th><th>What</th><th>Account</th><th>Details</th><th>From</th></tr>
+    ${d.log.map(l => `<tr><td>${new Date(l.at).toLocaleString()}</td><td>${H.esc(LOGNAMES[l.event] || l.event)}</td><td data-no-tr>${H.esc(l.email || '-')}</td><td data-no-tr class="mu" style="font-size:12.5px">${H.esc(l.detail ? JSON.stringify(l.detail).slice(0, 120) : '')}</td><td data-no-tr>${H.esc(l.ip || '')}</td></tr>`).join('') || '<tr><td colspan="5" class="mu">No calls yet</td></tr>'}</table></div>`;
+  const f = H.$('#ivrf', view);
+  H.act(H.$('button', f), async () => {
+    await H.api('/admin/site/phone', { method: 'PUT', body: { enabled: f.enabled.checked, allowSignup: f.allowSignup.checked, freePaper: f.freePaper.checked, greeting: f.greeting.value, tickers: f.tickers.value, maxQty: f.maxQty.value, voice: f.voice.value } });
+    setTimeout(H.render, 600); return 'Saved';
+  });
 }

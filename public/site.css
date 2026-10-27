@@ -415,8 +415,10 @@ html[dir="rtl"] .acctlink a { margin: 0 0 0 6px; }
   .feature { padding: 18px; }
   .btn.github, .btn.google { width: 100%; }
 }
-.btn.github { background: #24292f; color: #fff; }
-.btn.github:hover { background: #32383f; }
+/* GitHub matches the white Google button. */
+.btn.github { background: #fff; color: #1f1f1f; border: 1px solid #dadce0; box-shadow: 0 1px 2px rgba(16, 24, 40, .08); }
+.btn.github:hover { background: #f8f9fb; box-shadow: 0 8px 22px rgba(0, 0, 0, .18); filter: none; }
+.btn.github svg { flex-shrink: 0; }
 
 /* why different, security, plan comparison, learn */
 .demolink { margin: 6px 0 0; font-weight: 600; }

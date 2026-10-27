@@ -17,11 +17,12 @@ import { securityRouter, passkeyLoginRouter, stepUpGuard } from './src/security.
 import { lessonsRouter } from './src/lessons.js';
 import { execRouter } from './src/execution.js';
 import { marginRouter } from './src/margin.js';
-import { setSetting } from './src/settings.js';
+import { setSetting, getSetting } from './src/settings.js';
 import { prefsRouter } from './src/settings.js';
 import { longtermRouter } from './src/longterm.js';
 import { shedMiddleware, countUnhandled, stats as relStats, metricsText, recommendedReplicas, jobAllowed, load as relLoad } from './src/reliability.js';
 import { drain as drainQueue, queueStats, userQueue } from './src/orderqueue.js';
+import { booksFor, booksCsv } from './src/books.js';
 import { taxSummary, harvestCandidates, form8949Csv, scheduleD, scheduleDCsv, markToMarket } from './src/tax.js';
 import { buildStrategy } from './src/ai.js';
 import { handleCommand, userByPhone, normalize, HELP, KNOWN } from './src/commands.js';
@@ -60,6 +61,8 @@ import { loadSite, freshSite, applySavedEnv, adviserMode, normalizePhone, siteGe
 import { router as signalsRouter, receive as receiveSignal } from './src/signals.js';
 import { router as strategiesRouter } from './src/rotation/routes.js';
 import { router as pairsRouter } from './src/pairs.js';
+import { statArbRouter } from './src/statarb.js';
+import { registerHotline } from './src/hotline.js';
 import { router as sp500Router } from './src/sp500.js';
 import { router as extRouter, oauthCallback as extOauthCallback, accountsFor } from './src/ext/routes.js';
 
@@ -136,7 +139,7 @@ app.use((req, res, next) => {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'same-origin');
   // Pyodide (the code lab's Python) loads only from its own jsdelivr folder; Plaid Link from cdn.plaid.com.
-  res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'wasm-unsafe-eval' https://secure.helcim.app https://cdn.jsdelivr.net/pyodide/ https://cdn.plaid.com; frame-src https://secure.helcim.app https://cdn.plaid.com; connect-src 'self' https://cdn.jsdelivr.net/pyodide/; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://checkout.stripe.com");
+  res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'wasm-unsafe-eval' https://secure.helcim.app https://cdn.jsdelivr.net/pyodide/ https://cdn.plaid.com; frame-src https://secure.helcim.app https://cdn.plaid.com; connect-src 'self' https://cdn.jsdelivr.net/pyodide/; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://checkout.stripe.com https://accept.authorize.net https://test.authorize.net");
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   if (process.env.NODE_ENV === 'production') res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   next();
@@ -203,6 +206,34 @@ app.use((req, res, next) => {
   const enc = String(req.headers['content-encoding'] || 'identity').toLowerCase().trim();
   return enc === 'identity' ? next() : res.status(415).json({ error: 'Compressed request bodies are not accepted' });
 });
+// Square and Authorize.net confirm card deposits with signed webhooks (raw body needed for the check).
+// A deposit counts only when the paid amount matches what was asked for.
+async function cardDepositPaid(provider, ref, cents, txn) {
+  const sess = await one("SELECT p.*, l.status FROM payment_sessions p JOIN ledger l ON l.id = p.ledger_id WHERE p.provider = ? AND p.secret = ?", provider, String(ref));
+  if (!sess || sess.status !== 'pending') return false;
+  if (Math.abs(cents / 100 - sess.total) > 0.005) { console.warn(`${provider}: amount mismatch for deposit ${sess.ledger_id}`); return false; }
+  await depositReceived(sess.ledger_id, `${provider}:${txn}`);
+  return true;
+}
+app.post('/webhooks/square', express.raw({ type: '*/*' }), async (req, res) => {
+  const raw = req.body.toString('utf8');
+  if (!PAY.squareValid(`${PUBLIC_URL}/webhooks/square`, raw, req.headers['x-square-hmacsha256-signature'])) return res.status(403).send('bad signature');
+  let ev; try { ev = JSON.parse(raw); } catch { return res.status(400).send('bad json'); }
+  const p = ev.data?.object?.payment;
+  if (/^payment\.(created|updated)$/.test(ev.type) && p?.status === 'COMPLETED' && p.order_id) await cardDepositPaid('square', p.order_id, +p.amount_money?.amount || 0, p.id).catch(e => console.error('square', e));
+  res.json({ ok: true });
+});
+app.post('/webhooks/authorizenet', express.raw({ type: '*/*' }), async (req, res) => {
+  const raw = req.body.toString('utf8');
+  if (!PAY.anetValid(raw, req.headers['x-anet-signature'])) return res.status(403).send('bad signature');
+  let ev; try { ev = JSON.parse(raw); } catch { return res.status(400).send('bad json'); }
+  const p = ev.payload || {}, id = /^QP-(\d+)$/.exec(p.invoiceNumber || '')?.[1];
+  if (ev.eventType === 'net.authorize.payment.authcapture.created' && +p.responseCode === 1 && id) {
+    const sess = await one("SELECT secret FROM payment_sessions WHERE ledger_id = ? AND provider = 'authorizenet'", +id);
+    if (sess) await cardDepositPaid('authorizenet', sess.secret, Math.round(+p.authAmount * 100), p.id).catch(e => console.error('authorizenet', e));
+  }
+  res.json({ ok: true });
+});
 app.use(['/api/alpaca/broker/accounts', '/api/alpaca/broker/documents'], express.json({ limit: '30mb' }));
 app.use(express.json({ limit: '200kb' }));
 app.use(express.urlencoded({ extended: false, limit: '50kb' }));
@@ -236,68 +267,8 @@ async function smsReply(user, body) {
   return /needs your PIN/.test(out) ? `To do that, reply: ${cmd} <your PIN>` : out;
 }
 
-const calls = new Map(); // CallSid -> { userId, tries, ok, pending, at }
-// Drop call state after 30 minutes in case Twilio's status callback is not configured.
-setInterval(() => { for (const [k, c] of calls) if (now() - c.at > 30 * 60e3) calls.delete(k); }, 5 * 60e3).unref();
-app.post('/twilio/voice', async (req, res) => {
-  if (!twilioOk(req)) return res.status(403).send('forbidden');
-  const user = await userByPhone(req.body.From);
-  if (!user || !user.pin_hash) return twiml(res, '<Say>This phone number is not linked to an account with a PIN. Goodbye.</Say><Hangup/>');
-  if (!isPaid(user)) return twiml(res, '<Say>The QuantPocket phone line is part of the Pro plan. You can start a free trial in the app. Goodbye.</Say><Hangup/>');
-  calls.set(req.body.CallSid, { userId: user.id, tries: 0, ok: false, at: now() });
-  twiml(res, '<Gather input="dtmf" finishOnKey="#" action="/twilio/voice/pin" timeout="8"><Say>Welcome to QuantPocket. Enter your PIN, then press pound.</Say></Gather><Say>No input. Goodbye.</Say>');
-});
-app.post('/twilio/voice/pin', async (req, res) => {
-  if (!twilioOk(req)) return res.status(403).send('forbidden');
-  const c = calls.get(req.body.CallSid);
-  if (!c) return twiml(res, '<Hangup/>');
-  const u = await one('SELECT * FROM users WHERE id = ?', c.userId);
-  if (!verifySecret(String(req.body.Digits || ''), u.pin_hash)) {
-    if (++c.tries >= 3) { calls.delete(req.body.CallSid); await audit(u.id, 'hotline_pin_failed', null, req.body.From); return twiml(res, '<Say>Too many attempts. Goodbye.</Say><Hangup/>'); }
-    return twiml(res, '<Gather input="dtmf" finishOnKey="#" action="/twilio/voice/pin"><Say>Wrong PIN. Try again.</Say></Gather>');
-  }
-  c.ok = true;
-  twiml(res, menu());
-});
-const menu = () => '<Gather input="dtmf speech" numDigits="1" action="/twilio/voice/cmd" speechTimeout="auto" timeout="8"><Say>Press 1 for balance, 2 for positions, 3 for scheduled trades, 9 to pause all bots. Or just say what you need, like: how is my account doing, or buy five shares of Apple.</Say></Gather><Say>Goodbye.</Say>';
-app.post('/twilio/voice/cmd', async (req, res) => {
-  if (!twilioOk(req)) return res.status(403).send('forbidden');
-  const c = calls.get(req.body.CallSid);
-  if (!c?.ok) return twiml(res, '<Hangup/>');
-  const u = await one('SELECT * FROM users WHERE id = ?', c.userId);
-  let text = { 1: 'BAL', 2: 'POS', 3: 'ORDERS', 9: 'PAUSE' }[req.body.Digits] || req.body.SpeechResult || 'HELP';
-  // Free speech the command words don't cover goes to the AI assistant.
-  if (req.body.SpeechResult && !KNOWN.includes(normalize(text).split(' ')[0]) && aiEnabled()) {
-    try {
-      const r = await interpret(u, text), cmd = toCommand(r);
-      if (!cmd) { await audit(u.id, 'hotline_ai', { text }, req.body.From); return twiml(res, `<Say>${N.xml((r.reply || 'Sorry, I did not get that.').replace(/\$/g, ' dollars '))}</Say>${menu()}`); }
-      text = cmd;
-    } catch (e) { console.warn('hotline ai', e.message); }
-  }
-  // Speech recognition can mishear, so anything that trades or cancels is read back first.
-  const words = normalize(text);
-  if (/^(BUY|SELL|DCA|CANCEL)\b/.test(words)) {
-    c.pending = words;
-    return twiml(res, `<Gather input="dtmf" numDigits="1" action="/twilio/voice/confirm" timeout="8"><Say>I heard: ${N.xml(words.replace(/\$/g, ' dollars ').toLowerCase())}. Press 1 to confirm, or 2 to cancel.</Say></Gather>${menu()}`);
-  }
-  let reply;
-  try { reply = await handleCommand(u, text, { pinVerified: true }); } catch (e) { reply = 'Error. ' + e.message; }
-  await audit(u.id, 'hotline_command', { text }, req.body.From);
-  twiml(res, `<Say>${N.xml(reply.replace(/\$/g, ' dollars ').replace(/\n/g, '. '))}</Say>${menu()}`);
-});
-app.post('/twilio/voice/confirm', async (req, res) => {
-  if (!twilioOk(req)) return res.status(403).send('forbidden');
-  const c = calls.get(req.body.CallSid);
-  if (!c?.ok) return twiml(res, '<Hangup/>');
-  const text = c.pending; c.pending = null;
-  if (!text || req.body.Digits !== '1') return twiml(res, `<Say>Cancelled.</Say>${menu()}`);
-  const u = await one('SELECT * FROM users WHERE id = ?', c.userId);
-  let reply;
-  try { reply = await handleCommand(u, text, { pinVerified: true }); } catch (e) { reply = 'Error. ' + e.message; }
-  await audit(u.id, 'hotline_command', { text, confirmed: true }, req.body.From);
-  twiml(res, `<Say>${N.xml(reply.replace(/\$/g, ' dollars ').replace(/\n/g, '. '))}</Say>${menu()}`);
-});
-app.post('/twilio/voice/status', async (req, res) => { calls.delete(req.body.CallSid); res.sendStatus(204); });
+// The phone line's menus (IVR), account opening by phone and its Admin settings: src/hotline.js.
+registerHotline(app, { twilioOk, twiml });
 
 // Alerts from TradingView, TrendSpider, Zapier or any script. TradingView sends text/plain unless the
 // message is valid JSON, so any body type is accepted.
@@ -390,6 +361,7 @@ api.use('/alpaca', alpacaRouter);
 api.use('/signals', signalsRouter);
 api.use('/library', strategiesRouter);
 api.use('/pairs', pairsRouter);
+api.use('/statarb', statArbRouter);
 api.use('/sp500', sp500Router);
 api.use('/brokerages', extRouter);
 api.use('/insights', insightsRouter({ summarize: accountSummary }));
@@ -658,11 +630,21 @@ api.post('/funding/deposit', U, wrap(async (req, res) => {
   }
   // Real deposits: the cheapest enabled method unless the user picked one; the owner's service fee is added on top.
   const avail = PAY.methods();
-  if (!avail.length) throw new Error('Deposits are not configured yet (STRIPE_SECRET_KEY or HELCIM_API_TOKEN)');
+  if (!avail.length) throw new Error('Deposits are not configured yet (Stripe, Helcim, Square or Authorize.net keys in Admin → Keys)');
   const method = avail.find(m => m.id === req.body.method)?.id || avail[0].id, fee = PAY.serviceFee(amount);
   const l = await run('INSERT INTO ledger (user_id, kind, amount, status, memo, at) VALUES (?,?,?,?,?,?)', req.user.id, 'deposit', amount, 'pending', `${PAY.PROVIDERS[method].name} deposit (${PAY.PROVIDERS[method].via})`, now());
   const ledgerId = Number(l.lastInsertRowid);
   if (fee > 0) await run('INSERT INTO ledger (user_id, kind, amount, status, ref, memo, at) VALUES (?,?,?,?,?,?,?)', req.user.id, 'deposit_fee', fee, 'pending', `fee:${ledgerId}`, `Service fee for deposit #${ledgerId}`, now());
+  if (method === 'square') {
+    const q = await PAY.squareStart({ total: amount + fee, ledgerId, baseUrl: PUBLIC_URL });
+    await run('INSERT INTO payment_sessions (ledger_id, provider, secret, total, created_at) VALUES (?,?,?,?,?)', ledgerId, 'square', q.orderId, amount + fee, now());
+    return res.json({ url: q.url, fee });
+  }
+  if (method === 'authorizenet') {
+    const a = await PAY.anetStart({ total: amount + fee, ledgerId, baseUrl: PUBLIC_URL });
+    await run('INSERT INTO payment_sessions (ledger_id, provider, secret, total, created_at) VALUES (?,?,?,?,?)', ledgerId, 'authorizenet', a.token, amount + fee, now());
+    return res.json({ url: `/api/funding/authorizenet/${ledgerId}`, fee });
+  }
   if (method === 'helcim') {
     const h = await PAY.helcimStart({ total: amount + fee, ledgerId });
     await run('INSERT INTO payment_sessions (ledger_id, provider, secret, total, created_at) VALUES (?,?,?,?,?)', ledgerId, 'helcim', h.secretToken, amount + fee, now());
@@ -670,6 +652,14 @@ api.post('/funding/deposit', U, wrap(async (req, res) => {
   }
   const s = await PAY.stripeDeposit({ method, amount, fee, email: req.user.email, userId: req.user.id, ledgerId, baseUrl: PUBLIC_URL });
   res.json({ url: s.url, fee });
+}));
+// Authorize.net's payment page takes the token by form POST; this page carries it there.
+api.get('/funding/authorizenet/:id', U, wrap(async (req, res) => {
+  const sess = await one("SELECT p.secret, p.total, l.user_id, l.status FROM payment_sessions p JOIN ledger l ON l.id = p.ledger_id WHERE p.ledger_id = ? AND p.provider = 'authorizenet'", +req.params.id);
+  if (!sess || sess.user_id !== req.user.id || sess.status !== 'pending') return res.redirect('/app#/funding');
+  res.type('html').send(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Secure payment</title><link rel="stylesheet" href="/theme.css"></head>
+<body style="display:grid;place-items:center;min-height:100vh;margin:0;padding:16px"><form class="card" method="post" action="${PAY.anetPayUrl()}" style="max-width:420px;text-align:center"><h2>Pay $${sess.total.toFixed(2)}</h2>
+<p class="mu">You will enter your card on Authorize.net's secure page.</p><input type="hidden" name="token" value="${N.xml(sess.secret)}"><button>Continue to secure payment</button> <a href="/app#/funding">Cancel</a></form></body></html>`);
 }));
 api.get('/funding/methods', U, (req, res) => res.json({ methods: PAY.methods(), fee: PAY.feeTerms() }));
 // HelcimPay.js result, checked against the secret token Helcim gave this session.
@@ -702,6 +692,14 @@ api.get('/tax', U, wrap(async (req, res) => {
   const mtm = markToMarket(fills, year === new Date().getUTCFullYear() ? pos : [], { year, bracket: req.user.tax_bracket, stateRate: req.user.state_tax });
   res.json({ ...s, harvest: harvestCandidates(pos), scheduleD: d, mtmElection: !!req.user.mtm_election, markToMarket: mtm });
 }));
+// Monthly bookkeeping: month-by-month totals, estimated-tax periods and a journal CSV.
+api.get('/tax/books', U, wrap(async (req, res) => {
+  const a = acct(req), year = +req.query.year || new Date().getUTCFullYear();
+  const b = await booksFor(req.user, a, year);
+  if (req.query.format === 'csv') return res.type('text/csv').attachment(`books-${a}-${year}.csv`).send(booksCsv(b));
+  res.json({ ...b, journal: b.journal.slice(-200), email: !!(await getSetting(req.user.id, 'booksMonthly', false)) });
+}));
+api.put('/tax/books/email', U, wrap(async (req, res) => { await setSetting(req.user.id, 'booksMonthly', !!req.body.on); res.json({ ok: true }); }));
 api.post('/tax/settings', U, wrap(async (req, res) => {
   const b = +req.body.bracket, st = +req.body.stateTax;
   if (!(b >= 0 && b <= 0.5 && st >= 0 && st <= 0.15)) throw new Error('Out of range');
@@ -744,7 +742,7 @@ api.get('/admin/setup', U, auth.requireAdmin, async (req, res) => {
     ['Email sender on your own verified domain', 'EMAIL_FROM', has('EMAIL_FROM')],
     ['AI assistant, free (Groq or Gemini)', 'GROQ_API_KEY / GEMINI_API_KEY', !!(process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY || process.env.OPENROUTER_API_KEY || process.env.AI_BASE_URL)],
     ['AI assistant upgrade (Claude)', 'ANTHROPIC_API_KEY', !!process.env.ANTHROPIC_API_KEY],
-    ...Object.values(PAY.PROVIDERS).map(p => [`Deposits: ${p.name} (${p.via})`, ({ stripe_ach: 'STRIPE_SECRET_KEY', stripe_card: 'STRIPE_SECRET_KEY', helcim: 'HELCIM_API_TOKEN' })[p.id] || '', p.enabled()]),
+    ...Object.values(PAY.PROVIDERS).map(p => [`Deposits: ${p.name} (${p.via})`, ({ stripe_ach: 'STRIPE_SECRET_KEY', stripe_card: 'STRIPE_SECRET_KEY', helcim: 'HELCIM_API_TOKEN', square: 'SQUARE_ACCESS_TOKEN, SQUARE_LOCATION_ID, SQUARE_WEBHOOK_SIGNATURE_KEY', authorizenet: 'ANET_LOGIN_ID, ANET_TRANSACTION_KEY, ANET_SIGNATURE_KEY' })[p.id] || '', p.enabled()]),
     ['Yiddish Labs credit line', 'YIDDISH_CREDIT', has('YIDDISH_CREDIT')],
   ].map(([name, env, on]) => ({ name, env, on: !!on })) });
 });

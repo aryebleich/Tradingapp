@@ -1,6 +1,7 @@
 // AI studio: the AI assistant (chat or voice, live market tools, strategy drafts you can backtest,
 // save and deploy), forecasts and trainable AI agents, and the Python code lab.
 import { canvasNote } from './i18n.js';
+import { statArbPython } from './pairs.js';
 let H;
 export function registerStudio(routes, helpers) {
   H = helpers;
@@ -180,6 +181,7 @@ def portfolio(prices):
             if mom[s] > 0: w[s][i] = 0.5
     return w
 `,
+  'Statistical arbitrage (numpy, several symbols)': statArbPython(['KO', 'PEP', 'PG', 'CL', 'KMB', 'MDLZ'], { window: 60, entry: 1.25, exit: 0.5 }),
   'QuantConnect algorithm': `# Runs on QuantConnect, not in the browser: use "Send to QuantConnect".
 from AlgorithmImports import *
 
@@ -223,6 +225,8 @@ export function equityFrom(prices, weights) {
 async function codeLab(view) {
   const scripts = await H.api('/code/scripts');
   let cur = scripts[0] || { id: null, name: 'SMA crossover', code: TEMPLATES['SMA crossover (one symbol)'] };
+  // A script handed over from another page (Statistical arbitrage → "Run it in Python").
+  try { const d = JSON.parse(sessionStorage.getItem('qp_code_draft') || 'null'); if (d?.code) { cur = { id: null, name: d.name, code: d.code }; sessionStorage.removeItem('qp_code_draft'); } } catch {}
   view.innerHTML = `<div class="pagehead"><h1>Code lab</h1><p class="mu" style="margin:4px 0 0">Write strategies in Python and backtest them on daily prices. Your code runs in your browser (Pyodide), not on the server. Send QuantConnect algorithms to your QuantConnect account to run them on their engine.</p></div>
   <div class="codegrid"><div class="card"><div class="row" style="justify-content:space-between;align-items:center"><input id="cname" value="${H.esc(cur.name)}" aria-label="Script name" style="max-width:280px;margin:0">
       <span class="row" style="gap:6px"><select id="tpl" aria-label="Templates"><option value="">Start from a template...</option>${Object.keys(TEMPLATES).map(t => `<option>${H.esc(t)}</option>`).join('')}</select>
@@ -245,6 +249,7 @@ async function codeLab(view) {
     const syms = ((code.match(/^#\s*symbols:\s*(.+)$/m) || [])[1] || 'SPY').split(/[\s,]+/).filter(Boolean).slice(0, 10).map(s => s.toUpperCase());
     const prices = await H.api(`/code/prices?symbols=${encodeURIComponent(syms.join(','))}&start=${H.$('#start', view).value}`);
     const py = await loadPython(m => (out.textContent = m)); out.textContent = 'Running...';
+    await py.loadPackagesFromImports(code); // numpy, pandas, scipy... are downloaded the first time they are imported
     let printed = ''; py.setStdout({ batched: s => (printed += s + '\n') }); py.setStderr({ batched: s => (printed += s + '\n') });
     py.globals.set('__prices_json', JSON.stringify(prices));
     await py.runPythonAsync('import json\nprices = json.loads(__prices_json)\n' + code + `

@@ -397,6 +397,46 @@ Without an email service, the reset page says so and offers the text-message cod
    `https://YOUR-APP/twilio/voice` (HTTP POST). Call status changes → `https://YOUR-APP/twilio/voice/status`.
 5. Test: verify your phone in the app (Settings → Phone), text `BAL` to the number.
 
+### The phone line menu (IVR, managed in Admin → Phone line)
+
+```
+Welcome  (a new number: 1 = open a free account by phone)
+  ▸ 1 Paper trading   ▸ 2 Live trading
+Main menu
+  ▸ 1 Account info   ▸ 2 Positions   ▸ 3 Market clock   ▸ 4 Place a trade
+  ▸ 5 Cancel open orders (PIN)   ▸ 6 Close ALL positions (extra confirm + PIN)
+  ▸ 7 Ask the assistant (when AI is on)   ▸ 9 Switch paper/live   ▸ 0 Hang up
+Trade
+  ▸ Pick a stock (1-9) ▸ 1 buy / 2 sell ▸ shares + # ▸ 1 confirm / 2 cancel ▸ 4-digit PIN ▸ market order
+```
+
+- **Opening an account by phone:**
+  1. QuantPocket texts a 6-digit code to the calling number, which proves the caller holds that phone.
+  2. The caller picks a 4-digit PIN.
+  3. The account opens with a $100,000 paper account.
+  4. A text brings a sign-in link (sign-in is by phone code). The real brokerage application is
+     finished in the app, because it needs ID and address details that a keypad can't take.
+- **Safety:**
+  - A PIN is needed for every action that changes an account.
+  - Closing everything needs an extra confirmation.
+  - Each order is capped at a set number of shares (10,000 by default, changeable in Admin).
+  - The account's own risk rules apply to every order.
+  - 3 wrong PINs end the call, and the number's owner gets a text.
+  - Every request is checked against **Twilio's signature** (`TWILIO_AUTH_TOKEN`, with `PUBLIC_URL`
+    set to the address Twilio calls). Without it, the server refuses phone-line requests in production.
+  - Each step's choices travel in the next step's URL, which Twilio signs. Any server instance can
+    answer any step.
+- **Admin → Phone line** has these settings:
+  - turn the line on or off;
+  - the greeting and the voice;
+  - the 9 stocks on keys 1 to 9;
+  - the share limit;
+  - allow sign-up by phone;
+  - let free-plan callers use the paper menu (you pay the call minutes). Otherwise the line is part
+    of Pro.
+
+  The page also shows the Twilio webhook addresses, 30-day counts and the call log.
+
 ## Connecting the Alpaca Broker API (opening brokerage accounts for customers)
 
 The Broker API is for businesses that open and run accounts for their customers. (Users who already
@@ -426,6 +466,145 @@ have an Alpaca account connect it themselves with OAuth or their own API keys; n
 
 Several Alpaca accounts per user (a main account and sub accounts): each user adds them under
 **All accounts** with each account's own API keys; the page shows every account and totals for the live ones.
+
+## More card processors (each under 3.5%)
+
+Deposits use the cheapest method that is set up, unless the customer picks another one. The cost of
+each method on a $500 deposit is in Admin → Money & fees.
+
+| Method | Cost | Keys (Admin → Keys) | Confirmation |
+|---|---|---|---|
+| Bank transfer (Stripe ACH) | 0.8%, at most $5 | `STRIPE_SECRET_KEY` | Stripe webhook |
+| Helcim (debit) | interchange + 0.5% + 25¢ | `HELCIM_API_TOKEN` | signed result |
+| **Square** | 2.9% + 30¢ | `SQUARE_ACCESS_TOKEN`, `SQUARE_LOCATION_ID`, `SQUARE_WEBHOOK_SIGNATURE_KEY` (`SQUARE_ENV=sandbox` to test) | webhook `https://YOUR-APP/webhooks/square`, event `payment.updated` |
+| **Authorize.net** | 2.9% + 30¢, plus a $25/month gateway fee | `ANET_LOGIN_ID`, `ANET_TRANSACTION_KEY`, `ANET_SIGNATURE_KEY` (`ANET_ENV=sandbox` to test) | webhook `https://YOUR-APP/webhooks/authorizenet`, event `net.authorize.payment.authcapture.created` |
+| Stripe card | 2.9% + 30¢ | `STRIPE_SECRET_KEY` | Stripe webhook |
+
+How the new processors work:
+- Square and Authorize.net use their own hosted payment pages, so card numbers never touch this server.
+- A deposit counts only when a webhook arrives with a valid signature and the paid amount matches.
+- Prices are the processors' published standard rates (2026); check their sites, since negotiated
+  rates can be lower.
+- Not added: PayPal Checkout, at 3.49% + 49¢ (over 3.5% once the fixed fee counts).
+- Stripe rejects credit cards for deposits automatically. With Square and Authorize.net, a customer
+  could pay with a credit card. If your terms say debit only, limit card types in each processor's
+  settings.
+
+## Statistical arbitrage (Strategies → Statistical arbitrage)
+
+Pairs trading for a whole basket of related stocks (banks, energy, chips, staples…):
+- **Live pair matrix:** a heat map of every pair in the basket. It switches between three views:
+  - correlation of daily returns;
+  - Engle-Granger cointegration t-statistic (outlined when below -3.34);
+  - today's z-score of the gap.
+
+  Click a square to open that pair in Pairs trading.
+- **s-scores:** each stock's daily return is split into the basket's common move and the stock's own
+  residual. The summed residual is fitted as a mean-reverting process (Avellaneda and Lee, 2010):
+  - buy when s < -1.25;
+  - sell short when s > +1.25;
+  - close inside ±0.5.
+
+  Stocks whose residual does not pull back within half the window are skipped.
+- **Backtest:** re-fitted every day on past data only, equal money per position, costs included.
+- **Python:** "Run it in Python" opens the same model in the code lab as a numpy script.
+  - It runs in the browser (Pyodide), so it costs the server nothing.
+  - numpy, pandas and scipy load on first `import`.
+- **Plan limits:**
+
+  | Plan | Stocks per basket | Live refresh |
+  |---|---|---|
+  | Starter | 6 | by hand |
+  | Pro | 15 | every 60 s |
+  | Elite | 30 | every 30 s |
+  | Ultimate | 50 | every 15 s |
+
+  The code lab loads up to 10 symbols on Starter and Pro, and the plan's basket size on Elite and
+  Ultimate.
+
+## Monthly bookkeeping for taxes (Taxes → Monthly bookkeeping)
+
+- **Month by month:**
+  - trades, money bought and sold;
+  - realized short-term and long-term gains;
+  - wash-sale amounts;
+  - dividends, interest and broker fees (from Alpaca's account activity);
+  - deposits and withdrawals.
+- **Year-to-date totals:** realized gains, and how much to set aside for taxes (the user's rates, with
+  dividends and interest as ordinary income).
+- **The four IRS estimated-tax periods (Form 1040-ES):** Jan–Mar due Apr 15, Apr–May due Jun 15,
+  Jun–Aug due Sep 15, Sep–Dec due Jan 15. Each shows its amount.
+- **Books CSV:** the monthly table, the quarters and a journal of every line item, for an accountant
+  or a spreadsheet.
+- **Monthly email (opt-in):** last month's books on the 1st, with a reminder when an estimated
+  payment is due.
+- These are estimates for planning. The broker's 1099 is the official record.
+
+## Partner revenue sharing on Broker API accounts
+
+When QuantPocket opens brokerage accounts for customers through the Alpaca Broker API, Alpaca earns
+money on those accounts. A partner can get part of it, but **only what the contract with Alpaca says**.
+Nothing is shared automatically.
+
+**What can be shared (each one is negotiated with Alpaca):**
+
+| Source | Who pays | How a partner gets a share |
+|---|---|---|
+| Your own commission on each order | the customer | QuantPocket adds it to each order (Admin → Business mode → Partner commission); Alpaca collects it and pays it out. Already built. |
+| Payment for order flow (PFOF) | market makers, per routed order | a percentage of what Alpaca receives for your customers' orders, if the contract includes it |
+| Interest on uninvested cash (High-Yield Cash sweep) | the sweep banks | a split of the bank fee Alpaca receives, set in the contract |
+| Margin interest | customers who borrow | a split, if offered |
+| Fully paid securities lending | borrowers of your customers' shares | Alpaca offers partners "customizable tiers for pricing and revenue splits" |
+| Crypto trading, deposit and withdrawal fees | the customer | Alpaca's configurable crypto commission: two-way (you and Alpaca) or three-way splits |
+
+**How to set it up:**
+1. Ask your Alpaca account manager for the partner revenue-share schedule (PFOF, cash sweep, margin,
+   securities lending, crypto). Get every rate in writing in the Broker API agreement.
+2. Ask how payouts work: monthly statements, which entity receives them, minimums.
+3. Turn on only what the contract allows. The commission QuantPocket adds itself is set in
+   Admin → Business mode. Shares of PFOF, interest and lending are paid by Alpaca and need no setting
+   here. Record them in the business's books as income.
+4. Before turning anything on, check with a securities lawyer:
+   - In the United States, pay that depends on trades (commissions, a share of PFOF) is generally
+     reserved for registered broker-dealers. Ask how your role is set up.
+   - Customers must be told about it: the commission is shown before each order, and PFOF is disclosed
+     in Alpaca's order-routing reports (SEC Rule 606).
+
+**Public records so far:**
+- **Binance (June 2026).** Binance's Securities Trading Terms, published June 2, 2026, give Binance:
+  - 50% of the payment for order flow Alpaca receives on Binance users' US stock orders;
+  - 65% of the profit from lending users' shares, after users are paid their interest.
+
+  Alpaca handles execution, clearing, settlement and custody; the service runs through Nest Trading
+  Limited, regulated in Abu Dhabi (ADGM). Some outlets also report that Binance holds a minority stake
+  in Alpaca; that is not confirmed in the primary terms. These are partner-specific terms, not
+  Alpaca's standard rates.
+  ([Cointelegraph](https://cointelegraph.com/news/binance-partnership-tokenized-stock-custodian-alpaca),
+  [Blockchain.news](https://blockchain.news/news/binance-alpaca-revenue-split-tokenized-stocks))
+- **Alpaca's own statements:**
+  - **PFOF sharing (2021).** When Alpaca raised its Series B (August 2021), it said it planned to share
+    PFOF revenue with the partners that embed its APIs. It did not give the split. A reporter guessed
+    15–25%, but that is not a disclosed figure.
+    ([TechCrunch](https://techcrunch.com/2021/08/30/alpaca-raises-50m-to-rapidly-scale-its-equities-trading-api-business/))
+  - **Crypto commission model.** Partners share revenue on crypto trading fees, deposits and
+    withdrawals, in two-way or three-way splits.
+    ([Alpaca](https://alpaca.markets/blog/alpaca-launches-configurable-crypto-commission-model-for-broker-api-partners/))
+  - **Fully paid securities lending for the Broker API.** Customizable pricing tiers and revenue splits.
+    ([Alpaca](https://alpaca.markets/blog/alpaca-launches-fully-paid-securities-lending-for-broker-api/))
+  - **High-Yield Cash.** The interest-bearing cash sweep was announced with Alpaca's January 2026
+    funding. The sweep terms say Alpaca receives a fee from each deposit bank, and that fee affects
+    the rate customers earn.
+    ([Business Wire](https://www.businesswire.com/news/home/20260114323821/en/Alpaca-Raises-$150-Million-at-a-$1.15B-Valuation-to-Build-the-Global-Standard-for-Brokerage-Infrastructure),
+    [sweep terms](https://files.alpaca.markets/disclosures/library/Alpaca+Securities+LLC+Profit+Sharing+FDIC+Bank+Sweep+Program+Terms+and+Conditions.pdf))
+- **Regulatory filings.** Alpaca Securities LLC files audited annual reports (Form X-17A-5) with the SEC.
+  - The [FY2021 filing](https://www.sec.gov/Archives/edgar/data/1702580/000170258022000002/ASFinal2021Audit.pdf)
+    describes it as a wholly owned subsidiary of AlpacaDB, Inc.
+  - These filings do not list individual partners' revenue splits.
+  - Alpaca's SEC Rule 606 reports show which market makers pay for its order flow (for example,
+    Alpaca's partnership with Citadel Securities).
+
+What other partners receive is mostly private contract terms. The Binance terms are the only
+published per-partner split found so far (as of October 2026).
 
 ## Money levers (Admin → Business mode)
 

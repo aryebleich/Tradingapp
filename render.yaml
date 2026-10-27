@@ -39,6 +39,12 @@ services:
       - { key: ADMIN_PHONE, sync: false }
       - { key: RENDER_API_KEY, sync: false }
       - { key: HELCIM_API_TOKEN, sync: false }
+      - { key: SQUARE_ACCESS_TOKEN, sync: false }
+      - { key: SQUARE_LOCATION_ID, sync: false }
+      - { key: SQUARE_WEBHOOK_SIGNATURE_KEY, sync: false }
+      - { key: ANET_LOGIN_ID, sync: false }
+      - { key: ANET_TRANSACTION_KEY, sync: false }
+      - { key: ANET_SIGNATURE_KEY, sync: false }
       - { key: DEPOSIT_FEE_PERCENT, value: "0" }
       - { key: DEPOSIT_FEE_FIXED, value: "0" }
       - { key: SCHWAB_APP_KEY, sync: false }

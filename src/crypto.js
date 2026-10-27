@@ -50,6 +50,8 @@ export function safeEqual(a, b) {
   return crypto.timingSafeEqual(x, y);
 }
 
+// Short keyed signature for values that pass through a third party (the phone line's call steps).
+export const hmac = data => crypto.createHmac('sha256', masterKey()).update('qp:' + data).digest('base64url').slice(0, 32);
 export const randomToken = (n = 32) => crypto.randomBytes(n).toString('base64url');
 export const sha256 = s => crypto.createHash('sha256').update(s).digest('hex');
 

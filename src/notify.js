@@ -96,6 +96,8 @@ export function verifyStripe(raw, header) {
 // logged, which is enough for local development.
 export const emailEnabled = () => !!env('RESEND_API_KEY');
 export async function sendEmail(to, subject, text) {
+  // Accounts opened by phone have a placeholder address until the user adds a real one.
+  if (/\.invalid$/i.test(String(to))) return { skipped: true };
   if (!emailEnabled()) { console.log(`[email disabled] to ${to}: ${subject}\n${text}`); return { simulated: true }; }
   const r = await fetch(`${(env('RESEND_API_URL') || 'https://api.resend.com').replace(/\/$/, '')}/emails`, {
     method: 'POST',

@@ -185,6 +185,7 @@ body.noscroll { overflow: hidden; }
   table.stack td[colspan] { justify-content: center; }
   .tablewrap { overflow: visible; }
   .card.tablewrap:has(table.chain) { overflow-x: auto; }
+  .tablewrap:has(> table.heat) { overflow-x: auto; }
   .kv { font-size: 14px; }
   dialog { padding: 16px; }
   .hero { margin-top: 10px; }
