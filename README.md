@@ -73,8 +73,10 @@ same safety rule as Google.
 
 ## Admins and signing in by text message
 
-- Built-in admins: `aryebleich@gmail.com`, `kk5185920061@gmail.com` and the phone `+1 845-772-8111`.
-  `ADMIN_EMAIL` (comma-separated) still works too.
+- Built-in admins: the owner's two email addresses and phone number.
+  - They are not written anywhere in the code: `src/site.js` keeps only slow one-way fingerprints
+    (scrypt), so the public source does not show who the owner is.
+  - `ADMIN_EMAIL` (comma-separated) still works too.
 - **Admin → Admins** adds more admin emails and phones, with no restart.
 - **`/app#/login-phone`** (not linked from the sign-in page) sends a 6-digit code to a verified phone. The owner's
   admin phones sign in to the owner account even before the number is linked. Real texts need Twilio.
@@ -133,17 +135,67 @@ Ways to earn more without a license:
 
 Under **Alerts to trades** each user creates private webhook URLs for TradingView, TrendSpider, Zapier, scripts or AI agents. Each webhook has its accounts (paper and/or Alpaca), sizing (dollars, shares or from the alert) and risk rules (max position per ticker, max trades per day, allowed tickers; long-only). Messages can be JSON such as `{"ticker":"{{ticker}}","action":"{{strategy.order.action}}","quantity":"{{strategy.order.contracts}}"}` or text like `buy AAPL 10`. Free: 1 webhook, paper only. Pro: 10, including Alpaca. Elite: 50.
 
-## Strategy library (the MULTI_STRATEGIES sheet)
+## Strategy library
 
-**Strategies** in the app holds seven rotation strategies from the MULTI_STRATEGIES (v8.3) sheet: BG Ensemble, Multi-Model ETF Rotation (4 sleeves), Leveraged ETF Rotation, Gold Miner, Large-Cap Momentum, Large-Cap Pullback and Macro Rotation (`src/rotation/templates.js`). Each user copies one and can:
+**Strategies** in the app holds seven ready-made rotation strategies:
+- BG Ensemble;
+- Multi-Model ETF Rotation (4 sleeves);
+- Leveraged ETF Rotation;
+- Gold Miner;
+- Large-Cap Momentum;
+- Large-Cap Pullback;
+- Macro Rotation.
 
-- **run it by hand**: today's walkdown with every value filled in from market data (Wilder RSI, SMAs, returns, Bollinger, momentum), any value can be overtyped like the sheet's yellow cells, then the orders are sized in whole shares and placed with one click;
-- **run it automatically** on any connected account at a chosen time on each rebalance day (daily, Wednesday, or the first trading day of the month), with an optional trailing stop;
-- **edit everything**: thresholds, indicators, tickers, sleeves, lists and parameters (form or JSON), preview and backtest before saving.
+They are defined in `src/rotation/templates.js`. They are the same published rules for everyone. Each user copies one and can:
+- **follow it by hand**:
+  - today's walkdown, with every value filled in from market data (Wilder RSI, SMAs, returns,
+    Bollinger, momentum);
+  - any value can be overtyped;
+  - the orders are sized in whole shares and placed with one click.
+- **run it automatically**:
+  - at a chosen time on each rebalance day (daily, Wednesday, or the first trading day of the month),
+    with an optional trailing stop;
+  - in software-only mode this works on the paper account only; see "Investment-adviser rules" below.
+- **edit everything**:
+  - thresholds, indicators, tickers, sleeves, lists and parameters (form or JSON);
+  - preview and backtest before saving.
 
-Not every rule was in the PDF export: Gold Miner shows only the steps on that day's path (the walk stops at "needs a rule"), and Leveraged ETF Rotation steps 4-12 are rebuilt from the public "TQQQ For The Long Term" logic and marked "check". Send the QuantConnect code or the sheet to fill them in exactly.
+Some rules were not available:
+- Gold Miner shows only the steps on one day's path; the walk stops at "needs a rule".
+- Leveraged ETF Rotation steps 4-12 are rebuilt from the public "TQQQ For The Long Term" logic and
+  marked "check".
 
-**Reality Check** compares each strategy's live daily results with its backtest (z-test on the mean daily return, plus a drawdown limit): Healthy / Watch / Drifting, a text or email when it gets worse, and optional auto-throttle (100% / 50% / 0% of the strategy's money). The **portfolio split** suggests win-rate weighted allocations (10%-70% each), like the sheet's PORTFOLIO_SPLIT tab.
+**Reality Check** compares each strategy's live daily results with its backtest (z-test on the mean
+daily return, plus a drawdown limit):
+- statuses: Healthy, Watch or Drifting;
+- a text or email when it gets worse;
+- optional auto-throttle: 100%, 50% or 0% of the strategy's money.
+
+The **portfolio split** suggests win-rate-weighted allocations (10%-70% each).
+
+### Investment-adviser rules (what needs registration)
+
+Not legal advice. Confirm with a securities lawyer before taking real customers.
+
+- **Fine without registration (software-only mode):**
+  - Software that publishes the **same impersonal rules and signals to everyone** fits the
+    "publisher's exclusion" (*Lowe v. SEC*, 1985).
+  - So does software that lets users build, test and run **their own** strategies: webhooks, pair
+    bots, the code lab, S&P 500 plans, scanners, their own copies of the rules.
+  - QuantPocket does not look at a user's finances or tell them what is right for them.
+- **Needs a registered investment adviser:**
+  - Letting **QuantPocket's own ready-made strategies trade a real account by themselves**. That is
+    managing money; the SEC treats automated "robo" advisers as investment advisers.
+  - Copying **another trader's** signals into a real account without review.
+  - Charging a **performance fee** (a share of profits, for qualified clients only).
+- **What the app does:**
+  - In software-only mode, ready-made strategies run automatically on paper only. On a real account
+    the user follows them by hand and places each order.
+  - Signal-fleet subscriptions to someone else's channel can be automatic on paper; real accounts
+    review each signal.
+  - Strategies already set to automatic on a real account are paused until the mode changes.
+- **Turning it on:** Admin → Business mode → "Registered investment adviser" turns all three on, after
+  the registration is approved. See "Becoming a registered investment adviser" below.
 
 ## Pairs trading, S&P 500 plan, more brokerages
 
@@ -386,16 +438,122 @@ Without an email service, the reset page says so and offers the text-message cod
 
 ## Connecting Twilio (texts and the phone hotline)
 
-1. Sign up at twilio.com/console. Buy a phone number with **SMS and Voice** (Phone Numbers → Buy a number).
-2. US numbers must be registered for business texting: **Messaging → Regulatory compliance → A2P 10DLC**
-   (register the brand, then a campaign "account notifications and customer care"). Approval takes days;
-   until then texts to US phones may be blocked.
-3. In Render set `TWILIO_ACCOUNT_SID` (starts with `AC`) and `TWILIO_AUTH_TOKEN` from the console home
-   page, and `TWILIO_FROM` = your number in the form `+17185551234`.
-4. Phone Numbers → your number → **Messaging**: "A message comes in" → Webhook →
-   `https://YOUR-APP/twilio/sms` (HTTP POST). **Voice**: "A call comes in" → Webhook →
-   `https://YOUR-APP/twilio/voice` (HTTP POST). Call status changes → `https://YOUR-APP/twilio/voice/status`.
-5. Test: verify your phone in the app (Settings → Phone), text `BAL` to the number.
+Twilio carries the text messages (alerts, sign-in codes, trading by text) and the phone line (IVR).
+Plan about an hour of work, plus a few days to two weeks of carrier review before US texting works.
+Voice calls work as soon as the number is set up.
+
+### 1. Account
+1. Sign up at **twilio.com/try-twilio** and verify your email and phone.
+2. **Upgrade the account** (Console → Admin → Account billing → Upgrade; add a card).
+   - A trial can only call and text the few phone numbers you verified yourself.
+   - Trial messages carry a "Sent from a Twilio trial account" prefix.
+   - Trial accounts expire, and only work in your own country.
+
+### 2. Phone number
+- **Phone Numbers → Manage → Buy a number.** Pick a US number with **Voice** and **SMS** ticked.
+- Choose one kind:
+  - **Local (10DLC)** number: about $1.15 a month.
+  - **Toll-free** (8XX) number: a little more per month; the text-message review is free and usually faster.
+
+### 3. Get texting approved (US carriers require this; unregistered texts are blocked)
+**Local number → A2P 10DLC registration** (Messaging → Regulatory Compliance → Onboarding):
+1. **Profile:**
+   - Without a business tax ID (EIN): a *Starter / Sole Proprietor* profile, with a US or Canadian
+     address.
+   - With an EIN: a *Business Profile* (legal name exactly as on the IRS letter, EIN, website,
+     address, authorized contact).
+2. **Brand:**
+   - Sole proprietor: $4.50 one time. Twilio texts a one-time code to your own mobile; answer it
+     within 24 hours.
+   - Standard: $46 one time, includes secondary vetting.
+3. **Campaign:**
+   - Costs: a $15 vetting fee per campaign (not refunded if rejected, so edit and resubmit instead of
+     deleting), plus a monthly fee: about $2 for sole proprietor, $10 for standard, $1.50 for low
+     volume.
+   - Use case: **Account notifications** (or *Customer care*; *Mixed* if you add both).
+   - **Description:** "QuantPocket sends account holders alerts about their own trading account
+     (orders, price alerts, risk warnings), one-time sign-in codes, and replies to account
+     questions they text in. No marketing."
+   - **How people opt in:** "Users add their phone number in the QuantPocket app under Settings →
+     Phone and confirm it with a 6-digit code. Phone sign-up callers confirm with a texted code.
+     Message frequency varies. Reply STOP to opt out, HELP for help."
+   - **Sample messages:**
+     - "QuantPocket sign-in code: 123456"
+     - "Risk guardian (paper): stop-loss hit, sold 10 AAPL. Reply STOP to opt out."
+     - "Paper: equity $103,240, cash $12,400"
+   - Tick *Embedded links* if alerts include links.
+   - Add the **Privacy Policy** and **Terms** links: `https://YOUR-APP/privacy.html`,
+     `https://YOUR-APP/terms.html`.
+4. **Attach the number:** add it to the campaign's **Messaging Service** (created during
+   registration, or Messaging → Services).
+5. **Wait for approval:** campaigns are vetted by hand, from a few days to two weeks. Until then,
+   texts to US phones fail with error **30034** (unregistered number).
+
+**Toll-free number → Toll-free verification**
+1. Open the number and go to **Regulatory Information → Verify**.
+2. Fill in the same use-case description, opt-in text and sample messages as above, and add a
+   screenshot of the Settings → Phone screen.
+3. Verification is free and takes about 3-5 business days.
+4. Until it is approved, texts are blocked (error **30032**). Calls are not affected.
+
+### 4. Keys in QuantPocket
+1. Console home → **Account Info**: copy the **Account SID** (starts with `AC`) and the **Auth Token**.
+2. **Admin → Keys** (or Render → Environment), set:
+   - `TWILIO_ACCOUNT_SID`;
+   - `TWILIO_AUTH_TOKEN`;
+   - `TWILIO_FROM` = your number in the form `+17185551234`.
+3. Also set `PUBLIC_URL` to the exact address Twilio will call (for example
+   `https://quantpocket.onrender.com`, no trailing slash).
+   - Every Twilio request is checked against its signature, which uses this address and the Auth
+     Token.
+   - A wrong `PUBLIC_URL` makes every call and text answer "forbidden".
+
+### 5. Point the number at QuantPocket
+Phone Numbers → Manage → **Active numbers** → your number:
+- **Voice Configuration:**
+  - *Configure with* → **Webhook, TwiML Bin, Function, Studio Flow, Proxy Service**. Not SIP trunk:
+    with a trunk the webhook never fires.
+  - **A call comes in** → Webhook → `https://YOUR-APP/twilio/voice` → **HTTP POST**.
+  - **Call status changes** → `https://YOUR-APP/twilio/voice/status` → HTTP POST.
+- **Messaging Configuration:**
+  - **A message comes in** → Webhook → `https://YOUR-APP/twilio/sms` → **HTTP POST**.
+  - If the number is in a Messaging Service, set the same URL in the service instead: Messaging →
+    Services → your service → **Integration** → *Send a webhook*.
+- **Save configuration.**
+
+Admin → Phone line shows these three addresses ready to copy.
+
+### 6. Protect the account
+- **Geo permissions:** Voice → Settings → *Geo permissions*, and Messaging → Settings → *Geo
+  permissions*. Allow only the countries you serve (for example US and Canada). This blocks
+  expensive fraud calls and texts.
+- **Usage alerts:** Console → Admin → Account billing → *Usage triggers* (for example, email at $20
+  a day).
+- **If the Auth Token leaks:**
+  1. Console → Account → *API keys & tokens* → create a secondary token, then **promote** it.
+  2. Update `TWILIO_AUTH_TOKEN` in Admin → Keys right away. Old-token requests fail the signature
+     check.
+- **Opt-out keywords:** STOP, UNSUBSCRIBE and HELP are handled by Twilio automatically. A user who
+  texts STOP gets no more texts until they text START.
+
+### 7. Test
+1. In the app: **Settings → Phone**. Add your mobile, confirm the code and set a PIN.
+2. Text `BAL` to the number. You should get your paper balance back.
+3. Call the number. You should hear the welcome menu (see below); press 1 for paper, then 3 for the
+   market clock.
+4. **Admin → Phone line** lists the call; **Admin → Setup** shows Twilio as connected.
+5. If something fails: Twilio Console → **Monitor → Logs → Errors**.
+   - **11200:** QuantPocket could not be reached or answered with an error; check `PUBLIC_URL` and
+     that the app is running.
+   - **30032 / 30034:** texting not approved yet; see step 3.
+   - **21608:** the account is still a trial; see step 1.
+
+### Costs (US, check twilio.com/en-us/pricing)
+- Number: about $1.15 a month (local).
+- Each text and each minute of a call: a fraction of a cent to about a cent, plus carrier fees on
+  texts.
+- Registration: a one-time brand fee and $15 campaign vetting, plus the monthly campaign fee (see
+  step 3).
 
 ### The phone line menu (IVR, managed in Admin → Phone line)
 
@@ -539,6 +697,57 @@ Pairs trading for a whole basket of related stocks (banks, energy, chips, staple
 - **Monthly email (opt-in):** last month's books on the 1st, with a reminder when an estimated
   payment is due.
 - These are estimates for planning. The broker's 1099 is the official record.
+
+## What the chart colors mean
+
+Every equity chart (portfolio, backtests, strategies, pairs, the homepage demo) colors each stretch
+of the line by what the money is doing. Each color is judged against the starting value (dashed
+line) and the highest value so far:
+
+| Color | Name | When |
+|---|---|---|
+| Green | New high | above the start **and** at its highest point so far: a gain that is still growing |
+| Blue | Gain, below its high | still above the start, but down from its highest point: a gain giving some back |
+| Amber | Loss, recovering | below the start, but up on the day |
+| Red | Loss, falling | below the start and down (or flat) on the day |
+
+The area between the line and the starting value is shaded in the same color. Under each chart:
+- the current state, the change since the start, and how far it is from the high;
+- a key showing only the colors that appear on that chart.
+
+The logic is in `public/chartstates.js`, shared by the app and the homepage.
+
+## AI & privacy (Admin → AI & privacy)
+
+AI tools learn about a website in three ways: crawling its public pages, reading its public code
+(GitHub), and receiving what the site's own assistant sends them. Each one is controlled here.
+
+- **AI crawlers:**
+  - Covered: Google Gemini (`Google-Extended`), OpenAI, Anthropic, Perplexity, Common Crawl, Apple,
+    Meta, ByteDance, Amazon and others.
+  - All are **blocked by default**. Allow each one separately.
+  - The choice is published as `/robots.txt`, plus an `X-Robots-Tag: noai, noimageai` header on
+    every page while all AI crawlers are blocked.
+  - Search engines can still list the public pages; switch that off too if you want.
+  - The GitHub Pages copy of the homepage gets the same default robots.txt.
+- **Never open to any crawler:** the app, Admin, the API, sign-in, webhooks and the phone line.
+- **llms.txt:** an optional short description you write. AI tools may use that text and nothing more.
+- **The app's assistant:**
+  - Emails, phone numbers, card and account numbers and keys are **always removed** from everything
+    sent to the AI provider.
+  - Account figures (balances, positions) go only to providers that do not train on what they
+    receive (Claude, or your own model), unless you choose otherwise.
+  - Free tiers such as Google Gemini's may use what they receive to improve their products.
+- **Your own details:**
+  - The owner's emails and phone are not in the code; only one-way fingerprints are kept (see Admins).
+  - On public pages (marketplace, signal channels) creators show as a nickname such as
+    "Trader 3F9A2C", never an email.
+- **What was already taken:**
+  - Blocking stops new reading; what a crawler already took stays until that company refreshes its data.
+  - Google offers removal requests in Search Console.
+  - If the GitHub repository is public, its history still holds earlier versions. Making the
+    repository private (GitHub → Settings → General → Change visibility) is the only way to hide
+    it. GitHub Pages for a private repository needs a paid GitHub plan.
 
 ## Partner revenue sharing on Broker API accounts
 

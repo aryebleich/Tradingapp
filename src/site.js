@@ -2,11 +2,29 @@
 // (software only, or registered investment adviser), and environment values (API keys) saved from
 // the admin page or synced with Render.
 import { all, run, now } from './db.js';
+import crypto from 'node:crypto';
 import { encrypt, decrypt } from './crypto.js';
 
-// The owner's addresses and phone are always admins, whatever ADMIN_EMAIL says.
-export const OWNER_EMAILS = ['aryebleich@gmail.com', 'kk5185920061@gmail.com'];
-export const OWNER_PHONES = ['+18457728111'];
+// The owner's addresses and phone are always admins, whatever ADMIN_EMAIL says. Only slow one-way
+// fingerprints (scrypt) are kept in the code, so the public source never shows who the owner is.
+// OWNER_HASHES (comma-separated, same fingerprint) adds more, e.g. for tests.
+const OWNER_FINGERPRINTS = [
+  '07b44b3df1d39cbca09297903e0030378beac400f76d65fa10fcd70898b7af07',
+  '6ead6eeffce706138aefb203d48eb33aca0fae50f0ce35ea4e2d9e681e40492e',
+  'a2f81020341fe4e62b231a7f3da14630b24123df14bf7a490f25b26f95718ed1',
+];
+export const ownerFingerprint = v => crypto.scryptSync(String(v), 'qp-owner-v1', 32, { N: 1 << 15, r: 8, p: 1, maxmem: 64 * 1024 * 1024 }).toString('hex');
+const ownerSeen = new Map();
+// v is a canonical email or a normalized phone; results are remembered (scrypt is slow on purpose).
+export function isOwner(v) {
+  if (!v) return false;
+  if (!ownerSeen.has(v)) {
+    if (ownerSeen.size > 5000) ownerSeen.clear();
+    const extra = String(process.env.OWNER_HASHES || '').split(/[,\s]+/).filter(Boolean);
+    ownerSeen.set(v, [...OWNER_FINGERPRINTS, ...extra].includes(ownerFingerprint(v)));
+  }
+  return ownerSeen.get(v);
+}
 
 const cache = new Map();
 let loadedAt = 0;
@@ -31,8 +49,8 @@ export const normalizePhone = p => {
   return d.startsWith('+') ? d : d ? '+' + d : '';
 };
 export const addedAdminEmails = () => siteGet('adminEmails', []);
-export const adminPhones = () => [...new Set([...OWNER_PHONES, ...String(process.env.ADMIN_PHONE || '').split(/[,;\s]+/).filter(Boolean).map(normalizePhone), ...siteGet('adminPhones', [])])];
-export const isAdminPhone = p => !!p && adminPhones().includes(normalizePhone(p));
+export const adminPhones = () => [...new Set([...String(process.env.ADMIN_PHONE || '').split(/[,;\s]+/).filter(Boolean).map(normalizePhone), ...siteGet('adminPhones', [])])];
+export const isAdminPhone = p => !!p && (adminPhones().includes(normalizePhone(p)) || isOwner(normalizePhone(p)));
 
 // Software only (the default): no performance fee and no personal advice, so no adviser license is
 // needed. Registered adviser: the owner turns this on in Admin once registered (SEC or state).

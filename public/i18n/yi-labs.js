@@ -182,13 +182,13 @@ export default {
  "Worst drop": "גרעסטע ירידה (Maximum drawdown)",
  "Live, last 3 months": "לייוו (די לעצטע 3 חדשים)",
  "Live results so far are far below the backtest": "די לייוו רעזולטאטן ביז יעצט זענען באדייטנד שוואכער ווי די בעק-טעסט",
- "No QuantConnect figures in the sheet. Run the backtest to see how it behaved.": "מ'האט נישט געטראפן קיין QuantConnect ציפערן אינעם שיעט. לויף דורכ'ן בעק-טעסט צו זען די היסטארישע פערפארמענס.",
+ 
  "Backtests are hypothetical and leveraged ETFs can lose most of their value quickly. Results shown are not a promise of future returns.": "וויכטיג צו וויסן: בעק-טעסטס זענען נאר בדרך השערה (hypothetical), און לעוורידזשד ETFs קענען זייער שנעל פארלירן דעם רוב פון זייער ווערט. וואס ס'איז געווען אין די פארגאנגענהייט איז נישט קיין גאראנטי אויף שפעטערדיגע רעזולטאטן.",
  "Today's walkdown": "היינטיגע איבערזיכט (Walkdown)",
  "Orders go to:": "ארדערס געשיקט צו:",
  "2nd value": "סעקאנדערי ווערט",
  "Needs a rule": "רול פארלאנגט",
- "Not spelled out in the sheet export": "נישט ארויסגעשריבן אינעם עקספארט פונעם ספרעד-שיעט",
+ 
  "check": "וועריפיי / טשעק איבער",
  "Clear typed values": "לעש אויס די געטייפטע ווערטער",
  "No position today: stay in cash.": "קיין פאזיציע פאר היינט: בלייב אין קעש.",
@@ -196,7 +196,7 @@ export default {
  "Target shares": "ציל פון שערס",
  "Held": "וואס מ'האלט יעצט",
  "Order": "ארדער",
- "Stop column: suggested trailing stop ≈ 3.5 × the ticker's daily volatility (6%–35%), as in the sheet's STOP_LOSS tab.": "סטאפ קאלום: די רעקאמענדירטע \"טרעילינג סטאפ\" איז בערך 3.5 מאל די טעגליכע וואלאטיליטי פונעם טיקער (צווישן 6% ביז 35%), ווי ס'איז אויסגעשטעלט אינעם STOP_LOSS טעב אינעם שיעט.",
+ 
  "Run backtest": "לויף דעם בעק-טעסט",
  "Return per year": "יערליכע פראפיטן (Annualized return)",
  "S&P 500 per year": "S&P 500 יערליכע פראפיטן",
@@ -249,7 +249,7 @@ export default {
  "Pullback": "פולבעק (Pullback)",
  "Z-score": "זי-סקאור (Z-score)",
  "win-rate weighted, 10%–70% each": "געוואויגן לויט די געווינס-ראטע, צווישן 10% ביז 70% יעדע איינס",
- "Like the sheet's PORTFOLIO_SPLIT tab: strategies that win more often get more money. Win rates come from each strategy's live daily results.": "לויט ווי עס שטייט אינעם 'PORTFOLIO_SPLIT' טעב: סטראטעגיעס וואס געווינען אפטער באקומען א גרעסערע פארטיילונג. די געווינס-ראטעס ווערן גערעכנט לויט די טעגליכע לייוו פערפארמענס פון יעדע סטראטעגיע.",
+ 
  "Stock B": "סטאק B",
  "Fit window (days)": "די צייט אפשניט צו פיטן (טעג)",
  "z window (days)": "די צייט אפשניט פארן z-סקאור (טעג)",
@@ -518,21 +518,21 @@ export default {
  "Already have a login?": "האט איר שוין א לאגין?",
  "Not available yet on this server: the owner needs to register a TradeStation developer app first.": "עס איז נאך דערווייל נישט אוועילעבל אויף דעם סערווער: דער בעה\"בית דארף קודם רעגיסטרירן א TradeStation דעוועלאפער עפפ (developer app).",
  "Keys and tokens are encrypted before they are stored, and you can disconnect at any time (also revoke access at the broker). Orders on these brokerages are whole shares only. Live accounts trade real money.": "די קי-ס (keys) און טאקענס ווערן ענקריפטעד און פארשלאסן פארן ווערן אפגעהיטן, און מ'קען זיך אפזאגן צו יעדע צייט (אדער קענסלען די רשות דירעקט ביים בראוקער). די ארדערס ביי די בראוקערס זענען באגרעניצט נאר צו גאנצע שעירס (shares). לייוו אקאונטס טרעידן מיט עכטע געלט.",
- "Ready-made rotation strategies from the MULTI_STRATEGIES sheet. Run them by hand (type your own values, like the sheet's yellow cells) or let them trade automatically. Every rule and number can be changed.": "גרייטע 'ראוטעישאן' סטראטעגיעס פונעם MULTI_STRATEGIES שיט. מ'קען עס לויפן מאנועל (דורך אריינלייגן אייגענע נומערן, פונקט ווי די געלע קעסטלעך אינעם שיט) אדער עס אנשטעלן צו טרעידן אויטאמאטיש. יעדע רול און פאראמעטער קען מען צופאסן לויטן פערזענליכן ווילן.",
+ 
  "very high risk": "זייער הויכע ריזיקע",
  "high risk": "הויכע ריזיקע",
  "medium risk": "מיטעלע ריזיקע",
  "low risk": "נידריגע ריזיקע",
  "Hierarchical decision-tree regime rotation · Every trading day": "א 'הייערארקיקעל' דעסיזשן-טרי סיסטעם פאר די טויש פונעם רעזשים · יעדן טרעידינג טאג",
- "QC #698 figures from QuantConnect as recorded in the sheet.": "די QC #698 ציפערן קומען פון QuantConnect אזוי ווי עס איז פארצייכנט אינעם שיט.",
- "QC #504 figures from QuantConnect as recorded in the sheet.": "די QuantConnect ציפערן פאר QC #504, לויט ווי עס איז פארצייכנט אינעם שיעט.",
- "QC #687 figures from QuantConnect as recorded in the sheet.": "די QuantConnect ציפערן פאר QC #687, לויט ווי עס איז פארצייכנט אינעם שיעט.",
+ 
+ 
+ 
  "4 independent sleeves × 25% · Every trading day": "פיר באזונדערע חלקים (sleeves) פון 25% יעדנס • יעדן טאג וואס מען האנדלט אויף די בערזע",
  "Holds one leveraged ETF at 100% · Every trading day": "מען האלט איין לעוורידזשד ETF ביי 100% • יעדן טאג וואס מען האנדלט אויף די בערזע",
- "Steps 1-3 are exactly as in the sheet. The sheet export did not include the rules for steps 4-12, so they are rebuilt from the well-known \"TQQQ For The Long Term\" logic the sheet's step list matches. Check them against your code and adjust.": "די סטעפס פון 1 ביז 3 זענען פונקט די זעלבע ווי אינעם ספרעדשיט. היות דער עקספארט פונעם שיט האט נישט געהאט די רולס פאר סטעפס 4 ביז 12, זענען זיי צוריק אויפגעבויט געווארן באזירט אויף די באקאנטע \"TQQQ For The Long Term\" לאגיק וואס שטימט מיט די סטעפ-ליסטע פונעם ספרעדשיט. ביטע טשעק דאס איבער קעגן דיין קאוד און מאך די נויטיגע טוישונגען אויב עס פעלט אויס.",
- "The sheet export only shows the rules for the steps on that day's path (steps 1, 2 and 4). The other ~105 steps have no thresholds in the export, so the walk stops with \"needs a rule\" when it reaches one. Send the QC #687 code (or the sheet itself) to fill them in, or type them in the editor.": "דער עקספארט פונעם ספרעדשיט ווייזט נאר די רולס פאר די סטעפס וואס זענען געווען אקטיוו אין יענעם ספעציפישן טאג (סטעפס 1, 2, און 4). היות די איבריגע בערך 105 סטעפס האבן נישט קיין \"טרעשאולדס\" אינעם עקספארט, שטעלט זיך דער גאנצער גאנג אפ מיט א מעסעדזש \"needs a rule\" (עס פעלט א רול) יעדעס מאל וואס ער קומט אן צו אזא סטעפ. ביטע שטעלט צו דעם QC #687 קאוד (אדער דעם ספרעדשיט אליין) כדי משלים צו זיין די פעלנדע רולס, אדער לייגט זיי אריין מיט די האנט אינעם עדיטאר.",
+ 
+ 
  "One stock: the strongest 12-month momentum · Weekly": "איין סטאק: די שטערקסטע 12-חדשים מאמענטום · וועכנטליך",
- "The sheet builds the list from price > $5, top 100 by dollar volume and top 50 by market cap. Here the list is the sheet's current top 50 and you can edit it.": "די ליסטע ווערט צוזאמענגעשטעלט לויט א שער פרייז העכער 5 דאלער, א פלאץ צווישן די העכסטע 100 לויט דאלער וואליום, און א פלאץ צווישן די העכסטע 50 לויט מארקעט קעפיטעלייזעישאן. דא באשטייט די ליסטע פון די יעצטיגע טאפ 50 אויפן בלאט, וואס מ'קען אליין עדיטן.",
+ 
  "Buy the dip in an uptrend, sell the bounce · Every trading day": "קויף דעם 'דיפ' ביי אן ארויפגאנג, פארקויף ביים צוריקשפרינג · יעדן טאג וואס מ'האנדלט",
  "Markets & news": "מארקעטס און נייעס",
  "Options chain": "די רשימה פון די אפשנס",
@@ -680,7 +680,7 @@ export default {
  "Not available yet on this server: the owner needs to register a Charles Schwab developer app first.": "ס'איז נאכנישט עוועילעבל אויף דעם סערווער: דער בעל הבית דארף קודם רעגיסטרירן א Charles Schwab דעוועלאפער עפפ.",
  ", a common sign of over-fitting.": ", וואס דאס איז א געווענליכע סימן פון אווערפיטינג.",
  "Buys top Nasdaq-100 stocks in a long-term uptrend that dipped below the lower Bollinger band with weak RSI and a real pullback. Sells on the bounce back to the 15-day average, a break of the 200-day average, or after 15 days. Equal weight, up to 10 stocks.": "די דאזיגע סטראטעגיע קויפט די סאמע בעסטע סטאקס פונעם נאסדאק-100 (Nasdaq-100) וואס געפינען זיך אין א לאנג-טערמיניגע ארויפגאנג (uptrend), אבער האבן יעצט געכאפט אן אמת'ע \"פול-בעק\" און זענען אראפגעפאלן אונטער די נידריגע \"באלינדזשער בענד\" (Bollinger Band) אינאיינעם מיט א שוואכע RSI. מ'פארקויפט די פאזיציעס ווען עס כאפט א שפרינג צוריק צום 15-טאגיגן \"מאווינג עוורידזש\", אדער אויב עס פאלט אראפ אונטער'ן 200-טאגיגן \"מאווינג עוורידזש\", אדער נאכדעם וואס מ'האט עס שוין געהאלטן פאר 15 טעג. די פארטפאליאו ווערט אייניג צוטיילט (equally weighted) צווישן די סטאקס, און מען האלט דערין ביז 10 סטאקס אויפאיימאל.",
- "In the sheet you type the model's 4 predictions each month. Here you can keep typing them (manual), or let the app use each asset's recent 3-month return as a simple stand-in (automatic).": "אינעם שיט לייגט מען אריין די פיר מאנאטליכע שאצונגען פונעם מאדעל. איר קענט דאס אריינלייגן מיט די האנט, אדער קענט איר לאזן די עפפ עס אויספילן אויטאמאטיש, ניצנדיג די ריטוירנס פון די לעצטע דריי חדשים פון יעדע אסעט אלס א פשוט'ע פלעיסהאלדער.",
+ 
  "In TradingView: create an alert, turn on": "אין טרעידינג-וויו (TradingView): שטעל אן אן אלערט און צינד עס אן",
  "Exit a position": "פארמאכן א פאזיציע",
  "Plain text": "פשוט'ע טעקסט",

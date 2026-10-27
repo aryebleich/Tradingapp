@@ -5,6 +5,7 @@ import * as features from './yi-features.js';
 import * as protect from './yi-protect.js';
 import * as wealth from './yi-wealth.js';
 import * as batch5 from './yi-batch5.js';
+import * as batch6 from './yi-batch6.js';
 
 export const credit = '';
 
@@ -92,12 +93,12 @@ export const strings = {
   'Use these allocations': 'ניצט די צעטיילונג', 'Runs': 'לויפט', 'Money': 'געלט', 'Last result': 'לעצטער רעזולטאט', 'Reality Check': 'ריעליטי טשעק',
   'Backtest, 5 years': 'באקטעסט, 5 יאר', 'Worst drop': 'ערגסטער אראפפאל', 'Live, last 3 months': 'לייוו, לעצטע 3 חדשים',
   'Live results so far are far below the backtest': 'די לייוו רעזולטאטן ביז יעצט זענען ווייט אונטער דעם באקטעסט',
-  'No QuantConnect figures in the sheet. Run the backtest to see how it behaved.': 'קיין QuantConnect נומערן אין דעם שיט. לויפט דעם באקטעסט צו זען ווי עס האט זיך אויפגעפירט.',
+  
   'Backtests are hypothetical and leveraged ETFs can lose most of their value quickly. Results shown are not a promise of future returns.': 'באקטעסטס זענען היפאטעטיש, און לעווערעדזש ETFs קענען שנעל פארלירן רוב פון זייער ווערט. די רעזולטאטן זענען נישט קיין הבטחה פאר די צוקונפט.',
   "Today's walkdown": 'היינטיגער וואקדאון', 'Orders go to:': 'ארדערס גייען צו:', '2nd value': '2טע ווערט', 'Needs a rule': 'דארף א כלל',
-  'Not spelled out in the sheet export': 'נישט אויסגעשריבן אין דעם שיט', 'check': 'טשעק', 'Clear typed values': 'מעקט אויס די אריינגעשריבענע נומערן',
+  'check': 'טשעק', 'Clear typed values': 'מעקט אויס די אריינגעשריבענע נומערן',
   'No position today: stay in cash.': 'היינט קיין פאזיציע: בלייבט אין קעש.', 'Target $': 'ציל $', 'Target shares': 'ציל שערס', 'Held': 'געהאלטן', 'Order': 'ארדער',
-  'Stop column: suggested trailing stop ≈ 3.5 × the ticker\'s daily volatility (6%–35%), as in the sheet\'s STOP_LOSS tab.': 'סטאפ: א פארגעשלאגענער טרעילינג סטאפ ≈ 3.5 × די טעגליכע וואלאטיליטעט (6%–35%), ווי אין דעם שיט\'ס STOP_LOSS טאב.',
+  
   'Run backtest': 'לויפט באקטעסט', 'Return per year': 'רעטורן א יאר', 'S&P 500 per year': 'S&P 500 א יאר', 'Sharpe': 'שארפ', 'Total return': 'סך הכל רעטורן', 'Switches': 'טוישן',
   'Running… (loading several years of prices for every ticker the rules use)': 'לויפט… (לאדנט עטליכע יאר פרייזן פאר יעדן טיקער)',
   'Edit rules': 'רעדאגירט די כללים', "Change any number, indicator or ticker, then preview today's result or backtest before saving.": 'טוישט סיי וועלכע נומער, אינדיקאטאר אדער טיקער, און זעט דעם היינטיגן רעזולטאט אדער באקטעסט פארן אפהיטן.',
@@ -112,7 +113,7 @@ export const strings = {
   'Stocks to rank (comma separated)': 'סטאקס צו ראנגירן (מיט קאמעס)', 'Stocks to scan': 'סטאקס צו סקענען', 'Predictions': 'פאראויסזאגן', 'I type them each month': 'איך שרייב זיי יעדן חודש',
   'Automatic (recent return)': 'אויטאמאטיש (לעצטע רעטורן)', 'Bitcoin ticker': 'ביטקוין טיקער', 'Rebalance day': 'באלאנס טאג', 'Predicted 21-day return %': 'פאראויסגעזאגטע 21-טאג רעטורן %',
   'Asset': 'אסעט', 'Weight': 'וואג', 'Rank': 'ראנג', 'Pullback': 'צוריקפאל', 'Z-score': 'Z-סקאר', 'win-rate weighted, 10%–70% each': 'לויט געווינס ראטע, 10%–70% יעדע',
-  'Like the sheet\'s PORTFOLIO_SPLIT tab: strategies that win more often get more money. Win rates come from each strategy\'s live daily results.': 'ווי דעם שיט\'ס PORTFOLIO_SPLIT טאב: סטראטעגיעס וואס געווינען אפטער באקומען מער געלט. די געווינס ראטעס קומען פון יעדע סטראטעגיע\'ס לייוו רעזולטאטן.',
+  
 
   // alerts to trades
   'Send an alert from TradingView, TrendSpider, Zapier, a script or an AI agent. It becomes an order in the accounts you choose, inside your risk rules.': 'שיקט אן אלערט פון TradingView, TrendSpider, Zapier, א סקריפט אדער אן AI אגענט. עס ווערט אן ארדער אין די קאנטעס וואס איר קלייבט, לויט אייערע ריזיקע כללים.',
@@ -264,28 +265,28 @@ export const strings = {
   'Not available yet on this server: the owner needs to register a TradeStation developer app first.': 'נאך נישט צו באקומען אויף דעם סערווער: דער אייגנטימער דארף קודם רעגיסטרירן א TradeStation דעוועלאפער עפּ.',
   'Keys and tokens are encrypted before they are stored, and you can disconnect at any time (also revoke access at the broker). Orders on these brokerages are whole shares only. Live accounts trade real money.': 'שליסלען און טאקענס ווערן פארשלאסן איידער מען היט זיי אפ, און איר קענט זיך אפפארבינדן ווען איר ווילט (אויך צוריקנעמען דעם צוטריט ביים בראוקער). ארדערס ביי די בראוקערס זענען נאר גאנצע שערס. לייוו קאנטעס טרעידן מיט עכטע געלט.',
   // strategy library
-  'Ready-made rotation strategies from the MULTI_STRATEGIES sheet. Run them by hand (type your own values, like the sheet\'s yellow cells) or let them trade automatically. Every rule and number can be changed.': 'פארטיגע ראטאציע סטראטעגיעס פון דעם MULTI_STRATEGIES שיט. לויפט זיי מיט די האנט (שרייבט אייערע אייגענע ווערטן, ווי די געלע צעלן אינעם שיט) אדער לאזט זיי טרעידן אויטאמאטיש. יעדן כלל און יעדן נומער קען מען טוישן.',
+  
   'very high risk': 'זייער הויכע ריזיקע', 'high risk': 'הויכע ריזיקע', 'medium risk': 'מיטלמעסיגע ריזיקע', 'low risk': 'נידעריגע ריזיקע',
   'Hierarchical decision-tree regime rotation · Every trading day': 'שטאפלדיגע באשלוס-בוים ראטאציע · יעדן טרעידינג טאג',
   'Gold-miner RSI exhaustion gate, then Nasdaq momentum decides between a fast risk-on path (TQQQ / SPXL / UVXY / BTAL) and a slow path through bonds, financials and inverse ETFs. Holds one ETF at 100%.': 'א גאלד-מיינער RSI אויסגעמאטערטקייט טויער, דערנאך באשליסט Nasdaq מאמענטום צווישן א שנעלן ריזיקע וועג (TQQQ / SPXL / UVXY / BTAL) און א פאמעלעכן וועג דורך באנדס, פינאנץ און פארקערטע ETFs. האלט איין ETF אויף 100%.',
-  'QC #698 figures from QuantConnect as recorded in the sheet.': 'QC #698 נומערן פון QuantConnect ווי פארשריבן אינעם שיט.', 'QC #504 figures from QuantConnect as recorded in the sheet.': 'QC #504 נומערן פון QuantConnect ווי פארשריבן אינעם שיט.', 'QC #687 figures from QuantConnect as recorded in the sheet.': 'QC #687 נומערן פון QuantConnect ווי פארשריבן אינעם שיט.',
+  
   ', a common sign of over-fitting.': ', א געווענליכער סימן פון איבער-צופאסן.', 'Live results so far are far below the backtest': 'די לייוו רעזולטאטן ביז יעצט זענען ווייט אונטער דעם באקטעסט',
   '4 independent sleeves × 25% · Every trading day': '4 באזונדערע טיילן × 25% · יעדן טרעידינג טאג',
   'Four separate models each run a quarter of the money: Nasdaq trend (TQQQ/SQQQ), semiconductors (SOXL), a 202-day trend vote across SPY/QQQ/IWM (TECL or T-bills), and S&P trend (SPXL or anti-beta).': 'פיר באזונדערע מאדעלן, יעדער פירט א פערטל פון די געלט: Nasdaq טרענד (TQQQ/SQQQ), סעמיקאנדאקטארס (SOXL), א 202-טאג טרענד שטימונג איבער SPY/QQQ/IWM (TECL אדער T-bills), און S&P טרענד (SPXL אדער אנטי-בעטא).',
   'Holds one leveraged ETF at 100% · Every trading day': 'האלט איין לעווערידזשד ETF אויף 100% · יעדן טרעידינג טאג',
   'Bull market (SPY above its 200-day average): TQQQ unless Nasdaq or the S&P is overbought, then volatility (UVXY). Bear market: buys oversold dips in TECL / SPXL, otherwise rotates between TQQQ, SQQQ, TECS and short-term bonds.': 'בול מארקעט (SPY איבער זיין 200-טאג דורכשניט): TQQQ, סיידן Nasdaq אדער דער S&P איז איבערגעקויפט, דאן וואלאטיליטעט (UVXY). בער מארקעט: קויפט איבערפארקויפטע אראפגאנגען אין TECL / SPXL, אנדערש דרייט עס צווישן TQQQ, SQQQ, TECS און קורצע באנדס.',
-  'Steps 1-3 are exactly as in the sheet. The sheet export did not include the rules for steps 4-12, so they are rebuilt from the well-known "TQQQ For The Long Term" logic the sheet\'s step list matches. Check them against your code and adjust.': 'שריטן 1-3 זענען פונקט ווי אינעם שיט. דער שיט עקספּאָרט האט נישט אנגעהאלטן די כללים פאר שריטן 4-12, דערפאר זענען זיי ווידער אויפגעבויט פון דער באקאנטער "TQQQ For The Long Term" לאגיק וואס פאסט מיט דער ליסטע שריטן אינעם שיט. טשעקט זיי קעגן אייער קאוד און פאסט צו.',
+  
   'Gold-miner fade and Nasdaq momentum tree · Every trading day': 'גאלד-מיינער אפשוואכונג און Nasdaq מאמענטום בוים · יעדן טרעידינג טאג',
   'Starts with the GDXU RSI exhaustion gate and the Nasdaq 90-day vs 70-day momentum split, then a long tree of RSI, trend and return checks across leveraged ETFs and single stocks.': 'הייבט אן מיטן GDXU RSI אויסגעמאטערטקייט טויער און דער Nasdaq 90-טאג קעגן 70-טאג מאמענטום צעטיילונג, דערנאך א לאנגער בוים פון RSI, טרענד און רעזולטאט טשעקס איבער לעווערידזשד ETFs און איינצלנע סטאקס.',
-  'The sheet export only shows the rules for the steps on that day\'s path (steps 1, 2 and 4). The other ~105 steps have no thresholds in the export, so the walk stops with "needs a rule" when it reaches one. Send the QC #687 code (or the sheet itself) to fill them in, or type them in the editor.': 'דער שיט עקספּאָרט ווייזט נאר די כללים פאר די שריטן אויף יענעם טאגס וועג (שריטן 1, 2 און 4). די אנדערע ~105 שריטן האבן נישט קיין שוועלן אין עקספּאָרט, דערפאר שטעלט זיך דער גאנג אפ מיט "דארף א כלל" ווען ער קומט צו איינעם. שיקט דעם QC #687 קאוד (אדער דעם שיט אליין) זיי אויסצופילן, אדער שרייבט זיי אריין אינעם רעדאקטאר.',
+  
   'One stock: the strongest 12-month momentum · Weekly': 'איין סטאק: דער שטארקסטער 12-חודש מאמענטום · וועכנטליך',
   'Every Wednesday ranks 50 large US companies by their 252-day return and holds the single strongest one at 100%. The original code uses a 10% stop.': 'יעדן מיטוואך ראנגירט עס 50 גרויסע אמעריקאנער פירמעס לויט זייער 252-טאג רעזולטאט און האלט דעם איינציגן שטארקסטן אויף 100%. דער ארגינעלער קאוד ניצט א 10% סטאפ.',
-  'The sheet builds the list from price > $5, top 100 by dollar volume and top 50 by market cap. Here the list is the sheet\'s current top 50 and you can edit it.': 'דער שיט בויט די ליסטע פון פרייז > $5, די העכסטע 100 לויט דאלאר וואליום און די העכסטע 50 לויט מארקעט קאפּ. דא איז די ליסטע די יעצטיגע העכסטע 50 פונעם שיט, און איר קענט זי טוישן.',
+  
   'Buy the dip in an uptrend, sell the bounce · Every trading day': 'קויפט דעם אראפגאנג אין אן ארויפטרענד, פארקויפט דעם אויפשפרונג · יעדן טרעידינג טאג',
   'Buys top Nasdaq-100 stocks in a long-term uptrend that dipped below the lower Bollinger band with weak RSI and a real pullback. Sells on the bounce back to the 15-day average, a break of the 200-day average, or after 15 days. Equal weight, up to 10 stocks.': 'קויפט שפיץ Nasdaq-100 סטאקס אין א לאנג-טערמיניגן ארויפטרענד וואס זענען אראפ אונטער דעם אונטערשטן Bollinger באנד, מיט א שוואכן RSI און אן עכטן צוריקגאנג. פארקויפט ביים צוריקשפרינגען צום 15-טאג דורכשניט, ביים צעברעכן דעם 200-טאג דורכשניט, אדער נאך 15 טעג. גלייכע וואג, ביז 10 סטאקס.',
   'Stocks, gold, bonds and bitcoin by predicted return · Monthly': 'סטאקס, גאלד, באנדס און ביטקוין לויט דעם פאראויסגעזאגטן רעזולטאט · חודש\'ליך',
   'Once a month, weights SPY, GLD, BND and bitcoin (IBIT) by their predicted 21-day return. Only positive predictions get money, bitcoin is capped, and the total never exceeds 100% (no margin).': 'איינמאל א חודש טיילט עס צו SPY, GLD, BND און ביטקוין (IBIT) לויט זייער פאראויסגעזאגטן 21-טאג רעזולטאט. נאר פאזיטיווע פאראויסזאגונגען באקומען געלט, ביטקוין האט א גרענעץ, און די סומע גייט קיינמאל נישט איבער 100% (קיין מארדזשין).',
-  'In the sheet you type the model\'s 4 predictions each month. Here you can keep typing them (manual), or let the app use each asset\'s recent 3-month return as a simple stand-in (automatic).': 'אינעם שיט שרייבט איר אריין די 4 פאראויסזאגונגען פונעם מאדעל יעדן חודש. דא קענט איר זיי ווייטער אריינשרייבן (מיט די האנט), אדער לאזן די עפּ ניצן יעדן אסעט\'ס לעצטן 3-חודש רעזולטאט אלס א פשוט\'ן ערזאץ (אויטאמאטיש).',
+  
   // alerts to trades
   'Dollars per order': 'דאלארן פער ארדער', 'In TradingView: create an alert, turn on': 'אין TradingView: מאכט אן אלערט, צינדט אן', 'Webhook URL': 'Webhook URL',
   'and paste your URL, then use one of these as the message. Accepted actions are': 'און קלעבט אריין אייער URL, דערנאך ניצט איינס פון די אלס די מעסעדזש. ערלויבטע אקציעס זענען', '; size with': '; גרייס מיט',
@@ -341,7 +342,7 @@ export const strings = {
   'Admin user update': 'אדמין האט געטוישט א באניצער',
 };
 
-Object.assign(strings, features.strings, protect.strings, wealth.strings, batch5.strings, labs);
+Object.assign(strings, features.strings, protect.strings, wealth.strings, batch5.strings, batch6.strings, labs);
 
 // Sentences that contain numbers or names.
 export const patterns = [
@@ -371,4 +372,5 @@ export const patterns = [
   ...wealth.patterns,
   ...features.patterns,
   ...batch5.patterns,
+  ...batch6.patterns,
 ];

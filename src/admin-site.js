@@ -11,10 +11,16 @@ const bad = msg => Object.assign(new Error(msg), { status: 400 });
 const wrap = fn => (req, res, next) => fn(req, res).catch(next);
 
 // ---------- admins ----------
-adminSiteRouter.get('/admins', wrap(async (req, res) => res.json({
-  builtIn: S.OWNER_EMAILS, fromEnv: adminEmails(), added: S.addedAdminEmails(),
-  phones: { builtIn: S.OWNER_PHONES, added: S.siteGet('adminPhones', []) },
-})));
+// The built-in owner addresses are not in the code (only fingerprints), so the page lists the
+// accounts that match them, partly hidden.
+const hide = e => String(e).replace(/^(.{2}).*?(@.*)$/, '$1•••$2');
+adminSiteRouter.get('/admins', wrap(async (req, res) => {
+  const users = await all('SELECT email, phone FROM users ORDER BY id LIMIT 2000');
+  res.json({
+    builtIn: users.filter(u => S.isOwner(canonicalEmail(u.email))).map(u => hide(u.email)), fromEnv: adminEmails(), added: S.addedAdminEmails(),
+    phones: { builtIn: users.filter(u => u.phone && S.isOwner(u.phone)).map(u => u.phone.slice(0, -4).replace(/\d/g, '•') + u.phone.slice(-4)), added: S.siteGet('adminPhones', []) },
+  });
+}));
 adminSiteRouter.post('/admins', wrap(async (req, res) => {
   const { email, phone } = req.body || {};
   if (email) {
@@ -38,11 +44,11 @@ adminSiteRouter.post('/admins', wrap(async (req, res) => {
 adminSiteRouter.delete('/admins', wrap(async (req, res) => {
   const e = String(req.query.email || '').toLowerCase(), p = S.normalizePhone(req.query.phone);
   if (e) {
-    if (S.OWNER_EMAILS.map(canonicalEmail).includes(canonicalEmail(e))) throw bad('The owner addresses are built in');
+    if (S.isOwner(canonicalEmail(e))) throw bad('The owner addresses are built in');
     await S.siteSet('adminEmails', S.addedAdminEmails().filter(x => canonicalEmail(x) !== canonicalEmail(e)));
   }
   if (req.query.phone) {
-    if (S.OWNER_PHONES.includes(p)) throw bad('The owner phone is built in');
+    if (S.isOwner(p)) throw bad('The owner phone is built in');
     await S.siteSet('adminPhones', S.siteGet('adminPhones', []).filter(x => x !== p));
   }
   await audit(req.user.id, 'admin_removed', { email: e || undefined, phone: p || undefined }, req.ip);
@@ -261,4 +267,19 @@ adminSiteRouter.put('/phone', wrap(async (req, res) => {
   const s = await H.saveSettings(req.body || {});
   await audit(req.user.id, 'hotline_settings', s, req.ip);
   res.json({ settings: s });
+}));
+
+// ---------- AI & privacy: what AI crawlers may read, and what the assistant may send ----------
+adminSiteRouter.get('/ai', wrap(async (req, res) => {
+  const A = await import('./aiaccess.js'), L = await import('./llm.js');
+  // Whether the code repository is public (then anyone, AI crawlers included, can read the code and README).
+  let repoPublic = null;
+  if (process.env.GITHUB_TOKEN) repoPublic = await gh('GET', '').then(r => !r.private).catch(() => null);
+  res.json({ settings: A.settings(), crawlers: A.CRAWLERS, privatePaths: A.PRIVATE_PATHS, robots: A.robotsTxt(), llms: A.llmsTxt(), ai: L.llmInfo(), repo: repo(), repoPublic });
+}));
+adminSiteRouter.put('/ai', wrap(async (req, res) => {
+  const A = await import('./aiaccess.js');
+  const s = await A.saveSettings(req.body || {});
+  await audit(req.user.id, 'ai_access', { allow: s.allow, search: s.search, llmsOn: s.llmsOn, accountData: s.accountData }, req.ip);
+  res.json({ settings: s, robots: A.robotsTxt(s) });
 }));

@@ -4,6 +4,8 @@
 // for fundamentals) and drafts strategies in the rule language; the user saves, backtests or
 // deploys a draft with a button. The assistant never places orders itself.
 import express from 'express';
+import { mayShareAccount } from './aiaccess.js';
+import { provider } from './llm.js';
 import { llmEnabled, llmInfo, toolChat } from './llm.js';
 import { requireUser, rateLimit } from './auth.js';
 import { getBars, lastPrice, accountSummary } from './brokers.js';
@@ -37,7 +39,7 @@ export function tools(user, ctx) {
     market_news: { description: 'Recent news headlines for symbols.', schema: { symbols: { type: 'string', description: 'Comma separated' } }, required: ['symbols'],
       run: async ({ symbols }) => (D.dataEnabled() ? (await D.news({ symbols: sym(symbols), limit: 8 })).map(n => ({ headline: n.headline, summary: n.summary?.slice(0, 300), source: n.source, at: n.created_at, symbols: n.symbols })) : { note: 'News feed is not configured on this server' }) },
     my_portfolio: { description: "The user's holdings and cash for one account (paper, alpaca, or a connected brokerage id).", schema: { account: { type: 'string' } }, required: [],
-      run: async ({ account = 'paper' }) => { const s = await accountSummary(user.id, account); return { account, equity: s.equity, cash: s.cash, positions: s.positions.map(p => ({ symbol: p.symbol, qty: p.qty, value: p.value, pnl: p.pnl })) }; } },
+      run: async ({ account = 'paper' }) => { if (!mayShareAccount(provider())) return { note: 'The owner keeps account figures away from this AI service (Admin → AI & privacy). The user can see them on the Portfolio page.' }; const s = await accountSummary(user.id, account); return { account, equity: s.equity, cash: s.cash, positions: s.positions.map(p => ({ symbol: p.symbol, qty: p.qty, value: p.value, pnl: p.pnl })) }; } },
     backtest_rules: { description: 'Backtest entry/exit rules on daily data since 2016 and return the key results.', schema: { symbol: { type: 'string' }, entry: { type: 'string' }, exit: { type: 'string' }, stopLoss: { type: 'number' }, takeProfit: { type: 'number' }, trailingStop: { type: 'number' } }, required: ['symbol', 'entry', 'exit'],
       run: async a => {
         const b = await getBars(sym(a.symbol), '2016-01-01', user.id), cfg = { entry: a.entry, exit: a.exit, sl: a.stopLoss || 0, tp: a.takeProfit || 0, ts: a.trailingStop || 0, capital: 10000 };

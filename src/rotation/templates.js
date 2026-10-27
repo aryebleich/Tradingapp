@@ -1,14 +1,14 @@
-// The MULTI_STRATEGIES (v8.3) sheet as editable strategy definitions.
+// The library's ready-made strategies as editable definitions.
 //
-// Tree strategies are lists of steps, walked from the first step like the sheet's daily walkdown:
+// Tree strategies are lists of steps, walked from the first step every day:
 //   cmp     a <op> b  -> yes : no           (b is another indicator or a number)
 //   band    a > hi -> hiTo ; a < lo -> loTo ; otherwise -> mid   (RSI exhaustion gates)
 //   higher  a >= b -> aTo : bTo             ("pick the higher RSI")
 //   vote    count of conditions that hold >= need -> yes : no
-//   missing a step whose rule is not in the sheet export; the walk stops there
+//   missing a step whose rule is not known; the walk stops there
 // Targets are another step's id, or "@TICKER" to buy that ticker.
 // Indicators are [fn, ticker, length]; see indicators.js for the exact definitions.
-// `rebuilt: true` marks steps that were not spelled out in the sheet export (see each note).
+// `rebuilt: true` marks steps that were not spelled out in the original rules (see each note).
 
 const QQQ_TOP50 = 'NVDA MSFT AAPL AMZN AVGO META NFLX TSLA GOOGL GOOG COST PLTR CSCO AMD TMUS LIN INTU ISRG PEP TXN BKNG QCOM ADBE AMGN HON AMAT GILD CMCSA ADP VRTX LRCX PANW ADI MU KLAC SBUX INTC MELI CRWD CTAS MDLZ ORLY CEG ABNB MAR FTNT SNPS CDNS DASH'.split(' ');
 const LARGE_CAP50 = 'NVDA AAPL GOOGL MSFT AMZN TSM META AVGO TSLA LLY BRK.B MU WMT JPM AMD V XOM JNJ ASML MA ABBV PLTR INTC CVX COST CSCO KO ORCL UNH PG MRK BAC HD CAT PM PANW AMAT GE LRCX MS NFLX TXN GS CRWD TMO WFC AMGN IBM LIN'.split(' ');
@@ -19,7 +19,7 @@ export const TEMPLATES = [
   {
     id: 'bg_ensemble', name: 'BG Ensemble', tagline: 'Hierarchical decision-tree regime rotation',
     kind: 'tree', rebalance: 'daily', risk: 'very high',
-    qc: { ref: 'QC #698', cagr5y: 576.21, maxdd: 58, sharpe1y: 4.9, oos3m: -47.15 },
+    qc: { cagr5y: 576.21, maxdd: 58, sharpe1y: 4.9, oos3m: -47.15 },
     about: 'Gold-miner RSI exhaustion gate, then Nasdaq momentum decides between a fast risk-on path (TQQQ / SPXL / UVXY / BTAL) and a slow path through bonds, financials and inverse ETFs. Holds one ETF at 100%.',
     sleeves: [{
       name: 'Main', weight: 1, steps: [
@@ -41,7 +41,7 @@ export const TEMPLATES = [
   {
     id: 'multi_model', name: 'Multi-Model ETF Rotation', tagline: '4 independent sleeves × 25%',
     kind: 'tree', rebalance: 'daily', risk: 'high',
-    qc: { ref: 'QC #504', cagr5y: 243.73, maxdd: 31.8, sharpe1y: 1.61, oos3m: 15.43 },
+    qc: { cagr5y: 243.73, maxdd: 31.8, sharpe1y: 1.61, oos3m: 15.43 },
     about: 'Four separate models each run a quarter of the money: Nasdaq trend (TQQQ/SQQQ), semiconductors (SOXL), a 202-day trend vote across SPY/QQQ/IWM (TECL or T-bills), and S&P trend (SPXL or anti-beta).',
     sleeves: [
       { name: 'Sleeve 1: TQQQ / UVXY / SQQQ', weight: 0.25, steps: [
@@ -71,7 +71,7 @@ export const TEMPLATES = [
     kind: 'tree', rebalance: 'daily', risk: 'very high',
     qc: null,
     about: 'Bull market (SPY above its 200-day average): TQQQ unless Nasdaq or the S&P is overbought, then volatility (UVXY). Bear market: buys oversold dips in TECL / SPXL, otherwise rotates between TQQQ, SQQQ, TECS and short-term bonds.',
-    note: 'Steps 1-3 are exactly as in the sheet. The sheet export did not include the rules for steps 4-12, so they are rebuilt from the well-known "TQQQ For The Long Term" logic the sheet\'s step list matches. Check them against your code and adjust.',
+    note: 'Steps 1-3 are the original rules. The rules for steps 4-12 were not available, so they are rebuilt from the well-known "TQQQ For The Long Term" logic the step list matches. Check them and adjust.',
     sleeves: [{
       name: 'Main', weight: 1, steps: [
         { id: '1', t: 'cmp', label: 'Bull or bear market', a: close('SPY'), op: '>', b: sma('SPY', 200), yes: '2', no: '4' },
@@ -92,9 +92,9 @@ export const TEMPLATES = [
   {
     id: 'gold_miner', name: 'Gold Miner', tagline: 'Gold-miner fade and Nasdaq momentum tree',
     kind: 'tree', rebalance: 'daily', risk: 'very high',
-    qc: { ref: 'QC #687', cagr5y: 921.85, maxdd: 51.3, sharpe1y: 6.42, oos3m: -27 },
+    qc: { cagr5y: 921.85, maxdd: 51.3, sharpe1y: 6.42, oos3m: -27 },
     about: 'Starts with the GDXU RSI exhaustion gate and the Nasdaq 90-day vs 70-day momentum split, then a long tree of RSI, trend and return checks across leveraged ETFs and single stocks.',
-    note: 'The sheet export only shows the rules for the steps on that day\'s path (steps 1, 2 and 4). The other ~105 steps have no thresholds in the export, so the walk stops with "needs a rule" when it reaches one. Send the QC #687 code (or the sheet itself) to fill them in, or type them in the editor.',
+    note: 'Only the rules for the steps on one day\'s path are known (steps 1, 2 and 4). The other ~105 steps have no thresholds yet, so the walk stops with "needs a rule" when it reaches one. Type them in the editor.',
     sleeves: [{
       name: 'Main', weight: 1, steps: [
         { id: '1', t: 'band', a: rsi('GDXU'), hi: 79, hiTo: '@GDXD', lo: 30, loTo: '@GDXU', mid: '2' },
@@ -111,7 +111,7 @@ export const TEMPLATES = [
     qc: null,
     about: 'Every Wednesday ranks 50 large US companies by their 252-day return and holds the single strongest one at 100%. The original code uses a 10% stop.',
     params: { universe: LARGE_CAP50, lookback: 252, top: 1, stopPct: 10 },
-    note: 'The sheet builds the list from price > $5, top 100 by dollar volume and top 50 by market cap. Here the list is the sheet\'s current top 50 and you can edit it.',
+    note: 'The original list uses price > $5, top 100 by dollar volume and top 50 by market cap. Here the list is a recent top 50 and you can edit it.',
   },
   {
     id: 'pullback_mr', name: 'Large-Cap Pullback', tagline: 'Buy the dip in an uptrend, sell the bounce',
@@ -126,7 +126,7 @@ export const TEMPLATES = [
     qc: null,
     about: 'Once a month, weights SPY, GLD, BND and bitcoin (IBIT) by their predicted 21-day return. Only positive predictions get money, bitcoin is capped, and the total never exceeds 100% (no margin).',
     params: { assets: ['SPY', 'GLD', 'BND', 'IBIT'], btc: 'IBIT', btcCap: 10, maxTotal: 100, source: 'manual', predictions: { SPY: 1.8, GLD: -4.29, BND: -1.25, IBIT: 6.7 }, proxyDays: 63 },
-    note: 'In the sheet you type the model\'s 4 predictions each month. Here you can keep typing them (manual), or let the app use each asset\'s recent 3-month return as a simple stand-in (automatic).',
+    note: 'Type the model\'s 4 predictions each month (manual), or let the app use each asset\'s recent 3-month return as a simple stand-in (automatic).',
   },
 ];
 

@@ -27,7 +27,7 @@ test('money levers: deposit fee with a cap, referral milestones, longer trial fo
   const s = await serve();
   try {
     const owner = s.client();
-    await owner('/auth/register', { email: 'aryebleich@gmail.com', password: 'Str0ngPassword' });
+    await owner('/auth/register', { email: 'site-owner@example.com', password: 'Str0ngPassword' });
     const put = await owner('/admin/site/money', { depositFeePercent: 1, depositFeeFixed: 0.5, depositFeeCap: 5, referralCredit: 15, friendTrialBonusDays: 16, milestones: [{ at: 2, bonus: 40 }], commissionType: 'bps', commissionValue: 999 }, 'PUT');
     assert.equal(put.status, 200);
     assert.equal(put.body.settings.commissionValue, 50); // capped

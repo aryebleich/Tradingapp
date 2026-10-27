@@ -16,7 +16,7 @@ test('damaged settings and encrypted values: pages still load', async () => {
   const s = await serve();
   try {
     const owner = s.client();
-    const me = (await owner('/auth/register', { email: 'aryebleich@gmail.com', password: 'Str0ngPassword' })).body.user;
+    const me = (await owner('/auth/register', { email: 'site-owner@example.com', password: 'Str0ngPassword' })).body.user;
     // A broken "view as plan" value, then a plan name that no longer exists: both ignored.
     await run("INSERT INTO user_settings (user_id, k, v, updated_at) VALUES (?, 'previewPlan', '{not json', 0) ON CONFLICT(user_id, k) DO UPDATE SET v = excluded.v", me.id);
     let r = await owner('/auth/me');

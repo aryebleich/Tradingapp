@@ -54,7 +54,7 @@ function compound(el) {
     const putA = v.m * 12 * Math.max(0, v.end - v.a1), putB = v.m2 * 12 * Math.max(0, v.end - v.a2);
     H.$('#cgOut', el).innerHTML = `<div class="stat"><span>Early: you put in</span><b>${H.money(putA)}</b></div><div class="stat"><span>Early: you end with</span><b class="kpi">${H.money(a.at(-1))}</b></div>
       <div class="stat"><span>Late: you put in</span><b>${H.money(putB)}</b></div><div class="stat"><span>Late: you end with</span><b>${H.money(b.at(-1))}</b></div>`;
-    H.drawChart(H.$('#cgChart', el), a, { base: 0, compare: b });
+    H.drawChart(H.$('#cgChart', el), a, { base: 0, compare: b, legend: false });
   };
   f.oninput = draw; draw();
 }

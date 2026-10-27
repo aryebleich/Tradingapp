@@ -46,7 +46,7 @@ function client() {
 
 test('owner emails and phone are admins; admins added in Admin; sign-in by text code', async () => {
   const owner = client();
-  assert.equal((await owner.call('/auth/register', { email: 'KK5185920061@gmail.com', password: 'Str0ngPassword' })).body.user.role, 'admin');
+  assert.equal((await owner.call('/auth/register', { email: 'Site-Owner2@Example.com', password: 'Str0ngPassword' })).body.user.role, 'admin');
   const guest = client();
   await guest.call('/auth/register', { email: 'friend@example.com', password: 'Str0ngPassword' });
   assert.equal((await guest.call('/admin/site/admins')).status, 403);
@@ -54,18 +54,18 @@ test('owner emails and phone are admins; admins added in Admin; sign-in by text 
   assert.equal((await owner.call('/admin/site/admins', { email: 'Friend@Example.com' })).status, 200);
   assert.equal((await guest.call('/auth/me')).body.user.role, 'admin');
   assert.ok((await owner.call('/admin/site/admins')).body.added.includes('friend@example.com'));
-  assert.equal((await owner.call('/admin/site/admins?email=aryebleich@gmail.com', null, 'DELETE')).status, 400);
+  assert.equal((await owner.call('/admin/site/admins?email=site-owner@example.com', null, 'DELETE')).status, 400);
   assert.equal((await owner.call('/admin/site/admins', { phone: '718 555 0100' })).status, 200);
   assert.ok((await owner.call('/admin/site/admins')).body.phones.added.includes('+17185550100'));
   assert.equal((await owner.call('/admin/site/admins?phone=%2B17185550100', null, 'DELETE')).status, 200);
 
   // The owner's phone (written without +1) gets a code and signs in to the owner account.
   const p = client();
-  const start = (await p.call('/auth/phone/start', { phone: '845-772-8111' })).body;
+  const start = (await p.call('/auth/phone/start', { phone: '555-000-0001' })).body;
   assert.equal(start.ok, true); assert.match(start.devCode, /^\d{6}$/);
-  assert.equal((await p.call('/auth/phone/verify', { phone: '8457728111', code: '000000' })).status, 401);
-  const me = (await p.call('/auth/phone/verify', { phone: '+18457728111', code: start.devCode })).body.user;
-  assert.equal(me.role, 'admin'); assert.equal(me.phone, '+18457728111'); assert.equal(me.phoneVerified, true);
+  assert.equal((await p.call('/auth/phone/verify', { phone: '5550000001', code: '000000' })).status, 401);
+  const me = (await p.call('/auth/phone/verify', { phone: '+15550000001', code: start.devCode })).body.user;
+  assert.equal(me.role, 'admin'); assert.equal(me.phone, '+15550000001'); assert.equal(me.phoneVerified, true);
   // A number without an account gets the same answer and no code.
   const unknown = (await client().call('/auth/phone/start', { phone: '2125550199' })).body;
   assert.equal(unknown.ok, true); assert.equal(unknown.devCode, undefined);
@@ -98,7 +98,7 @@ test('GitHub sign-up, linking by verified email, and failures', async () => {
 
 test('business mode, keys page, .env import/export and Render sync', async () => {
   const owner = client();
-  await owner.call('/auth/register', { email: 'aryebleich@gmail.com', password: 'Str0ngPassword' });
+  await owner.call('/auth/register', { email: 'site-owner@example.com', password: 'Str0ngPassword' });
   // Software only by default; adviser mode needs the registration confirmed.
   assert.equal((await owner.call('/admin/site/mode')).body.adviser, false);
   assert.equal((await owner.call('/config')).body.adviser, false);

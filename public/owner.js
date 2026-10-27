@@ -5,7 +5,7 @@ let H;
 export function registerOwner(routes, helpers) {
   H = helpers;
   const guard = fn => view => (H.me()?.role === 'admin' ? fn(view) : (location.hash = '#/dashboard'));
-  Object.assign(routes, { 'admin-business': guard(business), 'admin-alpaca': guard(alpacaPlans), 'admin-yiddish': guard(yiddish), 'admin-phone': guard(phoneLine), 'admin-admins': guard(admins), 'admin-keys': guard(keys) });
+  Object.assign(routes, { 'admin-business': guard(business), 'admin-alpaca': guard(alpacaPlans), 'admin-yiddish': guard(yiddish), 'admin-phone': guard(phoneLine), 'admin-ai': guard(aiPrivacy), 'admin-admins': guard(admins), 'admin-keys': guard(keys) });
 }
 
 async function business(view) {
@@ -16,9 +16,9 @@ async function business(view) {
   <div class="card"><h2>Business mode</h2>
     <div class="modes">
       <label class="mode ${mode.adviser ? '' : 'on'}"><input type="radio" name="mode" value="software" ${mode.adviser ? '' : 'checked'}><b>Software only</b> <span class="pill">${mode.adviser ? '' : 'Current'}</span>
-        <span class="mu">No investment adviser license needed. Users choose and run their own strategies on their own brokerage accounts. You earn from plans, deposit fees, referrals and partner commission, not from their profits.</span></label>
+        <span class="mu">No investment adviser license needed. Users choose and run their own strategies on their own brokerage accounts. The ready-made strategies and copied signals trade real money only when the user places or approves each order (automatic on paper). You earn from plans, deposit fees, referrals and partner commission, not from their profits.</span></label>
       <label class="mode ${mode.adviser ? 'on' : ''}"><input type="radio" name="mode" value="adviser" ${mode.adviser ? 'checked' : ''}><b>Registered investment adviser</b> <span class="pill">${mode.adviser ? 'Current' : ''}</span>
-        <span class="mu">Turn on after your SEC or state registration is approved. Adds the performance fee (a share of new profits above the high-water mark) to every plan, monthly fee assessment and the fee pages.</span></label>
+        <span class="mu">Turn on after your SEC or state registration is approved. Adds the performance fee (a share of new profits above the high-water mark) to every plan, monthly fee assessment and the fee pages, and lets the ready-made strategies and copied signals trade real accounts automatically.</span></label>
     </div>
     <div id="advBox" ${mode.adviser ? '' : 'hidden'}>
       <label>CRD number (from your Form ADV)<input name="crd" placeholder="e.g. 123456" value="${H.esc(ria.crd || '')}"></label>
@@ -67,6 +67,7 @@ async function business(view) {
       ['Deposit service fee', `${m.depositFeePercent}%${m.depositFeeFixed ? ' + ' + H.money(m.depositFeeFixed) : ''}${m.depositFeeCap ? `, at most ${H.money(m.depositFeeCap)}` : ''} on card and bank deposits.`, m.depositFeePercent > 0 || m.depositFeeFixed > 0],
       ['Referrals', `${H.money(m.referralCredit)} per paying friend, plus bonuses at ${m.milestones.map(x => x.at).join(', ') || 'no'} friends.`, m.referralCredit > 0],
       ['Partner commission', m.commissionValue > 0 ? `${m.commissionValue} ${({ bps: 'bps', notional: '$ per order', qty: '$ per share' })[m.commissionType]} on Broker API accounts.` : 'Off.', m.commissionValue > 0],
+      ['Automatic ready-made strategies on real money', mode.adviser ? 'On: library strategies and copied signals can trade real accounts by themselves.' : 'Paper only in software-only mode (managing real money automatically needs adviser registration). On real accounts users follow them by hand.', mode.adviser],
       ['Performance fee', mode.adviser ? 'On: assessed monthly above each account’s high-water mark.' : 'Off in software-only mode. Turn on registered-adviser mode once licensed.', mode.adviser],
     ].map(([t, d, on]) => `<div class="lever"><span class="dot ${on ? 'on' : ''}"></span><div><b>${t}</b><p class="mu">${d}</p></div></div>`).join('')}</div>
     <h3>Grow revenue</h3><ul class="tips">
@@ -238,5 +239,41 @@ Trade
   H.act(H.$('button', f), async () => {
     await H.api('/admin/site/phone', { method: 'PUT', body: { enabled: f.enabled.checked, allowSignup: f.allowSignup.checked, freePaper: f.freePaper.checked, greeting: f.greeting.value, tickers: f.tickers.value, maxQty: f.maxQty.value, voice: f.voice.value } });
     setTimeout(H.render, 600); return 'Saved';
+  });
+}
+
+// AI & privacy: which AI crawlers may read the public site, what AI tools may say about it, and
+// what the app's own assistant may send to its AI provider.
+async function aiPrivacy(view) {
+  const d = await H.api('/admin/site/ai'), s = d.settings;
+  view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-ai')}
+  <div class="card"><h2>Where AI tools get information about QuantPocket</h2>
+    <ul class="tips">
+      <li><b>The public website</b> (homepage, Terms, Privacy, Risk): AI crawlers such as Google's for Gemini read public pages. Block or allow each one below; the setting is published as <a href="/robots.txt" target="_blank" rel="noopener">robots.txt</a> and as a "no AI" header on every page.</li>
+      <li><b>The code on GitHub</b>: <code data-no-tr>${H.esc(d.repo)}</code> is ${d.repoPublic === true ? '<b class="neg">public</b>: anyone, AI crawlers included, can read the code, the README and its history. Make it private in GitHub → Settings → General → Danger zone → Change visibility (GitHub Pages for a private repository needs a paid GitHub plan).' : d.repoPublic === false ? '<b class="pos">private</b>.' : 'public or private (add GITHUB_TOKEN in Keys to check here). If it is public, anyone can read the code, the README and its history.'}</li>
+      <li><b>The app itself</b> (accounts, Admin, the API, webhooks) is never open to crawlers: ${d.privatePaths.map(p => `<code data-no-tr>${H.esc(p)}</code>`).join(' ')}. Signing in is always required.</li>
+      <li>Blocking stops new reading. What a crawler took before stays with that company until it refreshes its data; Google lets site owners ask for removal in Search Console.</li></ul></div>
+  <form class="card" id="aif"><h2>AI crawlers</h2>
+    <div class="tablewrap"><table><tr><th>Company</th><th>Crawlers</th><th>Allowed to read the public pages</th></tr>
+    ${Object.entries(d.crawlers).map(([k, c]) => `<tr><td><b>${H.esc(c.name)}</b>${c.note ? `<div class="mu" style="font-size:12px">${H.esc(c.note)}</div>` : ''}</td><td class="mu" style="font-size:12.5px" data-no-tr>${H.esc(c.agents.join(', '))}</td><td><label class="switch"><input type="checkbox" name="allow_${k}" ${s.allow[k] ? 'checked' : ''}><i></i></label></td></tr>`).join('')}</table></div>
+    <label class="check"><input type="checkbox" name="search" ${s.search ? 'checked' : ''}> Search engines (Google Search, Bing) may list the public pages</label>
+    <h3>What AI tools may say (llms.txt)</h3>
+    <label class="check"><input type="checkbox" name="llmsOn" ${s.llmsOn ? 'checked' : ''}> Publish this short description at <code data-no-tr>/llms.txt</code> for AI tools</label>
+    <textarea name="llms" rows="3" maxlength="2000">${H.esc(s.llms)}</textarea>
+    <p class="mu small-print">Only this text, nothing else. Emails, phone numbers and keys are removed from it automatically.</p>
+    <h3>The app's AI assistant</h3>
+    <p class="mu">Provider now: <b data-no-tr>${H.esc(d.ai ? d.ai.name : 'none set up')}</b>${d.ai?.free ? ' <span class="pill warn">free tier</span> Free tiers (for example Google Gemini\'s) may use what they receive to improve their products.' : ''}</p>
+    <p class="mu">Always removed before anything is sent: email addresses, phone numbers, card and account numbers, and keys.</p>
+    <label>Account figures (balances, positions) may go to the AI<select name="accountData">
+      <option value="private" ${s.accountData === 'private' ? 'selected' : ''}>Only to providers that do not train on it (Claude or your own model)</option>
+      <option value="never" ${s.accountData === 'never' ? 'selected' : ''}>Never</option>
+      <option value="always" ${s.accountData === 'always' ? 'selected' : ''}>Always, free tiers included</option></select></label>
+    <button>Save</button><div class="err"></div></form>
+  <div class="card"><h2>robots.txt now</h2><pre class="ivrtree" data-no-tr id="robots">${H.esc(d.robots)}</pre></div>`;
+  const f = H.$('#aif', view);
+  H.act(H.$('button', f), async () => {
+    const allow = Object.fromEntries(Object.keys(d.crawlers).map(k => [k, f['allow_' + k].checked]));
+    const r = await H.api('/admin/site/ai', { method: 'PUT', body: { allow, search: f.search.checked, llmsOn: f.llmsOn.checked, llms: f.llms.value, accountData: f.accountData.value } });
+    H.$('#robots', view).textContent = r.robots; return 'Saved';
   });
 }

@@ -8,11 +8,17 @@ import { template } from './templates.js';
 import { Market, tickersOf, backtest } from './engine.js';
 import { parse, mine, validateSpec, walkdown, execute, templatesList, ACCOUNTS } from './runner.js';
 import { realityFor, winRateSplit } from './reality.js';
+import { adviserMode } from '../site.js';
 
 // Free: try everything by hand and automate one strategy on paper. Paid plans automate real accounts.
 export const STRATEGY_LIMITS = { free: { saved: 3, auto: 1 }, pro: { saved: 10, auto: 5 }, elite: { saved: 50, auto: 25 }, ultimate: { saved: 200, auto: 100 } };
 const limits = u => (u.role === 'admin' && !u.previewPlan ? STRATEGY_LIMITS.ultimate : isPaid(u) ? STRATEGY_LIMITS[u.plan] || STRATEGY_LIMITS.pro : STRATEGY_LIMITS.free);
 const bad = (msg, status = 400) => Object.assign(new Error(msg), { status });
+// Letting QuantPocket's own ready-made strategies trade real money by themselves is managing money,
+// which needs a registered investment adviser. In software-only mode they run automatically on
+// paper only; on a real account the user follows them by hand (the same rules for everyone).
+export const ADVISER_ONLY = 'Automatic trading of the ready-made strategies on a real account is available once the business is a registered investment adviser. Run it automatically on paper, or follow it by hand on your real account.';
+const adviserOnly = () => Object.assign(new Error(ADVISER_ONLY), { status: 403, adviserOnly: true });
 const upgrade = feature => Object.assign(new Error(`${feature} is part of the Pro plan`), { status: 402, upgrade: true, feature });
 const backtests = new Map(); // `${id}:${hash}` -> { at, result }, so reopening a page does not re-run it
 
@@ -43,7 +49,7 @@ router.post('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   const s = await mine(req.params.id, req.user.id);
   const runs = await all('SELECT kind, summary, at FROM strategy_runs WHERE strategy_id = ? ORDER BY id DESC LIMIT 30', s.id);
-  res.json({ ...s, template: templatesList().find(t => t.id === s.templateId) || null, runs, reality: await realityFor(s), limits: limits(req.user) });
+  res.json({ ...s, template: templatesList().find(t => t.id === s.templateId) || null, runs, reality: await realityFor(s), limits: limits(req.user), autoRealAllowed: !s.templateId || adviserMode() });
 });
 
 router.put('/:id', async (req, res) => {
@@ -53,6 +59,7 @@ router.put('/:id', async (req, res) => {
   if (!ACCOUNTS.includes(account)) throw bad('Pick an account');
   if (account !== 'paper' && !isPaid(req.user)) throw upgrade('Running strategies on your brokerage account');
   const mode = b.mode === 'auto' ? 'auto' : b.mode === 'manual' ? 'manual' : s.mode;
+  if (mode === 'auto' && account !== 'paper' && s.templateId && !adviserMode()) throw adviserOnly();
   if (mode === 'auto' && s.mode !== 'auto') {
     const autos = (await one("SELECT COUNT(*) n FROM user_strategies WHERE user_id = ? AND mode = 'auto'", req.user.id)).n;
     if (autos >= limits(req.user).auto) throw isPaid(req.user) ? bad(`Your plan runs ${limits(req.user).auto} automatic strategies at once`) : upgrade('More than one automatic strategy');

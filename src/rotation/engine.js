@@ -1,5 +1,4 @@
-// Runs the sheet strategies: the daily walkdown (with optional typed-in values, like the sheet's
-// yellow cells), target weights, order sizing, stop suggestions, and a day-by-day backtest.
+// Runs the library strategies: the daily walkdown (with optional typed-in values), target weights, order sizing, stop suggestions, and a day-by-day backtest.
 import { getBars } from '../brokers.js';
 import { series, warmup, dailyVol, suggestedStop } from './indicators.js';
 import { metricLabel } from './templates.js';
@@ -83,7 +82,7 @@ function walk(sleeve, val) {
     const s = steps.get(cur);
     if (!s) return { path, missing: cur, error: `Step ${cur} does not exist` };
     const row = { id: s.id, t: s.t, label: s.label || (s.t === 'vote' ? 'Vote' : `${metricLabel(s.a)}${s.b !== undefined && s.t !== 'band' ? ' vs ' + metricLabel(s.b) : ''}`), rebuilt: !!s.rebuilt };
-    if (s.t === 'missing') { row.va = val(s.a); row.vb = s.b === undefined ? undefined : val(s.b); row.decision = 'Needs a rule (not in the sheet export)'; path.push(row); return { path, missing: s.id }; }
+    if (s.t === 'missing') { row.va = val(s.a); row.vb = s.b === undefined ? undefined : val(s.b); row.decision = 'Needs a rule (not in the original rules)'; path.push(row); return { path, missing: s.id }; }
     let next;
     if (s.t === 'cmp') {
       const a = val(s.a), b = val(s.b);
@@ -194,7 +193,7 @@ export function isRebalanceDay(spec, day) {
 
 // ---------- sizing ----------
 
-// Shares to buy for each target, from the strategy's capital. Whole shares by default, like the sheet.
+// Shares to buy for each target, from the strategy's capital. Whole shares by default.
 export function sizeOrders(weights, capital, priceOf, { whole = true, holdings = {} } = {}) {
   const tickers = [...new Set([...Object.keys(weights), ...Object.keys(holdings)])];
   return tickers.map(t => {

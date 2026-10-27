@@ -30,7 +30,9 @@ test('ADMIN_EMAIL: several addresses, any case, also for accounts made before it
   assert.equal((await owner('/auth/me')).body.user.role, 'admin');
   assert.equal((await owner('/admin/summary')).status, 200);
   const setup = (await owner('/admin/setup')).body;
-  for (const e of ['boss@example.com', 'owner@example.com', 'aryebleich@gmail.com', 'kk5185920061@gmail.com']) assert.ok(setup.admins.includes(e), e);
+  for (const e of ['boss@example.com', 'owner@example.com']) assert.ok(setup.admins.includes(e), e);
+  // The built-in owner addresses are never written out (they exist only as fingerprints).
+  assert.ok(!setup.admins.includes('site-owner@example.com'));
   assert.ok(setup.items.find(x => x.name === 'Admin email').on);
   assert.equal(JSON.stringify(setup).includes('Str0ng'), false);
 
@@ -56,10 +58,10 @@ test('ADMIN_EMAIL: several addresses, any case, also for accounts made before it
 test('Gmail admin matches with dots and +tags (Google sign-in); owner can view the app as each plan', async () => {
   const { isAdminEmail } = await import('../src/auth.js');
   const prev = process.env.ADMIN_EMAIL;
-  process.env.ADMIN_EMAIL = 'aryebleich@gmail.com';
+  process.env.ADMIN_EMAIL = 'ownerthree@gmail.com';
   try {
-    assert.ok(isAdminEmail('Arye.Bleich@gmail.com')); assert.ok(isAdminEmail('aryebleich+x@googlemail.com'));
-    assert.ok(!isAdminEmail('aryebleich@example.com'));
+    assert.ok(isAdminEmail('Owner.Three@gmail.com')); assert.ok(isAdminEmail('ownerthree+x@googlemail.com'));
+    assert.ok(!isAdminEmail('ownerthree@example.com'));
     const c = client();
     await c('/auth/register', { email: 'arye.bleich@gmail.com', password: 'Str0ngPassword' });
     const me = (await c('/auth/me')).body.user;

@@ -4,6 +4,7 @@
 // pulled from the bank by ACH on an Alpaca brokerage account), shared with the community and
 // followed by others, who can keep receiving the creator's updates.
 import express from 'express';
+import { publicName } from './crypto.js';
 import { one, all, run, now, audit } from './db.js';
 import { requireUser, rateLimit } from './auth.js';
 import { getBars, accountSummary, placeOrder, lastPrice } from './brokers.js';
@@ -185,10 +186,10 @@ export async function runBaskets(t = now()) {
   return ran;
 }
 
-const mask = e => String(e || '').replace(/^(.).*?(@.*)$/, '$1***$2');
+
 export async function publicBaskets() {
-  const rows = await all('SELECT b.id, b.name, b.description, b.spec, b.stats, b.updated_at, u.email, (SELECT COUNT(*) FROM baskets f WHERE f.source_id = b.id) followers FROM baskets b JOIN users u ON u.id = b.user_id WHERE b.public = 1 ORDER BY followers DESC, b.id DESC LIMIT 100');
-  return rows.map(r => ({ id: r.id, kind: 'basket', name: r.name, description: r.description, creator: mask(r.email), followers: r.followers, spec: JSON.parse(r.spec), stats: r.stats ? JSON.parse(r.stats) : null, updatedAt: r.updated_at }));
+  const rows = await all('SELECT b.id, b.name, b.description, b.spec, b.stats, b.updated_at, u.id uid, (SELECT COUNT(*) FROM baskets f WHERE f.source_id = b.id) followers FROM baskets b JOIN users u ON u.id = b.user_id WHERE b.public = 1 ORDER BY followers DESC, b.id DESC LIMIT 100');
+  return rows.map(r => ({ id: r.id, kind: 'basket', name: r.name, description: r.description, creator: publicName(r.uid), followers: r.followers, spec: JSON.parse(r.spec), stats: r.stats ? JSON.parse(r.stats) : null, updatedAt: r.updated_at }));
 }
 
 export const basketsRouter = (() => {

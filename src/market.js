@@ -1,6 +1,7 @@
 // Strategy marketplace: strategies, rule-based portfolios and signal channels that members
 // publish, with backtest figures, followers and one-click copy / follow / subscribe.
 import express from 'express';
+import { publicName } from './crypto.js';
 import { one, all, run, now, audit } from './db.js';
 import { requireUser } from './auth.js';
 import { getBars } from './brokers.js';
@@ -9,7 +10,7 @@ import { publicBaskets } from './baskets.js';
 import { publicChannels } from './fleet.js';
 
 const bad = (m, s = 400) => Object.assign(new Error(m), { status: s });
-const mask = e => String(e || '').replace(/^(.).*?(@.*)$/, '$1***$2');
+
 
 async function strategyStats(s, userId) {
   const b = await getBars(s.symbol, '2016-01-01', userId), cfg = { entry: s.entry, exit: s.exit, sl: s.sl, tp: s.tp, ts: s.ts, capital: 10000 };
@@ -21,11 +22,11 @@ export const marketRouter = (() => {
   const r = express.Router();
   r.use(requireUser);
   r.get('/', async (req, res) => {
-    const strategies = await all(`SELECT s.id, s.name, s.symbol, s.entry, s.exit, s.sl, s.tp, s.ts, s.description, u.email, c.v stats,
+    const strategies = await all(`SELECT s.id, s.name, s.symbol, s.entry, s.exit, s.sl, s.tp, s.ts, s.description, u.id uid, c.v stats,
       (SELECT COUNT(*) FROM cache x WHERE x.k LIKE 'copy:' || s.id || ':%') copies FROM strategies s JOIN users u ON u.id = s.user_id LEFT JOIN cache c ON c.k = 'stratstats:' || s.id
       WHERE s.public = 1 ORDER BY copies DESC, s.id DESC LIMIT 100`);
     res.json({
-      strategies: strategies.map(s => ({ id: s.id, kind: 'strategy', name: s.name, symbol: s.symbol, entry: s.entry, exit: s.exit, sl: s.sl, tp: s.tp, ts: s.ts, description: s.description, creator: mask(s.email), copies: s.copies, stats: s.stats ? JSON.parse(s.stats) : null })),
+      strategies: strategies.map(s => ({ id: s.id, kind: 'strategy', name: s.name, symbol: s.symbol, entry: s.entry, exit: s.exit, sl: s.sl, tp: s.tp, ts: s.ts, description: s.description, creator: publicName(s.uid), copies: s.copies, stats: s.stats ? JSON.parse(s.stats) : null })),
       baskets: await publicBaskets(), channels: await publicChannels(),
     });
   });

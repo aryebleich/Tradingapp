@@ -5,6 +5,7 @@
 //   GROQ_API_KEY / GEMINI_API_KEY / OPENROUTER_API_KEY / ANTHROPIC_API_KEY
 //   AI_BASE_URL, AI_API_KEY, AI_MODEL   for "custom" (e.g. http://localhost:11434/v1 for Ollama), or to override a model
 import Anthropic from '@anthropic-ai/sdk';
+import { redact } from './aiaccess.js';
 
 export const FREE = {
   groq: { name: 'Groq (free tier)', base: 'https://api.groq.com/openai/v1', key: 'GROQ_API_KEY', model: 'openai/gpt-oss-120b', signup: 'https://console.groq.com/keys' },
@@ -53,6 +54,8 @@ export function parseJson(text) {
 // A structured answer that matches a JSON schema.
 export async function jsonCall({ system, user, schema, maxTokens = 3000 }) {
   const p = provider(); if (!p) throw Object.assign(new Error('No AI provider is set up'), { status: 503 });
+  // Personal details never leave the server (Admin → AI & privacy).
+  system = redact(system); user = redact(user);
   try {
     if (p.id === 'anthropic') {
       const res = await anthropic().beta.messages.create({
@@ -74,11 +77,12 @@ export async function jsonCall({ system, user, schema, maxTokens = 3000 }) {
 // Returns { text, sources, used }. Web search is available with Claude only.
 export async function toolChat({ system, messages: history, defs, webSearch = true, maxRounds = 8 }) {
   const p = provider(); if (!p) throw Object.assign(new Error('No AI provider is set up'), { status: 503 });
+  system = redact(system); history = history.map(m => ({ ...m, content: redact(m.content) }));
   const used = [], sources = [];
   const runTool = async (name, input) => {
     used.push(name);
     if (!defs[name]) return { content: `Error: unknown tool ${name}`, error: true };
-    try { return { content: JSON.stringify(await defs[name].run(input || {})).slice(0, 12000) }; } catch (e) { return { content: 'Error: ' + e.message, error: true }; }
+    try { return { content: redact(JSON.stringify(await defs[name].run(input || {}))).slice(0, 12000) }; } catch (e) { return { content: 'Error: ' + e.message, error: true }; }
   };
   try {
     if (p.id === 'anthropic') {

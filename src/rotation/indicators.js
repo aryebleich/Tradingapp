@@ -1,4 +1,4 @@
-// Indicators on daily closes, defined exactly like the MULTI_STRATEGIES sheet:
+// Indicators on daily closes, defined exactly like the original strategies:
 //   rsi    Wilder RSI (RMA smoothing, seeded with a simple average), 0-100
 //   sma    simple moving average of closes
 //   close  closing price
@@ -71,5 +71,5 @@ export function dailyVol(c, n = 60) {
   const r = returns(c).slice(-n).filter(Number.isFinite);
   return r.length > 5 ? sd(r) : NaN;
 }
-// Sheet rule: trailing stop ≈ 3.5 × typical daily volatility, rounded, kept between 6% and 35%.
+// Rule: trailing stop ≈ 3.5 × typical daily volatility, rounded, kept between 6% and 35%.
 export const suggestedStop = vol => (Number.isFinite(vol) ? Math.min(35, Math.max(6, Math.round(3.5 * vol))) : 10);

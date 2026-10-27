@@ -39,7 +39,7 @@ test('compressed request bodies are refused; HTTPS cannot be weakened from Admin
     const g = await fetch(s.base + '/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Encoding': 'gzip', 'X-Requested-With': 'qp' }, body: zlib.gzipSync('{}') });
     assert.equal(g.status, 415);
     const owner = s.client();
-    await owner('/auth/register', { email: 'aryebleich@gmail.com', password: 'Str0ngPassword' });
+    await owner('/auth/register', { email: 'site-owner@example.com', password: 'Str0ngPassword' });
     for (const k of ['NODE_TLS_REJECT_UNAUTHORIZED', 'NODE_EXTRA_CA_CERTS', 'NODE_OPTIONS', 'SSL_CERT_FILE', 'NODE_VERSION'])
       assert.equal((await owner('/admin/site/env', { key: k, value: '0' }, 'PUT')).status, 400, k);
     assert.equal((await owner('/admin/site/env/import', { text: 'NODE_TLS_REJECT_UNAUTHORIZED=0\nSAFE_NAME=1' })).status, 400);

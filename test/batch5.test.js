@@ -79,7 +79,7 @@ test('statistical arbitrage: pair matrix, s-scores and a walk-forward backtest',
 test('statistical arbitrage API: plan limits on basket size', async () => {
   const s = await serve();
   try {
-    const owner = s.client(); await owner.signup('aryebleich@gmail.com');
+    const owner = s.client(); await owner.signup('site-owner@example.com');
     const free = s.client(); await free.signup('statarb-free@example.com');
     const info = (await free('/statarb/baskets')).body;
     assert.equal(info.limits.symbols, 6); assert.ok(info.baskets.Banks.length >= 6);
@@ -123,7 +123,7 @@ test('phone line: open an account by phone, then trade on paper with the PIN', a
   const s = await serve();
   const logs = []; const orig = console.log; console.log = (...a) => { logs.push(a.join(' ')); };
   try {
-    const owner = s.client(); await owner.signup('kk5185920061@gmail.com');
+    const owner = s.client(); await owner.signup('site-owner2@example.com');
     // Free-plan callers may use the paper menu once the owner allows it.
     assert.equal((await owner('/admin/site/phone', { freePaper: true, tickers: 'AAPL, SPY', maxQty: 50 }, 'PUT')).status, 200);
     const call = caller(s.base, '+18455550123');

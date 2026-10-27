@@ -52,6 +52,9 @@ export function safeEqual(a, b) {
 
 // Short keyed signature for values that pass through a third party (the phone line's call steps).
 export const hmac = data => crypto.createHmac('sha256', masterKey()).update('qp:' + data).digest('base64url').slice(0, 32);
+// The name shown for a user on public pages (marketplace, channels): a stable nickname that reveals
+// nothing about who they are.
+export const publicName = id => 'Trader ' + crypto.createHmac('sha256', masterKey()).update('public-name:' + id).digest('hex').slice(0, 6).toUpperCase();
 export const randomToken = (n = 32) => crypto.randomBytes(n).toString('base64url');
 export const sha256 = s => crypto.createHash('sha256').update(s).digest('hex');
 

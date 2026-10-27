@@ -30,7 +30,7 @@ test('forgot password: email link, Gmail with dots, refused email in Admin, text
   Object.assign(process.env, keys);
   try {
     const owner = s.client();
-    await owner('/auth/register', { email: 'aryebleich@gmail.com', password: 'Str0ngPassword' });
+    await owner('/auth/register', { email: 'site-owner@example.com', password: 'Str0ngPassword' });
     const c = s.client();
     await c('/auth/register', { email: 'jane.doe@gmail.com', password: 'Str0ngPassword' });
     await new Promise(r => setTimeout(r, 150)); // welcome emails go out in the background
@@ -53,7 +53,7 @@ test('forgot password: email link, Gmail with dots, refused email in Admin, text
     assert.match((await owner('/admin/setup')).body.emailError.msg, /not verified/);
     assert.match((await owner('/admin/test-email', {})).body.error, /refused it/);
     refuse = false;
-    assert.equal((await owner('/admin/test-email', {})).body.to, 'aryebleich@gmail.com');
+    assert.equal((await owner('/admin/test-email', {})).body.to, 'site-owner@example.com');
     assert.equal((await owner('/admin/setup')).body.emailError, null);
     // By text message: a verified phone gets a code that resets the password.
     const me = (await c('/auth/me')).body.user;
@@ -101,7 +101,7 @@ test('Admin → Yiddish Labs: status, runs, start a run, switch on after every p
   delete process.env.GITHUB_TOKEN; delete process.env.GITHUB_REPO;
   try {
     const owner = s.client();
-    await owner('/auth/register', { email: 'kk5185920061@gmail.com', password: 'Str0ngPassword' });
+    await owner('/auth/register', { email: 'site-owner2@example.com', password: 'Str0ngPassword' });
     assert.equal((await owner('/admin/site/yiddish')).body.configured, false);
     assert.equal((await owner('/admin/site/yiddish/run', {})).status, 400);
     Object.assign(process.env, { GITHUB_TOKEN: 'ghp_test', GITHUB_API_URL: `http://127.0.0.1:${gh.address().port}` });

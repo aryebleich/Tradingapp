@@ -1,6 +1,7 @@
-// A user's copy of a sheet strategy: walkdown with live data, placing the orders (by hand or
+// A user's copy of a library strategy: walkdown with live data, placing the orders (by hand or
 // automatically each trading day), trailing stops, and the daily model return that Reality Check uses.
 import { one, all, run, now } from '../db.js';
+import { adviserMode } from '../site.js';
 import { placeOrder, accountSummary, lastPrice, validSymbol } from '../brokers.js';
 import { TEMPLATES, template } from './templates.js';
 import { Market, decide, tickersOf, sizeOrders, stopsFor, isRebalanceDay, keyOf } from './engine.js';
@@ -154,7 +155,7 @@ const nyNow = (t = now()) => {
 };
 
 // Auto strategies trade once on each rebalance day, at their run time (default 15:45 New York,
-// close to the close the sheet reads its signals from).
+// close to the close the signals are read from).
 export async function runAuto(t = now(), claim) {
   const n = nyNow(t);
   if (n.weekend) return 0;
@@ -162,6 +163,8 @@ export async function runAuto(t = now(), claim) {
   let ran = 0;
   for (const s of rows) {
     if (n.minutes < s.runAt || n.minutes > 960 || !isRebalanceDay(s.spec, n.day)) continue;
+    // Ready-made strategies trade real accounts by themselves only in registered-adviser mode.
+    if (s.account !== 'paper' && s.templateId && !adviserMode()) continue;
     if (!await claim(`strategy:${s.id}:${n.day}`)) continue;
     try { await execute(s, s.userId, { kind: 'auto' }); ran++; }
     catch (e) { await run('INSERT INTO strategy_runs (strategy_id, user_id, kind, summary, at) SELECT id, user_id, ?, ?, ? FROM user_strategies WHERE id = ?', 'error', e.message.slice(0, 300), now(), s.id); }

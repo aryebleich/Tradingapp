@@ -1,5 +1,6 @@
 // QuantPocket single-page client. Hash routes, no framework.
 import { registerTrading } from './trading.js';
+import { CHART_STATES, chartStates } from './chartstates.js';
 import { registerSignals } from './signals.js';
 import { registerStrategies } from './strategies.js';
 import { registerPairs } from './pairs.js';
@@ -114,10 +115,19 @@ const accountOptions = (list, selected, paid = true) => list.filter(a => a.conne
   .map(a => `<option value="${a.id}" ${a.id === selected ? 'selected' : ''}>${esc(acctLabel(a))}${a.id !== 'paper' && !paid ? ' · Pro' : ''}${!a.connected ? ' · not connected' : ''}</option>`).join('');
 const state = { account: localStorage.getItem('qp_account') || 'paper' };
 
-// ---------- chart: a multi-color gradient line that draws itself in ----------
-const CHART_HUES = ['#7c5cff', '#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#ec4899'];
+// ---------- chart: the equity line, colored by gain/loss state (chartstates.js), drawing itself in ----------
 const calmMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
-function drawChart(canvas, series, { base, compare } = {}) {
+function chartLegend(canvas, series, states, base) {
+  if (!canvas.parentElement) return;
+  let el = canvas.nextElementSibling;
+  if (!el?.classList.contains('chartlegend')) { el = document.createElement('div'); el.className = 'chartlegend'; canvas.after(el); }
+  const days = {}; states.slice(1).forEach(s => (days[s] = (days[s] || 0) + 1));
+  const last = series[series.length - 1], peak = Math.max(...series), now = states[states.length - 1];
+  const fromPeak = peak ? (last / peak - 1) * 100 : 0, fromBase = base ? (last / base - 1) * 100 : 0;
+  el.innerHTML = `<span class="now"><i style="background:${CHART_STATES[now].color}"></i><b>${esc(CHART_STATES[now].label)}</b> <span dir="ltr">${fromBase >= 0 ? '+' : ''}${fromBase.toFixed(1)}%</span>${now === 'pullback' ? ` <span class="mu" dir="ltr">(${fromPeak.toFixed(1)}%)</span>` : ''}</span>`
+    + Object.entries(CHART_STATES).filter(([k]) => days[k]).map(([k, v]) => `<span><i style="background:${v.color}"></i>${esc(v.label)}</span>`).join('');
+}
+function drawChart(canvas, series, { base, compare, legend = true } = {}) {
   cancelAnimationFrame(canvas.__anim || 0);
   const dpr = window.devicePixelRatio || 1, w = canvas.clientWidth, h = canvas.clientHeight;
   canvas.width = w * dpr; canvas.height = h * dpr;
@@ -125,24 +135,30 @@ function drawChart(canvas, series, { base, compare } = {}) {
   const css = getComputedStyle(document.documentElement), C = k => css.getPropertyValue(k).trim();
   if (series.length < 2) { g.fillStyle = C('--mu'); canvasNote(g, 'Your equity curve starts filling in after the first trading day.'); return; }
   base ??= series[0];
+  const states = chartStates(series, base);
+  if (legend) chartLegend(canvas, series, states, base);
   const all = [...series, ...(compare || []), base];
   let lo = Math.min(...all), hi = Math.max(...all); if (hi === lo) { hi += 1; lo -= 1; }
   const pad = 10, X = i => pad + (i / Math.max(series.length - 1, 1)) * (w - 2 * pad), Y = v => pad + (1 - (v - lo) / (hi - lo)) * (h - 2 * pad);
   const yb = Y(base);
-  const line = g.createLinearGradient(0, 0, w, 0), fill = g.createLinearGradient(0, 0, w, 0);
-  CHART_HUES.forEach((c, i) => { line.addColorStop(i / (CHART_HUES.length - 1), c); fill.addColorStop(i / (CHART_HUES.length - 1), c + '33'); });
-  const path = () => { g.beginPath(); series.forEach((v, i) => (i ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v)))); };
+  // Consecutive days in the same state are drawn as one run.
+  const runs = [];
+  for (let i = 1; i < series.length; i++) { const st = states[i], r = runs[runs.length - 1]; if (r && r.st === st) r.to = i; else runs.push({ st, from: i - 1, to: i }); }
   const frame = t => {
     g.clearRect(0, 0, w, h);
     g.strokeStyle = C('--bd'); g.lineWidth = 1; g.setLineDash([4, 4]); g.beginPath(); g.moveTo(0, yb); g.lineTo(w, yb); g.stroke(); g.setLineDash([]);
     if (compare) { g.strokeStyle = C('--mu'); g.globalAlpha = 0.7; g.lineWidth = 1.2; g.beginPath(); compare.forEach((v, i) => (i ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v)))); g.stroke(); g.globalAlpha = 1; }
     g.save(); g.beginPath(); g.rect(0, 0, pad + t * (w - pad), h); g.clip();
-    // Area under the line, in the same colors.
-    path(); g.lineTo(X(series.length - 1), h); g.lineTo(X(0), h); g.closePath();
-    g.fillStyle = fill; g.fill();
-    path(); g.lineWidth = 2.5; g.lineJoin = 'round'; g.strokeStyle = line; g.shadowColor = 'rgba(124,92,255,.35)'; g.shadowBlur = 8; g.stroke(); g.shadowBlur = 0;
+    for (const r of runs) {
+      const col = CHART_STATES[r.st].color;
+      // Area between the line and the starting value, in the run's color.
+      g.beginPath(); g.moveTo(X(r.from), yb); for (let i = r.from; i <= r.to; i++) g.lineTo(X(i), Y(series[i])); g.lineTo(X(r.to), yb); g.closePath();
+      g.fillStyle = col + '2e'; g.fill();
+      g.beginPath(); for (let i = r.from; i <= r.to; i++) (i === r.from ? g.moveTo(X(i), Y(series[i])) : g.lineTo(X(i), Y(series[i])));
+      g.lineWidth = 2.5; g.lineJoin = 'round'; g.lineCap = 'round'; g.strokeStyle = col; g.stroke();
+    }
     g.restore();
-    if (t >= 1) { const x = X(series.length - 1), y = Y(series[series.length - 1]); g.fillStyle = CHART_HUES[CHART_HUES.length - 1]; g.beginPath(); g.arc(x - 1, y, 4, 0, 7); g.fill(); g.globalAlpha = 0.25; g.beginPath(); g.arc(x - 1, y, 9, 0, 7); g.fill(); g.globalAlpha = 1; }
+    if (t >= 1) { const x = X(series.length - 1), y = Y(series[series.length - 1]); g.fillStyle = CHART_STATES[states[states.length - 1]].color; g.beginPath(); g.arc(x - 1, y, 4, 0, 7); g.fill(); g.globalAlpha = 0.25; g.beginPath(); g.arc(x - 1, y, 9, 0, 7); g.fill(); g.globalAlpha = 1; }
   };
   if (calmMotion()) return frame(1);
   const t0 = performance.now(), run = now => { const t = Math.min(1, (now - t0) / 700); frame(1 - (1 - t) ** 3); if (t < 1) canvas.__anim = requestAnimationFrame(run); };
@@ -994,7 +1010,7 @@ routes.settings = async view => {
 
 // ---------- admin ----------
 // Owner pages: one route per section so each has its own place in the menu.
-const ADMIN_TABS = [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-money', 'Money & fees'], ['admin-business', 'Business mode'], ['admin-alpaca', 'Alpaca plans'], ['admin-yiddish', 'Yiddish Labs'], ['admin-phone', 'Phone line'], ['admin-admins', 'Admins'], ['admin-keys', 'Keys'], ['admin-support', 'Support inbox'], ['admin-system', 'System health'], ['admin-setup', 'Setup']];
+const ADMIN_TABS = [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-money', 'Money & fees'], ['admin-business', 'Business mode'], ['admin-alpaca', 'Alpaca plans'], ['admin-yiddish', 'Yiddish Labs'], ['admin-phone', 'Phone line'], ['admin-ai', 'AI & privacy'], ['admin-admins', 'Admins'], ['admin-keys', 'Keys'], ['admin-support', 'Support inbox'], ['admin-system', 'System health'], ['admin-setup', 'Setup']];
 // Pages with their own module (owner.js, protect.js) draw themselves under the same tabs.
 const adminTabs = current => `<div class="chips admintabs">${ADMIN_TABS.map(([k, t]) => `<a href="#/${k}"><button type="button" class="${k === current ? 'on' : ''}">${t}</button></a>`).join('')}</div>`;
 async function adminPage(view, tab) {

@@ -3,6 +3,8 @@
 // and answers questions. Orders still go through the normal command path, so the PIN (SMS) or the
 // spoken read-back confirmation (phone) is always required; the AI never sees or invents a PIN.
 import { jsonCall, llmEnabled } from './llm.js';
+import { mayShareAccount } from './aiaccess.js';
+import { provider } from './llm.js';
 import { accountSummary } from './brokers.js';
 
 export const aiEnabled = llmEnabled;
@@ -33,7 +35,8 @@ Never put a PIN in any field. If a trade request is unclear, use intent "answer"
 
 export async function interpret(user, text) {
   let context = '';
-  try {
+  // Account figures go to the AI only when Admin → AI & privacy allows it for this provider.
+  if (mayShareAccount(provider())) try {
     const s = await accountSummary(user.id, 'paper');
     context = `User's paper account: equity $${s.equity.toFixed(2)}, cash $${s.cash.toFixed(2)}, positions: ${s.positions.map(p => `${p.symbol} ${p.qty}`).join(', ') || 'none'}.`;
   } catch {}

@@ -131,7 +131,7 @@ let lastAlerts = 0, lastStops = 0;
 export async function runDueJobs(t = now()) {
   const n = nyTime(t), out = { orders: await runScheduledOrders(t), bots: await runBots(t) };
   if (marketOpen(t) && t - lastAlerts > 5 * 60e3) { lastAlerts = t; await runAlerts(); }
-  // Sheet strategies: automatic rebalances, trailing stops, and the after-close record for Reality Check.
+  // Library strategies: automatic rebalances, trailing stops, and the after-close record for Reality Check.
   out.strategies = await runAuto(t, claimOnce).catch(e => (console.error('strategies', e), 0));
   out.pairs = await runPairBots(t, claimOnce).catch(e => (console.error('pairs', e), 0));
   if (marketOpen(t) && t - lastStops > 5 * 60e3) { lastStops = t; await checkStops(t).catch(e => console.error('strategy stops', e)); }

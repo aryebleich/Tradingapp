@@ -99,8 +99,8 @@ INTENTS = [
   'Paste a private webhook URL into an alert from your charting platform or automation tool. When it fires, QuantPocket checks your risk rules and places the order in seconds.',
   ['Strategy and indicator alerts from any platform that sends webhooks', 'JSON, or plain text like <code>buy AAPL 10</code>', 'Every signal logged with its fill, or the reason it was blocked']),
  ('library', 'Copy a ready-made strategy', 'list', 'Seven strategies, ready to run.',
-  'Pick a rotation strategy from the library. Every day the app fills in the numbers, walks the rules step by step and tells you exactly what to buy. Run it by hand or let it trade by itself.',
-  ['Every rule, number and ticker can be changed', 'Type your own values, like in a spreadsheet', 'Backtest before you risk a dollar']),
+  'Pick a rotation strategy from the library. Every day the app fills in the numbers and walks the rules step by step to show what they hold today. Follow it by hand, or run it automatically on paper.',
+  ['Every rule, number and ticker can be changed', 'Type your own values into any box', 'Backtest before you risk a dollar']),
  ('sp500', 'Invest in the S&amp;P 500', 'up', 'The S&amp;P 500, on autopilot.',
   'Choose an amount and a day. QuantPocket buys an S&amp;P 500 fund for you every month, so every dollar is invested, and shows the range of outcomes first.',
   ['VOO, SPLG, IVV or SPY', 'Fractional shares from $1', 'Projections from real market history']),
@@ -230,7 +230,7 @@ LEARN = [
 
 FAQ_AUTO = [
  ('Can I turn my chart alerts into trades?', 'Yes. Create a webhook under <b>Alerts to trades</b>, paste its URL into the alert&rsquo;s <b>Webhook URL</b> field, and use our message template. Strategy alerts can pass the direction and size with <code>{{strategy.order.action}}</code> and <code>{{strategy.order.contracts}}</code>.'),
- ('Where do the ready-made strategies come from?', 'They are rotation strategies from a trading spreadsheet that tracks cloud backtests. We show each backtest next to its live results, and Reality Check keeps watching them for you. A great backtest is not a promise: several of them did much worse live.'),
+ ('Where do the ready-made strategies come from?', 'They are rule-based rotation strategies with recorded backtests, the same rules for everyone. We show each backtest next to its live results, and Reality Check keeps watching them for you. A great backtest is not a promise: several of them did much worse live.'),
  ('What is Reality Check?', 'Every trading day we compare a strategy&rsquo;s live result with its backtest. If they drift apart, you get a text or email, and with Auto-throttle on, the money that strategy trades is cut to 50% (Watch) or 0% (Drifting) until it recovers.'),
  ('Can I run one strategy across all my accounts?', 'Yes. Webhooks can send each alert to several accounts at once (paper, Alpaca, Schwab, tastytrade, Tradier, TradeStation), with the same risk rules.'),
  ('Can my AI agent place real trades?', 'Any program that can send an HTTPS request can use a webhook, AI agents included. It can only do what that webhook allows: its accounts, sizes and risk rules. Start on paper.'),
@@ -317,8 +317,8 @@ def index(lang='en'):
   <div>
     <span class="kicker">{T('Strategy library')}</span>
     <h2 class="sec">{T('Ready-made strategies. Every number in your hands.')}</h2>
-    <p class="sub">{T('Seven rotation strategies, built from a real trading spreadsheet. Every day QuantPocket fills in the market numbers, walks the rules step by step and tells you exactly what to buy.')}</p>
-    <ul class="checks big"><li>{T('<b>By hand:</b> see each step, type your own numbers, place the orders with one click')}</li><li>{T('<b>Automatic:</b> trades at the time you choose, on the accounts you choose')}</li><li>{T('<b>Editable:</b> change any rule, threshold or ticker, then backtest it')}</li><li>{T('<b>Honest:</b> backtest and live results side by side')}</li></ul>
+    <p class="sub">{T('Seven rule-based rotation strategies, the same published rules for everyone. Every day QuantPocket fills in the market numbers and walks the rules step by step to show what they hold today.')}</p>
+    <ul class="checks big"><li>{T('<b>By hand:</b> see each step, type your own numbers, place the orders with one click')}</li><li>{T('<b>Automatic on paper:</b> runs by itself at the time you choose; on a real account you approve the orders')}</li><li>{T('<b>Editable:</b> change any rule, threshold or ticker, then backtest it')}</li><li>{T('<b>Honest:</b> backtest and live results side by side')}</li></ul>
     <a class="btn" data-app="#/strategies" href="app">{T('Open the strategy library')} &rarr;</a>
   </div>
   <div class="libgrid2">{lib}</div>

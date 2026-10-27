@@ -1,6 +1,7 @@
 // Marketing pages: app links, live demo backtest and the contact form.
 // window.QP.api is '' when served by the app itself, or the app's URL on the GitHub Pages copy.
 import { backtest, projectAnnual, warmupFor, PRESETS, rng } from './engine.js';
+import { CHART_STATES, chartStates } from './chartstates.js';
 
 const API = (window.QP && window.QP.api) ?? '';
 const standalone = window.QP?.standalone && !API;
@@ -21,6 +22,8 @@ async function post(path, body) {
 const pct = x => (isFinite(x) ? (x > 0 ? '+' : '') + x.toFixed(1) + '%' : '-');
 const cls = x => (x > 0 ? 'pos' : x < 0 ? 'neg' : '');
 
+// Same colors and meaning as the app's equity chart (see chartstates.js).
+const YI_STATES = { high: 'נייער שפיץ', pullback: 'געווינס, אונטער זיין שפיץ', recover: 'פארלוסט, ערהוילט זיך', loss: 'פארלוסט, פאלט' };
 function draw(canvas, series, base, compare) {
   const dpr = devicePixelRatio || 1, w = canvas.clientWidth, h = canvas.clientHeight;
   canvas.width = w * dpr; canvas.height = h * dpr;
@@ -30,12 +33,17 @@ function draw(canvas, series, base, compare) {
   let lo = Math.min(...vals), hi = Math.max(...vals); if (hi === lo) hi += 1;
   const X = i => 6 + (i / (series.length - 1)) * (w - 12), Y = v => 6 + (1 - (v - lo) / (hi - lo)) * (h - 12), yb = Y(base);
   g.strokeStyle = C('--mu'); g.globalAlpha = 0.6; g.beginPath(); compare.forEach((v, i) => (i ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v)))); g.stroke(); g.globalAlpha = 1;
-  const path = () => { g.beginPath(); series.forEach((v, i) => (i ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v)))); };
-  for (const [col, y0, y1] of [[C('--gr'), 0, yb], [C('--rd'), yb, h]]) {
-    g.save(); g.beginPath(); g.rect(0, y0, w, y1 - y0); g.clip();
-    path(); g.lineTo(X(series.length - 1), yb); g.lineTo(X(0), yb); g.closePath(); g.globalAlpha = 0.14; g.fillStyle = col; g.fill(); g.globalAlpha = 1;
-    path(); g.lineWidth = 2; g.strokeStyle = col; g.stroke(); g.restore();
+  const states = chartStates(series, base), runs = [];
+  for (let i = 1; i < series.length; i++) { const r = runs[runs.length - 1]; if (r && r.st === states[i]) r.to = i; else runs.push({ st: states[i], from: i - 1, to: i }); }
+  for (const r of runs) {
+    const col = CHART_STATES[r.st].color;
+    g.beginPath(); g.moveTo(X(r.from), yb); for (let i = r.from; i <= r.to; i++) g.lineTo(X(i), Y(series[i])); g.lineTo(X(r.to), yb); g.closePath(); g.fillStyle = col + '24'; g.fill();
+    g.beginPath(); for (let i = r.from; i <= r.to; i++) (i === r.from ? g.moveTo(X(i), Y(series[i])) : g.lineTo(X(i), Y(series[i]))); g.lineWidth = 2; g.lineJoin = 'round'; g.strokeStyle = col; g.stroke();
   }
+  let el = canvas.nextElementSibling;
+  if (!el?.classList.contains('chartlegend')) { el = document.createElement('div'); el.className = 'chartlegend'; canvas.after(el); }
+  const yi = document.documentElement.lang === 'yi', used = new Set(states.slice(1));
+  el.innerHTML = Object.entries(CHART_STATES).filter(([k]) => used.has(k)).map(([k, v]) => `<span><i style="background:${v.color}"></i>${yi ? YI_STATES[k] : v.label}</span>`).join('');
 }
 
 // Offline fallback: seeded random-walk prices so the demo always works.

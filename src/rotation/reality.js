@@ -1,6 +1,6 @@
 // Reality Check: is a strategy still behaving like its backtest?
 //
-// Backtests of tree strategies are easy to over-fit (the sheet's own QC pages show 922% and 576%
+// Backtests of tree strategies are easy to over-fit (the recorded backtests show 922% and 576%
 // five-year CAGRs next to -27% and -47% in the next three months). Every trading day we record the
 // strategy's live model return, and test it against the backtest's daily return distribution:
 //   z = (live mean - backtest mean) / (backtest sd / sqrt(days))
@@ -49,7 +49,7 @@ export async function realityFor(s) {
   return { ...a, throttle: !!s.state.throttle, series: rows.slice(-120).map(r => ({ day: r.day, ret: r.ret })) };
 }
 
-// Win-rate weighted split across a user's strategies, like the sheet's PORTFOLIO_SPLIT tab:
+// Win-rate weighted split across a user's strategies, by win rate:
 // weight ∝ live win rate, each strategy kept between 10% and 70%, total 100%.
 export function winRateSplit(items, { min = 10, max = 70 } = {}) {
   if (!items.length) return [];

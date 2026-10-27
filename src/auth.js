@@ -5,7 +5,7 @@ import { one, all, run, now, audit, tx } from './db.js';
 import { hashSecret, verifySecret, randomToken, sha256, newTotpSecret, verifyTotp } from './crypto.js';
 import { sendEmail, emailEnabled, sendSms, twilioEnabled as smsEnabled } from './notify.js';
 import { PLANS } from './fees.js';
-import { OWNER_EMAILS, addedAdminEmails, isAdminPhone, normalizePhone, freshSite, siteSet } from './site.js';
+import { isOwner, addedAdminEmails, isAdminPhone, normalizePhone, freshSite, siteSet } from './site.js';
 // The last email the service refused (wrong sender, unverified domain), shown in Admin → Setup.
 const noteEmailError = msg => siteSet('emailError', { msg: String(msg).slice(0, 300), at: now() }).catch(() => {});
 
@@ -93,9 +93,10 @@ export const canonicalEmail = e => {
   return ['gmail.com', 'googlemail.com'].includes(domain) ? `${name.split('+')[0].replace(/\./g, '')}@gmail.com` : `${name}@${domain}`;
 };
 export const adminEmails = () => String(process.env.ADMIN_EMAIL || '').split(/[,;\s]+/).map(e => e.trim().toLowerCase()).filter(Boolean);
-// Admins: ADMIN_EMAIL, the owner's built-in addresses, and addresses added in Admin → Admins.
-export const allAdminEmails = () => [...new Set([...OWNER_EMAILS, ...adminEmails(), ...addedAdminEmails()].map(e => e.trim().toLowerCase()))];
-export const isAdminEmail = email => !!email && allAdminEmails().map(canonicalEmail).includes(canonicalEmail(email));
+// Admins: the owner's built-in addresses (kept only as fingerprints), ADMIN_EMAIL, and addresses
+// added in Admin → Admins.
+export const allAdminEmails = () => [...new Set([...adminEmails(), ...addedAdminEmails()].map(e => e.trim().toLowerCase()))];
+export const isAdminEmail = email => !!email && (isOwner(canonicalEmail(email)) || allAdminEmails().map(canonicalEmail).includes(canonicalEmail(email)));
 
 export const requireUser = (req, res, next) => req.user ? next() : res.status(401).json({ error: 'Not signed in' });
 export const requireAdmin = (req, res, next) => req.user?.role === 'admin' ? next() : res.status(403).json({ error: 'Admin only' });
@@ -191,10 +192,13 @@ router.post('/phone/start', async (req, res) => {
   if (!rateLimit('plogin:' + req.ip, 10, 3600e3) || !rateLimit('plogin:' + phone, 5, 3600e3)) return res.status(429).json({ error: 'Too many codes requested, try later' });
   let u = await one('SELECT id FROM users WHERE phone = ? AND phone_verified = 1', phone);
   if (!u && isAdminPhone(phone)) {
+    // The owner's account: the first admin, or an account with an admin address (made admin on its
+    // next visit), or a new one the owner adds an email to later.
     const emails = allAdminEmails();
-    // The owner's account (an admin email, made admin on its next visit if not yet), or a new one.
-    u = await one(`SELECT id FROM users WHERE email IN (${emails.map(() => '?').join(',')}) ORDER BY role = 'admin' DESC, id LIMIT 1`, ...emails)
-      || { id: await createUser({ email: OWNER_EMAILS[0], verified: true }) };
+    u = await one("SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1")
+      || (emails.length ? await one(`SELECT id FROM users WHERE email IN (${emails.map(() => '?').join(',')}) ORDER BY id LIMIT 1`, ...emails) : null)
+      || (await all('SELECT id, email FROM users ORDER BY id LIMIT 500')).find(x => isAdminEmail(x.email));
+    if (!u) { const id = await createUser({ email: `owner.${randomToken(4).toLowerCase().replace(/[^a-z0-9]/g, '')}@phone.invalid`, verified: true }); await run("UPDATE users SET role = 'admin' WHERE id = ?", id); u = { id }; }
   }
   // Same answer whether or not the number has an account, so the form cannot reveal who signed up.
   let devCode;

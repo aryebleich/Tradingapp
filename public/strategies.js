@@ -1,4 +1,4 @@
-// Strategy library (the MULTI_STRATEGIES sheet): library, today's walkdown with typed-in values,
+// Strategy library: library, today's walkdown with typed-in values,
 // orders, rule editor, backtest, Reality Check, automation settings.
 let H; // helpers from app.js
 
@@ -25,13 +25,13 @@ async function library(view) {
   const [tpls, mine, accts] = await Promise.all([H.api('/library/templates'), H.api('/library'), H.accounts()]);
   accName = a => H.acctLabel(accts.find(x => x.id === a) || { id: a, name: a });
   view.innerHTML = `
-  <div class="pagehead"><h1>Strategies</h1><p class="mu" style="margin:4px 0 0">Ready-made rotation strategies from the MULTI_STRATEGIES sheet. Run them by hand (type your own values, like the sheet's yellow cells) or let them trade automatically. Every rule and number can be changed.</p></div>
+  <div class="pagehead"><h1>Strategies</h1><p class="mu" style="margin:4px 0 0">Ready-made rotation strategies. Follow them by hand (type your own values into any box) or automate them. Every rule and number can be changed.</p></div>
   ${mine.strategies.length ? `<div class="card tablewrap"><h2>My strategies</h2><table><tr><th>Name</th><th>Runs</th><th>Account</th><th>Money</th><th>Last result</th><th>Reality Check</th><th></th></tr>
     ${mine.strategies.map(s => `<tr><td><a href="#/strategy?id=${s.id}"><b>${H.esc(s.name)}</b></a></td><td>${s.mode === 'auto' ? '<span class="pill pos">Automatic</span>' : '<span class="pill">By hand</span>'}</td><td>${accName(s.account)}</td><td>${s.allocation}%</td>
       <td class="mu" style="font-size:13px">${s.lastResult ? H.esc(s.lastResult.summary) : 'Not run yet'}</td><td>${rcPill(s.reality)}</td><td><a href="#/strategy?id=${s.id}"><button class="small ghost" type="button">Open</button></a></td></tr>`).join('')}</table>
     <p class="mu" style="font-size:12px;margin-bottom:0">${mine.strategies.length} of ${mine.limits.saved} saved · ${mine.strategies.filter(s => s.mode === 'auto').length} of ${mine.limits.auto} automatic</p></div>` : ''}
   ${mine.strategies.length > 1 ? `<div class="card"><h2>Portfolio split <span class="mu" style="font-weight:500;font-size:14px">win-rate weighted, 10%–70% each</span></h2>
-    <p class="mu" style="margin-top:0">Like the sheet's PORTFOLIO_SPLIT tab: strategies that win more often get more money. Win rates come from each strategy's live daily results.</p>
+    <p class="mu" style="margin-top:0">Strategies that win more often get more money. Win rates come from each strategy's live daily results.</p>
     <div class="funnel">${mine.split.map(x => `<div class="bar"><span>${H.esc(x.name)}</span><i style="width:${x.allocation}%"></i><b>${x.allocation}%</b></div>`).join('')}</div>
     <button class="ghost" id="applySplit" style="margin-top:12px">Use these allocations</button><div class="err"></div></div>` : ''}
   <h2 class="sec2">Library</h2>
@@ -41,7 +41,7 @@ async function library(view) {
       <p class="mu tag">${H.esc(t.tagline)} · ${REB[t.rebalance]}</p>
       <p class="about">${H.esc(t.about)}</p>
       ${t.qc ? `<div class="qc"><div><span>Backtest, 5 years</span><b class="pos">${pc(t.qc.cagr5y, 0)}/yr</b></div><div><span>Worst drop</span><b class="neg">-${t.qc.maxdd}%</b></div><div><span>Live, last 3 months</span><b class="${t.qc.oos3m < 0 ? 'neg' : 'pos'}">${pc(t.qc.oos3m)}</b></div></div>
-        <p class="mu" style="font-size:12px">${H.esc(t.qc.ref)} figures from QuantConnect as recorded in the sheet. ${t.qc.oos3m < 0 ? '<b>Live results so far are far below the backtest</b>, a common sign of over-fitting.' : ''}</p>` : '<p class="mu" style="font-size:12px">No QuantConnect figures in the sheet. Run the backtest to see how it behaved.</p>'}
+        <p class="mu" style="font-size:12px">Recorded backtest figures. ${t.qc.oos3m < 0 ? '<b>Live results so far are far below the backtest</b>, a common sign of over-fitting.' : ''}</p>` : '<p class="mu" style="font-size:12px">No recorded backtest figures. Run the backtest to see how it behaved.</p>'}
       ${t.note ? `<p class="note">${H.esc(t.note)}</p>` : ''}
       <button data-use="${t.id}">Use this strategy</button><div class="err"></div>
     </div>`).join('')}</div>
@@ -63,6 +63,7 @@ async function detail(view, q) {
   <div class="pagehead"><div><a href="#/strategies" class="mu">&larr; Strategies</a><h1 style="margin:4px 0 0">${H.esc(s.name)}</h1>
     <p class="mu" style="margin:4px 0 0">${H.esc(s.template?.tagline || '')} · ${REB[spec.rebalance] || ''}${spec.rebalance === 'weekly' ? ` (${['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'][spec.weekday]})` : ''}</p></div>
     <div class="seg" id="modeSeg"><button data-m="manual" class="${s.mode === 'manual' ? 'on' : ''}">By hand</button><button data-m="auto" class="${s.mode === 'auto' ? 'on' : ''}">Automatic</button></div></div>
+    ${s.autoRealAllowed ? '' : `<p class="banner" style="font-size:13px">${s.account !== 'paper' && s.mode === 'auto' ? '<b>Automatic trading is paused on this real account.</b> ' : ''}Ready-made strategies run automatically on the paper account. On a real account you follow them by hand: the app shows what the rules say today and you place the orders.</p>`}
   ${spec.note ? `<div class="banner">${H.esc(spec.note)}</div>` : ''}
   <div class="sgrid">
     <div>
@@ -83,7 +84,7 @@ async function detail(view, q) {
         <label>Trade at (New York time)<input name="runAt" type="time" min="09:30" max="15:55" value="${String(Math.floor(s.runAt / 60)).padStart(2, '0')}:${String(s.runAt % 60).padStart(2, '0')}"></label></div>
         <label class="chk2"><input type="checkbox" name="wholeShares" ${s.wholeShares ? 'checked' : ''}> Whole shares only</label>
         <button>Save settings</button><div class="err"></div>
-        <p class="mu" style="font-size:12px">Automatic mode trades on each rebalance day at this time, using today's prices as the close. The sheet's backtests had no stops except where noted; adding one changes the results.</p></form>
+        <p class="mu" style="font-size:12px">Automatic mode trades on each rebalance day at this time, using today's prices as the close. The recorded backtests had no stops except where noted; adding one changes the results.</p></form>
       <div class="card" id="reality"></div>
       <div class="card tablewrap"><h2>History</h2><table>${s.runs.map(r => `<tr><td class="mu" style="white-space:nowrap">${H.date(r.at)}</td><td><span class="pill ${r.kind === 'error' ? 'neg' : r.kind === 'stop' ? 'warn' : ''}">${H.esc(r.kind)}</span></td><td style="font-size:13px">${H.esc(r.summary)}</td></tr>`).join('') || '<tr><td class="mu">No runs yet.</td></tr>'}</table>
         <button class="small ghost danger-t" id="del" type="button" style="margin-top:10px">Delete strategy</button><div class="err"></div></div>
@@ -96,7 +97,7 @@ async function detail(view, q) {
     try { last = await H.api(`/library/${id}/walkdown`, { body: { overrides, ...(draft ? { spec } : {}) } }); }
     catch (e) { w.innerHTML = `<h2>Today's walkdown</h2><div class="err">${H.esc(e.message)}</div>`; return; }
     w.innerHTML = `<h2>Today's walkdown <span class="mu" style="font-weight:500;font-size:13px">${last.day}${last.rebalanceDay ? '' : ' · not a rebalance day'}${draft ? ' · preview of unsaved rules' : ''}</span></h2>
-      <p class="mu" style="margin-top:0;font-size:13px">Values fill in from market data${last.source?.length ? ` (${H.esc(last.source.join(', '))})` : ''}. ${spec.kind === 'tree' ? 'Type your own number in any value box to override it, like the sheet\'s yellow cells.' : ''}</p>
+      <p class="mu" style="margin-top:0;font-size:13px">Values fill in from market data${last.source?.length ? ` (${H.esc(last.source.join(', '))})` : ''}. ${spec.kind === 'tree' ? 'Type your own number in any value box to override it.' : ''}</p>
       ${walkHtml(last)}
       ${Object.keys(last.failed || {}).length ? `<p class="err" style="font-size:13px">No data for: ${H.esc(Object.keys(last.failed).join(', '))}</p>` : ''}
       ${Object.keys(overrides).length ? '<button class="small ghost" id="clearOv" type="button">Clear typed values</button>' : ''}`;
@@ -113,7 +114,7 @@ async function detail(view, q) {
       <div class="tablewrap"><table><tr><th>Ticker</th><th>Weight</th><th>Target $</th><th>Price</th><th>Target shares</th><th>Held</th><th>Order</th><th>Stop</th></tr>
       ${last.orders.map(x => `<tr><td><b>${H.esc(x.ticker)}</b></td><td>${(x.weight * 100).toFixed(1)}%</td><td>${H.money(x.dollars)}</td><td>${f2(x.price)}</td><td>${x.shares}</td><td>${x.have}</td>
         <td><span class="pill ${x.action === 'BUY' ? 'pos' : x.action === 'SELL' ? 'neg' : ''}">${x.action}${x.delta ? ' ' + Math.abs(x.delta) : ''}</span></td><td class="mu">${last.stops[x.ticker] ? `${last.stops[x.ticker].stopPct}%` : '-'}</td></tr>`).join('') || '<tr><td colspan="8" class="mu">No position today: stay in cash.</td></tr>'}</table></div>
-      <p class="mu" style="font-size:12px">Stop column: suggested trailing stop ≈ 3.5 × the ticker's daily volatility (6%–35%), as in the sheet's STOP_LOSS tab.</p>
+      <p class="mu" style="font-size:12px">Stop column: suggested trailing stop ≈ 3.5 × the ticker's daily volatility (6%–35%).</p>
       <button id="exec" ${act.length && !c.error ? '' : 'disabled'}>Place ${act.length} order${act.length === 1 ? '' : 's'} now</button><div class="err"></div>`;
     H.act(H.$('#exec', o), async () => {
       if (!confirm(`Place ${act.length} order(s) in your ${accName(s.account)}?${s.account !== 'paper' ? ' These are real orders.' : ''}`)) return '';
@@ -126,7 +127,7 @@ async function detail(view, q) {
     if (spec.kind === 'tree') return w.sleeves.map(sl => `
       ${spec.sleeves.length > 1 ? `<h3 class="sleeve">${H.esc(sl.name)} <span class="mu">${Math.round(sl.weight * 100)}%</span></h3>` : ''}
       <div class="tablewrap"><table class="walk"><tr><th>#</th><th>Signal</th><th>Value</th><th>2nd value</th><th>Decision</th></tr>
-      ${sl.path.map(p => `<tr class="${p.rebuilt ? 'rebuilt' : ''}"><td><b>${H.esc(p.id)}</b></td><td>${H.esc(p.label)}${p.rebuilt ? ' <span class="pill warn" title="Not spelled out in the sheet export">check</span>' : ''}<div class="mu" style="font-size:12px">${H.esc(p.rule || '')}</div></td>
+      ${sl.path.map(p => `<tr class="${p.rebuilt ? 'rebuilt' : ''}"><td><b>${H.esc(p.id)}</b></td><td>${H.esc(p.label)}${p.rebuilt ? ' <span class="pill warn" title="Not spelled out in the original rules">check</span>' : ''}<div class="mu" style="font-size:12px">${H.esc(p.rule || '')}</div></td>
         <td>${valBox(p, 'a')}</td><td>${valBox(p, 'b')}</td><td class="${p.next?.startsWith('@') ? 'pos' : ''}">${H.esc(p.decision)}</td></tr>
         ${p.votes ? p.votes.map(v => `<tr class="sub"><td></td><td class="mu" style="font-size:13px">${H.esc(v.label)}</td><td>${f2(v.va)}</td><td>${f2(v.vb)}</td><td>${v.ok ? '✅ 1 vote' : '❌ 0 votes'}</td></tr>`).join('') : ''}`).join('')}
       </table></div>

@@ -29,8 +29,10 @@ jobs:
         run: |
           mkdir -p _site
           cd public
-          cp index.html yi.html terms.html privacy.html risk.html contact.html 404.html site.css site.js favicon.svg icon-512.png og.png hero-app.webp manifest.webmanifest ../_site/
+          cp index.html yi.html terms.html privacy.html risk.html contact.html 404.html site.css site.js favicon.svg icon-512.png og.png hero-app.webp manifest.webmanifest chartstates.js ../_site/
           cp ../src/engine.js ../_site/engine.js
+          # The same robots.txt as the app's defaults: AI crawlers blocked, search engines allowed.
+          node -e "import('../src/crawlers.js').then(m => process.stdout.write(m.robotsTxt()))" > ../_site/robots.txt
           cd ../_site
           APP="${APP_URL%/}"
           echo "window.QP = { api: '${APP}', standalone: true };" > config.js

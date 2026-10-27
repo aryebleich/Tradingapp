@@ -63,6 +63,7 @@ import { router as strategiesRouter } from './src/rotation/routes.js';
 import { router as pairsRouter } from './src/pairs.js';
 import { statArbRouter } from './src/statarb.js';
 import { registerHotline } from './src/hotline.js';
+import * as AIX from './src/aiaccess.js';
 import { router as sp500Router } from './src/sp500.js';
 import { router as extRouter, oauthCallback as extOauthCallback, accountsFor } from './src/ext/routes.js';
 
@@ -128,7 +129,10 @@ app.post('/internal/tick', async (req, res) => {
   res.json(out);
 });
 
-app.get('/robots.txt', (req, res) => res.type('text/plain').send(`User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /app\nSitemap: ${PUBLIC_URL}/sitemap.xml\n`));
+// What crawlers and AI tools may read (Admin → AI & privacy): AI crawlers blocked unless allowed.
+app.get('/robots.txt', (req, res) => res.type('text/plain').send(AIX.robotsTxt() + `Sitemap: ${PUBLIC_URL}/sitemap.xml\n`));
+app.get('/llms.txt', (req, res) => { const t = AIX.llmsTxt(); return t ? res.type('text/plain').send(t) : res.status(404).type('text/plain').send('Not published.'); });
+app.use((req, res, next) => { const x = AIX.xRobots(); if (x) res.setHeader('X-Robots-Tag', x); next(); });
 app.get('/sitemap.xml', (req, res) => res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/', '/yi', '/pricing', '/terms', '/privacy', '/risk', '/contact'].map(u => `<url><loc>${PUBLIC_URL}${u}</loc></url>`).join('')}</urlset>`));
 // The browser demo on the landing page reuses the exact engine the server runs.
 app.get('/config.js', (req, res) => res.type('text/javascript').send('window.QP = { api: "" };'));
