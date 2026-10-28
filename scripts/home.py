@@ -173,13 +173,13 @@ FEATURES = [
 
 PLANS = [
  ('Starter', 'Learn and practice', '$0', None, '/forever', None, '+ 20% of new profits',
-  ['$100,000 paper account', 'Live trading on your own brokerage (your own orders)', '1 chart per layout, every indicator', 'Strategy library by hand + 1 automatic strategy on paper', 'Unlimited backtests', '1 alert webhook (paper)', '2 scanners, checked hourly', 'AI assistant: 30 messages a day'], 'Start free', False),
+  ['$100,000 paper account', 'Live trading on your own brokerage (your own orders)', '1 chart per layout, every indicator', 'Strategy library by hand + 1 automatic strategy on paper', 'Unlimited backtests', '1 alert webhook (paper)', '2 scanners, checked hourly', 'AI assistant: 30 messages a day', '100 credits every month'], 'Start free', False),
  ('Pro', 'Automate your real accounts', '$53', '$530', '/month', '/year', '+ 10% of new profits',
-  ['Everything in Starter', 'Automated trading on Alpaca, Schwab, tastytrade, Tradier &amp; TradeStation', '2-chart layouts', '5 automatic strategies with Reality Check auto-throttle', '10 alert webhooks', 'Scanners every 5 minutes, portfolios &amp; signal mirroring', 'AI assistant: 300 messages a day', 'Optimizer, walk-forward testing &amp; code lab', 'Trading and alerts by text and phone, QuantConnect and bank-card linking'], 'Start 14-day free trial', True),
+  ['Everything in Starter', 'Automated trading on Alpaca, Schwab, tastytrade, Tradier &amp; TradeStation', '2-chart layouts', '5 automatic strategies with Reality Check auto-throttle', '10 alert webhooks', 'Scanners every 5 minutes, portfolios &amp; signal mirroring', 'AI assistant: 300 messages a day', 'Optimizer, walk-forward testing &amp; code lab', 'Trading and alerts by text and phone, QuantConnect and bank-card linking', '1,000 credits every month'], 'Start 14-day free trial', True),
  ('Elite', 'For active traders', '$109', '$1,090', '/month', '/year', '+ 5% of new profits',
-  ['Everything in Pro', '4-chart layouts and pop-out windows', '25 automatic strategies &amp; 25 webhooks', 'Option income bots &amp; multi-leg orders', 'Market-neutral pairs (long + short)', 'Tax-loss harvesting &amp; Schedule D', 'AI assistant: 1,000 messages a day'], 'Start 14-day free trial', False),
+  ['Everything in Pro', '4-chart layouts and pop-out windows', '25 automatic strategies &amp; 25 webhooks', 'Option income bots &amp; multi-leg orders', 'Market-neutral pairs (long + short)', 'Tax-loss harvesting &amp; Schedule D', 'AI assistant: 1,000 messages a day', '3,000 credits every month'], 'Start 14-day free trial', False),
  ('Ultimate', 'For serious capital', '$320', '$3,200', '/month', '/year', '+ 2.5% of new profits',
-  ['Everything in Elite', '100 automatic strategies &amp; 100 webhooks', 'Unlimited scanners and AI agents', 'AI assistant: 3,000 messages a day', 'Priority support'], 'Start 14-day free trial', False),
+  ['Everything in Elite', '100 automatic strategies &amp; 100 webhooks', 'Unlimited scanners and AI agents', 'AI assistant: 3,000 messages a day', '10,000 credits every month', 'Priority support'], 'Start 14-day free trial', False),
 ]
 
 # Why it is different: (kind of tool, what it usually leaves out, what QuantPocket adds)
@@ -209,6 +209,7 @@ MATRIX = [
  ('Charts per layout', '1', '2', '4', '4'),
  ('Scanners', '2, hourly', 'Every 5 minutes', 'Every 5 minutes', 'Unlimited'),
  ('AI assistant messages a day', '30', '300', '1,000', '3,000'),
+ ('Credits every month', '100', '1,000', '3,000', '10,000'),
  ('Automation on real accounts', False, True, True, True),
  ('Reality Check auto-throttle', False, True, True, True),
  ('Trading and alerts by text and phone', False, True, True, True),
@@ -248,6 +249,7 @@ FAQ_ACCOUNT = [
  ('Which brokerages can I connect?', 'Alpaca (you can also open a new account inside QuantPocket), Charles Schwab, tastytrade, Tradier and TradeStation. Your money always stays at your broker.'),
  ('Can I sign up with Google?', 'Yes. Choose <b>Sign up with Google</b> and your account is ready in seconds. You can add a password later in Settings.'),
  ('Can I trade with real money on the free plan?', 'Yes. Connect your own brokerage account and place your own orders on any plan, including Starter. Automatic strategies, bots and webhooks on real accounts are part of the paid plans.'),
+ ('What are credits?', 'Every plan includes credits each month (100 on Starter up to 10,000 on Ultimate). An extra AI message or a text alert costs 1 credit, a phone call 3, a filing summary 5 and training an AI agent 10. Monthly credits refill on the 1st of the month; credit packs you buy (from $5) never expire.'),
  ('How does the free trial work?', 'Every paid plan starts with 14 days free. Cancel before the trial ends and you are not charged. The free Starter plan has no time limit.'),
  ('How does the performance fee work?', 'Each month we compare your account to its previous peak, adjusted for deposits and withdrawals. You pay the plan&rsquo;s percentage only on value above that peak. Losses must be recovered before any new fee is charged.'),
  ('Is texting trades secure?', 'Commands only work from the phone number you verified, every order needs your personal PIN, and phone calls read the order back before it is placed.'),
@@ -378,20 +380,7 @@ def index(lang='en'):
   </form>
 </div></section>
 
-<section id="pairs"><div class="wrap split rev">
-  <div>
-    <span class="kicker">{T('Advanced')}</span>
-    <h2 class="sec">{T('Pairs trading, done properly.')}</h2>
-    <p class="sub">{T('Two stocks that usually move together, like Coca-Cola and Pepsi. When the gap between them stretches far from normal, sell the expensive one and buy the cheap one, then close when the gap returns.')}</p>
-    <ul class="checks big"><li>{T('Hedge ratio, cointegration test and half-life')}</li><li>{T('Walk-forward backtest: market-neutral or long-only')}</li><li>{T('Scanner for 20 classic pairs and bots that trade every day')}</li></ul>
-    <a class="btn" data-app="#/pairs" href="app">{T('Analyze a pair')} &rarr;</a>
-  </div>
-  <div class="zbox" dir="ltr" aria-hidden="true"><svg viewBox="0 0 400 200" preserveAspectRatio="none"><line x1="0" y1="40" x2="400" y2="40" class="ent"/><line x1="0" y1="160" x2="400" y2="160" class="ent"/><line x1="0" y1="85" x2="400" y2="85" class="ex"/><line x1="0" y1="115" x2="400" y2="115" class="ex"/><line x1="0" y1="100" x2="400" y2="100" class="mid"/>
-    <polyline class="z" points="0,110 20,95 40,80 60,62 80,45 95,34 110,48 130,70 150,92 170,104 190,120 210,138 230,152 245,168 260,150 280,128 300,110 320,96 340,88 360,100 380,108 400,102"/><circle cx="95" cy="34" r="6" class="dot s"/><circle cx="150" cy="92" r="6" class="dot c"/><circle cx="245" cy="168" r="6" class="dot b"/><circle cx="300" cy="110" r="6" class="dot c"/></svg>
-    <div class="zleg"><span><i class="s"></i>{T('Gap wide: sell A, buy B')}</span><span><i class="b"></i>{T('Gap wide: buy A, sell B')}</span><span><i class="c"></i>{T('Gap normal: close')}</span></div></div>
-</div></section>
-
-<section class="alt" id="assistant"><div class="wrap split">
+<section id="assistant"><div class="wrap split">
   <div>
     <span class="kicker">{T('AI assistant')}</span>
     <h2 class="sec">{T('Your account, by text or phone call.')}</h2>
@@ -407,17 +396,6 @@ def index(lang='en'):
     <div class="b me">DCA $200 SPY MONTHLY ••••</div>
     <div class="b">{T('Scheduled #12: buy $200 SPY monthly.')}</div>
     <small>{T('Example conversation')}</small>
-  </div>
-</div></section>
-
-<section id="who"><div class="wrap">
-  <h2 class="sec">{T('Who is QuantPocket for?')}</h2>
-  <p class="sub">{T('Whatever your style, QuantPocket automates the parts you don&rsquo;t want to do by hand. Pick the profile that fits you best.')}</p>
-  <div class="usecases" data-tabs>
-    <div class="uctabs" role="tablist" aria-label="{T('Trader profiles')}">{uc_tabs}</div>
-    <div class="ucbody">{uc_panels}
-      <div class="ucnav"><button type="button" data-step="-1" aria-label="{T('Previous profile')}">&larr;</button><span data-count dir="ltr">1 / {len(USECASES)}</span><button type="button" data-step="1" aria-label="{T('Next profile')}">&rarr;</button></div>
-    </div>
   </div>
 </div></section>
 
@@ -460,16 +438,15 @@ def index(lang='en'):
   <details class="matrix"><summary>{T('Compare all plans')}</summary>
     <div class="mxwrap"><table><thead><tr><th scope="col">{T('Feature')}</th>{''.join(f'<th scope="col">{T(p[0])}</th>' for p in PLANS)}</tr></thead><tbody>{matrix}</tbody></table></div>
   </details>
+  <div class="credits">
+    <div><span class="kicker">{T('Credits')}</span><h3>{T('Every plan comes with monthly credits.')}</h3>
+      <p>{T('Credits pay for the extras that cost us to run: AI messages beyond your daily allowance, text alerts, phone calls, AI summaries of company filings, AI agent training and optimizer runs. Monthly credits refill on the 1st; packs you buy never expire.')}</p></div>
+    <ul class="cpacks" dir="ltr"><li><b>500</b><span>{T('credits')}</span><em>$5</em></li><li class="hi"><b>3,000</b><span>{T('credits')}</span><em>$25</em></li><li><b>12,000</b><span>{T('credits')}</span><em>$80</em></li></ul>
+  </div>
   <p class="fine">{T('Secure checkout by Stripe. Cancel anytime. Trading involves risk; see the')} <a href="risk.html">{T('Risk Disclosure')}</a>.</p>
 </div></section>
 
-<section id="learn"><div class="wrap">
-  <h2 class="sec center">{T('Learn the basics')}</h2>
-  <p class="sub center">{T('Short, plain answers to the things every new trader asks.')}</p>
-  <div class="learns">{learn}</div>
-</div></section>
-
-<section class="alt" id="faq"><div class="wrap faq" style="max-width:860px">
+<section id="faq"><div class="wrap faq" style="max-width:860px">
   <h2 class="sec center">{T('Popular questions')}</h2>
   <div data-tabs>
     <div class="toggle" role="tablist" aria-label="{T('Question topics')}">{tab('fa', T('Automation'), True)}{tab('fb', T('Account &amp; pricing'), False)}</div>

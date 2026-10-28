@@ -471,6 +471,19 @@ YI.update({
  "<b>Automatic on paper:</b> runs by itself at the time you choose; on a real account you approve the orders": "<b>אויטאמאטיש אויף פּעיפּער:</b> לויפט אליין צו דער צייט וואס איר קלייבט; אויף אן עכטע קאנטע באשטעטיגט איר די ארדערס",
  "They are rule-based rotation strategies with recorded backtests, the same rules for everyone. We show each backtest next to its live results, and Reality Check keeps watching them for you. A great backtest is not a promise: several of them did much worse live.": "דאס זענען ראטאציע סטראטעגיעס מיט קלארע כללים און פארשריבענע באקטעסטס, די זעלבע כללים פאר יעדן. מיר ווייזן יעדן באקטעסט נעבן די לייוו רעזולטאטן, און Reality Check היט זיי אפ פאר אייך. א שיינער באקטעסט איז נישט קיין הבטחה: עטלעכע פון זיי האבן לייוו געארבעט פיל ערגער.",
 })
+YI.update({
+ "100 credits every month": "100 קרעדיטס יעדן חודש",
+ "1,000 credits every month": "1,000 קרעדיטס יעדן חודש",
+ "3,000 credits every month": "3,000 קרעדיטס יעדן חודש",
+ "10,000 credits every month": "10,000 קרעדיטס יעדן חודש",
+ "Credits": "קרעדיטס",
+ "credits": "קרעדיטס",
+ "Credits every month": "קרעדיטס יעדן חודש",
+ "Every plan comes with monthly credits.": "יעדער פלאן קומט מיט חודשליכע קרעדיטס.",
+ "Credits pay for the extras that cost us to run: AI messages beyond your daily allowance, text alerts, phone calls, AI summaries of company filings, AI agent training and optimizer runs. Monthly credits refill on the 1st; packs you buy never expire.": "קרעדיטס צאלן פאר די עקסטראס וואס קאסטן אונז געלט: AI מעסעדזשעס איבער אייער טאגליכן לימיט, טעקסט אלערטס, טעלעפאן רופן, AI סיכומים פון פירמע באריכטן, טרענירן AI אגענטן און אפטימייזער לויפן. חודשליכע קרעדיטס ווערן אנגעפילט דעם 1טן; פעקלעך וואס איר קויפט גייען קיינמאל נישט אויס.",
+ "What are credits?": "וואס זענען קרעדיטס?",
+ "Every plan includes credits each month (100 on Starter up to 10,000 on Ultimate). An extra AI message or a text alert costs 1 credit, a phone call 3, a filing summary 5 and training an AI agent 10. Monthly credits refill on the 1st of the month; credit packs you buy (from $5) never expire.": "יעדער פלאן נעמט אריין קרעדיטס יעדן חודש (100 אויף Starter ביז 10,000 אויף Ultimate). אן עקסטרא AI מעסעדזש אדער א טעקסט אלערט קאסט 1 קרעדיט, א טעלעפאן רוף 3, א באריכט סיכום 5 און טרענירן אן AI אגענט 10. חודשליכע קרעדיטס ווערן אנגעפילט דעם 1טן פונעם חודש; קרעדיט פעקלעך וואס איר קויפט (פון $5) גייען קיינמאל נישט אויס.",
+})
 # Translations made with Yiddish Labs (npm run yiddish:import) take precedence.
 import json as _json, os as _os
 _labs = _os.path.join(_os.path.dirname(__file__), 'yi_labs.json')

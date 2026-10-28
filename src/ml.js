@@ -3,6 +3,7 @@
 // the first 70% of history, scored on the last 30% it never saw), then refitted on everything to
 // forecast today. An agent is a saved model plus trading settings; deployed agents trade daily.
 import express from 'express';
+import { spend } from './credits.js';
 import { one, all, run, now, audit } from './db.js';
 import { requireUser, rateLimit } from './auth.js';
 import { getBars, accountSummary, placeOrder } from './brokers.js';
@@ -163,6 +164,7 @@ export const mlRouter = (() => {
     const n = (await one('SELECT COUNT(*) n FROM agents WHERE user_id = ?', req.user.id)).n;
     if (n >= (isPaid(req.user) ? 50 : 3)) throw Object.assign(bad(isPaid(req.user) ? 'Agent limit reached' : 'The free plan has 3 AI agents'), { upgrade: !isPaid(req.user), feature: 'More AI agents', status: 402 });
     const symbol = String(req.body.symbol || '').trim().toUpperCase(), cfg = cleanCfg(req.body);
+    await spend(req.user, 'agent', { memo: symbol.slice(0, 10) });
     const r0 = await forecastSymbol(req.user.id, symbol, cfg); // trains and validates before saving
     const id = (await run('INSERT INTO agents (user_id, name, symbol, config, model, metrics, account, size, trained_at, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)',
       req.user.id, String(req.body.name || `${symbol} ${cfg.horizon}-day agent`).slice(0, 60), symbol, JSON.stringify(cfg), JSON.stringify(r0.model), JSON.stringify({ ...r0.metrics, forecast: r0.forecast }), String(req.body.account || 'paper'), Math.max(1, Math.min(100, +req.body.size || 25)), now(), now())).lastInsertRowid;

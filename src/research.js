@@ -2,6 +2,7 @@
 // (the assistant reads the key sections and summarizes them) and a stress test of the user's
 // portfolio under market shocks and past crashes, scaled by each holding's beta to the S&P 500.
 import { get, secData, secWww, secCached } from './institutions.js';
+import { spend } from './credits.js';
 import { getBars, accountSummary } from './brokers.js';
 
 const yearsAgo = n => new Date(Date.now() - n * 365 * 864e5).toISOString().slice(0, 10);
@@ -59,7 +60,7 @@ export async function stressTest(userId, account = 'paper') {
 
 export const researchTools = user => ({
   sec_filing: { description: "Key sections (business, risk factors, MD&A) of a company's latest 10-K or 10-Q from SEC EDGAR, to summarize for the user. Quote the filing date.", schema: { symbol: { type: 'string' }, form: { type: 'string', enum: ['10-K', '10-Q'] } }, required: ['symbol'],
-    run: ({ symbol, form }) => filing(symbol, form === '10-Q' ? '10-Q' : '10-K') },
+    run: async ({ symbol, form }) => { await spend(user, 'filing', { memo: String(symbol).toUpperCase().slice(0, 10) }); return filing(symbol, form === '10-Q' ? '10-Q' : '10-K'); } },
   portfolio_stress_test: { description: "Stress-test the user's portfolio: estimated losses in market drops and past crashes, from each holding's beta.", schema: { account: { type: 'string' } }, required: [],
     run: ({ account }) => stressTest(user.id, account || 'paper') },
 });

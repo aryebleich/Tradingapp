@@ -4,6 +4,7 @@
 // for fundamentals) and drafts strategies in the rule language; the user saves, backtests or
 // deploys a draft with a button. The assistant never places orders itself.
 import express from 'express';
+import { trySpend } from './credits.js';
 import { mayShareAccount } from './aiaccess.js';
 import { provider } from './llm.js';
 import { llmEnabled, llmInfo, toolChat } from './llm.js';
@@ -92,7 +93,8 @@ export function chatRouter({ extraTools } = {}) {
   r.get('/status', (req, res) => res.json({ ai: chatEnabled(), model: llmInfo() }));
   r.post('/chat', async (req, res) => {
     const limit = req.user.role === 'admin' && !req.user.previewPlan ? AI_LIMITS.ultimate : isPaid(req.user) ? AI_LIMITS[req.user.plan] || AI_LIMITS.pro : AI_LIMITS.free;
-    if (!rateLimit('chat:' + req.user.id, limit, 86400e3)) throw Object.assign(new Error(`Daily AI limit reached (${limit} messages)`), { status: 429, upgrade: !isPaid(req.user), feature: 'More AI messages' });
+    // Beyond the plan's daily messages, each message costs a credit (Plans & billing → Credits).
+    if (!rateLimit('chat:' + req.user.id, limit, 86400e3) && !(await trySpend(req.user, 'ai', { memo: 'over the daily allowance' }))) throw Object.assign(new Error(`Daily AI limit reached (${limit} messages) and no credits left. Buy a credit pack under Plans & billing.`), { status: 402, upgrade: true, credits: true, feature: 'More AI messages' });
     const history = (Array.isArray(req.body?.messages) ? req.body.messages : []).filter(m => m && m.content).slice(-20);
     if (!history.length || history.at(-1).role === 'assistant') throw Object.assign(new Error('Send a message'), { status: 400 });
     const extra = typeof extraTools === 'function' ? extraTools(req.user) : undefined;

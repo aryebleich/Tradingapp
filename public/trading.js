@@ -805,23 +805,61 @@ async function watchlists(view, q) {
 // Calendar & events: clock, trading days, corporate actions
 // =====================================================================
 async function calendar(view, q) {
-  const s = await needConnection(view, 'Calendar & events');
-  if (!s) return;
+  const ym = /^\d{4}-\d{2}$/.test(q.get('m') || '') ? q.get('m') : new Date().toISOString().slice(0, 7);
   const sym = (q.get('symbol') || '').toUpperCase();
-  const [clock, days, ann] = await Promise.all([A('/clock'), A('/calendar'), A('/announcements' + (sym ? '?symbol=' + encodeURIComponent(sym) : '')).catch(e => ({ error: e.message }))]);
+  const mon = await H.api('/events/month?ym=' + ym).catch(e => ({ error: e.message, ipos: [], earnings: [], actions: [] }));
+  const conn = await A('/status').then(s => !!(s.active && !(s.active.type === 'broker' && s.broker.account?.status !== 'ACTIVE'))).catch(() => false);
+  const [clock, days, ann] = conn ? await Promise.all([A('/clock').catch(() => null), A('/calendar').catch(() => []), A('/announcements' + (sym ? '?symbol=' + encodeURIComponent(sym) : '')).catch(e => ({ error: e.message }))]) : [null, [], null];
+  const shift = k => { const d = new Date(Date.UTC(+ym.slice(0, 4), +ym.slice(5, 7) - 1 + k, 1)); return d.toISOString().slice(0, 7); };
+  const held = new Set(mon.held || []);
+  // Everything on each day of the month.
+  const byDay = {};
+  const add = (d, e) => { (byDay[d] ||= []).push(e); };
+  (mon.earnings || []).forEach(e => add(e.date, { k: held.has(e.symbol) ? 'earn held' : 'earn', t: e.symbol, d: `${e.symbol} earnings${e.when ? ' ' + e.when : ''}${e.epsEstimate != null ? ` · EPS est. $${(+e.epsEstimate).toFixed(2)}` : ''}`, link: e.symbol }));
+  (mon.ipos || []).forEach(i => add(i.date, { k: 'ipo', t: i.symbol || i.name, d: `IPO: ${i.name}${i.symbol ? ` (${i.symbol})` : ''}${i.exchange ? ' on ' + i.exchange : ''}${i.price ? ' · $' + i.price : ''}${i.status ? ' · ' + i.status : ''}`, link: i.symbol }));
+  (mon.actions || []).forEach(a => add(a.date, { k: a.type === 'dividend' || /div/i.test(a.type) ? 'div' : 'split', t: a.symbol, d: `${a.symbol} ${a.type}${a.detail ? ' ' + a.detail : ''} (ex-date)`, link: a.symbol }));
+  const open = mon.tradingDays ? new Map(mon.tradingDays.map(d => [d.date, d])) : null;
+  const first = new Date(ym + '-01T12:00:00Z'), lead = first.getUTCDay(), last = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
+  const today = new Date().toISOString().slice(0, 10);
+  const cells = [];
+  for (let i = 0; i < lead; i++) cells.push('<div class="cal-d out"></div>');
+  for (let d = 1; d <= last; d++) {
+    const ds = `${ym}-${String(d).padStart(2, '0')}`, wd = (lead + d - 1) % 7, ev = byDay[ds] || [];
+    const tday = open && open.get(ds), closed = open && wd > 0 && wd < 6 && !tday, early = tday && tday.close < '16:00';
+    cells.push(`<button type="button" class="cal-d${wd === 0 || wd === 6 ? ' wkend' : ''}${ds === today ? ' today' : ''}${closed ? ' closed' : ''}" data-day="${ds}"><span class="n">${d}</span>
+      ${closed ? '<span class="tag hol">Closed</span>' : early ? '<span class="tag early">Early close</span>' : ''}
+      ${ev.slice(0, 3).map(e => `<span class="ev ${e.k}" data-no-tr>${H.esc(e.t)}</span>`).join('')}${ev.length > 3 ? `<span class="more">+${ev.length - 3}</span>` : ''}</button>`);
+  }
+  const title = new Date(ym + '-15T12:00:00Z').toLocaleDateString([], { month: 'long', year: 'numeric', timeZone: 'UTC' });
   const early = d => d.close && d.close < '16:00';
-  view.innerHTML = `<h1>Calendar & events</h1>
-  <div class="card"><div class="stats"><div class="stat"><span>Market</span><b class="${clock.is_open ? 'pos' : ''}">${clock.is_open ? 'Open' : 'Closed'}</b></div>
+  view.innerHTML = `<div class="pagehead"><div><h1>📅 Calendar & events</h1><p class="mu" style="margin:4px 0 0">Earnings, IPOs, dividends, splits and market holidays for the month.</p></div></div>
+  <div class="card">
+    <div class="row cal-head"><a href="#/calendar?m=${shift(-1)}"><button type="button" class="ghost small" aria-label="Previous month">‹</button></a><h2 style="margin:0;min-width:180px;text-align:center">${H.esc(title)}</h2><a href="#/calendar?m=${shift(1)}"><button type="button" class="ghost small" aria-label="Next month">›</button></a>
+      ${ym !== today.slice(0, 7) ? `<a href="#/calendar"><button type="button" class="ghost small">Today</button></a>` : ''}</div>
+    <div class="cal-legend"><span><i class="ev earn held"></i>Earnings (you own it)</span><span><i class="ev earn"></i>Earnings</span><span><i class="ev ipo"></i>IPO</span><span><i class="ev div"></i>Dividend</span><span><i class="ev split"></i>Split or other action</span></div>
+    ${mon.enabled === false ? '<p class="banner">Earnings dates and IPOs appear once the owner adds a market-events key (Admin → Keys → FINNHUB_API_KEY).</p>' : mon.error ? `<p class="err">${H.esc(mon.error)}</p>` : ''}
+    <div class="cal" dir="ltr">${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => `<div class="cal-w">${d}</div>`).join('')}${cells.join('')}</div>
+    <div id="calDay"></div>
+    ${!conn ? '<p class="mu" style="font-size:12.5px">Connect an Alpaca account to add market holidays, early closes, dividends and splits.</p>' : ''}</div>
+  ${conn && clock ? `<div class="card"><div class="stats"><div class="stat"><span>Market</span><b class="${clock.is_open ? 'pos' : ''}">${clock.is_open ? 'Open' : 'Closed'}</b></div>
     <div class="stat"><span>Next open</span><b style="font-size:15px">${new Date(clock.next_open).toLocaleString()}</b></div><div class="stat"><span>Next close</span><b style="font-size:15px">${new Date(clock.next_close).toLocaleString()}</b></div></div></div>
   <div class="grid">
     <div class="card tablewrap"><h2>Trading days (next 30 days)</h2><table><tr><th>Date</th><th>Open</th><th>Close</th><th></th></tr>
       ${days.map(d => `<tr><td>${new Date(d.date + 'T12:00:00').toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}</td><td>${H.esc(d.open)}</td><td>${H.esc(d.close)}</td><td>${early(d) ? '<span class="pill warn">Early close</span>' : ''}</td></tr>`).join('')}</table>
       <p class="mu" style="font-size:12px">Days not listed are market holidays or weekends. Times are New York time.</p></div>
     <div class="card tablewrap"><div class="row" style="justify-content:space-between"><h2>Corporate actions</h2><form id="cf" class="row"><input name="symbol" value="${H.esc(sym)}" placeholder="Symbol" style="max-width:110px"><button class="small">Filter</button></form></div>
-      ${ann.error ? `<p class="err">${H.esc(ann.error)}</p>` : `<table><tr><th>Symbol</th><th>Type</th><th>Ex-date</th><th>Payable</th><th>Details</th></tr>
-      ${ann.map(a => `<tr><td><a href="#/trade?symbol=${encodeURIComponent(a.initiating_symbol || a.target_symbol || '')}">${H.esc(a.initiating_symbol || a.target_symbol || '')}</a></td><td>${H.esc(a.ca_type)}${a.ca_sub_type ? ' · ' + H.esc(a.ca_sub_type) : ''}</td><td>${H.esc(a.ex_date || '-')}</td><td>${H.esc(a.payable_date || '-')}</td>
+      ${ann?.error ? `<p class="err">${H.esc(ann.error)}</p>` : `<table><tr><th>Symbol</th><th>Type</th><th>Ex-date</th><th>Payable</th><th>Details</th></tr>
+      ${(ann || []).map(a => `<tr><td><a href="#/trade?symbol=${encodeURIComponent(a.initiating_symbol || a.target_symbol || '')}">${H.esc(a.initiating_symbol || a.target_symbol || '')}</a></td><td>${H.esc(a.ca_type)}${a.ca_sub_type ? ' · ' + H.esc(a.ca_sub_type) : ''}</td><td>${H.esc(a.ex_date || '-')}</td><td>${H.esc(a.payable_date || '-')}</td>
         <td>${a.cash ? '$' + H.esc(a.cash) + '/sh' : a.new_rate && a.old_rate ? H.esc(a.new_rate) + ':' + H.esc(a.old_rate) : ''}</td></tr>`).join('') || '<tr><td colspan="5" class="mu">No announcements in this window.</td></tr>'}</table>`}
       <p class="mu" style="font-size:12px">Dividends, splits, mergers and spinoffs announced from 30 days ago to 60 days ahead.</p></div>
-  </div>`;
-  H.$('#cf', view).onsubmit = e => { e.preventDefault(); location.hash = '#/calendar?symbol=' + encodeURIComponent(H.form(e.target).symbol.trim()); };
+  </div>` : ''}`;
+  const showDay = ds => {
+    const ev = byDay[ds] || [];
+    H.$$('.cal-d', view).forEach(c => c.classList.toggle('sel', c.dataset.day === ds));
+    H.$('#calDay', view).innerHTML = `<h3 style="margin:16px 0 6px">${new Date(ds + 'T12:00:00Z').toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' })}</h3>${ev.length ? `<ul class="cal-list">${ev.map(e => `<li><i class="ev ${e.k}"></i><span data-no-tr>${H.esc(e.d)}</span>${e.link ? ` <a href="#/trade?symbol=${encodeURIComponent(e.link)}">Trade</a>` : ''}</li>`).join('')}</ul>` : '<p class="mu">Nothing scheduled.</p>'}`;
+  };
+  H.$$('.cal-d[data-day]', view).forEach(c => (c.onclick = () => showDay(c.dataset.day)));
+  const firstEv = Object.keys(byDay).filter(d => d >= today).sort()[0];
+  if (ym === today.slice(0, 7)) showDay(today); else if (firstEv) showDay(firstEv);
+  if (H.$('#cf', view)) H.$('#cf', view).onsubmit = e => { e.preventDefault(); location.hash = '#/calendar?symbol=' + encodeURIComponent(H.form(e.target).symbol.trim()); };
 }

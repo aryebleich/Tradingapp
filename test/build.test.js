@@ -88,11 +88,14 @@ test('every GitHub workflow is valid YAML', async () => {
   }
 });
 
-test('homepage has the why-different, security, plan comparison and learn sections in both languages', async () => {
+test('homepage has the why-different, security, plan comparison and credits sections in both languages', async () => {
   const fs = await import('node:fs');
   for (const f of ['public/index.html', 'public/yi.html']) {
     const h = fs.readFileSync(f, 'utf8');
-    for (const id of ['different', 'trust', 'learn', 'faq', 'demo']) assert.match(h, new RegExp(`id="${id}"`), `${f}: #${id}`);
+    for (const id of ['different', 'trust', 'faq', 'demo', 'pricing']) assert.match(h, new RegExp(`id="${id}"`), `${f}: #${id}`);
     assert.match(h, /<details class="matrix">/, f);
+    assert.match(h, /<div class="credits">/, f);
+    // Kept simple: the profile tabs, pairs and learn sections live in the app, not on the homepage.
+    for (const id of ['who', 'pairs', 'learn']) assert.doesNotMatch(h, new RegExp(`id="${id}"`), `${f}: #${id}`);
   }
 });

@@ -4,8 +4,12 @@ import { verifySecret } from './crypto.js';
 import { accountSummary, placeOrder, lastPrice } from './brokers.js';
 import { nextRunAfter } from './scheduler.js';
 import { isPaid } from './fees.js';
+import { performance, earnings, chartText, earningsText } from './events.js';
 
 export const HELP = `QuantPocket commands:
+AAPL - price   AAPL CHART - 1 week, 1 month, 1 year
+AAPL EARNINGS - next date and results   AAPL NEWS - headlines
+(try any stock)
 BAL - balance   POS - positions   PRICE AAPL
 BUY 5 AAPL 1234   SELL 5 AAPL 1234   BUY $100 AAPL 1234
 (last number is your PIN; add LIVE for Alpaca, or SCHWAB, TRADIER, TASTYTRADE, TRADESTATION)
@@ -19,7 +23,7 @@ const NAMES = { apple: 'AAPL', microsoft: 'MSFT', tesla: 'TSLA', amazon: 'AMZN',
 // Words that pick the account: LIVE / ALPACA, or another connected brokerage.
 const ACCOUNT_WORDS = { LIVE: 'alpaca', ALPACA: 'alpaca', TRADIER: 'tradier', TASTYTRADE: 'tastytrade', SCHWAB: 'schwab', TRADESTATION: 'tradestation' };
 const ACCOUNT_NAMES = { paper: 'Paper', alpaca: 'Alpaca', tradier: 'Tradier', tastytrade: 'tastytrade', schwab: 'Schwab', tradestation: 'TradeStation' };
-export const KNOWN = ['HELP', 'MENU', '?', 'BAL', 'BALANCE', 'POS', 'POSITIONS', 'PRICE', 'QUOTE', 'BUY', 'SELL', 'DCA', 'ORDERS', 'CANCEL', 'BOTS', 'PAUSE'];
+export const KNOWN = ['HELP', 'MENU', '?', 'BAL', 'BALANCE', 'POS', 'POSITIONS', 'PRICE', 'QUOTE', 'CHART', 'EARNINGS', 'NEWS', 'BUY', 'SELL', 'DCA', 'ORDERS', 'CANCEL', 'BOTS', 'PAUSE'];
 const money = x => '$' + (+x).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function normalize(text) {
@@ -39,6 +43,14 @@ export async function handleCommand(user, text, { pinVerified = false } = {}) {
   if (account !== 'paper' && !isPaid(user) && cmd === 'DCA') return 'Recurring buys on a brokerage account are part of Pro. Try it free for 14 days in the app under Plans & billing.';
   const pinOk = () => pinVerified || (user.pin_hash && verifySecret(args[args.length - 1], user.pin_hash));
   const needPin = 'That needs your PIN at the end. Set one in Settings > Phone.';
+
+  // Stock look-ups: "AAPL", "AAPL CHART", "AAPL EARNINGS", "AAPL NEWS" (or "CHART AAPL"...).
+  const LOOK = ['CHART', 'EARNINGS', 'NEWS', 'PRICE', 'QUOTE'];
+  const isTicker = x => /^[A-Z][A-Z0-9.]{0,5}$/.test(x || '') && !KNOWN.includes(x) && !ACCOUNT_WORDS[x];
+  let look = null;
+  if (isTicker(args[0]) && (args.length === 1 ? !CHAT_WORDS.has(args[0]) : LOOK.includes(args[1]))) look = { sym: args[0], what: args[1] || 'PRICE' };
+  else if (['CHART', 'EARNINGS', 'NEWS'].includes(cmd) && isTicker(args[1])) look = { sym: args[1], what: cmd };
+  if (look) return lookup(user, look.sym, look.what);
 
   switch (cmd) {
     case 'HELP': case 'MENU': case '?': return HELP;
@@ -92,6 +104,24 @@ export async function handleCommand(user, text, { pinVerified = false } = {}) {
     }
     default: return 'Unknown command. Text HELP for the list.';
   }
+}
+
+// One-word texts that are conversation, not a ticker.
+export const CHAT_WORDS = new Set(['HI', 'HEY', 'HELLO', 'HIYA', 'YO', 'THANKS', 'THANK', 'THX', 'TY', 'OK', 'OKAY', 'K', 'YES', 'YEAH', 'YEP', 'NO', 'NOPE', 'SURE', 'COOL', 'GREAT', 'NICE', 'WOW', 'LOL', 'BYE', 'WHAT', 'WHY', 'HOW', 'WHO', 'WHEN', 'MENU', 'INFO', 'START', 'UNSTOP']);
+async function lookup(user, sym, what) {
+  try {
+    if (what === 'CHART') return chartText(await performance(sym, user.id));
+    if (what === 'EARNINGS') return earningsText(await earnings(sym));
+    if (what === 'NEWS') {
+      const D = await import('./alpaca/data.js');
+      if (!D.dataEnabled()) return 'News is not set up on this server yet.';
+      const n = await D.news({ symbols: sym, limit: 3 });
+      return n.length ? `${sym} news:\n` + n.map(x => `- ${x.headline} (${x.source}, ${new Date(x.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})`).join('\n') : `No recent news for ${sym}.`;
+    }
+    const p = await performance(sym, user.id).catch(() => null);
+    if (p) return `${sym} ${money(p.price)} (1 week ${p.week >= 0 ? '+' : ''}${p.week?.toFixed(1)}%). Text ${sym} CHART or ${sym} EARNINGS for more.`;
+    return `${sym} ${money(await lastPrice(sym, user.id))}`;
+  } catch (e) { return e.setup ? 'Earnings data is not set up on this server yet.' : `Could not look up ${sym}: ${e.message}`; }
 }
 
 export const userByPhone = phone => one('SELECT * FROM users WHERE phone = ? AND phone_verified = 1', phone);

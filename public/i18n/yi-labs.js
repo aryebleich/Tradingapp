@@ -584,7 +584,6 @@ export default {
  "Monthly": "חודש'ליך",
  "Yearly": "יערליכע",
  "Weekly": "וועכנטליך",
- "Once": "אמאל",
  "Every trading day": "יעדן איינציגן טרעידינג טאג",
  "Year": "יאר",
  "Years": "יארן",

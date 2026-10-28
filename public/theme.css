@@ -614,3 +614,49 @@ table.heat td.co { font-weight: 700; outline: 2px solid #2563eb; outline-offset:
 .chartlegend .now { color: var(--tx); font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--bg2); }
 
 .readme { line-height: 1.6; } .readme h1, .readme h2, .readme h3 { margin: 18px 0 8px; } .readme table { margin: 8px 0; } .readme code { font-size: 12.5px; }
+
+/* text & phone: stock look-up examples and the reply bubble */
+.lookups { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 8px; }
+.lookup { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: start; background: var(--bg2); color: var(--tx); border: 1px solid var(--bd); box-shadow: none; padding: 10px 12px; font-weight: 500; }
+.lookup b { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; color: var(--ac); }
+.lookup span { font-size: 12.5px; color: var(--mu); }
+.lookup:hover { border-color: var(--ac); }
+.smsreply { background: color-mix(in srgb, var(--ac) 8%, var(--card)); border-radius: 14px 14px 14px 4px; padding: 12px 14px; white-space: pre-wrap; margin-top: 12px; }
+
+/* monthly calendar */
+.cal-head { justify-content: center; align-items: center; gap: 8px; margin-bottom: 8px; }
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.cal-w { font-size: 11px; font-weight: 700; color: var(--mu); text-transform: uppercase; text-align: center; padding: 4px 0; }
+.cal-d { min-height: 92px; display: flex; flex-direction: column; align-items: stretch; gap: 3px; padding: 6px; text-align: start; background: var(--card); color: var(--tx); border: 1px solid var(--bd); border-radius: 10px; box-shadow: none; font-weight: 500; cursor: pointer; overflow: hidden; }
+.cal-d:hover { border-color: var(--ac); }
+.cal-d.out { background: transparent; border: 0; cursor: default; }
+.cal-d.wkend { background: var(--bg2); }
+.cal-d.today { border: 2px solid var(--ac); }
+.cal-d.sel { box-shadow: 0 0 0 3px color-mix(in srgb, var(--ac) 25%, transparent); }
+.cal-d.closed .n { color: var(--mu); text-decoration: line-through; }
+.cal-d .n { font-size: 13px; font-weight: 700; }
+.cal-d .tag { font-size: 10.5px; font-weight: 700; border-radius: 4px; padding: 0 4px; align-self: flex-start; }
+.cal-d .tag.hol { background: color-mix(in srgb, var(--mu) 18%, transparent); color: var(--mu); }
+.cal-d .tag.early { background: color-mix(in srgb, #f59e0b 18%, transparent); color: #b45309; }
+.cal-d .more { font-size: 11px; color: var(--mu); }
+.ev { display: block; font-size: 11px; font-weight: 600; border-radius: 4px; padding: 1px 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-inline-start: 3px solid; }
+.ev.earn { background: color-mix(in srgb, #3b82f6 12%, transparent); border-color: #3b82f6; }
+.ev.earn.held { background: color-mix(in srgb, #8b5cf6 18%, transparent); border-color: #8b5cf6; }
+.ev.ipo { background: color-mix(in srgb, #10b981 14%, transparent); border-color: #10b981; }
+.ev.div { background: color-mix(in srgb, #f59e0b 14%, transparent); border-color: #f59e0b; }
+.ev.split { background: color-mix(in srgb, #ec4899 12%, transparent); border-color: #ec4899; }
+.cal-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--mu); margin-bottom: 10px; justify-content: center; }
+.cal-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.cal-legend i.ev, .cal-list i.ev { width: 12px; height: 12px; padding: 0; display: inline-block; }
+.cal-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.cal-list li { display: flex; align-items: center; gap: 8px; }
+@media (max-width: 640px) { .cal { gap: 2px; } .cal-d { min-height: 58px; padding: 3px; border-radius: 7px; } .cal-d .ev { font-size: 9.5px; padding: 0 3px; } .cal-d .tag { font-size: 9px; } .cal-w { font-size: 10px; } }
+
+/* credits on Plans & billing */
+.credbal { font-size: 26px; letter-spacing: -0.02em; }
+.credbar { height: 10px; border-radius: 99px; background: var(--bg2); overflow: hidden; margin-top: 10px; }
+.credbar i { display: block; height: 100%; border-radius: 99px; background: var(--grad); }
+.packs { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+.pack { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 12px 8px; }
+.pack b { font-size: 20px; } .pack span { font-size: 12px; color: var(--mu); font-weight: 500; } .pack em { font-style: normal; font-weight: 700; color: var(--ac); margin-top: 4px; }
+table.slim td { padding: 6px 4px; font-size: 13.5px; }

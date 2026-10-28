@@ -25,6 +25,7 @@ import { userByPhone, handleCommand, KNOWN, normalize } from './commands.js';
 import { createUser, rateLimit } from './auth.js';
 import { nyTime, stockSession } from './time.js';
 import * as N from './notify.js';
+import { trySpend } from './credits.js';
 
 export const DEFAULTS = {
   enabled: true,
@@ -101,6 +102,8 @@ export function registerHotline(app, { twilioOk, twiml }) {
     }
     const a = access(u);
     if (!a) return twiml(res, bye(`${o.greeting} The phone line is part of the Pro plan. You can start a free trial in the app under Plans and billing. Goodbye.`));
+    // Each call costs credits (Plans & billing → Credits).
+    if (!(await trySpend(u, 'call', { memo: 'phone line' }))) return twiml(res, bye(`${o.greeting} You are out of credits for phone calls. You can buy a credit pack in the app under Plans and billing. Goodbye.`));
     await audit(u.id, 'hotline_call', null, req.body.From);
     if (a === 'paper') return twiml(res, menu('paper', `${o.greeting} On your plan the phone line uses your paper account.`));
     twiml(res, gather('/twilio/voice/env', `${o.greeting} Press 1 for paper trading. Press 2 for live trading.`) + bye('Goodbye.'));

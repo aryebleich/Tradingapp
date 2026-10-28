@@ -754,25 +754,52 @@ routes.quantconnect = async view => {
 
 // ---------- scheduled trades + alerts ----------
 routes.schedule = async view => {
-  const [rows, alerts] = await Promise.all([api('/schedule'), api('/alerts')]);
-  const soon = new Date(Date.now() + 3600e3); soon.setMinutes(30, 0, 0);
-  const local = new Date(soon.getTime() - soon.getTimezoneOffset() * 60e3).toISOString().slice(0, 16);
+  const [rows, alerts, accts] = await Promise.all([api('/schedule'), api('/alerts'), accounts()]);
+  // New York date and time for the form (orders run at exchange time, whatever the browser's zone).
+  const ny = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const when = o => {
+    const t = o.run_minutes != null ? `${String(Math.floor(o.run_minutes / 60)).padStart(2, '0')}:${String(o.run_minutes % 60).padStart(2, '0')} ET` : '';
+    const rep = { once: 'Once', daily: 'Every weekday', weekly: o.weekdays ? o.weekdays.split(',').map(d => DAYS[+d]).join(', ') : 'Weekly', monthly: o.month_day ? `Monthly on the ${o.month_day}` : 'Monthly' }[o.repeat] || o.repeat;
+    return `${rep}${t ? ' at ' + t : ''}`;
+  };
   view.innerHTML = `<h1>Scheduled trades</h1>
   <form class="card" id="sch"><h2>New scheduled order</h2>
-    <div class="row"><label>Account<select name="account"><option value="paper">Paper</option><option value="alpaca">Alpaca</option></select></label>
+    <div class="row"><label>Account<select name="account">${accountOptions(accts, 'paper', isPaid(ME))}</select></label>
       <label>Side<select name="side"><option value="buy">Buy</option><option value="sell">Sell</option></select></label>
-      <label>Symbol<input name="symbol" value="SPY"></label></div>
-    <div class="row"><label>Shares<input name="qty" type="number" step="any"></label><label>or Dollars<input name="notional" type="number" step="any" value="100"></label>
-      <label>First run<input name="at" type="datetime-local" value="${local}"></label>
-      <label>Repeat<select name="repeat"><option value="once">Once</option><option value="daily">Every trading day</option><option value="weekly" selected>Weekly (DCA)</option><option value="monthly">Monthly</option></select></label></div>
+      <label>Symbol<input name="symbol" value="SPY" autocomplete="off"></label>
+      <label>Shares<input name="qty" type="number" step="any"></label><label>or Dollars<input name="notional" type="number" step="any" value="100"></label></div>
+    <div class="row"><label>Date<input name="date" type="date" value="${ny}" min="${ny}"></label>
+      <label>Time (New York)<input name="time" type="time" value="09:35" step="60"></label>
+      <label>Quick pick<select id="preset"><option value="">Choose…</option><option value="09:30">At the open (9:30)</option><option value="09:35">Just after the open (9:35)</option><option value="12:00">Midday (12:00)</option><option value="15:50">Before the close (15:50)</option><option value="08:00">Pre-market (8:00, limit + extended)</option><option value="17:00">After hours (17:00, limit + extended)</option></select></label>
+      <label>Repeat<select name="repeat"><option value="once">Once</option><option value="daily">Every weekday</option><option value="weekly" selected>On chosen weekdays</option><option value="monthly">Monthly on this date</option></select></label></div>
+    <div id="wdRow" style="display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;margin:2px 0 12px"><span class="mu">Weekdays:</span>${[1, 2, 3, 4, 5].map(d => `<label class="chk"><input type="checkbox" name="wd" value="${d}" ${d === new Date(ny + 'T12:00').getDay() || (d === 1 && [0, 6].includes(new Date(ny + 'T12:00').getDay())) ? 'checked' : ''}> ${DAYS[d]}</label>`).join('')}</div>
+    <div class="row"><label>Order type<select name="orderType"><option value="market">Market</option><option value="limit">Limit</option></select></label>
+      <label id="lpL" hidden>Limit price<input name="limitPrice" type="number" step="any"></label>
+      <label class="chk" id="exL" hidden><input type="checkbox" name="extended"> Extended hours (4:00–9:30 and 16:00–20:00, Alpaca)</label></div>
+    <p class="mu" style="font-size:12.5px;margin:4px 0 10px">Times are New York (exchange) time. Market orders run during the regular session (9:30–16:00); a time outside it runs at the next open. Limit orders with extended hours can run pre-market and after hours on an Alpaca account.</p>
     <button>Schedule</button><div class="err"></div></form>
-  <div class="card tablewrap"><table><tr><th>#</th><th>Order</th><th>Account</th><th>Repeat</th><th>Next run</th><th>Last result</th><th></th></tr>
-    ${rows.map(o => `<tr class="${o.active ? '' : 'mu'}"><td>${o.id}</td><td>${o.side} ${o.qty ? num(o.qty, 4) : money(o.notional)} ${esc(o.symbol)}</td><td>${o.account}</td><td>${o.repeat}</td><td>${o.active ? date(o.next_run) : 'done'}</td><td>${esc(o.last_result || '')}</td><td>${o.active ? `<button class="small ghost" data-c="${o.id}">Cancel</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="7" class="mu">Nothing scheduled</td></tr>'}
+  <div class="card tablewrap"><table><tr><th>#</th><th>Order</th><th>Account</th><th>When</th><th>Next run</th><th>Last result</th><th></th></tr>
+    ${rows.map(o => `<tr class="${o.active ? '' : 'mu'}"><td>${o.id}</td><td>${o.side} ${o.qty ? num(o.qty, 4) : money(o.notional)} ${esc(o.symbol)}${o.order_type === 'limit' ? ` · limit ${money(o.limit_price)}${o.extended ? ' · ext. hours' : ''}` : ''}</td><td>${esc(o.account)}</td><td>${esc(when(o))}</td><td>${o.active ? new Date(o.next_run).toLocaleString([], { timeZone: 'America/New_York', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' ET' : 'done'}</td><td>${esc(o.last_result || '')}</td><td>${o.active ? `<button class="small ghost" data-c="${o.id}">Cancel</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="7" class="mu">No scheduled trades yet</td></tr>'}
   </table></div>
   <form class="card" id="al"><h2>Price alerts (sent by SMS)</h2>
     <div class="row"><label>Symbol<input name="symbol" value="AAPL"></label><label>When price is<select name="op"><option>above</option><option>below</option></select></label><label>Price<input name="price" type="number" step="any"></label><button>Add alert</button></div><div class="err"></div>
     <table>${alerts.map(a => `<tr class="${a.active ? '' : 'mu'}"><td>${esc(a.symbol)} ${a.op} ${money(a.price)}</td><td>${a.active ? 'watching' : 'triggered'}</td><td><button class="small ghost" data-a="${a.id}">Remove</button></td></tr>`).join('')}</table></form>`;
-  act($('button', $('#sch', view)), async () => { const f = form($('#sch', view)); await api('/schedule', { body: { ...f, at: new Date(f.at).toISOString() } }); render(); });
+  const sf = $('#sch', view), sync = () => {
+    $('#wdRow', view).hidden = sf.repeat.value !== 'weekly';
+    const lim = sf.orderType.value === 'limit'; $('#lpL', view).hidden = !lim; $('#exL', view).hidden = !lim;
+  };
+  sf.repeat.onchange = sf.orderType.onchange = sync; sync();
+  $('#preset', view).onchange = e => {
+    if (!e.target.value) return; sf.time.value = e.target.value;
+    const ext = /^(08|17)/.test(e.target.value); if (ext) { sf.orderType.value = 'limit'; sf.extended.checked = true; } sync();
+  };
+  act($('button', sf), async () => {
+    const f = form(sf), weekdays = $$('[name=wd]:checked', view).map(c => +c.value);
+    const r = await api('/schedule', { body: { account: f.account, side: f.side, symbol: f.symbol, qty: f.qty, notional: f.notional, date: f.date, time: f.time, repeat: f.repeat, weekdays, orderType: f.orderType, limitPrice: f.limitPrice, extended: sf.extended.checked } });
+    setTimeout(render, 900);
+    return 'Scheduled. First run ' + new Date(r.nextRun).toLocaleString([], { timeZone: 'America/New_York', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' New York time.';
+  });
   act($('button', $('#al', view)), async () => { await api('/alerts', { body: form($('#al', view)) }); render(); });
   $$('[data-c]', view).forEach(b => (b.onclick = async () => { await api('/schedule/' + b.dataset.c, { method: 'DELETE' }); render(); }));
   $$('[data-a]', view).forEach(b => (b.onclick = async e => { e.preventDefault(); await api('/alerts/' + b.dataset.a, { method: 'DELETE' }); render(); }));
@@ -790,11 +817,15 @@ routes.text = async view => {
         <p>Text or call from your verified phone.</p>${CFG.assistant ? '<p>The AI assistant understands plain language: "how am I doing this month?", "put $200 into the S&amp;P every week", "what does RSI mean?". Trades always need your PIN.</p>' : ''}` : '<p class="warn">The SMS/voice number is not configured on this server yet (Twilio).</p>'}
       <p class="mu"><span>Phone:</span> ${ME.phone ? `<span dir="ltr">${esc(ME.phone)}</span>` : '<span>not set</span>'} ${ME.phoneVerified ? '<span class="pill">verified</span>' : ''} · <span>PIN:</span> <span>${ME.hasPin ? 'set' : 'not set'}</span> · <a href="#/settings">change in Settings</a></p>
       <pre>${esc(help)}</pre>
-      <p class="mu">On the hotline: enter your PIN, then press 1 balance, 2 positions, 3 scheduled trades, 9 pause bots, or say a command like "buy five shares of Apple".</p></div>
-    <div class="card"><h2>Try it here</h2>
-      <label>Message<input id="cmd" placeholder="${CFG.assistant ? 'How is my account doing?' : 'BAL'}"></label><button id="send">Send</button><div class="err"></div><pre id="reply"></pre></div>
+      <p class="mu">On the phone line: press 1 for paper or 2 for live, then 1 account info, 2 positions, 3 market clock, 4 place a trade, 5 cancel orders, 6 close all, 9 switch account. Every change needs your PIN.</p></div>
+    <div class="card"><h2>Look up any stock</h2>
+      <p class="mu" style="margin-top:0">Text a ticker and a word. Try any stock!</p>
+      <div class="lookups">${[['AAPL CHART', '1 week, 1 month and 1 year performance'], ['NVDA EARNINGS', 'Next earnings date, estimates and the last results'], ['TSLA NEWS', 'The latest headlines'], ['SPY', 'Price and this week\'s move']].map(([c, d]) => `<button type="button" class="lookup" data-cmd="${c}"><b data-no-tr>${c}</b><span>${d}</span></button>`).join('')}</div>
+      <h3 style="margin:18px 0 6px">Try it here</h3>
+      <div class="row"><input id="cmd" placeholder="${CFG.assistant ? 'AAPL CHART, or: how is my account doing?' : 'AAPL CHART'}" style="flex:1;margin:0"><button id="send">Send</button></div><div class="err"></div><pre id="reply" class="smsreply" hidden></pre></div>
   </div>`;
-  act($('#send', view), async () => { $('#reply', view).textContent = (await api('/command', { body: { text: $('#cmd', view).value } })).reply; });
+  act($('#send', view), async () => { const r = $('#reply', view); r.hidden = false; r.textContent = (await api('/command', { body: { text: $('#cmd', view).value } })).reply; });
+  $$('.lookup', view).forEach(b => (b.onclick = () => { $('#cmd', view).value = b.dataset.cmd; $('#send', view).click(); }));
   $('#cmd', view).onkeydown = e => { if (e.key === 'Enter') $('#send', view).click(); };
 };
 
@@ -851,13 +882,14 @@ routes.tax = async (view, q) => {
 // ---------- funding & plans ----------
 routes.funding = routes.billing = async (view, q) => {
   CFG ||= await api('/config');
-  const [ledger, fees, pay, accts] = await Promise.all([api('/ledger'), api('/fees'), api('/funding/methods').catch(() => ({ methods: [], fee: {} })), accounts()]);
+  const [ledger, fees, pay, accts, cr] = await Promise.all([api('/ledger'), api('/fees'), api('/funding/methods').catch(() => ({ methods: [], fee: {} })), accounts(), api('/credits').catch(() => null)]);
   let yearly = q.get('interval') === 'year';
   const days = CFG.trialDays || 14, trial = !ME.trialUsed, paid = isPaid(ME);
   const status = ME.planStatus === 'trialing' ? `Free trial · renews ${ME.planRenews ? new Date(ME.planRenews).toLocaleDateString() : ''}` : ME.planStatus === 'past_due' ? 'Payment failed - update your card' : ME.planRenews ? `Renews ${new Date(ME.planRenews).toLocaleDateString()}` : '';
   const draw = () => {
     view.innerHTML = `<div class="row" style="justify-content:space-between;align-items:center"><h1>Plans & billing</h1>${ME.plan !== 'free' ? '<button class="ghost" id="portal">Manage billing</button>' : ''}</div>
     ${q.get('ok') ? '<div class="banner">Thank you! Your plan is being activated. It can take a few seconds to show here.</div>' : ''}
+    ${q.get('credits') ? '<div class="banner">Thank you! Your credits are being added. It can take a few seconds to show here.</div>' : ''}
     ${ME.plan !== 'free' ? `<div class="banner">You are on <b>${esc(CFG.plans[ME.plan]?.name || ME.plan)}</b>${ME.planInterval === 'year' ? ' (yearly)' : ''}. ${esc(status)}</div>` : trial ? `<div class="banner">Every paid plan starts with a <b>${days}-day free trial</b>. You won't be charged until it ends, and you can cancel anytime.</div>` : ''}
     <div class="billing-toggle"><div class="seg" id="interval"><button data-i="month" class="${yearly ? '' : 'on'}">Monthly</button><button data-i="year" class="${yearly ? 'on' : ''}">Yearly <span class="save">2 months free</span></button></div></div>
     <div class="plans">${Object.entries(CFG.plans).map(([k, p]) => {
@@ -872,6 +904,13 @@ routes.funding = routes.billing = async (view, q) => {
     }).join('')}</div>
     <div class="err" id="planErr"></div>
     <p class="mu" style="text-align:center;font-size:13px">Secure checkout by Stripe. Cancel anytime from "Manage billing". Prices in USD.</p>
+    ${cr ? `<div class="card" id="credits"><div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">Credits</h2><b class="credbal">${cr.balance.total.toLocaleString()} <span class="mu" style="font-weight:500;font-size:14px">credits</span></b></div>
+      <div class="credbar" title="Monthly credits left"><i style="width:${cr.balance.allowance ? Math.min(100, cr.balance.monthly / cr.balance.allowance * 100) : 0}%"></i></div>
+      <p class="mu" style="margin:6px 0 14px;font-size:13px">${cr.balance.monthly.toLocaleString()} of ${cr.balance.allowance.toLocaleString()} monthly credits left (they refill on the 1st)${cr.balance.bought ? ` · ${cr.balance.bought.toLocaleString()} bought credits (never expire)` : ''}.</p>
+      <div class="grid2"><div><h3 style="margin:0 0 6px">What credits pay for</h3><table class="slim">${Object.entries(cr.costs).filter(([, c]) => c > 0).map(([k, c]) => `<tr><td>${esc(cr.labels[k] || k)}</td><td style="text-align:end"><b>${c}</b></td></tr>`).join('')}</table></div>
+        <div><h3 style="margin:0 0 6px">Buy credits</h3><div class="packs">${cr.packs.map(p => `<button type="button" class="pack ghost" data-pack="${esc(p.id)}"><b>${p.credits.toLocaleString()}</b><span>credits</span><em>$${p.price}</em></button>`).join('')}</div>
+          <p class="mu" style="font-size:12.5px">Bought credits never expire and are used after your monthly ones.</p><div class="err" id="credErr"></div></div></div>
+      ${cr.history.length ? `<details style="margin-top:10px"><summary class="mu">Recent credit use</summary><table class="slim">${cr.history.map(h => `<tr><td>${date(h.at)}</td><td>${esc(cr.labels[h.kind] || (h.kind === 'purchase' ? 'Credits bought' : h.kind))}${h.memo ? ` <span class="mu" data-no-tr>${esc(h.memo)}</span>` : ''}</td><td style="text-align:end" class="${h.delta > 0 ? 'pos' : ''}">${h.delta > 0 ? '+' : ''}${h.delta}</td></tr>`).join('')}</table></details>` : ''}</div>` : ''}
     <div class="grid">
       <form class="card" id="dep"><h2>Add paper money</h2>
         <div class="row"><label>Amount (USD)<input name="amount" type="number" min="10" max="10000" value="10000"></label><input type="hidden" name="account" value="paper"></div>
@@ -890,6 +929,7 @@ routes.funding = routes.billing = async (view, q) => {
       ${ledger.map(l => `<tr><td>${date(l.at)}</td><td>${esc(l.kind.replace(/_/g, ' '))}</td><td>${money(l.amount)}</td><td>${esc(l.status)}</td><td>${esc(l.memo || '')}</td></tr>`).join('') || '<tr><td colspan="5" class="mu">Nothing yet</td></tr>'}</table></div>`;
     $$('#interval button', view).forEach(b => (b.onclick = () => { yearly = b.dataset.i === 'year'; draw(); }));
     $$('[data-plan]', view).forEach(b => act(b, async () => { location.href = (await api('/billing/checkout', { body: { plan: b.dataset.plan, interval: yearly ? 'year' : 'month' } })).url; }, $('#planErr', view)));
+    $$('[data-pack]', view).forEach(b => act(b, async () => { location.href = (await api('/credits/buy', { body: { pack: b.dataset.pack } })).url; }, $('#credErr', view)));
     if ($('#portal', view)) act($('#portal', view), async () => { location.href = (await api('/billing/portal', { body: {} })).url; }, $('#planErr', view));
     act($('button', $('#dep', view)), async () => { await api('/funding/deposit', { body: form($('#dep', view)) }); setTimeout(render, 500); return 'Paper money added.'; });
     const rd = $('#realDep', view);

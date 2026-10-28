@@ -344,3 +344,50 @@ adminSiteRouter.post('/readme/publish', wrap(async (req, res) => {
   await audit(req.user.id, 'readme_published', { commit: out.commit?.sha || null }, req.ip);
   res.json({ ok: true, commit: out.commit?.sha || null, url: out.content?.html_url || null });
 }));
+
+// ---------- credits: monthly allowances, prices, packs, and gifts to a user ----------
+adminSiteRouter.get('/credits', wrap(async (req, res) => {
+  const C = await import('./credits.js');
+  const since = Date.now() - 30 * 86400e3;
+  const used = await all("SELECT kind, -SUM(delta) n FROM credit_ledger WHERE delta < 0 AND at > ? GROUP BY kind", since);
+  const sold = await one("SELECT COALESCE(SUM(delta), 0) n FROM credit_ledger WHERE kind = 'purchase' AND at > ?", since);
+  res.json({ config: C.config(), labels: C.LABELS, used, sold30: sold.n });
+}));
+adminSiteRouter.put('/credits', wrap(async (req, res) => {
+  const C = await import('./credits.js');
+  const c = await C.saveConfig(req.body || {});
+  await audit(req.user.id, 'credits_config', c, req.ip);
+  res.json({ config: c });
+}));
+adminSiteRouter.post('/credits/grant', wrap(async (req, res) => {
+  const C = await import('./credits.js');
+  const u = await one('SELECT id, email FROM users WHERE lower(email) = lower(?)', String(req.body?.email || '').trim());
+  const n = Math.round(+req.body?.credits);
+  if (!u) throw bad('No user with that email');
+  if (!(n >= 1 && n <= 1e6)) throw bad('Give 1 to 1,000,000 credits');
+  await C.grant(u.id, n, 'gift', String(req.body?.memo || 'From QuantPocket').slice(0, 80));
+  await audit(req.user.id, 'credits_grant', { user: u.id, credits: n }, req.ip);
+  res.json({ ok: true });
+}));
+
+// ---------- Google Drive: save the private README as a PDF with page numbers ----------
+adminSiteRouter.get('/drive', wrap(async (req, res) => res.json((await import('./drive.js')).status())));
+adminSiteRouter.post('/drive/disconnect', wrap(async (req, res) => { await (await import('./drive.js')).disconnect(); await audit(req.user.id, 'drive_disconnected', null, req.ip); res.json({ ok: true }); }));
+adminSiteRouter.post('/readme/drive', wrap(async (req, res) => {
+  const D = await import('./drive.js'), { markdownPdf } = await import('./pdf.js');
+  const r = await readme();
+  if (!r?.text) throw bad('Save the README first');
+  const date = new Date().toISOString().slice(0, 10);
+  const { pdf, pages } = markdownPdf(r.text, { title: `QuantPocket private README · ${date}` });
+  const f = await D.savePdf(pdf, 'QuantPocket private README.pdf');
+  await audit(req.user.id, 'readme_drive', { pages, file: f.id }, req.ip);
+  res.json({ ...f, pages });
+}));
+// The same PDF as a download.
+adminSiteRouter.get('/readme/pdf', wrap(async (req, res) => {
+  const { markdownPdf } = await import('./pdf.js');
+  const r = await readme();
+  if (!r?.text) throw bad('Save the README first');
+  const { pdf } = markdownPdf(r.text, { title: `QuantPocket private README · ${new Date().toISOString().slice(0, 10)}` });
+  res.type('application/pdf').attachment('QuantPocket private README.pdf').send(pdf);
+}));

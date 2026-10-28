@@ -25,9 +25,10 @@ import { drain as drainQueue, queueStats, userQueue } from './src/orderqueue.js'
 import { booksFor, booksCsv } from './src/books.js';
 import { taxSummary, harvestCandidates, form8949Csv, scheduleD, scheduleDCsv, markToMarket } from './src/tax.js';
 import { buildStrategy } from './src/ai.js';
-import { handleCommand, userByPhone, normalize, HELP, KNOWN } from './src/commands.js';
+import { handleCommand, userByPhone, normalize, HELP, KNOWN, CHAT_WORDS } from './src/commands.js';
 import { aiEnabled, interpret, toCommand } from './src/assistant.js';
-import { startScheduler, assessAllFees, runDueJobs, snapshotAll } from './src/scheduler.js';
+import { startScheduler, assessAllFees, runDueJobs, snapshotAll, nextRunOf } from './src/scheduler.js';
+import { nyAt } from './src/time.js';
 import { startKycEvents } from './src/alpaca/kyc.js';
 import { riskRouter } from './src/risk.js';
 import { insightsRouter } from './src/insights.js';
@@ -64,6 +65,8 @@ import { router as pairsRouter } from './src/pairs.js';
 import { statArbRouter } from './src/statarb.js';
 import { registerHotline } from './src/hotline.js';
 import * as AIX from './src/aiaccess.js';
+import { eventsRouter } from './src/events.js';
+import * as CR from './src/credits.js';
 import { router as sp500Router } from './src/sp500.js';
 import { router as extRouter, oauthCallback as extOauthCallback, accountsFor } from './src/ext/routes.js';
 
@@ -175,6 +178,9 @@ app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (r
       const ended = ['canceled', 'unpaid', 'incomplete_expired'].includes(o.status);
       await run('UPDATE users SET plan_status = ?, plan = CASE WHEN ? THEN \'free\' ELSE COALESCE(?, plan) END, plan_renews = ? WHERE stripe_customer = ?',
         o.status, ended ? 1 : 0, plan, o.current_period_end ? o.current_period_end * 1000 : null, o.customer);
+    } else if (ev.type === 'checkout.session.completed' && o.metadata?.kind === 'credits') {
+      // A credit pack: added once per checkout session, only when the payment went through.
+      if (o.payment_status === 'paid') await CR.grant(+o.client_reference_id, +o.metadata.credits, 'purchase', `${(+o.metadata.credits).toLocaleString('en-US')} credits pack`, `stripe:${o.id}`);
     } else if (ev.type === 'checkout.session.completed' && o.metadata?.kind === 'deposit') {
       const id = +o.metadata.ledger_id;
       if ((await one('SELECT status FROM ledger WHERE id = ?', id))?.status !== 'pending') return res.json({ received: true });
@@ -254,6 +260,7 @@ app.post('/twilio/sms', async (req, res) => {
   if (!user) reply = 'This number is not linked to a QuantPocket account. Add it under Settings > Phone.';
   else if (!isPaid(user)) reply = 'Trading and questions by text are part of QuantPocket Pro. Start a free trial in the app under Plans & billing.';
   else if (!auth.rateLimit('sms:' + user.id, 30, 3600e3)) reply = 'Too many messages, try again later.';
+  else if (!(await CR.trySpend(user, 'sms', { memo: 'reply' }))) reply = 'You are out of credits for text replies. Buy a credit pack in the app under Plans & billing.';
   else {
     try { reply = await smsReply(user, String(req.body.Body || '')); } catch (e) { reply = 'Error: ' + e.message; }
     await audit(user.id, 'sms_command', { cmd: String(req.body.Body).split(/\s+/)[0] }, req.body.From);
@@ -264,7 +271,9 @@ app.post('/twilio/sms', async (req, res) => {
 // Commands first; anything else goes to the AI assistant, which turns it into a command or answers.
 // A trade the AI understood still needs the PIN, so the reply tells the user exactly what to send.
 async function smsReply(user, body) {
-  if (KNOWN.includes(normalize(body).split(' ')[0]) || !aiEnabled()) return handleCommand(user, body);
+  // Stock look-ups ("AAPL", "AAPL CHART", "TSLA EARNINGS") are answered directly, without the AI.
+  const lookup = (/^\s*[A-Za-z][A-Za-z0-9.]{0,5}\s*$/.test(body) && !CHAT_WORDS.has(body.trim().toUpperCase())) || /^\s*[A-Za-z][A-Za-z0-9.]{0,5}\s+(chart|earnings|news|price|quote)\s*$/i.test(body) || /^\s*(chart|earnings|news)\s+[A-Za-z][A-Za-z0-9.]{0,5}\s*$/i.test(body);
+  if (lookup || KNOWN.includes(normalize(body).split(' ')[0]) || !aiEnabled()) return handleCommand(user, body);
   const r = await interpret(user, body), cmd = toCommand(r);
   if (!cmd) return (r.reply || HELP).slice(0, 600);
   const last = body.trim().split(/\s+/).pop(), pin = /^\d{4,8}$/.test(last) ? last : null;
@@ -300,6 +309,22 @@ app.get('/oauth/alpaca/callback', auth.sessionMiddleware, async (req, res) => {
     await audit(userId, 'alpaca_oauth_connected', null, req.ip);
     res.redirect('/app#/account?connected=oauth');
   } catch (e) { res.redirect('/app#/account?error=' + encodeURIComponent(e.message)); }
+});
+
+// Google Drive for the owner (Admin → README → Save to Drive): connect, then come back.
+app.get('/oauth/google-drive/start', auth.requireUser, auth.requireAdmin, async (req, res) => {
+  const D = await import('./src/drive.js');
+  if (!D.driveReady()) return res.redirect('/app#/admin-readme?drive=' + encodeURIComponent('Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in Admin → Keys first'));
+  res.redirect(D.authUrl(req.user.id));
+});
+app.get('/oauth/google-drive/callback', auth.requireUser, auth.requireAdmin, async (req, res) => {
+  const D = await import('./src/drive.js');
+  try {
+    if (req.query.error) throw new Error(String(req.query.error) === 'access_denied' ? 'Drive access was not allowed' : String(req.query.error));
+    await D.finish(req.user.id, { code: String(req.query.code || ''), state: String(req.query.state || '') });
+    await audit(req.user.id, 'drive_connected', null, req.ip);
+    res.redirect('/app#/admin-readme?drive=connected');
+  } catch (e) { res.redirect('/app#/admin-readme?drive=' + encodeURIComponent(e.message)); }
 });
 
 // A deposit's money has arrived: mark it (and the owner's service fee on it) received.
@@ -367,6 +392,12 @@ api.use('/signals', signalsRouter);
 api.use('/library', strategiesRouter);
 api.use('/pairs', pairsRouter);
 api.use('/statarb', statArbRouter);
+api.use('/events', eventsRouter);
+api.use('/credits', CR.creditsRouter({ checkout: async (user, pack) => {
+  if (!N.stripeEnabled()) throw Object.assign(new Error('Payments are not set up yet (STRIPE_SECRET_KEY)'), { status: 503 });
+  const s = await N.checkoutCredits({ pack, email: user.email, userId: user.id, baseUrl: PUBLIC_URL });
+  return { url: s.url };
+} }));
 api.use('/sp500', sp500Router);
 api.use('/brokerages', extRouter);
 api.use('/insights', insightsRouter({ summarize: accountSummary }));
@@ -448,6 +479,7 @@ api.post('/backtest', U, wrap(async (req, res) => {
   const warm = warmupFor(cfg);
   if (/\{/.test(cfg.entry + cfg.exit)) {
     if (!isPaid(req.user)) throw upgrade('The strategy optimizer');
+    await CR.spend(req.user, 'optimize', { memo: String(req.body.symbol || '').slice(0, 10) });
     return res.json({ optimize: optimize(bars.closes, cfg, warm, bars.dates), source: bars.source });
   }
   const r = backtest(bars.closes, cfg, warm, bars.closes.length, bars.dates);
@@ -511,14 +543,32 @@ api.post('/paper/reset', U, async (req, res) => {
 });
 
 api.get('/schedule', U, async (req, res) => res.json(await all('SELECT * FROM scheduled_orders WHERE user_id = ? ORDER BY active DESC, next_run', req.user.id)));
+// A scheduled trade: a New York date and time, how it repeats (once, every weekday, chosen
+// weekdays, monthly), and a market or limit order (limit orders may run in extended hours on Alpaca).
 api.post('/schedule', U, needPlan('Scheduled trades'), wrap(async (req, res) => {
-  const b = req.body, at = Date.parse(b.at);
-  if (!(at > now() - 60e3)) throw new Error('Pick a time in the future');
+  const b = req.body;
   if (!['once', 'daily', 'weekly', 'monthly'].includes(b.repeat)) throw new Error('Bad repeat');
   if (!(+b.qty > 0) && !(+b.notional > 0)) throw new Error('Give a quantity or dollar amount');
-  const r = await run('INSERT INTO scheduled_orders (user_id, account, symbol, side, qty, notional, repeat, next_run, created_at) VALUES (?,?,?,?,?,?,?,?,?)',
-    req.user.id, acct(req), String(b.symbol).toUpperCase(), b.side === 'sell' ? 'sell' : 'buy', +b.qty || null, +b.notional || null, b.repeat, at, now());
-  res.json({ id: Number(r.lastInsertRowid) });
+  const symbol = String(b.symbol || '').trim().toUpperCase();
+  if (!/^[A-Z][A-Z0-9.\/-]{0,14}$/.test(symbol)) throw new Error('Enter a valid symbol');
+  let at, minutes = null, weekdays = null, monthDay = null;
+  if (b.date && b.time) {
+    // New York wall-clock time, so "9:35" means 9:35 at the exchange whatever the browser's time zone.
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date) || !/^\d{2}:\d{2}$/.test(b.time)) throw new Error('Pick a date and time');
+    minutes = +b.time.slice(0, 2) * 60 + +b.time.slice(3);
+    weekdays = b.repeat === 'weekly' ? [...new Set((Array.isArray(b.weekdays) ? b.weekdays : String(b.weekdays || '').split(',')).map(Number).filter(d => d >= 1 && d <= 5))].sort().join(',') || null : null;
+    monthDay = +b.date.slice(8);
+    at = nyAt(b.date, minutes);
+    // A repeating order whose first chosen day is not a run day starts on the next one.
+    if (b.repeat !== 'once') { const first = nextRunOf({ repeat: b.repeat, run_minutes: minutes, weekdays, month_day: monthDay }, at - 1); if (first) at = first; }
+  } else at = Date.parse(b.at);
+  if (!(at > now() - 60e3)) throw new Error('Pick a time in the future');
+  const type = b.orderType === 'limit' ? 'limit' : 'market', limit = type === 'limit' ? +b.limitPrice : null;
+  if (type === 'limit' && !(limit > 0)) throw new Error('Enter the limit price');
+  const extended = type === 'limit' && !!b.extended ? 1 : 0;
+  const r = await run('INSERT INTO scheduled_orders (user_id, account, symbol, side, qty, notional, repeat, next_run, created_at, run_minutes, weekdays, month_day, order_type, limit_price, extended) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+    req.user.id, acct(req), symbol, b.side === 'sell' ? 'sell' : 'buy', +b.qty || null, +b.notional || null, b.repeat, at, now(), minutes, weekdays, monthDay, type, limit, extended);
+  res.json({ id: Number(r.lastInsertRowid), nextRun: at });
 }));
 api.delete('/schedule/:id', U, async (req, res) => { await run('UPDATE scheduled_orders SET active = 0 WHERE id = ? AND user_id = ?', +req.params.id, req.user.id); res.json({ ok: true }); });
 

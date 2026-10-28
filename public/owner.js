@@ -96,6 +96,7 @@ async function business(view) {
     setTimeout(H.render, 900);
     return 'Saved.';
   });
+  creditsCard(view);
 }
 
 // The owner's own Alpaca account: Elite, trading plan, market data, options level, high-yield cash.
@@ -281,8 +282,9 @@ async function aiPrivacy(view) {
 
 // Private README: the full project guide, kept encrypted in the database and shown only here. The
 // public README on GitHub is a short description; "Publish" makes this text the public one.
-async function privateReadme(view) {
-  const d = await H.api('/admin/site/readme');
+async function privateReadme(view, q) {
+  const [d, dr] = await Promise.all([H.api('/admin/site/readme'), H.api('/admin/site/drive').catch(() => null)]);
+  const dq = new URLSearchParams(location.hash.split('?')[1] || '').get('drive');
   let text = d.text, tab = 'edit';
   const when = t => (t ? new Date(t).toLocaleString() : 'never');
   view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-readme')}
@@ -292,7 +294,16 @@ async function privateReadme(view) {
     ${text ? '' : `<p class="banner">Nothing saved yet. <button type="button" class="small" id="rmImport">Load the full guide</button> brings in the last full README (commit <code data-no-tr>${H.esc(d.fullRef.slice(0, 7))}</code>).</p>`}
     <textarea id="rmText" rows="28" spellcheck="false" data-no-tr style="width:100%;font:13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace">${H.esc(text)}</textarea>
     <div id="rmView" class="readme" hidden data-no-tr></div>
-    <div class="row" style="margin-top:10px"><button id="rmSave">Save</button> <button type="button" class="ghost" id="rmDown">Download .md</button></div><div class="err"></div></div>
+    <div class="row" style="margin-top:10px"><button id="rmSave">Save</button> <button type="button" class="ghost" id="rmDown">Download .md</button> <a href="/api/admin/site/readme/pdf"><button type="button" class="ghost">Download PDF</button></a></div><div class="err"></div></div>
+  <div class="card" id="rmDrive"><h2>Google Drive</h2>
+    ${dq ? `<p class="${dq === 'connected' ? 'banner' : 'banner err'}">${dq === 'connected' ? 'Google Drive is connected.' : H.esc(dq)}</p>` : ''}
+    <p class="mu" style="margin-top:0">Saves the private README to your Google Drive as a PDF with page numbers at the bottom of every page. Later saves update the same file (Drive keeps the earlier versions). QuantPocket can only see the files it saved itself.</p>
+    ${!dr?.ready ? '<p class="banner">Set <code>GOOGLE_CLIENT_ID</code> and <code>GOOGLE_CLIENT_SECRET</code> in <a href="#/admin-keys">Keys</a> (the same Google app as "Sign in with Google").</p>'
+      : dr.connected ? `<div class="row"><button type="button" id="rmDriveSave">Save to Drive</button>${dr.link ? ` <a href="${H.esc(dr.link)}" target="_blank" rel="noopener"><button type="button" class="ghost">Open in Drive ↗</button></a>` : ''} <button type="button" class="ghost small" id="rmDriveOff">Disconnect</button></div>
+        <p class="mu small-print">${dr.savedAt ? 'Last saved ' + new Date(dr.savedAt).toLocaleString() + '.' : 'Not saved yet.'}</p>`
+      : `<a href="/oauth/google-drive/start"><button type="button">Connect Google Drive</button></a>
+        <p class="mu small-print">One-time: in Google Cloud Console → APIs & Services → Credentials → your OAuth client, add <code data-no-tr>${H.esc(dr.redirectUri)}</code> to Authorized redirect URIs, and enable the Google Drive API.</p>`}
+    <div class="err"></div></div>
   <form class="card" id="rmPub"><h2>Publish as the public README</h2>
     <p class="mu">Replaces README.md on GitHub (<code data-no-tr>${H.esc(d.repo)}</code>) with the saved text. Anyone who can see the repository can read it afterwards, and GitHub keeps every version in its history.</p>
     ${d.canPublish ? `<label>Your password<input name="password" type="password" autocomplete="current-password"></label><label>Or, for Google/GitHub accounts, your email<input name="confirm" autocomplete="off"></label><button>Publish to GitHub</button>` : '<p class="banner">Add <code>GITHUB_TOKEN</code> in <a href="#/admin-keys">Keys</a> (a fine-grained token with Contents: read and write) to publish from here.</p>'}<div class="err"></div></form>`;
@@ -304,6 +315,12 @@ async function privateReadme(view) {
   H.act(H.$('#rmSave', view), async () => { await H.api('/admin/site/readme', { method: 'PUT', body: { text: ta.value } }); return 'Saved'; });
   H.$('#rmDown', view).onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([ta.value], { type: 'text/markdown' })); a.download = 'README.md'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
   if (H.$('#rmImport', view)) H.act(H.$('#rmImport', view), async () => { const r = await H.api('/admin/site/readme/import', { body: {} }); ta.value = r.text; return 'Loaded and saved'; });
+  if (H.$('#rmDriveSave', view)) H.act(H.$('#rmDriveSave', view), async () => {
+    await H.api('/admin/site/readme', { method: 'PUT', body: { text: ta.value } });
+    const r = await H.api('/admin/site/readme/drive', { body: {} });
+    setTimeout(H.render, 1500); return `Saved to Drive (${r.pages} pages).`;
+  });
+  if (H.$('#rmDriveOff', view)) H.$('#rmDriveOff', view).onclick = async () => { if (confirm('Disconnect Google Drive?')) { await H.api('/admin/site/drive/disconnect', { body: {} }); H.render(); } };
   const pf = H.$('#rmPub', view);
   if (d.canPublish) H.act(H.$('button', pf), async () => {
     if (!confirm('Make this README public on GitHub?')) return '';
@@ -311,4 +328,27 @@ async function privateReadme(view) {
     const r = await H.api('/admin/site/readme/publish', { body: { password: pf.password.value, confirm: pf.confirm.value } });
     pf.password.value = ''; return `Published (commit ${String(r.commit || '').slice(0, 7)})`;
   });
+}
+
+// Credits (Admin → Business mode): monthly allowance per plan, what each extra costs, the packs
+// for sale, usage in the last 30 days, and a gift to one user.
+async function creditsCard(view) {
+  const d = await H.api('/admin/site/credits').catch(() => null);
+  if (!d || !document.body.contains(view)) return;
+  const c = d.config, el = document.createElement('div');
+  el.innerHTML = `<form class="card" id="crf"><h2>Credits</h2>
+    <p class="mu" style="margin-top:0">Every plan gets credits each month (unused ones do not roll over); users buy packs for more. Bought credits never expire. Last 30 days: ${d.used.map(u => `${H.esc(d.labels[u.kind] || u.kind)} ${u.n}`).join(' · ') || 'no use yet'} · sold ${Number(d.sold30).toLocaleString()} credits.</p>
+    <h3>Monthly credits by plan</h3><div class="row">${Object.entries(c.monthly).map(([k, v]) => `<label>${({ free: 'Starter', pro: 'Pro', elite: 'Elite', ultimate: 'Ultimate' })[k] || k}<input name="m_${k}" type="number" min="0" value="${v}"></label>`).join('')}</div>
+    <h3>Cost in credits</h3><div class="row">${Object.entries(c.costs).map(([k, v]) => `<label>${H.esc(d.labels[k] || k)}<input name="c_${k}" type="number" min="0" value="${v}"></label>`).join('')}</div>
+    <h3>Packs for sale</h3>${c.packs.map((p, i) => `<div class="row"><label>Credits<input name="p${i}_credits" type="number" min="1" value="${p.credits}"></label><label>Price ($)<input name="p${i}_price" type="number" min="1" step="0.01" value="${p.price}"></label><input type="hidden" name="p${i}_id" value="${H.esc(p.id)}"></div>`).join('')}
+    <button>Save credits</button><div class="err"></div></form>
+  <form class="card" id="crg"><h2>Give credits</h2><div class="row"><label>User email<input name="email" type="email" required></label><label>Credits<input name="credits" type="number" min="1" value="500"></label><label>Note<input name="memo" value="Thank you!"></label></div><button>Give credits</button><div class="err"></div></form>`;
+  view.append(...el.children);
+  const f = H.$('#crf', view), g = H.$('#crg', view);
+  H.act(H.$('button', f), async () => {
+    const v = H.form(f);
+    await H.api('/admin/site/credits', { method: 'PUT', body: { monthly: Object.fromEntries(Object.keys(c.monthly).map(k => [k, v['m_' + k]])), costs: Object.fromEntries(Object.keys(c.costs).map(k => [k, v['c_' + k]])), packs: c.packs.map((p, i) => ({ id: v[`p${i}_id`], credits: v[`p${i}_credits`], price: v[`p${i}_price`] })) } });
+    return 'Saved';
+  });
+  H.act(H.$('button', g), async () => { await H.api('/admin/site/credits/grant', { body: H.form(g) }); return 'Credits given'; });
 }

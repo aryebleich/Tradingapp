@@ -531,10 +531,34 @@ CREATE TABLE IF NOT EXISTS margin_snapshots (
   equity REAL, buying_power REAL, maintenance REAL, initial REAL, leverage REAL,
   PRIMARY KEY (user_id, account, day)
 );
+CREATE TABLE IF NOT EXISTS credit_state (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  period TEXT NOT NULL,
+  monthly_left INTEGER NOT NULL DEFAULT 0,
+  bought INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS credit_ledger (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  delta INTEGER NOT NULL,
+  kind TEXT NOT NULL,
+  memo TEXT,
+  ref TEXT,
+  at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS credit_ledger_user ON credit_ledger (user_id, at);
+CREATE UNIQUE INDEX IF NOT EXISTS credit_ledger_ref ON credit_ledger (ref) WHERE ref IS NOT NULL;
 `;
 
 // Columns added after the first release; ALTER fails harmlessly when they already exist.
 const MIGRATIONS = [
+  // Scheduled trades at a fixed New York time, on chosen weekdays, as market or limit orders.
+  'ALTER TABLE scheduled_orders ADD COLUMN run_minutes INTEGER',
+  'ALTER TABLE scheduled_orders ADD COLUMN weekdays TEXT',
+  'ALTER TABLE scheduled_orders ADD COLUMN month_day INTEGER',
+  "ALTER TABLE scheduled_orders ADD COLUMN order_type TEXT NOT NULL DEFAULT 'market'",
+  'ALTER TABLE scheduled_orders ADD COLUMN limit_price REAL',
+  'ALTER TABLE scheduled_orders ADD COLUMN extended INTEGER NOT NULL DEFAULT 0',
   'ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0',
   'ALTER TABLE users ADD COLUMN reset_hash TEXT',
   'ALTER TABLE users ADD COLUMN reset_expires INTEGER',

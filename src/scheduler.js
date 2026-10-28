@@ -1,6 +1,6 @@
 // Background jobs: scheduled orders, auto-trading bots, price alerts, equity snapshots, monthly fees.
 import { one, all, run, now } from './db.js';
-import { nyTime } from './time.js';
+import { nyTime, nextNyRun, extendedSession } from './time.js';
 import { runExtraJobs } from './jobs.js';
 import { placeOrder, getBars, lastPrice, snapshotEquity, accountSummary, getCred, syncAlpacaFills } from './brokers.js';
 import { latestSignal } from './engine.js';
@@ -37,20 +37,31 @@ async function notify(userId, msg) {
 
 // Each job is claimed with a conditional UPDATE before it runs, so the in-process timer and the
 // GitHub Actions cron calling /internal/tick at the same moment can never execute it twice.
+// The next run of a scheduled order: at its New York time when it has one (newer orders), otherwise
+// the same clock time a day, week or month later (older orders).
+export const nextRunOf = (o, after) => (o.run_minutes != null
+  ? nextNyRun(after, { repeat: o.repeat, minutes: o.run_minutes, weekdays: String(o.weekdays || '').split(',').filter(Boolean).map(Number), monthDay: o.month_day || 1 })
+  : nextRunAfter(after, o.repeat));
+// Market orders run in the regular session (9:30-16:00 New York). Limit orders marked "extended
+// hours" on an Alpaca account may also run pre-market (from 4:00) and after hours (to 20:00).
+const canRunNow = (o, t) => marketOpen(t) || (o.extended && o.order_type === 'limit' && o.account !== 'paper' && extendedSession(t));
+
 export async function runScheduledOrders(t = now()) {
-  if (!marketOpen(t)) return 0; // market orders wait for the regular session
   const due = await all('SELECT * FROM scheduled_orders WHERE active = 1 AND next_run <= ?', t);
   let ran = 0;
   for (const o of due) {
+    if (!canRunNow(o, t)) continue; // waits for the session; runs as soon as it opens
     // Skip runs missed while the app was asleep instead of firing them all at once.
-    let next = nextRunAfter(o.next_run, o.repeat);
-    while (next && next <= t) next = nextRunAfter(next, o.repeat);
+    let next = nextRunOf(o, o.next_run);
+    while (next && next <= t) next = nextRunOf(o, next);
     const claim = await run('UPDATE scheduled_orders SET next_run = ?, active = ? WHERE id = ? AND next_run = ? AND active = 1', next ?? o.next_run, next ? 1 : 0, o.id, o.next_run);
     if (!claim.changes) continue;
     ran++;
     let result;
     try {
-      const r = await placeOrder(o.user_id, o.account, { symbol: o.symbol, side: o.side, qty: o.qty, notional: o.notional }, 'schedule');
+      const order = { symbol: o.symbol, side: o.side, qty: o.qty, notional: o.notional };
+      if (o.order_type === 'limit' && o.limit_price > 0) Object.assign(order, { type: 'limit', limit_price: o.limit_price, time_in_force: 'day', ...(o.extended ? { extended_hours: true } : {}) });
+      const r = await placeOrder(o.user_id, o.account, order, 'schedule');
       result = `${r.status}${r.price ? ' @ ' + r.price.toFixed(2) : ''}`;
     } catch (e) { result = 'error: ' + e.message; }
     await run('UPDATE scheduled_orders SET last_result = ? WHERE id = ?', result, o.id);
