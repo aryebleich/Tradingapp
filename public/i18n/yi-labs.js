@@ -1351,11 +1351,6 @@ export default {
  "Strategy not found": "נישט געטראפן קיין מהלך",
  "Gain, below its high": "די שטייגונגען האלטן זיך נאך אלס אונטערן העכסטן שפיץ",
  "Time (New York)": "די צייט אין ניו יארק",
- "At the open (9:30)": "פרי-מארקעט (8:00 אינדערפרי, לימיט + עקסטענדעד שעה'ן)",
- "Just after the open (9:35)": "ווען די מארקעט עפנט זיך (9:30 אינדערפרי)",
- "Before the close (15:50)": "א קורצע וויילע נאכ'ן עפענען (9:35 אינדערפרי)",
- "Pre-market (8:00, limit + extended)": "ממש פאר'ן פארשליסן די מארקעט (3:50 נאכמיטאג)",
- "After hours (17:00, limit + extended)": "נאך די ביזנעס שעה'ן - עפטער אורס (5:00 נאכמיטאג, לימיט + עקסטענדעד שעה'ן)",
  "On chosen weekdays": "אין געוויסע וואכנטעג",
  "Monthly on this date": "חודש'ליך אויף דעם דאטום",
  "Extended hours (4:00–9:30 and 16:00–20:00, Alpaca)": "פארלענגערטע שעה'ן (4:00 פארטאגס – 9:30 אינדערפרי און 4:00 נאכמיטאג – 8:00 ביינאכט, אלפאקא)",
@@ -1364,12 +1359,10 @@ export default {
  "📅 Calendar & events": "📅 לוח און מאורעות",
  "Earnings, IPOs, dividends, splits and market holidays for the month.": "חודש'ליכע ערנינגס, נייע IPO'ס, דיווידענדס, סטאק ספליטס, און ווען די מארקעט איז פארמאכט צוליב האלידעיס.",
  "Earnings (you own it)": "ערנינגס (פון די סטאקס וואס געפינען זיך אין דיין פארטפאליאו).",
- "Split or other action": "א צעטיילונג אדער אנדערע שריט",
  "Earnings dates and IPOs appear once the owner adds a market-events key (Admin → Keys → FINNHUB_API_KEY).": "די דאטומס פון די 'ערנינגס' (earnings) און נייע IPOs וועלן זיך באווייזן איינמאל דער אדמיניסטראטאר וועט צולייגן א 'מארקעט-עווענטס קי' (Admin ← Keys ← FINNHUB_API_KEY).",
  "Connect an Alpaca account to add market holidays, early closes, dividends and splits.": "פארבינדט אן 'אלפאקא' (Alpaca) אקאונט כדי צו זען די טעג ווען די מארקעט איז פארמאכט אדער ווען מען שליסט פריער, ווי אויך דיווידענדס און סטאק ספליטס.",
  "What credits pay for": "וואס די קרעדיטס דעקן אלס",
  "Monthly credits left": "איבעריגע חודש'ליכע קרעדיטס",
- "Text message sent to you": "איר האט באקומען א טעקסט מעסעדזש",
  "Call to the phone line": "א טעלעפאן רוף",
  "Strategy optimizer run": "סטראטעגיע אפטימייזער לויף",
  "Bought credits never expire and are used after your monthly ones.": "די געקויפטע קרעדיטס לויפן קיינמאל נישט אויס, און מיר וועלן עס נאר נוצן נאכדעם וואס אייערע חודש'ליכע קרעדיטס ענדיגן זיך.",
@@ -1383,6 +1376,5 @@ export default {
  "1 week, 1 month and 1 year performance": "די רעזולטאטן פון א וואך, א חודש, און א יאר",
  "Next earnings date, estimates and the last results": "דער קומענדיגער דאטום פון די ערנינגס, די שאצונגען, און די לעצטיגע רעזולטאטן",
  "The latest headlines": "די פרישסטע נייעס קעפלעך",
- "Price and this week's move": "דער פרייז און די וואכיגע רירונגען",
- "On the phone line: press 1 for paper or 2 for live, then 1 account info, 2 positions, 3 market clock, 4 place a trade, 5 cancel orders, 6 close all, 9 switch account. Every change needs your PIN.": "ביים רופן, דרוקט 1 פאר פעיפער טרעידינג אדער 2 פאר א לייוו אקאונט. דערנאך קענט איר אויסקלויבן 1 פאר אקאונט אינפארמאציע, 2 פאר פאזיציעס, 3 פארן מארקעט זייגער, 4 אריינצוגעבן א טרעיד, 5 צו קענסלען ארדערס, 6 אפצושטעלן אלעס, אדער 9 צו טוישן אקאונטס. איר וועט דארפן אריינגעבן אייער פין (PIN) פאר יעדע טויש וואס איר מאכט."
+ "Price and this week's move": "דער פרייז און די וואכיגע רירונגען"
 };
