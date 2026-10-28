@@ -77,8 +77,8 @@ test('ready-made strategies trade real accounts by themselves only in registered
     assert.equal(sub.status, 403); assert.match(sub.body.error, /review each signal/);
     assert.equal((await owner(`/fleet/channels/${ch.id}/subscribe`, { accounts: ['paper'], mode: 'auto' })).status, 200);
     assert.equal((await owner(`/fleet/channels/${ch.id}/subscribe`, { accounts: ['alpaca'], mode: 'review' })).status, 200);
-    // Public pages show a nickname, never an email.
-    const pub = (await owner('/fleet')).body.public;
+    // Public pages show a nickname, never an email (admins also see the email: test/batch7).
+    const pub = (await leader('/fleet')).body.public;
     const c = pub.find(x => x.id === ch.id);
     assert.match(c.creator, /^Trader [0-9A-F]{6}$/); assert.doesNotMatch(JSON.stringify(pub), /@/);
   } finally { s.close(); }

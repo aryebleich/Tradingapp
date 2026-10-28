@@ -187,9 +187,10 @@ export async function runBaskets(t = now()) {
 }
 
 
-export async function publicBaskets() {
-  const rows = await all('SELECT b.id, b.name, b.description, b.spec, b.stats, b.updated_at, u.id uid, (SELECT COUNT(*) FROM baskets f WHERE f.source_id = b.id) followers FROM baskets b JOIN users u ON u.id = b.user_id WHERE b.public = 1 ORDER BY followers DESC, b.id DESC LIMIT 100');
-  return rows.map(r => ({ id: r.id, kind: 'basket', name: r.name, description: r.description, creator: publicName(r.uid), followers: r.followers, spec: JSON.parse(r.spec), stats: r.stats ? JSON.parse(r.stats) : null, updatedAt: r.updated_at }));
+// Everyone sees the creator's nickname; admins also see the email, to contact them.
+export async function publicBaskets(viewer) {
+  const rows = await all('SELECT b.id, b.name, b.description, b.spec, b.stats, b.updated_at, u.id uid, u.email, (SELECT COUNT(*) FROM baskets f WHERE f.source_id = b.id) followers FROM baskets b JOIN users u ON u.id = b.user_id WHERE b.public = 1 ORDER BY followers DESC, b.id DESC LIMIT 100');
+  return rows.map(r => ({ id: r.id, kind: 'basket', name: r.name, description: r.description, creator: publicName(r.uid), ...(viewer?.role === 'admin' ? { creatorEmail: r.email } : {}), followers: r.followers, spec: JSON.parse(r.spec), stats: r.stats ? JSON.parse(r.stats) : null, updatedAt: r.updated_at }));
 }
 
 export const basketsRouter = (() => {
@@ -202,7 +203,7 @@ export const basketsRouter = (() => {
     res.json({ spec, ...(await backtestBasket(req.user.id, spec, Math.max(2, Math.min(15, +req.body.years || 6)))), today: await currentTargets(req.user.id, spec) });
   });
   r.get('/', async (req, res) => res.json((await all('SELECT * FROM baskets WHERE user_id = ? ORDER BY id DESC', req.user.id)).map(b => ({ ...b, spec: JSON.parse(b.spec), holdings: JSON.parse(b.holdings || '{}'), stats: b.stats ? JSON.parse(b.stats) : null }))));
-  r.get('/community', async (req, res) => res.json(await publicBaskets()));
+  r.get('/community', async (req, res) => res.json(await publicBaskets(req.user)));
   const limitFor = u => (isPaid(u) ? 50 : 2);
   r.post('/', async (req, res) => {
     if ((await one('SELECT COUNT(*) n FROM baskets WHERE user_id = ?', req.user.id)).n >= limitFor(req.user)) throw Object.assign(bad('The free plan has 2 portfolios'), { status: 402, upgrade: true, feature: 'More rule-based portfolios' });

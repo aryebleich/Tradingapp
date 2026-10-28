@@ -15,7 +15,7 @@ export function md(src) {
   const out = [], lines = String(src || '').split('\n');
   for (let i = 0; i < lines.length; i++) {
     const l = lines[i];
-    if (/^\s*\|.*\|\s*$/.test(l) && /^\s*\|[\s:-|]+\|\s*$/.test(lines[i + 1] || '')) {
+    if (/^\s*\|.*\|\s*$/.test(l) && /^\s*\|[\s:|-]+\|\s*$/.test(lines[i + 1] || '')) {
       const row = r => r.trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim());
       const head = row(l); i += 2; const body = [];
       while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) body.push(row(lines[i++]));

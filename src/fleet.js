@@ -72,10 +72,11 @@ export async function channelHook(req, res) {
   res.json(await broadcast(ch, { symbol: sig.symbol, side: sig.action === 'buy' ? 'buy' : 'sell', note: 'webhook' }, req.ip));
 }
 
-export async function publicChannels() {
-  const rows = await all(`SELECT c.id, c.name, c.description, c.created_at, u.id uid, (SELECT COUNT(DISTINCT user_id) FROM channel_subs s WHERE s.channel_id = c.id AND s.active = 1) followers,
+// Everyone sees the creator's nickname; admins also see the email, to contact them.
+export async function publicChannels(viewer) {
+  const rows = await all(`SELECT c.id, c.name, c.description, c.created_at, u.id uid, u.email, (SELECT COUNT(DISTINCT user_id) FROM channel_subs s WHERE s.channel_id = c.id AND s.active = 1) followers,
     (SELECT COUNT(*) FROM channel_signals g WHERE g.channel_id = c.id) signals FROM channels c JOIN users u ON u.id = c.user_id WHERE c.public = 1 ORDER BY followers DESC, c.id DESC LIMIT 100`);
-  return rows.map(r => ({ id: r.id, kind: 'channel', name: r.name, description: r.description, creator: publicName(r.uid), followers: r.followers, signals: r.signals }));
+  return rows.map(r => ({ id: r.id, kind: 'channel', name: r.name, description: r.description, creator: publicName(r.uid), ...(viewer?.role === 'admin' ? { creatorEmail: r.email } : {}), followers: r.followers, signals: r.signals }));
 }
 
 export const fleetRouter = (() => {
@@ -88,7 +89,7 @@ export const fleetRouter = (() => {
     const pending = await all(`SELECT p.*, g.symbol, g.side, g.price, g.note, g.at signal_at, c.name channel, s.account FROM channel_pending p JOIN channel_signals g ON g.id = p.signal_id
       JOIN channel_subs s ON s.id = p.sub_id JOIN channels c ON c.id = s.channel_id WHERE p.user_id = ? ORDER BY p.id DESC LIMIT 100`, uid);
     const recent = mine.length ? await all(`SELECT * FROM channel_signals WHERE channel_id IN (${mine.map(() => '?').join(',')}) ORDER BY id DESC LIMIT 50`, ...mine.map(c => c.id)) : [];
-    res.json({ channels: mine.map(c => ({ ...c, token_hash: undefined })), subscriptions: subs, inbox: pending.map(p => ({ ...p, expired: p.status === 'pending' && now() - p.signal_at > REVIEW_MINUTES * 60e3 })), sent: recent, public: await publicChannels() });
+    res.json({ channels: mine.map(c => ({ ...c, token_hash: undefined })), subscriptions: subs, inbox: pending.map(p => ({ ...p, expired: p.status === 'pending' && now() - p.signal_at > REVIEW_MINUTES * 60e3 })), sent: recent, public: await publicChannels(req.user) });
   });
   r.post('/channels', async (req, res) => {
     if (!isPaid(req.user) && (await one('SELECT COUNT(*) n FROM channels WHERE user_id = ?', req.user.id)).n >= 1) throw Object.assign(bad('The free plan has 1 channel'), { status: 402, upgrade: true, feature: 'More signal channels' });

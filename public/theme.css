@@ -612,3 +612,5 @@ table.heat td.co { font-weight: 700; outline: 2px solid #2563eb; outline-offset:
 .chartlegend span { display: inline-flex; align-items: center; gap: 6px; }
 .chartlegend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; flex: none; }
 .chartlegend .now { color: var(--tx); font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--bg2); }
+
+.readme { line-height: 1.6; } .readme h1, .readme h2, .readme h3 { margin: 18px 0 8px; } .readme table { margin: 8px 0; } .readme code { font-size: 12.5px; }

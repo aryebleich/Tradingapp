@@ -3,7 +3,7 @@
 import { one, all, run, now } from './db.js';
 
 // Prices are the average of comparable platforms (charting, signal routing, quant and options tools;
-// see docs/pricing-comparison.md): entry tiers average about $53, middle tiers $109, top tiers $320.
+// the comparison is in Admin → README): entry tiers average about $53, middle tiers $109, top tiers $320.
 // Yearly billing is 10x the monthly price (two months free).
 export const PLANS = {
   free: { name: 'Starter', monthly: 0, yearly: 0, perfFee: 0.20, tagline: 'Learn and practice', features: ['$100,000 paper account', 'Live trading on your own brokerage (your own orders)', '1 chart per layout, every indicator', 'Strategy library by hand + 1 automatic strategy on paper', 'Unlimited backtests', '1 alert webhook (paper)', '2 scanners, checked hourly', 'AI assistant: 30 messages a day', 'English & Yiddish'] },

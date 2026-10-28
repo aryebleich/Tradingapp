@@ -1,11 +1,12 @@
 // Owner pages: Business mode (software only or registered adviser, and ways to earn), Admins
 // (emails and phones that sign in as admin), and Keys (every environment value, .env import and
 // export, and sync with Render). Admin pages stay in English.
+import { md } from './studio.js';
 let H;
 export function registerOwner(routes, helpers) {
   H = helpers;
   const guard = fn => view => (H.me()?.role === 'admin' ? fn(view) : (location.hash = '#/dashboard'));
-  Object.assign(routes, { 'admin-business': guard(business), 'admin-alpaca': guard(alpacaPlans), 'admin-yiddish': guard(yiddish), 'admin-phone': guard(phoneLine), 'admin-ai': guard(aiPrivacy), 'admin-admins': guard(admins), 'admin-keys': guard(keys) });
+  Object.assign(routes, { 'admin-business': guard(business), 'admin-alpaca': guard(alpacaPlans), 'admin-yiddish': guard(yiddish), 'admin-phone': guard(phoneLine), 'admin-ai': guard(aiPrivacy), 'admin-readme': guard(privateReadme), 'admin-admins': guard(admins), 'admin-keys': guard(keys) });
 }
 
 async function business(view) {
@@ -275,5 +276,39 @@ async function aiPrivacy(view) {
     const allow = Object.fromEntries(Object.keys(d.crawlers).map(k => [k, f['allow_' + k].checked]));
     const r = await H.api('/admin/site/ai', { method: 'PUT', body: { allow, search: f.search.checked, llmsOn: f.llmsOn.checked, llms: f.llms.value, accountData: f.accountData.value } });
     H.$('#robots', view).textContent = r.robots; return 'Saved';
+  });
+}
+
+// Private README: the full project guide, kept encrypted in the database and shown only here. The
+// public README on GitHub is a short description; "Publish" makes this text the public one.
+async function privateReadme(view) {
+  const d = await H.api('/admin/site/readme');
+  let text = d.text, tab = 'edit';
+  const when = t => (t ? new Date(t).toLocaleString() : 'never');
+  view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-readme')}
+  <div class="card"><div class="row" style="justify-content:space-between;align-items:center"><h2>Private README</h2>
+    <div class="seg" id="rmTab"><button type="button" data-t="edit" class="on">Edit</button><button type="button" data-t="view">Preview</button></div></div>
+    <p class="mu" style="margin-top:0">Only admins see this. The public README on GitHub says only what QuantPocket is and that the site is being built. Saved ${when(d.updatedAt)} · published ${when(d.publishedAt)}.</p>
+    ${text ? '' : `<p class="banner">Nothing saved yet. <button type="button" class="small" id="rmImport">Load the full guide</button> brings in the last full README (commit <code data-no-tr>${H.esc(d.fullRef.slice(0, 7))}</code>).</p>`}
+    <textarea id="rmText" rows="28" spellcheck="false" data-no-tr style="width:100%;font:13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace">${H.esc(text)}</textarea>
+    <div id="rmView" class="readme" hidden data-no-tr></div>
+    <div class="row" style="margin-top:10px"><button id="rmSave">Save</button> <button type="button" class="ghost" id="rmDown">Download .md</button></div><div class="err"></div></div>
+  <form class="card" id="rmPub"><h2>Publish as the public README</h2>
+    <p class="mu">Replaces README.md on GitHub (<code data-no-tr>${H.esc(d.repo)}</code>) with the saved text. Anyone who can see the repository can read it afterwards, and GitHub keeps every version in its history.</p>
+    ${d.canPublish ? `<label>Your password<input name="password" type="password" autocomplete="current-password"></label><label>Or, for Google/GitHub accounts, your email<input name="confirm" autocomplete="off"></label><button>Publish to GitHub</button>` : '<p class="banner">Add <code>GITHUB_TOKEN</code> in <a href="#/admin-keys">Keys</a> (a fine-grained token with Contents: read and write) to publish from here.</p>'}<div class="err"></div></form>`;
+  const ta = H.$('#rmText', view), pv = H.$('#rmView', view);
+  H.$$('#rmTab button', view).forEach(b => (b.onclick = () => {
+    tab = b.dataset.t; H.$$('#rmTab button', view).forEach(x => x.classList.toggle('on', x === b));
+    ta.hidden = tab !== 'edit'; pv.hidden = tab !== 'view'; if (tab === 'view') pv.innerHTML = md(ta.value);
+  }));
+  H.act(H.$('#rmSave', view), async () => { await H.api('/admin/site/readme', { method: 'PUT', body: { text: ta.value } }); return 'Saved'; });
+  H.$('#rmDown', view).onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([ta.value], { type: 'text/markdown' })); a.download = 'README.md'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
+  if (H.$('#rmImport', view)) H.act(H.$('#rmImport', view), async () => { const r = await H.api('/admin/site/readme/import', { body: {} }); ta.value = r.text; return 'Loaded and saved'; });
+  const pf = H.$('#rmPub', view);
+  if (d.canPublish) H.act(H.$('button', pf), async () => {
+    if (!confirm('Make this README public on GitHub?')) return '';
+    await H.api('/admin/site/readme', { method: 'PUT', body: { text: ta.value } });
+    const r = await H.api('/admin/site/readme/publish', { body: { password: pf.password.value, confirm: pf.confirm.value } });
+    pf.password.value = ''; return `Published (commit ${String(r.commit || '').slice(0, 7)})`;
   });
 }

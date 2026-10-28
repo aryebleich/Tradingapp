@@ -55,6 +55,21 @@ if (dry && process.env.YL_STATUS) fs.writeFileSync(process.env.YL_STATUS, JSON.s
 if (dry || !todo.length) process.exit(0);
 
 // ---------- the website ----------
+// What the page shows when a step fails: address, title, headings, buttons and messages, with
+// emails and long numbers removed (the run log is visible to anyone who can see the repository).
+async function explain(why) {
+  const info = await page.evaluate(() => ({
+    path: location.pathname, title: document.title,
+    headings: [...document.querySelectorAll('h1, h2, h3, [role=heading]')].map(e => e.innerText.trim()).filter(Boolean).slice(0, 8),
+    buttons: [...document.querySelectorAll('button, a[role=button]')].map(e => e.innerText.trim()).filter(Boolean).slice(0, 15),
+    messages: [...document.querySelectorAll('[role=alert], .p-message, .p-toast-message, .error, .p-error, small')].map(e => e.innerText.trim()).filter(Boolean).slice(0, 6),
+    editors: document.querySelectorAll('[contenteditable], textarea').length,
+  })).catch(e => ({ error: e.message }));
+  const clean = v => JSON.stringify(v).replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, '[email]').replace(/\d{6,}/g, '[number]');
+  console.error(`${why}\nPage: ${clean(info)}`);
+  if (process.env.YL_STATUS) fs.writeFileSync(process.env.YL_STATUS, JSON.stringify({ at: Date.now(), since, stopped: why, page: JSON.parse(clean(info)) }, null, 1) + '\n');
+  await browser.close(); process.exit(1);
+}
 if (!STATE) { console.error('Set YL_STATE to a file path for the signed-in session.'); process.exit(1); }
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ ...(fs.existsSync(STATE) ? { storageState: STATE } : {}), viewport: { width: 1300, height: 900 } });
@@ -63,9 +78,11 @@ await page.goto(URL_, { waitUntil: 'networkidle', timeout: 90000 });
 if (!(await page.locator('[contenteditable=true]').count())) {
   if (!process.env.YL_EMAIL || !process.env.YL_PASSWORD) { console.error('Not signed in: set YL_EMAIL and YL_PASSWORD once.'); process.exit(1); }
   await page.fill('input[type=email]', process.env.YL_EMAIL); await page.fill('input[type=password]', process.env.YL_PASSWORD);
-  await page.keyboard.press('Enter'); await page.waitForURL(/\/app/, { timeout: 60000 });
-  await page.goto(URL_, { waitUntil: 'networkidle' });
-  await page.locator('[contenteditable=true]').waitFor({ timeout: 30000 });
+  await page.keyboard.press('Enter');
+  await page.waitForURL(/\/app/, { timeout: 60000 }).catch(async () => { await explain('Sign-in did not finish (wrong email or password, or an extra check on the Yiddish Labs side).'); });
+  await page.goto(URL_, { waitUntil: 'networkidle', timeout: 90000 });
+  await closePopups();
+  await page.locator('[contenteditable=true]').first().waitFor({ timeout: 60000 }).catch(async () => { await explain('Signed in, but the translation editor did not appear.'); });
 }
 await ctx.storageState({ path: STATE });
 // The site sometimes opens a pop-up (e.g. "what's new"); close it with the X at its top right so it

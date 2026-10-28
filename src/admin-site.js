@@ -283,3 +283,64 @@ adminSiteRouter.put('/ai', wrap(async (req, res) => {
   await audit(req.user.id, 'ai_access', { allow: s.allow, search: s.search, llmsOn: s.llmsOn, accountData: s.accountData }, req.ip);
   res.json({ settings: s, robots: A.robotsTxt(s) });
 }));
+
+// ---------- private README (Admin → README) ----------
+// The full project guide lives here, encrypted in the database, not in the public repository.
+// The public README.md on GitHub is a short description; "Publish" replaces it with this text.
+// FULL_README_REF: the last commit whose README.md had the whole guide, to import it once.
+export const FULL_README_REF = 'cfdd4ed96a7b9f400821ba15b07d3101a19ff144';
+const readme = async () => {
+  const r = S.siteGet('privateReadme', null);
+  if (!r) return null;
+  const { tryDecrypt } = await import('./crypto.js');
+  return { ...r, text: tryDecrypt(r.enc, 'private README') ?? '' };
+};
+const saveReadme = async (text, extra = {}) => {
+  const { encrypt } = await import('./crypto.js');
+  const cur = S.siteGet('privateReadme', {}) || {};
+  await S.siteSet('privateReadme', { ...cur, ...extra, enc: encrypt(String(text)), updatedAt: Date.now() });
+};
+adminSiteRouter.get('/readme', wrap(async (req, res) => {
+  const r = await readme();
+  res.json({ text: r?.text ?? '', updatedAt: r?.updatedAt || null, publishedAt: r?.publishedAt || null, canPublish: !!process.env.GITHUB_TOKEN, repo: repo(), fullRef: FULL_README_REF });
+}));
+adminSiteRouter.put('/readme', wrap(async (req, res) => {
+  const text = String(req.body?.text ?? '');
+  if (text.length > 600e3) throw bad('The README is limited to 600 KB');
+  await saveReadme(text);
+  await audit(req.user.id, 'readme_saved', { length: text.length }, req.ip);
+  res.json({ ok: true });
+}));
+// Imports README.md from a commit (the last full guide by default): with GITHUB_TOKEN through the
+// API (works for a private repository), otherwise from the public raw file.
+adminSiteRouter.post('/readme/import', wrap(async (req, res) => {
+  const ref = /^[0-9a-f]{7,40}$|^[\w./-]{1,100}$/.test(req.body?.ref || '') ? req.body.ref : FULL_README_REF;
+  const read = async file => {
+    if (process.env.GITHUB_TOKEN) {
+      const f = await gh('GET', `/contents/${file}?ref=${encodeURIComponent(ref)}`);
+      return Buffer.from(f.content || '', 'base64').toString('utf8');
+    }
+    const r = await fetch(`${process.env.GITHUB_RAW_URL || 'https://raw.githubusercontent.com'}/${repo()}/${encodeURIComponent(ref)}/${file}`, { signal: AbortSignal.timeout(15000) });
+    if (!r.ok) throw Object.assign(new Error(`Could not read ${file} at ${ref} (${r.status}). If the repository is private, add GITHUB_TOKEN in Keys.`), { status: 502 });
+    return r.text();
+  };
+  let text = await read('README.md');
+  // The plan-pricing notes used to be a separate public file; they join the private guide.
+  const pricing = await read('docs/pricing-comparison.md').catch(() => '');
+  if (pricing) text += `\n\n---\n\n${pricing.replace(/^# /m, '## ')}`;
+  await saveReadme(text);
+  await audit(req.user.id, 'readme_imported', { ref, length: text.length }, req.ip);
+  res.json({ text });
+}));
+// Publishes the saved text as README.md on GitHub (a commit to the default branch). Anyone who can
+// see the repository can read it afterwards, so it asks for the password first.
+adminSiteRouter.post('/readme/publish', wrap(async (req, res) => {
+  if (!confirmsIdentity(req.user, req.body || {})) throw Object.assign(new Error(req.user.password_set === 0 ? 'Type your email address to confirm' : 'Wrong password'), { status: 401 });
+  const r = await readme();
+  if (!r?.text) throw bad('Save the README first');
+  const cur = await gh('GET', '/contents/README.md').catch(e => (e.status === 404 ? null : Promise.reject(e)));
+  const out = await gh('PUT', '/contents/README.md', { message: 'README: published from Admin', content: Buffer.from(r.text, 'utf8').toString('base64'), ...(cur?.sha ? { sha: cur.sha } : {}) });
+  await saveReadme(r.text, { publishedAt: Date.now() });
+  await audit(req.user.id, 'readme_published', { commit: out.commit?.sha || null }, req.ip);
+  res.json({ ok: true, commit: out.commit?.sha || null, url: out.content?.html_url || null });
+}));

@@ -223,6 +223,9 @@ const ICONS = {
   referrals: '<path d="M20 12v9H4v-9M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 1 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 1 0 0-5C13 2 12 7 12 7z"/>',
   tax: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 15l6-6M9.5 9.5h.01M14.5 14.5h.01"/>',
   text: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>', settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 13H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 3V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 21 10h.1a2 2 0 1 1 0 4z"/>',
+  'admin-phone': '<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/>',
+  'admin-ai': '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/>',
+  'admin-readme': '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>',
   'admin-users': '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 14.8c1.7.8 2.7 2.6 3 5.2"/>',
   'admin-money': '<rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/>',
   'admin-support': '<path d="M4 5h16v11H8l-4 4z"/><path d="M8 9h8M8 12.5h5"/>',
@@ -1010,7 +1013,7 @@ routes.settings = async view => {
 
 // ---------- admin ----------
 // Owner pages: one route per section so each has its own place in the menu.
-const ADMIN_TABS = [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-money', 'Money & fees'], ['admin-business', 'Business mode'], ['admin-alpaca', 'Alpaca plans'], ['admin-yiddish', 'Yiddish Labs'], ['admin-phone', 'Phone line'], ['admin-ai', 'AI & privacy'], ['admin-admins', 'Admins'], ['admin-keys', 'Keys'], ['admin-support', 'Support inbox'], ['admin-system', 'System health'], ['admin-setup', 'Setup']];
+const ADMIN_TABS = [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-money', 'Money & fees'], ['admin-business', 'Business mode'], ['admin-alpaca', 'Alpaca plans'], ['admin-yiddish', 'Yiddish Labs'], ['admin-phone', 'Phone line'], ['admin-ai', 'AI & privacy'], ['admin-readme', 'README'], ['admin-admins', 'Admins'], ['admin-keys', 'Keys'], ['admin-support', 'Support inbox'], ['admin-system', 'System health'], ['admin-setup', 'Setup']];
 // Pages with their own module (owner.js, protect.js) draw themselves under the same tabs.
 const adminTabs = current => `<div class="chips admintabs">${ADMIN_TABS.map(([k, t]) => `<a href="#/${k}"><button type="button" class="${k === current ? 'on' : ''}">${t}</button></a>`).join('')}</div>`;
 async function adminPage(view, tab) {
@@ -1034,8 +1037,8 @@ async function adminPage(view, tab) {
   <div class="card"><h2>Funnel</h2><p class="mu" style="margin-top:0">${f.signups30} new signups in the last 30 days. Find the biggest drop and improve that step first.</p><div class="funnel">
     ${steps.map(([t, n]) => `<div class="bar"><span>${t}</span><i style="width:${f.signups ? Math.max(1, n / f.signups * 100) : 0}%"></i><b>${n}</b></div>`).join('')}</div></div>`,
     'admin-users': () => `
-  <div class="card tablewrap"><div class="row" style="justify-content:space-between;align-items:center"><h2>Users</h2><input id="userFind" type="search" placeholder="Search email" style="max-width:260px;margin:0"></div>
-    <table id="userTable"><tr><th>Email</th><th>Plan</th><th>Role</th><th>2FA</th><th>Phone</th><th>Joined</th></tr>${s.users.map(u => `<tr data-email="${esc(u.email)}"><td data-no-tr>${esc(u.email)}${u.google ? ' <span class="pill">Google</span>' : ''}${u.github ? ' <span class="pill">GitHub</span>' : ''}</td>
+  <div class="card tablewrap"><div class="row" style="justify-content:space-between;align-items:center"><h2>Users</h2><input id="userFind" type="search" placeholder="Search email or nickname" style="max-width:260px;margin:0"></div>
+    <table id="userTable"><tr><th>Email</th><th>Nickname</th><th>Plan</th><th>Role</th><th>2FA</th><th>Phone</th><th>Joined</th></tr>${s.users.map(u => `<tr data-email="${esc(u.email + ' ' + u.nickname)}"><td data-no-tr>${esc(u.email)}${u.google ? ' <span class="pill">Google</span>' : ''}${u.github ? ' <span class="pill">GitHub</span>' : ''}</td><td data-no-tr class="mu">${esc(u.nickname)}</td>
       <td><select data-plan="${u.id}" style="margin:0;min-width:110px">${['free', 'pro', 'elite', 'ultimate'].map(p => `<option value="${p}" ${u.plan === p ? 'selected' : ''}>${{ free: 'Starter', pro: 'Pro', elite: 'Elite', ultimate: 'Ultimate' }[p]}</option>`).join('')}</select></td>
       <td>${u.role === 'admin' ? `<span class="pill">Admin</span>${u.id !== ME.id ? ` <button class="small ghost" data-role="${u.id}" data-to="user">Remove admin</button>` : ''}` : `<button class="small ghost" data-role="${u.id}" data-to="admin">Make admin</button>`}</td>
       <td>${u.totp_enabled ? 'yes' : '-'}</td><td>${u.phone_verified ? 'yes' : '-'}</td><td>${date(u.created_at)}</td></tr>`).join('')}</table><div class="err" id="userErr"></div>

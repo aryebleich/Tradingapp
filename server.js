@@ -5,7 +5,7 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { one, all, run, now, audit } from './src/db.js';
-import { encrypt, hashSecret, verifySecret, safeEqual } from './src/crypto.js';
+import { encrypt, hashSecret, verifySecret, safeEqual, publicName } from './src/crypto.js';
 import * as auth from './src/auth.js';
 import crypto from 'node:crypto';
 import { backtest, projectAnnual, walkForward, optimize, warmupFor, compile, PRESETS } from './src/engine.js';
@@ -188,7 +188,7 @@ app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (r
         await run("UPDATE ledger SET status = 'refunded' WHERE kind = 'deposit_fee' AND ref = ?", `fee:${id}`);
       } else {
         // Card funds land in the platform's Stripe balance; moving them into the user's
-        // brokerage account requires the Alpaca Broker API (see README, "Funding").
+        // brokerage account requires the Alpaca Broker API (see Admin → README, "Funding").
         await depositReceived(id, o.payment_intent);
       }
     } else if (ev.type === 'checkout.session.async_payment_succeeded' && o.metadata?.kind === 'deposit') {
@@ -239,6 +239,7 @@ app.post('/webhooks/authorizenet', express.raw({ type: '*/*' }), async (req, res
   res.json({ ok: true });
 });
 app.use(['/api/alpaca/broker/accounts', '/api/alpaca/broker/documents'], express.json({ limit: '30mb' }));
+app.use('/api/admin/site/readme', express.json({ limit: '700kb' })); // the private README editor
 app.use(express.json({ limit: '200kb' }));
 app.use(express.urlencoded({ extended: false, limit: '50kb' }));
 
@@ -718,7 +719,7 @@ api.get('/admin/summary', U, auth.requireAdmin, async (req, res) => res.json({
   funnel: await funnel(),
   pendingTransfers: await all("SELECT l.*, u.email FROM ledger l JOIN users u ON u.id = l.user_id WHERE l.kind = 'deposit' AND l.status = 'received' ORDER BY l.id DESC"),
   feesDue: await all("SELECT l.*, u.email FROM ledger l JOIN users u ON u.id = l.user_id WHERE l.kind = 'performance_fee' AND l.status = 'due' ORDER BY l.id DESC"),
-  users: await all('SELECT id, email, plan, plan_status, role, totp_enabled, phone_verified, google_sub IS NOT NULL AS google, github_id IS NOT NULL AS github, phone, created_at FROM users ORDER BY id DESC LIMIT 500'),
+  users: (await all('SELECT id, email, plan, plan_status, role, totp_enabled, phone_verified, google_sub IS NOT NULL AS google, github_id IS NOT NULL AS github, phone, created_at FROM users ORDER BY id DESC LIMIT 500')).map(u => ({ ...u, nickname: publicName(u.id) })),
   payments: Object.values(PAY.PROVIDERS).map(p => ({ id: p.id, name: p.name, via: p.via, cost: p.cost, enabled: p.enabled(), on500: +p.costOf(500).toFixed(2) })),
   depositFee: { ...PAY.feeTerms(), collected: (await one("SELECT COALESCE(SUM(amount), 0) n FROM ledger WHERE kind = 'deposit_fee' AND status = 'collected'")).n },
 }));

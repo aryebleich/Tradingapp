@@ -22,12 +22,12 @@ export const marketRouter = (() => {
   const r = express.Router();
   r.use(requireUser);
   r.get('/', async (req, res) => {
-    const strategies = await all(`SELECT s.id, s.name, s.symbol, s.entry, s.exit, s.sl, s.tp, s.ts, s.description, u.id uid, c.v stats,
+    const strategies = await all(`SELECT s.id, s.name, s.symbol, s.entry, s.exit, s.sl, s.tp, s.ts, s.description, u.id uid, u.email, c.v stats,
       (SELECT COUNT(*) FROM cache x WHERE x.k LIKE 'copy:' || s.id || ':%') copies FROM strategies s JOIN users u ON u.id = s.user_id LEFT JOIN cache c ON c.k = 'stratstats:' || s.id
       WHERE s.public = 1 ORDER BY copies DESC, s.id DESC LIMIT 100`);
     res.json({
-      strategies: strategies.map(s => ({ id: s.id, kind: 'strategy', name: s.name, symbol: s.symbol, entry: s.entry, exit: s.exit, sl: s.sl, tp: s.tp, ts: s.ts, description: s.description, creator: publicName(s.uid), copies: s.copies, stats: s.stats ? JSON.parse(s.stats) : null })),
-      baskets: await publicBaskets(), channels: await publicChannels(),
+      strategies: strategies.map(s => ({ id: s.id, kind: 'strategy', name: s.name, symbol: s.symbol, entry: s.entry, exit: s.exit, sl: s.sl, tp: s.tp, ts: s.ts, description: s.description, creator: publicName(s.uid), ...(req.user.role === 'admin' ? { creatorEmail: s.email } : {}), copies: s.copies, stats: s.stats ? JSON.parse(s.stats) : null })),
+      baskets: await publicBaskets(req.user), channels: await publicChannels(req.user),
     });
   });
   // Publish (or withdraw) one of your rule strategies; its backtest is computed once and shown.
