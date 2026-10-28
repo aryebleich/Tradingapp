@@ -78,8 +78,9 @@ await page.goto(URL_, { waitUntil: 'networkidle', timeout: 90000 });
 if (!(await page.locator('[contenteditable=true]').count())) {
   if (!process.env.YL_EMAIL || !process.env.YL_PASSWORD) { console.error('Not signed in: set YL_EMAIL and YL_PASSWORD once.'); process.exit(1); }
   await page.fill('input[type=email]', process.env.YL_EMAIL); await page.fill('input[type=password]', process.env.YL_PASSWORD);
-  await page.keyboard.press('Enter');
-  await page.waitForURL(/\/app/, { timeout: 60000 }).catch(async () => { await explain('Sign-in did not finish (wrong email or password, or an extra check on the Yiddish Labs side).'); });
+  // The site lives at app.yiddishlabs.com, so wait for the path to leave /login (not for "app" in the URL).
+  await page.click('button[type=submit]:has-text("Login"), button:has-text("Login")');
+  await page.waitForURL(u => !new URL(u).pathname.startsWith('/login'), { timeout: 60000 }).catch(async () => { await explain('Sign-in did not finish (wrong email or password, or an extra check on the Yiddish Labs side).'); });
   await page.goto(URL_, { waitUntil: 'networkidle', timeout: 90000 });
   await closePopups();
   await page.locator('[contenteditable=true]').first().waitFor({ timeout: 60000 }).catch(async () => { await explain('Signed in, but the translation editor did not appear.'); });
