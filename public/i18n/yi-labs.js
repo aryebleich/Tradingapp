@@ -1376,5 +1376,10 @@ export default {
  "1 week, 1 month and 1 year performance": "די רעזולטאטן פון א וואך, א חודש, און א יאר",
  "Next earnings date, estimates and the last results": "דער קומענדיגער דאטום פון די ערנינגס, די שאצונגען, און די לעצטיגע רעזולטאטן",
  "The latest headlines": "די פרישסטע נייעס קעפלעך",
- "Price and this week's move": "דער פרייז און די וואכיגע רירונגען"
+ "Price and this week's move": "דער פרייז און די וואכיגע רירונגען",
+ "Approve each trade": "באשטעטיגט יעדע טרעיד",
+ "Waiting for your approval": "ווארטנדיג אויף אייער באשטעטיגונג.",
+ "Approve and place orders": "באשטעטיגן און מאכן די באשטעלונגען",
+ "Skipped for today": "אויסגעלאזט פאר היינט",
+ "Review and approve": "איבערקוקן און באשטעטיגן"
 };
