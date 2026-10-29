@@ -148,7 +148,7 @@ test('a Markdown PDF has numbered pages', () => {
 
 test('a long PDF starts with contents that give the right page for each section', () => {
   const sec = n => `## Section ${n}\n\n` + Array.from({ length: 60 }, (_, i) => `Line ${i} of section ${n}.`).join('\n\n');
-  const { pdf, pages } = markdownPdf('# Guide\n\n' + [1, 2, 3, 4].map(sec).join('\n\n'), { title: 'Guide' });
+  const { pdf, pages } = markdownPdf('# Guide\n\n' + [1, 2, 3, 4].map(sec).join('\n\n'), { title: 'Guide', cover: false });
   const t = pdf.toString('latin1');
   // Content streams in page order: find where each heading is drawn and the number listed for it.
   const streams = [...t.matchAll(/stream\n([\s\S]*?)\nendstream/g)].map(m => m[1]);
@@ -168,7 +168,7 @@ test('the portfolio chart refreshes quietly instead of rebuilding the page', asy
   const tr = fs.readFileSync('public/trading.js', 'utf8'), app = fs.readFileSync('public/app.js', 'utf8');
   const portfolio = tr.slice(tr.indexOf('async function portfolio('), tr.indexOf('\n}\n', tr.indexOf('async function portfolio(')));
   assert.doesNotMatch(portfolio, /every\(\d+, \(\) => H\.render\(\)\)/);
-  assert.match(portfolio, /if \(holding\) return/);
+  assert.match(portfolio, /if \(holding \|\| P\.mode === 'since'\) return/);
   // The drawing animation plays only the first time a chart is shown.
   assert.match(app, /if \(calmMotion\(\) \|\| seen\) return frame\(1\)/);
 });
@@ -192,7 +192,7 @@ test('the owner connects Google Drive and saves the private README there as a PD
     assert.equal(r.body.id, 'file123'); assert.ok(r.body.pages >= 1);
     const up = calls.filter(c => c.url.startsWith('/upload'));
     assert.equal(up[0].method, 'POST'); assert.equal(up[0].headers.authorization, 'Bearer a2');
-    assert.match(up[0].body, /%PDF-1\.4[\s\S]*Page 1 of/);
+    assert.match(up[0].body, /%PDF-1\.4[\s\S]*Page \d+ of/);
     // A second save updates the same file.
     await owner('/admin/site/readme/drive', {});
     assert.equal(calls.filter(c => c.url.startsWith('/upload')).pop().method, 'PATCH');

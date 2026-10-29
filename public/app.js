@@ -104,6 +104,28 @@ function act(btn, fn, out) {
 }
 
 let ME = null, CFG = null;
+// The user's display preferences (Settings → Portfolio numbers), loaded once after sign-in.
+const PREFS = { portfolio: { mode: 'live', hideToday: false }, loaded: false };
+async function loadPrefs() {
+  if (PREFS.loaded || !ME) return PREFS;
+  const v = await api('/prefs/portfolio').catch(() => null);
+  if (v?.value) PREFS.portfolio = v.value;
+  PREFS.loaded = true; return PREFS;
+}
+// "Since you last looked": the change from the value at the previous visit. A visit lasts 30
+// minutes, so reloading or switching pages keeps comparing with the same earlier visit.
+async function sinceLastLook(account, equity) {
+  const seen = (await api('/prefs/seen').catch(() => null))?.value || {}, s = seen[account];
+  let base = s?.prevEquity ? { equity: s.prevEquity, at: s.prevAt } : null;
+  if (!s || Date.now() - s.at > 30 * 60e3) {
+    // A new visit: the last one becomes the comparison point.
+    if (s) base = { equity: s.equity, at: s.at };
+    api('/prefs/seen', { method: 'PUT', body: { value: { ...seen, [account]: { equity, at: Date.now(), ...(base ? { prevEquity: base.equity, prevAt: base.at } : {}) } } } }).catch(() => {});
+  }
+  return base && base.equity > 0 ? { change: equity - base.equity, pct: (equity / base.equity - 1) * 100, at: base.at } : null;
+}
+// The stat box for it (or nothing when this is the first look).
+const sinceStat = s => (s ? `<div class="stat since"><span>Since you last looked</span><b class="${cls(s.change)}">${money(s.change)}</b><small class="mu"><span dir="ltr">${pct(s.pct, 2)}</span> · ${new Date(s.at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</small></div>` : '');
 // Accounts the user can trade (paper, Alpaca, other brokerages), cached for a minute.
 let ACCTS = null;
 async function accounts(force) {
@@ -130,7 +152,7 @@ function chartLegend(canvas, series, states, base) {
 // The last data drawn in each chart spot, so a refresh with the same numbers does not replay the
 // drawing animation (a chart that keeps redrawing while you look at it is unsettling).
 const chartSeen = new Map();
-function drawChart(canvas, series, { base, compare, legend = true } = {}) {
+function drawChart(canvas, series, { base, compare, legend = true, dates = null, time = false } = {}) {
   cancelAnimationFrame(canvas.__anim || 0);
   const key = (canvas.id || 'chart') + location.hash.split('?')[0], sig = JSON.stringify([series, base, compare]);
   const seen = chartSeen.has(key);
@@ -139,7 +161,7 @@ function drawChart(canvas, series, { base, compare, legend = true } = {}) {
   canvas.width = w * dpr; canvas.height = h * dpr;
   const g = canvas.getContext('2d'); g.scale(dpr, dpr);
   const css = getComputedStyle(document.documentElement), C = k => css.getPropertyValue(k).trim();
-  if (series.length < 2) { g.fillStyle = C('--mu'); canvasNote(g, 'Your equity curve starts filling in after the first trading day.'); return; }
+  if (series.length < 2) { canvas.__hover = null; g.fillStyle = C('--mu'); canvasNote(g, 'Your equity curve starts filling in after the first trading day.'); return; }
   base ??= series[0];
   const states = chartStates(series, base);
   if (legend) chartLegend(canvas, series, states, base);
@@ -166,10 +188,44 @@ function drawChart(canvas, series, { base, compare, legend = true } = {}) {
     g.restore();
     if (t >= 1) { const x = X(series.length - 1), y = Y(series[series.length - 1]); g.fillStyle = CHART_STATES[states[states.length - 1]].color; g.beginPath(); g.arc(x - 1, y, 4, 0, 7); g.fill(); g.globalAlpha = 0.25; g.beginPath(); g.arc(x - 1, y, 9, 0, 7); g.fill(); g.globalAlpha = 1; }
   };
+  // Pointing at the chart (mouse or finger) shows the date and value at that spot.
+  canvas.__hover = { series, dates, time, base, X, Y, w, h, pad, frame, color: i => CHART_STATES[states[i]].color };
+  if (!canvas.__hoverWired) { canvas.__hoverWired = true; wireChartHover(canvas); }
   // Animate only the first time this chart is shown; later redraws (new data, resize, theme) are instant.
   if (calmMotion() || seen) return frame(1);
   const t0 = performance.now(), run = now => { const t = Math.min(1, (now - t0) / 700); frame(1 - (1 - t) ** 3); if (t < 1) canvas.__anim = requestAnimationFrame(run); };
   canvas.__anim = requestAnimationFrame(run);
+}
+
+// The read-out for drawChart: a thin line, a dot and a label with the date and value.
+function wireChartHover(canvas) {
+  const box = canvas.parentElement;
+  if (getComputedStyle(box).position === 'static') box.style.position = 'relative';
+  const tip = document.createElement('div'); tip.className = 'charttip'; tip.hidden = true; tip.setAttribute('dir', 'ltr'); box.append(tip);
+  const fmtDay = (d, time) => { const t = new Date(typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d + 'T12:00:00Z' : d); return isNaN(t) ? '' : t.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric', ...(time ? { hour: 'numeric', minute: '2-digit' } : { timeZone: 'UTC' }) }); };
+  const show = e => {
+    const c = canvas.__hover; if (!c || c.series.length < 2) return;
+    const r = canvas.getBoundingClientRect(), x = e.clientX - r.left;
+    const i = Math.max(0, Math.min(c.series.length - 1, Math.round((x - c.pad) / (c.w - 2 * c.pad) * (c.series.length - 1))));
+    const v = c.series[i], px = c.X(i), py = c.Y(v);
+    cancelAnimationFrame(canvas.__anim || 0); c.frame(1);
+    const g = canvas.getContext('2d'), css = getComputedStyle(document.documentElement);
+    g.save(); g.strokeStyle = css.getPropertyValue('--mu').trim(); g.globalAlpha = 0.5; g.lineWidth = 1; g.beginPath(); g.moveTo(px, 0); g.lineTo(px, c.h); g.stroke(); g.restore();
+    g.fillStyle = c.color(i); g.beginPath(); g.arc(px, py, 4.5, 0, 7); g.fill(); g.strokeStyle = css.getPropertyValue('--card').trim() || '#fff'; g.lineWidth = 2; g.stroke();
+    const chg = c.base ? (v / c.base - 1) * 100 : null;
+    tip.innerHTML = `${c.dates?.[i] != null ? `<span>${esc(fmtDay(c.dates[i], c.time))}</span>` : ''}<b>${money(v)}</b>${chg != null ? `<span class="${chg >= 0 ? 'up' : 'dn'}">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%</span>` : ''}`;
+    tip.hidden = false;
+    const tw = tip.offsetWidth, left = canvas.offsetLeft + Math.min(Math.max(px - tw / 2, 0), c.w - tw);
+    tip.style.left = left + 'px'; tip.style.top = Math.max(0, canvas.offsetTop + py - tip.offsetHeight - 12) + 'px';
+  };
+  const hide = () => { tip.hidden = true; const c = canvas.__hover; if (c) c.frame(1); };
+  canvas.addEventListener('pointermove', show);
+  canvas.addEventListener('pointerdown', show);
+  canvas.addEventListener('pointerleave', hide);
+  canvas.addEventListener('pointercancel', hide);
+  // On phones the label stays a moment after the finger lifts.
+  canvas.addEventListener('pointerup', e => { if (e.pointerType !== 'mouse') setTimeout(hide, 2500); });
+  canvas.style.touchAction = 'pan-y';
 }
 
 // ---------- theme: auto (device), light or dark ----------
@@ -320,6 +376,7 @@ async function render() {
   }
   view.innerHTML = '<div class="skel"><div class="h1"></div><div class="box"></div><div class="w60"></div><div></div><div class="box"></div></div>';
   try {
+    await loadPrefs();
     await (routes[route] || routes.dashboard)(view, new URLSearchParams(q));
   }
   catch (e) { view.innerHTML = `<div class="card err">${esc(e.message)}</div>`; }
@@ -589,7 +646,8 @@ routes.dashboard = async (view, q) => {
   const steps = [[!!localStorage.getItem('qp_seen_strategies'), 'Try a ready-made strategy', '#/strategies'], [ME.totpEnabled, 'Turn on two-factor login', '#/settings'], [a.positions.length > 0 || state.account !== 'paper', 'Place your first paper trade', '#/dashboard'],
     [ME.phoneVerified && ME.hasPin, 'Add your phone and PIN for SMS', '#/settings'], [!!sessionStorage.getItem('qp_strategy'), 'Backtest a strategy', '#/backtest']];
   const todo = steps.filter(x => !x[0]).length > 1 && !localStorage.getItem('qp_onboard_done');
-  const approvals = await approvalsBanner();
+  const approvals = await approvalsBanner(), P = PREFS.portfolio;
+  const since = P.mode !== 'live' ? sinceStat(await sinceLastLook(state.account, a.equity)) : '';
   view.innerHTML = `${approvals}
   ${todo ? `<div class="card onboard"><div class="ob-head"><div><h2>Get started</h2><p class="mu">${steps.filter(x => x[0]).length} of ${steps.length} done</p></div><button class="ghost small" id="hideOnboard">Hide</button></div>
     <div class="ob-bar"><i style="width:${Math.round(steps.filter(x => x[0]).length / steps.length * 100)}%"></i></div>
@@ -597,10 +655,11 @@ routes.dashboard = async (view, q) => {
   <div class="row" style="justify-content:space-between"><h1>Portfolio ${a.live ? '<span class="pill warn">LIVE MONEY</span>' : state.account === 'paper' ? '<span class="pill">Paper</span>' : '<span class="pill">Live account, test money</span>'}</h1></div>
   <div class="card">
     <div class="stats">
-      <div class="stat"><span>Equity</span><b>${money(a.equity)}</b></div>
-      <div class="stat"><span>Profit / loss</span><b class="${cls(pnl)}">${money(pnl)} (${pct(pnlPct, 2)})</b></div>
-      <div class="stat"><span>Today</span><b class="${cls(dayChg)}">${dayChg == null ? '-' : `${money(dayChg)} (${pct(dayChg / prev * 100, 2)})`}</b></div>
-      <div class="stat"><span>Cash</span><b>${money(a.cash)}</b></div>
+      <div class="stat"><span>Equity</span><b data-k="eq">${money(a.equity)}</b></div>
+      <div class="stat"><span>Profit / loss</span><b data-k="pnl" class="${cls(pnl)}">${money(pnl)} (${pct(pnlPct, 2)})</b></div>
+      ${P.hideToday ? '' : `<div class="stat"><span>Today</span><b data-k="day" class="${cls(dayChg)}">${dayChg == null ? '-' : `${money(dayChg)} (${pct(dayChg / prev * 100, 2)})`}</b></div>`}
+      ${since}
+      <div class="stat"><span>Cash</span><b data-k="cash">${money(a.cash)}</b></div>
       <div class="stat"><span>Positions</span><b>${a.positions.length}</b></div>
     </div>
     <canvas id="eqc"></canvas>
@@ -621,8 +680,20 @@ routes.dashboard = async (view, q) => {
   <div class="card"><h2>Recent orders</h2><div class="tablewrap" id="orders"><p class="mu">Loading…</p></div>
     ${state.account === 'paper' ? '<button class="ghost small" id="reset">Reset paper account</button>' : ''}</div>`;
   if ($('#hideOnboard', view)) $('#hideOnboard', view).onclick = () => { try { localStorage.setItem('qp_onboard_done', '1'); } catch {} render(); };
-  drawChart($('#eqc', view), a.history.map(x => x.equity), { base });
+  drawChart($('#eqc', view), a.history.map(x => x.equity), { base, dates: a.history.map(x => x.day) });
   wireStatement(view, state.account);
+  // Live mode: the numbers update quietly every minute (never the whole page).
+  if (P.mode !== 'since') {
+    const acct = state.account, t = setInterval(async () => {
+      if (document.hidden || !$('[data-k=eq]', view)) return;
+      const b = await api('/account?account=' + acct).catch(() => null); if (!b || b.error) return;
+      const pl = b.equity - base, prv = b.lastEquity || prev, dc = prv ? b.equity - prv : null;
+      const set = (k, txt, c) => { const el = $(`[data-k=${k}]`, view); if (el && el.textContent !== txt) el.textContent = txt; if (el && c !== undefined) el.className = c; };
+      set('eq', money(b.equity)); set('pnl', `${money(pl)} (${pct(base ? pl / base * 100 : 0, 2)})`, cls(pl)); set('cash', money(b.cash));
+      if (dc != null) set('day', `${money(dc)} (${pct(dc / prv * 100, 2)})`, cls(dc));
+    }, 60000);
+    onLeave(() => clearInterval(t));
+  }
   const t = $('#ticket', view);
   act($('button', t), async () => {
     const f = form(t);
@@ -1048,6 +1119,11 @@ routes.settings = async view => {
   view.innerHTML = `<h1>Settings</h1>
   <div class="grid">
     <div class="card"><h2>News pop-ups</h2><label class="chk"><input type="checkbox" id="newsT" ${toastsOn() ? 'checked' : ''}> Show today's headlines about the stocks I own</label></div>
+    <div class="card" id="pnlPrefs"><h2>Portfolio numbers</h2>
+      <p class="mu" style="margin-top:0">How your account value changes on the screen.</p>
+      <div style="display:grid;gap:6px">${[['live', 'Live: numbers update every minute while the page is open'], ['since', 'Since you last looked: the change since your last visit; numbers stay still while you look'], ['both', 'Both']].map(([k, t]) => `<label class="chk"><input type="radio" name="pnlMode" value="${k}" ${PREFS.portfolio.mode === k ? 'checked' : ''}> ${t}</label>`).join('')}</div>
+      <label class="chk" style="margin-top:12px;display:flex"><input type="checkbox" id="hideToday" ${PREFS.portfolio.hideToday ? 'checked' : ''}> Hide today's profit and loss</label>
+      <p class="mu small-print">Checking every small move often leads to worse decisions. Many long-term investors hide today's number.</p></div>
     <div class="card"><h2>Calm mode</h2><label class="chk"><input type="checkbox" id="calmT" ${document.body.classList.contains('calm') ? 'checked' : ''}> No flashing prices, colors or celebrations (recommended)</label>
       <p class="mu small-print">Trading decisions go better without constant movement on the screen. Your long-term results are on the <a href="#/longterm">Long-term view</a>.</p></div>
     <div class="card" id="language"><h2>Language</h2>
@@ -1104,6 +1180,8 @@ routes.settings = async view => {
     const v = $('#delpw', view).value; await api('/auth/delete', { body: { password: v, confirm: v } }); location.href = '/';
   });
   if ($('#calmT', view)) $('#calmT', view).onchange = e => setCalm(e.target.checked);
+  const savePnl = async () => { PREFS.portfolio = (await api('/prefs/portfolio', { method: 'PUT', body: { value: { mode: $('[name=pnlMode]:checked', view)?.value, hideToday: $('#hideToday', view).checked } } })).value; };
+  $$('[name=pnlMode]', view).forEach(r => (r.onchange = savePnl)); if ($('#hideToday', view)) $('#hideToday', view).onchange = savePnl;
   if ($('#newsT', view)) $('#newsT', view).onchange = e => { try { localStorage.setItem('qp_news_toasts', e.target.checked ? '1' : '0'); } catch {} };
 };
 
@@ -1178,7 +1256,7 @@ registerBrokers(routes, { $, $$, esc, money, api, form, act, render, accounts })
 registerSp500(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, cls, api, form, act, render, drawChart, me: () => ME });
 registerPairs(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, cls, api, form, act, render, drawChart, me: () => ME });
 registerSignals(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, date, api, form, act, render, me: () => ME });
-registerTrading(routes, { $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, approvalsBanner, statementRow, wireStatement, onLeave, render, updateBadge, me: () => ME, state });
+registerTrading(routes, { $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, approvalsBanner, statementRow, wireStatement, prefs: () => PREFS.portfolio, sinceLastLook, sinceStat, onLeave, render, updateBadge, me: () => ME, state });
 const shared = { $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, accounts, accountOptions, acctLabel, state, adminTabs, adminPage, secureConfirm, me: () => ME, paid: () => isPaid(ME) };
 registerStudio(routes, shared);
 registerBuild(routes, shared);

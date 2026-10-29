@@ -65,7 +65,7 @@ function paginate(lines) {
     if (y - l.gap < M + FOOT) { pages.push([]); y = H - M; if (!l.text) continue; }
     y -= l.gap;
     pages[pages.length - 1].push({ ...l, y });
-    if (l.heading) at.push({ ...l.heading, page: pages.length });
+    if (l.heading) at.push({ ...l.heading, page: pages.length, y: y + l.size });
   }
   return { pages, at };
 }
@@ -76,38 +76,76 @@ function contents(heads) {
     const indent = (h.level - 2) * 14, size = h.level === 2 ? 9.5 : 8.5, num = String(h.page);
     let name = h.text; while (name.length > 3 && width(name, size) > BODY - indent - 60) name = name.slice(0, -2);
     const dots = '.'.repeat(Math.max(2, Math.floor((BODY - indent - width(name, size) - width(num, size) - 16) / (width('.', size) * 1.12))));
-    out.push({ text: `${name} ${dots}`, right: num, size, font: h.level === 2 ? 'F2' : 'F1', indent, gap: size * 1.6 });
+    out.push({ text: `${name} ${dots}`, right: num, size, font: h.level === 2 ? 'F2' : 'F1', indent, gap: size * 1.6, link: { page: h.page, y: h.y } });
   }
   return out;
 }
 
-export function markdownPdf(md, { title = 'Document', toc = true } = {}) {
+// The Brightfolio symbol in PDF drawing commands: a blue tile, three bars, a rising line and a
+// yellow spark (the same shapes as favicon.svg, drawn on a 64-unit grid).
+function logoOps(x, y, size) {
+  const k = size / 64, X = v => (x + v * k).toFixed(2), Y = v => (y + size - v * k).toFixed(2);
+  const rr = (x0, y0, w, h, r) => { const c = r * 0.5523; return `${X(x0 + r)} ${Y(y0)} m ${X(x0 + w - r)} ${Y(y0)} l ${X(x0 + w - r + c)} ${Y(y0)} ${X(x0 + w)} ${Y(y0 + r - c)} ${X(x0 + w)} ${Y(y0 + r)} c ${X(x0 + w)} ${Y(y0 + h - r)} l ${X(x0 + w)} ${Y(y0 + h - r + c)} ${X(x0 + w - r + c)} ${Y(y0 + h)} ${X(x0 + w - r)} ${Y(y0 + h)} c ${X(x0 + r)} ${Y(y0 + h)} l ${X(x0 + r - c)} ${Y(y0 + h)} ${X(x0)} ${Y(y0 + h - r + c)} ${X(x0)} ${Y(y0 + h - r)} c ${X(x0)} ${Y(y0 + r)} l ${X(x0)} ${Y(y0 + r - c)} ${X(x0 + r - c)} ${Y(y0)} ${X(x0 + r)} ${Y(y0)} c h f`; };
+  return [
+    '0.110 0.306 0.847 rg', rr(0, 0, 64, 64, 16),
+    '0.478 0.639 0.890 rg', rr(12, 40, 10, 12, 2.5), rr(27, 33, 10, 19, 2.5), rr(42, 27, 10, 25, 2.5),
+    `1 1 1 RG ${(4.5 * k).toFixed(2)} w 1 J 1 j ${X(11)} ${Y(35)} m ${X(25)} ${Y(27)} l ${X(33)} ${Y(30)} l ${X(46)} ${Y(19)} l S`,
+    `0.992 0.878 0.278 rg ${X(50.5)} ${Y(7)} m ${X(52.4)} ${Y(12.1)} l ${X(57.5)} ${Y(14)} l ${X(52.4)} ${Y(15.9)} l ${X(50.5)} ${Y(21)} l ${X(48.6)} ${Y(15.9)} l ${X(43.5)} ${Y(14)} l ${X(48.6)} ${Y(12.1)} l h f`,
+    '0 g 0 G 1 w',
+  ].join('\n');
+}
+// A cover page: the symbol, the name, the document title and the date.
+function coverOps(title, subtitle) {
+  const ops = [logoOps(W / 2 - 48, H - 300, 96)];
+  const word = 'Brightfolio', ws = 30, ww = width(word, ws) * 1.04;
+  ops.push(`BT /F2 ${ws} Tf 0.043 0.129 0.251 rg ${(W / 2 - ww / 2).toFixed(1)} ${H - 352} Td (Bright) Tj 0.114 0.306 0.847 rg (folio) Tj ET 0 g`);
+  const lines = wrap(latin(title), 17, BODY - 60);
+  lines.forEach((l, i) => ops.push(`BT /F2 17 Tf ${(W / 2 - width(l, 17) / 2).toFixed(1)} ${(H - 410 - i * 24).toFixed(1)} Td (${esc(l)}) Tj ET`));
+  if (subtitle) { const t = latin(subtitle); ops.push(`0.45 g BT /F1 11 Tf ${(W / 2 - width(t, 11) / 2).toFixed(1)} ${(H - 420 - lines.length * 24).toFixed(1)} Td (${esc(t)}) Tj ET 0 g`); }
+  ops.push(`0.85 G ${M + 80} ${M + 40} m ${W - M - 80} ${M + 40} l S 0 G`);
+  return ops.join('\n');
+}
+
+export function markdownPdf(md, { title = 'Document', toc = true, cover = null, coverTitle = null, subtitle = '' } = {}) {
   const body = paginate(layout(md));
-  let pages = body.pages;
   const heads = body.at.filter(h => h.level === 2 || h.level === 3);
+  // Documents with contents get a cover page first (unless told otherwise).
+  cover ??= toc && heads.length >= 3;
+  const front = cover ? 1 : 0;
+  let tocPages = [];
   if (toc && heads.length >= 3) {
-    // The document starts on a fresh page after the contents, so each section moves back by the
-    // number of contents pages.
+    // The document starts on a fresh page after the cover and contents, so each section moves back
+    // by that many pages.
     let n = 1, list;
     for (let i = 0; i < 3; i++) {
-      list = paginate(contents(heads.map(h => ({ ...h, page: h.page + n }))));
+      list = paginate(contents(heads.map(h => ({ ...h, page: h.page + front + n }))));
       if (list.pages.length === n) break;
       n = list.pages.length;
     }
-    pages = [...list.pages, ...body.pages];
+    tocPages = list.pages;
   }
+  const pages = [...(cover ? [{ cover: true }] : []), ...tocPages, ...body.pages];
   const T = latin(title), objs = [];
   const obj = body => (objs.push(body), objs.length);
   const catalog = obj(null), pagesId = obj(null);
   const fonts = { F1: obj('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>'), F2: obj('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>'), F3: obj('<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>') };
-  const kids = pages.map((pg, i) => {
-    const ops = pg.map(l => (l.rule ? `0.8 G ${M} ${l.y + 3} m ${W - M} ${l.y + 3} l S 0 G` : l.text ? `BT /${l.font} ${l.size} Tf ${M + l.indent} ${l.y.toFixed(1)} Td (${esc(l.text)}) Tj ET` + (l.right ? ` BT /${l.font} ${l.size} Tf ${(W - M - width(l.right, l.size) * 1.05).toFixed(1)} ${l.y.toFixed(1)} Td (${esc(l.right)}) Tj ET` : '') : '')).filter(Boolean);
-    // Footer: the title on the left, "Page N of M" centered.
-    const pn = `Page ${i + 1} of ${pages.length}`;
-    ops.push(`0.6 g BT /F1 8.5 Tf ${M} ${M - 22} Td (${esc(T.slice(0, 70))}) Tj ET`, `BT /F1 9 Tf ${(W / 2 - width(pn, 9) / 2).toFixed(1)} ${M - 22} Td (${esc(pn)}) Tj ET 0 g`, `0.85 G ${M} ${M - 10} m ${W - M} ${M - 10} l S 0 G`);
+  // Page objects are numbered first, so contents lines can link to pages that come later.
+  const kids = pages.map(() => obj(null));
+  pages.forEach((pg, i) => {
+    const annots = [];
+    let ops;
+    if (pg.cover) ops = [coverOps(latin(coverTitle || title), subtitle || new Date().toISOString().slice(0, 10))];
+    else {
+      ops = pg.map(l => (l.rule ? `0.8 G ${M} ${l.y + 3} m ${W - M} ${l.y + 3} l S 0 G` : l.text ? `BT /${l.font} ${l.size} Tf ${M + l.indent} ${l.y.toFixed(1)} Td (${esc(l.text)}) Tj ET` + (l.right ? ` BT /${l.font} ${l.size} Tf ${(W - M - width(l.right, l.size) * 1.05).toFixed(1)} ${l.y.toFixed(1)} Td (${esc(l.right)}) Tj ET` : '') : '')).filter(Boolean);
+      // Contents lines are links to their section.
+      for (const l of pg) if (l.link && kids[l.link.page - 1]) annots.push(obj(`<< /Type /Annot /Subtype /Link /Rect [${M + l.indent} ${(l.y - 3).toFixed(1)} ${W - M} ${(l.y + l.size).toFixed(1)}] /Border [0 0 0] /Dest [${kids[l.link.page - 1]} 0 R /XYZ 0 ${(l.link.y + 12).toFixed(1)} 0] >>`));
+      // Footer: the title on the left, "Page N of M" centered.
+      const pn = `Page ${i + 1} of ${pages.length}`;
+      ops.push(`0.6 g BT /F1 8.5 Tf ${M} ${M - 22} Td (${esc(T.slice(0, 70))}) Tj ET`, `BT /F1 9 Tf ${(W / 2 - width(pn, 9) / 2).toFixed(1)} ${M - 22} Td (${esc(pn)}) Tj ET 0 g`, `0.85 G ${M} ${M - 10} m ${W - M} ${M - 10} l S 0 G`);
+    }
     const stream = ops.join('\n');
     const content = obj(`<< /Length ${Buffer.byteLength(stream, 'latin1')} >>\nstream\n${stream}\nendstream`);
-    return obj(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${W} ${H}] /Contents ${content} 0 R /Resources << /Font << /F1 ${fonts.F1} 0 R /F2 ${fonts.F2} 0 R /F3 ${fonts.F3} 0 R >> >> >>`);
+    objs[kids[i] - 1] = `<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${W} ${H}] /Contents ${content} 0 R${annots.length ? ` /Annots [${annots.map(a => `${a} 0 R`).join(' ')}]` : ''} /Resources << /Font << /F1 ${fonts.F1} 0 R /F2 ${fonts.F2} 0 R /F3 ${fonts.F3} 0 R >> >> >>`;
   });
   objs[catalog - 1] = `<< /Type /Catalog /Pages ${pagesId} 0 R >>`;
   objs[pagesId - 1] = `<< /Type /Pages /Kids [${kids.map(k => `${k} 0 R`).join(' ')}] /Count ${kids.length} >>`;

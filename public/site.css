@@ -19,7 +19,7 @@ a { color: var(--ac); }
 /* header */
 .top { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 80%, transparent); backdrop-filter: saturate(1.4) blur(12px); -webkit-backdrop-filter: saturate(1.4) blur(12px); border-bottom: 1px solid var(--bd); }
 .top .wrap { display: flex; align-items: center; gap: 22px; height: 64px; }
-.logo { display: flex; align-items: center; gap: 9px; font-weight: 800; font-size: 19px; color: var(--tx); text-decoration: none; letter-spacing: -0.02em; }
+.logo { display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 19px; color: var(--tx); text-decoration: none; letter-spacing: -0.02em; }
 .logo img { width: 28px; height: 28px; }
 .logo span { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .links { display: flex; gap: 22px; flex: 1; }

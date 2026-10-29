@@ -382,7 +382,7 @@ adminSiteRouter.post('/readme/drive', wrap(async (req, res) => {
   const r = await readme();
   if (!r?.text) throw bad('Save the README first');
   const date = new Date().toISOString().slice(0, 10);
-  const { pdf, pages } = markdownPdf(r.text, { title: `Brightfolio private README · ${date}` });
+  const { pdf, pages } = markdownPdf(r.text, { title: `Brightfolio private README · ${date}`, coverTitle: 'Private README', subtitle: `${date} · For admins only` });
   const f = await D.savePdf(pdf, 'Brightfolio private README.pdf');
   await audit(req.user.id, 'readme_drive', { pages, file: f.id }, req.ip);
   res.json({ ...f, pages });
@@ -393,7 +393,8 @@ const readmePdf = async (req, res) => {
   const text = typeof req.body?.text === 'string' && req.body.text.trim() ? req.body.text : (await readme())?.text;
   if (!text) throw bad('Write the README first');
   if (text.length > 600e3) throw bad('The README is limited to 600 KB');
-  const { pdf } = markdownPdf(text, { title: `Brightfolio private README · ${new Date().toISOString().slice(0, 10)}` });
+  const date = new Date().toISOString().slice(0, 10);
+  const { pdf } = markdownPdf(text, { title: `Brightfolio private README · ${date}`, coverTitle: 'Private README', subtitle: `${date} · For admins only` });
   res.type('application/pdf').attachment('Brightfolio private README.pdf').send(pdf);
 };
 adminSiteRouter.get('/readme/pdf', wrap(readmePdf));
