@@ -377,7 +377,8 @@ async function portfolio(view, q) {
   const period = q.get('period') || localStorage.getItem('qp_period') || '1M';
   const [a, h, ps, clock] = await Promise.all([A('/account'), A('/portfolio/history?period=' + period).catch(() => ({ points: [] })), A('/positions'), A('/clock').catch(() => null)]);
   const day = a.lastEquity ? a.equity - a.lastEquity : null;
-  view.innerHTML = `<div class="row" style="justify-content:space-between"><h1>Portfolio <span class="pill ${a.connection.live ? 'warn' : ''}">${a.connection.live ? 'LIVE' : a.connection.type === 'broker' ? 'Sandbox' : 'Paper'}</span></h1></div>
+  const approvals = await H.approvalsBanner();
+  view.innerHTML = `${approvals}<div class="row" style="justify-content:space-between"><h1>Portfolio <span class="pill ${a.connection.live ? 'warn' : ''}">${a.connection.live ? 'LIVE' : a.connection.type === 'broker' ? 'Sandbox' : 'Paper'}</span></h1></div>
   ${clock ? `<p class="mu">Market is <b class="${clock.is_open ? 'pos' : ''}">${clock.is_open ? 'open' : 'closed'}</b> · ${clock.is_open ? 'closes ' + new Date(clock.next_close).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'opens ' + new Date(clock.next_open).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}</p>` : ''}
   ${a.tradingBlocked ? '<div class="banner err">Trading is blocked on this account. Check your brokerage account status.</div>' : ''}
   <div class="card">
@@ -389,6 +390,7 @@ async function portfolio(view, q) {
     </div>
     <div class="chips" id="periods" style="margin-top:12px">${['1D', '1W', '1M', '3M', '6M', '1A', 'all'].map(p => `<button data-p="${p}" class="${p === period ? 'on' : ''}">${p === '1A' ? '1Y' : p === 'all' ? 'All' : p}</button>`).join('')}</div>
     <canvas id="eq"></canvas>
+    ${H.statementRow('alpaca')}
     <p class="mu" id="eqUpdated" style="font-size:12px;margin:6px 0 0;text-align:end" aria-live="off">Updated ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</p>
   </div>
   <div class="grid">
@@ -405,7 +407,7 @@ async function portfolio(view, q) {
   </div>`;
   let pts = h.points, hist = h;
   const drawEq = () => H.drawChart(H.$('#eq', view), pts.map(p => p.equity), { base: hist.baseValue || pts[0]?.equity });
-  drawEq(); onResize(drawEq);
+  drawEq(); onResize(drawEq); H.wireStatement(view, 'alpaca');
   H.$$('#periods button', view).forEach(b => (b.onclick = () => { try { localStorage.setItem('qp_period', b.dataset.p); } catch {} location.hash = '#/dashboard?period=' + b.dataset.p; }));
   // Quiet refresh: numbers change in place and the chart redraws only when its data changed. Nothing
   // updates while a finger or the mouse is on the chart, so it never shifts while you read it.

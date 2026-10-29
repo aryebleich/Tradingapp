@@ -106,8 +106,11 @@ test('strategy API: copy, edit, walkdown, execute on paper, plan limits, backtes
   assert.match(ex.summary, /BUY \d+ SPY/);
   // Executing again changes nothing: holdings already match.
   assert.match((await call(`/library/${s.id}/execute`, {})).body.summary, /No change|BUY|SELL/);
-  // Free plan: paper only, one automatic strategy.
-  assert.equal((await call(`/library/${s.id}`, { account: 'alpaca' }, 'PUT')).status, 402);
+  // Free plan: following by hand on a real account is the user's own trading (every plan); trading
+  // by itself there is Pro. One automatic strategy on paper.
+  assert.equal((await call(`/library/${s.id}`, { account: 'alpaca' }, 'PUT')).status, 200);
+  assert.equal((await call(`/library/${s.id}`, { mode: 'auto' }, 'PUT')).status, 402);
+  assert.equal((await call(`/library/${s.id}`, { account: 'paper' }, 'PUT')).status, 200);
   assert.equal((await call(`/library/${s.id}`, { mode: 'auto', allocation: 50 }, 'PUT')).status, 200);
   const s2 = (await call('/library', { templateId: 'pullback_mr' })).body;
   assert.equal((await call(`/library/${s2.id}`, { mode: 'auto' }, 'PUT')).status, 402);

@@ -6,9 +6,9 @@ import { requireUser } from '../auth.js';
 import { isPaid } from '../fees.js';
 import { template } from './templates.js';
 import { Market, tickersOf, backtest } from './engine.js';
-import { parse, mine, validateSpec, walkdown, execute, templatesList, ACCOUNTS } from './runner.js';
+import { parse, mine, validateSpec, walkdown, execute, templatesList, ACCOUNTS, decidePending, nyNow } from './runner.js';
 import { realityFor, winRateSplit } from './reality.js';
-import { adviserMode } from '../site.js';
+import { adviserMode, adviserFor } from '../site.js';
 
 // Free: try everything by hand and automate one strategy on paper. Paid plans automate real accounts.
 export const STRATEGY_LIMITS = { free: { saved: 3, auto: 1 }, pro: { saved: 10, auto: 5 }, elite: { saved: 50, auto: 25 }, ultimate: { saved: 200, auto: 100 } };
@@ -36,6 +36,13 @@ router.get('/', async (req, res) => {
   res.json({ strategies: list, limits: limits(req.user), split: winRateSplit(list.map(s => ({ id: s.id, name: s.name, winRate: s.reality.winRate }))) });
 });
 
+// Strategies with orders waiting for approval today (for the banner on every page).
+router.get('/pending', async (req, res) => {
+  const today = nyNow().day;
+  const rows = (await all("SELECT * FROM user_strategies WHERE user_id = ? AND state LIKE '%pending%'", req.user.id)).map(parse).filter(s => s.state.pending?.day === today);
+  res.json(rows.map(s => ({ id: s.id, name: s.name, account: s.account, orders: s.state.pending.orders, at: s.state.pending.at })));
+});
+
 router.post('/', async (req, res) => {
   const t = template(String(req.body.templateId || ''));
   if (!t) throw bad('Pick a strategy from the library');
@@ -49,7 +56,8 @@ router.post('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   const s = await mine(req.params.id, req.user.id);
   const runs = await all('SELECT kind, summary, at FROM strategy_runs WHERE strategy_id = ? ORDER BY id DESC LIMIT 30', s.id);
-  res.json({ ...s, template: templatesList().find(t => t.id === s.templateId) || null, runs, reality: await realityFor(s), limits: limits(req.user), autoRealAllowed: !s.templateId || adviserMode() });
+  if (s.state.pending && s.state.pending.day !== nyNow().day) s.state = { ...s.state, pending: undefined };
+  res.json({ ...s, template: templatesList().find(t => t.id === s.templateId) || null, runs, reality: await realityFor(s), limits: limits(req.user), autoRealAllowed: !s.templateId || adviserFor(req.user) });
 });
 
 router.put('/:id', async (req, res) => {
@@ -57,11 +65,13 @@ router.put('/:id', async (req, res) => {
   const spec = b.spec ? validateSpec(b.spec, base) : s.spec;
   const account = b.account ?? s.account;
   if (!ACCOUNTS.includes(account)) throw bad('Pick an account');
-  if (account !== 'paper' && !isPaid(req.user)) throw upgrade('Running strategies on your brokerage account');
-  const mode = b.mode === 'auto' ? 'auto' : b.mode === 'manual' ? 'manual' : s.mode;
+  const mode = ['auto', 'manual', 'approve'].includes(b.mode) ? b.mode : s.mode;
+  // Following a strategy by hand or approving each trade is the user's own trading: every plan.
+  // Trading by itself on a real account is automation (paid plans).
+  if (account !== 'paper' && mode === 'auto' && !isPaid(req.user)) throw upgrade('Running strategies on your brokerage account');
   if (mode === 'auto' && account !== 'paper' && s.templateId && !adviserMode()) throw adviserOnly();
-  if (mode === 'auto' && s.mode !== 'auto') {
-    const autos = (await one("SELECT COUNT(*) n FROM user_strategies WHERE user_id = ? AND mode = 'auto'", req.user.id)).n;
+  if (mode !== 'manual' && mode !== s.mode && s.mode === 'manual') {
+    const autos = (await one("SELECT COUNT(*) n FROM user_strategies WHERE user_id = ? AND mode IN ('auto', 'approve')", req.user.id)).n;
     if (autos >= limits(req.user).auto) throw isPaid(req.user) ? bad(`Your plan runs ${limits(req.user).auto} automatic strategies at once`) : upgrade('More than one automatic strategy');
   }
   const pct = (v, d, lo = 0, hi = 100) => { if (v === undefined) return d; const n = +v; if (!Number.isFinite(n) || n < lo || n > hi) throw bad(`Use a number from ${lo} to ${hi}`); return n; };
@@ -97,10 +107,15 @@ router.post('/:id/walkdown', async (req, res) => {
   res.json(await walkdown(s, req.user.id, { overrides: req.body.overrides || {}, spec }));
 });
 
+// Placing today's orders by hand: the user's own orders, on every plan.
 router.post('/:id/execute', async (req, res) => {
   const s = await mine(req.params.id, req.user.id);
-  if (s.account !== 'paper' && !isPaid(req.user)) throw upgrade('Running strategies on your brokerage account');
   res.json(await execute(s, req.user.id, { overrides: req.body.overrides || {} }));
+});
+// "Approve each trade": approve (place) or skip the orders prepared today.
+router.post('/:id/approve', async (req, res) => {
+  const s = await mine(req.params.id, req.user.id);
+  res.json(await decidePending(s, req.user.id, req.body?.approve === true, nyNow().day));
 });
 
 router.post('/:id/backtest', async (req, res) => {

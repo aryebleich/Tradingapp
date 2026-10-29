@@ -66,11 +66,13 @@ test('Gmail admin matches with dots and +tags (Google sign-in); owner can view t
     await c('/auth/register', { email: 'arye.bleich@gmail.com', password: 'Str0ngPassword' });
     const me = (await c('/auth/me')).body.user;
     assert.equal(me.role, 'admin');
-    assert.equal((await c('/admin/preview-plan', { plan: 'free' }, 'PUT')).body.previewPlan, 'free');
+    // Previews need the password and a confirmation (test/batch9).
+    assert.equal((await c('/admin/preview-plan', { plan: 'free' }, 'PUT')).status, 400);
+    assert.equal((await c('/admin/preview-plan', { plan: 'free', confirmed: true, password: 'Str0ngPassword' }, 'PUT')).body.previewPlan, 'free');
     const asFree = (await c('/auth/me')).body.user;
     assert.equal(asFree.plan, 'free'); assert.equal(asFree.previewPlan, 'free'); assert.equal(asFree.role, 'admin');
     assert.equal((await c('/schedule', { symbol: 'SPY', side: 'buy', qty: 1 })).status, 402); // gated like a Starter user
-    await c('/admin/preview-plan', { plan: 'ultimate' }, 'PUT');
+    await c('/admin/preview-plan', { plan: 'ultimate', confirmed: true, password: 'Str0ngPassword' }, 'PUT');
     assert.equal((await c('/auth/me')).body.user.plan, 'ultimate');
     assert.equal((await c('/admin/preview-plan', { plan: null }, 'PUT')).body.previewPlan, null);
     assert.equal((await c('/auth/me')).body.user.previewPlan, null);

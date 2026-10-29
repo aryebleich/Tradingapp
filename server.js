@@ -58,7 +58,9 @@ import { wealthRouter } from './src/wealth.js';
 import { news as alpacaNews } from './src/alpaca/data.js';
 import { settings as moneySettings, referralReward, nextMilestone, trialDaysFor } from './src/revenue.js';
 import { nodeStatus } from './src/runtime-check.js';
-import { loadSite, freshSite, applySavedEnv, adviserMode, normalizePhone, siteGet, siteSet } from './src/site.js';
+import { loadSite, freshSite, applySavedEnv, adviserMode, adviserFor, normalizePhone, siteGet, siteSet } from './src/site.js';
+import { version } from './src/upgrades.js';
+import { statementRouter } from './src/statement.js';
 import { router as signalsRouter, receive as receiveSignal } from './src/signals.js';
 import { router as strategiesRouter } from './src/rotation/routes.js';
 import { router as pairsRouter } from './src/pairs.js';
@@ -392,6 +394,7 @@ api.use('/signals', signalsRouter);
 api.use('/library', strategiesRouter);
 api.use('/pairs', pairsRouter);
 api.use('/statarb', statArbRouter);
+api.use('/statement', statementRouter);
 api.use('/events', eventsRouter);
 api.use('/credits', CR.creditsRouter({ checkout: async (user, pack) => {
   if (!N.stripeEnabled()) throw Object.assign(new Error('Payments are not set up yet (STRIPE_SECRET_KEY)'), { status: 503 });
@@ -431,10 +434,20 @@ api.use('/risk', riskRouter({ summarize: accountSummary, cancelAlpaca: async id 
 const U = auth.requireUser;
 api.get('/admin/system', U, auth.requireAdmin, async (req, res) => res.json({ ...relStats(), capacity: recommendedReplicas(), queue: await queueStats(), replicaId: process.env.HOSTNAME || null }));
 // "View as plan" for the owner: menus, limits and upgrade prompts as a user on that plan sees them.
+// Also "view as" the other business mode (display only). Any preview needs the password (or email
+// for Google/GitHub sign-ins) and a confirmation; going back to the owner view does not.
 api.put('/admin/preview-plan', U, auth.requireAdmin, async (req, res) => {
-  const plan = Object.hasOwn(PLANS, req.body?.plan) ? req.body.plan : null;
-  if (plan) await setSetting(req.user.id, 'previewPlan', plan); else await run("DELETE FROM user_settings WHERE user_id = ? AND k = 'previewPlan'", req.user.id);
-  res.json({ previewPlan: plan });
+  const b = req.body || {};
+  const plan = Object.hasOwn(PLANS, b.plan) ? b.plan : null, adviser = typeof b.adviser === 'boolean' ? b.adviser : null;
+  if (plan || adviser !== null) {
+    if (b.confirmed !== true) throw Object.assign(new Error('Confirm the preview first'), { status: 400 });
+    if (!auth.confirmsIdentity(req.user, b)) throw Object.assign(new Error(req.user.password_set === 0 ? 'Type your email address to confirm' : 'Wrong password'), { status: 401 });
+  }
+  for (const [k, v] of [['previewPlan', plan], ['previewAdviser', adviser]]) {
+    if (v !== null) await setSetting(req.user.id, k, v); else await run('DELETE FROM user_settings WHERE user_id = ? AND k = ?', req.user.id, k);
+  }
+  await audit(req.user.id, 'view_as', { plan, adviser }, req.ip);
+  res.json({ previewPlan: plan, previewAdviser: adviser });
 });
 api.get('/queue', U, async (req, res) => res.json(await userQueue(req.user.id)));
 api.get('/accounts', U, async (req, res) => res.json(await accountsFor(req.user.id)));
@@ -446,11 +459,11 @@ const needPlan = feature => (req, res, next) => (isPaid(req.user) ? next() : nex
 
 api.get('/config', async (req, res) => res.json({
   plans: PLANS, trialDays: TRIAL_DAYS, presets: PRESETS, twilio: N.twilioEnabled(), stripe: N.stripeEnabled(), ai: llmEnabled(), aiModel: llmInfo(), email: N.emailEnabled(),
-  marketData: dataEnabled(), hotline: process.env.TWILIO_FROM || null, broker: brokerEnabled(), oauth: oauthEnabled(), google: googleEnabled(), github: githubEnabled(), assistant: aiEnabled(), adviser: adviserMode(),
+  marketData: dataEnabled(), hotline: process.env.TWILIO_FROM || null, broker: brokerEnabled(), oauth: oauthEnabled(), google: googleEnabled(), github: githubEnabled(), assistant: aiEnabled(), adviser: adviserFor(req.user), version: version(),
 }));
 
 // Lets the landing page (also the GitHub Pages copy) show only sign-up options that work.
-api.get('/public/features', (req, res) => res.json({ google: googleEnabled(), github: githubEnabled(), adviser: adviserMode(), phone: N.twilioEnabled() ? process.env.TWILIO_FROM : null, ai: aiEnabled(), yiddishCredit: process.env.YIDDISH_CREDIT || null }));
+api.get('/public/features', (req, res) => res.json({ version: version(), google: googleEnabled(), github: githubEnabled(), adviser: adviserFor(req.user), phone: N.twilioEnabled() ? process.env.TWILIO_FROM : null, ai: aiEnabled(), yiddishCredit: process.env.YIDDISH_CREDIT || null }));
 // Public, rate-limited demo backtest used by the landing page (also from the GitHub Pages copy).
 api.post('/public/backtest', async (req, res) => {
   if (!auth.rateLimit('pub:' + req.ip, 20, 600e3)) return res.status(429).json({ error: 'Demo limit reached - create a free account for unlimited backtests' });
@@ -732,7 +745,7 @@ api.get('/ledger', U, async (req, res) => res.json(await all('SELECT * FROM ledg
 api.get('/fees', U, wrap(async (req, res) => {
   const rows = await all('SELECT * FROM fee_state WHERE user_id = ?', req.user.id);
   const plan = PLANS[req.user.plan];
-  res.json({ plan: req.user.plan, rate: adviserMode() ? plan.perfFee : 0, adviser: adviserMode(), monthly: plan.monthly, accounts: rows });
+  res.json({ plan: req.user.plan, rate: adviserFor(req.user) ? plan.perfFee : 0, adviser: adviserFor(req.user), monthly: plan.monthly, accounts: rows });
 }));
 
 // --- tax ---

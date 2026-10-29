@@ -660,3 +660,15 @@ table.heat td.co { font-weight: 700; outline: 2px solid #2563eb; outline-offset:
 .pack { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 12px 8px; }
 .pack b { font-size: 20px; } .pack span { font-size: 12px; color: var(--mu); font-weight: 500; } .pack em { font-style: normal; font-weight: 700; color: var(--ac); margin-top: 4px; }
 table.slim td { padding: 6px 4px; font-size: 13.5px; }
+/* Strategies waiting for the user's approval */
+.banner.approvals { display: flex; flex-direction: column; gap: 6px; }
+.approvebox { border-color: var(--ac); }
+.approvebox .cal-list li { padding: 4px 0; }
+/* Admin → Upgrades */
+.upgradehead .ver { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.upgradehead .ver b { font-size: 26px; letter-spacing: -.01em; }
+.aplan.cur { border-color: var(--ac); }
+dialog.secure { max-width: 440px; }
+dialog.secure label.check { margin-top: 10px; }
+.upgradehead .uphead { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: center; }
+@media (max-width: 640px) { .upgradehead .uphead { grid-template-columns: 1fr; } .upgradehead .ver { align-items: flex-start; } }

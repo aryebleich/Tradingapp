@@ -239,7 +239,7 @@ const ICONS = {
   'admin-setup': '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
   admin: '<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"/>',
   wealth: '<path d="M3 20h18M5 20V10M10 20V6M15 20v-8M20 20V4"/>', 'alpaca-tools': '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
-  'admin-alpaca': '<path d="M4 19V5l8 7 8-7v14"/>', 'admin-yiddish': '<path d="M4 5h8M8 3v2M5 5c1 4 4 7 7 8M11 5c-1 4-4 7-7 8M13 21l4-10 4 10M14.5 17h5"/>', 'admin-business': '<path d="M3 7h18v13H3zM8 7V4h8v3"/>', 'admin-admins': '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>', 'admin-keys': '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/>',
+  'admin-alpaca': '<path d="M4 19V5l8 7 8-7v14"/>', 'admin-upgrades': '<path d="M12 19V5M5 12l7-7 7 7"/><path d="M5 21h14"/>', 'admin-yiddish': '<path d="M4 5h8M8 3v2M5 5c1 4 4 7 7 8M11 5c-1 4-4 7-7 8M13 21l4-10 4 10M14.5 17h5"/>', 'admin-business': '<path d="M3 7h18v13H3zM8 7V4h8v3"/>', 'admin-admins': '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>', 'admin-keys': '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/>',
   chart: '<path d="M7 4v16M17 6v12M4 8h6v8H4zM14 9h6v6h-6z"/>', ai: '<path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
   agents: '<path d="M3 17l6-6 4 4 8-8"/><circle cx="21" cy="7" r="1"/><path d="M3 21h18"/>', news: '<path d="M4 5h13v14H6a2 2 0 0 1-2-2zM17 9h3v8a2 2 0 0 1-2 2"/><path d="M8 9h5M8 13h5"/>',
   scanner: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5M8 11h6M11 8v6"/>', optionslab: '<path d="M3 18c4 0 5-12 9-12s5 12 9 12"/><path d="M3 21h18"/>',
@@ -276,6 +276,7 @@ async function render() {
   const [route, q] = (location.hash.slice(2) || 'dashboard').split('?');
   // Each render gets a fresh container: requests still in flight from the previous page then
   // write into a detached element instead of overwriting the page the user moved to.
+  if (!render.ver) render.ver = (CFG ? Promise.resolve(CFG) : api('/config').catch(() => null)).then(c => { const v = c?.version; if (v && $('#siteVer')) $('#siteVer').textContent = 'Brightfolio ' + v; });
   const view = document.createElement('div');
   // Moving to another page fades its cards in; re-drawing the same page does not.
   if (route !== render.last) { view.className = 'enter'; render.last = route; }
@@ -288,9 +289,22 @@ async function render() {
   const va = $('#viewAs'); va.hidden = ME?.role !== 'admin';
   if (!va.hidden) {
     CFG ||= await api('/config').catch(() => ({ plans: {} }));
-    va.innerHTML = `<option value="">Owner view (everything)</option>` + Object.entries(CFG.plans || {}).map(([k, p]) => `<option value="${k}" ${ME.previewPlan === k ? 'selected' : ''}>View as ${esc(p.name)}</option>`).join('');
-    va.classList.toggle('on', !!ME.previewPlan);
-    va.onchange = async () => { await api('/admin/preview-plan', { method: 'PUT', body: { plan: va.value || null } }); ME = (await api('/auth/me')).user; render(); };
+    const cur = ME.previewPlan ? 'plan:' + ME.previewPlan : ME.previewAdviser === true ? 'mode:adviser' : ME.previewAdviser === false ? 'mode:software' : '';
+    va.innerHTML = `<option value="">Owner view (everything)</option><optgroup label="Plans">` + Object.entries(CFG.plans || {}).map(([k, p]) => `<option value="plan:${k}" ${cur === 'plan:' + k ? 'selected' : ''}>View as ${esc(p.name)}</option>`).join('')
+      + `</optgroup><optgroup label="Business mode"><option value="mode:software" ${cur === 'mode:software' ? 'selected' : ''}>View as software only</option><option value="mode:adviser" ${cur === 'mode:adviser' ? 'selected' : ''}>View as registered adviser</option></optgroup>`;
+    va.classList.toggle('on', !!cur);
+    // Previews need the password and a confirmation; going back to the owner view does not.
+    va.onchange = async () => {
+      const [kind, val] = va.value.split(':'), label = va.selectedOptions[0]?.textContent || '';
+      let body = { plan: null };
+      if (va.value) {
+        const ok = await secureConfirm({ title: label, okText: 'Start preview', html: `<p class="mu">${kind === 'mode' ? 'Pages show the site as it looks in this business mode (fees, wording, what strategies may do). It is a preview for you only: users and real trading keep the current mode.' : 'Menus, limits and upgrade prompts as a user on this plan sees them. Only for you.'} Choose "Owner view" to stop.</p>` });
+        if (!ok) { va.value = cur; return; }
+        body = { ...(kind === 'plan' ? { plan: val } : { adviser: val === 'adviser' }), confirmed: true, password: ok.password, confirm: ok.confirm };
+      }
+      try { await api('/admin/preview-plan', { method: 'PUT', body }); } catch (e) { alert(e.message); va.value = cur; return; }
+      ME = (await api('/auth/me')).user; CFG = null; render();
+    };
   }
   setMenu(false);
   $$('#tabs a[data-r]').forEach(a => a.classList.toggle('on', a.dataset.r === route || (route === '' && a.dataset.r === 'dashboard')));
@@ -526,6 +540,38 @@ routes.mfa = view => {
 };
 
 // ---------- portfolio ----------
+// For changes that matter (upgrades, "View as"): the password (or email, for Google/GitHub
+// sign-ins), a tick box and, for upgrades, the word UPGRADE. Resolves with the fields or null.
+function secureConfirm({ title, html = '', word = null, okText = 'Confirm' }) {
+  return new Promise(resolve => {
+    const d = document.createElement('dialog'); d.className = 'secure';
+    const pw = ME?.hasPassword !== false;
+    d.innerHTML = `<form method="dialog"><h2>${esc(title)}</h2>${html}
+      ${pw ? '<label>Your password<input type="password" name="password" autocomplete="current-password" required></label>' : `<label>Type your email address<input type="email" name="confirm" autocomplete="email" required placeholder="${esc(ME?.email || '')}" dir="ltr"></label>`}
+      ${word ? `<label>Type <b>${esc(word)}</b> to confirm<input name="typed" autocomplete="off" required pattern="${esc(word)}|${esc(word.toLowerCase())}"></label>` : ''}
+      <label class="check"><input type="checkbox" name="ok" required> I understand what this changes</label>
+      <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="ghost" value="no" formnovalidate>Cancel</button><button value="yes">${esc(okText)}</button></div></form>`;
+    document.body.append(d);
+    d.onclose = () => { const f = form(d.querySelector('form')); resolve(d.returnValue === 'yes' ? { password: f.password, confirm: f.confirm, typed: f.typed } : null); d.remove(); };
+    d.showModal();
+  });
+}
+// Ready-made strategies waiting for the user's approval today ("Approve each trade").
+// Monthly statement (PDF) for the account in view.
+function statementRow(account) {
+  const ym = new Date().toISOString().slice(0, 7);
+  return `<form class="row statement" id="stmt" style="margin-top:10px;align-items:flex-end;gap:8px"><label style="max-width:180px">Monthly statement<input type="month" name="month" value="${ym}" max="${ym}"></label>
+    <a id="stmtGo" href="/api/statement?account=${encodeURIComponent(account)}&month=${ym}" download><button type="button" class="ghost small">Download PDF</button></a></form>`;
+}
+function wireStatement(view, account) {
+  const f = $('#stmt', view); if (!f) return;
+  f.month.onchange = () => { $('#stmtGo', view).href = `/api/statement?account=${encodeURIComponent(account)}&month=${f.month.value}`; };
+  f.onsubmit = e => e.preventDefault();
+}
+async function approvalsBanner() {
+  const p = await api('/library/pending').catch(() => []);
+  return p.length ? `<div class="banner approvals">${p.map(x => `<span><b>${esc(x.name)}</b> is ready: ${x.orders.slice(0, 3).map(o => `${o.side.toUpperCase()} ${o.qty} <span data-no-tr>${esc(o.ticker)}</span>`).join(', ')}${x.orders.length > 3 ? '…' : ''} <a href="#/strategy?id=${x.id}">Review and approve</a></span>`).join('')}</div>` : '';
+}
 routes.dashboard = async (view, q) => {
   await accounts();
   if (state.account === 'alpaca') return routes.portfolio(view, q);
@@ -543,7 +589,8 @@ routes.dashboard = async (view, q) => {
   const steps = [[!!localStorage.getItem('qp_seen_strategies'), 'Try a ready-made strategy', '#/strategies'], [ME.totpEnabled, 'Turn on two-factor login', '#/settings'], [a.positions.length > 0 || state.account !== 'paper', 'Place your first paper trade', '#/dashboard'],
     [ME.phoneVerified && ME.hasPin, 'Add your phone and PIN for SMS', '#/settings'], [!!sessionStorage.getItem('qp_strategy'), 'Backtest a strategy', '#/backtest']];
   const todo = steps.filter(x => !x[0]).length > 1 && !localStorage.getItem('qp_onboard_done');
-  view.innerHTML = `
+  const approvals = await approvalsBanner();
+  view.innerHTML = `${approvals}
   ${todo ? `<div class="card onboard"><div class="ob-head"><div><h2>Get started</h2><p class="mu">${steps.filter(x => x[0]).length} of ${steps.length} done</p></div><button class="ghost small" id="hideOnboard">Hide</button></div>
     <div class="ob-bar"><i style="width:${Math.round(steps.filter(x => x[0]).length / steps.length * 100)}%"></i></div>
     <div class="ob-list">${steps.map(([done, t, href]) => `<a class="ob-item${done ? ' done' : ''}" href="${href}"><span class="ob-check" aria-hidden="true"></span><span class="ob-t">${t}</span><span class="ob-go" aria-hidden="true">→</span></a>`).join('')}</div></div>` : ''}
@@ -557,6 +604,7 @@ routes.dashboard = async (view, q) => {
       <div class="stat"><span>Positions</span><b>${a.positions.length}</b></div>
     </div>
     <canvas id="eqc"></canvas>
+    ${statementRow(state.account)}
   </div>
   <div class="grid">
     <div class="card"><h2>Positions</h2><div class="tablewrap"><table><tr><th>Symbol</th><th>Qty</th><th>Avg</th><th>Price</th><th>Value</th><th>P/L</th></tr>
@@ -574,6 +622,7 @@ routes.dashboard = async (view, q) => {
     ${state.account === 'paper' ? '<button class="ghost small" id="reset">Reset paper account</button>' : ''}</div>`;
   if ($('#hideOnboard', view)) $('#hideOnboard', view).onclick = () => { try { localStorage.setItem('qp_onboard_done', '1'); } catch {} render(); };
   drawChart($('#eqc', view), a.history.map(x => x.equity), { base });
+  wireStatement(view, state.account);
   const t = $('#ticket', view);
   act($('button', t), async () => {
     const f = form(t);
@@ -1060,7 +1109,7 @@ routes.settings = async view => {
 
 // ---------- admin ----------
 // Owner pages: one route per section so each has its own place in the menu.
-const ADMIN_TABS = [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-money', 'Money & fees'], ['admin-business', 'Business mode'], ['admin-alpaca', 'Alpaca plans'], ['admin-yiddish', 'Yiddish Labs'], ['admin-phone', 'Phone line'], ['admin-ai', 'AI & privacy'], ['admin-readme', 'README'], ['admin-admins', 'Admins'], ['admin-keys', 'Keys'], ['admin-support', 'Support inbox'], ['admin-system', 'System health'], ['admin-setup', 'Setup']];
+const ADMIN_TABS = [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-money', 'Money & fees'], ['admin-upgrades', 'Upgrades'], ['admin-yiddish', 'Yiddish Labs'], ['admin-phone', 'Phone line'], ['admin-ai', 'AI & privacy'], ['admin-readme', 'README'], ['admin-admins', 'Admins'], ['admin-keys', 'Keys'], ['admin-support', 'Support inbox'], ['admin-system', 'System health'], ['admin-setup', 'Setup']];
 // Pages with their own module (owner.js, protect.js) draw themselves under the same tabs.
 const adminTabs = current => `<div class="chips admintabs">${ADMIN_TABS.map(([k, t]) => `<a href="#/${k}"><button type="button" class="${k === current ? 'on' : ''}">${t}</button></a>`).join('')}</div>`;
 async function adminPage(view, tab) {
@@ -1122,15 +1171,15 @@ async function adminPage(view, tab) {
   $$('[data-role]', view).forEach(b => (b.onclick = () => userCall(b.dataset.role, { role: b.dataset.to })));
   if ($('#userFind', view)) $('#userFind', view).oninput = e => { const q = e.target.value.trim().toLowerCase(); $$('#userTable tr[data-email]', view).forEach(tr => (tr.hidden = !!q && !tr.dataset.email.toLowerCase().includes(q))); };
 }
-for (const [k] of ADMIN_TABS.filter(([k]) => !['admin-system', 'admin-business', 'admin-alpaca', 'admin-yiddish', 'admin-admins', 'admin-keys'].includes(k))) routes[k] = view => (ME?.role === 'admin' ? adminPage(view, k) : routes.dashboard(view, new URLSearchParams()));
+for (const [k] of ADMIN_TABS.filter(([k]) => !['admin-system', 'admin-upgrades', 'admin-yiddish', 'admin-admins', 'admin-keys'].includes(k))) routes[k] = view => (ME?.role === 'admin' ? adminPage(view, k) : routes.dashboard(view, new URLSearchParams()));
 
 registerStrategies(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, cls, date, api, form, act, render, drawChart, onLeave, me: () => ME });
 registerBrokers(routes, { $, $$, esc, money, api, form, act, render, accounts });
 registerSp500(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, cls, api, form, act, render, drawChart, me: () => ME });
 registerPairs(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, cls, api, form, act, render, drawChart, me: () => ME });
 registerSignals(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, date, api, form, act, render, me: () => ME });
-registerTrading(routes, { $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, updateBadge, me: () => ME, state });
-const shared = { $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, accounts, accountOptions, acctLabel, state, adminTabs, me: () => ME, paid: () => isPaid(ME) };
+registerTrading(routes, { $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, approvalsBanner, statementRow, wireStatement, onLeave, render, updateBadge, me: () => ME, state });
+const shared = { $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, accounts, accountOptions, acctLabel, state, adminTabs, adminPage, secureConfirm, me: () => ME, paid: () => isPaid(ME) };
 registerStudio(routes, shared);
 registerBuild(routes, shared);
 registerAnalytics(routes, shared);

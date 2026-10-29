@@ -27,9 +27,9 @@ async function library(view) {
   view.innerHTML = `
   <div class="pagehead"><h1>Strategies</h1><p class="mu" style="margin:4px 0 0">Ready-made rotation strategies. Follow them by hand (type your own values into any box) or automate them. Every rule and number can be changed.</p></div>
   ${mine.strategies.length ? `<div class="card tablewrap"><h2>My strategies</h2><table><tr><th>Name</th><th>Runs</th><th>Account</th><th>Money</th><th>Last result</th><th>Reality Check</th><th></th></tr>
-    ${mine.strategies.map(s => `<tr><td><a href="#/strategy?id=${s.id}"><b>${H.esc(s.name)}</b></a></td><td>${s.mode === 'auto' ? '<span class="pill pos">Automatic</span>' : '<span class="pill">By hand</span>'}</td><td>${accName(s.account)}</td><td>${s.allocation}%</td>
+    ${mine.strategies.map(s => `<tr><td><a href="#/strategy?id=${s.id}"><b>${H.esc(s.name)}</b></a></td><td>${s.mode === 'auto' ? '<span class="pill pos">Automatic</span>' : s.mode === 'approve' ? '<span class="pill">You approve</span>' : '<span class="pill">By hand</span>'}</td><td>${accName(s.account)}</td><td>${s.allocation}%</td>
       <td class="mu" style="font-size:13px">${s.lastResult ? H.esc(s.lastResult.summary) : 'Not run yet'}</td><td>${rcPill(s.reality)}</td><td><a href="#/strategy?id=${s.id}"><button class="small ghost" type="button">Open</button></a></td></tr>`).join('')}</table>
-    <p class="mu" style="font-size:12px;margin-bottom:0">${mine.strategies.length} of ${mine.limits.saved} saved · ${mine.strategies.filter(s => s.mode === 'auto').length} of ${mine.limits.auto} automatic</p></div>` : ''}
+    <p class="mu" style="font-size:12px;margin-bottom:0">${mine.strategies.length} of ${mine.limits.saved} saved · ${mine.strategies.filter(s => s.mode !== 'manual').length} of ${mine.limits.auto} automatic or approve-each-trade</p></div>` : ''}
   ${mine.strategies.length > 1 ? `<div class="card"><h2>Portfolio split <span class="mu" style="font-weight:500;font-size:14px">win-rate weighted, 10%–70% each</span></h2>
     <p class="mu" style="margin-top:0">Strategies that win more often get more money. Win rates come from each strategy's live daily results.</p>
     <div class="funnel">${mine.split.map(x => `<div class="bar"><span>${H.esc(x.name)}</span><i style="width:${x.allocation}%"></i><b>${x.allocation}%</b></div>`).join('')}</div>
@@ -62,8 +62,11 @@ async function detail(view, q) {
   view.innerHTML = `
   <div class="pagehead"><div><a href="#/strategies" class="mu">&larr; Strategies</a><h1 style="margin:4px 0 0">${H.esc(s.name)}</h1>
     <p class="mu" style="margin:4px 0 0">${H.esc(s.template?.tagline || '')} · ${REB[spec.rebalance] || ''}${spec.rebalance === 'weekly' ? ` (${['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'][spec.weekday]})` : ''}</p></div>
-    <div class="seg" id="modeSeg"><button data-m="manual" class="${s.mode === 'manual' ? 'on' : ''}">By hand</button><button data-m="auto" class="${s.mode === 'auto' ? 'on' : ''}">Automatic</button></div></div>
-    ${s.autoRealAllowed ? '' : `<p class="banner" style="font-size:13px">${s.account !== 'paper' && s.mode === 'auto' ? '<b>Automatic trading is paused on this real account.</b> ' : ''}Ready-made strategies run automatically on the paper account. On a real account you follow them by hand: the app shows what the rules say today and you place the orders.</p>`}
+    <div class="seg" id="modeSeg"><button data-m="manual" class="${s.mode === 'manual' ? 'on' : ''}">By hand</button><button data-m="approve" class="${s.mode === 'approve' ? 'on' : ''}">Approve each trade</button><button data-m="auto" class="${s.mode === 'auto' ? 'on' : ''}">Automatic</button></div></div>
+    ${s.autoRealAllowed ? '' : `<p class="banner" style="font-size:13px">${s.account !== 'paper' && s.mode === 'auto' ? '<b>On this real account, each rebalance waits for your approval.</b> ' : ''}Ready-made strategies run automatically on the paper account. On a real account choose <b>Approve each trade</b>: on every rebalance day Brightfolio works out the orders, tells you by text or email, and you approve them with one tap (or follow it by hand).</p>`}
+  ${s.state?.pending ? `<div class="card approvebox" id="pending"><h2>Waiting for your approval</h2><p class="mu" style="margin-top:0">Prepared ${H.date(s.state.pending.at)} for ${accName(s.account)}. Approving places these orders now, at current prices. They expire at the close.</p>
+    <ul class="cal-list">${s.state.pending.orders.map(o => `<li><b>${o.side.toUpperCase()}</b> ${o.qty} <b data-no-tr>${H.esc(o.ticker)}</b>${o.price ? ` <span class="mu">about ${H.money(o.price)}</span>` : ''}</li>`).join('')}</ul>
+    <div class="row" style="gap:8px"><button id="approveGo">Approve and place orders</button><button class="ghost" id="approveSkip" type="button">Skip today</button></div><div class="err"></div></div>` : ''}
   ${spec.note ? `<div class="banner">${H.esc(spec.note)}</div>` : ''}
   <div class="sgrid">
     <div>
@@ -248,10 +251,20 @@ async function detail(view, q) {
   H.$$('#modeSeg button', view).forEach(b => (b.onclick = async () => {
     try {
       if (b.dataset.m === 'auto' && !confirm(`Trade automatically in your ${accName(s.account)} on every rebalance day?`)) return;
+      if (b.dataset.m === 'approve' && !confirm(`On every rebalance day, prepare the orders for your ${accName(s.account)} and ask you to approve them?`)) return;
       await H.api('/library/' + id, { method: 'PUT', body: { mode: b.dataset.m } });
       H.$$('#modeSeg button', view).forEach(x => x.classList.toggle('on', x === b));
     } catch (e) { alert(e.message); }
   }));
+  if (H.$('#pending', view)) {
+    const ask = approve => async () => {
+      if (approve && !confirm(`Place ${s.state.pending.orders.length} order(s) in your ${accName(s.account)} now?`)) return '';
+      const r = await H.api('/library/' + id + '/approve', { body: { approve } });
+      setTimeout(H.render, 1200);
+      return approve ? r.summary : 'Skipped for today';
+    };
+    H.act(H.$('#approveGo', view), ask(true)); H.act(H.$('#approveSkip', view), ask(false));
+  }
   H.act(H.$('#del', view), async () => { if (!confirm('Delete this strategy? Positions it bought stay in your account.')) return ''; await H.api('/library/' + id, { method: 'DELETE' }); location.hash = '#/strategies'; return ''; });
   await refresh();
 }

@@ -8,6 +8,7 @@ import { Market, decide, tickersOf, sizeOrders, stopsFor, isRebalanceDay, keyOf 
 import { FNS } from './indicators.js';
 import { realityFor } from './reality.js';
 import { sendSms, sendEmail } from '../notify.js';
+import { notifyUser as notifyAccount } from '../notify-user.js';
 
 export { ACCOUNT_IDS as ACCOUNTS } from '../brokers.js';
 const bad = (msg, status = 400) => Object.assign(new Error(msg), { status });
@@ -156,20 +157,49 @@ const nyNow = (t = now()) => {
 
 // Auto strategies trade once on each rebalance day, at their run time (default 15:45 New York,
 // close to the close the signals are read from).
+export { nyNow };
 export async function runAuto(t = now(), claim) {
   const n = nyNow(t);
   if (n.weekend) return 0;
-  const rows = (await all("SELECT * FROM user_strategies WHERE mode = 'auto'")).map(parse);
+  const rows = (await all("SELECT * FROM user_strategies WHERE mode IN ('auto', 'approve')")).map(parse);
   let ran = 0;
   for (const s of rows) {
     if (n.minutes < s.runAt || n.minutes > 960 || !isRebalanceDay(s.spec, n.day)) continue;
-    // Ready-made strategies trade real accounts by themselves only in registered-adviser mode.
-    if (s.account !== 'paper' && s.templateId && !adviserMode()) continue;
     if (!await claim(`strategy:${s.id}:${n.day}`)) continue;
-    try { await execute(s, s.userId, { kind: 'auto' }); ran++; }
+    // Ready-made strategies trade real accounts by themselves only in registered-adviser mode.
+    // Otherwise (and in "approve" mode) the orders are prepared and the user approves them.
+    const approve = s.mode === 'approve' || (s.account !== 'paper' && s.templateId && !adviserMode());
+    try { if (approve) await prepare(s, n.day); else await execute(s, s.userId, { kind: 'auto' }); ran++; }
     catch (e) { await run('INSERT INTO strategy_runs (strategy_id, user_id, kind, summary, at) SELECT id, user_id, ?, ?, ? FROM user_strategies WHERE id = ?', 'error', e.message.slice(0, 300), now(), s.id); }
   }
   return ran;
+}
+
+// "Approve each trade": today's orders are worked out at the run time and wait for the user, who
+// approves them with one tap (the orders are then placed by the user, at that moment's prices) or
+// skips them. They expire at the close. This is how the ready-made strategies follow real accounts
+// in software-only mode: the user decides every trade.
+export async function prepare(s, day) {
+  const w = await walkdown(s, s.userId);
+  if (w.capital?.error) throw bad(w.capital.error, 409);
+  const orders = w.orders.filter(o => o.delta !== 0).map(o => ({ ticker: o.ticker, side: o.delta > 0 ? 'buy' : 'sell', qty: Math.abs(o.delta), price: o.price ?? null }));
+  const summary = orders.length ? orders.map(o => `${o.side.toUpperCase()} ${o.qty} ${o.ticker}`).join(', ') : 'No change: holdings already match the targets';
+  await run('UPDATE user_strategies SET state = ? WHERE id = ?', JSON.stringify({ ...s.state, pending: orders.length ? { day, orders, at: now() } : undefined }), s.id);
+  await run('INSERT INTO strategy_runs (strategy_id, user_id, kind, summary, at) VALUES (?,?,?,?,?)', s.id, s.userId, orders.length ? 'ready' : 'no change', orders.length ? `Ready for your approval: ${summary}` : summary, now());
+  if (orders.length) await notifyAccount(s.userId, `Brightfolio: "${s.name}" is ready to rebalance: ${summary}. Approve or skip it in the app before the close today (Strategies).`).catch(() => {});
+  return { orders, summary };
+}
+export async function decidePending(s, userId, approve, today) {
+  const p = s.state.pending;
+  if (!p) throw bad('Nothing is waiting for approval', 404);
+  const rest = { ...s.state }; delete rest.pending;
+  if (p.day !== today) { await run('UPDATE user_strategies SET state = ? WHERE id = ?', JSON.stringify(rest), s.id); throw bad('These orders expired at the close. New ones are prepared on the next rebalance day.', 410); }
+  if (!approve) {
+    await run('UPDATE user_strategies SET state = ? WHERE id = ?', JSON.stringify(rest), s.id);
+    await run('INSERT INTO strategy_runs (strategy_id, user_id, kind, summary, at) VALUES (?,?,?,?,?)', s.id, userId, 'skipped', 'You skipped today\'s orders', now());
+    return { skipped: true };
+  }
+  return execute({ ...s, state: rest }, userId, { kind: 'approved' });
 }
 
 // Trailing stops on what each strategy holds, checked during market hours.

@@ -64,7 +64,10 @@ export async function sessionMiddleware(req, res, next) {
       if (u && u.role !== 'admin' && (isAdminEmail(u.email) || (u.phone_verified && isAdminPhone(u.phone)))) { await run("UPDATE users SET role = 'admin' WHERE id = ?", u.id); u.role = 'admin'; }
       // "View as plan": the owner sees the app (menus, limits, upgrade prompts) exactly as a user on that plan would.
       // A stale or damaged saved value (or a plan that no longer exists) is ignored, never an error.
-      if (u?.role === 'admin') { const plan = await savedPreviewPlan(u.id); if (typeof plan === 'string' && Object.hasOwn(PLANS, plan)) { u.previewPlan = plan; u.plan = plan; u.plan_status = plan === 'free' ? null : 'active'; } }
+      if (u?.role === 'admin') {
+        const plan = await savedPreviewPlan(u.id); if (typeof plan === 'string' && Object.hasOwn(PLANS, plan)) { u.previewPlan = plan; u.plan = plan; u.plan_status = plan === 'free' ? null : 'active'; }
+        const adv = await savedPreviewPlan(u.id, 'previewAdviser'); if (typeof adv === 'boolean') u.previewAdviser = adv;
+      }
       if (s.mfa_pending) req.pending = u; else req.user = u;
     }
   }
@@ -72,8 +75,8 @@ export async function sessionMiddleware(req, res, next) {
 }
 
 // The owner's "view as plan" choice; anything unreadable counts as none.
-async function savedPreviewPlan(userId) {
-  const r = await one("SELECT v FROM user_settings WHERE user_id = ? AND k = 'previewPlan'", userId).catch(() => null);
+async function savedPreviewPlan(userId, k = 'previewPlan') {
+  const r = await one('SELECT v FROM user_settings WHERE user_id = ? AND k = ?', userId, k).catch(() => null);
   try { return r ? JSON.parse(r.v) : null; } catch { return null; }
 }
 
@@ -103,7 +106,7 @@ export const requireAdmin = (req, res, next) => req.user?.role === 'admin' ? nex
 
 export const publicUser = u => u && ({
   id: u.id, email: u.email, role: u.role, totpEnabled: !!u.totp_enabled, phone: u.phone, phoneVerified: !!u.phone_verified,
-  previewPlan: u.previewPlan || null, hasPin: !!u.pin_hash, hasPassword: u.password_set !== 0, google: !!u.google_sub, github: !!u.github_id, emailVerified: !!u.email_verified, planStatus: u.plan_status, planInterval: u.plan_interval, trialUsed: !!u.trial_used, refCode: u.ref_code, plan: u.plan, planRenews: u.plan_renews, taxBracket: u.tax_bracket, stateTax: u.state_tax,
+  previewPlan: u.previewPlan || null, previewAdviser: typeof u.previewAdviser === 'boolean' ? u.previewAdviser : null, hasPin: !!u.pin_hash, hasPassword: u.password_set !== 0, google: !!u.google_sub, github: !!u.github_id, emailVerified: !!u.email_verified, planStatus: u.plan_status, planInterval: u.plan_interval, trialUsed: !!u.trial_used, refCode: u.ref_code, plan: u.plan, planRenews: u.plan_renews, taxBracket: u.tax_bracket, stateTax: u.state_tax,
 });
 
 export const router = express.Router();

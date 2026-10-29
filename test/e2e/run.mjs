@@ -172,8 +172,19 @@ console.log('Desktop (1360x900)');
     }
     await p.screenshot({ path: path.join(OUT, 'admin-setup.png'), fullPage: true });
     await p.click('#nav a[href="#/admin-system"]'); await p.waitForSelector('text=Capacity plan');
+    // Upgrades: the version, each tab, and an upgrade behind the password and UPGRADE.
+    await p.click('#nav a[href="#/admin-upgrades"]'); await p.waitForSelector('.upgradehead .ver b');
+    for (const t of ['alpaca', 'render', 'history', 'github']) { await p.goto(B + '/app#/admin-upgrades?tab=' + t); await p.waitForSelector('.upgradehead'); }
+    const v0 = await p.textContent('.upgradehead .ver b');
+    await p.click('[data-rec="github:pro"]'); await p.waitForSelector('dialog.secure');
+    await p.fill('dialog.secure [name=password]', 'Str0ngPassword'); await p.fill('dialog.secure [name=typed]', 'UPGRADE'); await p.check('dialog.secure [name=ok]'); await p.click('dialog.secure button[value=yes]');
+    await p.waitForFunction(v => document.querySelector('.upgradehead .ver b')?.textContent !== v, v0);
+    await p.screenshot({ path: path.join(OUT, 'admin-upgrades.png'), fullPage: true });
     // View as each plan from the header, then back to the owner view.
-    await p.selectOption('#viewAs', 'free'); await p.waitForSelector('#viewAs.on'); await p.waitForSelector('#nav a.upsell');
+    // A preview asks for the password and a tick first.
+    await p.selectOption('#viewAs', 'plan:free'); await p.waitForSelector('dialog.secure');
+    await p.fill('dialog.secure [name=password]', 'Str0ngPassword'); await p.check('dialog.secure [name=ok]'); await p.click('dialog.secure button[value=yes]');
+    await p.waitForSelector('#viewAs.on'); await p.waitForSelector('#nav a.upsell');
     await p.selectOption('#viewAs', ''); await p.waitForSelector('#viewAs:not(.on)'); await p.waitForFunction(() => !document.querySelector('#nav a.upsell'));
     await p.click('#nav a[href="#/admin-users"]'); await p.fill('#userFind', 'desk'); await p.waitForTimeout(200);
     if ((await p.$$('#userTable tr[data-email]:not([hidden])')).length !== 1) throw new Error('user search');

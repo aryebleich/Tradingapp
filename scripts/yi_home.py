@@ -484,6 +484,22 @@ YI.update({
  "What are credits?": "וואס זענען קרעדיטס?",
  "Every plan includes credits each month (100 on Starter up to 10,000 on Ultimate). An extra AI message or a text alert costs 1 credit, a phone call 3, a filing summary 5 and training an AI agent 10. Monthly credits refill on the 1st of the month; credit packs you buy (from $5) never expire.": "יעדער פלאן נעמט אריין קרעדיטס יעדן חודש (100 אויף Starter ביז 10,000 אויף Ultimate). אן עקסטרא AI מעסעדזש אדער א טעקסט אלערט קאסט 1 קרעדיט, א טעלעפאן רוף 3, א באריכט סיכום 5 און טרענירן אן AI אגענט 10. חודשליכע קרעדיטס ווערן אנגעפילט דעם 1טן פונעם חודש; קרעדיט פעקלעך וואס איר קויפט (פון $5) גייען קיינמאל נישט אויס.",
 })
+YI.update({
+ "New to investing? Start here.": "נייע אין אינוועסטירן? הייבט אן דא.",
+ "New to investing? Start here": "נייע אין אינוועסטירן? הייבט אן דא",
+ "Three easy steps. No card, no broker and no risk until you are ready.": "דריי גרינגע טריט. קיין קארטל, קיין בראוקער און קיין ריזיקע ביז איר זענט גרייט.",
+ "Create a free account": "עפנט אן אומזיסטע קאנטע",
+ "Your email or Google. It takes about a minute.": "אייער אימעיל אדער Google. עס נעמט בערך א מינוט.",
+ "Create my free account": "עפנט מיר אן אומזיסטע קאנטע",
+ "Practice with $100,000 pretend money": "פרובירט מיט $100,000 נישט-עכטע געלט",
+ "Every account starts with a paper account: real prices, pretend money. Buy a stock, follow a ready-made plan and see what happens.": "יעדע קאנטע הייבט אן מיט א פּעיפּער קאנטע: עכטע פרייזן, נישט-עכטע געלט. קויפט אן אקציע, פאלגט א פארטיגן פלאן און זעט וואס עס טוט זיך.",
+ "Go live when you feel ready": "גייט לייוו ווען איר פילט זיך גרייט",
+ "Connect your own brokerage account, or open one in the app. Your money stays at your broker, and your risk rules apply to every order.": "פארבינדט אייער אייגענע בראוקער קאנטע, אדער עפנט איינע אין דער עפּ. אייער געלט בלייבט ביי אייער בראוקער, און אייערע ריזיקע כללים גילטן פאר יעדן ארדער.",
+ "Not sure what to pick first? Most beginners start with the": "נישט זיכער וואס צו קלייבן צום ערשט? רוב אנהייבערס הייבן אן מיטן",
+ "S&amp;P 500 plan": "S&amp;P 500 פלאן",
+ "one simple investment in 500 large US companies, a little every month.": "איין פשוטע אינוועסטירונג אין 500 גרויסע אמעריקאנער פירמעס, א ביסל יעדן חודש.",
+ "Already know what you want? Pick a goal": "ווייסט איר שוין וואס איר ווילט? קלייבט אן ציל",
+})
 # Translations made with Yiddish Labs (npm run yiddish:import) take precedence.
 import json as _json, os as _os
 _labs = _os.path.join(_os.path.dirname(__file__), 'yi_labs.json')

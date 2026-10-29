@@ -293,7 +293,7 @@ def index(lang='en'):
     <p class="lead">{T('Stocks, ETFs, options and crypto through your own brokerage account. Ready-made strategies, webhook alerts, pairs trading and an S&amp;P 500 plan: test them, paper trade them and automate them on one platform.')}</p>
     <div class="cta">{gbtn()}{ghbtn()}<a class="btn outline lg" data-app="#/register" href="app">{T('Start free with email')}</a></div>
     <ul class="ticks"><li>{T('Set up in 3 minutes')}</li><li>{T('$100,000 paper account')}</li><li>{T('No card needed')}</li></ul>
-    <p class="demolink"><a href="#demo">{T('Try the live demo, no sign-up')} &darr;</a></p>
+    <p class="demolink"><a href="#start">{T('New to investing? Start here')} &darr;</a> · <a href="#demo">{T('Try the live demo, no sign-up')} &darr;</a></p>
     <p class="acctlink"><a data-app="#/open-account" href="app">{T('Open a brokerage account')} &rarr;</a> <span>{T('Commission-free, held at Alpaca Securities LLC (FINRA/SIPC)')}</span></p>
     <p class="phoneline hero-phone" data-phone hidden>{ic('msg', 16)} {T('Text or call us:')} <a data-phone-link dir="ltr"></a></p>
   </div>
@@ -304,9 +304,17 @@ def index(lang='en'):
 </section>
 
 <section id="start"><div class="wrap">
-  <h2 class="sec center">{T('What do you want to do?')}</h2>
-  <p class="sub center">{T('Pick one. Everything works on paper first, with no risk.')}</p>
-  <div class="intents" data-tabs><div class="ichips" role="tablist" aria-label="{T('What do you want to do?')}">{chips}</div>{panels}</div>
+  <h2 class="sec center">{T('New to investing? Start here.')}</h2>
+  <p class="sub center">{T('Three easy steps. No card, no broker and no risk until you are ready.')}</p>
+  <ol class="steps3">
+    <li><span class="n">1</span><h3>{T('Create a free account')}</h3><p>{T('Your email or Google. It takes about a minute.')}</p><a class="btn" data-app="#/register" href="app">{T('Create my free account')}</a></li>
+    <li><span class="n">2</span><h3>{T('Practice with $100,000 pretend money')}</h3><p>{T('Every account starts with a paper account: real prices, pretend money. Buy a stock, follow a ready-made plan and see what happens.')}</p></li>
+    <li><span class="n">3</span><h3>{T('Go live when you feel ready')}</h3><p>{T('Connect your own brokerage account, or open one in the app. Your money stays at your broker, and your risk rules apply to every order.')}</p></li>
+  </ol>
+  <p class="center tip">{ic('chart', 16)} {T('Not sure what to pick first? Most beginners start with the')} <a href="#sp500">{T('S&amp;P 500 plan')}</a>: {T('one simple investment in 500 large US companies, a little every month.')}</p>
+  <details class="moregoals"><summary>{T('Already know what you want? Pick a goal')}</summary>
+    <div class="intents" data-tabs><div class="ichips" role="tablist" aria-label="{T('What do you want to do?')}">{chips}</div>{panels}</div>
+  </details>
 </div></section>
 
 <section class="alt" id="different"><div class="wrap">

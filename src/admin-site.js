@@ -4,9 +4,11 @@ import express from 'express';
 import { one, all, run, audit } from './db.js';
 import { requireUser, requireAdmin, confirmsIdentity, adminEmails, allAdminEmails, canonicalEmail } from './auth.js';
 import * as S from './site.js';
+import { upgradesRouter, bump } from './upgrades.js';
 
 export const adminSiteRouter = express.Router();
 adminSiteRouter.use(requireUser, requireAdmin);
+adminSiteRouter.use(upgradesRouter);
 const bad = msg => Object.assign(new Error(msg), { status: 400 });
 const wrap = fn => (req, res, next) => fn(req, res).catch(next);
 
@@ -61,8 +63,10 @@ adminSiteRouter.put('/mode', wrap(async (req, res) => {
   const on = req.body?.adviser === true;
   // Switching to adviser mode is a statement that the business is registered.
   if (on && req.body?.registered !== true) throw bad('Confirm that the business is a registered investment adviser (SEC or state) first');
+  const changed = on !== S.adviserMode();
   await S.siteSet('adviserMode', on);
   await audit(req.user.id, 'adviser_mode', { on, crd: req.body?.crd || null }, req.ip);
+  if (changed) await bump(on ? 'Business mode: registered investment adviser' : 'Business mode: software only', req.user.id);
   if (req.body?.crd !== undefined) await S.siteSet('adviserCrd', String(req.body.crd || '').slice(0, 20));
   res.json({ adviser: on });
 }));

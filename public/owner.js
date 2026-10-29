@@ -1,20 +1,20 @@
-// Owner pages: Business mode (software only or registered adviser, and ways to earn), Admins
+// Owner pages: Upgrades (business mode, Alpaca, GitHub and Render plans, site version), money
+// levers under Money & fees, Admins
 // (emails and phones that sign in as admin), and Keys (every environment value, .env import and
 // export, and sync with Render). Admin pages stay in English.
 import { md } from './studio.js';
 let H;
 export function registerOwner(routes, helpers) {
   H = helpers;
-  const guard = fn => view => (H.me()?.role === 'admin' ? fn(view) : (location.hash = '#/dashboard'));
-  Object.assign(routes, { 'admin-business': guard(business), 'admin-alpaca': guard(alpacaPlans), 'admin-yiddish': guard(yiddish), 'admin-phone': guard(phoneLine), 'admin-ai': guard(aiPrivacy), 'admin-readme': guard(privateReadme), 'admin-admins': guard(admins), 'admin-keys': guard(keys) });
+  const guard = fn => (view, q) => (H.me()?.role === 'admin' ? fn(view, q) : (location.hash = '#/dashboard'));
+  Object.assign(routes, {
+    'admin-upgrades': guard(upgrades),
+    // Older links: business mode and Alpaca plans are now under Upgrades; the money levers under Money & fees.
+    'admin-business': guard(() => (location.hash = '#/admin-upgrades?tab=mode')), 'admin-alpaca': guard(() => (location.hash = '#/admin-upgrades?tab=alpaca')),
+    'admin-money': guard(async view => { await H.adminPage(view, 'admin-money'); await moneyExtras(view); }), 'admin-yiddish': guard(yiddish), 'admin-phone': guard(phoneLine), 'admin-ai': guard(aiPrivacy), 'admin-readme': guard(privateReadme), 'admin-admins': guard(admins), 'admin-keys': guard(keys) });
 }
 
-async function business(view) {
-  const [mode, sum, money, ria] = await Promise.all([H.api('/admin/site/mode'), H.api('/admin/summary'), H.api('/admin/site/money'), H.api('/admin/site/ria')]);
-  const f = sum.funnel, m = money.settings, st = money.stats, doneSteps = ria.steps.filter(x => x.done).length;
-  const ms = [...m.milestones, { at: '', bonus: '' }, { at: '', bonus: '' }].slice(0, Math.max(3, m.milestones.length));
-  view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-business')}
-  <div class="card"><h2>Business mode</h2>
+const modeHtml = (mode, ria, doneSteps) => `<div class="card"><h2>Business mode</h2>
     <div class="modes">
       <label class="mode ${mode.adviser ? '' : 'on'}"><input type="radio" name="mode" value="software" ${mode.adviser ? '' : 'checked'}><b>Software only</b> <span class="pill">${mode.adviser ? '' : 'Current'}</span>
         <span class="mu">No investment adviser license needed. Users choose and run their own strategies on their own brokerage accounts. The ready-made strategies and copied signals trade real money only when the user places or approves each order (automatic on paper). You earn from plans, deposit fees, referrals and partner commission, not from their profits.</span></label>
@@ -30,9 +30,16 @@ async function business(view) {
 
   <div class="card"><h2>Upgrade to a registered investment adviser</h2><p class="mu">${doneSteps} of ${ria.steps.length} steps done. Tick each one off as you finish it; switch the mode above when the registration is approved.</p>
     <div class="ob-bar"><i style="width:${Math.round(doneSteps / ria.steps.length * 100)}%"></i></div>
-    <div class="riasteps">${ria.steps.map((x, i) => `<label class="check riastep ${x.done ? 'done' : ''}"><input type="checkbox" data-ria="${x.id}" ${x.done ? 'checked' : ''}><span><b>${i + 1}.</b> ${H.esc(x.text)} <a href="${x.link}" target="_blank" rel="noopener">Open ↗</a></span></label>`).join('')}</div></div>
+    <div class="riasteps">${ria.steps.map((x, i) => `<label class="check riastep ${x.done ? 'done' : ''}"><input type="checkbox" data-ria="${x.id}" ${x.done ? 'checked' : ''}><span><b>${i + 1}.</b> ${H.esc(x.text)} <a href="${x.link}" target="_blank" rel="noopener">Open ↗</a></span></label>`).join('')}</div></div>`;
 
-  <form class="card" id="money"><h2>Money levers</h2>
+// Money & fees: the money levers, referrals, ways the business earns and credits, under the
+// overview figures (Admin → Money & fees).
+async function moneyExtras(view) {
+  const [mode, sum, money, ria] = await Promise.all([H.api('/admin/site/mode'), H.api('/admin/summary'), H.api('/admin/site/money'), H.api('/admin/site/ria')]);
+  const f = sum.funnel, m = money.settings, st = money.stats, doneSteps = ria.steps.filter(x => x.done).length;
+  const ms = [...m.milestones, { at: '', bonus: '' }, { at: '', bonus: '' }].slice(0, Math.max(3, m.milestones.length));
+  const el = document.createElement('div');
+  el.innerHTML = `<form class="card" id="money"><h2>Money levers</h2>
     <div class="stats">
       <div class="stat"><span>Deposit fees collected</span><b>${H.money(st.depositFees)}</b></div>
       <div class="stat"><span>Partner commission (expected)</span><b>${H.money(st.commissions)}</b></div>
@@ -77,15 +84,7 @@ async function business(view) {
       <li>Offer Elite and Ultimate to users who hit their limits; the upgrade prompt opens on every limit.</li>
       <li>Open brokerage accounts for customers inside Brightfolio (Broker API): each one can earn partner commission and the revenue share in your Alpaca contract.</li>
     </ul></div>`;
-  const box = H.$('#advBox', view);
-  H.$$('[name=mode]', view).forEach(r => (r.onchange = () => { box.hidden = r.value !== 'adviser' || !r.checked; }));
-  H.act(H.$('#saveMode', view), async () => {
-    const adviser = H.$('[name=mode]:checked', view).value === 'adviser';
-    await H.api('/admin/site/mode', { method: 'PUT', body: { adviser, registered: H.$('[name=registered]', view).checked, crd: H.$('[name=crd]', view).value } });
-    setTimeout(H.render, 600);
-    return adviser ? 'Registered-adviser mode is on.' : 'Software-only mode is on.';
-  });
-  H.$$('[data-ria]', view).forEach(c => (c.onchange = async () => { await H.api('/admin/site/ria', { method: 'PUT', body: { id: c.dataset.ria, done: c.checked } }); H.render(); }));
+  view.append(el);
   const mf = H.$('#money', view);
   const ex = () => { const p = +mf.depositFeePercent.value || 0, fx = +mf.depositFeeFixed.value || 0, cap = +mf.depositFeeCap.value || 0; let fee = 1000 * p / 100 + (p || fx ? fx : 0); if (cap) fee = Math.min(fee, cap); H.$('#feeEx', view).textContent = H.money(fee); };
   mf.oninput = ex; ex();
@@ -100,14 +99,13 @@ async function business(view) {
 }
 
 // The owner's own Alpaca account: Elite, trading plan, market data, options level, high-yield cash.
-async function alpacaPlans(view) {
-  const d = await H.api('/admin/site/alpaca-plans');
+function alpacaHtml(d) {
   const bar = (v, max) => `<div class="ob-bar"><i style="width:${Math.min(100, Math.round(v / max * 100))}%"></i></div>`;
-  const tile = (title, status, body, link, label, on) => `<div class="card aplan"><div class="row" style="justify-content:space-between;align-items:center"><h2>${title}</h2><span class="pill ${on ? 'pos' : ''}">${status}</span></div>${body}<a href="${link}" target="_blank" rel="noopener"><button type="button" class="${on ? 'ghost' : ''}">${label}</button></a></div>`;
+  const tile = (title, status, body, link, label, on) => `<div class="card aplan"><div class="row" style="justify-content:space-between;align-items:center"><h2>${title}</h2><span class="pill ${on ? 'pos' : ''}">${status}</span></div>${body}<div class="row" style="gap:8px"><a href="${link}" target="_blank" rel="noopener"><button type="button" class="${on ? 'ghost' : ''}">${label}</button></a><button type="button" class="ghost" data-rec="alpaca:${({ 'Alpaca Elite': 'elite', 'Trading plan': 'trading', 'Market data': 'data', Options: 'options', 'High-yield cash': 'cash' })[title]}">I upgraded this</button></div></div>`;
   const dash = 'https://app.alpaca.markets';
-  view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-alpaca')}<h2>Your Alpaca account</h2>
+  return `<h2>Your Alpaca account</h2>
   ${!d.connected ? '<div class="card"><p class="mu">Connect your own Alpaca account (Brokerages, or ALPACA_KEY_ID / ALPACA_SECRET in Keys) to see where it stands.</p></div>' : d.error ? `<div class="card err">${H.esc(d.error)}</div>` : `
-  <p class="mu">Account <b data-no-tr>${H.esc(d.accountNumber || '')}</b> · ${d.live ? 'live' : 'paper'} · equity ${H.money(d.equity)} · net deposits ${H.money(d.netDeposits)}. Alpaca changes these plans in its own dashboard: each button opens it (Home → your account → Plans &amp; Features).</p>
+  <p class="mu">Account <b data-no-tr>${H.esc(d.accountNumber || '')}</b> · ${d.live ? 'live' : 'paper'} · equity ${H.money(d.equity)} · net deposits ${H.money(d.netDeposits)}. Alpaca changes these plans in its own dashboard: each button opens it (Home → your account → Plans &amp; Features). After you upgrade there, press <b>I upgraded this</b> to record it (the site version moves up).</p>
   <div class="grid">
     ${tile('Alpaca Elite', d.elite.unlocked ? 'Unlocked' : 'Not enabled', `<p class="mu">Deposit $30,000 or more to unlock Alpaca Elite and its perks.</p><p>Net deposit: <b>${H.money(d.netDeposits)}</b> / $30,000</p>${bar(d.netDeposits, 30000)}`, dash, d.elite.unlocked ? 'See Elite perks' : 'Discover Alpaca Elite', d.elite.unlocked)}
     ${tile('Trading plan', 'Commission-free', '<p class="mu">$30k deposit unlocks the new trading plan. $100k unlocks a lower margin rate, a free market data subscription and white-glove support.</p>' + bar(d.netDeposits, 100000), dash, 'Change trading plan', d.premium.unlocked)}
@@ -115,6 +113,63 @@ async function alpacaPlans(view) {
     ${tile('Options', d.options.approved ? `Level ${d.options.approved}` : 'Disabled', `<p class="mu">Approved level ${d.options.approved}, trading level ${d.options.trading}. Level 1: covered calls and cash-secured puts. Level 2: buying calls and puts. Level 3: spreads.</p>`, dash, 'Upgrade your options level', d.options.approved >= 3)}
     ${tile('High-yield cash', 'Enroll at Alpaca', '<p class="mu">Interest on uninvested cash (about 3.56% APY at last check, rates change), with FDIC insurance through program banks up to $1,000,000. Terms on Alpaca.</p>', dash, 'Enroll in high-yield cash', false)}
   </div>`}`;
+}
+
+// ---------- Upgrades: business mode, Alpaca, GitHub and Render in one place ----------
+// Every upgrade asks for the password and the word UPGRADE, and moves the site version up.
+const UP_TABS = [['mode', 'Business mode'], ['alpaca', 'Alpaca'], ['github', 'GitHub'], ['render', 'Render'], ['history', 'Version history']];
+async function upgrades(view, q) {
+  const tab = UP_TABS.some(([k]) => k === q?.get('tab')) ? q.get('tab') : 'mode';
+  const u = await H.api('/admin/site/upgrades');
+  const sub = `<div class="chips" style="margin:6px 0 14px">${UP_TABS.map(([k, t]) => `<a href="#/admin-upgrades?tab=${k}"><button type="button" class="${k === tab ? 'on' : ''}">${t}</button></a>`).join('')}</div>`;
+  const last = u.history[0];
+  const head = `<h1>Admin</h1>${H.adminTabs('admin-upgrades')}<div class="card upgradehead"><div class="uphead"><div><h2 style="margin:0">Upgrades</h2>
+    <p class="mu" style="margin:4px 0 0">Every change to how the business runs, in one place. Each one asks for your password, is logged, and moves the site version up.</p></div>
+    <div class="ver"><span class="mu">Site version</span><b>${H.esc(u.version)}</b>${last ? `<span class="mu" style="font-size:12px">${H.esc(last.what)} · ${H.date(last.at)}</span>` : ''}</div></div></div>${sub}`;
+  const card = (p, current, act) => `<div class="card aplan ${current ? 'cur' : ''}"><div class="row" style="justify-content:space-between;align-items:center"><h3 style="margin:0">${H.esc(p.name)}</h3><span class="pill ${current ? 'pos' : ''}">${current ? 'Current' : p.price ? `$${p.price}/month` : 'Free'}</span></div><p class="mu">${H.esc(p.text)}</p>${current ? '' : act}</div>`;
+  let body = '';
+  if (tab === 'mode') {
+    const ria = await H.api('/admin/site/ria'), doneSteps = ria.steps.filter(x => x.done).length;
+    body = modeHtml({ adviser: u.adviser }, ria, doneSteps).replace('<button id="saveMode">Save mode</button>', '<button id="saveMode">Apply business mode</button>');
+  } else if (tab === 'alpaca') {
+    body = alpacaHtml(await H.api('/admin/site/alpaca-plans'));
+  } else if (tab === 'github') {
+    const g = u.github;
+    body = `<div class="card"><h2>GitHub</h2><p class="mu">${!g.configured ? 'Add GITHUB_TOKEN in Keys to see the current plan.' : g.login ? `Signed in to GitHub as <b data-no-tr>${H.esc(g.login)}</b>${g.plan ? ` · plan: <b>${H.esc(g.plan)}</b>` : ' (GitHub does not show the plan to this token)'}.` : 'GitHub did not answer for GITHUB_TOKEN; check the token in Keys.'} GitHub changes plans on its own billing page; after you switch there, record it here.</p>
+      <a href="https://github.com/settings/billing/plans" target="_blank" rel="noopener"><button type="button" class="ghost">Open GitHub billing ↗</button></a></div>
+      <div class="grid">${u.githubPlans.map(p => card(p, g.plan === p.id, `<button type="button" data-rec="github:${p.id}">I switched to ${H.esc(p.name)}</button>`)).join('')}</div>`;
+  } else if (tab === 'render') {
+    const r = u.render;
+    body = `<div class="card"><h2>Render (where the site runs)</h2><p class="mu">${r.configured ? (r.error ? `<span class="err">${H.esc(r.error)}</span>` : `Service <b data-no-tr>${H.esc(r.name || '')}</b> · plan <b>${H.esc(r.plan || 'unknown')}</b>. Switching here changes the plan through the Render API and redeploys the site (about 2 minutes).`) : 'Add RENDER_API_KEY in Keys (Render → Account settings → API keys) to switch plans from here.'} Render bills the new plan by the second.</p>
+      <a href="https://dashboard.render.com" target="_blank" rel="noopener"><button type="button" class="ghost">Open the Render dashboard ↗</button></a></div>
+      <div class="grid">${u.renderPlans.map(p => card(p, r.plan === p.id, r.configured && !r.error ? `<button type="button" data-render="${p.id}">Switch to ${H.esc(p.name)}</button>` : '')).join('')}</div>`;
+  } else {
+    body = `<div class="card tablewrap"><h2>Version history</h2><table><tr><th>Version</th><th>Change</th><th>When</th></tr>${u.history.map(h => `<tr><td><b>${H.esc(h.v)}</b></td><td>${H.esc(h.what)}</td><td class="mu">${H.date(h.at)}</td></tr>`).join('') || '<tr><td colspan="3" class="mu">No upgrades yet: the site is at v0.1.</td></tr>'}</table></div>`;
+  }
+  view.innerHTML = head + body;
+
+  // Applies one upgrade after the password and UPGRADE check.
+  const apply = async (payload, title, html) => {
+    const ok = await H.secureConfirm({ title, html, word: 'UPGRADE', okText: 'Upgrade' });
+    if (!ok) return '';
+    const r = await H.api('/admin/site/upgrades', { body: { ...payload, ...ok } });
+    setTimeout(H.render, 900);
+    return `Done. The site is now ${r.version}.`;
+  };
+  if (tab === 'mode') {
+    const box = H.$('#advBox', view);
+    H.$$('[name=mode]', view).forEach(r => (r.onchange = () => { box.hidden = r.value !== 'adviser' || !r.checked; }));
+    H.act(H.$('#saveMode', view), async () => {
+      const to = H.$('[name=mode]:checked', view).value;
+      if ((to === 'adviser') === u.adviser) return 'That is already the current mode.';
+      return apply({ kind: 'mode', to, registered: H.$('[name=registered]', view).checked, crd: H.$('[name=crd]', view).value },
+        to === 'adviser' ? 'Switch to registered investment adviser' : 'Switch to software only',
+        `<p class="mu">${to === 'adviser' ? 'Turns on the performance fee and lets the ready-made strategies and copied signals trade real accounts by themselves. Only with an approved SEC or state registration.' : 'Turns off the performance fee; ready-made strategies on real accounts go back to approve-each-trade.'}</p>`);
+    });
+    H.$$('[data-ria]', view).forEach(c => (c.onchange = async () => { await H.api('/admin/site/ria', { method: 'PUT', body: { id: c.dataset.ria, done: c.checked } }); H.render(); }));
+  }
+  H.$$('[data-rec]', view).forEach(b => H.act(b, () => { const [kind, to] = b.dataset.rec.split(':'); return apply({ kind, to }, `Record: ${b.closest('.aplan')?.querySelector('h2,h3')?.textContent || to}`, '<p class="mu">Records that you made this change in its own dashboard. Nothing is changed there from here.</p>'); }));
+  H.$$('[data-render]', view).forEach(b => H.act(b, () => apply({ kind: 'render', to: b.dataset.render }, `Switch Render to ${b.closest('.aplan').querySelector('h3').textContent}`, '<p class="mu">Render moves the site to the new plan and redeploys it. The site may be unavailable for a minute.</p>')));
 }
 
 async function admins(view) {

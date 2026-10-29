@@ -55,6 +55,9 @@ export const isAdminPhone = p => !!p && (adminPhones().includes(normalizePhone(p
 // Software only (the default): no performance fee and no personal advice, so no adviser license is
 // needed. Registered adviser: the owner turns this on in Admin once registered (SEC or state).
 export const adviserMode = () => siteGet('adviserMode', false) === true;
+// What a page shows: the owner's "View as" preview of the other business mode, else the real one.
+// Only for display; automatic trading always follows the real mode.
+export const adviserFor = u => (u?.role === 'admin' && typeof u.previewAdviser === 'boolean' ? u.previewAdviser : adviserMode());
 
 // ---------- environment values ----------
 // Known settings, grouped for the admin page. Any other UPPER_CASE name can be added too.
@@ -157,3 +160,6 @@ export async function renderPut(changes) {
   return done;
 }
 export const renderDeploy = () => renderCall('POST', '/deploys', { clearCache: 'do_not_clear' });
+export const renderService = () => renderCall('GET', '');
+// A new instance type; Render moves the service to it with a fresh deploy.
+export const renderSetPlan = plan => renderCall('PATCH', '', { serviceDetails: { plan } });

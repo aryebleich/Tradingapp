@@ -1,0 +1,33 @@
+name: Deploy to Render
+# After every push to main whose checks (CI) pass, Render rebuilds and restarts the site. Needs the
+# RENDER_DEPLOY_HOOK_URL secret (Render → the service → Settings → Deploy Hook). A failed check
+# never deploys. If Render's own Auto-Deploy is also on, set it to "After CI checks pass" or "Off"
+# (Render → Settings → Build & Deploy) so a push does not deploy twice.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: render-deploy
+  cancel-in-progress: true
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Start a Render deploy
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          if [ -z "$HOOK" ]; then echo "::warning::Add the RENDER_DEPLOY_HOOK_URL secret (Render → service → Settings → Deploy Hook) to deploy after every push."; exit 0; fi
+          # The hook URL is a secret: never printed. ref= deploys exactly the commit that passed.
+          for i in 1 2 3; do
+            if curl -fsS -X POST "${HOOK}&ref=${SHA}" -o /dev/null; then echo "Render deploy started for ${SHA:0:7}."; exit 0; fi
+            sleep $((i * 10))
+          done
+          echo "::error::Render did not accept the deploy hook."; exit 1

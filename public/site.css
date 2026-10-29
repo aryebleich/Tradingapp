@@ -481,3 +481,16 @@ section.dark .sub, section.dark .trust .feature p { color: #b6c4da; }
 .cpacks span { color: var(--mu); font-size: .8rem; }
 .cpacks em { font-style: normal; font-weight: 700; color: var(--ac); margin-top: 4px; }
 @media (max-width: 760px) { .credits { grid-template-columns: 1fr; padding: 20px; } }
+/* "New to investing? Start here": three steps */
+.steps3 { list-style: none; padding: 0; margin: 28px auto 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; max-width: 1040px; }
+.steps3 li { background: var(--card); border: 1px solid var(--bd); border-radius: 18px; padding: 22px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 6px; }
+.steps3 .n { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #fff; background: var(--grad); }
+.steps3 h3 { margin: 6px 0 0; font-size: 1.1rem; }
+.steps3 p { margin: 0; color: var(--mu); line-height: 1.55; flex: 1; }
+.steps3 .btn { align-self: flex-start; margin-top: 8px; }
+#start .tip { margin: 22px auto 0; max-width: 760px; color: var(--mu); }
+.moregoals { margin: 26px auto 0; max-width: 1040px; }
+.moregoals > summary { cursor: pointer; text-align: center; font-weight: 700; color: var(--ac); list-style: none; padding: 8px; }
+.moregoals > summary::-webkit-details-marker { display: none; }
+.moregoals[open] > summary { margin-bottom: 14px; }
+@media (max-width: 860px) { .steps3 { grid-template-columns: 1fr; } }
