@@ -3,13 +3,13 @@
 // Strings go in numbered batches; HTML, entities, brand names and tickers are swapped for
 // placeholders first so they come back unchanged, and every result is checked before use.
 
-// Names that must stay in Latin letters, plus anything with two or more capitals (tickers, ETFs, QuantPocket).
-const KEEP = ['Charles Schwab', 'S&P 500', 'S&amp;P 500', 'S&P', 'S&amp;P', 'Alpaca Securities LLC', 'FINRA/SIPC', 'Alpaca', 'Schwab', 'tastytrade', 'Tradier', 'Stripe', 'Helcim', 'Twilio', 'Google', 'Zapier', 'Apple', 'Nasdaq', 'Bollinger', 'Sharpe', 'Authy', 'Starter', 'Pro', 'Elite', 'bitcoin'];
+// Names that must stay in Latin letters, plus anything with two or more capitals (tickers, ETFs, QuantConnect).
+const KEEP = ['Brightfolio', 'Charles Schwab', 'S&P 500', 'S&amp;P 500', 'S&P', 'S&amp;P', 'Alpaca Securities LLC', 'FINRA/SIPC', 'Alpaca', 'Schwab', 'tastytrade', 'Tradier', 'Stripe', 'Helcim', 'Twilio', 'Google', 'Zapier', 'Apple', 'Nasdaq', 'Bollinger', 'Sharpe', 'Authy', 'Starter', 'Pro', 'Elite', 'bitcoin'];
 const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const PROTECT = new RegExp([
   '<[^>]+>', '&[a-z#0-9]+;', '\\{[^}]*\\}', 'https?://\\S+', '[\\w.-]+\\.(?:com|ai|markets)\\b[\\w/.-]*', '[\\w.+-]+@[\\w-]+\\.[\\w.]+',
   ...KEEP.map(k => '\\b' + esc(k) + '(?![\\w])'),
-  '\\b[A-Za-z0-9]*[A-Z][A-Za-z0-9&./#-]*[A-Z0-9][A-Za-z0-9&./#-]*\\b', // TQQQ, ETFs, QuantPocket, QC #687, SPY/QQQ
+  '\\b[A-Za-z0-9]*[A-Z][A-Za-z0-9&./#-]*[A-Z0-9][A-Za-z0-9&./#-]*\\b', // TQQQ, ETFs, QuantConnect, QC #687, SPY/QQQ
 ].join('|'), 'g');
 
 export function protect(text) {

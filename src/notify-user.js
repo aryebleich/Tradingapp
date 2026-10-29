@@ -8,5 +8,5 @@ export async function notifyUser(userId, msg) {
   // Text-message alerts are a paid feature; the free plan gets them by email.
   // Each text costs a credit; without credits the alert goes by email instead.
   if (u?.phone && u.phone_verified && isPaid(u) && await trySpend({ ...u, id: userId }, 'sms', { memo: 'alert' }).catch(() => false)) await sendSms(u.phone, msg).catch(e => console.warn('sms', e.message));
-  else if (u?.email) await sendEmail(u.email, 'QuantPocket: ' + msg.slice(0, 60), msg).catch(e => console.warn('email', e.message));
+  else if (u?.email) await sendEmail(u.email, 'Brightfolio: ' + msg.slice(0, 60), msg).catch(e => console.warn('email', e.message));
 }

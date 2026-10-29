@@ -77,7 +77,7 @@ async function yahooBars(symbol, start) {
   let r;
   try {
     r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${from}&period2=${to}&interval=1d&events=split,div`,
-      { headers: { 'User-Agent': 'Mozilla/5.0 QuantPocket' }, signal: AbortSignal.timeout(8000) });
+      { headers: { 'User-Agent': 'Mozilla/5.0 Brightfolio' }, signal: AbortSignal.timeout(8000) });
   } catch { return null; }
   if (r.status === 404) throw unknownSymbol(symbol);
   if (!r.ok) return null;
@@ -94,7 +94,7 @@ async function yahooQuote(symbol) {
   let r;
   try {
     r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=1m`,
-      { headers: { 'User-Agent': 'Mozilla/5.0 QuantPocket' }, signal: AbortSignal.timeout(5000) });
+      { headers: { 'User-Agent': 'Mozilla/5.0 Brightfolio' }, signal: AbortSignal.timeout(5000) });
   } catch { return null; }
   if (r.status === 404) throw unknownSymbol(symbol);
   if (!r.ok) return null;

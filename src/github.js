@@ -24,7 +24,7 @@ const fail = (res, msg) => res.redirect('/app#/login?error=' + encodeURIComponen
 
 // GitHub's id and its primary, verified email. Unverified addresses are never used to link accounts.
 async function identity(token) {
-  const h = { authorization: `Bearer ${token}`, accept: 'application/vnd.github+json', 'user-agent': 'QuantPocket' };
+  const h = { authorization: `Bearer ${token}`, accept: 'application/vnd.github+json', 'user-agent': 'Brightfolio' };
   const [u, emails] = await Promise.all([
     fetch(API() + '/user', { headers: h, signal: AbortSignal.timeout(15000) }).then(r => r.ok ? r.json() : null),
     fetch(API() + '/user/emails', { headers: h, signal: AbortSignal.timeout(15000) }).then(r => r.ok ? r.json() : []),

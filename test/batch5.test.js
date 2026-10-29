@@ -130,7 +130,7 @@ test('phone line: open an account by phone, then trade on paper with the PIN', a
     let r = await call('/twilio/voice');
     assert.match(r.say, /does not have an account yet. Press 1 to open a free account/);
     r = await call(r.next, '1');
-    const code = /QuantPocket code: (\d{6})/.exec(logs.join('\n'))?.[1];
+    const code = /Brightfolio code: (\d{6})/.exec(logs.join('\n'))?.[1];
     assert.ok(code, 'the code was texted');
     // A wrong code first, then the right one.
     let w = await call(r.next, '000000'); assert.match(w.say, /not right/);

@@ -1,6 +1,6 @@
 {
-  "name": "QuantPocket",
-  "short_name": "QuantPocket",
+  "name": "Brightfolio",
+  "short_name": "Brightfolio",
   "description": "Backtest, paper trade and automate stock strategies.",
   "start_url": "/app",
   "display": "standalone",

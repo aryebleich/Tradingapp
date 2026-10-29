@@ -2,7 +2,7 @@
 // and the referral bonuses (exact English phrase → Yiddish).
 export const strings = {
   // side panel, start-up, news pop-ups
-  'Live': 'לייוו', 'Wealth builder': 'עשירות בויער', 'Bonds, crypto & AI': 'באנדס, קריפטא און AI', 'Connecting to QuantPocket…': 'מען פארבינדט זיך מיט QuantPocket…',
+  'Live': 'לייוו', 'Wealth builder': 'עשירות בויער', 'Bonds, crypto & AI': 'באנדס, קריפטא און AI', 'Connecting to Brightfolio…': 'מען פארבינדט זיך מיט Brightfolio…',
   'More news': 'מער נייעס', 'Turn off pop-ups': 'שטעלט אפ די פאפ-אפס', 'News pop-ups': 'נייעס פאפ-אפס', 'Show today\'s headlines about the stocks I own': 'ווייזט היינטיגע הויפט-נייעס וועגן די סטאקס וואס איך פארמאג',
   'Live account, test money': 'לייוו קאנטע, טעסט געלט',
 
@@ -49,7 +49,7 @@ export const strings = {
   'Calm mode (Settings) hides flashing prices so short moves are easier to ignore.': 'רואיגער מאדע (סעטינגס) באהאלט בליצנדיגע פרייזן, אזוי איז גרינגער צו איגנארירן קורצע באוועגונגען.',
   // DRIP
   'Reinvest dividends automatically (DRIP)': 'ווידער-אינוועסטירט דיווידענדן אויטאמאטיש (DRIP)', 'Connect a brokerage account first (dividends are not simulated on paper).': 'פארבינדט קודם א בראוקער קאנטע (דיווידענדן ווערן נישט סימולירט אויף פּעיפּער).',
-  'Every few hours QuantPocket checks for dividends paid in the last week and buys the same stock with the cash (fractional shares, $1 and up). Part of Pro.': 'יעדע פאר שעה קוקט QuantPocket פאר דיווידענדן באצאלט די לעצטע וואך און קויפט דעם זעלבן סטאק מיט די געלט (שטיקלעך שערס, פון $1 און ארויף). א טייל פון Pro.',
+  'Every few hours Brightfolio checks for dividends paid in the last week and buys the same stock with the cash (fractional shares, $1 and up). Part of Pro.': 'יעדע פאר שעה קוקט Brightfolio פאר דיווידענדן באצאלט די לעצטע וואך און קויפט דעם זעלבן סטאק מיט די געלט (שטיקלעך שערס, פון $1 און ארויף). א טייל פון Pro.',
   'Reinvested': 'ווידער-אינוועסטירט', 'Stock': 'סטאק', 'Nothing yet': 'נאך גארנישט',
   // fundamentals
   'Fundamentals checklist': 'פונדאמענטאלן ליסטע', 'Stock ticker': 'סטאק טיקער', 'Check': 'טשעקט',
@@ -83,7 +83,7 @@ export const strings = {
   'ISINs (comma-separated)': 'ISINs (מיט קאמעס)', 'Look up': 'זוכט', 'Crypto across venues': 'קריפטא אויף פארשידענע בערזעס',
   'The same coin can trade at slightly different prices at each liquidity source: Alpaca US, Kraken US and Kraken EU.': 'די זעלבע מטבע קען האנדלען צו א ביסל אנדערע פרייזן ביי יעדן ליקווידיטעט מקור: Alpaca US, Kraken US און Kraken EU.',
   'Pairs': 'פּעירס', 'Compare': 'פארגלייכט', 'Venue': 'בערזע', 'Spread': 'שפּרעד', 'No quotes': 'קיין קוואטס', 'No data': 'קיין דאטא', 'Price': 'פרייז', 'Bid': 'ביד', 'Ask': 'אסק', 'Yield to maturity': 'יעלד ביז צייטיגונג',
-  'Connect AI assistants to QuantPocket': 'פארבינדט AI אסיסטענטן מיט QuantPocket',
+  'Connect AI assistants to Brightfolio': 'פארבינדט AI אסיסטענטן מיט Brightfolio',
   'Ask Claude, Cursor or VS Code about your portfolio, prices and news, and let them place': 'פרעגט Claude, Cursor אדער VS Code וועגן אייער פארטפאליא, פרייזן און נייעס, און לאזט זיי מאכן',
   'trades. Real-money orders always stay with you.': 'טרעידס. ארדערס מיט עכטע געלט בלייבן שטענדיג ביי אייך.', 'Create a token': 'שאפט א טאוקען', 'Ends with': 'ענדיגט זיך מיט', 'Created': 'געשאפן', 'Last used': 'לעצט גענוצט',
   'Revoke': 'צוריקנעמען', 'No tokens yet': 'נאך קיין טאוקענס', 'Add it to your assistant': 'לייגט עס צו אייער אסיסטענט', 'Part of Pro.': 'א טייל פון Pro.', 'Start a free trial': 'הייבט אן א בחינם טרייעל', 'to connect your AI assistant.': 'צו פארבינדן אייער AI אסיסטענט.',
@@ -98,7 +98,7 @@ export const strings = {
 
   // free-plan limits and password reset
   'Trading and alerts by text and phone, QuantConnect and bank-card linking': 'טרעידן און אלערטס דורך טעקסט און טעלעפאן, QuantConnect און פארבינדן א באנק קארטל',
-  'Texting and calling QuantPocket is part of Pro. You can try the commands below here in the app;': 'טעקסטן און רופן QuantPocket איז א טייל פון Pro. איר קענט פרובירן די קאמאנדס אונטן דא אין דער עפּ;',
+  'Texting and calling Brightfolio is part of Pro. You can try the commands below here in the app;': 'טעקסטן און רופן Brightfolio איז א טייל פון Pro. איר קענט פרובירן די קאמאנדס אונטן דא אין דער עפּ;',
   'start a free trial': 'הייבט אן א בחינם טרייעל', 'to use them from your phone and get alerts by text.': 'צו ניצן זיי פון אייער טעלעפאן און באקומען אלערטס דורך טעקסט.',
   'No email?': 'קיין אימעיל?', 'Get a code by text message': 'באקומט א קאוד דורך א טעקסט מעסעדזש', '(for accounts with a verified phone).': '(פאר קאנטעס מיט א באשטעטיגטן טעלעפאן).', '(for accounts with a verified phone). ·': '(פאר קאנטעס מיט א באשטעטיגטן טעלעפאן). ·',
   'Reset by text message': 'שטעלט צוריק דורך א טעקסט מעסעדזש', 'Save password': 'היט אפ דעם פאסווארט', 'New password (10+ chars, upper, lower, digit)': 'נייער פאסווארט (10+ אותיות, גרויסע, קליינע, א ציפער)',
@@ -106,7 +106,7 @@ export const strings = {
   'If that email has an account, a reset link is on its way. Check your spam folder too.': 'אויב דער אימעיל האט א קאנטע, איז א לינק צו צוריקשטעלן אויפן וועג. קוקט אויך אין ספאם.',
   'Text messages are not available right now. Use the email link instead.': 'טעקסט מעסעדזשעס ארבעטן נישט יעצט. ניצט אנשטאט דעם דעם אימעיל לינק.',
   'If that number belongs to an account, a code is on its way.': 'אויב דער נומער געהערט צו א קאנטע, איז א קאוד אויפן וועג.', 'Wrong or expired code': 'אומריכטיגער אדער אויסגעגאנגענער קאוד',
-  'Trading and questions by text are part of QuantPocket Pro. Start a free trial in the app under Plans & billing.': 'טרעידן און פרעגן דורך טעקסט איז א טייל פון QuantPocket Pro. הייבט אן א בחינם טרייעל אין דער עפּ אונטער פלענער און באצאלונג.',
+  'Trading and questions by text are part of Brightfolio Pro. Start a free trial in the app under Plans & billing.': 'טרעידן און פרעגן דורך טעקסט איז א טייל פון Brightfolio Pro. הייבט אן א בחינם טרייעל אין דער עפּ אונטער פלענער און באצאלונג.',
   'Linking your bank card is part of Pro (CSV import stays free)': 'פארבינדן אייער באנק קארטל איז א טייל פון Pro (CSV אימפארט בלייבט בחינם)', 'Linking your bank card': 'פארבינדן אייער באנק קארטל',
   'Connecting QuantConnect': 'פארבינדן QuantConnect', 'Trading by text and phone': 'טרעידן דורך טעקסט און טעלעפאן',
   "This webhook's URL can no longer be read (the server's encryption key changed). Delete it and create a new one.": 'דעם וועבהוק\'ס URL קען מען מער נישט לייענען (דער סערווער\'ס פארשליסלונג שליסל האט זיך געטוישט). מעקט עס אויס און שאפט א נייעם.',

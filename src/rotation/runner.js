@@ -232,7 +232,7 @@ export async function recordDaily(t = now()) {
 async function notifyUser(userId, msg) {
   const u = await one('SELECT email, phone, phone_verified FROM users WHERE id = ?', userId);
   if (u?.phone && u.phone_verified) await sendSms(u.phone, msg).catch(e => console.warn('sms', e.message));
-  else if (u?.email) await sendEmail(u.email, 'QuantPocket Reality Check', msg).catch(e => console.warn('email', e.message));
+  else if (u?.email) await sendEmail(u.email, 'Brightfolio Reality Check', msg).catch(e => console.warn('email', e.message));
 }
 
 export const templatesList = () => TEMPLATES.map(t => ({ id: t.id, name: t.name, tagline: t.tagline, kind: t.kind, rebalance: t.rebalance, risk: t.risk, qc: t.qc, about: t.about, note: t.note || null }));

@@ -55,7 +55,7 @@ export async function broadcast(channel, { symbol, side, sizePct = null, note = 
       results.push({ sub: sub.id, result });
     } else {
       await run("INSERT INTO channel_pending (sub_id, signal_id, user_id, status, at) VALUES (?,?,?, 'pending', ?)", sub.id, sigId, sub.user_id, now());
-      await notifyUser(sub.user_id, `Fleet "${channel.name}": ${side.toUpperCase()} ${symbol}${price ? ' near ' + price : ''}. Review it in QuantPocket within ${REVIEW_MINUTES} minutes.`);
+      await notifyUser(sub.user_id, `Fleet "${channel.name}": ${side.toUpperCase()} ${symbol}${price ? ' near ' + price : ''}. Review it in Brightfolio within ${REVIEW_MINUTES} minutes.`);
       results.push({ sub: sub.id, result: 'waiting for review' });
     }
   }

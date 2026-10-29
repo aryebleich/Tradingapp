@@ -26,7 +26,7 @@ export const saveExtCred = (userId, id, value) =>
 export const removeExtCred = (userId, id) => run('DELETE FROM credentials WHERE user_id = ? AND provider = ?', userId, id);
 
 async function http(url, { method = 'GET', headers = {}, body, form, json } = {}) {
-  const h = { Accept: 'application/json', 'User-Agent': 'QuantPocket/1.0', ...headers };
+  const h = { Accept: 'application/json', 'User-Agent': 'Brightfolio/1.0', ...headers };
   let payload;
   if (form) { h['Content-Type'] = 'application/x-www-form-urlencoded'; payload = new URLSearchParams(form).toString(); }
   else if (json !== undefined) { h['Content-Type'] = 'application/json'; payload = JSON.stringify(json); }

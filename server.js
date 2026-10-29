@@ -1,4 +1,4 @@
-// QuantPocket web server: JSON API + static single-page app.
+// Brightfolio web server: JSON API + static single-page app.
 import express from 'express';
 import compression from 'compression';
 import path from 'node:path';
@@ -257,8 +257,8 @@ app.post('/twilio/sms', async (req, res) => {
   if (!twilioOk(req)) return res.status(403).send('forbidden');
   const user = await userByPhone(req.body.From);
   let reply;
-  if (!user) reply = 'This number is not linked to a QuantPocket account. Add it under Settings > Phone.';
-  else if (!isPaid(user)) reply = 'Trading and questions by text are part of QuantPocket Pro. Start a free trial in the app under Plans & billing.';
+  if (!user) reply = 'This number is not linked to a Brightfolio account. Add it under Settings > Phone.';
+  else if (!isPaid(user)) reply = 'Trading and questions by text are part of Brightfolio Pro. Start a free trial in the app under Plans & billing.';
   else if (!auth.rateLimit('sms:' + user.id, 30, 3600e3)) reply = 'Too many messages, try again later.';
   else if (!(await CR.trySpend(user, 'sms', { memo: 'reply' }))) reply = 'You are out of credits for text replies. Buy a credit pack in the app under Plans & billing.';
   else {
@@ -467,7 +467,7 @@ api.post('/public/contact', async (req, res) => {
   if (!auth.rateLimit('contact:' + req.ip, 5, 3600e3)) return res.status(429).json({ error: 'Too many messages, try later' });
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(email)) || !String(body || '').trim()) return res.status(400).json({ error: 'Email and message are required' });
   await run('INSERT INTO messages (user_id, name, email, subject, body, at) VALUES (?,?,?,?,?,?)', req.user?.id ?? null, String(name || '').slice(0, 100), String(email).slice(0, 200), String(subject || '').slice(0, 200), String(body).slice(0, 5000), now());
-  if (process.env.ADMIN_EMAIL) N.sendEmail(process.env.ADMIN_EMAIL, `[QuantPocket] ${subject || 'New message'}`, `From: ${name} <${email}>\n\n${body}`).catch(() => {});
+  if (process.env.ADMIN_EMAIL) N.sendEmail(process.env.ADMIN_EMAIL, `[Brightfolio] ${subject || 'New message'}`, `From: ${name} <${email}>\n\n${body}`).catch(() => {});
   res.json({ ok: true });
 });
 
@@ -627,7 +627,7 @@ api.post('/phone', U, wrap(async (req, res) => {
   if (!auth.rateLimit('phone:' + req.user.id, 5, 3600e3)) throw new Error('Too many codes requested');
   const code = String(crypto.randomInt(100000, 1000000));
   await run('UPDATE users SET phone = ?, phone_verified = 0, phone_code = ?, phone_code_expires = ? WHERE id = ?', phone, hashSecret(code), now() + 10 * 60e3, req.user.id);
-  const sent = await N.sendSms(phone, `QuantPocket code: ${code}`);
+  const sent = await N.sendSms(phone, `Brightfolio code: ${code}`);
   res.json({ ok: true, devCode: sent.simulated && process.env.NODE_ENV !== 'production' ? code : undefined });
 }));
 api.post('/phone/verify', U, wrap(async (req, res) => {
@@ -804,7 +804,7 @@ api.get('/admin/setup', U, auth.requireAdmin, async (req, res) => {
 // Sends a test email to the signed-in owner and reports exactly what the email service answered.
 api.post('/admin/test-email', U, auth.requireAdmin, wrap(async (req, res) => {
   if (!N.emailEnabled()) throw new Error('RESEND_API_KEY is not set (Admin → Keys).');
-  try { await N.sendEmail(req.user.email, 'QuantPocket test email', 'Emails from QuantPocket work. Password resets will arrive.'); }
+  try { await N.sendEmail(req.user.email, 'Brightfolio test email', 'Emails from Brightfolio work. Password resets will arrive.'); }
   catch (e) { await siteSet('emailError', { msg: e.message.slice(0, 300), at: now() }); throw new Error(`The email service refused it: ${e.message}`); }
   await siteSet('emailError', null);
   res.json({ ok: true, to: req.user.email });
@@ -879,7 +879,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   // counted, instead of stopping the whole server as Node.js does by default.
   process.on('unhandledRejection', e => { countUnhandled(); console.error('Unhandled promise rejection (server keeps running):', e?.stack || e); });
   const port = +process.env.PORT || 3000;
-  const server = app.listen(port, () => console.log(`QuantPocket on http://localhost:${port}`));
+  const server = app.listen(port, () => console.log(`Brightfolio on http://localhost:${port}`));
   const timer = startScheduler();
   const stopKyc = startKycEvents();
   const stop = () => { clearInterval(timer); stopKyc(); server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 8000).unref(); };

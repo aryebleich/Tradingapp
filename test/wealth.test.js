@@ -1,4 +1,4 @@
-// Money levers (deposit fee, referrals, partner commission), the QuantPocket MCP server, the
+// Money levers (deposit fee, referrals, partner commission), the Brightfolio MCP server, the
 // wealth builder (fundamentals from a fake SEC, habits, diversification, automatic investing)
 // and the owner's adviser checklist.
 const { test, before, after } = await import('node:test');
@@ -70,7 +70,7 @@ test('MCP server: tokens for paid plans, initialize, tools, paper-only orders', 
     const rpc = (body, tok = token) => fetch(s.base + '/mcp', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok }, body: JSON.stringify(body) }).then(async r => ({ status: r.status, body: await r.json().catch(() => null) }));
     assert.equal((await rpc({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} }, 'qpk_wrong')).status, 401);
     const init = (await rpc({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18' } })).body;
-    assert.equal(init.result.serverInfo.name, 'quantpocket');
+    assert.equal(init.result.serverInfo.name, 'brightfolio');
     assert.equal((await rpc({ jsonrpc: '2.0', method: 'notifications/initialized' })).status, 202);
     const names = (await rpc({ jsonrpc: '2.0', id: 2, method: 'tools/list' })).body.result.tools.map(t => t.name);
     assert.ok(names.includes('place_paper_order') && names.includes('get_account'));

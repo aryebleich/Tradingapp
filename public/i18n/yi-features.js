@@ -146,7 +146,7 @@ export const strings = {
   'Not following any channel': 'איר פאלגט נישט קיין קאנאל', 'Recent results': 'לעצטע רעזולטאטן', 'Public channels': 'עפנטלעכע קאנאלן', 'No public channels yet': 'נאך קיין עפנטלעכע קאנאלן',
   'Mirror into these accounts:': 'שפיגלען אין די קאנטעס:', 'Size each buy by': 'גרייס פון יעדן קויף לויט', 'Fixed dollars': 'פעסטע דאלארן', '% of account cash': '% פון קעש אין קאנטע', 'I approve each signal': 'איך באשטעטיג יעדן סיגנאל',
   'Trade automatically': 'טרעידן אויטאמאטיש', 'automatic': 'אויטאמאטיש', 'I approve each': 'איך באשטעטיג יעדעס',
-  'Signals come from other members, not from QuantPocket, and are not advice. Your risk limits and kill switch apply to every mirrored order.': 'סיגנאלן קומען פון אנדערע מיטגלידער, נישט פון QuantPocket, און זענען נישט קיין עצה. אייערע ריזיקע לימיטן און קיל סוויטש גילטן פאר יעדן געשפיגלטן ארדער.',
+  'Signals come from other members, not from Brightfolio, and are not advice. Your risk limits and kill switch apply to every mirrored order.': 'סיגנאלן קומען פון אנדערע מיטגלידער, נישט פון Brightfolio, און זענען נישט קיין עצה. אייערע ריזיקע לימיטן און קיל סוויטש גילטן פאר יעדן געשפיגלטן ארדער.',
   'Signals expire 30 minutes after they are sent.': 'סיגנאלן גייען אויס 30 מינוט נאכדעם וואס זיי ווערן געשיקט.', 'Channel created': 'קאנאל געשאפן', 'The old webhook link stops working. Continue?': 'דער אלטער וועבהוק לינק וועט אויפהערן ארבעטן. ווייטער?',
   'Delete this channel? Followers stop receiving signals.': 'אויסמעקן דעם קאנאל? פאלגער וועלן אויפהערן באקומען סיגנאלן.', 'expired': 'אויסגעגאנגען', 'declined': 'אפגעזאגט', 'approved': 'באשטעטיגט',
 

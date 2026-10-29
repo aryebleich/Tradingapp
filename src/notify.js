@@ -42,7 +42,7 @@ async function stripe(path, params) {
 export const checkoutCredits = ({ pack, email, userId, baseUrl }) => stripe('/checkout/sessions', {
   mode: 'payment', customer_email: email, client_reference_id: String(userId),
   'metadata[kind]': 'credits', 'metadata[credits]': String(pack.credits), 'metadata[pack]': pack.id,
-  'line_items[0][price_data][currency]': 'usd', 'line_items[0][price_data][product_data][name]': `${pack.credits.toLocaleString('en-US')} QuantPocket credits`,
+  'line_items[0][price_data][currency]': 'usd', 'line_items[0][price_data][product_data][name]': `${pack.credits.toLocaleString('en-US')} Brightfolio credits`,
   'line_items[0][price_data][unit_amount]': String(Math.round(pack.price * 100)), 'line_items[0][quantity]': '1',
   success_url: `${baseUrl}/app#/funding?credits=1`, cancel_url: `${baseUrl}/app#/funding`,
 });
@@ -111,7 +111,7 @@ export async function sendEmail(to, subject, text) {
   const r = await fetch(`${(env('RESEND_API_URL') || 'https://api.resend.com').replace(/\/$/, '')}/emails`, {
     method: 'POST',
     headers: { Authorization: 'Bearer ' + env('RESEND_API_KEY'), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: env('EMAIL_FROM') || 'QuantPocket <onboarding@resend.dev>', to: [to], subject, text }),
+    body: JSON.stringify({ from: env('EMAIL_FROM') || 'Brightfolio <onboarding@resend.dev>', to: [to], subject, text }),
   });
   if (!r.ok) throw new Error('Email ' + r.status + ' ' + (await r.text()).slice(0, 200));
   return r.json();

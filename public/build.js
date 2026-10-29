@@ -189,7 +189,7 @@ async function fleet(view) {
       <div class="row"><label>Size each buy by<select name="sizing"><option value="fixed">Fixed dollars</option><option value="pct">% of account cash</option></select></label><label>Amount<input name="amount" type="number" value="100" min="1"></label>
         <label>Mode<select name="mode"><option value="review">I approve each signal</option><option value="auto">Trade automatically</option></select></label></div>
       <button>Follow</button><div class="err"></div></form>
-    <p class="mu small-print">Signals come from other members, not from QuantPocket, and are not advice. Your risk limits and kill switch apply to every mirrored order.</p></div>`;
+    <p class="mu small-print">Signals come from other members, not from Brightfolio, and are not advice. Your risk limits and kill switch apply to every mirrored order.</p></div>`;
   H.$$('[data-p] button', view).forEach(b => (b.onclick = async () => { try { await H.api('/fleet/inbox/' + b.closest('tr').dataset.p, { body: { approve: b.dataset.ok === '1' } }); H.render(); } catch (e) { H.$('#inErr', view).textContent = e.message; } }));
   H.$$('[data-c]', view).forEach(c => {
     const id = c.dataset.c, err = H.$('.err', c);

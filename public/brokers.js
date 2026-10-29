@@ -15,7 +15,7 @@ async function brokers(view, q) {
   ${q.get('error') ? `<div class="banner err">${H.esc(q.get('error'))}</div>` : ''}
   <div class="libgrid">
     <div class="card lib"><div class="libhead"><h3>Alpaca</h3>${alpaca?.connected ? `<span class="pill pos">Connected${alpaca.live ? ' · live' : ''}</span>` : '<span class="pill">Not connected</span>'}</div>
-      <p class="about">Open a new brokerage account inside QuantPocket, sign in with Alpaca, or use API keys. Stocks, ETFs, options and crypto, with fractional shares.</p>
+      <p class="about">Open a new brokerage account inside Brightfolio, sign in with Alpaca, or use API keys. Stocks, ETFs, options and crypto, with fractional shares.</p>
       <a href="#/account"><button type="button">${alpaca?.connected ? 'Manage' : 'Connect Alpaca'}</button></a></div>
     ${list.map(b => `
     <div class="card lib" data-b="${b.id}"><div class="libhead"><h3>${H.esc(b.name)}</h3>${b.connected ? `<span class="pill pos">Connected${b.live ? ' · live' : ' · test'}${b.account ? ' · …' + H.esc(b.account) : ''}</span>` : '<span class="pill">Not connected</span>'}</div>

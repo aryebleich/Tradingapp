@@ -1,7 +1,7 @@
 // Credits: a monthly allowance on every plan (unused monthly credits do not roll over) plus packs a
 // user buys (they never expire). Extras that cost money to run are paid with credits:
 //   ai        an AI message beyond the plan's daily allowance
-//   sms       a text message QuantPocket sends you (alerts, replies to your texts)
+//   sms       a text message Brightfolio sends you (alerts, replies to your texts)
 //   call      a call to the phone line
 //   filing    an AI summary of a company's 10-K or 10-Q
 //   agent     training an AI agent

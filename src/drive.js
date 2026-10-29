@@ -1,6 +1,6 @@
 // Google Drive for the owner: "Save to Drive" on Admin → README uploads the private README as a PDF
 // with page numbers. Uses the same Google OAuth app as sign-in (GOOGLE_CLIENT_ID / SECRET) with the
-// narrow drive.file scope: QuantPocket can only see and change the files it created itself.
+// narrow drive.file scope: Brightfolio can only see and change the files it created itself.
 // Add PUBLIC_URL/oauth/google-drive/callback to the OAuth client's authorized redirect URIs.
 import crypto from 'node:crypto';
 import { siteGet, siteSet } from './site.js';

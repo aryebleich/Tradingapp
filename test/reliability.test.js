@@ -112,7 +112,7 @@ test('behavior profile, support agent escalation, passkey options', async () => 
   assert.deepEqual(e.actions, ['security_escalation']);
   assert.equal((await c('/security')).body.lock.on, true);
   const o = (await c('/security/passkeys/options', {})).body;
-  assert.ok(o.challenge); assert.equal(o.rp.name, 'QuantPocket');
+  assert.ok(o.challenge); assert.equal(o.rp.name, 'Brightfolio');
   assert.equal((await c('/auth/passkey/options', {})).status, 200);
 });
 

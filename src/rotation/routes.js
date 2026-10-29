@@ -14,7 +14,7 @@ import { adviserMode } from '../site.js';
 export const STRATEGY_LIMITS = { free: { saved: 3, auto: 1 }, pro: { saved: 10, auto: 5 }, elite: { saved: 50, auto: 25 }, ultimate: { saved: 200, auto: 100 } };
 const limits = u => (u.role === 'admin' && !u.previewPlan ? STRATEGY_LIMITS.ultimate : isPaid(u) ? STRATEGY_LIMITS[u.plan] || STRATEGY_LIMITS.pro : STRATEGY_LIMITS.free);
 const bad = (msg, status = 400) => Object.assign(new Error(msg), { status });
-// Letting QuantPocket's own ready-made strategies trade real money by themselves is managing money,
+// Letting Brightfolio's own ready-made strategies trade real money by themselves is managing money,
 // which needs a registered investment adviser. In software-only mode they run automatically on
 // paper only; on a real account the user follows them by hand (the same rules for everyone).
 export const ADVISER_ONLY = 'Automatic trading of the ready-made strategies on a real account is available once the business is a registered investment adviser. Run it automatically on paper, or follow it by hand on your real account.';

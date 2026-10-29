@@ -118,13 +118,13 @@ test('business mode, keys page, .env import/export and Render sync', async () =>
   assert.equal((await owner.call('/admin/site/env', { key: 'bad name', value: 'x' }, 'PUT')).status, 400);
 
   // Import a .env (masked values skipped), then export it back with the password.
-  const imp = (await owner.call('/admin/site/env/import', { text: 'export EMAIL_FROM="QuantPocket <hi@example.com>"\n# note\nTRIAL_DAYS=21 # three weeks\nRESEND_API_KEY=re_•••abcd\nMY_EXTRA=1' })).body;
+  const imp = (await owner.call('/admin/site/env/import', { text: 'export EMAIL_FROM="Brightfolio <hi@example.com>"\n# note\nTRIAL_DAYS=21 # three weeks\nRESEND_API_KEY=re_•••abcd\nMY_EXTRA=1' })).body;
   assert.deepEqual(imp.keys.sort(), ['EMAIL_FROM', 'MY_EXTRA', 'TRIAL_DAYS']);
-  assert.equal(process.env.EMAIL_FROM, 'QuantPocket <hi@example.com>'); assert.equal(process.env.RESEND_API_KEY, 're_1234567890abcd');
+  assert.equal(process.env.EMAIL_FROM, 'Brightfolio <hi@example.com>'); assert.equal(process.env.RESEND_API_KEY, 're_1234567890abcd');
   assert.equal((await owner.call('/admin/site/env/export', { password: 'wrong' })).status, 401);
   const out = await owner.call('/admin/site/env/export', { password: 'Str0ngPassword' });
   assert.equal(out.status, 200);
-  assert.match(out.text, /^RESEND_API_KEY="re_1234567890abcd"$/m); assert.match(out.text, /^EMAIL_FROM="QuantPocket <hi@example.com>"$/m); assert.match(out.text, /^MY_EXTRA="1"$/m);
+  assert.match(out.text, /^RESEND_API_KEY="re_1234567890abcd"$/m); assert.match(out.text, /^EMAIL_FROM="Brightfolio <hi@example.com>"$/m); assert.match(out.text, /^MY_EXTRA="1"$/m);
 
   // Render: not connected yet, then connected through the fake Render API.
   assert.equal((await owner.call('/admin/site/env/render/push', {})).status, 400);

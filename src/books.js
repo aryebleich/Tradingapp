@@ -125,7 +125,7 @@ export async function monthlyBooksEmail(t = Date.now()) {
       if (due && due.estimatedTax > 0) parts.push(`Estimated tax payment for Q${due.q} (about ${money(due.estimatedTax)}) is due ${due.due}.`);
     }
     if (!parts.length || !u.email) continue;
-    await sendEmail(u.email, `QuantPocket: your books for ${label}`, `Your monthly books for ${label}\n\n${parts.join('\n\n')}\n\nThe full month-by-month table and a journal CSV are in the app under Taxes → Monthly bookkeeping. Estimates for planning only; your broker's 1099 is the official record.`).catch(e => console.warn('books email', e.message));
+    await sendEmail(u.email, `Brightfolio: your books for ${label}`, `Your monthly books for ${label}\n\n${parts.join('\n\n')}\n\nThe full month-by-month table and a journal CSV are in the app under Taxes → Monthly bookkeeping. Estimates for planning only; your broker's 1099 is the official record.`).catch(e => console.warn('books email', e.message));
     sent++;
   }
   return sent;

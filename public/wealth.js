@@ -98,7 +98,7 @@ async function drip(el) {
   el.innerHTML = `<form class="card" id="dr"><h2>Reinvest dividends automatically (DRIP)</h2>
     ${live.length ? live.map(a => `<label class="check"><input type="checkbox" name="acct" value="${a.id}" ${s.drip.accounts.includes(a.id) ? 'checked' : ''}> ${H.esc(a.name)}</label>`).join('') : '<p class="mu">Connect a brokerage account first (dividends are not simulated on paper).</p>'}
     <button ${live.length ? '' : 'disabled'}>Save</button><div class="err"></div>
-    <p class="mu small-print">Every few hours QuantPocket checks for dividends paid in the last week and buys the same stock with the cash (fractional shares, $1 and up). Part of Pro.</p></form>
+    <p class="mu small-print">Every few hours Brightfolio checks for dividends paid in the last week and buys the same stock with the cash (fractional shares, $1 and up). Part of Pro.</p></form>
     <div class="card tablewrap"><h2>Reinvested</h2><table><tr><th>Date</th><th>Stock</th><th>Amount</th></tr>${s.dripLog.map(d => `<tr><td>${H.date(d.at)}</td><td data-no-tr>${d.symbol}</td><td>${H.money(d.amount)}</td></tr>`).join('') || '<tr><td colspan="3" class="mu">Nothing yet</td></tr>'}</table></div>`;
   const f = H.$('#dr', el);
   H.act(H.$('button', f), async () => { await H.api('/wealth/settings', { method: 'PUT', body: { drip: { accounts: H.$$('[name=acct]:checked', f).map(c => c.value) } } }); return 'Saved.'; });

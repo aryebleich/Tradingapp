@@ -1,4 +1,4 @@
-// QuantPocket single-page client. Hash routes, no framework.
+// Brightfolio single-page client. Hash routes, no framework.
 import { registerTrading } from './trading.js';
 import { CHART_STATES, chartStates } from './chartstates.js';
 import { registerSignals } from './signals.js';
@@ -411,7 +411,7 @@ async function oauthButtons(verb) {
 routes.login = async (view, q) => {
   const g = await oauthButtons('Continue');
   view.innerHTML = `
-  <div class="hero"><h1 data-no-tr>Quant<span style="color:var(--ac)">Pocket</span></h1><p class="mu">Backtest, paper trade and automate stock strategies. Connect your brokerage, trade by text or phone.</p></div>
+  <div class="hero"><h1 data-no-tr>Bright<span style="color:var(--ac)">folio</span></h1><p class="mu">Backtest, paper trade and automate stock strategies. Connect your brokerage, trade by text or phone.</p></div>
   <form class="card auth"><h2>Sign in</h2>${g}
     <label>Email<input name="email" type="email" autocomplete="username" required></label>
     <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
@@ -810,10 +810,10 @@ routes.text = async view => {
   CFG ||= await api('/config');
   const { help } = await api('/command/help');
   view.innerHTML = `<h1>Text & Hotline</h1>
-  ${isPaid(ME) ? '' : '<div class="banner">Texting and calling QuantPocket is part of Pro. You can try the commands below here in the app; <a href="#/funding">start a free trial</a> to use them from your phone and get alerts by text.</div>'}
+  ${isPaid(ME) ? '' : '<div class="banner">Texting and calling Brightfolio is part of Pro. You can try the commands below here in the app; <a href="#/funding">start a free trial</a> to use them from your phone and get alerts by text.</div>'}
   <div class="grid">
     <div class="card"><h2>Manage your account by SMS or phone</h2>
-      ${CFG.hotline ? `<div class="hotline"><span class="mu">QuantPocket's number</span><b dir="ltr">${esc(CFG.hotline)}</b><div class="row" style="gap:8px"><a href="sms:${esc(CFG.hotline)}"><button type="button">Text us</button></a><a href="tel:${esc(CFG.hotline)}"><button type="button" class="ghost">Call</button></a></div></div>
+      ${CFG.hotline ? `<div class="hotline"><span class="mu">Brightfolio's number</span><b dir="ltr">${esc(CFG.hotline)}</b><div class="row" style="gap:8px"><a href="sms:${esc(CFG.hotline)}"><button type="button">Text us</button></a><a href="tel:${esc(CFG.hotline)}"><button type="button" class="ghost">Call</button></a></div></div>
         <p>Text or call from your verified phone.</p>${CFG.assistant ? '<p>The AI assistant understands plain language: "how am I doing this month?", "put $200 into the S&amp;P every week", "what does RSI mean?". Trades always need your PIN.</p>' : ''}` : '<p class="warn">The SMS/voice number is not configured on this server yet (Twilio).</p>'}
       <p class="mu"><span>Phone:</span> ${ME.phone ? `<span dir="ltr">${esc(ME.phone)}</span>` : '<span>not set</span>'} ${ME.phoneVerified ? '<span class="pill">verified</span>' : ''} · <span>PIN:</span> <span>${ME.hasPin ? 'set' : 'not set'}</span> · <a href="#/settings">change in Settings</a></p>
       <pre>${esc(help)}</pre>
@@ -981,7 +981,7 @@ routes.referrals = async view => {
   ${r.milestones?.length ? `<div class="card"><h2>Bonus milestones</h2>${r.next ? `<p class="mu">${r.next.at - r.paying} more subscribed ${r.next.at - r.paying === 1 ? 'friend' : 'friends'} to your next bonus of <b>$${r.next.bonus}</b>.</p><div class="ob-bar"><i style="width:${Math.round(r.paying / r.next.at * 100)}%"></i></div>` : '<p class="mu">You reached every bonus. Thank you!</p>'}
     <div class="milestones">${r.milestones.map(m => `<div class="milestone ${r.paying >= m.at ? 'done' : ''}"><b>${m.at}</b><span>friends</span><em>+$${m.bonus}</em></div>`).join('')}</div></div>` : ''}`;
   act($('#copy', view), async () => { await navigator.clipboard.writeText(r.link).catch(() => { $('#reflink', view).select(); document.execCommand('copy'); }); return 'Link copied'; });
-  if ($('#share', view)) $('#share', view).onclick = () => navigator.share({ title: 'QuantPocket', text: 'Backtest and automate your trading ideas with QuantPocket:', url: r.link }).catch(() => {});
+  if ($('#share', view)) $('#share', view).onclick = () => navigator.share({ title: 'Brightfolio', text: 'Backtest and automate your trading ideas with Brightfolio:', url: r.link }).catch(() => {});
 };
 
 // ---------- settings ----------
@@ -1101,7 +1101,7 @@ async function adminPage(view, tab) {
     <div class="setup">${setup.items.map(x => `<div class="setup-row"><span class="dot ${x.on ? 'on' : ''}"></span><span class="setup-name">${esc(x.name)}</span><code data-no-tr>${esc(x.env)}</code><span class="pill ${x.on ? '' : 'warn'}">${x.on ? 'On' : 'Not set'}</span></div>`).join('')}</div>
     ${setup.emailError?.msg ? `<p class="banner err">Last email failed: ${esc(setup.emailError.msg)}</p>` : ''}
     <p><button class="ghost" id="testEmail">Send me a test email</button><span class="err"></span></p>
-    <p class="mu small-print">Password-reset emails need RESEND_API_KEY and EMAIL_FROM on a domain you verified at resend.com (e.g. <span data-no-tr>QuantPocket &lt;no-reply@yourdomain.com&gt;</span>). Without EMAIL_FROM, Resend's test sender only delivers to your own Resend address.</p>
+    <p class="mu small-print">Password-reset emails need RESEND_API_KEY and EMAIL_FROM on a domain you verified at resend.com (e.g. <span data-no-tr>Brightfolio &lt;no-reply@yourdomain.com&gt;</span>). Without EMAIL_FROM, Resend's test sender only delivers to your own Resend address.</p>
     <p class="mu" style="font-size:12.5px">To change one: open <a href="#/admin-keys">Keys</a> (saves here and on Render), or Render → your service → Environment → add or edit the variable → Save.</p></div>`,
   };
   view.innerHTML = `<h1>Admin</h1>${tabs}${sections[tab]()}`;
@@ -1148,7 +1148,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.se
   let me = null;
   for (let i = 0; i < 8 && !me; i++) {
     me = await fetch('/api/auth/me', { headers: { 'X-Requested-With': 'qp' } }).then(r => (r.ok ? r.json() : null)).catch(() => null);
-    if (!me) { $('#view').innerHTML = '<div class="card auth"><p class="mu">Connecting to QuantPocket…</p></div>'; await new Promise(r => setTimeout(r, 1500 * (i + 1))); }
+    if (!me) { $('#view').innerHTML = '<div class="card auth"><p class="mu">Connecting to Brightfolio…</p></div>'; await new Promise(r => setTimeout(r, 1500 * (i + 1))); }
   }
   me ||= {};
   ME = me.user;

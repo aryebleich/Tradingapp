@@ -1085,7 +1085,7 @@
  ],
  [
   "app",
-  "Required by law to verify your identity (KYC). Your SSN is sent securely to Alpaca and is not stored by QuantPocket."
+  "Required by law to verify your identity (KYC). Your SSN is sent securely to Alpaca and is not stored by Brightfolio."
  ],
  [
   "app",
@@ -2005,7 +2005,7 @@
  ],
  [
   "app",
-  "QuantPocket's number"
+  "Brightfolio's number"
  ],
  [
   "app",
@@ -2253,7 +2253,7 @@
  ],
  [
   "app",
-  "Trading involves risk of loss. Backtests and projections are hypothetical and do not guarantee future results. QuantPocket is software, not a broker or investment adviser; orders route to your own Alpaca account."
+  "Trading involves risk of loss. Backtests and projections are hypothetical and do not guarantee future results. Brightfolio is software, not a broker or investment adviser; orders route to your own Alpaca account."
  ],
  [
   "app",
@@ -2417,7 +2417,7 @@
  ],
  [
   "app",
-  "Required by law to verify your identity (KYC). Your SSN goes to Alpaca over an encrypted connection and is not stored by QuantPocket."
+  "Required by law to verify your identity (KYC). Your SSN goes to Alpaca over an encrypted connection and is not stored by Brightfolio."
  ],
  [
   "app",
@@ -2677,7 +2677,7 @@
  ],
  [
   "app",
-  "1. Create your QuantPocket login"
+  "1. Create your Brightfolio login"
  ],
  [
   "app",
@@ -2689,7 +2689,7 @@
  ],
  [
   "app",
-  "Commission-free US stocks and ETFs, plus options and crypto, at Alpaca Securities LLC (member FINRA/SIPC). Apply in about 3 minutes, all from QuantPocket."
+  "Commission-free US stocks and ETFs, plus options and crypto, at Alpaca Securities LLC (member FINRA/SIPC). Apply in about 3 minutes, all from Brightfolio."
  ],
  [
   "app",
@@ -2785,7 +2785,7 @@
  ],
  [
   "app",
-  "Open a new brokerage account inside QuantPocket, sign in with Alpaca, or use API keys. Stocks, ETFs, options and crypto, with fractional shares."
+  "Open a new brokerage account inside Brightfolio, sign in with Alpaca, or use API keys. Stocks, ETFs, options and crypto, with fractional shares."
  ],
  [
   "app",
@@ -3529,11 +3529,11 @@
  ],
  [
   "home",
-  "Alpaca (you can also open a new account inside QuantPocket), Charles Schwab, tastytrade, Tradier and TradeStation. Your money always stays at your broker."
+  "Alpaca (you can also open a new account inside Brightfolio), Charles Schwab, tastytrade, Tradier and TradeStation. Your money always stays at your broker."
  ],
  [
   "home",
-  "Alpaca, Charles Schwab, tastytrade, Tradier and TradeStation. Open a new account inside QuantPocket, or connect the one you already have."
+  "Alpaca, Charles Schwab, tastytrade, Tradier and TradeStation. Open a new account inside Brightfolio, or connect the one you already have."
  ],
  [
   "home",
@@ -3649,7 +3649,7 @@
  ],
  [
   "home",
-  "Can I use QuantPocket in Yiddish?"
+  "Can I use Brightfolio in Yiddish?"
  ],
  [
   "home",
@@ -3661,7 +3661,7 @@
  ],
  [
   "home",
-  "Choose an amount and a day. QuantPocket buys an S&amp;P 500 fund for you every month, so every dollar is invested, and shows the range of outcomes first."
+  "Choose an amount and a day. Brightfolio buys an S&amp;P 500 fund for you every month, so every dollar is invested, and shows the range of outcomes first."
  ],
  [
   "home",
@@ -3921,7 +3921,7 @@
  ],
  [
   "home",
-  "Investing involves risk, including possible loss of principal. Backtests and projections are hypothetical, are built with the benefit of hindsight and do not guarantee future results. QuantPocket is a software provider and is not a broker-dealer. Brokerage services are provided by your own broker (for example Alpaca Securities LLC, member FINRA/SIPC) under your own account agreement. Nothing on this site is an offer, solicitation or recommendation to buy or sell any security."
+  "Investing involves risk, including possible loss of principal. Backtests and projections are hypothetical, are built with the benefit of hindsight and do not guarantee future results. Brightfolio is a software provider and is not a broker-dealer. Brokerage services are provided by your own broker (for example Alpaca Securities LLC, member FINRA/SIPC) under your own account agreement. Nothing on this site is an offer, solicitation or recommendation to buy or sell any security."
  ],
  [
   "home",
@@ -4013,7 +4013,7 @@
  ],
  [
   "home",
-  "Most platforms show you a beautiful backtest and stop there. But many strategies with spectacular backtests lose money once they go live. QuantPocket compares every strategy&rsquo;s live results with its backtest, every single day."
+  "Most platforms show you a beautiful backtest and stop there. But many strategies with spectacular backtests lose money once they go live. Brightfolio compares every strategy&rsquo;s live results with its backtest, every single day."
  ],
  [
   "home",
@@ -4033,7 +4033,7 @@
  ],
  [
   "home",
-  "Nobody can promise that. Most active strategies underperform simply holding an index after costs. QuantPocket shows how an idea behaved in the past, how it is doing live, and the range of outcomes to expect, so you can decide with your eyes open."
+  "Nobody can promise that. Most active strategies underperform simply holding an index after costs. Brightfolio shows how an idea behaved in the past, how it is doing live, and the range of outcomes to expect, so you can decide with your eyes open."
  ],
  [
   "home",
@@ -4041,7 +4041,7 @@
  ],
  [
   "home",
-  "One number for everyone. Text or call QuantPocket and say what you need in plain words. The AI assistant answers questions and turns requests into orders."
+  "One number for everyone. Text or call Brightfolio and say what you need in plain words. The AI assistant answers questions and turns requests into orders."
  ],
  [
   "home",
@@ -4101,7 +4101,7 @@
  ],
  [
   "home",
-  "Paste a private webhook URL into a TradingView, TrendSpider or Zapier alert. When it fires, QuantPocket checks your risk rules and places the order in seconds."
+  "Paste a private webhook URL into a TradingView, TrendSpider or Zapier alert. When it fires, Brightfolio checks your risk rules and places the order in seconds."
  ],
  [
   "home",
@@ -4189,11 +4189,11 @@
  ],
  [
   "home",
-  "QuantPocket portfolio dashboard with equity chart, positions and order ticket"
+  "Brightfolio portfolio dashboard with equity chart, positions and order ticket"
  ],
  [
   "home",
-  "QuantPocket: automate your trading from one place"
+  "Brightfolio: automate your trading from one place"
  ],
  [
   "home",
@@ -4325,7 +4325,7 @@
  ],
  [
   "home",
-  "Seven rotation strategies, built from a real trading spreadsheet. Every day QuantPocket fills in the market numbers, walks the rules step by step and tells you exactly what to buy."
+  "Seven rotation strategies, built from a real trading spreadsheet. Every day Brightfolio fills in the market numbers, walks the rules step by step and tells you exactly what to buy."
  ],
  [
   "home",
@@ -4457,7 +4457,7 @@
  ],
  [
   "home",
-  "Text or call QuantPocket and say what you need in plain words. The AI assistant answers questions and turns requests into orders; every trade needs your PIN."
+  "Text or call Brightfolio and say what you need in plain words. The AI assistant answers questions and turns requests into orders; every trade needs your PIN."
  ],
  [
   "home",
@@ -4469,7 +4469,7 @@
  ],
  [
   "home",
-  "The 500 largest US companies in one fund. Pick an amount and a day: QuantPocket buys it for you every month, in dollars, so every dollar is invested."
+  "The 500 largest US companies in one fund. Pick an amount and a day: Brightfolio buys it for you every month, in dollars, so every dollar is invested."
  ],
  [
   "home",
@@ -4593,7 +4593,7 @@
  ],
  [
   "home",
-  "Whatever your style, QuantPocket automates the parts you don&rsquo;t want to do by hand. Pick the profile that fits you best."
+  "Whatever your style, Brightfolio automates the parts you don&rsquo;t want to do by hand. Pick the profile that fits you best."
  ],
  [
   "home",
@@ -4609,7 +4609,7 @@
  ],
  [
   "home",
-  "Who is QuantPocket for?"
+  "Who is Brightfolio for?"
  ],
  [
   "home",
@@ -4633,7 +4633,7 @@
  ],
  [
   "home",
-  "Yes. Both can call a webhook URL. Use your QuantPocket webhook URL with the fields <code>ticker</code>, <code>action</code> and <code>quantity</code>."
+  "Yes. Both can call a webhook URL. Use your Brightfolio webhook URL with the fields <code>ticker</code>, <code>action</code> and <code>quantity</code>."
  ],
  [
   "home",
@@ -4669,7 +4669,7 @@
  ],
  [
   "home",
-  "Your Pine Script strategy already knows when to buy and sell. QuantPocket places those orders for you."
+  "Your Pine Script strategy already knows when to buy and sell. Brightfolio places those orders for you."
  ],
  [
   "home",

@@ -40,7 +40,7 @@ test('AI & privacy admin page drives robots.txt, the no-AI header and llms.txt',
     assert.equal((await fetch(s.base + '/llms.txt')).status, 404);
     const guest = s.client(); await guest.signup('ai-guest@example.com');
     assert.equal((await guest('/admin/site/ai')).status, 403);
-    const put = await owner('/admin/site/ai', { allow: { google: true }, llmsOn: true, llms: 'QuantPocket is trading software. Contact boss@example.com', accountData: 'never' }, 'PUT');
+    const put = await owner('/admin/site/ai', { allow: { google: true }, llmsOn: true, llms: 'Brightfolio is trading software. Contact boss@example.com', accountData: 'never' }, 'PUT');
     assert.equal(put.status, 200);
     t = await (await fetch(s.base + '/robots.txt')).text();
     assert.match(t, /AI crawlers allowed on the public pages\.\nUser-agent: Google-Extended\nUser-agent: GoogleOther\n(?:Disallow: .*\n)+Allow: \//);

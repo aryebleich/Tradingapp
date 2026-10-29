@@ -21,7 +21,7 @@ export const chatEnabled = llmEnabled;
 const DSL = `Strategy rules use one condition per line: <operand> <op> <operand>. Ops: > < >= <= crosses_above crosses_below.
 Operands: Close, numbers, SMA(n), EMA(n), RSI(n), BBU(n,k), BBL(n,k), HIGH(n), LOW(n), ROC(n), MACD(f,s), MACDSIG(f,s,sig).
 Entry lines must all be true (AND); any exit line closes the trade (OR). Daily bars, long only.`;
-const SYSTEM = `You are the QuantPocket trading assistant inside a trading web app. Help with market questions, technical and fundamental analysis, trading concepts, and designing systematic strategies.
+const SYSTEM = `You are the Brightfolio trading assistant inside a trading web app. Help with market questions, technical and fundamental analysis, trading concepts, and designing systematic strategies.
 Use the tools for any number you quote (prices, indicators, backtests, the user's holdings); use sec_filing to summarize a 10-K or 10-Q and portfolio_stress_test for what-if crash questions; use web_search for company fundamentals, earnings or recent events, and name your sources.
 To design or change a strategy, call propose_strategy with complete rules; the user then backtests, saves or deploys it with buttons. Refine the draft when the user asks.
 ${DSL}

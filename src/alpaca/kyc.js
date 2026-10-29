@@ -16,7 +16,7 @@ kycBus.setMaxListeners(0);
 async function notifyUser(userId, msg) {
   const u = await one('SELECT email, phone, phone_verified FROM users WHERE id = ?', userId);
   if (u?.phone && u.phone_verified) await sendSms(u.phone, msg).catch(e => console.warn('sms', e.message));
-  else if (u?.email) await sendEmail(u.email, 'QuantPocket: ' + msg.slice(0, 60), msg).catch(e => console.warn('email', e.message));
+  else if (u?.email) await sendEmail(u.email, 'Brightfolio: ' + msg.slice(0, 60), msg).catch(e => console.warn('email', e.message));
 }
 
 // One status observation for an account, from the feed ('sse'), a read ('poll') or account

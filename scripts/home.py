@@ -38,7 +38,7 @@ def layout(title, desc, body, lang='en', home='index.html'):
 </head>
 <body>
 <header class="top"><div class="wrap">
-  <a class="logo" href="{home}"><img src="favicon.svg" alt=""><b>Quant<span>Pocket</span></b></a>
+  <a class="logo" href="{home}"><img src="favicon.svg" alt=""><b>Bright<span>folio</span></b></a>
   <nav class="links">{nav}</nav>
   <a class="btn ghost" data-app="#/login" href="app">{T('Sign in')}</a>
   <a class="btn" data-app="#/register" href="app">{T('Start free')}</a>
@@ -48,13 +48,13 @@ def layout(title, desc, body, lang='en', home='index.html'):
 </main>
 <footer class="site"><div class="wrap">
   <div class="cols">
-    <div><a class="logo" href="{home}"><img src="favicon.svg" alt=""><b>Quant<span>Pocket</span></b></a><p style="max-width:320px">{T('Turn alerts and strategies into trades on your own brokerage account, from your browser, your phone, or a text message.')}</p>
+    <div><a class="logo" href="{home}"><img src="favicon.svg" alt=""><b>Bright<span>folio</span></b></a><p style="max-width:320px">{T('Turn alerts and strategies into trades on your own brokerage account, from your browser, your phone, or a text message.')}</p>
       <p class="phoneline" data-phone hidden>{T('Text or call us:')} <a data-phone-link dir="ltr"></a></p></div>
     <div><b>{T('Product')}</b><a href="{home}#how">{T('How it works')}</a><a href="{home}#strategies">{T('Strategies')}</a><a href="{home}#reality">{T('Reality Check')}</a><a href="{home}#sp500">{T('S&amp;P 500')}</a><a href="{home}#pricing">{T('Pricing')}</a><a data-app="#/register" href="app">{T('Create account')}</a></div>
     <div><b>{T('Company')}</b><a href="contact.html">{T('Contact &amp; support')}</a><a href="terms.html">{T('Terms of Service')}</a><a href="privacy.html">{T('Privacy Policy')}</a><a href="risk.html">{T('Risk Disclosure')}</a></div>
   </div>
-  <p class="disc">{T('Investing involves risk, including possible loss of principal. Backtests and projections are hypothetical, are built with the benefit of hindsight and do not guarantee future results. QuantPocket is a software provider and is not a broker-dealer. Brokerage services are provided by your own broker (for example Alpaca Securities LLC, member FINRA/SIPC) under your own account agreement. Nothing on this site is an offer, solicitation or recommendation to buy or sell any security.')}</p>
-  <p class="disc">© 2026 QuantPocket. {T('All rights reserved.')}<span data-credit></span></p>
+  <p class="disc">{T('Investing involves risk, including possible loss of principal. Backtests and projections are hypothetical, are built with the benefit of hindsight and do not guarantee future results. Brightfolio is a software provider and is not a broker-dealer. Brokerage services are provided by your own broker (for example Alpaca Securities LLC, member FINRA/SIPC) under your own account agreement. Nothing on this site is an offer, solicitation or recommendation to buy or sell any security.')}</p>
+  <p class="disc">© 2026 Brightfolio. {T('All rights reserved.')}<span data-credit></span></p>
 </div></footer>
 </body>
 </html>
@@ -96,19 +96,19 @@ def ghbtn(label='Sign up with GitHub', cls='lg'):
 # "What do you want to do?" picker: (id, chip, icon, title, text, bullets)
 INTENTS = [
  ('alert', 'Turn my alert into a trade', 'hook', 'Your alert fires. The order goes out.',
-  'Paste a private webhook URL into an alert from your charting platform or automation tool. When it fires, QuantPocket checks your risk rules and places the order in seconds.',
+  'Paste a private webhook URL into an alert from your charting platform or automation tool. When it fires, Brightfolio checks your risk rules and places the order in seconds.',
   ['Strategy and indicator alerts from any platform that sends webhooks', 'JSON, or plain text like <code>buy AAPL 10</code>', 'Every signal logged with its fill, or the reason it was blocked']),
  ('library', 'Copy a ready-made strategy', 'list', 'Seven strategies, ready to run.',
   'Pick a rotation strategy from the library. Every day the app fills in the numbers and walks the rules step by step to show what they hold today. Follow it by hand, or run it automatically on paper.',
   ['Every rule, number and ticker can be changed', 'Type your own values into any box', 'Backtest before you risk a dollar']),
  ('sp500', 'Invest in the S&amp;P 500', 'up', 'The S&amp;P 500, on autopilot.',
-  'Choose an amount and a day. QuantPocket buys an S&amp;P 500 fund for you every month, so every dollar is invested, and shows the range of outcomes first.',
+  'Choose an amount and a day. Brightfolio buys an S&amp;P 500 fund for you every month, so every dollar is invested, and shows the range of outcomes first.',
   ['VOO, SPLG, IVV or SPY', 'Fractional shares from $1', 'Projections from real market history']),
  ('pairs', 'Trade a pair of stocks', 'pair', 'When two stocks drift apart, trade the gap.',
   'Find pairs that move together, see when the gap between them is unusually wide, and let a pair bot trade it every day.',
   ['Hedge ratio, cointegration test and half-life', 'Market-neutral or long-only', 'Scanner for 20 classic pairs']),
  ('broker', 'Connect my broker', 'plug', 'Your own brokerage accounts, connected in minutes.',
-  'Alpaca, Charles Schwab, tastytrade, Tradier and TradeStation. Open a new account inside QuantPocket, or connect the one you already have.',
+  'Alpaca, Charles Schwab, tastytrade, Tradier and TradeStation. Open a new account inside Brightfolio, or connect the one you already have.',
   ['Start on paper, switch to live when you are ready', 'Several brokers at once', 'Disconnect at any time']),
  ('multi', 'Trade all my accounts at once', 'layers', 'One signal, many accounts.',
   'Send each alert or strategy to several accounts together: paper and live, or two different brokers, each with its own sizing.',
@@ -123,7 +123,7 @@ INTENTS = [
   'Positions, orders, buying power and an equity chart that turns green or red with your P&amp;L, on desktop and on your phone.',
   ['Switch accounts with one tap', 'Live quotes and market news', 'Works on any phone, no app to install']),
  ('text', 'Trade by text or phone', 'msg', 'Your account, from any phone.',
-  'Text or call QuantPocket and say what you need in plain words. The AI assistant answers questions and turns requests into orders; every trade needs your PIN.',
+  'Text or call Brightfolio and say what you need in plain words. The AI assistant answers questions and turns requests into orders; every trade needs your PIN.',
   ['One number to text or call', 'Answers questions about your account', 'Text PAUSE to stop all automation']),
 ]
 
@@ -140,7 +140,7 @@ LIBRARY = [
 USECASES = [
  ('Retail traders', 'Automation on your own account', 'Get reliable alert-to-broker automation without running servers or writing integrations.',
   ['Connect the charting tools you already use', 'Send alerts straight to your own brokerage account', 'Start on paper before going live']),
- ('Chart traders', 'Your strategy, executed', 'Your charting strategy already knows when to buy and sell. QuantPocket places those orders for you.',
+ ('Chart traders', 'Your strategy, executed', 'Your charting strategy already knows when to buy and sell. Brightfolio places those orders for you.',
   ['Copy-and-paste alert message templates', 'Size from the alert or a fixed amount', 'Exits close the whole position']),
  ('Swing traders', 'Set it and walk away', 'Pick your entry, then let bracket orders manage the exit while you are away from the screen.',
   ['Stop-loss and take-profit placed with the entry', 'Good-till-canceled orders', 'Price alerts by text message']),
@@ -182,7 +182,7 @@ PLANS = [
   ['Everything in Elite', '100 automatic strategies &amp; 100 webhooks', 'Unlimited scanners and AI agents', 'AI assistant: 3,000 messages a day', '10,000 credits every month', 'Priority support'], 'Start 14-day free trial', False),
 ]
 
-# Why it is different: (kind of tool, what it usually leaves out, what QuantPocket adds)
+# Why it is different: (kind of tool, what it usually leaves out, what Brightfolio adds)
 DIFFERENT = [
  ('a simple trading app', 'Lets you buy and sell, then leaves the rest to you.', 'Ready-made strategies, backtests, risk rules and automation on the brokerage account you already have.'),
  ('a backtesting-only tool', 'Shows a great backtest and stops there.', 'The same rules trade on paper or live, and Reality Check compares live results with the backtest every day.'),
@@ -191,7 +191,7 @@ DIFFERENT = [
 
 # Security and control: (icon, title, text)
 TRUST = [
- ('bank', 'Your money stays at your broker', 'QuantPocket never holds your money. Orders go to your own brokerage account, and you can disconnect at any time.'),
+ ('bank', 'Your money stays at your broker', 'Brightfolio never holds your money. Orders go to your own brokerage account, and you can disconnect at any time.'),
  ('shield', 'Encrypted keys', 'Broker keys and card links are stored with AES-256 encryption and are only used on our servers, never in your browser.'),
  ('lock', 'Two-factor and passkeys', 'Turn on an authenticator code or sign in with a passkey (Face ID, Touch ID or a security key).'),
  ('bolt', 'One-tap account lock', 'Freeze every order and withdrawal, cancel open orders and stop all automation at once.'),
@@ -222,11 +222,11 @@ MATRIX = [
 # Learn the basics: (icon, title, text). Short, plain explainers.
 LEARN = [
  ('bolt', 'Start with paper trading', 'Paper trading uses pretend money with real prices. Run a strategy on paper for a few weeks, size it like you would with real money, and check its results before going live.'),
- ('shield', 'How risk rules work', 'Before any order goes out, QuantPocket checks your limits: the most per ticker, trades per day, allowed tickers and loss limits. An order that breaks a rule is blocked and logged with the reason.'),
+ ('shield', 'How risk rules work', 'Before any order goes out, Brightfolio checks your limits: the most per ticker, trades per day, allowed tickers and loss limits. An order that breaks a rule is blocked and logged with the reason.'),
  ('chart', 'Why a backtest can mislead', 'A backtest shows how rules would have done in the past. Rules tuned too closely to old data often do worse live, which is why Reality Check keeps comparing the two.'),
  ('doc', 'Tax lots, simply', 'Each buy is its own lot with its own price and date. When you sell, the lot decides your gain and whether it is short or long term. The tax center tracks lots and flags wash sales.'),
  ('msg', 'What the AI assistant can and cannot do', 'It can explain your account, look up prices and news, and prepare orders for you to confirm. It cannot promise returns, and it never trades without your PIN or outside your rules.'),
- ('hook', 'From alert to order', 'Your charting tool sends an alert to your private webhook URL. QuantPocket reads the ticker, side and size, checks your risk rules and sends the order to the accounts you chose.'),
+ ('hook', 'From alert to order', 'Your charting tool sends an alert to your private webhook URL. Brightfolio reads the ticker, side and size, checks your risk rules and sends the order to the accounts you chose.'),
 ]
 
 FAQ_AUTO = [
@@ -238,15 +238,15 @@ FAQ_AUTO = [
  ('Can I set a swing trade and walk away?', 'Yes. Place a bracket order (entry, stop-loss and take-profit) as good-till-canceled. The exit orders wait at your broker even while you are offline.'),
  ('Can my strategy run fully hands-off?', 'Automatic strategies, pair bots and webhooks run without you. Automation can still fail or act on bad data, so check your account regularly.'),
  ('What happens if my broker or market data has a problem?', 'If a broker keeps failing, orders to it pause for a short cool-down instead of piling up, and you see the error in the app. Market data can be delayed or missing at times, so keep stop-loss orders at your broker for anything important.'),
- ('Can I trigger trades from automation tools?', 'Yes. Any tool that can call a webhook URL works. Use your QuantPocket webhook URL with the fields <code>ticker</code>, <code>action</code> and <code>quantity</code>.'),
+ ('Can I trigger trades from automation tools?', 'Yes. Any tool that can call a webhook URL works. Use your Brightfolio webhook URL with the fields <code>ticker</code>, <code>action</code> and <code>quantity</code>.'),
 ]
 FAQ_ACCOUNT = [
- ('Will I make money?', 'Nobody can promise that. Most active strategies underperform simply holding an index after costs. QuantPocket shows how an idea behaved in the past, how it is doing live, and the range of outcomes to expect, so you can decide with your eyes open.'),
+ ('Will I make money?', 'Nobody can promise that. Most active strategies underperform simply holding an index after costs. Brightfolio shows how an idea behaved in the past, how it is doing live, and the range of outcomes to expect, so you can decide with your eyes open.'),
  ('Can I try it without linking a broker?', 'Yes. Every account starts with a $100,000 paper account using real market prices. You can test strategies, webhooks and the assistant without connecting anything.'),
  ('Are my broker keys and password safe?', 'Passwords are hashed, broker keys are encrypted with AES-256, and keys are only used on our servers. You can add two-factor sign-in or a passkey, and lock the account with one tap.'),
- ('Is QuantPocket for beginners or experienced traders?', 'Both. Beginners can practice on paper and follow ready-made plans like the S&amp;P 500 autopilot. Experienced traders get webhooks, pairs trading, options, the code lab and automation across several brokers.'),
- ('Can I use QuantPocket in Yiddish?', 'Yes. In the app, open Settings → Language and choose אידיש (full translation). The whole app switches to Yiddish, written right-to-left.'),
- ('Which brokerages can I connect?', 'Alpaca (you can also open a new account inside QuantPocket), Charles Schwab, tastytrade, Tradier and TradeStation. Your money always stays at your broker.'),
+ ('Is Brightfolio for beginners or experienced traders?', 'Both. Beginners can practice on paper and follow ready-made plans like the S&amp;P 500 autopilot. Experienced traders get webhooks, pairs trading, options, the code lab and automation across several brokers.'),
+ ('Can I use Brightfolio in Yiddish?', 'Yes. In the app, open Settings → Language and choose אידיש (full translation). The whole app switches to Yiddish, written right-to-left.'),
+ ('Which brokerages can I connect?', 'Alpaca (you can also open a new account inside Brightfolio), Charles Schwab, tastytrade, Tradier and TradeStation. Your money always stays at your broker.'),
  ('Can I sign up with Google?', 'Yes. Choose <b>Sign up with Google</b> and your account is ready in seconds. You can add a password later in Settings.'),
  ('Can I trade with real money on the free plan?', 'Yes. Connect your own brokerage account and place your own orders on any plan, including Starter. Automatic strategies, bots and webhooks on real accounts are part of the paid plans.'),
  ('What are credits?', 'Every plan includes credits each month (100 on Starter up to 10,000 on Ultimate). An extra AI message or a text alert costs 1 credit, a phone call 3, a filing summary 5 and training an AI agent 10. Monthly credits refill on the 1st of the month; credit packs you buy (from $5) never expire.'),
@@ -297,7 +297,7 @@ def index(lang='en'):
     <p class="acctlink"><a data-app="#/open-account" href="app">{T('Open a brokerage account')} &rarr;</a> <span>{T('Commission-free, held at Alpaca Securities LLC (FINRA/SIPC)')}</span></p>
     <p class="phoneline hero-phone" data-phone hidden>{ic('msg', 16)} {T('Text or call us:')} <a data-phone-link dir="ltr"></a></p>
   </div>
-  <figure class="shot"><div class="frame"><i></i><i></i><i></i></div><img src="hero-app.webp" width="1600" height="1000" alt="{T('QuantPocket portfolio dashboard with equity chart, positions and order ticket')}" fetchpriority="high"><figcaption>{T('Illustrative paper-trading account')}</figcaption></figure>
+  <figure class="shot"><div class="frame"><i></i><i></i><i></i></div><img src="hero-app.webp" width="1600" height="1000" alt="{T('Brightfolio portfolio dashboard with equity chart, positions and order ticket')}" fetchpriority="high"><figcaption>{T('Illustrative paper-trading account')}</figcaption></figure>
 </div>
 <div class="marquee" aria-hidden="true"><div class="track">{''.join(f'<span>{ic(i, 16)}{T(t)}</span>' for i, t, d in FEATURES) * 2}</div></div>
 <div class="wrap"><div class="logos"><span>{T('Brokers:')} <b>Alpaca</b> · <b>Schwab</b> · <b>tastytrade</b> · <b>Tradier</b> · <b>TradeStation</b></span><span>{T('Payments by')} <b>Stripe</b> &amp; <b>Helcim</b></span></div></div>
@@ -310,7 +310,7 @@ def index(lang='en'):
 </div></section>
 
 <section class="alt" id="different"><div class="wrap">
-  <h2 class="sec center">{T('Why QuantPocket is different')}</h2>
+  <h2 class="sec center">{T('Why Brightfolio is different')}</h2>
   <p class="sub center">{T('Test an idea, run it on paper, then automate it on your own brokerage, with honest numbers and risk rules at every step.')}</p>
   <div class="diffs">{diff}</div>
 </div></section>
@@ -319,7 +319,7 @@ def index(lang='en'):
   <div>
     <span class="kicker">{T('Strategy library')}</span>
     <h2 class="sec">{T('Ready-made strategies. Every number in your hands.')}</h2>
-    <p class="sub">{T('Seven rule-based rotation strategies, the same published rules for everyone. Every day QuantPocket fills in the market numbers and walks the rules step by step to show what they hold today.')}</p>
+    <p class="sub">{T('Seven rule-based rotation strategies, the same published rules for everyone. Every day Brightfolio fills in the market numbers and walks the rules step by step to show what they hold today.')}</p>
     <ul class="checks big"><li>{T('<b>By hand:</b> see each step, type your own numbers, place the orders with one click')}</li><li>{T('<b>Automatic on paper:</b> runs by itself at the time you choose; on a real account you approve the orders')}</li><li>{T('<b>Editable:</b> change any rule, threshold or ticker, then backtest it')}</li><li>{T('<b>Honest:</b> backtest and live results side by side')}</li></ul>
     <a class="btn" data-app="#/strategies" href="app">{T('Open the strategy library')} &rarr;</a>
   </div>
@@ -330,7 +330,7 @@ def index(lang='en'):
   <div>
     <span class="kicker light">{T('Built into every strategy')}</span>
     <h2 class="sec">{T('Reality Check: know when a strategy stops working.')}</h2>
-    <p class="sub">{T('Most platforms show you a beautiful backtest and stop there. But many strategies with spectacular backtests lose money once they go live. QuantPocket compares every strategy&rsquo;s live results with its backtest, every single day.')}</p>
+    <p class="sub">{T('Most platforms show you a beautiful backtest and stop there. But many strategies with spectacular backtests lose money once they go live. Brightfolio compares every strategy&rsquo;s live results with its backtest, every single day.')}</p>
     <ul class="checks big light"><li>{T('A text or email the day a strategy starts to drift')}</li><li>{T('<b>Auto-throttle:</b> 100% while healthy, 50% on Watch, 0% when Drifting')}</li><li>{T('Back to full size automatically when it recovers')}</li></ul>
   </div>
   <div class="rcbox">
@@ -351,7 +351,7 @@ def index(lang='en'):
       <li><b>{T('Send')}</b><span>{T('Signals fire, orders execute, and fills, P&amp;L and positions update in one place.')}</span></li>
     </ol>
     <div class="term" dir="ltr">
-      <div class="bar"><i></i><i></i><i></i><span>{T('Webhook alert')} &rarr; QuantPocket</span></div>
+      <div class="bar"><i></i><i></i><i></i><span>{T('Webhook alert')} &rarr; Brightfolio</span></div>
 <pre><span class="k">POST</span> /hook/&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;
 {{
   <span class="s">"ticker"</span>: <span class="v">"NASDAQ:AAPL"</span>,
@@ -368,7 +368,7 @@ def index(lang='en'):
   <div>
     <span class="kicker">{T('Investment plan')}</span>
     <h2 class="sec">{T('The S&amp;P 500, on autopilot.')}</h2>
-    <p class="sub">{T('The 500 largest US companies in one fund. Pick an amount and a day: QuantPocket buys it for you every month, in dollars, so every dollar is invested.')}</p>
+    <p class="sub">{T('The 500 largest US companies in one fund. Pick an amount and a day: Brightfolio buys it for you every month, in dollars, so every dollar is invested.')}</p>
     <ul class="checks big"><li>{T('VOO, SPLG, IVV or SPY, with their yearly costs shown')}</li><li>{T('A range of outcomes built from real history, crashes included')}</li><li>{T('Free on the paper account; real accounts with Pro')}</li></ul>
     <a class="btn" data-app="#/sp500" href="app">{T('Start my S&amp;P 500 plan')} &rarr;</a>
   </div>
@@ -384,7 +384,7 @@ def index(lang='en'):
   <div>
     <span class="kicker">{T('AI assistant')}</span>
     <h2 class="sec">{T('Your account, by text or phone call.')}</h2>
-    <p class="sub">{T('One number for everyone. Text or call QuantPocket and say what you need in plain words. The AI assistant answers questions and turns requests into orders.')}</p>
+    <p class="sub">{T('One number for everyone. Text or call Brightfolio and say what you need in plain words. The AI assistant answers questions and turns requests into orders.')}</p>
     <ul class="checks big"><li>{T('Balances, positions, prices and explanations, any time')}</li><li>{T('Every trade needs your PIN; calls read the order back first')}</li><li>{T('Text PAUSE to stop all automation at once')}</li></ul>
     <p class="phoneline" data-phone hidden>{T('Text or call us:')} <a data-phone-link dir="ltr"></a></p>
   </div>
@@ -408,7 +408,7 @@ def index(lang='en'):
 <section class="dark" id="trust"><div class="wrap">
   <span class="kicker light">{T('Security first')}</span>
   <h2 class="sec">{T('You stay in control.')}</h2>
-  <p class="sub">{T('Your money, your broker, your rules. QuantPocket does the work, and you can see and stop everything.')}</p>
+  <p class="sub">{T('Your money, your broker, your rules. Brightfolio does the work, and you can see and stop everything.')}</p>
   <div class="features trust">{trust}</div>
 </div></section>
 
@@ -465,6 +465,6 @@ def index(lang='en'):
 </div></div></section>
 <div class="stickycta"><a class="btn lg" data-app="#/register" href="app">{T('Start free')}</a></div>
 '''
-    title = T('QuantPocket: automate your trading from one place')
+    title = T('Brightfolio: automate your trading from one place')
     desc = T('Ready-made strategies, webhook alerts, pairs trading and an S&P 500 autopilot on your own brokerage account, with Reality Check watching every strategy. In English and Yiddish.')
     return layout(title, desc, body, lang, home)

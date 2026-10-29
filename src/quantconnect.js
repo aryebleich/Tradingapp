@@ -98,7 +98,7 @@ export async function startBacktest(c, projectId, name) {
     state = (await qc(c, '/compile/read', { projectId, compileId: comp.compileId })).state;
   }
   if (state !== 'BuildSuccess') throw new Error('Compile failed: ' + state + ' ' + (comp.logs || []).join('\n'));
-  const bt = await qc(c, '/backtests/create', { projectId, compileId: comp.compileId, backtestName: name || 'QuantPocket run ' + new Date().toISOString() });
+  const bt = await qc(c, '/backtests/create', { projectId, compileId: comp.compileId, backtestName: name || 'Brightfolio run ' + new Date().toISOString() });
   return bt.backtest.backtestId;
 }
 

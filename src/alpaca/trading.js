@@ -36,7 +36,7 @@ export class Trading {
 
   orders(query) { return this.acct('/orders', { query: { status: 'all', limit: 100, nested: true, ...query } }); }
   order(id) { return this.acct(`/orders/${enc(id)}`, { query: { nested: true } }); }
-  // Accounts opened through QuantPocket carry the partner commission set in Admin.
+  // Accounts opened through Brightfolio carry the partner commission set in Admin.
   placeOrder(body) { return this.acct('/orders', { method: 'POST', body: this.type === 'broker' ? withCommission(body) : body }); }
   replaceOrder(id, body) { return this.acct(`/orders/${enc(id)}`, { method: 'PATCH', body }); }
   cancelOrder(id) { return this.acct(`/orders/${enc(id)}`, { method: 'DELETE' }); }

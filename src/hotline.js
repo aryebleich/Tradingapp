@@ -29,7 +29,7 @@ import { trySpend } from './credits.js';
 
 export const DEFAULTS = {
   enabled: true,
-  greeting: 'Welcome to QuantPocket.',
+  greeting: 'Welcome to Brightfolio.',
   tickers: ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL', 'META', 'TSLA', 'SPY', 'QQQ'],
   maxQty: 10000,
   allowSignup: true,
@@ -80,7 +80,7 @@ export function registerHotline(app, { twilioOk, twiml }) {
   const step = handler => async (req, res) => {
     if (!twilioOk(req)) return res.status(403).send('forbidden');
     const o = settings();
-    if (!o.enabled) return twiml(res, bye('The QuantPocket phone line is closed right now. Please use the app. Goodbye.'));
+    if (!o.enabled) return twiml(res, bye('The Brightfolio phone line is closed right now. Please use the app. Goodbye.'));
     try { await handler(req, res, o); } catch (e) {
       console.warn('hotline', e.message);
       twiml(res, say('Sorry, something went wrong.') + (req.query.e ? menu(req.query.e) : bye('Goodbye.')));
@@ -137,7 +137,7 @@ export function registerHotline(app, { twilioOk, twiml }) {
       if (to === 'live' && (access(u) !== 'full' || !(await liveTrading(u)))) return twiml(res, menu(e, access(u) !== 'full' ? 'Live trading by phone is part of the Pro plan.' : 'You do not have a live brokerage account connected yet.'));
       return twiml(res, menu(to, `Switched to ${ENVS[to]}.`));
     }
-    if (d === '0') return twiml(res, bye('Thank you for calling QuantPocket. Goodbye.'));
+    if (d === '0') return twiml(res, bye('Thank you for calling Brightfolio. Goodbye.'));
     twiml(res, menu(e, 'Sorry, that is not an option.'));
   }));
 
@@ -186,7 +186,7 @@ export function registerHotline(app, { twilioOk, twiml }) {
     if (!ok) {
       const tries = (+p.t || 0) + 1;
       await audit(u.id, 'hotline_pin_failed', { do: p.do, tries }, req.body.From);
-      if (tries >= 3) { N.sendSms(u.phone, 'QuantPocket: 3 wrong PINs were entered on the phone line for your account. If this was not you, change your PIN in Settings.').catch(() => {}); return twiml(res, bye('Too many wrong PINs. Goodbye.')); }
+      if (tries >= 3) { N.sendSms(u.phone, 'Brightfolio: 3 wrong PINs were entered on the phone line for your account. If this was not you, change your PIN in Settings.').catch(() => {}); return twiml(res, bye('Too many wrong PINs. Goodbye.')); }
       return twiml(res, gather(`/twilio/voice/pin${q({ ...p, t: tries })}`, 'Wrong PIN. Try again.', { digits: 4, timeout: 10 }) + menu(e));
     }
     if (p.do === 'trade') {
@@ -247,7 +247,7 @@ export function registerHotline(app, { twilioOk, twiml }) {
     if (!/^\+\d{10,15}$/.test(phone) || await userByPhone(phone)) return twiml(res, bye('This number cannot open an account by phone. Please use the app. Goodbye.'));
     if (!rateLimit('ivrsignup:' + phone, 3, 24 * 3600e3)) return twiml(res, bye('Too many sign-up attempts today. Please use the app. Goodbye.'));
     const code = String(Math.floor(100000 + Math.random() * 900000)), x = now() + 10 * 60e3;
-    await N.sendSms(phone, `QuantPocket code: ${code}. Enter it on the call to open your account.`);
+    await N.sendSms(phone, `Brightfolio code: ${code}. Enter it on the call to open your account.`);
     twiml(res, gather(`/twilio/voice/signup/code${q({ h: hmac(`${sid}|${phone}|${code}|${x}`), x })}`, 'We just texted you a 6-digit code. Enter it now.', { digits: 6, timeout: 30 }) + bye('No code entered. Goodbye.'));
   }));
   app.post('/twilio/voice/signup/code', step(async (req, res) => {
@@ -276,7 +276,7 @@ export function registerHotline(app, { twilioOk, twiml }) {
     await run('UPDATE users SET phone = ?, phone_verified = 1, pin_hash = ? WHERE id = ?', phone, hashSecret(pin), id);
     await audit(id, 'hotline_signup', null, req.body.From);
     const base = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
-    N.sendSms(phone, `Welcome to QuantPocket! Your free account with a $100,000 paper account is ready. Sign in with this phone number: ${base}/app#/login-phone . To open a real brokerage account, finish the short application in the app under Open an account.`).catch(() => {});
+    N.sendSms(phone, `Welcome to Brightfolio! Your free account with a $100,000 paper account is ready. Sign in with this phone number: ${base}/app#/login-phone . To open a real brokerage account, finish the short application in the app under Open an account.`).catch(() => {});
     const u = await one('SELECT * FROM users WHERE id = ?', id);
     if (!access(u)) return twiml(res, bye('Your account is ready. We texted you a link to sign in. Trading by phone is part of the Pro plan, and you can start a free trial in the app. Goodbye.'));
     twiml(res, menu('paper', 'Your account is ready, with 100,000 dollars of paper money. We texted you a link to the app.'));

@@ -187,7 +187,7 @@ function renderOnboarding(box, me) {
       <label>Social Security number<input name="ssn" value="${val('ssn')}" required inputmode="numeric" autocomplete="off" placeholder="123-45-6789" pattern="\\d{3}-?\\d{2}-?\\d{4}"></label></div>
       <div class="row"><label>Country of citizenship${sel('citizenship', COUNTRIES)}</label><label>Country of birth${sel('countryOfBirth', COUNTRIES)}</label><label>Tax residence${sel('taxResidence', COUNTRIES)}</label></div>
       <label>Main source of funds${sel('fundingSource', FUNDING)}</label>
-      <p class="mu" style="font-size:13px">Required by law to verify your identity (KYC). Your SSN goes to Alpaca over an encrypted connection and is not stored by QuantPocket.</p>`,
+      <p class="mu" style="font-size:13px">Required by law to verify your identity (KYC). Your SSN goes to Alpaca over an encrypted connection and is not stored by Brightfolio.</p>`,
     () => `<fieldset><legend>Disclosures</legend>${DISCLOSURES.map(([k, q]) => yn(k, q)).join('')}</fieldset>
       <details><summary>Employment (optional)</summary><div class="row"><label>Employment${sel('employmentStatus', [['EMPLOYED', 'Employed'], ['UNEMPLOYED', 'Unemployed'], ['STUDENT', 'Student'], ['RETIRED', 'Retired']])}</label>
       <label>Employer<input name="employerName" value="${val('employerName')}"></label><label>Position<input name="employmentPosition" value="${val('employmentPosition')}"></label></div></details>`,
@@ -197,7 +197,7 @@ function renderOnboarding(box, me) {
         <label class="check"><input type="checkbox" name="crypto" ${yes('crypto')}> Enable crypto trading (Crypto Agreement)</label></fieldset>
       <fieldset><legend>Agreements</legend>
         <p style="font-size:14px">Read the <a href="https://alpaca.markets/disclosures" target="_blank" rel="noopener">Alpaca Customer Agreement and disclosures</a>${data.margin ? ', the Margin Agreement' : ''}${data.options ? ', the Options Agreement' : ''}${data.crypto ? ', the Crypto Agreement' : ''}.</p>
-        <label class="check"><input type="checkbox" name="agreeCustomer" ${yes('agreeCustomer')} required> I have read and agree to the Alpaca agreements above and the QuantPocket Terms. I certify the information I provided is true.</label>
+        <label class="check"><input type="checkbox" name="agreeCustomer" ${yes('agreeCustomer')} required> I have read and agree to the Alpaca agreements above and the Brightfolio Terms. I certify the information I provided is true.</label>
         <p class="mu" style="font-size:12px">Your agreement is recorded with the time you submit and your IP address, as Alpaca requires.</p></fieldset>`,
     () => `<p class="mu">Optional: adding a photo of your ID now can speed up approval. You can also upload later if Alpaca asks for it.</p>
       <div class="row"><label>Document${sel('docKind', DOC_KINDS)}</label><label>File (JPG, PNG or PDF, up to 5 MB)<input type="file" id="docFile" accept="image/jpeg,image/png,application/pdf" multiple></label></div>
@@ -298,12 +298,12 @@ async function renderBrokerAccount(box) {
   if (a.status === 'ACTIVE') await renderBanking(H.$('#achBox', box), H.$('#trBox', box));
 }
 
-// Public page for new customers: create the QuantPocket login (if needed), then the application.
+// Public page for new customers: create the Brightfolio login (if needed), then the application.
 async function openAccount(view) {
   const me = H.me();
   if (!me) {
-    view.innerHTML = `<div class="hero"><h1>Open a brokerage account</h1><p class="mu">Commission-free US stocks and ETFs, plus options and crypto, at Alpaca Securities LLC (member FINRA/SIPC). Apply in about 3 minutes, all from QuantPocket.</p></div>
-      <form class="card auth" id="oaReg"><h2>1. Create your QuantPocket login</h2>
+    view.innerHTML = `<div class="hero"><h1>Open a brokerage account</h1><p class="mu">Commission-free US stocks and ETFs, plus options and crypto, at Alpaca Securities LLC (member FINRA/SIPC). Apply in about 3 minutes, all from Brightfolio.</p></div>
+      <form class="card auth" id="oaReg"><h2>1. Create your Brightfolio login</h2>
       <label>Email<input name="email" type="email" autocomplete="username" required></label>
       <label>Password (10+ chars, upper, lower, digit)<input name="password" type="password" autocomplete="new-password" required></label>
       <label><input type="checkbox" name="agree" style="width:auto"> I agree to the <a href="/terms" target="_blank">Terms</a> and <a href="/privacy" target="_blank">Privacy Policy</a> and have read the <a href="/risk" target="_blank">Risk Disclosure</a>.</label>

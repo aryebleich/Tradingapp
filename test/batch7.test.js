@@ -12,7 +12,7 @@ before(async () => {
   fake = http.createServer((req, res) => {
     let b = ''; req.on('data', c => (b += c)); req.on('end', () => {
       calls.push({ method: req.method, url: req.url, body: b });
-      if (req.url.endsWith('/README.md') && !req.url.startsWith('/repos')) return res.end('# QuantPocket\n\nThe full guide.\n\n## Setup\n- one\n- two\n');
+      if (req.url.endsWith('/README.md') && !req.url.startsWith('/repos')) return res.end('# Brightfolio\n\nThe full guide.\n\n## Setup\n- one\n- two\n');
       if (req.url.endsWith('/docs/pricing-comparison.md')) return res.end('# Pricing comparison\n\nPlans compared.\n');
       res.setHeader('Content-Type', 'application/json');
       if (req.method === 'GET' && req.url.startsWith('/repos/') && req.url.includes('/contents/README.md')) return res.end(JSON.stringify({ sha: 'oldsha' }));

@@ -1,7 +1,7 @@
 {
   "name": "quantpocket-web",
   "version": "1.0.0",
-  "description": "QuantPocket web platform: backtesting, paper & live trading (Alpaca), QuantConnect, SMS/voice control, scheduled trades, tax reports.",
+  "description": "Brightfolio web platform: backtesting, paper & live trading (Alpaca), QuantConnect, SMS/voice control, scheduled trades, tax reports.",
   "private": true,
   "type": "module",
   "engines": {

@@ -1,6 +1,6 @@
 // The owner's money levers, set in Admin → Business mode: the deposit service fee, the referral
 // program (reward, a longer trial for invited friends, milestone bonuses) and the commission on
-// orders in brokerage accounts opened through QuantPocket (Alpaca Broker API partner commission).
+// orders in brokerage accounts opened through Brightfolio (Alpaca Broker API partner commission).
 import { one, run, now } from './db.js';
 import { siteGet, siteSet } from './site.js';
 
@@ -55,7 +55,7 @@ export function nextMilestone(paying) {
 }
 
 // ---------- Broker API partner commission ----------
-// Added to orders in accounts QuantPocket opened (Broker API); Alpaca collects it for the partner.
+// Added to orders in accounts Brightfolio opened (Broker API); Alpaca collects it for the partner.
 export function withCommission(body) {
   const s = settings();
   if (!(s.commissionValue > 0)) return body;

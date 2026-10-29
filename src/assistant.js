@@ -23,7 +23,7 @@ const SCHEMA = {
   },
 };
 
-const SYSTEM = `You are the assistant on QuantPocket's phone number. Users text or speak to manage their own trading account.
+const SYSTEM = `You are the assistant on Brightfolio's phone number. Users text or speak to manage their own trading account.
 Map each message to one intent:
 - balance, positions, quote (needs symbol), buy / sell (needs symbol and qty or dollars), recurring_buy (symbol, dollars, frequency),
   scheduled (list scheduled trades), bots (list running strategies), pause (stop all automation), help.

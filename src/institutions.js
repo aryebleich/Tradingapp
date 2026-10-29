@@ -21,7 +21,7 @@ export const MANAGERS = [
 const DATA = () => (process.env.SEC_DATA_URL || 'https://data.sec.gov').replace(/\/$/, '');
 const WWW = () => (process.env.SEC_WWW_URL || 'https://www.sec.gov').replace(/\/$/, '');
 // The SEC asks automated clients to identify themselves with a contact address.
-const UA = () => ({ 'User-Agent': `QuantPocket ${process.env.SEC_CONTACT || process.env.ADMIN_EMAIL || 'support@quantpocket.app'}`, Accept: 'application/json, text/xml, */*' });
+const UA = () => ({ 'User-Agent': `Brightfolio ${process.env.SEC_CONTACT || process.env.ADMIN_EMAIL || 'support@quantpocket.app'}`, Accept: 'application/json, text/xml, */*' });
 export async function get(url, type = 'json') {
   const r = await fetch(url, { headers: UA(), signal: AbortSignal.timeout(20000) });
   if (!r.ok) throw Object.assign(new Error(`SEC EDGAR answered ${r.status}`), { status: r.status === 404 ? 404 : 502 });

@@ -36,7 +36,7 @@ const STOCKTWITS = () => (process.env.STOCKTWITS_URL || 'https://api.stocktwits.
 export async function social(symbol) {
   return cached('st:' + symbol, 10 * 60e3, async () => {
     try {
-      const r = await fetch(`${STOCKTWITS()}/streams/symbol/${encodeURIComponent(symbol.replace('/', '.'))}.json`, { signal: AbortSignal.timeout(8000), headers: { 'User-Agent': 'QuantPocket' } });
+      const r = await fetch(`${STOCKTWITS()}/streams/symbol/${encodeURIComponent(symbol.replace('/', '.'))}.json`, { signal: AbortSignal.timeout(8000), headers: { 'User-Agent': 'Brightfolio' } });
       if (!r.ok) return { symbol, available: false };
       const d = await r.json(), msgs = d.messages || [];
       const bull = msgs.filter(m => m.entities?.sentiment?.basic === 'Bullish').length, bear = msgs.filter(m => m.entities?.sentiment?.basic === 'Bearish').length;
@@ -62,7 +62,7 @@ export async function brief(symbols) {
   if (!llmEnabled() || !s.items.length) {
     const top = s.items.slice(0, 6);
     const text = top.length ? top.map(i => `- **${i.headline}** (${(i.symbols || []).join(', ')}) - ${i.label}`).join('\n') : 'No news found for these symbols right now.';
-    const script = `Here is your QuantPocket market brief. ${top.map(i => i.headline + '.').join(' ')} Sentiment: ${soc}. That's the brief. Remember this is information, not advice.`;
+    const script = `Here is your Brightfolio market brief. ${top.map(i => i.headline + '.').join(' ')} Sentiment: ${soc}. That's the brief. Remember this is information, not advice.`;
     return { brief: text, script, sentiment: s, ai: false };
   }
   const out = await jsonCall({

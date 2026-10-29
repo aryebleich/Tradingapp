@@ -35,7 +35,7 @@ const failed = (e, p) => (e.status === 401 || e.status === 403 ? Object.assign(n
 async function completions(p, body) {
   const r = await fetch(`${p.base}/chat/completions`, {
     method: 'POST', signal: AbortSignal.timeout(60000),
-    headers: { 'Content-Type': 'application/json', ...(p.apiKey ? { Authorization: `Bearer ${p.apiKey}` } : {}), ...(p.id === 'openrouter' ? { 'X-Title': 'QuantPocket' } : {}) },
+    headers: { 'Content-Type': 'application/json', ...(p.apiKey ? { Authorization: `Bearer ${p.apiKey}` } : {}), ...(p.id === 'openrouter' ? { 'X-Title': 'Brightfolio' } : {}) },
     body: JSON.stringify({ model: p.model, ...body }),
   });
   const d = await r.json().catch(() => ({}));

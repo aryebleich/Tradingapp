@@ -32,7 +32,7 @@ export const marketOpen = (t = now()) => { const n = nyTime(t); return !['Sat', 
 async function notify(userId, msg) {
   const u = await one('SELECT email, phone, phone_verified FROM users WHERE id = ?', userId);
   if (u?.phone && u.phone_verified) await sendSms(u.phone, msg).catch(e => console.warn('sms', e.message));
-  else if (u?.email) await sendEmail(u.email, 'QuantPocket: ' + msg.slice(0, 60), msg).catch(e => console.warn('email', e.message));
+  else if (u?.email) await sendEmail(u.email, 'Brightfolio: ' + msg.slice(0, 60), msg).catch(e => console.warn('email', e.message));
 }
 
 // Each job is claimed with a conditional UPDATE before it runs, so the in-process timer and the

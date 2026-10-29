@@ -169,6 +169,11 @@ test('the owner connects Google Drive and saves the private README there as a PD
     // A second save updates the same file.
     await owner('/admin/site/readme/drive', {});
     assert.equal(calls.filter(c => c.url.startsWith('/upload')).pop().method, 'PATCH');
+    // Download PDF: the editor's text (saved or not) as a PDF.
+    const pdf = await owner('/admin/site/readme/pdf', { text: '# Draft\n\nNot saved yet.' });
+    assert.equal(pdf.status, 200);
+    const raw = await fetch(s.base + '/api/admin/site/readme/pdf', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp', cookie: '' }, body: '{}' });
+    assert.notEqual(raw.status, 200);
     const dl = await fetch(s.base + '/api/admin/site/readme/pdf', { headers: { cookie: '' } });
     assert.notEqual(dl.status, 200, 'the PDF download needs the owner');
   } finally { s.close(); }

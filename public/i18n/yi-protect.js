@@ -94,7 +94,7 @@ export const strings = {
   'Add an Alpaca account': 'צולייגן אן Alpaca קאנטע', 'Create API keys for the account in Alpaca (each sub account has its own keys), then add them here. Keys are encrypted and never shown again.': 'מאכט API קיעס פאר דער קאנטע אין Alpaca (יעדע אונטער-קאנטע האט אירע אייגענע קיעס), דערנאך לייגט זיי צו דא. די קיעס ווערן פארשלאסן און ווערן קיינמאל ווייטער נישט געוויזן.',
   'e.g. Sub account 2': 'למשל אונטער-קאנטע 2', 'Sub account': 'אונטער-קאנטע', 'Main account': 'הויפט קאנטע', 'API key id': 'API קי ID', 'Secret key': 'סוד קי',
   'Live account (real money). Leave unticked for an Alpaca paper account.': 'לייוו קאנטע (אמת\'ע געלט). לאזט נישט אנגעצייכנט פאר אן Alpaca פעיפער קאנטע.', 'Add account': 'צולייגן קאנטע',
-  'Remove this account from QuantPocket? Nothing changes at Alpaca.': 'אראפנעמען די קאנטע פון QuantPocket? ביי Alpaca טוישט זיך גארנישט.',
+  'Remove this account from Brightfolio? Nothing changes at Alpaca.': 'אראפנעמען די קאנטע פון Brightfolio? ביי Alpaca טוישט זיך גארנישט.',
   'Simple translation: menus and main buttons are translated; the rest of the app stays in English.': 'פשוט\'ע איבערזעצונג: די מעניוס און הויפט קנעפלעך זענען איבערגעזעצט; די רעשט פון דער אפ בלייבט אויף ענגליש.',
   "Quotes come from the free IEX feed, one exchange's quote rather than the full NBBO; set ALPACA_STOCK_FEED=sip on the server for the NBBO.": 'פרייזן קומען פונעם פרייען IEX פיד, איין בערזע\'ס פרייז אנשטאט דעם פולן NBBO; שטעלט ALPACA_STOCK_FEED=sip אויפן סערווער פארן NBBO.',
   'Quotes come from the consolidated feed (NBBO).': 'פרייזן קומען פונעם קאנסאלידירטן פיד (NBBO).',

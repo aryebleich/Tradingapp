@@ -77,7 +77,7 @@ export async function lockAccount(userId, reason, { cancelAlpaca, ip } = {}) {
   const k = await setKill(userId, true, { cancelAlpaca }).catch(() => ({}));
   await run('UPDATE channel_subs SET active = 0 WHERE user_id = ?', userId).catch(() => {});
   await audit(userId, 'account_locked', { reason, cancelled: k.cancelled ?? null }, ip);
-  await notifyUser(userId, 'Your QuantPocket account was locked: orders and withdrawals are frozen. If this was not you, reply to support right away.').catch(() => {});
+  await notifyUser(userId, 'Your Brightfolio account was locked: orders and withdrawals are frozen. If this was not you, reply to support right away.').catch(() => {});
   return { locked: true, cancelledOrders: k.cancelled ?? 0 };
 }
 
@@ -109,7 +109,7 @@ async function supportAnswer(user, history, deps) {
       run: async ({ details }) => { const l = await lockAccount(user.id, 'support agent: ' + details, deps); return { ...l, ticket: await openTicket(user, 'Account compromise reported', details, 'security') }; } },
   };
   if (llmEnabled()) {
-    const r = await toolChat({ webSearch: false, defs, messages: history, system: `You are QuantPocket's support agent. Be brief and kind. Answer from help_article and account_status only; never invent policies.
+    const r = await toolChat({ webSearch: false, defs, messages: history, system: `You are Brightfolio's support agent. Be brief and kind. Answer from help_article and account_status only; never invent policies.
 You cannot reset passwords, change plans, move money or unlock accounts: explain the self-service step or open a ticket.
 If the user says the account is hacked, stolen or has unauthorized activity, call security_escalation immediately.
 Never ask for passwords, codes or full card numbers. Reply in the user's language.` });
@@ -133,7 +133,7 @@ export function securityRouter({ cancelAlpaca }) {
   // Passkey registration.
   r.post('/passkeys/options', async (req, res) => {
     const existing = await all('SELECT cred_id, transports FROM passkeys WHERE user_id = ?', req.user.id);
-    const o = await generateRegistrationOptions({ rpName: 'QuantPocket', rpID: rpID(req), userName: req.user.email, userID: new TextEncoder().encode(String(req.user.id)), attestationType: 'none',
+    const o = await generateRegistrationOptions({ rpName: 'Brightfolio', rpID: rpID(req), userName: req.user.email, userID: new TextEncoder().encode(String(req.user.id)), attestationType: 'none',
       excludeCredentials: existing.map(c => ({ id: c.cred_id, transports: c.transports ? JSON.parse(c.transports) : undefined })), authenticatorSelection: { residentKey: 'preferred', userVerification: 'preferred' } });
     putChallenge('reg:' + req.user.id, { challenge: o.challenge });
     res.json(o);

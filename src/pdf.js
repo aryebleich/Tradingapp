@@ -80,7 +80,7 @@ export function markdownPdf(md, { title = 'Document' } = {}) {
   });
   objs[catalog - 1] = `<< /Type /Catalog /Pages ${pagesId} 0 R >>`;
   objs[pagesId - 1] = `<< /Type /Pages /Kids [${kids.map(k => `${k} 0 R`).join(' ')}] /Count ${kids.length} >>`;
-  const info = obj(`<< /Title (${esc(T)}) /Producer (QuantPocket) >>`);
+  const info = obj(`<< /Title (${esc(T)}) /Producer (Brightfolio) >>`);
   let out = '%PDF-1.4\n%\xe2\xe3\xcf\xd3\n';
   const offsets = objs.map((body, i) => { const at = Buffer.byteLength(out, 'latin1'); out += `${i + 1} 0 obj\n${body}\nendobj\n`; return at; });
   const xref = Buffer.byteLength(out, 'latin1');

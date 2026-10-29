@@ -1,4 +1,4 @@
-// QuantPocket as an MCP server: users connect Claude, Cursor or VS Code to their own account with a
+// Brightfolio as an MCP server: users connect Claude, Cursor or VS Code to their own account with a
 // personal access token (Settings → AI assistants). Read tools for every account; orders only on the
 // paper account, so an AI assistant can never move real money. Paid plans only.
 // Transport: MCP "Streamable HTTP" with plain JSON responses (POST /mcp, JSON-RPC 2.0).
@@ -60,7 +60,7 @@ export function mcpHandler(deps) {
   return async (req, res) => {
     const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
     const row = token.startsWith(TOKEN_PREFIX) ? await one('SELECT t.id tid, u.* FROM api_tokens t JOIN users u ON u.id = t.user_id WHERE t.token_hash = ?', sha256(token)) : null;
-    if (!row) return res.status(401).set('WWW-Authenticate', 'Bearer').json({ jsonrpc: '2.0', id: null, error: { code: -32001, message: 'Add your QuantPocket token as: Authorization: Bearer qpk_…' } });
+    if (!row) return res.status(401).set('WWW-Authenticate', 'Bearer').json({ jsonrpc: '2.0', id: null, error: { code: -32001, message: 'Add your Brightfolio token as: Authorization: Bearer qpk_…' } });
     if (!isPaid(row)) return res.status(402).json({ jsonrpc: '2.0', id: null, error: { code: -32002, message: 'Connecting AI assistants is part of Pro' } });
     if (!rateLimit('mcp:' + row.id, 120, 60e3)) return res.status(429).json({ jsonrpc: '2.0', id: null, error: { code: -32003, message: 'Too many requests' } });
     await run('UPDATE api_tokens SET last_used_at = ? WHERE id = ?', now(), row.tid);
@@ -68,7 +68,7 @@ export function mcpHandler(deps) {
       const ok = result => ({ jsonrpc: '2.0', id: m.id, result }), err = (code, message) => ({ jsonrpc: '2.0', id: m.id ?? null, error: { code, message } });
       if (m.id === undefined) return null; // notifications (e.g. notifications/initialized) need no answer
       switch (m.method) {
-        case 'initialize': return ok({ protocolVersion: PROTOCOL, capabilities: { tools: {} }, serverInfo: { name: 'quantpocket', version: '1.0.0' }, instructions: 'QuantPocket trading account tools. Orders go to the paper account only.' });
+        case 'initialize': return ok({ protocolVersion: PROTOCOL, capabilities: { tools: {} }, serverInfo: { name: 'brightfolio', version: '1.0.0' }, instructions: 'Brightfolio trading account tools. Orders go to the paper account only.' });
         case 'ping': return ok({});
         case 'tools/list': return ok({ tools: Object.entries(tools).map(([name, t]) => ({ name, description: t.description, inputSchema: t.inputSchema })) });
         case 'tools/call': {

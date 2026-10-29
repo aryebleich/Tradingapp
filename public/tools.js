@@ -1,5 +1,5 @@
 // Bonds, crypto & AI: Alpaca's newer add-ons in one place. Treasury and bond prices by ISIN,
-// crypto quotes across liquidity venues, connecting AI assistants (QuantPocket's own MCP server,
+// crypto quotes across liquidity venues, connecting AI assistants (Brightfolio's own MCP server,
 // Alpaca's Trading MCP server and CLI), and multi-leg options.
 let H;
 export function registerTools(routes, helpers) { H = helpers; routes['alpaca-tools'] = tools; }
@@ -18,11 +18,11 @@ async function tools(view) {
   <form class="card" id="cv"><h2>Crypto across venues</h2><p class="mu">The same coin can trade at slightly different prices at each liquidity source: Alpaca US, Kraken US and Kraken EU.</p>
     <div class="row"><label>Pairs<input name="syms" value="BTC/USD, ETH/USD" data-no-tr></label><button>Compare</button></div><div class="err"></div><div id="cvOut"></div></form>
 
-  <div class="card"><h2>Connect AI assistants to QuantPocket</h2>
+  <div class="card"><h2>Connect AI assistants to Brightfolio</h2>
     <p>Ask Claude, Cursor or VS Code about your portfolio, prices and news, and let them place <b>paper</b> trades. Real-money orders always stay with you.</p>
     ${paid ? `<div class="row"><input id="tokName" placeholder="Name, e.g. Claude Desktop" style="max-width:280px"><button id="newTok">Create a token</button></div><div class="err"></div><div id="tokOut"></div>
       <div class="tablewrap"><table><tr><th>Name</th><th>Ends with</th><th>Created</th><th>Last used</th><th></th></tr>${tokens.map(t => `<tr><td>${H.esc(t.name)}</td><td data-no-tr>…${H.esc(t.hint || '')}</td><td>${H.date(t.created_at)}</td><td>${t.last_used_at ? H.date(t.last_used_at) : '-'}</td><td><button class="small ghost" data-revoke="${t.id}">Revoke</button></td></tr>`).join('') || '<tr><td colspan="5" class="mu">No tokens yet</td></tr>'}</table></div>
-      <h3>Add it to your assistant</h3>${code(JSON.stringify({ mcpServers: { quantpocket: { type: 'http', url: origin + '/mcp', headers: { Authorization: 'Bearer YOUR_QUANTPOCKET_TOKEN' } } } }, null, 2))}`
+      <h3>Add it to your assistant</h3>${code(JSON.stringify({ mcpServers: { brightfolio: { type: 'http', url: origin + '/mcp', headers: { Authorization: 'Bearer YOUR_BRIGHTFOLIO_TOKEN' } } } }, null, 2))}`
       : '<p class="banner">Part of Pro. <a href="#/funding">Start a free trial</a> to connect your AI assistant.</p>'}
     <p class="mu small-print">Tools: get_account, list_accounts, get_quote, list_orders, get_news, place_paper_order.</p></div>
 

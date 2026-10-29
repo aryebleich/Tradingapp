@@ -6,7 +6,7 @@ import { nextRunAfter } from './scheduler.js';
 import { isPaid } from './fees.js';
 import { performance, earnings, chartText, earningsText } from './events.js';
 
-export const HELP = `QuantPocket commands:
+export const HELP = `Brightfolio commands:
 AAPL - price   AAPL CHART - 1 week, 1 month, 1 year
 AAPL EARNINGS - next date and results   AAPL NEWS - headlines
 (try any stock)

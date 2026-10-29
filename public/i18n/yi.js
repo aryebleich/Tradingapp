@@ -1,4 +1,4 @@
-// Yiddish for the QuantPocket app (exact English phrase → Yiddish). Written in everyday
+// Yiddish for the Brightfolio app (exact English phrase → Yiddish). Written in everyday
 // American-Hasidic usage: common trading terms stay in their English form, in Yiddish letters.
 import labs from './yi-labs.js';
 import * as features from './yi-features.js';
@@ -86,7 +86,7 @@ export const strings = {
   'First name': 'ערשטער נאמען', 'Middle name': 'מיטלסטער נאמען', 'Last name': 'פאמיליע נאמען', 'Date of birth': 'געבורטס טאג', 'Social Security number': 'סאשעל סעקיוריטי נומער',
   'Street address': 'גאס אדרעס', 'Apt / unit': 'דירה', 'City': 'שטאט', 'State': 'סטעיט', 'ZIP code': 'זיפ קאוד', 'Mobile phone': 'מאביל טעלעפאן', 'Employer': 'ארבעטגעבער',
   'Takes about 3 minutes. Accounts are held by Alpaca Securities LLC, member FINRA/SIPC.': 'נעמט בערך 3 מינוט. די קאנטעס ווערן געהאלטן ביי Alpaca Securities LLC, מיטגליד FINRA/SIPC.',
-  'Required by law to verify your identity (KYC). Your SSN is sent securely to Alpaca and is not stored by QuantPocket.': 'דאס געזעץ פארלאנגט צו באשטעטיגן ווער איר זענט (KYC). אייער SSN ווערט זיכער געשיקט צו Alpaca און QuantPocket היט עס נישט אפ.',
+  'Required by law to verify your identity (KYC). Your SSN is sent securely to Alpaca and is not stored by Brightfolio.': 'דאס געזעץ פארלאנגט צו באשטעטיגן ווער איר זענט (KYC). אייער SSN ווערט זיכער געשיקט צו Alpaca און Brightfolio היט עס נישט אפ.',
   'Sign in at Alpaca and approve access. We never see your Alpaca password.': 'לאגירט זיך איין ביי Alpaca און גיט רשות. מיר זעען קיינמאל נישט אייער Alpaca פאסווארט.',
 
   // strategy library
@@ -174,7 +174,7 @@ export const strings = {
   'Manage brokerage connection': 'פירט די בראוקער פארבינדונג', 'Alpaca brokerage': 'Alpaca בראוקער', 'User id': 'באניצער ID', 'API token': 'API טאקען',
 
   // text & hotline
-  'Text & Hotline': 'טעקסט און האטליין', 'Manage your account by SMS or phone': 'פירט אייער קאנטע דורך טעקסט אדער טעלעפאן', "QuantPocket's number": 'QuantPocket\'ס נומער',
+  'Text & Hotline': 'טעקסט און האטליין', 'Manage your account by SMS or phone': 'פירט אייער קאנטע דורך טעקסט אדער טעלעפאן', "Brightfolio's number": 'Brightfolio\'ס נומער',
   'Text us': 'שיקט אונז א טעקסט', 'Call': 'רופט', 'Try it here': 'פרובירט עס דא', 'How is my account doing?': 'וויאזוי שטייט מיין קאנטע?',
   'The SMS/voice number is not configured on this server yet (Twilio).': 'דער טעקסט/טעלעפאן נומער איז נאך נישט איינגעשטעלט (Twilio).',
 
@@ -196,7 +196,7 @@ export const strings = {
   'Fractional shares': 'שטיקלעך שערס', 'Disable short selling': 'שאלט אויס שארט סעלינג', 'Suspend all trading (kill switch)': 'שטעלט אפ אלע טרעידינג (נויט קנעפל)', 'Orders go to': 'ארדערס גייען צו',
   'Day-trade buying power check': 'דעי-טרעיד קויף-קראפט טשעק', 'Pattern day trader check': 'פעטערן דעי טרעידער טשעק', 'Max margin': 'מאקסימום מארדזשין', 'Trade confirmations': 'טרעיד באשטעטיגונגען',
   // footer, status lines, common server messages
-  'Trading involves risk of loss. Backtests and projections are hypothetical and do not guarantee future results. QuantPocket is software, not a broker or investment adviser; orders route to your own Alpaca account.': 'טרעידינג טראגט מיט זיך א ריזיקע פון פארלוסט. באקטעסטס און פראיעקציעס זענען היפאטעטיש און זענען נישט קיין גאראנטיע פאר די צוקונפט. QuantPocket איז א סאפטוועיר, נישט קיין בראוקער אדער אינוועסטמענט אדווייזער; ארדערס גייען צו אייער אייגענע בראוקער קאנטע.',
+  'Trading involves risk of loss. Backtests and projections are hypothetical and do not guarantee future results. Brightfolio is software, not a broker or investment adviser; orders route to your own Alpaca account.': 'טרעידינג טראגט מיט זיך א ריזיקע פון פארלוסט. באקטעסטס און פראיעקציעס זענען היפאטעטיש און זענען נישט קיין גאראנטיע פאר די צוקונפט. Brightfolio איז א סאפטוועיר, נישט קיין בראוקער אדער אינוועסטמענט אדווייזער; ארדערס גייען צו אייער אייגענע בראוקער קאנטע.',
   'Text or call from your verified phone.': 'שיקט א טעקסט אדער רופט פון אייער באשטעטיגטן טעלעפאן.',
   'The AI assistant understands plain language: "how am I doing this month?", "put $200 into the S&P every week", "what does RSI mean?". Trades always need your PIN.': 'דער AI אסיסטענט פארשטייט פשוט\'ע שפראך: "וויאזוי שטיי איך דעם חודש?", "לייג אריין $200 אין S&P יעדע וואך", "וואס מיינט RSI?". טרעידס דארפן אלעמאל אייער PIN.',
   'Phone:': 'טעלעפאן:', 'PIN:': 'PIN:', 'not set': 'נישט איינגעשטעלט', 'set': 'איינגעשטעלט', 'verified': 'באשטעטיגט', 'change in Settings': 'טוישט אין סעטינגס',
@@ -214,7 +214,7 @@ export const strings = {
   'First name': 'ערשטער נאמען', 'Middle name': 'מיטלסטער נאמען', 'Last name': 'פאמיליע נאמען', 'Date of birth': 'געבורטס טאג', 'Social Security number': 'סאשעל סעקיוריטי נומער',
   'Country of citizenship': 'בירגערשאפט לאנד', 'Country of birth': 'געבורטס לאנד', 'Tax residence': 'שטייער וואוינארט', 'Main source of funds': 'הויפט מקור פון געלט',
   'Employment income': 'פארדינסט פון ארבעט', 'Investments': 'אינוועסטמענטס', 'Inheritance': 'ירושה', 'Business income': 'ביזנעס איינקונפט', 'Savings': 'סעיווינגס', 'Family': 'פאמיליע',
-  'Required by law to verify your identity (KYC). Your SSN goes to Alpaca over an encrypted connection and is not stored by QuantPocket.': 'דאס געזעץ פארלאנגט צו באשטעטיגן אייער אידענטיטעט (KYC). אייער SSN גייט צו Alpaca איבער א פארשלאסענע פארבינדונג און ווערט נישט אפגעהיט ביי QuantPocket.',
+  'Required by law to verify your identity (KYC). Your SSN goes to Alpaca over an encrypted connection and is not stored by Brightfolio.': 'דאס געזעץ פארלאנגט צו באשטעטיגן אייער אידענטיטעט (KYC). אייער SSN גייט צו Alpaca איבער א פארשלאסענע פארבינדונג און ווערט נישט אפגעהיט ביי Brightfolio.',
   'Are you a 10% shareholder, director or officer of a public company? (control person)': 'זענט איר א 10% שעיר-האלטער, דירעקטאר אדער אפיציר פון א פובליק פירמע? (קאנטראל פערזאן)',
   'Are you affiliated with a stock exchange or FINRA?': 'זענט איר פארבינדן מיט א סטאק בערזע אדער FINRA?',
   'Are you a senior political figure (politically exposed person)?': 'זענט איר א הויכע פאליטישע פיגור (פאליטיש אויסגעשטעלטע פערזאן)?',
@@ -242,8 +242,8 @@ export const strings = {
   'Upload documents': 'לייגט ארויף דאקומענטן', 'Upload': 'ארויפלייגן', 'A clear photo or scan of a government ID. JPG, PNG or PDF, up to 5 MB each.': 'א קלארער בילד אדער סקען פון א רעגירונג ID. JPG, PNG אדער PDF, ביז 5 MB יעדעס.',
   'Account details': 'קאנטע פרטים', 'Account number': 'קאנטע נומער', 'Crypto': 'קריפטא', 'Enabled assets': 'ערלויבטע אסעטס', 'Opened': 'געעפנט', 'Application history': 'אפליקאציע היסטאריע',
   'No updates yet': 'נאך קיין נייעס', 'Alpaca event': 'Alpaca געשעעניש', 'Application sent': 'אפליקאציע געשיקט', 'Status check': 'סטאטוס טשעק', 'Update contact details': 'דערהייַנטיקט קאנטאקט פרטים', 'Save changes': 'היט אפ די ענדערונגען',
-  '1. Create your QuantPocket login': '1. שאפט אייער QuantPocket לאגין', 'Continue to application': 'גייט ווייטער צו די אפליקאציע', 'Already have a login?': 'האט איר שוין א לאגין?',
-  'Commission-free US stocks and ETFs, plus options and crypto, at Alpaca Securities LLC (member FINRA/SIPC). Apply in about 3 minutes, all from QuantPocket.': 'אמעריקאנער סטאקס און ETFs אן קאמישאן, פלוס אפשאנס און קריפטא, ביי Alpaca Securities LLC (מיטגליד FINRA/SIPC). אפליקירט אין בערך 3 מינוט, אלעס פון QuantPocket.',
+  '1. Create your Brightfolio login': '1. שאפט אייער Brightfolio לאגין', 'Continue to application': 'גייט ווייטער צו די אפליקאציע', 'Already have a login?': 'האט איר שוין א לאגין?',
+  'Commission-free US stocks and ETFs, plus options and crypto, at Alpaca Securities LLC (member FINRA/SIPC). Apply in about 3 minutes, all from Brightfolio.': 'אמעריקאנער סטאקס און ETFs אן קאמישאן, פלוס אפשאנס און קריפטא, ביי Alpaca Securities LLC (מיטגליד FINRA/SIPC). אפליקירט אין בערך 3 מינוט, אלעס פון Brightfolio.',
   'Choose a file to upload': 'קלייבט א פייל ארויפצולייגן', ', then open Account → Alpaca account.': ', און דערנאך עפנט קאנטע ← Alpaca קאנטע.',
   // round 3: everything the Yiddish page scan still found in English
   'Get started': 'הייבט אן', 'Hide': 'באהאלטן', 'Try a ready-made strategy': 'פרובירט א פארטיגע סטראטעגיע', 'Turn on two-factor login': 'צינדט אן צוויי-שריט לאגין',
@@ -255,7 +255,7 @@ export const strings = {
   'Set up brokerage': 'שטעלט איין א בראוקער', 'Could not reach Alpaca. Please try again.': 'מען קען נישט דערגרייכן Alpaca. פרובירט נאכאמאל.', 'Filter: AAPL, TSLA, BTCUSD': 'פילטער: AAPL, TSLA, BTCUSD',
   'Nothing connected yet. Choose one of the options below.': 'נאך גארנישט פארבינדן. קלייבט איינס פון די אפציעס אונטן.', 'OAuth is not configured on this server yet.': 'OAuth איז נאך נישט איינגעשטעלט אויף דעם סערווער.',
   'From the Alpaca dashboard → API keys. Stored encrypted.': 'פון דעם Alpaca דעשבאָרד ← API keys. ווערט אפגעהיט פארשלאסן.',
-  'Open a new brokerage account inside QuantPocket, sign in with Alpaca, or use API keys. Stocks, ETFs, options and crypto, with fractional shares.': 'עפנט א נייע בראוקער קאנטע אינעווייניג אין QuantPocket, לאגירט זיך איין מיט Alpaca, אדער ניצט API שליסלען. סטאקס, ETFs, אפשאנס און קריפטא, מיט שטיקלעך שערס.',
+  'Open a new brokerage account inside Brightfolio, sign in with Alpaca, or use API keys. Stocks, ETFs, options and crypto, with fractional shares.': 'עפנט א נייע בראוקער קאנטע אינעווייניג אין Brightfolio, לאגירט זיך איין מיט Alpaca, אדער ניצט API שליסלען. סטאקס, ETFs, אפשאנס און קריפטא, מיט שטיקלעך שערס.',
   'Stocks, ETFs and options. Create a token at dash.tradier.com → API Access (use a sandbox token to test).': 'סטאקס, ETFs און אפשאנס. מאכט א טאקען ביי dash.tradier.com ← API Access (ניצט א סענדבאקס טאקען צו פרובירן).',
   'API access token': 'API צוטריט טאקען', 'Sandbox (paper) account': 'סענדבאקס (פּעיפּער) קאנטע', 'Sandbox (cert) environment': 'סענדבאקס (cert) סביבה',
   'Stocks, ETFs and options. At my.tastytrade.com → Manage → My Profile → API, create an OAuth application and a personal grant, then paste its client secret and refresh token.': 'סטאקס, ETFs און אפשאנס. ביי my.tastytrade.com ← Manage ← My Profile ← API, מאכט אן OAuth אפליקאציע און א פערזענליכע ערלויבעניש, און דערנאך קלעבט אריין איר client secret און refresh token.',

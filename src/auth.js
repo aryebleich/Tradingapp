@@ -139,7 +139,7 @@ router.post('/register', async (req, res) => {
   const id = await createUser({ email, password, ref: req.body.ref });
   await audit(id, 'register', null, req.ip);
   // No confirmation step: the account works at once. A welcome email points to the first steps.
-  sendEmail(email, 'Welcome to QuantPocket', `Your account is ready, with a $100,000 paper account to practice.\n\nGet started: ${appUrl(req)}/app#/dashboard\n\nIf you did not sign up, reply to this email and we will remove the account.`).catch(e => console.warn('welcome email', e.message));
+  sendEmail(email, 'Welcome to Brightfolio', `Your account is ready, with a $100,000 paper account to practice.\n\nGet started: ${appUrl(req)}/app#/dashboard\n\nIf you did not sign up, reply to this email and we will remove the account.`).catch(e => console.warn('welcome email', e.message));
   await createSession(res, req, id, false);
   res.json({ user: publicUser(await one('SELECT * FROM users WHERE id = ?', id)) });
 });
@@ -205,7 +205,7 @@ router.post('/phone/start', async (req, res) => {
   if (u) {
     const code = String(crypto.randomInt(100000, 1000000));
     phoneCodes.set(phone, { userId: u.id, hash: sha256(code), exp: now() + 10 * 60e3, tries: 0 });
-    const sent = await sendSms(phone, `QuantPocket sign-in code: ${code}`).catch(e => { console.warn('sms', e.message); return {}; });
+    const sent = await sendSms(phone, `Brightfolio sign-in code: ${code}`).catch(e => { console.warn('sms', e.message); return {}; });
     if (sent.simulated && process.env.NODE_ENV !== 'production') devCode = code;
   }
   res.json({ ok: true, devCode });
@@ -240,7 +240,7 @@ router.get('/me', async (req, res) => res.json({ user: publicUser(req.user) || n
 router.post('/totp/setup', requireUser, async (req, res) => {
   const secret = newTotpSecret();
   await run('UPDATE users SET totp_secret = ?, totp_enabled = 0 WHERE id = ?', secret, req.user.id);
-  const uri = `otpauth://totp/QuantPocket:${encodeURIComponent(req.user.email)}?secret=${secret}&issuer=QuantPocket`;
+  const uri = `otpauth://totp/Brightfolio:${encodeURIComponent(req.user.email)}?secret=${secret}&issuer=Brightfolio`;
   res.json({ secret, uri });
 });
 router.post('/totp/enable', requireUser, async (req, res) => {
@@ -293,8 +293,8 @@ export async function userByEmail(email) {
 async function sendVerification(userId, email) {
   const token = randomToken();
   await run('UPDATE users SET verify_hash = ? WHERE id = ?', sha256(token), userId);
-  return sendEmail(email, 'Confirm your QuantPocket email',
-    `Welcome to QuantPocket.\n\nConfirm your email address:\n${appUrl()}/app#/verify?token=${token}\n\nIf you did not sign up, ignore this message.`);
+  return sendEmail(email, 'Confirm your Brightfolio email',
+    `Welcome to Brightfolio.\n\nConfirm your email address:\n${appUrl()}/app#/verify?token=${token}\n\nIf you did not sign up, ignore this message.`);
 }
 
 router.post('/verify/resend', requireUser, async (req, res) => {
@@ -324,7 +324,7 @@ router.post('/forgot', async (req, res) => {
     if (u && rateLimit('forgotsms:' + phone, 3, 3600e3)) {
       const code = String(crypto.randomInt(100000, 1000000));
       await run('UPDATE users SET reset_hash = ?, reset_expires = ? WHERE id = ?', sha256('sms:' + code), now() + 15 * 60e3, u.id);
-      const sent = await sendSms(phone, `QuantPocket password reset code: ${code} (valid 15 minutes)`).catch(e => { console.warn('reset sms', e.message); return {}; });
+      const sent = await sendSms(phone, `Brightfolio password reset code: ${code} (valid 15 minutes)`).catch(e => { console.warn('reset sms', e.message); return {}; });
       if (sent.simulated && process.env.NODE_ENV !== 'production') devCode = code;
       await audit(u.id, 'password_reset_requested', { by: 'sms' }, req.ip);
     }
@@ -336,7 +336,7 @@ router.post('/forgot', async (req, res) => {
   if (u) {
     const token = randomToken();
     await run('UPDATE users SET reset_hash = ?, reset_expires = ? WHERE id = ?', sha256(token), now() + 3600e3, u.id);
-    await sendEmail(u.email, 'Reset your QuantPocket password',
+    await sendEmail(u.email, 'Reset your Brightfolio password',
       `Someone asked to reset your password.\n\nChoose a new one (link valid for 1 hour):\n${appUrl(req)}/app#/reset?token=${token}\n\nIf this was not you, ignore this message.`)
       .catch(e => { console.warn('reset email', e.message); noteEmailError(e.message); });
     await audit(u.id, 'password_reset_requested', null, req.ip);
@@ -377,7 +377,7 @@ router.get('/export', requireUser, async (req, res) => {
     ledger: await t('SELECT * FROM ledger WHERE user_id = ?'),
     securityLog: await t('SELECT event, ip, at FROM audit_log WHERE user_id = ?'),
   };
-  res.attachment('quantpocket-export.json').json(data);
+  res.attachment('brightfolio-export.json').json(data);
 });
 router.post('/delete', requireUser, async (req, res) => {
   if (!confirmsIdentity(req.user, req.body)) return res.status(401).json({ error: req.user.password_set === 0 ? 'Type your email address to confirm' : 'Wrong password' });

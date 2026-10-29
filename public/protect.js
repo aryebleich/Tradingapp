@@ -165,7 +165,7 @@ async function allAccounts(view) {
     <button>Add account</button><div class="err"></div></form>`;
   const f = H.$('#addAcc', view);
   H.act(H.$('button', f), async () => { const r = await H.api('/alpaca/accounts', { body: H.form(f) }); later(800); return `Added ${r.accountNumber || r.id}`; });
-  H.$$('[data-rm]', view).forEach(b => (b.onclick = async () => { if (!confirm('Remove this account from QuantPocket? Nothing changes at Alpaca.')) return; try { await H.api('/alpaca/accounts/' + encodeURIComponent(b.dataset.rm), { method: 'DELETE' }); H.render(); } catch (e) { H.$('#accErr', view).textContent = e.message; } }));
+  H.$$('[data-rm]', view).forEach(b => (b.onclick = async () => { if (!confirm('Remove this account from Brightfolio? Nothing changes at Alpaca.')) return; try { await H.api('/alpaca/accounts/' + encodeURIComponent(b.dataset.rm), { method: 'DELETE' }); H.render(); } catch (e) { H.$('#accErr', view).textContent = e.message; } }));
   H.$$('[data-open]', view).forEach(b => (b.onclick = () => { H.state.account = b.dataset.open; try { localStorage.setItem('qp_account', b.dataset.open); } catch {} location.hash = '#/dashboard'; }));
 }
 

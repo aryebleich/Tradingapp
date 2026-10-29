@@ -4,9 +4,9 @@ import assert from 'node:assert/strict';
 import { protect, restore, buildBatch, parseBatch, translateAll } from '../scripts/yiddish-labs-lib.mjs';
 
 test('protects HTML, entities, brands and tickers', () => {
-  const p = protect('<b>Auto-throttle:</b> buy TQQQ on Alpaca &amp; QuantPocket, see quantconnect.com');
+  const p = protect('<b>Auto-throttle:</b> buy TQQQ on Alpaca &amp; Brightfolio, see quantconnect.com');
   assert.equal(p.text, '⟦0⟧Auto-throttle:⟦1⟧ buy ⟦2⟧ on ⟦3⟧ ⟦4⟧ ⟦5⟧, see ⟦6⟧');
-  assert.equal(restore('⟦0⟧אויטא:⟦1⟧ קויפט ⟦2⟧ אויף ⟦3⟧ ⟦4⟧ ⟦5⟧, זעט ⟦6⟧', p.saved), '<b>אויטא:</b> קויפט TQQQ אויף Alpaca &amp; QuantPocket, זעט quantconnect.com');
+  assert.equal(restore('⟦0⟧אויטא:⟦1⟧ קויפט ⟦2⟧ אויף ⟦3⟧ ⟦4⟧ ⟦5⟧, זעט ⟦6⟧', p.saved), '<b>אויטא:</b> קויפט TQQQ אויף Alpaca &amp; Brightfolio, זעט quantconnect.com');
   assert.equal(restore('⟦0⟧ only one', p.saved), null); // placeholders lost
 });
 

@@ -26,7 +26,7 @@ async function business(view) {
       <label class="check"><input type="checkbox" name="registered"> The business is registered as an investment adviser, and performance fees go only to qualified clients (SEC Rule 205-3).</label>
     </div>
     <button id="saveMode">Save mode</button><div class="err"></div>
-    <p class="mu small-print">Software only is the safe default: QuantPocket is a tool, like charting or backtesting software. Keep the wording that way too: no "we will manage your money" and no personal recommendations.</p></div>
+    <p class="mu small-print">Software only is the safe default: Brightfolio is a tool, like charting or backtesting software. Keep the wording that way too: no "we will manage your money" and no personal recommendations.</p></div>
 
   <div class="card"><h2>Upgrade to a registered investment adviser</h2><p class="mu">${doneSteps} of ${ria.steps.length} steps done. Tick each one off as you finish it; switch the mode above when the registration is approved.</p>
     <div class="ob-bar"><i style="width:${Math.round(doneSteps / ria.steps.length * 100)}%"></i></div>
@@ -50,7 +50,7 @@ async function business(view) {
     <h3>Partner commission (Alpaca Broker API)</h3>
     <div class="row"><label>Type<select name="commissionType">${[['bps', 'Basis points of the order value'], ['notional', 'Dollars per order'], ['qty', 'Dollars per share']].map(([k, t]) => `<option value="${k}" ${m.commissionType === k ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
       <label>Amount<input name="commissionValue" type="number" step="0.01" min="0" value="${m.commissionValue}"></label></div>
-    <p class="mu small-print">Added to orders in brokerage accounts opened through QuantPocket (Broker API); Alpaca collects it and pays it to you as the partner. 0 = off. Commission-free trading sells better, so keep it small (for example 5 bps), and check with Alpaca and a lawyer first: a per-trade fee can raise broker-dealer questions. Cash-interest and other revenue sharing is set in your contract with Alpaca.</p>
+    <p class="mu small-print">Added to orders in brokerage accounts opened through Brightfolio (Broker API); Alpaca collects it and pays it to you as the partner. 0 = off. Commission-free trading sells better, so keep it small (for example 5 bps), and check with Alpaca and a lawyer first: a per-trade fee can raise broker-dealer questions. Cash-interest and other revenue sharing is set in your contract with Alpaca.</p>
     <button>Save money levers</button><div class="err"></div></form>
 
   <div class="card tablewrap"><h2>Top referrers</h2><table><tr><th>User</th><th>Invited</th><th>Paying</th></tr>${money.leaders.map(l => `<tr><td data-no-tr>${H.esc(l.email)}</td><td>${l.invited}</td><td>${l.paying}</td></tr>`).join('') || '<tr><td colspan="3" class="mu">No referrals yet</td></tr>'}</table>
@@ -75,7 +75,7 @@ async function business(view) {
       <li>Push the yearly plan: it is paid up front and cancels less.</li>
       <li>Use Admin → Overview: fix the funnel step with the biggest drop first (usually "Connected a brokerage").</li>
       <li>Offer Elite and Ultimate to users who hit their limits; the upgrade prompt opens on every limit.</li>
-      <li>Open brokerage accounts for customers inside QuantPocket (Broker API): each one can earn partner commission and the revenue share in your Alpaca contract.</li>
+      <li>Open brokerage accounts for customers inside Brightfolio (Broker API): each one can earn partner commission and the revenue share in your Alpaca contract.</li>
     </ul></div>`;
   const box = H.$('#advBox', view);
   H.$$('[name=mode]', view).forEach(r => (r.onchange = () => { box.hidden = r.value !== 'adviser' || !r.checked; }));
@@ -166,9 +166,9 @@ async function keys(view) {
   H.act(H.$('#exp button', view), async () => {
     const r = await fetch('/api/admin/site/env/export', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify(H.form(H.$('#exp', view))) });
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Export failed');
-    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(await r.blob()), download: 'quantpocket.env' });
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(await r.blob()), download: 'brightfolio.env' });
     document.body.append(a); a.click(); a.remove(); H.$('#exp', view).reset();
-    return 'Downloaded quantpocket.env';
+    return 'Downloaded brightfolio.env';
   });
   if (d.render.enabled) {
     H.act(H.$('#pull', view), async () => { const r = await H.api('/admin/site/env/render/pull', { body: {} }); setTimeout(H.render, 1500); return `Loaded ${r.keys.length} values from Render.`; });
@@ -249,7 +249,7 @@ Trade
 async function aiPrivacy(view) {
   const d = await H.api('/admin/site/ai'), s = d.settings;
   view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-ai')}
-  <div class="card"><h2>Where AI tools get information about QuantPocket</h2>
+  <div class="card"><h2>Where AI tools get information about Brightfolio</h2>
     <ul class="tips">
       <li><b>The public website</b> (homepage, Terms, Privacy, Risk): AI crawlers such as Google's for Gemini read public pages. Block or allow each one below; the setting is published as <a href="/robots.txt" target="_blank" rel="noopener">robots.txt</a> and as a "no AI" header on every page.</li>
       <li><b>The code on GitHub</b>: <code data-no-tr>${H.esc(d.repo)}</code> is ${d.repoPublic === true ? '<b class="neg">public</b>: anyone, AI crawlers included, can read the code, the README and its history. Make it private in GitHub → Settings → General → Danger zone → Change visibility (GitHub Pages for a private repository needs a paid GitHub plan).' : d.repoPublic === false ? '<b class="pos">private</b>.' : 'public or private (add GITHUB_TOKEN in Keys to check here). If it is public, anyone can read the code, the README and its history.'}</li>
@@ -290,14 +290,14 @@ async function privateReadme(view, q) {
   view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-readme')}
   <div class="card"><div class="row" style="justify-content:space-between;align-items:center"><h2>Private README</h2>
     <div class="seg" id="rmTab"><button type="button" data-t="edit" class="on">Edit</button><button type="button" data-t="view">Preview</button></div></div>
-    <p class="mu" style="margin-top:0">Only admins see this. The public README on GitHub says only what QuantPocket is and that the site is being built. Saved ${when(d.updatedAt)} · published ${when(d.publishedAt)}.</p>
+    <p class="mu" style="margin-top:0">Only admins see this. The public README on GitHub says only what Brightfolio is and that the site is being built. Saved ${when(d.updatedAt)} · published ${when(d.publishedAt)}.</p>
     ${text ? '' : `<p class="banner">Nothing saved yet. <button type="button" class="small" id="rmImport">Load the full guide</button> brings in the last full README (commit <code data-no-tr>${H.esc(d.fullRef.slice(0, 7))}</code>).</p>`}
     <textarea id="rmText" rows="28" spellcheck="false" data-no-tr style="width:100%;font:13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace">${H.esc(text)}</textarea>
     <div id="rmView" class="readme" hidden data-no-tr></div>
-    <div class="row" style="margin-top:10px"><button id="rmSave">Save</button> <button type="button" class="ghost" id="rmDown">Download .md</button> <a href="/api/admin/site/readme/pdf"><button type="button" class="ghost">Download PDF</button></a></div><div class="err"></div></div>
+    <div class="row" style="margin-top:10px"><button id="rmSave">Save</button> <button type="button" class="ghost" id="rmDown">Download PDF</button></div><div class="err"></div></div>
   <div class="card" id="rmDrive"><h2>Google Drive</h2>
     ${dq ? `<p class="${dq === 'connected' ? 'banner' : 'banner err'}">${dq === 'connected' ? 'Google Drive is connected.' : H.esc(dq)}</p>` : ''}
-    <p class="mu" style="margin-top:0">Saves the private README to your Google Drive as a PDF with page numbers at the bottom of every page. Later saves update the same file (Drive keeps the earlier versions). QuantPocket can only see the files it saved itself.</p>
+    <p class="mu" style="margin-top:0">Saves the private README to your Google Drive as a PDF with page numbers at the bottom of every page. Later saves update the same file (Drive keeps the earlier versions). Brightfolio can only see the files it saved itself.</p>
     ${!dr?.ready ? '<p class="banner">Set <code>GOOGLE_CLIENT_ID</code> and <code>GOOGLE_CLIENT_SECRET</code> in <a href="#/admin-keys">Keys</a> (the same Google app as "Sign in with Google").</p>'
       : dr.connected ? `<div class="row"><button type="button" id="rmDriveSave">Save to Drive</button>${dr.link ? ` <a href="${H.esc(dr.link)}" target="_blank" rel="noopener"><button type="button" class="ghost">Open in Drive ↗</button></a>` : ''} <button type="button" class="ghost small" id="rmDriveOff">Disconnect</button></div>
         <p class="mu small-print">${dr.savedAt ? 'Last saved ' + new Date(dr.savedAt).toLocaleString() + '.' : 'Not saved yet.'}</p>`
@@ -313,7 +313,13 @@ async function privateReadme(view, q) {
     ta.hidden = tab !== 'edit'; pv.hidden = tab !== 'view'; if (tab === 'view') pv.innerHTML = md(ta.value);
   }));
   H.act(H.$('#rmSave', view), async () => { await H.api('/admin/site/readme', { method: 'PUT', body: { text: ta.value } }); return 'Saved'; });
-  H.$('#rmDown', view).onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([ta.value], { type: 'text/markdown' })); a.download = 'README.md'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
+  // A PDF of the text in the editor (saved or not), with page numbers at the bottom.
+  H.$('#rmDown', view).onclick = async e => {
+    const err = H.$('.err', e.target.closest('.card')); err.textContent = '';
+    const r = await fetch('/api/admin/site/readme/pdf', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ text: ta.value }) });
+    if (!r.ok) { err.textContent = (await r.json().catch(() => ({}))).error || 'Could not make the PDF'; return; }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(await r.blob()); a.download = 'Brightfolio private README.pdf'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
   if (H.$('#rmImport', view)) H.act(H.$('#rmImport', view), async () => { const r = await H.api('/admin/site/readme/import', { body: {} }); ta.value = r.text; return 'Loaded and saved'; });
   if (H.$('#rmDriveSave', view)) H.act(H.$('#rmDriveSave', view), async () => {
     await H.api('/admin/site/readme', { method: 'PUT', body: { text: ta.value } });

@@ -269,7 +269,7 @@ ZIP code
 Mobile phone
 Employer
 Takes about 3 minutes. Accounts are held by Alpaca Securities LLC, member FINRA/SIPC.
-Required by law to verify your identity (KYC). Your SSN is sent securely to Alpaca and is not stored by QuantPocket.
+Required by law to verify your identity (KYC). Your SSN is sent securely to Alpaca and is not stored by Brightfolio.
 Sign in at Alpaca and approve access. We never see your Alpaca password.
 My strategies
 Library
@@ -499,7 +499,7 @@ User id
 API token
 Text & Hotline
 Manage your account by SMS or phone
-QuantPocket's number
+Brightfolio's number
 Text us
 Call
 Try it here
@@ -561,7 +561,7 @@ Day-trade buying power check
 Pattern day trader check
 Max margin
 Trade confirmations
-Trading involves risk of loss. Backtests and projections are hypothetical and do not guarantee future results. QuantPocket is software, not a broker or investment adviser; orders route to your own Alpaca account.
+Trading involves risk of loss. Backtests and projections are hypothetical and do not guarantee future results. Brightfolio is software, not a broker or investment adviser; orders route to your own Alpaca account.
 Text or call from your verified phone.
 The AI assistant understands plain language: "how am I doing this month?", "put $200 into the S&P every week", "what does RSI mean?". Trades always need your PIN.
 Phone:
@@ -602,7 +602,7 @@ Inheritance
 Business income
 Savings
 Family
-Required by law to verify your identity (KYC). Your SSN goes to Alpaca over an encrypted connection and is not stored by QuantPocket.
+Required by law to verify your identity (KYC). Your SSN goes to Alpaca over an encrypted connection and is not stored by Brightfolio.
 Are you a 10% shareholder, director or officer of a public company? (control person)
 Are you affiliated with a stock exchange or FINRA?
 Are you a senior political figure (politically exposed person)?
@@ -667,10 +667,10 @@ Alpaca event
 Application sent
 Status check
 Update contact details
-1. Create your QuantPocket login
+1. Create your Brightfolio login
 Continue to application
 Already have a login?
-Commission-free US stocks and ETFs, plus options and crypto, at Alpaca Securities LLC (member FINRA/SIPC). Apply in about 3 minutes, all from QuantPocket.
+Commission-free US stocks and ETFs, plus options and crypto, at Alpaca Securities LLC (member FINRA/SIPC). Apply in about 3 minutes, all from Brightfolio.
 Choose a file to upload
 , then open Account → Alpaca account.
 Get started
@@ -694,7 +694,7 @@ Filter: AAPL, TSLA, BTCUSD
 Nothing connected yet. Choose one of the options below.
 OAuth is not configured on this server yet.
 From the Alpaca dashboard → API keys. Stored encrypted.
-Open a new brokerage account inside QuantPocket, sign in with Alpaca, or use API keys. Stocks, ETFs, options and crypto, with fractional shares.
+Open a new brokerage account inside Brightfolio, sign in with Alpaca, or use API keys. Stocks, ETFs, options and crypto, with fractional shares.
 Stocks, ETFs and options. Create a token at dash.tradier.com → API Access (use a sandbox token to test).
 API access token
 Sandbox (paper) account
@@ -880,8 +880,8 @@ Advanced
 Alerts from
 All rights reserved.
 All your accounts, side by side.
-Alpaca (you can also open a new account inside QuantPocket), Charles Schwab, tastytrade, Tradier and TradeStation. Your money always stays at your broker.
-Alpaca, Charles Schwab, tastytrade, Tradier and TradeStation. Open a new account inside QuantPocket, or connect the one you already have.
+Alpaca (you can also open a new account inside Brightfolio), Charles Schwab, tastytrade, Tradier and TradeStation. Your money always stays at your broker.
+Alpaca, Charles Schwab, tastytrade, Tradier and TradeStation. Open a new account inside Brightfolio, or connect the one you already have.
 Alpaca, Schwab, tastytrade, Tradier and TradeStation, side by side.
 An all-in-one trading automation platform
 An equity curve that shows how you are doing
@@ -910,10 +910,10 @@ Can I set a swing trade and walk away?
 Can I sign up with Google?
 Can I trigger trades from Zapier or TrendSpider?
 Can I turn my TradingView alerts into trades?
-Can I use QuantPocket in Yiddish?
+Can I use Brightfolio in Yiddish?
 Can my AI agent place real trades?
 Can my strategy run fully hands-off?
-Choose an amount and a day. QuantPocket buys an S&amp;P 500 fund for you every month, so every dollar is invested, and shows the range of outcomes first.
+Choose an amount and a day. Brightfolio buys an S&amp;P 500 fund for you every month, so every dollar is invested, and shows the range of outcomes first.
 Code-first trading
 Cointegration, z-scores, half-life, walk-forward backtests and pair bots.
 Commands only work from the phone number you verified, every order needs your personal PIN, and phone calls read the order back before it is placed.
@@ -978,7 +978,7 @@ Illustration with example values.
 Illustrative paper-trading account
 Invest in the S&amp;P 500
 Invest on a schedule
-Investing involves risk, including possible loss of principal. Backtests and projections are hypothetical, are built with the benefit of hindsight and do not guarantee future results. QuantPocket is a software provider and is not a broker-dealer. Brokerage services are provided by your own broker (for example Alpaca Securities LLC, member FINRA/SIPC) under your own account agreement. Nothing on this site is an offer, solicitation or recommendation to buy or sell any security.
+Investing involves risk, including possible loss of principal. Backtests and projections are hypothetical, are built with the benefit of hindsight and do not guarantee future results. Brightfolio is a software provider and is not a broker-dealer. Brokerage services are provided by your own broker (for example Alpaca Securities LLC, member FINRA/SIPC) under your own account agreement. Nothing on this site is an offer, solicitation or recommendation to buy or sell any security.
 Investment plan
 Is texting trades secure?
 JSON, or plain text like <code>buy AAPL 10</code>
@@ -1001,14 +1001,14 @@ Maximum position size and trades per day
 Monthly
 Monthly index-fund buys with projections from real history.
 Monthly or weekly automatic buys
-Most platforms show you a beautiful backtest and stop there. But many strategies with spectacular backtests lose money once they go live. QuantPocket compares every strategy&rsquo;s live results with its backtest, every single day.
+Most platforms show you a beautiful backtest and stop there. But many strategies with spectacular backtests lose money once they go live. Brightfolio compares every strategy&rsquo;s live results with its backtest, every single day.
 Most popular
 New
 Next profile
 No card needed
-Nobody can promise that. Most active strategies underperform simply holding an index after costs. QuantPocket shows how an idea behaved in the past, how it is doing live, and the range of outcomes to expect, so you can decide with your eyes open.
+Nobody can promise that. Most active strategies underperform simply holding an index after costs. Brightfolio shows how an idea behaved in the past, how it is doing live, and the range of outcomes to expect, so you can decide with your eyes open.
 One log across accounts
-One number for everyone. Text or call QuantPocket and say what you need in plain words. The AI assistant answers questions and turns requests into orders.
+One number for everyone. Text or call Brightfolio and say what you need in plain words. The AI assistant answers questions and turns requests into orders.
 One number to text or call
 One signal, many accounts.
 One stock: the strongest 12-month momentum
@@ -1023,7 +1023,7 @@ Paper account for testing
 Paper trading
 Paper trading that works like the real thing
 Paper: equity $103,240, up $1,180 (+1.2%) since Monday.
-Paste a private webhook URL into a TradingView, TrendSpider or Zapier alert. When it fires, QuantPocket checks your risk rules and places the order in seconds.
+Paste a private webhook URL into a TradingView, TrendSpider or Zapier alert. When it fires, Brightfolio checks your risk rules and places the order in seconds.
 Payments by
 Pick a ready-made strategy, or define entries and exits, sizing and risk limits. Use a TradingView alert or our JSON templates.
 Pick a rotation strategy from the library. Every day the app fills in the numbers, walks the rules step by step and tells you exactly what to buy. Run it by hand or let it trade by itself.
@@ -1045,8 +1045,8 @@ Pro
 Product
 Projections from real market history
 QuantConnect LEAN projects and cloud backtests
-QuantPocket portfolio dashboard with equity chart, positions and order ticket
-QuantPocket: automate your trading from one place
+Brightfolio portfolio dashboard with equity chart, positions and order ticket
+Brightfolio: automate your trading from one place
 Quants &amp; developers
 Question topics
 Ready-made strategies, TradingView alerts, pairs trading and an S&P 500 autopilot on your own brokerage account, with Reality Check watching every strategy. In English and Yiddish.
@@ -1079,7 +1079,7 @@ Set my risk rules
 Set up in 3 minutes
 Set up your strategy. Send a signal. Orders go to every account you chose, inside your rules.
 Seven ready-made rotation strategies, by hand or automatic, every rule editable.
-Seven rotation strategies, built from a real trading spreadsheet. Every day QuantPocket fills in the market numbers, walks the rules step by step and tells you exactly what to buy.
+Seven rotation strategies, built from a real trading spreadsheet. Every day Brightfolio fills in the market numbers, walks the rules step by step and tells you exactly what to buy.
 Seven strategies, ready to run.
 Several brokers at once
 Sign in
@@ -1112,10 +1112,10 @@ Terms of Service
 Test everything with $100,000 in paper money before risking real money.
 Text PAUSE to stop all automation
 Text PAUSE to stop all automation at once
-Text or call QuantPocket and say what you need in plain words. The AI assistant answers questions and turns requests into orders; every trade needs your PIN.
+Text or call Brightfolio and say what you need in plain words. The AI assistant answers questions and turns requests into orders; every trade needs your PIN.
 Text or call one number; ask questions or trade in plain words.
 Text or call us:
-The 500 largest US companies in one fund. Pick an amount and a day: QuantPocket buys it for you every month, in dollars, so every dollar is invested.
+The 500 largest US companies in one fund. Pick an amount and a day: Brightfolio buys it for you every month, in dollars, so every dollar is invested.
 The S&amp;P 500 has averaged roughly 10% a year since 1957 with dividends reinvested, but some years fell more than 35%. Examples, not a promise.
 The S&amp;P 500, on autopilot.
 The whole app and this site in English or Yiddish, right-to-left.
@@ -1146,17 +1146,17 @@ What could it grow to?
 What do you want to do?
 What is Reality Check?
 What you get
-Whatever your style, QuantPocket automates the parts you don&rsquo;t want to do by hand. Pick the profile that fits you best.
+Whatever your style, Brightfolio automates the parts you don&rsquo;t want to do by hand. Pick the profile that fits you best.
 When two stocks drift apart, trade the gap.
 Where do the ready-made strategies come from?
 Which brokerages can I connect?
-Who is QuantPocket for?
+Who is Brightfolio for?
 Will I make money?
 Works on any phone, no app to install
 Yearly
 Years
 Years of daily data, costs, drawdowns, walk-forward checks and an optimizer.
-Yes. Both can call a webhook URL. Use your QuantPocket webhook URL with the fields <code>ticker</code>, <code>action</code> and <code>quantity</code>.
+Yes. Both can call a webhook URL. Use your Brightfolio webhook URL with the fields <code>ticker</code>, <code>action</code> and <code>quantity</code>.
 Yes. Cancel from <b>Manage billing</b> in the app; you keep access until the end of the period you paid for. You can also export or delete all your data from Settings.
 Yes. Choose <b>Sign up with Google</b> and your account is ready in seconds. You can add a password later in Settings.
 Yes. Choose ייִדיש at the top of this page or in the app. The whole app switches to Yiddish, written right-to-left.
@@ -1165,7 +1165,7 @@ Yes. Place a bracket order (entry, stop-loss and take-profit) as good-till-cance
 Yes. Webhooks can send each alert to several accounts at once (paper, Alpaca, Schwab, tastytrade, Tradier, TradeStation), with the same risk rules.
 You put in
 You&rsquo;re 3 minutes away from your first trade.
-Your Pine Script strategy already knows when to buy and sell. QuantPocket places those orders for you.
+Your Pine Script strategy already knows when to buy and sell. Brightfolio places those orders for you.
 Your account, by text or phone call.
 Your account, from any phone.
 Your alert fires. The order goes out.

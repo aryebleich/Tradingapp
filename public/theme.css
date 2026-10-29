@@ -1,4 +1,4 @@
-/* QuantPocket design system v2. Loaded after styles.css; restyles without changing layout.
+/* Brightfolio design system v2. Loaded after styles.css; restyles without changing layout.
    Theme: follows the device, or html[data-theme="light" | "dark"] when the user picks one. */
 :root {
   --bg: #f4f6fb; --bg2: #eceff7; --card: #ffffff; --tx: #0b1220; --mu: #5d6a85; --bd: #e2e7f0; --input: #ffffff;

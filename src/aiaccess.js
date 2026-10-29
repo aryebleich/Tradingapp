@@ -30,7 +30,7 @@ export async function saveSettings(b = {}) {
 
 // Sent with every page: tells AI tools not to use the content unless the owner allowed AI.
 export const xRobots = (s = settings()) => (Object.values(s.allow).some(Boolean) ? null : 'noai, noimageai');
-export const llmsTxt = (s = settings()) => (s.llmsOn ? `# QuantPocket\n\n> ${s.llms.replace(/\n+/g, ' ')}\n` : null);
+export const llmsTxt = (s = settings()) => (s.llmsOn ? `# Brightfolio\n\n> ${s.llms.replace(/\n+/g, ' ')}\n` : null);
 
 // ---------- what the app's assistant may send ----------
 // Emails, phone numbers, long numbers (cards, accounts) and key-like strings never leave the server.

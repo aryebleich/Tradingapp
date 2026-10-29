@@ -8,12 +8,12 @@ UPDATED = 'October 22, 2026'
 from home import layout, index
 
 def doc(title, desc, content):
-    return layout(f'{title} | QuantPocket', desc, f'<article class="doc"><h1>{title}</h1><p class="mu">Last updated {UPDATED}</p>{content}</article>')
+    return layout(f'{title} | Brightfolio', desc, f'<article class="doc"><h1>{title}</h1><p class="mu">Last updated {UPDATED}</p>{content}</article>')
 
 TERMS = '''
-<p>These Terms of Service ("Terms") govern your use of the QuantPocket website, apps, SMS and voice services (together, the "Service"). By creating an account you agree to these Terms.</p>
-<h2>1. What QuantPocket is</h2>
-<p>QuantPocket is software for researching, testing and automating trading strategies. We are not a broker-dealer, bank or custodian, and we do not hold customer securities. Live trading happens in your own brokerage account with Alpaca Securities LLC under your separate agreement with Alpaca.</p>
+<p>These Terms of Service ("Terms") govern your use of the Brightfolio website, apps, SMS and voice services (together, the "Service"). By creating an account you agree to these Terms.</p>
+<h2>1. What Brightfolio is</h2>
+<p>Brightfolio is software for researching, testing and automating trading strategies. We are not a broker-dealer, bank or custodian, and we do not hold customer securities. Live trading happens in your own brokerage account with Alpaca Securities LLC under your separate agreement with Alpaca.</p>
 <h2>2. No investment advice</h2>
 <p>Content, backtests, projections, templates and AI-generated rules are for information and education. They are not a recommendation to buy or sell any security. You decide which strategies to run and are responsible for every order placed from your account, including orders placed by bots, schedules, SMS or voice commands you set up.</p>
 <h2>3. Eligibility and accounts</h2>
@@ -34,7 +34,7 @@ TERMS = '''
 <h2>8. Disclaimers</h2>
 <p>The Service is provided "as is" without warranties of any kind. Past performance and hypothetical results do not guarantee future results.</p>
 <h2>9. Limitation of liability</h2>
-<p>To the maximum extent permitted by law, QuantPocket is not liable for trading losses, lost profits, or indirect or consequential damages. Our total liability for any claim is limited to the fees you paid us in the three months before the claim.</p>
+<p>To the maximum extent permitted by law, Brightfolio is not liable for trading losses, lost profits, or indirect or consequential damages. Our total liability for any claim is limited to the fees you paid us in the three months before the claim.</p>
 <h2>10. Termination</h2>
 <p>You may close your account at any time from Settings. We may suspend or end access for violations or legal reasons. Sections that by their nature should survive termination will survive.</p>
 <h2>11. Changes</h2>
@@ -43,12 +43,12 @@ TERMS = '''
 <p>Questions? Use the <a href="contact.html">contact page</a>.</p>
 '''
 PRIVACY = '''
-<p>This policy explains what personal information QuantPocket collects, why, and the choices you have.</p>
+<p>This policy explains what personal information Brightfolio collects, why, and the choices you have.</p>
 <h2>What we collect</h2>
 <ul>
 <li><b>Account data:</b> email address, a hashed password, optional phone number, a hashed PIN, two-factor settings, and tax-rate preferences. If you sign in with Google, Google shares your email address and an account identifier with us; we do not receive your Google password.</li>
 <li><b>Webhooks:</b> the alerts you send to your webhook URLs and the resulting orders, kept in your signal log.</li>
-<li><b>Brokerage application data:</b> when you open a brokerage account we collect your legal name, date of birth, Social Security number, citizenship, address, phone, employment and regulatory disclosures. This is sent directly to Alpaca Securities LLC for identity verification (KYC) and account opening. QuantPocket does not store your Social Security number; we keep only your Alpaca account ID, account number and status.</li>
+<li><b>Brokerage application data:</b> when you open a brokerage account we collect your legal name, date of birth, Social Security number, citizenship, address, phone, employment and regulatory disclosures. This is sent directly to Alpaca Securities LLC for identity verification (KYC) and account opening. Brightfolio does not store your Social Security number; we keep only your Alpaca account ID, account number and status.</li>
 <li><b>Bank details:</b> bank routing and account numbers you link for transfers are sent to Alpaca; we do not store them.</li>
 <li><b>Trading data:</b> strategies, paper and synced live orders, positions, scheduled trades, alerts and the ledger of fees and deposits.</li>
 <li><b>Connected services:</b> brokerage and QuantConnect keys and access tokens, encrypted with AES-256-GCM.</li>
@@ -84,9 +84,9 @@ RISK = '''
 <h2>AI-generated strategies</h2>
 <p>The AI builder turns descriptions into rules automatically and can misunderstand you. Always review and backtest rules before using them.</p>
 <h2>Brokerage</h2>
-<p>Brokerage services are provided by Alpaca Securities LLC, member FINRA/SIPC. QuantPocket is not a broker-dealer and is not affiliated with Alpaca, QuantConnect, Twilio or Stripe. SIPC protection does not cover market losses.</p>
+<p>Brokerage services are provided by Alpaca Securities LLC, member FINRA/SIPC. Brightfolio is not a broker-dealer and is not affiliated with Alpaca, QuantConnect, Twilio or Stripe. SIPC protection does not cover market losses.</p>
 <h2>Margin and short selling</h2>
-<p>QuantPocket strategies are long-only by default. If your brokerage account has margin enabled, losses can exceed your deposits.</p>
+<p>Brightfolio strategies are long-only by default. If your brokerage account has margin enabled, losses can exceed your deposits.</p>
 <h2>No advice</h2>
 <p>Nothing in the Service is investment, legal or tax advice. Tax estimates are approximate. Your broker's Form 1099-B is the official record. Consult qualified professionals.</p>
 '''
@@ -102,7 +102,7 @@ CONTACT = '''
 </form>
 <p class="mu" style="margin-top:30px">Urgent account security issue? Sign in and use Settings &gt; Active sessions to sign out other devices, change your password, and text <b>PAUSE &lt;PIN&gt;</b> to stop all automation.</p>
 '''
-NOTFOUND = '''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Page not found | QuantPocket</title>
+NOTFOUND = '''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Page not found | Brightfolio</title>
 <style>body{margin:0;min-height:100vh;display:grid;place-items:center;font:16px/1.5 system-ui,sans-serif;background:#0b1324;color:#e7ecf5;text-align:center;padding:16px}a{color:#8fb2ff}h1{font-size:64px;margin:0}</style></head>
 <body><div><h1>404</h1><p>We could not find that page.</p><p><a href="/">Go to the home page</a></p></div></body></html>
 '''
@@ -110,10 +110,10 @@ NOTFOUND = '''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta n
 files = {
  'index.html': index('en'),
  'yi.html': index('yi').replace('&rarr;', '&larr;'),
- 'terms.html': doc('Terms of Service', 'The terms that govern your use of QuantPocket.', TERMS),
- 'privacy.html': doc('Privacy Policy', 'What QuantPocket collects, why, and your choices.', PRIVACY),
+ 'terms.html': doc('Terms of Service', 'The terms that govern your use of Brightfolio.', TERMS),
+ 'privacy.html': doc('Privacy Policy', 'What Brightfolio collects, why, and your choices.', PRIVACY),
  'risk.html': doc('Risk Disclosure', 'Important information about trading risk, backtests and automation.', RISK),
- 'contact.html': doc('Contact & support', 'Get in touch with QuantPocket support.', CONTACT),
+ 'contact.html': doc('Contact & support', 'Get in touch with Brightfolio support.', CONTACT),
  '404.html': NOTFOUND,
 }
 for name, text in files.items():
