@@ -1381,5 +1381,11 @@ export default {
  "Waiting for your approval": "ווארטנדיג אויף אייער באשטעטיגונג.",
  "Approve and place orders": "באשטעטיגן און מאכן די באשטעלונגען",
  "Skipped for today": "אויסגעלאזט פאר היינט",
- "Review and approve": "איבערקוקן און באשטעטיגן"
+ "Review and approve": "איבערקוקן און באשטעטיגן",
+ "How your account value changes on the screen.": "וויאזוי די ווערט פון דיין אקאונט טוישט זיך אויפן סקרין.",
+ "Live: numbers update every minute while the page is open": "לייוו: די סטאטיסטיקס ווערן געאפדעיט יעדע מינוט כל זמן די פעידזש בלייבט אפן.",
+ "Since you last looked: the change since your last visit; numbers stay still while you look": "זייט דיין לעצטע באזוך: דא זענען די אפדעיטס וואס עס האט זיך געטוישט; די נומערן בלייבן שטיין בשעת דו קוקסט דערויף.",
+ "Hide today's profit and loss": "באהאלט די היינטיגע רווחים און הפסדים",
+ "Checking every small move often leads to worse decisions. Many long-term investors hide today's number.": "פרובירן צו קאנטראלירן יעדן קליינעם ריר פירט אפטמאל צו שוואכערע באשלוסן. צוליב דעם, וועלן פילע לאנג-טערמין אינוועסטירער ענדערש איגנארירן די היינטיגע נומערן.",
+ "Since you last looked": "זינט אייער לעצטן באזוך"
 };
