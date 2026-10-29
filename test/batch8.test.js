@@ -146,6 +146,33 @@ test('a Markdown PDF has numbered pages', () => {
   assert.equal(t.slice(xref, xref + 4), 'xref');
 });
 
+test('a long PDF starts with contents that give the right page for each section', () => {
+  const sec = n => `## Section ${n}\n\n` + Array.from({ length: 60 }, (_, i) => `Line ${i} of section ${n}.`).join('\n\n');
+  const { pdf, pages } = markdownPdf('# Guide\n\n' + [1, 2, 3, 4].map(sec).join('\n\n'), { title: 'Guide' });
+  const t = pdf.toString('latin1');
+  // Content streams in page order: find where each heading is drawn and the number listed for it.
+  const streams = [...t.matchAll(/stream\n([\s\S]*?)\nendstream/g)].map(m => m[1]);
+  assert.equal(streams.length, pages);
+  assert.match(streams[0], /\(Contents\) Tj/);
+  for (const n of [1, 2, 3, 4]) {
+    const listed = +new RegExp(`\\(Section ${n} \\.+\\) Tj ET BT /F2 [\\d.]+ Tf [\\d.]+ [\\d.]+ Td \\((\\d+)\\) Tj`).exec(streams[0])[1];
+    const actual = streams.findIndex((st, i) => i > 0 && st.includes(`(Section ${n}) Tj`)) + 1;
+    assert.equal(listed, actual, `section ${n}`);
+  }
+  // Short documents have no contents page.
+  assert.doesNotMatch(markdownPdf('# One\n\nHi').pdf.toString('latin1'), /\(Contents\)/);
+});
+
+test('the portfolio chart refreshes quietly instead of rebuilding the page', async () => {
+  const fs = await import('node:fs');
+  const tr = fs.readFileSync('public/trading.js', 'utf8'), app = fs.readFileSync('public/app.js', 'utf8');
+  const portfolio = tr.slice(tr.indexOf('async function portfolio('), tr.indexOf('\n}\n', tr.indexOf('async function portfolio(')));
+  assert.doesNotMatch(portfolio, /every\(\d+, \(\) => H\.render\(\)\)/);
+  assert.match(portfolio, /if \(holding\) return/);
+  // The drawing animation plays only the first time a chart is shown.
+  assert.match(app, /if \(calmMotion\(\) \|\| seen\) return frame\(1\)/);
+});
+
 test('the owner connects Google Drive and saves the private README there as a PDF', async () => {
   const s = await serve();
   try {

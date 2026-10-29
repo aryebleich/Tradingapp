@@ -127,8 +127,14 @@ function chartLegend(canvas, series, states, base) {
   el.innerHTML = `<span class="now"><i style="background:${CHART_STATES[now].color}"></i><b>${esc(CHART_STATES[now].label)}</b> <span dir="ltr">${fromBase >= 0 ? '+' : ''}${fromBase.toFixed(1)}%</span>${now === 'pullback' ? ` <span class="mu" dir="ltr">(${fromPeak.toFixed(1)}%)</span>` : ''}</span>`
     + Object.entries(CHART_STATES).filter(([k]) => days[k]).map(([k, v]) => `<span><i style="background:${v.color}"></i>${esc(v.label)}</span>`).join('');
 }
+// The last data drawn in each chart spot, so a refresh with the same numbers does not replay the
+// drawing animation (a chart that keeps redrawing while you look at it is unsettling).
+const chartSeen = new Map();
 function drawChart(canvas, series, { base, compare, legend = true } = {}) {
   cancelAnimationFrame(canvas.__anim || 0);
+  const key = (canvas.id || 'chart') + location.hash.split('?')[0], sig = JSON.stringify([series, base, compare]);
+  const seen = chartSeen.has(key);
+  chartSeen.set(key, sig);
   const dpr = window.devicePixelRatio || 1, w = canvas.clientWidth, h = canvas.clientHeight;
   canvas.width = w * dpr; canvas.height = h * dpr;
   const g = canvas.getContext('2d'); g.scale(dpr, dpr);
@@ -160,7 +166,8 @@ function drawChart(canvas, series, { base, compare, legend = true } = {}) {
     g.restore();
     if (t >= 1) { const x = X(series.length - 1), y = Y(series[series.length - 1]); g.fillStyle = CHART_STATES[states[states.length - 1]].color; g.beginPath(); g.arc(x - 1, y, 4, 0, 7); g.fill(); g.globalAlpha = 0.25; g.beginPath(); g.arc(x - 1, y, 9, 0, 7); g.fill(); g.globalAlpha = 1; }
   };
-  if (calmMotion()) return frame(1);
+  // Animate only the first time this chart is shown; later redraws (new data, resize, theme) are instant.
+  if (calmMotion() || seen) return frame(1);
   const t0 = performance.now(), run = now => { const t = Math.min(1, (now - t0) / 700); frame(1 - (1 - t) ** 3); if (t < 1) canvas.__anim = requestAnimationFrame(run); };
   canvas.__anim = requestAnimationFrame(run);
 }

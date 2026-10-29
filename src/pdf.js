@@ -28,25 +28,25 @@ const inline = s => s.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/`([^`]+)`/g, '$
 // Markdown → a list of styled lines.
 function layout(md) {
   const lines = [], add = (text, o) => lines.push({ text, ...o });
-  const para = (t, o = {}) => { const size = o.size || 10.5, indent = o.indent || 0; wrap(latin(inline(t)), size, BODY - indent, o.mono).forEach((l, i) => add((i === 0 && o.bullet ? '\u0095  ' : i && o.bullet ? '    ' : '') + l, { size, font: o.font || 'F1', indent, gap: o.gap ?? size * 1.42 })); };
+  const para = (t, o = {}) => { const size = o.size || 9, indent = o.indent || 0; wrap(latin(inline(t)), size, BODY - indent, o.mono).forEach((l, i) => add((i === 0 && o.bullet ? '\u0095  ' : i && o.bullet ? '    ' : '') + l, { size, font: o.font || 'F1', indent, gap: o.gap ?? size * 1.42 })); };
   const src = String(md).replace(/\r/g, '').split('\n');
   for (let i = 0; i < src.length; i++) {
     const l = src[i];
     if (/^```/.test(l)) { // code block
-      i++; while (i < src.length && !/^```/.test(src[i])) { wrap(latin(src[i]) || ' ', 8.5, BODY - 12, true).forEach(t => add(t, { size: 8.5, font: 'F3', indent: 12, gap: 11 })); i++; }
+      i++; while (i < src.length && !/^```/.test(src[i])) { wrap(latin(src[i]) || ' ', 7.5, BODY - 12, true).forEach(t => add(t, { size: 7.5, font: 'F3', indent: 12, gap: 9.5 })); i++; }
       add('', { size: 6, gap: 6 }); continue;
     }
     const h = /^(#{1,4})\s+(.*)$/.exec(l);
-    if (h) { const size = [0, 19, 14.5, 12, 11][h[1].length]; add('', { size: 6, gap: h[1].length === 1 ? 4 : 10 }); para(h[2], { size, font: 'F2', gap: size * 1.35 }); continue; }
+    if (h) { const size = [0, 16, 12.5, 10.5, 9.5][h[1].length]; add('', { size: 6, gap: h[1].length === 1 ? 4 : 10 }); const at = lines.length; para(h[2], { size, font: 'F2', gap: size * 1.35 }); lines[at].heading = { level: h[1].length, text: latin(inline(h[2])) }; continue; }
     if (/^\s*\|.*\|\s*$/.test(l)) { // table row; separator rows are skipped
       if (/^\s*\|[\s:|-]+\|\s*$/.test(l)) continue;
       const cells = l.trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim());
       const head = /^\s*\|[\s:|-]+\|\s*$/.test(src[i + 1] || '');
-      para(cells.join('   |   '), { size: 9.5, font: head ? 'F2' : 'F1', indent: 6, gap: 13.5 }); continue;
+      para(cells.join('   |   '), { size: 8, font: head ? 'F2' : 'F1', indent: 6, gap: 11.5 }); continue;
     }
     const b = /^(\s*)[-*]\s+(.*)$/.exec(l), n = /^(\s*)(\d+)\.\s+(.*)$/.exec(l);
-    if (b) { para(b[2], { bullet: true, indent: 12 + Math.min(3, Math.floor(b[1].length / 2)) * 12 }); continue; }
-    if (n) { para(`${n[2]}. ${n[3]}`, { indent: 12 + Math.min(3, Math.floor(n[1].length / 2)) * 12 }); continue; }
+    if (b) { para(b[2], { bullet: true, indent: 10 + Math.min(3, Math.floor(b[1].length / 2)) * 10 }); continue; }
+    if (n) { para(`${n[2]}. ${n[3]}`, { indent: 10 + Math.min(3, Math.floor(n[1].length / 2)) * 10 }); continue; }
     if (/^\s*(---|\*\*\*)\s*$/.test(l)) { add('', { size: 6, gap: 8, rule: true }); continue; }
     if (!l.trim()) { add('', { size: 6, gap: 6 }); continue; }
     // A paragraph: join the following plain lines.
@@ -57,20 +57,51 @@ function layout(md) {
   return lines;
 }
 
-export function markdownPdf(md, { title = 'Document' } = {}) {
-  const lines = layout(md), pages = [[]];
+// Lines → pages; records the page each heading lands on.
+function paginate(lines) {
+  const pages = [[]], at = [];
   let y = H - M;
   for (const l of lines) {
     if (y - l.gap < M + FOOT) { pages.push([]); y = H - M; if (!l.text) continue; }
     y -= l.gap;
     pages[pages.length - 1].push({ ...l, y });
+    if (l.heading) at.push({ ...l.heading, page: pages.length });
+  }
+  return { pages, at };
+}
+// "Contents" with the page of each section (## headings), dotted out to the page number.
+function contents(heads) {
+  const out = [{ text: 'Contents', size: 14, font: 'F2', indent: 0, gap: 20 }, { text: '', size: 6, gap: 6 }];
+  for (const h of heads) {
+    const indent = (h.level - 2) * 14, size = h.level === 2 ? 9.5 : 8.5, num = String(h.page);
+    let name = h.text; while (name.length > 3 && width(name, size) > BODY - indent - 60) name = name.slice(0, -2);
+    const dots = '.'.repeat(Math.max(2, Math.floor((BODY - indent - width(name, size) - width(num, size) - 16) / (width('.', size) * 1.12))));
+    out.push({ text: `${name} ${dots}`, right: num, size, font: h.level === 2 ? 'F2' : 'F1', indent, gap: size * 1.6 });
+  }
+  return out;
+}
+
+export function markdownPdf(md, { title = 'Document', toc = true } = {}) {
+  const body = paginate(layout(md));
+  let pages = body.pages;
+  const heads = body.at.filter(h => h.level === 2 || h.level === 3);
+  if (toc && heads.length >= 3) {
+    // The document starts on a fresh page after the contents, so each section moves back by the
+    // number of contents pages.
+    let n = 1, list;
+    for (let i = 0; i < 3; i++) {
+      list = paginate(contents(heads.map(h => ({ ...h, page: h.page + n }))));
+      if (list.pages.length === n) break;
+      n = list.pages.length;
+    }
+    pages = [...list.pages, ...body.pages];
   }
   const T = latin(title), objs = [];
   const obj = body => (objs.push(body), objs.length);
   const catalog = obj(null), pagesId = obj(null);
   const fonts = { F1: obj('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>'), F2: obj('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>'), F3: obj('<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>') };
   const kids = pages.map((pg, i) => {
-    const ops = pg.map(l => (l.rule ? `0.8 G ${M} ${l.y + 3} m ${W - M} ${l.y + 3} l S 0 G` : l.text ? `BT /${l.font} ${l.size} Tf ${M + l.indent} ${l.y.toFixed(1)} Td (${esc(l.text)}) Tj ET` : '')).filter(Boolean);
+    const ops = pg.map(l => (l.rule ? `0.8 G ${M} ${l.y + 3} m ${W - M} ${l.y + 3} l S 0 G` : l.text ? `BT /${l.font} ${l.size} Tf ${M + l.indent} ${l.y.toFixed(1)} Td (${esc(l.text)}) Tj ET` + (l.right ? ` BT /${l.font} ${l.size} Tf ${(W - M - width(l.right, l.size) * 1.05).toFixed(1)} ${l.y.toFixed(1)} Td (${esc(l.right)}) Tj ET` : '') : '')).filter(Boolean);
     // Footer: the title on the left, "Page N of M" centered.
     const pn = `Page ${i + 1} of ${pages.length}`;
     ops.push(`0.6 g BT /F1 8.5 Tf ${M} ${M - 22} Td (${esc(T.slice(0, 70))}) Tj ET`, `BT /F1 9 Tf ${(W / 2 - width(pn, 9) / 2).toFixed(1)} ${M - 22} Td (${esc(pn)}) Tj ET 0 g`, `0.85 G ${M} ${M - 10} m ${W - M} ${M - 10} l S 0 G`);

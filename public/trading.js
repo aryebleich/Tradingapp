@@ -389,6 +389,7 @@ async function portfolio(view, q) {
     </div>
     <div class="chips" id="periods" style="margin-top:12px">${['1D', '1W', '1M', '3M', '6M', '1A', 'all'].map(p => `<button data-p="${p}" class="${p === period ? 'on' : ''}">${p === '1A' ? '1Y' : p === 'all' ? 'All' : p}</button>`).join('')}</div>
     <canvas id="eq"></canvas>
+    <p class="mu" id="eqUpdated" style="font-size:12px;margin:6px 0 0;text-align:end" aria-live="off">Updated ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</p>
   </div>
   <div class="grid">
     <div class="card"><h2>Balances & margin</h2><div class="kv">
@@ -402,11 +403,28 @@ async function portfolio(view, q) {
       <div class="tablewrap"><table><tr><th>Symbol</th><th class="num">Value</th><th class="num">Today</th><th class="num">Total P/L</th></tr>
       ${ps.slice(0, 8).map(p => `<tr><td><a href="#/trade?symbol=${encodeURIComponent(p.symbol)}">${H.esc(p.symbol)}</a></td><td class="num">${usd(p.marketValue)}</td><td class="num ${H.cls(p.todayPl)}">${usd(p.todayPl)}</td><td class="num ${H.cls(p.unrealizedPl)}">${usd(p.unrealizedPl)} (${H.pct(p.unrealizedPlPct)})</td></tr>`).join('') || '<tr><td colspan="4" class="mu">No positions. <a href="#/trade">Place a trade</a></td></tr>'}</table></div></div>
   </div>`;
-  const pts = h.points;
-  const drawEq = () => H.drawChart(H.$('#eq', view), pts.map(p => p.equity), { base: h.baseValue || pts[0]?.equity });
+  let pts = h.points, hist = h;
+  const drawEq = () => H.drawChart(H.$('#eq', view), pts.map(p => p.equity), { base: hist.baseValue || pts[0]?.equity });
   drawEq(); onResize(drawEq);
   H.$$('#periods button', view).forEach(b => (b.onclick = () => { try { localStorage.setItem('qp_period', b.dataset.p); } catch {} location.hash = '#/dashboard?period=' + b.dataset.p; }));
-  every(60000, () => H.render());
+  // Quiet refresh: numbers change in place and the chart redraws only when its data changed. Nothing
+  // updates while a finger or the mouse is on the chart, so it never shifts while you read it.
+  const chart = H.$('#eq', view); let holding = false;
+  chart.addEventListener('pointerenter', () => (holding = true)); chart.addEventListener('pointerleave', () => (holding = false));
+  chart.addEventListener('touchstart', () => (holding = true), { passive: true }); chart.addEventListener('touchend', () => setTimeout(() => (holding = false), 4000), { passive: true });
+  const stamp = H.$('#eqUpdated', view), stats = H.$$('.stats .stat b', view);
+  const tick = async () => {
+    if (holding) return;
+    const [a2, h2] = await Promise.all([A('/account'), A('/portfolio/history?period=' + period).catch(() => null)]).catch(() => []);
+    if (!a2 || !H.$('#eq', view)) return;
+    const d2 = a2.lastEquity ? a2.equity - a2.lastEquity : null;
+    const vals = [usd(a2.equity), d2 == null ? '-' : `${usd(d2)} (${H.pct(d2 / a2.lastEquity * 100, 2)})`, usd(a2.buyingPower), usd(a2.cash)];
+    stats.forEach((b, i) => { if (vals[i] != null && b.textContent !== vals[i]) b.textContent = vals[i]; });
+    if (stats[1]) stats[1].className = H.cls(d2);
+    if (h2?.points && JSON.stringify(h2.points) !== JSON.stringify(pts)) { pts = h2.points; hist = h2; drawEq(); }
+    if (stamp) stamp.textContent = 'Updated ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  };
+  every(60000, tick);
 }
 
 // =====================================================================

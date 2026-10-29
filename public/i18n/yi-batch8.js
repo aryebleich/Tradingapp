@@ -39,5 +39,6 @@ export const patterns = [
   [/^([\d,]+) of ([\d,]+) monthly credits left \(they refill on the 1st\)\.$/, '$1 פון $2 חודשליכע קרעדיטס געבליבן (זיי ווערן אנגעפילט דעם 1טן).'],
   [/^([\d,]+) of ([\d,]+) monthly credits left \(they refill on the 1st\) · ([\d,]+) bought credits \(never expire\)\.$/, '$1 פון $2 חודשליכע קרעדיטס געבליבן (זיי ווערן אנגעפילט דעם 1טן) · $3 געקויפטע קרעדיטס (גייען נישט אויס).'],
   [/^Monthly on the (\d+)( at .+)?$/, 'יעדן חודש דעם $1$2'],
+  [/^Updated (.+)$/, 'דערהיינטיקט $1'],
   [/^Scheduled\. First run (.+) New York time\.$/, 'געפלאנט. ערשטער לויף $1 ניו יארקער צייט.'],
 ];
