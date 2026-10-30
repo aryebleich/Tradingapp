@@ -678,3 +678,14 @@ dialog.secure label.check { margin-top: 10px; }
 .charttip b { font-size: 14px; }
 .charttip .up { color: #2563eb; } .charttip .dn { color: #c2410c; }
 .stat.since small { display: block; font-size: 11.5px; margin-top: 2px; }
+/* Private markets and real estate */
+a.card.platform { display: flex; flex-direction: column; gap: 4px; text-decoration: none; color: inherit; margin: 0; }
+a.card.platform:hover { border-color: var(--ac); }
+/* Settings → Chart colors */
+.swatches { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 12.5px; color: var(--mu); }
+.swatches i, .charttip i.dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-inline-end: 5px; vertical-align: -1px; }
+.colorpicks { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.colorpicks button { width: 28px; height: 28px; min-height: 0; padding: 0; border-radius: 50%; border: 2px solid var(--card); box-shadow: 0 0 0 1px var(--bd); }
+.colorpicks button.on { box-shadow: 0 0 0 2px var(--tx); }
+.colorpicks .anycolor { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-size: 12.5px; color: var(--mu); }
+.colorpicks input[type=color] { width: 34px; height: 30px; padding: 0; border-radius: 8px; border: 1px solid var(--bd); background: none; cursor: pointer; }

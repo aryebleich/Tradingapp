@@ -1,4 +1,4 @@
-// Options, sentiment, halal and zakat, 13F tracking, spend-based investing, taxes, insights and the
+// Options, sentiment, values investing, 13F tracking, spend-based investing, taxes, insights and the
 // AI assistant's tool loop, with a local stand-in for StockTwits, SEC EDGAR, Plaid and Claude.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -35,7 +35,6 @@ Object.assign(process.env, { STOCKTWITS_URL: F + '/st', SEC_DATA_URL: F + '/sec-
 const { serve } = await import('./client.js');
 const { payoff, buildTemplate, incomeCandidates, bs } = await import('../src/options.js');
 const { scoreText } = await import('../src/sentiment.js');
-const { zakat, screen } = await import('../src/halal.js');
 const { plan, tickerFor } = await import('../src/roundup.js');
 const { roundTrips, twr, execution } = await import('../src/insights.js');
 const { run } = await import('../src/db.js');
@@ -71,25 +70,17 @@ test('news sentiment words, StockTwits share and the brief without AI', async ()
   assert.equal(b.ai, false); assert.match(b.script, /market brief/);
 });
 
-test('halal screening, data feed, portfolio and zakat', async () => {
-  assert.equal(screen('JPM').status, 'not_compliant'); assert.equal(screen('SPUS').status, 'compliant'); assert.equal(screen('ZZZZ').status, 'unknown');
-  assert.equal(screen('MSFT', { status: '', debt_ratio: 12, cash_ratio: 35, receivables_ratio: 10, nonhalal_pct: 1 }).status, 'not_compliant'); // cash over 30%
+test('values investing: the owner adds companies to the lists; portfolio screen', async () => {
   const admin = srv.client(); // first account in this database is the admin
   await admin('/auth/login', { email: 'owner@example.com', password: 'Str0ngPassword' });
-  assert.equal((await admin('/halal/feed', { csv: 'symbol,status,debt,cash,recv,nonhalal,source,as_of\nAAPL,halal,2,25,15,0.5,TestFeed,2026-09-30\nMSFT,,10,20,20,1,TestFeed,2026-09-30' })).body.imported, 2);
-  const u = srv.client(); await u.signup('halal@example.com');
-  assert.equal((await u('/halal/feed', { csv: 'X' })).status, 403);
-  const r = (await u('/halal/screen?symbols=AAPL,MSFT,BAC')).body.results;
-  assert.deepEqual(r.map(x => x.status), ['compliant', 'compliant', 'not_compliant']);
+  assert.equal((await admin('/values/lists', { csv: 'ACME,gambling\nBAD,unknowncat' })).body.added, 1);
+  const u = srv.client(); await u.signup('values-more@example.com');
+  assert.equal((await u('/values/lists', { csv: 'X,gambling' })).status, 403);
+  assert.deepEqual((await u('/values/screen?symbols=ACME,AAPL')).body.results.map(x => x.status), ['avoid', 'clear']);
   await u('/orders', { account: 'paper', symbol: 'AAPL', side: 'buy', notional: 3000 });
-  await u('/orders', { account: 'paper', symbol: 'BAC', side: 'buy', notional: 1000 });
-  const p = (await u('/halal/portfolio?account=paper')).body;
-  assert.ok(Math.abs(p.compliantPct - 75) < 1 && Math.abs(p.notCompliantPct - 25) < 1);
-  const z = zakat({ cash: 10000, holdings: 20000, holdingsMethod: 'longterm', zakatablePct: 30, goldPerGram: 100, debts: 1000 });
-  assert.deepEqual([z.wealth, z.nisab, z.due, z.zakat], [15000, 8500, true, 375]);
-  assert.equal(zakat({ cash: 1000, goldPerGram: 100 }).due, false);
-  const zz = (await u('/halal/zakat', { includeAccounts: ['paper'], goldPerGram: 100 })).body;
-  assert.ok(zz.due && zz.zakat > 2000);
+  await u('/orders', { account: 'paper', symbol: 'DKNG', side: 'buy', notional: 1000 });
+  const p = (await u('/values/portfolio?account=paper')).body;
+  assert.ok(Math.abs(p.avoidPct - 25) < 1, JSON.stringify(p));
 });
 
 test('13F holdings, changes and ticker mapping', async () => {

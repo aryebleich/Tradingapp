@@ -1,6 +1,6 @@
 // Brightfolio single-page client. Hash routes, no framework.
 import { registerTrading } from './trading.js';
-import { CHART_STATES, chartStates } from './chartstates.js';
+import { CHART_STATES, chartStates, RICH_STATES, richStates, blendedColors } from './chartstates.js';
 import { registerSignals } from './signals.js';
 import { registerStrategies } from './strategies.js';
 import { registerPairs } from './pairs.js';
@@ -15,6 +15,7 @@ import { registerProtect, getPasskey } from './protect.js';
 import { registerOwner } from './owner.js';
 import { registerWealth } from './wealth.js';
 import { registerTools } from './tools.js';
+import { registerAlts } from './alts.js';
 import { attachGlossary } from './glossary.js';
 import { startI18n, setLang, canvasNote, LANGS, current as currentLang } from './i18n.js';
 const $ = (s, el = document) => el.querySelector(s);
@@ -105,11 +106,12 @@ function act(btn, fn, out) {
 
 let ME = null, CFG = null;
 // The user's display preferences (Settings → Portfolio numbers), loaded once after sign-in.
-const PREFS = { portfolio: { mode: 'live', hideToday: false }, loaded: false };
+const PREFS = { portfolio: { mode: 'live', hideToday: false }, chart: { mode: 'colorful', color: '#2563eb' }, loaded: false };
 async function loadPrefs() {
   if (PREFS.loaded || !ME) return PREFS;
-  const v = await api('/prefs/portfolio').catch(() => null);
+  const [v, c] = await Promise.all([api('/prefs/portfolio').catch(() => null), api('/prefs/chart').catch(() => null)]);
   if (v?.value) PREFS.portfolio = v.value;
+  if (c?.value) PREFS.chart = c.value;
   PREFS.loaded = true; return PREFS;
 }
 // "Since you last looked": the change from the value at the previous visit. A visit lasts 30
@@ -139,15 +141,15 @@ const state = { account: localStorage.getItem('qp_account') || 'paper' };
 
 // ---------- chart: the equity line, colored by gain/loss state (chartstates.js), drawing itself in ----------
 const calmMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+// Under charts other than the portfolio: what each color means (colorful mode only).
 function chartLegend(canvas, series, states, base) {
   if (!canvas.parentElement) return;
   let el = canvas.nextElementSibling;
   if (!el?.classList.contains('chartlegend')) { el = document.createElement('div'); el.className = 'chartlegend'; canvas.after(el); }
-  const days = {}; states.slice(1).forEach(s => (days[s] = (days[s] || 0) + 1));
-  const last = series[series.length - 1], peak = Math.max(...series), now = states[states.length - 1];
-  const fromPeak = peak ? (last / peak - 1) * 100 : 0, fromBase = base ? (last / base - 1) * 100 : 0;
-  el.innerHTML = `<span class="now"><i style="background:${CHART_STATES[now].color}"></i><b>${esc(CHART_STATES[now].label)}</b> <span dir="ltr">${fromBase >= 0 ? '+' : ''}${fromBase.toFixed(1)}%</span>${now === 'pullback' ? ` <span class="mu" dir="ltr">(${fromPeak.toFixed(1)}%)</span>` : ''}</span>`
-    + Object.entries(CHART_STATES).filter(([k]) => days[k]).map(([k, v]) => `<span><i style="background:${v.color}"></i>${esc(v.label)}</span>`).join('');
+  const rich = richStates(series, base), used = new Set(rich.slice(1)), now = rich[rich.length - 1];
+  const fromBase = base ? (series[series.length - 1] / base - 1) * 100 : 0;
+  el.innerHTML = `<span class="now"><i style="background:${RICH_STATES[now].color}"></i><b>${esc(RICH_STATES[now].label)}</b> <span dir="ltr">${fromBase >= 0 ? '+' : ''}${fromBase.toFixed(1)}%</span></span>`
+    + Object.entries(RICH_STATES).filter(([k]) => used.has(k)).map(([k, v]) => `<span><i style="background:${v.color}"></i>${esc(v.label)}</span>`).join('');
 }
 // The last data drawn in each chart spot, so a refresh with the same numbers does not replay the
 // drawing animation (a chart that keeps redrawing while you look at it is unsettling).
@@ -164,32 +166,36 @@ function drawChart(canvas, series, { base, compare, legend = true, dates = null,
   if (series.length < 2) { canvas.__hover = null; g.fillStyle = C('--mu'); canvasNote(g, 'Your equity curve starts filling in after the first trading day.'); return; }
   base ??= series[0];
   const states = chartStates(series, base);
-  if (legend) chartLegend(canvas, series, states, base);
+  if (legend && (PREFS.chart?.mode || 'colorful') === 'colorful') chartLegend(canvas, series, states, base); else canvas.nextElementSibling?.classList.contains('chartlegend') && canvas.nextElementSibling.remove();
   const all = [...series, ...(compare || []), base];
   let lo = Math.min(...all), hi = Math.max(...all); if (hi === lo) { hi += 1; lo -= 1; }
   const pad = 10, X = i => pad + (i / Math.max(series.length - 1, 1)) * (w - 2 * pad), Y = v => pad + (1 - (v - lo) / (hi - lo)) * (h - 2 * pad);
   const yb = Y(base);
-  // Consecutive days in the same state are drawn as one run.
-  const runs = [];
-  for (let i = 1; i < series.length; i++) { const st = states[i], r = runs[runs.length - 1]; if (r && r.st === st) r.to = i; else runs.push({ st, from: i - 1, to: i }); }
+  // Colors (Settings → Chart colors): one color, a color the user picked, or colorful with blending.
+  const cm = PREFS.chart || {}, one = cm.mode === 'one' ? '#2563eb' : cm.mode === 'custom' && /^#[0-9a-f]{6}$/i.test(cm.color || '') ? cm.color : null;
+  const rich = one ? null : richStates(series, base);
+  const pts = one ? series.map(() => one.match(/\w\w/g).map(x => parseInt(x, 16))) : blendedColors(series, base);
+  const colorAt = i => `rgb(${pts[i].join(',')})`;
+  const grad = alpha => {
+    const gr = g.createLinearGradient(X(0), 0, X(series.length - 1), 0), n = series.length - 1;
+    pts.forEach((c, i) => gr.addColorStop(n ? i / n : 0, `rgba(${c.join(',')},${alpha})`));
+    return gr;
+  };
   const frame = t => {
     g.clearRect(0, 0, w, h);
     g.strokeStyle = C('--bd'); g.lineWidth = 1; g.setLineDash([4, 4]); g.beginPath(); g.moveTo(0, yb); g.lineTo(w, yb); g.stroke(); g.setLineDash([]);
     if (compare) { g.strokeStyle = C('--mu'); g.globalAlpha = 0.7; g.lineWidth = 1.2; g.beginPath(); compare.forEach((v, i) => (i ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v)))); g.stroke(); g.globalAlpha = 1; }
     g.save(); g.beginPath(); g.rect(0, 0, pad + t * (w - pad), h); g.clip();
-    for (const r of runs) {
-      const col = CHART_STATES[r.st].color;
-      // Area between the line and the starting value, in the run's color.
-      g.beginPath(); g.moveTo(X(r.from), yb); for (let i = r.from; i <= r.to; i++) g.lineTo(X(i), Y(series[i])); g.lineTo(X(r.to), yb); g.closePath();
-      g.fillStyle = col + '2e'; g.fill();
-      g.beginPath(); for (let i = r.from; i <= r.to; i++) (i === r.from ? g.moveTo(X(i), Y(series[i])) : g.lineTo(X(i), Y(series[i])));
-      g.lineWidth = 2.5; g.lineJoin = 'round'; g.lineCap = 'round'; g.strokeStyle = col; g.stroke();
-    }
+    // The area between the line and the starting value, then the line, each in the blended colors.
+    g.beginPath(); g.moveTo(X(0), yb); series.forEach((v, i) => g.lineTo(X(i), Y(v))); g.lineTo(X(series.length - 1), yb); g.closePath();
+    g.fillStyle = grad(0.18); g.fill();
+    g.beginPath(); series.forEach((v, i) => (i ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v))));
+    g.lineWidth = 2.5; g.lineJoin = 'round'; g.lineCap = 'round'; g.strokeStyle = grad(1); g.stroke();
     g.restore();
-    if (t >= 1) { const x = X(series.length - 1), y = Y(series[series.length - 1]); g.fillStyle = CHART_STATES[states[states.length - 1]].color; g.beginPath(); g.arc(x - 1, y, 4, 0, 7); g.fill(); g.globalAlpha = 0.25; g.beginPath(); g.arc(x - 1, y, 9, 0, 7); g.fill(); g.globalAlpha = 1; }
+    if (t >= 1) { const x = X(series.length - 1), y = Y(series[series.length - 1]); g.fillStyle = colorAt(series.length - 1); g.beginPath(); g.arc(x - 1, y, 4, 0, 7); g.fill(); g.globalAlpha = 0.25; g.beginPath(); g.arc(x - 1, y, 9, 0, 7); g.fill(); g.globalAlpha = 1; }
   };
   // Pointing at the chart (mouse or finger) shows the date and value at that spot.
-  canvas.__hover = { series, dates, time, base, X, Y, w, h, pad, frame, color: i => CHART_STATES[states[i]].color };
+  canvas.__hover = { series, dates, time, base, X, Y, w, h, pad, frame, color: colorAt, label: i => (rich ? RICH_STATES[rich[i]].label : null) };
   if (!canvas.__hoverWired) { canvas.__hoverWired = true; wireChartHover(canvas); }
   // Animate only the first time this chart is shown; later redraws (new data, resize, theme) are instant.
   if (calmMotion() || seen) return frame(1);
@@ -213,7 +219,7 @@ function wireChartHover(canvas) {
     g.save(); g.strokeStyle = css.getPropertyValue('--mu').trim(); g.globalAlpha = 0.5; g.lineWidth = 1; g.beginPath(); g.moveTo(px, 0); g.lineTo(px, c.h); g.stroke(); g.restore();
     g.fillStyle = c.color(i); g.beginPath(); g.arc(px, py, 4.5, 0, 7); g.fill(); g.strokeStyle = css.getPropertyValue('--card').trim() || '#fff'; g.lineWidth = 2; g.stroke();
     const chg = c.base ? (v / c.base - 1) * 100 : null;
-    tip.innerHTML = `${c.dates?.[i] != null ? `<span>${esc(fmtDay(c.dates[i], c.time))}</span>` : ''}<b>${money(v)}</b>${chg != null ? `<span class="${chg >= 0 ? 'up' : 'dn'}">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%</span>` : ''}`;
+    tip.innerHTML = `${c.dates?.[i] != null ? `<span>${esc(fmtDay(c.dates[i], c.time))}</span>` : ''}<b>${money(v)}</b>${chg != null ? `<span class="${chg >= 0 ? 'up' : 'dn'}">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%</span>` : ''}${c.label?.(i) ? `<span><i class="dot" style="background:${c.color(i)}"></i>${esc(c.label(i))}</span>` : ''}`;
     tip.hidden = false;
     const tw = tip.offsetWidth, left = canvas.offsetLeft + Math.min(Math.max(px - tw / 2, 0), c.w - tw);
     tip.style.left = left + 'px'; tip.style.top = Math.max(0, canvas.offsetTop + py - tip.offsetHeight - 12) + 'px';
@@ -265,7 +271,7 @@ const NAV = [
   ['AI', [['ai', 'AI assistant'], ['agents', 'Forecasts & AI agents'], ['news', 'News & sentiment']]],
   ['Markets', [['sp500', 'S&P 500 plan'], ['alpaca-tools', 'Bonds, crypto & AI'], ['markets', 'Markets & news'], ['scanner', 'Scanner'], ['options', 'Options chain'], ['optionslab', 'Options lab'], ['institutions', 'Institutional portfolios'], ['calendar', 'Calendar & events']]],
   ['Strategies', [['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['code', 'Code lab'], ['portfolios', 'Portfolios'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['marketplace', 'Marketplace'], ['pairs', 'Pairs trading'], ['statarb', 'Statistical arbitrage'], ['schedule', 'Scheduled trades'], ['quantconnect', 'Cloud algorithms'], ['workspace', 'Workspace']]],
-  ['Money', [['wealth', 'Wealth builder'], ['longterm', 'Long-term view'], ['insights', 'Insights & journal'], ['risk', 'Risk controls'], ['execution', 'Execution & routing'], ['spend', 'Invest as you spend'], ['halal', 'Halal investing'], ['tax', 'Taxes']]],
+  ['Money', [['wealth', 'Wealth builder'], ['longterm', 'Long-term view'], ['insights', 'Insights & journal'], ['risk', 'Risk controls'], ['execution', 'Execution & routing'], ['spend', 'Invest as you spend'], ['private', 'Private markets'], ['realestate', 'Real estate'], ['values', 'Values investing'], ['tax', 'Taxes']]],
   ['Account', [['security', 'Security & help'], ['learn', 'Learn'], ['accounts', 'All accounts'], ['brokers', 'Brokerages'], ['account', 'Alpaca account'], ['funding', 'Plans & billing'], ['referrals', 'Invite & earn'], ['text', 'Text & hotline'], ['settings', 'Settings']]],
 ];
 // Simple line icons (24x24 paths) for the menu.
@@ -308,7 +314,8 @@ const ICONS = {
   workspace: '<rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="5" rx="1"/><rect x="13" y="10" width="8" height="11" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/>',
   accounts: '<rect x="2" y="7" width="20" height="13" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2M2 13h20"/>',
   'admin-system': '<path d="M3 12h4l3-7 4 14 3-7h4"/>',
-  halal: '<path d="M20 13A8 8 0 1 1 11 4a6.5 6.5 0 0 0 9 9z"/><path d="M17 4l.7 1.5 1.6.2-1.2 1.1.3 1.6L17 7.6l-1.4.8.3-1.6-1.2-1.1 1.6-.2z"/>', star: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
+  private: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/>', realestate: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10M10 20v-6h4v6"/>',
+  values: '<path d="M12 21s-7-4.4-9.3-9A5.4 5.4 0 0 1 12 6a5.4 5.4 0 0 1 9.3 6c-2.3 4.6-9.3 9-9.3 9z"/>', star: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
 };
 const icon = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k] || ''}</svg>`;
 const isPaid = u => u && ((u.role === 'admin' && !u.previewPlan) || (['pro', 'elite', 'ultimate'].includes(u.plan) && ['active', 'trialing', null, undefined].includes(u.planStatus)));
@@ -680,7 +687,7 @@ routes.dashboard = async (view, q) => {
   <div class="card"><h2>Recent orders</h2><div class="tablewrap" id="orders"><p class="mu">Loading…</p></div>
     ${state.account === 'paper' ? '<button class="ghost small" id="reset">Reset paper account</button>' : ''}</div>`;
   if ($('#hideOnboard', view)) $('#hideOnboard', view).onclick = () => { try { localStorage.setItem('qp_onboard_done', '1'); } catch {} render(); };
-  drawChart($('#eqc', view), a.history.map(x => x.equity), { base, dates: a.history.map(x => x.day) });
+  drawChart($('#eqc', view), a.history.map(x => x.equity), { base, dates: a.history.map(x => x.day), legend: false });
   wireStatement(view, state.account);
   // Live mode: the numbers update quietly every minute (never the whole page).
   if (P.mode !== 'since') {
@@ -957,10 +964,41 @@ routes.text = async view => {
 };
 
 // ---------- tax ----------
+// QuickBooks Online on the tax page: connect, map accounts once, send a month of bookkeeping or
+// the tax year as a journal entry.
+async function qboCard(view, year, q) {
+  const s = await api('/quickbooks').catch(() => null);
+  if (!s || !document.body.contains(view)) return;
+  const el = document.createElement('div'); el.className = 'card'; el.id = 'qbo';
+  const months = Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, '0')}`).filter(m => m <= new Date().toISOString().slice(0, 7));
+  const sentNote = k => (s.sent[`${state.account}:${k}`] ? ` <span class="pill">sent ${new Date(s.sent[`${state.account}:${k}`].at).toLocaleDateString()}</span>` : '');
+  if (!s.connected) {
+    el.innerHTML = `<h2>QuickBooks</h2><p class="mu" style="margin-top:0">Send your monthly books and your tax year to QuickBooks Online as journal entries: gains and losses, dividends, interest and broker fees, balanced against your brokerage account.</p>
+      ${s.ready ? '<button id="qboGo">Connect QuickBooks</button>' : '<p class="mu">QuickBooks is not set up on this server yet.</p>'}<div class="err"></div>`;
+    { const bk = $('#books', view); if (bk) bk.after(el); else view.append(el); }
+    if ($('#qboGo', el)) act($('#qboGo', el), async () => { location.href = (await api('/quickbooks/connect')).url; return ''; });
+    return;
+  }
+  const accts = await api('/quickbooks/accounts').catch(e => ({ error: e.message }));
+  const opts = k => `<select name="${k}"><option value="">Choose…</option>${(accts.error ? [] : accts).map(a => `<option value="${esc(a.id)}" ${s.map[k] === a.id ? 'selected' : ''}>${esc(a.name)} (${esc(a.type)})</option>`).join('')}</select>`;
+  el.innerHTML = `<div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">QuickBooks</h2><button class="small ghost" id="qboOff" type="button">Disconnect</button></div>
+    <p class="mu">Connected${s.sandbox ? ' (sandbox)' : ''} · company ${esc(s.realm)}. Entries go to the account shown in the menu at the top: ${esc(state.account)}.</p>
+    ${accts.error ? `<p class="err">${esc(accts.error)}</p>` : `<form id="qboMap"><h3>Your QuickBooks accounts</h3><div class="row" style="flex-wrap:wrap">${Object.entries(s.mapKeys).map(([k, t]) => `<label>${esc(t)}${opts(k)}</label>`).join('')}</div><button class="small">Save accounts</button><div class="err"></div></form>`}
+    <h3>Send</h3><div class="row" style="align-items:flex-end;gap:8px"><label>Month<select id="qboMonth">${months.map(m => `<option value="${m}">${new Date(m + '-15').toLocaleString(undefined, { month: 'long', year: 'numeric' })}</option>`).join('')}</select></label>
+      <button id="qboSendM" type="button">Send month (bookkeeping)</button><button id="qboSendY" type="button" class="ghost">Send ${year} (tax year)${sentNote(String(year))}</button></div><div class="err" id="qboErr"></div>
+    <p class="mu small-print">A month or a year is sent once; to send it again, delete the entry in QuickBooks first. Your accountant should review entries before closing the books.</p>`;
+  { const bk = $('#books', view); if (bk) bk.after(el); else view.append(el); }
+  act($('#qboOff', el), async () => { if (!confirm('Disconnect QuickBooks?')) return ''; await api('/quickbooks/disconnect', { body: {} }); render(); return ''; });
+  if ($('#qboMap', el)) act($('#qboMap button', el), async () => { await api('/quickbooks/map', { method: 'PUT', body: form($('#qboMap', el)) }); return 'Saved'; });
+  const send = async period => { const r = await api('/quickbooks/send', { body: { account: state.account, period } }); return `Sent: QuickBooks journal entry ${r.id}`; };
+  act($('#qboSendM', el), () => send($('#qboMonth', el).value), $('#qboErr', el));
+  act($('#qboSendY', el), () => send(String(year)), $('#qboErr', el));
+}
 routes.tax = async (view, q) => {
   const year = +(q.get('year') || new Date().getFullYear());
   const [t, bk] = await Promise.all([api(`/tax?account=${state.account}&year=${year}`), api(`/tax/books?account=${state.account}&year=${year}`).catch(() => null)]);
   view.innerHTML = `<div class="row" style="justify-content:space-between"><h1>Tax information</h1></div>
+  ${q.get('qbo') ? `<div class="banner${q.get('qbo') === 'connected' ? '' : ' err'}">${q.get('qbo') === 'connected' ? 'QuickBooks is connected. Choose your accounts below, then send.' : esc(q.get('qbo'))}</div>` : ''}
   <div class="banner">Estimates for planning only (US federal + flat state rate, FIFO lots). Your broker's 1099-B is the official record; check with a tax professional.</div>
   <div class="card"><div class="row"><label>Year<select id="yr">${[0, 1, 2, 3].map(i => new Date().getFullYear() - i).map(y => `<option ${y === year ? 'selected' : ''}>${y}</option>`).join('')}</select></label>
     <a href="/api/tax?account=${state.account}&year=${year}&format=csv"><button type="button" class="ghost">Download Form 8949 CSV</button></a>
@@ -996,6 +1034,7 @@ routes.tax = async (view, q) => {
     ${t.rows.map(r => `<tr><td>${esc(r.symbol)}</td><td>${num(r.qty, 4)}</td><td>${new Date(r.acquired).toLocaleDateString()}</td><td>${new Date(r.sold).toLocaleDateString()}</td><td>${money(r.proceeds)}</td><td>${money(r.cost)}</td><td class="${cls(r.gain)}">${money(r.gain)}</td><td>${r.longTerm ? 'Long' : 'Short'}</td><td>${r.washSale ? '<span class="pill warn">wash sale</span>' : ''}</td></tr>`).join('') || '<tr><td colspan="9" class="mu">No sales this year</td></tr>'}
   </table></div>`;
   $('#yr', view).onchange = e => (location.hash = '#/tax?year=' + e.target.value);
+  qboCard(view, year, q);
   if ($('#booksMail', view)) $('#booksMail', view).onchange = async e => {
     try { await api('/tax/books/email', { method: 'PUT', body: { on: e.target.checked } }); }
     catch (x) { e.target.checked = !e.target.checked; $('#books .err', view).textContent = x.message; }
@@ -1124,6 +1163,11 @@ routes.settings = async view => {
       <div style="display:grid;gap:6px">${[['live', 'Live: numbers update every minute while the page is open'], ['since', 'Since you last looked: the change since your last visit; numbers stay still while you look'], ['both', 'Both']].map(([k, t]) => `<label class="chk"><input type="radio" name="pnlMode" value="${k}" ${PREFS.portfolio.mode === k ? 'checked' : ''}> ${t}</label>`).join('')}</div>
       <label class="chk" style="margin-top:12px;display:flex"><input type="checkbox" id="hideToday" ${PREFS.portfolio.hideToday ? 'checked' : ''}> Hide today's profit and loss</label>
       <p class="mu small-print">Checking every small move often leads to worse decisions. Many long-term investors hide today's number.</p></div>
+    <div class="card" id="chartPrefs"><h2>Chart colors</h2>
+      <p class="mu" style="margin-top:0">How your account charts are colored.</p>
+      <div style="display:grid;gap:6px">${[['colorful', 'Colorful: the color follows what your money is doing (new high, near its high, pulling back, rebounding, sliding, deep loss) and blends from one to the next'], ['one', 'One color'], ['custom', 'A color I pick']].map(([k, t]) => `<label class="chk"><input type="radio" name="chartMode" value="${k}" ${(PREFS.chart.mode || 'colorful') === k ? 'checked' : ''}> ${t}</label>`).join('')}</div>
+      <div id="chartColorL" ${PREFS.chart.mode === 'custom' ? '' : 'hidden'} style="margin-top:10px"><div class="colorpicks">${['#2563eb', '#0891b2', '#059669', '#7c3aed', '#db2777', '#ea580c', '#ca8a04', '#0f172a'].map(c => `<button type="button" data-color="${c}" style="background:${c}" aria-label="${c}" class="${(PREFS.chart.color || '').toLowerCase() === c ? 'on' : ''}"></button>`).join('')}<label class="anycolor" title="Any color">Any color<input type="color" id="chartColor" value="${esc(PREFS.chart.color || '#2563eb')}"></label></div></div>
+      <div class="swatches" ${PREFS.chart.mode === 'colorful' || !PREFS.chart.mode ? '' : 'hidden'} id="chartSw">${Object.values(RICH_STATES).map(v => `<span><i style="background:${v.color}"></i>${esc(v.label)}</span>`).join('')}</div></div>
     <div class="card"><h2>Calm mode</h2><label class="chk"><input type="checkbox" id="calmT" ${document.body.classList.contains('calm') ? 'checked' : ''}> No flashing prices, colors or celebrations (recommended)</label>
       <p class="mu small-print">Trading decisions go better without constant movement on the screen. Your long-term results are on the <a href="#/longterm">Long-term view</a>.</p></div>
     <div class="card" id="language"><h2>Language</h2>
@@ -1181,7 +1225,15 @@ routes.settings = async view => {
   });
   if ($('#calmT', view)) $('#calmT', view).onchange = e => setCalm(e.target.checked);
   const savePnl = async () => { PREFS.portfolio = (await api('/prefs/portfolio', { method: 'PUT', body: { value: { mode: $('[name=pnlMode]:checked', view)?.value, hideToday: $('#hideToday', view).checked } } })).value; };
-  $$('[name=pnlMode]', view).forEach(r => (r.onchange = savePnl)); if ($('#hideToday', view)) $('#hideToday', view).onchange = savePnl;
+  $$('[name=pnlMode]', view).forEach(r => (r.onchange = savePnl));
+  const saveChart = async () => {
+    const mode = $('[name=chartMode]:checked', view)?.value || 'colorful';
+    $('#chartColorL', view).hidden = mode !== 'custom'; $('#chartSw', view).hidden = mode !== 'colorful';
+    PREFS.chart = (await api('/prefs/chart', { method: 'PUT', body: { value: { mode, color: $('#chartColor', view).value } } })).value;
+    chartSeen.clear();
+  };
+  $$('[name=chartMode]', view).forEach(r => (r.onchange = saveChart)); if ($('#chartColor', view)) $('#chartColor', view).onchange = saveChart;
+  $$('[data-color]', view).forEach(b => (b.onclick = () => { $('#chartColor', view).value = b.dataset.color; $$('[data-color]', view).forEach(x => x.classList.toggle('on', x === b)); saveChart(); })); if ($('#hideToday', view)) $('#hideToday', view).onchange = savePnl;
   if ($('#newsT', view)) $('#newsT', view).onchange = e => { try { localStorage.setItem('qp_news_toasts', e.target.checked ? '1' : '0'); } catch {} };
 };
 
@@ -1265,6 +1317,7 @@ registerChart(routes, shared);
 registerOptionsLab(routes, shared);
 registerProtect(routes, shared);
 registerOwner(routes, shared);
+registerAlts(routes, shared);
 registerWealth(routes, shared);
 registerTools(routes, shared);
 

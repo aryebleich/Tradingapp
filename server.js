@@ -40,7 +40,9 @@ import { fleetRouter, channelHook } from './src/fleet.js';
 import { marketRouter } from './src/market.js';
 import { optionsRouter } from './src/options.js';
 import { sentimentRouter } from './src/sentiment.js';
-import { halalRouter } from './src/halal.js';
+import { valuesRouter } from './src/values.js';
+import { altsRouter } from './src/alts.js';
+import { quickbooksRouter, finish as qboFinish } from './src/quickbooks.js';
 import { institutionsRouter } from './src/institutions.js';
 import { roundupRouter } from './src/roundup.js';
 import { codeRouter } from './src/code.js';
@@ -329,6 +331,16 @@ app.get('/oauth/google-drive/callback', auth.requireUser, auth.requireAdmin, asy
   } catch (e) { res.redirect('/app#/admin-readme?drive=' + encodeURIComponent(e.message)); }
 });
 
+// QuickBooks Online (Taxes → bookkeeping): connect, then come back to the tax page.
+app.get('/oauth/quickbooks/callback', auth.requireUser, async (req, res) => {
+  try {
+    if (req.query.error) throw new Error(String(req.query.error) === 'access_denied' ? 'QuickBooks access was not allowed' : String(req.query.error));
+    await qboFinish(req.user.id, { code: String(req.query.code || ''), state: String(req.query.state || ''), realmId: String(req.query.realmId || '') });
+    await audit(req.user.id, 'quickbooks_connected', null, req.ip);
+    res.redirect('/app#/tax?qbo=connected');
+  } catch (e) { res.redirect('/app#/tax?qbo=' + encodeURIComponent(e.message)); }
+});
+
 // A deposit's money has arrived: mark it (and the owner's service fee on it) received.
 async function depositReceived(ledgerId, ref) {
   await run("UPDATE ledger SET status = 'received', ref = ? WHERE id = ? AND status IN ('pending', 'processing')", ref, ledgerId);
@@ -411,7 +423,9 @@ api.use('/fleet', fleetRouter);
 api.use('/market', marketRouter);
 api.use('/options', optionsRouter);
 api.use('/news', sentimentRouter);
-api.use('/halal', halalRouter);
+api.use('/values', valuesRouter);
+api.use('/alts', altsRouter);
+api.use('/quickbooks', quickbooksRouter);
 api.use('/institutions', institutionsRouter);
 api.use('/roundups', roundupRouter);
 api.use('/code', codeRouter);

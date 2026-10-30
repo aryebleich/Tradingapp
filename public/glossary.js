@@ -26,7 +26,7 @@ export const TERMS = {
   'maintenance requirement': 'The equity your broker requires you to keep; below it you get a margin call.',
   'leverage': 'Investments divided by your own money. Above 1x means you are using borrowed money.',
   'wash-sale': 'A loss you cannot deduct yet because you bought the same stock within 30 days of selling it.',
-  'nisab': 'The minimum wealth (85 g of gold or 595 g of silver) above which zakat is due.',
+  'maaser': 'Giving a tenth of your profit to tzedakah. Some give a fifth (chomesh).',
   'price improvement': 'Getting a better price than the quoted bid or ask when your order fills.',
   'fill rate': 'The share of orders sent to a brokerage that were filled.',
   'rsi': 'Relative Strength Index (0-100): below 30 is often called oversold, above 70 overbought.',

@@ -289,7 +289,7 @@ console.log('Settings → Language');
   await p.click("form.auth button:not([type=button])"); await p.waitForSelector('#tabs a.on', { state: 'attached' });
   const go = async (r, sel) => { if (p.url() === B + '/app' + r) await p.reload(); else await p.goto(B + '/app' + r); await p.waitForSelector(sel, { timeout: 15000 }); };
   const okText = async box => { await p.waitForSelector(`${box} .ok`, { timeout: 20000 }).catch(async () => { throw new Error((await p.textContent(`${box} .err`).catch(() => '')) || 'no result'); }); };
-  await step('menu lists the new pages', async () => { for (const k of ['chart', 'ai', 'scanner', 'optionslab', 'portfolios', 'fleet', 'insights', 'risk', 'halal']) await p.waitForSelector(`#nav a[href="#/${k}"]`, { state: 'attached' }); });
+  await step('menu lists the new pages', async () => { for (const k of ['chart', 'ai', 'scanner', 'optionslab', 'portfolios', 'fleet', 'insights', 'risk', 'values', 'private', 'realestate']) await p.waitForSelector(`#nav a[href="#/${k}"]`, { state: 'attached' }); });
   await step('AI assistant answers (basic mode)', async () => {
     await go('#/ai', '#ask'); await p.fill('#ask textarea', 'How does AAPL look technically?'); await p.click('#send');
     await p.waitForSelector('.msg.assistant:not(.typing)', { timeout: 20000 });
@@ -313,9 +313,14 @@ console.log('Settings → Language');
     await p.click('#kill'); await p.waitForSelector('.killcard.on', { timeout: 15000 }); await p.click('#kill'); await p.waitForSelector('.killcard:not(.on)', { timeout: 15000 });
   });
   await step('insights and journal', async () => { await go('#/insights', '#twrCh'); await go('#/insights?tab=journal', '#jt'); await go('#/insights?tab=execution', 'table'); });
-  await step('halal screen and zakat', async () => {
-    await go('#/halal', '#hs'); await p.click('#hs button'); await p.waitForSelector('#hsOut table');
-    await go('#/halal?tab=zakat', '#zk'); await p.fill('#zk input[name=cash]', '20000'); await p.fill('#zk input[name=goldPerGram]', '80'); await p.click('#zk button'); await p.waitForSelector('#zOut .stats');
+  await step('values investing: screen, maaser, Shabbos times', async () => {
+    await go('#/values', '#hs'); await p.click('#hs button'); await p.waitForSelector('#hsOut table');
+    await go('#/values?tab=maaser', '#mz'); await p.fill('#mz input[name=otherIncome]', '5000'); await p.click('#mz button'); await p.waitForSelector('#mzOut .stats');
+    await go('#/values?tab=shabbos', '#sh'); await p.waitForSelector('text=Coming up');
+  });
+  await step('private markets and real estate', async () => {
+    await go('#/private', '#add'); await p.fill('#add [name=name]', 'Seed round'); await p.fill('#add [name=invested]', '5000'); await p.fill('#add [name=value]', '8000'); await p.click('#add button'); await p.waitForSelector('text=Seed round');
+    await go('#/realestate', '#add'); await p.fill('#add [name=name]', 'Two-family'); await p.fill('#add [name=value]', '500000'); await p.fill('#add [name=rent]', '4000'); await p.click('#add button'); await p.waitForSelector('text=Two-family');
   });
   await step('round-ups import', async () => { await go('#/spend', '#csv'); await p.fill('#csv', '2026-10-20,STARBUCKS #1,5.45\n2026-10-21,AMAZON,23.10'); await p.click('#imp'); await p.waitForFunction(() => /purchases read/.test(document.body.textContent), null, { timeout: 15000 }); });
   await step('news sentiment', async () => { await go('#/news', '#nf'); await p.waitForSelector('#sent .cards', { timeout: 20000 }); });
@@ -363,7 +368,7 @@ for (const [device, width, lang] of [['iPhone 13', 390, 'en'], ['iPhone SE', 320
   await p.evaluate(() => fetch('/api/alpaca/keys', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ keyId: 'AUDIT' + innerWidth, secret: 'S' }) }));
   await p.evaluate(() => localStorage.setItem('qp_account', 'alpaca'));
   const lib = await p.evaluate(() => fetch('/api/library', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ templateId: 'multi_model' }) }).then(r => r.json()));
-  for (const r of ['/', '/yi', '/terms', '/app#/register', '/app#/login', '#/dashboard', '#/trade?symbol=AAPL', '#/orders', '#/positions', '#/watchlists', '#/markets', '#/options?underlying=AAPL', '#/calendar', '#/account', '#/open-account', '#/brokers', '#/strategies', `#/strategy?id=${lib.id}`, '#/signals', '#/pairs', '#/statarb', '#/sp500', '#/backtest', '#/bots', '#/schedule', '#/text', '#/tax', '#/funding', '#/settings', '#/chart?symbol=AAPL', '#/ai', '#/agents', '#/code', '#/news', '#/scanner', '#/optionslab', '#/institutions', '#/portfolios', '#/portfolios?tab=mine', '#/fleet', '#/marketplace', '#/insights', '#/insights?tab=journal', '#/risk', '#/spend', '#/halal', '#/halal?tab=zakat', '#/security', '#/execution', '#/learn', '#/longterm', '#/workspace', '#/accounts', '#/wealth', '#/wealth?tab=compound', '#/wealth?tab=auto', '#/wealth?tab=hold', '#/wealth?tab=drip', '#/wealth?tab=understand', '#/wealth?tab=tax', '#/wealth?tab=core', '#/wealth?tab=diversify', '#/alpaca-tools', '#/referrals']) {
+  for (const r of ['/', '/yi', '/terms', '/app#/register', '/app#/login', '#/dashboard', '#/trade?symbol=AAPL', '#/orders', '#/positions', '#/watchlists', '#/markets', '#/options?underlying=AAPL', '#/calendar', '#/account', '#/open-account', '#/brokers', '#/strategies', `#/strategy?id=${lib.id}`, '#/signals', '#/pairs', '#/statarb', '#/sp500', '#/backtest', '#/bots', '#/schedule', '#/text', '#/tax', '#/funding', '#/settings', '#/chart?symbol=AAPL', '#/ai', '#/agents', '#/code', '#/news', '#/scanner', '#/optionslab', '#/institutions', '#/portfolios', '#/portfolios?tab=mine', '#/fleet', '#/marketplace', '#/insights', '#/insights?tab=journal', '#/risk', '#/spend', '#/values', '#/values?tab=maaser', '#/values?tab=shabbos', '#/private', '#/realestate', '#/security', '#/execution', '#/learn', '#/longterm', '#/workspace', '#/accounts', '#/wealth', '#/wealth?tab=compound', '#/wealth?tab=auto', '#/wealth?tab=hold', '#/wealth?tab=drip', '#/wealth?tab=understand', '#/wealth?tab=tax', '#/wealth?tab=core', '#/wealth?tab=diversify', '#/alpaca-tools', '#/referrals']) {
     await step(r, async () => {
       await p.goto(r.startsWith('#') ? B + '/app' + r : B + r); if (r === '#/dashboard') await p.reload();
       await p.waitForTimeout(r.includes('strategy') || r.includes('sp500') ? 3000 : 1300);

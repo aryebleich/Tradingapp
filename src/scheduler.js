@@ -2,6 +2,7 @@
 import { one, all, run, now } from './db.js';
 import { nyTime, nextNyRun, extendedSession } from './time.js';
 import { runExtraJobs } from './jobs.js';
+import { shabbosBlock } from './values.js';
 import { placeOrder, getBars, lastPrice, snapshotEquity, accountSummary, getCred, syncAlpacaFills } from './brokers.js';
 import { latestSignal } from './engine.js';
 import { sendSms, sendEmail } from './notify.js';
@@ -51,6 +52,8 @@ export async function runScheduledOrders(t = now()) {
   let ran = 0;
   for (const o of due) {
     if (!canRunNow(o, t)) continue; // waits for the session; runs as soon as it opens
+    // Shabbos and Yom Tov (Values investing): the order waits and runs when it is over.
+    if (await shabbosBlock(o.user_id, t)) continue;
     // Skip runs missed while the app was asleep instead of firing them all at once.
     let next = nextRunOf(o, o.next_run);
     while (next && next <= t) next = nextRunOf(o, next);

@@ -408,7 +408,7 @@ async function portfolio(view, q) {
       ${ps.slice(0, 8).map(p => `<tr><td><a href="#/trade?symbol=${encodeURIComponent(p.symbol)}">${H.esc(p.symbol)}</a></td><td class="num">${usd(p.marketValue)}</td><td class="num ${H.cls(p.todayPl)}">${usd(p.todayPl)}</td><td class="num ${H.cls(p.unrealizedPl)}">${usd(p.unrealizedPl)} (${H.pct(p.unrealizedPlPct)})</td></tr>`).join('') || '<tr><td colspan="4" class="mu">No positions. <a href="#/trade">Place a trade</a></td></tr>'}</table></div></div>
   </div>`;
   let pts = h.points, hist = h;
-  const drawEq = () => H.drawChart(H.$('#eq', view), pts.map(p => p.equity), { base: hist.baseValue || pts[0]?.equity, dates: pts.map(p => p.t), time: ['1D', '1W'].includes(period) });
+  const drawEq = () => H.drawChart(H.$('#eq', view), pts.map(p => p.equity), { base: hist.baseValue || pts[0]?.equity, dates: pts.map(p => p.t), time: ['1D', '1W'].includes(period), legend: false });
   drawEq(); onResize(drawEq); H.wireStatement(view, 'alpaca');
   H.$$('#periods button', view).forEach(b => (b.onclick = () => { try { localStorage.setItem('qp_period', b.dataset.p); } catch {} location.hash = '#/dashboard?period=' + b.dataset.p; }));
   // Quiet refresh: numbers change in place and the chart redraws only when its data changed. Nothing

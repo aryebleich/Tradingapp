@@ -1,13 +1,14 @@
 // Analysis & money: portfolio insights (time-weighted return, P/L by symbol and strategy, the
-// trade journal, live-vs-expected execution, what-if), risk guardrails and the kill switch, halal
-// screening and zakat, institutional 13F portfolios, spend-based investing and news sentiment.
+// trade journal, live-vs-expected execution, what-if), risk guardrails and the kill switch, values
+// investing (screens, maaser, Shabbos and Yom Tov), institutional 13F portfolios, spend-based
+// investing and news sentiment.
 import { canvasNote } from './i18n.js';
 let H;
 // Re-render after a short delay, unless the user has moved to another page by then.
 const later = ms => { const h = location.hash; setTimeout(() => location.hash === h && H.render(), ms); };
 export function registerAnalytics(routes, helpers) {
   H = helpers;
-  Object.assign(routes, { insights, risk, halal, institutions, spend, news });
+  Object.assign(routes, { insights, risk, values, halal: () => (location.hash = '#/values'), institutions, spend, news });
 }
 const pc = (v, d = 1) => (v == null || !Number.isFinite(+v) ? '-' : `${v > 0 ? '+' : ''}${(+v).toFixed(d)}%`);
 const tabsHtml = (list, on) => `<div class="seg pagetabs">${list.map(([k, t]) => `<button type="button" data-tab="${k}" class="${k === on ? 'on' : ''}">${t}</button>`).join('')}</div>`;
@@ -118,62 +119,79 @@ async function risk(view) {
   H.act(H.$('button', f), async () => { await H.api('/risk', { method: 'PUT', body: { ...H.form(f), guardAccounts: H.$$('[name=ga]:checked', f).map(i => i.value) } }); return 'Saved'; });
 }
 
-// ---------- halal screening + zakat ----------
-const ST = { compliant: ['Halal', 'ok'], not_compliant: ['Not halal', 'bad'], questionable: ['Doubtful', 'warn'], unknown: ['Not screened', ''] };
-const badge = s => `<span class="pill ${ST[s][1]}">${ST[s][0]}</span>`;
-async function halal(view, q) {
-  const tab = q.get('tab') || 'screen', accts = await H.accounts(), admin = H.me()?.role === 'admin';
-  const head = `<div class="pagehead"><h1>Halal investing</h1><p class="mu">Shariah screening for stocks and your portfolio, certified funds, and a zakat calculator.</p></div>
-    ${tabsHtml([['screen', 'Screen'], ['portfolio', 'My portfolio'], ['zakat', 'Zakat'], ...(admin ? [['feed', 'Data feed']] : [])], tab)}`;
-  const method = '<p class="mu small-print">Screening follows AAOIFI ratios (interest-bearing debt and cash each under 30% of market value, receivables under 49%, non-compliant income under 5%) when compliance data is loaded, then certified Shariah funds, then a business-activity screen. Anything else shows as not screened rather than guessed. Ask a qualified scholar about your own situation.</p>';
-  if (tab === 'portfolio') {
-    const account = q.get('account') || 'paper', d = await H.api('/halal/portfolio?account=' + encodeURIComponent(account));
-    view.innerHTML = `${head}<div class="card"><div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">Portfolio screen</h2>${acctPicker(accts, account)}</div>
-      <div class="stats">${stat('Halal', d.compliantPct + '%', 'pos')}${stat('Not halal', d.notCompliantPct + '%', d.notCompliantPct ? 'neg' : '')}${stat('Doubtful', d.questionablePct + '%')}${stat('Not screened', d.unknownPct + '%')}</div>
-      <div class="tablewrap"><table><tr><th>Symbol</th><th>Status</th><th>Why</th><th>Value</th><th>Weight</th></tr>${d.holdings.map(h => `<tr><td>${H.esc(h.symbol)}</td><td>${badge(h.status)}</td><td class="mu">${H.esc(h.basis)}${h.reasons?.length ? ': ' + h.reasons.map(H.esc).join('; ') : ''}</td><td>${H.money(h.value)}</td><td>${h.weight}%</td></tr>`).join('') || '<tr><td colspan="5" class="mu">No positions in this account</td></tr>'}</table></div>
-      <h3>Purification</h3><div class="row"><label>Dividends received this year ($)<input id="div" type="number" min="0" value="0"></label><label>Non-compliant income share (%)<input id="npct" type="number" min="0" max="100" step="0.1" value="5"></label></div><p id="pur" class="mu"></p>${method}</div>`;
-    const calc = () => (H.$('#pur', view).textContent = `Give about ${H.money((+H.$('#div', view).value || 0) * (+H.$('#npct', view).value || 0) / 100)} to charity to purify these dividends.`);
-    H.$('#div', view).oninput = H.$('#npct', view).oninput = calc; calc();
-    H.$('#acct', view).onchange = e => (location.hash = `#/halal?tab=portfolio&account=${e.target.value}`);
-    return wireTabs(view, 'halal');
+// ---------- values investing: screens, maaser, Shabbos and Yom Tov ----------
+const VB = { avoid: ['Avoid', 'bad'], clear: ['No flags found', 'ok'] };
+const vbadge = s => `<span class="pill ${VB[s][1]}">${VB[s][0]}</span>`;
+const nyTime = (t, tz) => new Date(t).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', ...(tz ? { timeZone: tz, timeZoneName: 'short' } : {}) });
+async function values(view, q) {
+  const tab = q.get('tab') || 'screen', accts = await H.accounts(), admin = H.me()?.role === 'admin', v = await H.api('/values');
+  const head = `<div class="pagehead"><h1>Values investing</h1><p class="mu">Invest by your values: screen stocks and your portfolio, work out maaser, and pause trading on Shabbos and Yom Tov.</p></div>
+    <p class="mu" style="margin:-6px 0 10px">Your values: <b>${H.esc(v.presets[v.preset].label)}</b> · <a href="#/values?tab=settings">change</a>${v.shabbos ? ` · <span class="pill">Shabbos and Yom Tov pause on</span>` : ''}</p>
+    ${v.now ? `<div class="banner">${H.esc(v.now.name)}: trading is paused until ${nyTime(v.now.until, v.tz)}.</div>` : ''}
+    ${tabsHtml([['screen', 'Screen'], ['portfolio', 'My portfolio'], ['maaser', 'Maaser'], ['shabbos', 'Shabbos & Yom Tov'], ['settings', 'My values'], ...(admin ? [['lists', 'Lists']] : [])], tab)}`;
+  const note = '<p class="mu small-print">Screens use lists of companies by their main business. "No flags found" means the company is not on a list you avoid; it is not a religious or ethical approval. For questions of halacha, ask your rav.</p>';
+  if (tab === 'settings') {
+    view.innerHTML = `${head}<form class="card" id="vs"><h2>My values</h2>
+      <div class="modes">${Object.entries(v.presets).map(([k, p]) => `<label class="mode ${v.preset === k ? 'on' : ''}"><input type="radio" name="preset" value="${k}" ${v.preset === k ? 'checked' : ''}><b>${H.esc(p.label)}</b><span class="mu">${H.esc(p.about)}</span></label>`).join('')}</div>
+      <div id="customBox" ${v.preset === 'custom' ? '' : 'hidden'}><h3>Avoid</h3><div class="row" style="flex-wrap:wrap;gap:6px 18px">${Object.entries(v.categories).map(([k, t]) => `<label class="chk"><input type="checkbox" name="avoid" value="${k}" ${v.avoid.includes(k) ? 'checked' : ''}> ${H.esc(t)}</label>`).join('')}</div></div>
+      <button>Save</button><div class="err"></div></form>`;
+    const f = H.$('#vs', view);
+    H.$$('[name=preset]', f).forEach(r => (r.onchange = () => { H.$('#customBox', view).hidden = r.value !== 'custom'; }));
+    H.act(H.$('button', f), async () => { await H.api('/values', { method: 'PUT', body: { preset: H.$('[name=preset]:checked', f).value, avoid: H.$$('[name=avoid]:checked', f).map(c => c.value) } }); later(700); return 'Saved'; });
+    return wireTabs(view, 'values');
   }
-  if (tab === 'zakat') {
-    view.innerHTML = `${head}<form class="card" id="zk"><h2>Zakat calculator</h2>
-      <div class="row"><label>Cash and savings ($)<input name="cash" type="number" min="0" value="0"></label><label>Stocks and funds ($)<input name="holdings" type="number" min="0" value="0"></label><label>Money owed to you ($)<input name="receivables" type="number" min="0" value="0"></label><label>Debts due now ($)<input name="debts" type="number" min="0" value="0"></label></div>
-      <div class="chips"><span class="mu small-print">Add the value of my accounts:</span>${accts.filter(a => a.connected).map(a => `<label class="chk"><input type="checkbox" name="inc" value="${a.id}">${H.esc(H.acctLabel(a))}</label>`).join('')}</div>
-      <div class="row"><label>Count stocks at<select name="holdingsMethod"><option value="market">Full market value (trading)</option><option value="longterm">Zakatable share only (long-term holding)</option></select></label><label>Zakatable share %<input name="zakatablePct" type="number" min="0" max="100" value="30"></label></div>
-      <div class="row"><label>Gold (grams)<input name="gold" type="number" min="0" value="0"></label><label>Silver (grams)<input name="silver" type="number" min="0" value="0"></label><label>Gold price per gram ($)<input name="goldPerGram" type="number" min="0" step="0.01" placeholder="estimate"></label><label>Silver price per gram ($)<input name="silverPerGram" type="number" min="0" step="0.01" value="1"></label>
-        <label>Nisab based on<select name="nisab"><option value="gold">Gold (85 g)</option><option value="silver">Silver (595 g)</option></select></label></div>
-      <button>Calculate</button><div class="err"></div><div id="zOut"></div>
-      <p class="mu small-print">Zakat is 2.5% of zakatable wealth held for a lunar year when it is at or above the nisab. For long-term holdings many scholars count only the zakatable assets of the companies (about 30% of value when unknown). Confirm with a scholar.</p></form>`;
-    const f = H.$('#zk', view);
+  if (tab === 'shabbos') {
+    view.innerHTML = `${head}<form class="card" id="sh"><h2>No trading on Shabbos and Yom Tov</h2>
+      <p class="mu" style="margin-top:0">When this is on, nothing trades in your accounts from candle lighting until 72 minutes after sunset at the end of Shabbos or Yom Tov: no orders, no automatic strategies, no bots, no alerts turned into trades and no crypto. Scheduled trades wait and run afterwards.</p>
+      <label class="chk"><input type="checkbox" name="shabbos" ${v.shabbos ? 'checked' : ''}> Pause all trading on Shabbos and Yom Tov</label>
+      <label style="max-width:320px">Times for<select name="city">${Object.entries(v.cities).map(([k, n]) => `<option value="${k}" ${v.city === k ? 'selected' : ''}>${H.esc(n)}</option>`).join('')}</select></label>
+      <button>Save</button><div class="err"></div></form>
+      <div class="card tablewrap"><h2>Coming up</h2><table><tr><th></th><th>Trading stops</th><th>Trading resumes</th></tr>${v.upcoming.map(x => `<tr><td><b>${H.esc(x.name)}</b></td><td>${nyTime(x.starts, v.tz)}</td><td>${nyTime(x.ends, v.tz)}</td></tr>`).join('')}</table>
+      <p class="mu small-print">Times are calculated for the city you pick (candle lighting 18 minutes before sunset, 40 in Jerusalem; the end 72 minutes after sunset) and shown in that city's time. Your local luach is the authority.</p></div>`;
+    const f = H.$('#sh', view);
+    H.act(H.$('button', f), async () => { await H.api('/values', { method: 'PUT', body: { shabbos: f.shabbos.checked, city: f.city.value } }); later(700); return 'Saved'; });
+    return wireTabs(view, 'values');
+  }
+  if (tab === 'maaser') {
+    const y = new Date().getFullYear();
+    view.innerHTML = `${head}<form class="card" id="mz"><h2>Maaser calculator</h2>
+      <p class="mu" style="margin-top:0">A tenth (or a fifth, chomesh) of what your investments earned this year: realized gains, dividends and interest, less losses, from your accounts here. Add other income if you want it in the same count.</p>
+      <div class="row"><label>Year<select name="year">${[0, 1, 2].map(i => `<option>${y - i}</option>`).join('')}</select></label>
+        <label>Share<select name="pct"><option value="10" ${v.maaserPct === 10 ? 'selected' : ''}>Maaser (10%)</option><option value="20" ${v.maaserPct === 20 ? 'selected' : ''}>Chomesh (20%)</option></select></label>
+        <label>Other income ($)<input name="otherIncome" type="number" min="0" step="any" value="0"></label><label>Already given ($)<input name="alreadyGiven" type="number" min="0" step="any" value="0"></label></div>
+      <div class="row" style="flex-wrap:wrap;gap:6px 18px">${accts.filter(a => a.connected !== false).map(a => `<label class="chk"><input type="checkbox" name="acc" value="${H.esc(a.id)}" ${a.id === 'paper' ? '' : 'checked'}> ${H.esc(H.acctLabel(a))}</label>`).join('')}</div>
+      <button>Calculate</button><div class="err"></div><div id="mzOut"></div></form>`;
+    const f = H.$('#mz', view);
     H.act(H.$('button', f), async () => {
-      const r = await H.api('/halal/zakat', { body: { ...H.form(f), includeAccounts: H.$$('[name=inc]:checked', f).map(i => i.value) } });
-      H.$('#zOut', view).innerHTML = `<div class="stats">${stat('Zakatable wealth', H.money(r.wealth))}${stat('Nisab', H.money(r.nisab))}${stat('Zakat due', H.money(r.zakat), r.due ? 'pos' : '')}</div>
-        <p class="mu small-print"><span>${r.due ? 'Your wealth is above the nisab.' : 'Your wealth is below the nisab: no zakat is due.'}</span> <span>Stocks counted:</span> ${H.money(r.stocksCounted)}. <span>Gold per gram:</span> ${H.money(r.goldPerGram)}${r.goldPriceEstimated ? ' <span>(estimated from the GLD fund; enter today\'s price for accuracy)</span>' : ''}</p>`;
+      const r = await H.api('/values/maaser', { body: { year: +f.year.value, pct: +f.pct.value, otherIncome: +f.otherIncome.value, alreadyGiven: +f.alreadyGiven.value, accounts: H.$$('[name=acc]:checked', f).map(c => c.value) } });
+      H.$('#mzOut', view).innerHTML = `<div class="stats" style="margin-top:12px">${stat('Profit counted', H.money(r.profit), H.cls(r.profit))}${stat(r.pct === 20 ? 'Chomesh' : 'Maaser', H.money(r.maaser))}${stat('Already given', H.money(r.given))}${stat('Still to give', H.money(r.remaining))}</div>`;
+      return '';
     });
-    return wireTabs(view, 'halal');
+    return wireTabs(view, 'values');
   }
-  if (tab === 'feed' && admin) {
-    const d = await H.api('/halal/feed');
-    view.innerHTML = `${head}<div class="card"><h2>Compliance data feed</h2><p class="mu"><span>Symbols loaded:</span> ${d.count}. ${d.url ? `<span>Refreshed daily from</span> <code>${H.esc(d.url)}</code>` : '<span>Set HALAL_FEED_URL (and HALAL_FEED_TOKEN if needed) to pull a provider\'s CSV every day.</span>'}</p>
-      <label>Paste CSV: symbol,status,debt_ratio,cash_ratio,receivables_ratio,nonhalal_pct,source,as_of<textarea id="csv" rows="6" data-no-tr placeholder="AAPL,compliant,8.1,14.2,12.5,0.4,Provider,2026-09-30"></textarea></label>
-      <label>... or choose a file<input type="file" id="csvFile" accept=".csv,text/csv"></label><button id="imp">Import</button><div class="err"></div>
-      <div class="tablewrap"><table><tr><th>Symbol</th><th>Status</th><th>Debt</th><th>Cash</th><th>Receivables</th><th>Non-halal income</th><th>Source</th></tr>${d.latest.map(r => `<tr><td>${H.esc(r.symbol)}</td><td>${H.esc(r.status || '-')}</td><td>${r.debt_ratio ?? '-'}</td><td>${r.cash_ratio ?? '-'}</td><td>${r.receivables_ratio ?? '-'}</td><td>${r.nonhalal_pct ?? '-'}</td><td>${H.esc(r.source || '')}</td></tr>`).join('')}</table></div></div>`;
-    H.$('#csvFile', view).onchange = async e => { const f = e.target.files[0]; if (f) H.$('#csv', view).value = await f.text(); };
-    H.act(H.$('#imp', view), async () => { const r = await H.api('/halal/feed', { body: { csv: H.$('#csv', view).value } }); later(900); return `Imported ${r.imported} rows`; });
-    return wireTabs(view, 'halal');
+  if (tab === 'portfolio') {
+    const account = q.get('account') || 'paper', d = await H.api('/values/portfolio?account=' + encodeURIComponent(account));
+    view.innerHTML = `${head}<div class="card"><div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">Portfolio screen</h2>${acctPicker(accts, account)}</div>
+      <div class="stats">${stat('On your avoid list', d.avoidPct + '%', d.avoidPct ? 'neg' : '')}${stat('No flags found', (100 - d.avoidPct).toFixed(1) + '%')}</div>
+      <div class="tablewrap"><table><tr><th>Symbol</th><th>Status</th><th>Why</th><th>Value</th><th>Weight</th></tr>${d.holdings.map(h => `<tr><td><b>${H.esc(h.symbol)}</b></td><td>${vbadge(h.status)}</td><td>${H.esc(h.reasons.join(', '))}</td><td>${H.money(h.value)}</td><td>${h.weight}%</td></tr>`).join('') || '<tr><td colspan="5" class="mu">No positions</td></tr>'}</table></div>${note}</div>`;
+    H.$('#acct', view).onchange = e => (location.hash = `#/values?tab=portfolio&account=${e.target.value}`);
+    return wireTabs(view, 'values');
   }
-  const funds = await H.api('/halal/funds');
-  view.innerHTML = `${head}<form class="card" id="hs"><h2>Screen stocks</h2><div class="row"><label style="flex:3">Symbols<input name="symbols" value="${H.esc(q.get('symbols') || 'AAPL, MSFT, NVDA, JPM, KO, SPUS')}" data-no-tr></label><button>Screen</button></div><div class="err"></div><div id="hsOut"></div>${method}</form>
-    <div class="card"><h2>Shariah-certified funds</h2><div class="tablewrap"><table><tr><th>Symbol</th><th>Fund</th><th></th></tr>${Object.entries(funds).map(([k, v]) => `<tr><td><b>${H.esc(k)}</b></td><td>${H.esc(v)}</td><td><a href="#/trade?symbol=${k}">Trade</a></td></tr>`).join('')}</table></div></div>`;
+  if (tab === 'lists' && admin) {
+    view.innerHTML = `${head}<form class="card" id="vl"><h2>Add companies to the lists</h2><p class="mu">One per line: <code>symbol,category</code>. Categories: ${Object.keys(v.categories).map(k => `<code>${k}</code>`).join(', ')}.</p>
+      <textarea id="csv" rows="6" data-no-tr></textarea><button>Add</button><div class="err"></div></form>`;
+    H.act(H.$('#vl button', view), async () => `Added ${(await H.api('/values/lists', { body: { csv: H.$('#csv', view).value } })).added}`);
+    return wireTabs(view, 'values');
+  }
+  view.innerHTML = `${head}<form class="card" id="hs"><h2>Screen stocks</h2><div class="row"><label style="flex:3">Symbols<input name="symbols" value="${H.esc(q.get('symbols') || 'AAPL, MSFT, DKNG, HRL, SPY')}"></label><button style="align-self:flex-end">Screen</button></div><div class="err"></div><div id="hsOut"></div>${note}</form>`;
   const f = H.$('#hs', view);
   H.act(H.$('button', f), async () => {
-    const r = await H.api('/halal/screen?symbols=' + encodeURIComponent(f.symbols.value));
-    H.$('#hsOut', view).innerHTML = `<div class="tablewrap"><table><tr><th>Symbol</th><th>Status</th><th>Based on</th><th>Details</th></tr>${r.results.map(x => `<tr><td><b>${H.esc(x.symbol)}</b></td><td>${badge(x.status)}</td><td>${H.esc(x.basis)}</td><td class="mu">${x.ratios ? Object.entries(x.ratios).filter(([, v]) => v != null).map(([k, v]) => `${k} ${v}%`).join(', ') + (x.asOf ? ` (as of ${H.esc(x.asOf)})` : '') + '<br>' : ''}${x.reasons.map(H.esc).join('; ')}</td></tr>`).join('')}</table></div>`;
+    const r = await H.api('/values/screen?symbols=' + encodeURIComponent(f.symbols.value));
+    H.$('#hsOut', view).innerHTML = `<div class="tablewrap"><table><tr><th>Symbol</th><th>Status</th><th>Why</th></tr>${r.results.map(x => `<tr><td><b>${H.esc(x.symbol)}</b></td><td>${vbadge(x.status)}</td><td>${H.esc(x.reasons.join(', '))}</td></tr>`).join('')}</table></div>`;
+    return '';
   });
   if (q.get('symbols')) H.$('button', f).click();
-  wireTabs(view, 'halal');
+  wireTabs(view, 'values');
 }
 
 // ---------- institutional 13F ----------

@@ -43,5 +43,5 @@ test('the symbol, its spacing, and the chart read-out', () => {
   assert.match(fs.readFileSync('public/theme.css', 'utf8'), /\.brand \{[^}]*gap: 11px;[^}]*margin-inline-end: 8px;/);
   const app = fs.readFileSync('public/app.js', 'utf8');
   assert.match(app, /function wireChartHover\(canvas\)/);
-  assert.match(app, /drawChart\(\$\('#eqc', view\), a\.history\.map\(x => x\.equity\), \{ base, dates: a\.history\.map\(x => x\.day\) \}\)/);
+  assert.match(app, /drawChart\(\$\('#eqc', view\), a\.history\.map\(x => x\.equity\), \{ base, dates: a\.history\.map\(x => x\.day\), legend: false \}\)/);
 });

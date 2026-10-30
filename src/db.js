@@ -416,15 +416,28 @@ CREATE TABLE IF NOT EXISTS code_scripts (
   code TEXT NOT NULL,
   updated_at INTEGER NOT NULL
 );
--- Shariah screening data (from the owner's compliance feed).
-CREATE TABLE IF NOT EXISTS halal_data (
-  symbol TEXT PRIMARY KEY,
-  status TEXT NOT NULL,
-  debt_ratio REAL, cash_ratio REAL, receivables_ratio REAL, nonhalal_pct REAL,
-  source TEXT,
-  as_of TEXT,
+-- Private markets and real estate (src/alts.js): the investment and its dated cash flows.
+CREATE TABLE IF NOT EXISTS alt_assets (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,
+  name TEXT NOT NULL,
+  data TEXT NOT NULL DEFAULT '{}',
+  created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
+CREATE INDEX IF NOT EXISTS alt_assets_user ON alt_assets(user_id, kind);
+CREATE TABLE IF NOT EXISTS alt_events (
+  id INTEGER PRIMARY KEY,
+  asset_id INTEGER NOT NULL REFERENCES alt_assets(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,
+  amount REAL NOT NULL,
+  on_date TEXT NOT NULL,
+  memo TEXT,
+  at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS alt_events_asset ON alt_events(asset_id);
 -- Money in and out of each account, by date, for time-weighted returns.
 CREATE TABLE IF NOT EXISTS cashflows (
   id INTEGER PRIMARY KEY,

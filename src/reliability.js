@@ -33,7 +33,7 @@ export const shedding = () => load() >= SHED_ENV();
 const CRITICAL = [/^\/api\/orders/, /^\/api\/alpaca\/orders/, /^\/api\/alpaca\/positions/, /^\/api\/risk/, /^\/api\/security/, /^\/api\/auth/, /^\/hook\//, /^\/api\/fleet\/inbox/, /^\/healthz/, /^\/readyz/, /^\/metrics/, /^\/api\/exec/];
 // Shed first: heavy reads that can wait.
 const OPTIONAL = [/^\/api\/insights/, /^\/api\/news/, /^\/api\/institutions/, /^\/api\/ml/, /^\/api\/scanners\/run/, /^\/api\/baskets\/backtest/, /^\/api\/backtest/, /^\/api\/alpaca\/data\/(bars|news|movers|most-actives)/,
-  /^\/api\/code\/prices/, /^\/api\/ai\//, /^\/api\/options\/(scan|template)/, /^\/api\/halal\/(screen|portfolio)/, /^\/api\/market/, /^\/api\/tax/, /^\/api\/longterm/];
+  /^\/api\/code\/prices/, /^\/api\/ai\//, /^\/api\/options\/(scan|template)/, /^\/api\/values\/(screen|portfolio)/, /^\/api\/market/, /^\/api\/tax/, /^\/api\/longterm/];
 export const classify = path => (CRITICAL.some(r => r.test(path)) ? 'critical' : OPTIONAL.some(r => r.test(path)) ? 'optional' : 'normal');
 
 export function shedMiddleware(req, res, next) {

@@ -11,7 +11,6 @@ import { runScanners, runIntradayBots } from './scanner.js';
 import { runBaskets } from './baskets.js';
 import { runIncomeBots } from './options.js';
 import { runRoundups } from './roundup.js';
-import { refreshFeed } from './halal.js';
 import { runDrip, rebalanceReminders } from './wealth.js';
 import { monthlyBooksEmail } from './books.js';
 
@@ -52,8 +51,6 @@ export const JOBS = [
   ['rebalremind', 1440, t => rebalanceReminders(t)],
   // Last month's books by email (opt-in), on the 1st.
   ['books', 1440, t => monthlyBooksEmail(t)],
-  // The owner's Shariah compliance feed (HALAL_FEED_URL), once a day.
-  ['halalfeed', 1440, () => refreshFeed()],
 ];
 export async function runExtraJobs(t, claimOnce) {
   const out = {};
