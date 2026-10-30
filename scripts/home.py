@@ -294,6 +294,7 @@ def index(lang='en'):
     <div class="cta">{gbtn()}{ghbtn()}<a class="btn outline lg" data-app="#/register" href="app">{T('Start free with email')}</a></div>
     <ul class="ticks"><li>{T('Set up in 3 minutes')}</li><li>{T('$100,000 paper account')}</li><li>{T('No card needed')}</li></ul>
     <p class="demolink"><a href="#start">{T('New to investing? Start here')} &darr;</a> · <a href="#demo">{T('Try the live demo, no sign-up')} &darr;</a></p>
+    <p class="applink"><a class="btn outline" href="https://github.com/aryebleich/Tradingapp/releases/download/android-latest/brightfolio.apk" rel="noopener">{ic('phone', 18)} {T('Download the Android app')}</a></p>
     <p class="acctlink"><a data-app="#/open-account" href="app">{T('Open a brokerage account')} &rarr;</a> <span>{T('Commission-free, held at Alpaca Securities LLC (FINRA/SIPC)')}</span></p>
     <p class="phoneline hero-phone" data-phone hidden>{ic('msg', 16)} {T('Text or call us:')} <a data-phone-link dir="ltr"></a></p>
   </div>
@@ -468,6 +469,7 @@ def index(lang='en'):
   <div class="startbox">
     {gbtn('Sign up with Google', 'wide')}{ghbtn('Sign up with GitHub', 'wide')}
     <div class="or" data-oauth hidden><span>{T('or')}</span></div>
+    <a class="btn light wide" href="https://github.com/aryebleich/Tradingapp/releases/download/android-latest/brightfolio.apk" rel="noopener" style="margin-top:10px">{ic('phone', 18)} {T('Download the Android app')}</a>
     <form id="startForm"><input type="email" name="email" placeholder="{T('Email address')}" autocomplete="email" aria-label="{T('Email address')}" required dir="ltr"><button class="btn light">{T('Start free')}</button></form>
   </div>
 </div></div></section>

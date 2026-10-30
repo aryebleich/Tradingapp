@@ -494,3 +494,6 @@ section.dark .sub, section.dark .trust .feature p { color: #b6c4da; }
 .moregoals > summary::-webkit-details-marker { display: none; }
 .moregoals[open] > summary { margin-bottom: 14px; }
 @media (max-width: 860px) { .steps3 { grid-template-columns: 1fr; } }
+.applink { margin: 14px 0 0; }
+.applink .btn, .startbox .btn.wide { display: inline-flex; align-items: center; gap: 8px; }
+.startbox .btn.wide { justify-content: center; width: 100%; }

@@ -3,3 +3,5 @@ data/
 .env
 e2e-output/
 __pycache__/
+android/project/
+android/brightfolio.apk

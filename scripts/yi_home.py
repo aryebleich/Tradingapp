@@ -500,6 +500,7 @@ YI.update({
  "one simple investment in 500 large US companies, a little every month.": "איין פשוטע אינוועסטירונג אין 500 גרויסע אמעריקאנער פירמעס, א ביסל יעדן חודש.",
  "Already know what you want? Pick a goal": "ווייסט איר שוין וואס איר ווילט? קלייבט אן ציל",
 })
+YI.update({"Download the Android app": "אראפלאדן די אנדרויד עפּ"})
 # Translations made with Yiddish Labs (npm run yiddish:import) take precedence.
 import json as _json, os as _os
 _labs = _os.path.join(_os.path.dirname(__file__), 'yi_labs.json')

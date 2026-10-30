@@ -272,7 +272,7 @@ const NAV = [
   ['Markets', [['sp500', 'S&P 500 plan'], ['alpaca-tools', 'Bonds, crypto & AI'], ['markets', 'Markets & news'], ['scanner', 'Scanner'], ['options', 'Options chain'], ['optionslab', 'Options lab'], ['institutions', 'Institutional portfolios'], ['calendar', 'Calendar & events']]],
   ['Strategies', [['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['code', 'Code lab'], ['portfolios', 'Portfolios'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['marketplace', 'Marketplace'], ['pairs', 'Pairs trading'], ['statarb', 'Statistical arbitrage'], ['schedule', 'Scheduled trades'], ['quantconnect', 'Cloud algorithms'], ['workspace', 'Workspace']]],
   ['Money', [['wealth', 'Wealth builder'], ['longterm', 'Long-term view'], ['insights', 'Insights & journal'], ['risk', 'Risk controls'], ['execution', 'Execution & routing'], ['spend', 'Invest as you spend'], ['private', 'Private markets'], ['realestate', 'Real estate'], ['values', 'Values investing'], ['tax', 'Taxes']]],
-  ['Account', [['security', 'Security & help'], ['learn', 'Learn'], ['accounts', 'All accounts'], ['brokers', 'Brokerages'], ['account', 'Alpaca account'], ['funding', 'Plans & billing'], ['referrals', 'Invite & earn'], ['text', 'Text & hotline'], ['settings', 'Settings']]],
+  ['Account', [['security', 'Security & help'], ['learn', 'Learn'], ['accounts', 'All accounts'], ['brokers', 'Brokerages'], ['account', 'Alpaca account'], ['android', 'Android app'], ['funding', 'Plans & billing'], ['referrals', 'Invite & earn'], ['text', 'Text & hotline'], ['settings', 'Settings']]],
 ];
 // Simple line icons (24x24 paths) for the menu.
 const ICONS = {
@@ -315,6 +315,7 @@ const ICONS = {
   accounts: '<rect x="2" y="7" width="20" height="13" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2M2 13h20"/>',
   'admin-system': '<path d="M3 12h4l3-7 4 14 3-7h4"/>',
   private: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/>', realestate: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10M10 20v-6h4v6"/>',
+  android: '<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/>',
   values: '<path d="M12 21s-7-4.4-9.3-9A5.4 5.4 0 0 1 12 6a5.4 5.4 0 0 1 9.3 6c-2.3 4.6-9.3 9-9.3 9z"/>', star: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
 };
 const icon = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k] || ''}</svg>`;
@@ -994,6 +995,16 @@ async function qboCard(view, year, q) {
   act($('#qboSendM', el), () => send($('#qboMonth', el).value), $('#qboErr', el));
   act($('#qboSendY', el), () => send(String(year)), $('#qboErr', el));
 }
+// Android app: download and install steps (the app shows this live site, so it is always current).
+routes.android = async view => {
+  const isAndroid = /Android/i.test(navigator.userAgent);
+  view.innerHTML = `<h1>Android app</h1><div class="card androidcard"><div class="row" style="gap:18px;align-items:center;flex-wrap:wrap">
+    <img src="/icon-512.png" width="72" height="72" alt="" style="border-radius:18px"><div style="flex:1;min-width:220px"><h2 style="margin:0">Brightfolio for Android</h2>
+    <p class="mu" style="margin:4px 0 0">The same app as on your phone's browser, full screen with its own icon and notifications. It always shows the newest version: every update reaches it at once, nothing to reinstall.</p></div>
+    <a href="/download/android"><button>Download the Android app</button></a></div>
+    <h3>Install</h3><ol class="steps"><li>${isAndroid ? 'Tap' : 'On your Android phone, open this page and tap'} <b>Download the Android app</b>.</li><li>Open the downloaded file. If Android asks, allow installing apps from your browser (Settings → Apps → Special access → Install unknown apps).</li><li>Tap <b>Install</b>, then open Brightfolio and sign in.</li></ol>
+    <p class="mu small-print">On iPhone: open Brightfolio in Safari, tap Share, then Add to Home Screen.</p></div>`;
+};
 routes.tax = async (view, q) => {
   const year = +(q.get('year') || new Date().getFullYear());
   const [t, bk] = await Promise.all([api(`/tax?account=${state.account}&year=${year}`), api(`/tax/books?account=${state.account}&year=${year}`).catch(() => null)]);

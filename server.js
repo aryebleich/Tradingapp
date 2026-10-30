@@ -122,6 +122,16 @@ app.get('/internal/capacity', (req, res) => {
   if (tok && !safeEqual(req.headers.authorization || '', `Bearer ${tok}`)) return res.status(401).end();
   res.json(recommendedReplicas());
 });
+// Android app: Digital Asset Links (the app opens the site without a browser address bar) and the
+// download button (the latest build from the "Android app" workflow, or ANDROID_APK_URL).
+app.get('/.well-known/assetlinks.json', async (req, res) => {
+  const fs = await import('node:fs/promises');
+  const fp = (process.env.ANDROID_CERT_SHA256 || (await fs.readFile(new URL('./android/cert-sha256.txt', import.meta.url), 'utf8').catch(() => ''))).trim();
+  res.json(fp ? [{ relation: ['delegate_permission/common.handle_all_urls'], target: { namespace: 'android_app', package_name: 'com.brightfolio.app', sha256_cert_fingerprints: fp.split(/[\s,]+/).filter(Boolean) } }] : []);
+});
+export const androidApkUrl = () => process.env.ANDROID_APK_URL || `https://github.com/${process.env.GITHUB_REPO || 'aryebleich/Tradingapp'}/releases/download/android-latest/brightfolio.apk`;
+app.get('/download/android', (req, res) => res.redirect(302, androidApkUrl()));
+
 app.get('/healthz', async (req, res) => {
   try { await one('SELECT 1 AS ok'); res.json({ ok: true, time: new Date().toISOString() }); }
   catch (e) { res.status(503).json({ ok: false }); }

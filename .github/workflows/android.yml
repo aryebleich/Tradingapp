@@ -1,0 +1,80 @@
+name: Android app
+# Builds the Brightfolio Android app and publishes it at
+# https://github.com/<repo>/releases/download/android-latest/brightfolio.apk (the "Download the
+# Android app" button). The app shows the live site, so every push reaches it at once; this
+# rebuilds the app itself when its icon, name or this workflow changes, or when run by hand.
+# Signing: repository secret ANDROID_KEY_PASSWORD (any long password you choose). The first run
+# creates android/release.keystore with it and commits it; every later version is signed with the
+# same key, so phones update in place. Without the secret the app is signed with a one-time key.
+# Repository variable APP_URL: the site's address (the scheduler uses the same one).
+on:
+  push:
+    branches: [main]
+    paths: ['android/**', 'public/icon-512.png', 'public/manifest.webmanifest', '.github/workflows/android.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: android
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Signing key
+        env:
+          PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$PASS" ]; then
+            echo "::warning::Add the ANDROID_KEY_PASSWORD secret so every version is signed with the same key (phones then update in place)."
+            echo "KEY_PASS=temporary-$(openssl rand -hex 12)" >> "$GITHUB_ENV"; rm -f android/release.keystore
+            echo "ONE_TIME_KEY=1" >> "$GITHUB_ENV"; PASS="$(grep KEY_PASS "$GITHUB_ENV" | cut -d= -f2)"
+          else
+            echo "::add-mask::$PASS"; echo "KEY_PASS=$PASS" >> "$GITHUB_ENV"
+          fi
+          if [ ! -f android/release.keystore ]; then
+            keytool -genkeypair -keystore android/release.keystore -alias brightfolio -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass "$PASS" -keypass "$PASS" -dname "CN=Brightfolio, O=Brightfolio, C=US" -noprompt
+            echo "NEW_KEY=1" >> "$GITHUB_ENV"
+          fi
+          keytool -list -v -keystore android/release.keystore -alias brightfolio -storepass "$PASS" | grep 'SHA256:' | sed 's/.*SHA256: //' > android/cert-sha256.txt
+          echo "Signing certificate SHA-256: $(cat android/cert-sha256.txt)"
+      - name: Generate the Android project
+        env:
+          APP_HOST: ${{ vars.APP_URL }}
+          VERSION_CODE: ${{ github.run_number }}
+        run: |
+          npm install --no-save --prefix android @bubblewrap/core@1
+          NODE_PATH=android/node_modules node android/generate.cjs
+      - name: Build and sign
+        run: |
+          cd android/project
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease
+          BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          "$BT/zipalign" -f -p 4 app/build/outputs/apk/release/app-release-unsigned.apk aligned.apk
+          "$BT/apksigner" sign --ks ../release.keystore --ks-key-alias brightfolio --ks-pass env:KEY_PASS --key-pass env:KEY_PASS --out ../brightfolio.apk aligned.apk
+          "$BT/apksigner" verify ../brightfolio.apk && ls -l ../brightfolio.apk
+      - name: Publish the download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete android-latest --yes --cleanup-tag 2>/dev/null || true
+          gh release create android-latest android/brightfolio.apk --title "Brightfolio for Android" --notes "Install: open this file on your Android phone and allow installing from your browser. The app shows the live site, so it is always up to date. Build ${{ github.run_number }}." --latest=false
+      - name: Keep the signing key and fingerprint
+        if: env.ONE_TIME_KEY != '1'
+        run: |
+          git config user.name "android-bot"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add android/release.keystore android/cert-sha256.txt
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Android: signing key (password in the ANDROID_KEY_PASSWORD secret) and its fingerprint"
+          git pull --rebase origin main && git push origin HEAD:main
