@@ -7,8 +7,8 @@ UPDATED = 'October 22, 2026'
 
 from home import layout, index
 
-def doc(title, desc, content):
-    return layout(f'{title} | Brightfolio', desc, f'<article class="doc"><h1>{title}</h1><p class="mu">Last updated {UPDATED}</p>{content}</article>')
+def doc(title, desc, content, dated=True):
+    return layout(f'{title} | Brightfolio', desc, f'<article class="doc"><h1>{title}</h1>' + (f'<p class="mu">Last updated {UPDATED}</p>' if dated else '') + f'{content}</article>')
 
 TERMS = '''
 <p>These Terms of Service ("Terms") govern your use of the Brightfolio website, apps, SMS and voice services (together, the "Service"). By creating an account you agree to these Terms.</p>
@@ -160,7 +160,7 @@ files = {
  'privacy.html': doc('Privacy Policy', 'What Brightfolio collects, why, and your choices.', PRIVACY),
  'risk.html': doc('Risk Disclosure', 'Important information about trading risk, backtests and automation.', RISK),
  'contact.html': doc('Contact & support', 'Get in touch with Brightfolio support.', CONTACT),
- 'status.html': doc('System status', 'Live status of the Brightfolio website, trading connection, bots and messages.', STATUS),
+ 'status.html': doc('System status', 'Live status of the Brightfolio website, trading connection, bots and messages.', STATUS, dated=False),
  'security.html': doc('Security', 'How Brightfolio protects your account and data, and its audit status.', SECURITY),
  'insurance.html': doc('Insurance and protection', 'How your money and investments are protected: SIPC, FDIC and more.', INSURANCE),
  '404.html': NOTFOUND,
