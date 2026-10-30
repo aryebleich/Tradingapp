@@ -107,6 +107,52 @@ NOTFOUND = '''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta n
 <body><div><h1>404</h1><p>We could not find that page.</p><p><a href="/">Go to the home page</a></p></div></body></html>
 '''
 
+STATUS = '''
+<p>Is Brightfolio working right now? This page checks the website, the database, the trading connection, bots and messages every 5 minutes, and shows any problem we are working on.</p>
+<div id="trustStatus" data-trust="status"><p class="mu">Loading the latest checks…</p></div>
+<script type="module" src="trust-page.js"></script>
+'''
+SECURITY = '''
+<p>Your money stays at your own broker and bank. Brightfolio is software: it cannot withdraw money, and every protection below is on by default or one tap away.</p>
+<h2>Independent audit (SOC 2)</h2>
+<div id="trustSoc2" data-trust="soc2"><p class="mu">Loading…</p></div>
+<h2>How your account is protected</h2>
+<ul>
+<li><b>Passwords</b> are stored only as a scrypt hash; nobody at Brightfolio can read them.</li>
+<li><b>Two-step sign-in</b> with an authenticator app, or a <b>passkey</b> (Face ID, fingerprint or a security key) instead of a password.</li>
+<li><b>Broker keys and bank links</b> are encrypted with AES-256-GCM before they are saved.</li>
+<li><b>Bank and card links are read-only</b> (through Plaid): we see balances and transactions, never your bank password, and cannot move money. Crypto wallets are added by public address only: never keys or seed words.</li>
+<li><b>Account lock</b> stops all orders and withdrawals at once; text <b>PAUSE</b> with your PIN to stop every bot from your phone.</li>
+<li><b>Active sessions</b>: see every signed-in device and sign the others out.</li>
+<li><b>Tamper-evident audit log</b>: every order and sign-in is recorded in a hash-chained log, so a changed entry shows.</li>
+<li><b>Nothing big happens silently</b>: large orders ask you to confirm first, and trades from rules across accounts wait for your approval.</li>
+</ul>
+<h2>How the service is run</h2>
+<ul>
+<li>All traffic is encrypted (HTTPS only), with protection against cross-site request forgery and rate limits on sign-in.</li>
+<li>Every change to the code is tested automatically before it goes live, with automatic dependency updates and a weekly security scan.</li>
+<li>Order handling keeps working through broker outages: orders wait in a queue and are retried safely, without placing them twice.</li>
+</ul>
+<div id="trustPen" data-trust="pentest"></div>
+<h2>Found a security problem?</h2>
+<p>Please tell us first and give us time to fix it: use the <a href="contact.html">contact page</a> and pick "Security report"<span data-trust="contact"></span>. We do not take action against good-faith research.</p>
+<script type="module" src="trust-page.js"></script>
+'''
+INSURANCE = '''
+<p>Brightfolio never holds your money or your investments. They stay in accounts in your own name, at firms with their own protection.</p>
+<h2>Your brokerage account</h2>
+<p>Stocks and cash are held by your broker, for example Alpaca Securities LLC, a member of FINRA and <a href="https://www.sipc.org" rel="noopener">SIPC</a>. If a SIPC-member brokerage fails, SIPC protects the securities and cash in your account up to $500,000, of which up to $250,000 can be cash.</p>
+<p class="mu">SIPC does not protect against investment losses when prices fall, and it does not cover crypto. Ask your broker whether it carries extra ("excess SIPC") coverage.</p>
+<h2>Your bank accounts</h2>
+<p>Banks you link stay at your bank. Deposits at an FDIC-insured bank are insured up to $250,000 per depositor, per bank, for each account ownership category. Linking a bank to Brightfolio is read-only and does not change that.</p>
+<h2>Crypto</h2>
+<p>Crypto is not covered by SIPC or FDIC. Wallets you add to Brightfolio are watched by public address only; Brightfolio never holds crypto or keys.</p>
+<h2>Brightfolio's own insurance</h2>
+<div id="trustIns" data-trust="insurance"><p class="mu">Loading…</p></div>
+<p class="mu" style="margin-top:24px">This page explains general protections and is not legal advice. See the official <a href="https://www.sipc.org/for-investors/what-sipc-protects" rel="noopener">SIPC</a> and <a href="https://www.fdic.gov/resources/deposit-insurance" rel="noopener">FDIC</a> pages for the full rules.</p>
+<script type="module" src="trust-page.js"></script>
+'''
+
 files = {
  'index.html': index('en'),
  'yi.html': index('yi').replace('&rarr;', '&larr;'),
@@ -114,6 +160,9 @@ files = {
  'privacy.html': doc('Privacy Policy', 'What Brightfolio collects, why, and your choices.', PRIVACY),
  'risk.html': doc('Risk Disclosure', 'Important information about trading risk, backtests and automation.', RISK),
  'contact.html': doc('Contact & support', 'Get in touch with Brightfolio support.', CONTACT),
+ 'status.html': doc('System status', 'Live status of the Brightfolio website, trading connection, bots and messages.', STATUS),
+ 'security.html': doc('Security', 'How Brightfolio protects your account and data, and its audit status.', SECURITY),
+ 'insurance.html': doc('Insurance and protection', 'How your money and investments are protected: SIPC, FDIC and more.', INSURANCE),
  '404.html': NOTFOUND,
 }
 for name, text in files.items():

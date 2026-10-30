@@ -3,7 +3,7 @@
 // pause all trading on Shabbos and Yom Tov (src/zmanim.js). Screens use known lists of companies
 // by business; anything not on a list is reported as "no flags found", never as approved.
 import express from 'express';
-import { audit } from './db.js';
+import { audit, one } from './db.js';
 import { requireUser, requireAdmin } from './auth.js';
 import { accountSummary, ACCOUNT_IDS } from './brokers.js';
 import { getSetting, setSetting } from './settings.js';
@@ -101,7 +101,8 @@ export const valuesRouter = (() => {
       const bk = await booksFor(req.user, a, year).catch(() => null); if (!bk) continue;
       for (const m of bk.months) { gains += m.shortTerm + m.longTerm; dividends += m.dividends; interest += m.interest; }
     }
-    res.json({ year, ...maaser({ gains, dividends, interest, otherIncome: +b.otherIncome || 0, alreadyGiven: +b.alreadyGiven || 0, pct: [10, 20].includes(+b.pct) ? +b.pct : v.maaserPct }) });
+    const ledger = (await one("SELECT COALESCE(SUM(amount), 0) s FROM tzedakah WHERE user_id = ? AND day LIKE ?", req.user.id, `${year}-%`)).s;
+    res.json({ year, ledger: +(+ledger).toFixed(2), ...maaser({ gains, dividends, interest, otherIncome: +b.otherIncome || 0, alreadyGiven: (+b.alreadyGiven || 0) + ledger, pct: [10, 20].includes(+b.pct) ? +b.pct : v.maaserPct }) });
   });
   // Owner: add tickers to categories from a CSV ("symbol,category").
   r.post('/lists', requireAdmin, async (req, res) => {

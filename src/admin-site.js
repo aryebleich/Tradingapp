@@ -273,6 +273,16 @@ adminSiteRouter.put('/phone', wrap(async (req, res) => {
   res.json({ settings: s });
 }));
 
+// Yiddish voice: the clips the owner records, and the pieces callers heard with no clip yet.
+adminSiteRouter.get('/phone/clips', wrap(async (req, res) => { const V = await import('./voice-yi.js'); res.json(await V.clipList()); }));
+adminSiteRouter.post('/phone/clips', wrap(async (req, res) => {
+  const V = await import('./voice-yi.js'), b = req.body || {};
+  const r = await V.saveClip(String(b.k || ''), String(b.mime || ''), b.data);
+  await audit(req.user.id, 'voice_clip_saved', { k: r.k }, req.ip);
+  res.json(r);
+}));
+adminSiteRouter.delete('/phone/clips', wrap(async (req, res) => { const V = await import('./voice-yi.js'); await V.deleteClip(String(req.query.k || '')); res.json({ ok: true }); }));
+
 // ---------- AI & privacy: what AI crawlers may read, and what the assistant may send ----------
 adminSiteRouter.get('/ai', wrap(async (req, res) => {
   const A = await import('./aiaccess.js'), L = await import('./llm.js');

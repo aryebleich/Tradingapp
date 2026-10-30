@@ -74,7 +74,8 @@ console.log('Desktop (1360x900)');
   });
   await step('homepage demo + legal pages', async () => {
     const q = await browser.newPage(); await q.goto(B + '/'); await q.waitForSelector('#demoStats .stat');
-    for (const u of ['/terms', '/privacy', '/risk', '/contact']) if ((await q.goto(B + u)).status() !== 200) throw new Error(u);
+    for (const u of ['/terms', '/privacy', '/risk', '/contact', '/security', '/insurance']) if ((await q.goto(B + u)).status() !== 200) throw new Error(u);
+    await q.goto(B + '/status'); await q.waitForSelector('.st-banner');
     await q.close();
   });
   await step('open brokerage account (5 steps + ID upload)', async () => {
@@ -180,6 +181,9 @@ console.log('Desktop (1360x900)');
     await p.fill('dialog.secure [name=password]', 'Str0ngPassword'); await p.fill('dialog.secure [name=typed]', 'UPGRADE'); await p.check('dialog.secure [name=ok]'); await p.click('dialog.secure button[value=yes]');
     await p.waitForFunction(v => document.querySelector('.upgradehead .ver b')?.textContent !== v, v0);
     await p.screenshot({ path: path.join(OUT, 'admin-upgrades.png'), fullPage: true });
+    await p.goto(B + '/app#/admin-trust'); await p.waitForSelector('#tr'); await p.fill('#inc [name=title]', 'Test incident'); await p.click('#inc button'); await p.waitForSelector('[data-inc]');
+    await p.click('[data-delinc]').catch(() => {});
+    await p.goto(B + '/app#/admin-phone'); await p.waitForSelector('text=Yiddish voice'); await p.waitForSelector('tr[data-k="press"]');
     // View as each plan from the header, then back to the owner view.
     // A preview asks for the password and a tick first.
     await p.selectOption('#viewAs', 'plan:free'); await p.waitForSelector('dialog.secure');
@@ -289,7 +293,7 @@ console.log('Settings → Language');
   await p.click("form.auth button:not([type=button])"); await p.waitForSelector('#tabs a.on', { state: 'attached' });
   const go = async (r, sel) => { if (p.url() === B + '/app' + r) await p.reload(); else await p.goto(B + '/app' + r); await p.waitForSelector(sel, { timeout: 15000 }); };
   const okText = async box => { await p.waitForSelector(`${box} .ok`, { timeout: 20000 }).catch(async () => { throw new Error((await p.textContent(`${box} .err`).catch(() => '')) || 'no result'); }); };
-  await step('menu lists the new pages', async () => { for (const k of ['chart', 'ai', 'scanner', 'optionslab', 'portfolios', 'fleet', 'insights', 'risk', 'values', 'private', 'realestate']) await p.waitForSelector(`#nav a[href="#/${k}"]`, { state: 'attached' }); });
+  await step('menu lists the new pages', async () => { for (const k of ['chart', 'ai', 'scanner', 'optionslab', 'portfolios', 'fleet', 'insights', 'risk', 'values', 'private', 'realestate', 'money', 'rules', 'brief', 'luach', 'taxpilot']) await p.waitForSelector(`#nav a[href="#/${k}"]`, { state: 'attached' }); });
   await step('AI assistant answers (basic mode)', async () => {
     await go('#/ai', '#ask'); await p.fill('#ask textarea', 'How does AAPL look technically?'); await p.click('#send');
     await p.waitForSelector('.msg.assistant:not(.typing)', { timeout: 20000 });
@@ -321,6 +325,26 @@ console.log('Settings → Language');
   await step('private markets and real estate', async () => {
     await go('#/private', '#add'); await p.fill('#add [name=name]', 'Seed round'); await p.fill('#add [name=invested]', '5000'); await p.fill('#add [name=value]', '8000'); await p.click('#add button'); await p.waitForSelector('text=Seed round');
     await go('#/realestate', '#add'); await p.fill('#add [name=name]', 'Two-family'); await p.fill('#add [name=value]', '500000'); await p.fill('#add [name=rent]', '4000'); await p.click('#add button'); await p.waitForSelector('text=Two-family');
+  });
+  await step('all my money and a crypto wallet form', async () => { await go('#/money', '#wf'); await p.waitForSelector('text=Cash flow'); });
+  await step('rule across accounts: create, check, prepare', async () => {
+    await go('#/rules', '#rf'); await p.click('[data-tpl="sp500"]'); await p.click('#save'); await p.waitForSelector('.rulecard');
+    await p.click('[data-preview]'); await p.waitForSelector('[id^=pv] table', { timeout: 20000 });
+    await p.screenshot({ path: path.join(OUT, 'rules.png'), fullPage: true });
+  });
+  await step('luach: zmanim, month and the tzedakah ledger', async () => {
+    await go('#/luach', '.zmanim'); await p.waitForSelector('.hdate');
+    await go('#/luach?tab=month', '.lgrid .lday');
+    await go('#/luach?tab=tzedakah', '#tz'); await p.fill('#tz [name=amount]', '36'); await p.fill('#tz [name=recipient]', 'Hatzolah'); await p.click('#tz button'); await p.waitForSelector('text=Hatzolah');
+    await p.screenshot({ path: path.join(OUT, 'luach.png'), fullPage: true });
+  });
+  await step('weekly brief and tax autopilot', async () => {
+    await go('#/brief', '#write'); await p.click('#write'); await p.waitForSelector('.briefcard h2', { timeout: 30000 });
+    await go('#/taxpilot', '#lotf');
+  });
+  await step('property detail shows the live value card; settings show add-ons', async () => {
+    await go('#/realestate', '[data-open]'); await p.click('[data-open]'); await p.waitForSelector('text=Live value and rent');
+    await go('#/settings', '#addonsCard');
   });
   await step('round-ups import', async () => { await go('#/spend', '#csv'); await p.fill('#csv', '2026-10-20,STARBUCKS #1,5.45\n2026-10-21,AMAZON,23.10'); await p.click('#imp'); await p.waitForFunction(() => /purchases read/.test(document.body.textContent), null, { timeout: 15000 }); });
   await step('news sentiment', async () => { await go('#/news', '#nf'); await p.waitForSelector('#sent .cards', { timeout: 20000 }); });
@@ -368,7 +392,7 @@ for (const [device, width, lang] of [['iPhone 13', 390, 'en'], ['iPhone SE', 320
   await p.evaluate(() => fetch('/api/alpaca/keys', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ keyId: 'AUDIT' + innerWidth, secret: 'S' }) }));
   await p.evaluate(() => localStorage.setItem('qp_account', 'alpaca'));
   const lib = await p.evaluate(() => fetch('/api/library', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ templateId: 'multi_model' }) }).then(r => r.json()));
-  for (const r of ['/', '/yi', '/terms', '/app#/register', '/app#/login', '#/dashboard', '#/trade?symbol=AAPL', '#/orders', '#/positions', '#/watchlists', '#/markets', '#/options?underlying=AAPL', '#/calendar', '#/account', '#/open-account', '#/brokers', '#/strategies', `#/strategy?id=${lib.id}`, '#/signals', '#/pairs', '#/statarb', '#/sp500', '#/backtest', '#/bots', '#/schedule', '#/text', '#/tax', '#/funding', '#/settings', '#/chart?symbol=AAPL', '#/ai', '#/agents', '#/code', '#/news', '#/scanner', '#/optionslab', '#/institutions', '#/portfolios', '#/portfolios?tab=mine', '#/fleet', '#/marketplace', '#/insights', '#/insights?tab=journal', '#/risk', '#/spend', '#/values', '#/values?tab=maaser', '#/values?tab=shabbos', '#/private', '#/realestate', '#/security', '#/execution', '#/learn', '#/longterm', '#/workspace', '#/accounts', '#/wealth', '#/wealth?tab=compound', '#/wealth?tab=auto', '#/wealth?tab=hold', '#/wealth?tab=drip', '#/wealth?tab=understand', '#/wealth?tab=tax', '#/wealth?tab=core', '#/wealth?tab=diversify', '#/alpaca-tools', '#/referrals']) {
+  for (const r of ['/', '/yi', '/terms', '/app#/register', '/app#/login', '#/dashboard', '#/trade?symbol=AAPL', '#/orders', '#/positions', '#/watchlists', '#/markets', '#/options?underlying=AAPL', '#/calendar', '#/account', '#/open-account', '#/brokers', '#/strategies', `#/strategy?id=${lib.id}`, '#/signals', '#/pairs', '#/statarb', '#/sp500', '#/backtest', '#/bots', '#/schedule', '#/text', '#/tax', '#/funding', '#/settings', '#/chart?symbol=AAPL', '#/ai', '#/agents', '#/code', '#/news', '#/scanner', '#/optionslab', '#/institutions', '#/portfolios', '#/portfolios?tab=mine', '#/fleet', '#/marketplace', '#/insights', '#/insights?tab=journal', '#/risk', '#/spend', '#/values', '#/values?tab=maaser', '#/values?tab=shabbos', '#/private', '#/realestate', '#/money', '#/rules', '#/android', '#/luach', '#/luach?tab=month', '#/luach?tab=tzedakah', '#/brief', '#/taxpilot', '#/security', '#/execution', '#/learn', '#/longterm', '#/workspace', '#/accounts', '#/wealth', '#/wealth?tab=compound', '#/wealth?tab=auto', '#/wealth?tab=hold', '#/wealth?tab=drip', '#/wealth?tab=understand', '#/wealth?tab=tax', '#/wealth?tab=core', '#/wealth?tab=diversify', '#/alpaca-tools', '#/referrals']) {
     await step(r, async () => {
       await p.goto(r.startsWith('#') ? B + '/app' + r : B + r); if (r === '#/dashboard') await p.reload();
       await p.waitForTimeout(r.includes('strategy') || r.includes('sp500') ? 3000 : 1300);

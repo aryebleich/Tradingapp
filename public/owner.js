@@ -3,6 +3,7 @@
 // (emails and phones that sign in as admin), and Keys (every environment value, .env import and
 // export, and sync with Render). Admin pages stay in English.
 import { md } from './studio.js';
+import { yiddishVoice } from './voice-admin.js';
 let H;
 export function registerOwner(routes, helpers) {
   H = helpers;
@@ -267,7 +268,7 @@ async function phoneLine(view) {
 Main menu
   ▸ 1 Account info   ▸ 2 Positions   ▸ 3 Market clock   ▸ 4 Place a trade
   ▸ 5 Cancel open orders (PIN)   ▸ 6 Close ALL positions (confirm + PIN)
-  ▸ 7 Ask the assistant (when AI is on)   ▸ 9 Switch paper/live   ▸ 0 Hang up
+  ▸ 7 Ask the assistant (when AI is on)${s.yiddish ? '   ▸ 8 Yiddish / English' : ''}   ▸ 9 Switch paper/live   ▸ 0 Hang up
 Trade
   ▸ Pick a stock: ${s.tickers.map((t, i) => `${i + 1} ${t}`).join(', ')}
   ▸ 1 buy / 2 sell ▸ shares + # (up to ${Number(s.maxQty).toLocaleString()}) ▸ 1 confirm / 2 cancel ▸ PIN ▸ market order`;
@@ -288,6 +289,7 @@ Trade
     <div class="row"><label>Most shares per order<input name="maxQty" type="number" min="1" max="10000" value="${s.maxQty}"></label>
       <label>Voice<select name="voice">${['Polly.Joanna', 'Polly.Matthew', 'Polly.Salli', 'Polly.Joey', 'woman', 'man'].map(v => `<option ${v === s.voice ? 'selected' : ''}>${v}</option>`).join('')}</select></label></div>
     <button>Save</button><div class="err"></div></form>
+  <div id="yiv"></div>
   <div class="card"><h2>What callers hear</h2><pre class="ivrtree" data-no-tr>${H.esc(tree)}</pre>
     <p class="mu small-print">Safety: a PIN on every action that changes an account, an extra confirmation before closing everything, ${Number(s.maxQty).toLocaleString()} shares at most per order, the account's own risk rules on every order, and the call ends after 3 wrong PINs (the owner of the number gets a text).</p></div>
   <div class="card tablewrap"><h2>Call log</h2><table><tr><th>When</th><th>What</th><th>Account</th><th>Details</th><th>From</th></tr>
@@ -297,6 +299,7 @@ Trade
     await H.api('/admin/site/phone', { method: 'PUT', body: { enabled: f.enabled.checked, allowSignup: f.allowSignup.checked, freePaper: f.freePaper.checked, greeting: f.greeting.value, tickers: f.tickers.value, maxQty: f.maxQty.value, voice: f.voice.value } });
     setTimeout(H.render, 600); return 'Saved';
   });
+  yiddishVoice(H.$('#yiv', view), H, s).catch(e => { H.$('#yiv', view).innerHTML = `<p class="err">${H.esc(e.message)}</p>`; });
 }
 
 // AI & privacy: which AI crawlers may read the public site, what AI tools may say about it, and

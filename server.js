@@ -42,6 +42,14 @@ import { optionsRouter } from './src/options.js';
 import { sentimentRouter } from './src/sentiment.js';
 import { valuesRouter } from './src/values.js';
 import { altsRouter } from './src/alts.js';
+import { moneyRouter } from './src/money.js';
+import { trustPublicRouter, trustAdminRouter } from './src/trust.js';
+import { luachRouter } from './src/luach.js';
+import { addonsRouter } from './src/addons.js';
+import { altLiveRouter } from './src/altlive.js';
+import { briefRouter } from './src/brief.js';
+import { taxPilotRouter } from './src/taxpilot.js';
+import { rulesRouter } from './src/rules.js';
 import { quickbooksRouter, finish as qboFinish } from './src/quickbooks.js';
 import { institutionsRouter } from './src/institutions.js';
 import { roundupRouter } from './src/roundup.js';
@@ -150,7 +158,7 @@ app.post('/internal/tick', async (req, res) => {
 app.get('/robots.txt', (req, res) => res.type('text/plain').send(AIX.robotsTxt() + `Sitemap: ${PUBLIC_URL}/sitemap.xml\n`));
 app.get('/llms.txt', (req, res) => { const t = AIX.llmsTxt(); return t ? res.type('text/plain').send(t) : res.status(404).type('text/plain').send('Not published.'); });
 app.use((req, res, next) => { const x = AIX.xRobots(); if (x) res.setHeader('X-Robots-Tag', x); next(); });
-app.get('/sitemap.xml', (req, res) => res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/', '/yi', '/pricing', '/terms', '/privacy', '/risk', '/contact'].map(u => `<url><loc>${PUBLIC_URL}${u}</loc></url>`).join('')}</urlset>`));
+app.get('/sitemap.xml', (req, res) => res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/', '/yi', '/pricing', '/status', '/security', '/insurance', '/terms', '/privacy', '/risk', '/contact'].map(u => `<url><loc>${PUBLIC_URL}${u}</loc></url>`).join('')}</urlset>`));
 // The browser demo on the landing page reuses the exact engine the server runs.
 app.get('/config.js', (req, res) => res.type('text/javascript').send('window.QP = { api: "" };'));
 app.get('/engine.js', (req, res) => res.type('text/javascript').sendFile(path.join(here, 'src/engine.js')));
@@ -260,6 +268,8 @@ app.post('/webhooks/authorizenet', express.raw({ type: '*/*' }), async (req, res
 });
 app.use(['/api/alpaca/broker/accounts', '/api/alpaca/broker/documents'], express.json({ limit: '30mb' }));
 app.use('/api/admin/site/readme', express.json({ limit: '700kb' })); // the private README editor
+app.use('/api/admin/site/phone/clips', express.json({ limit: '2200kb' })); // Yiddish voice recordings
+app.use('/api/altlive/k1', express.json({ limit: '6mb' })); // K-1 PDFs
 app.use(express.json({ limit: '200kb' }));
 app.use(express.urlencoded({ extended: false, limit: '50kb' }));
 
@@ -435,6 +445,15 @@ api.use('/options', optionsRouter);
 api.use('/news', sentimentRouter);
 api.use('/values', valuesRouter);
 api.use('/alts', altsRouter);
+api.use('/money', moneyRouter);
+api.use('/public', trustPublicRouter);
+api.use('/admin/trust', trustAdminRouter);
+api.use('/luach', luachRouter);
+api.use('/addons', addonsRouter);
+api.use('/altlive', altLiveRouter);
+api.use('/brief', briefRouter);
+api.use('/taxpilot', taxPilotRouter);
+api.use('/rules', rulesRouter);
 api.use('/quickbooks', quickbooksRouter);
 api.use('/institutions', institutionsRouter);
 api.use('/roundups', roundupRouter);
@@ -902,7 +921,7 @@ app.get('/app', async (req, res) => {
 });
 app.get(['/', '/index.html', '/pricing'], page('index.html'));
 app.get(['/yi', '/yi.html'], page('yi.html'));
-for (const p of ['terms', 'privacy', 'risk', 'contact']) app.get(['/' + p, `/${p}.html`], page(p + '.html'));
+for (const p of ['terms', 'privacy', 'risk', 'contact', 'status', 'security', 'insurance']) app.get(['/' + p, `/${p}.html`], page(p + '.html'));
 // Code and pages revalidate on every load (cheap 304s via ETag) so a deploy reaches users at once;
 // images rarely change and are cached for a week.
 app.use(express.static(pub, {

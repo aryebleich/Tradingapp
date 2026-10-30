@@ -16,6 +16,11 @@ import { registerOwner } from './owner.js';
 import { registerWealth } from './wealth.js';
 import { registerTools } from './tools.js';
 import { registerAlts } from './alts.js';
+import { registerMoney } from './money.js';
+import { registerRules } from './rules.js';
+import { registerTrustAdmin } from './trust-admin.js';
+import { registerLuach } from './luach.js';
+import { registerAddons } from './addons.js';
 import { attachGlossary } from './glossary.js';
 import { startI18n, setLang, canvasNote, LANGS, current as currentLang } from './i18n.js';
 const $ = (s, el = document) => el.querySelector(s);
@@ -42,7 +47,7 @@ async function api(path, opts = {}, retried) {
   if (d.needsLesson && confirm(d.error + ' Open the lesson now?')) location.hash = '#/learn';
   // Step-up: the session must confirm it is the account holder before trading or moving money.
   if (d.stepUp && !retried && await stepUpBox()) return api(path, opts, true);
-  if (!r.ok) throw new Error(d.error || (r.status >= 500 ? 'The server is busy, please try again.' : r.statusText));
+  if (!r.ok) throw Object.assign(new Error(d.error || (r.status >= 500 ? 'The server is busy, please try again.' : r.statusText)), { status: r.status, addonOff: d.addonOff });
   return d;
 }
 const form = el => Object.fromEntries($$('[name]', el).map(i => [i.name, i.type === 'checkbox' ? i.checked : i.value]));
@@ -266,12 +271,14 @@ async function showUpgrade(feature) {
 }
 
 // ---------- routing ----------
+// Pages of add-ons the user can switch off (Settings → Add-ons) leave the menu when off.
+const ADDON_PAGES = { brief: 'brief', taxpilot: 'taxPilot' };
 const NAV = [
   ['Trading', [['dashboard', 'Portfolio'], ['trade', 'Trade'], ['chart', 'Chart'], ['orders', 'Orders'], ['positions', 'Positions'], ['watchlists', 'Watchlists']]],
   ['AI', [['ai', 'AI assistant'], ['agents', 'Forecasts & AI agents'], ['news', 'News & sentiment']]],
   ['Markets', [['sp500', 'S&P 500 plan'], ['alpaca-tools', 'Bonds, crypto & AI'], ['markets', 'Markets & news'], ['scanner', 'Scanner'], ['options', 'Options chain'], ['optionslab', 'Options lab'], ['institutions', 'Institutional portfolios'], ['calendar', 'Calendar & events']]],
   ['Strategies', [['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['code', 'Code lab'], ['portfolios', 'Portfolios'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['marketplace', 'Marketplace'], ['pairs', 'Pairs trading'], ['statarb', 'Statistical arbitrage'], ['schedule', 'Scheduled trades'], ['quantconnect', 'Cloud algorithms'], ['workspace', 'Workspace']]],
-  ['Money', [['wealth', 'Wealth builder'], ['longterm', 'Long-term view'], ['insights', 'Insights & journal'], ['risk', 'Risk controls'], ['execution', 'Execution & routing'], ['spend', 'Invest as you spend'], ['private', 'Private markets'], ['realestate', 'Real estate'], ['values', 'Values investing'], ['tax', 'Taxes']]],
+  ['Money', [['money', 'All my money'], ['brief', 'Weekly brief'], ['rules', 'Rules across accounts'], ['wealth', 'Wealth builder'], ['longterm', 'Long-term view'], ['insights', 'Insights & journal'], ['risk', 'Risk controls'], ['execution', 'Execution & routing'], ['spend', 'Invest as you spend'], ['private', 'Private markets'], ['realestate', 'Real estate'], ['values', 'Values investing'], ['luach', 'Luach & tzedakah'], ['tax', 'Taxes'], ['taxpilot', 'Tax autopilot']]],
   ['Account', [['security', 'Security & help'], ['learn', 'Learn'], ['accounts', 'All accounts'], ['brokers', 'Brokerages'], ['account', 'Alpaca account'], ['android', 'Android app'], ['funding', 'Plans & billing'], ['referrals', 'Invite & earn'], ['text', 'Text & hotline'], ['settings', 'Settings']]],
 ];
 // Simple line icons (24x24 paths) for the menu.
@@ -315,6 +322,10 @@ const ICONS = {
   accounts: '<rect x="2" y="7" width="20" height="13" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2M2 13h20"/>',
   'admin-system': '<path d="M3 12h4l3-7 4 14 3-7h4"/>',
   private: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/>', realestate: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10M10 20v-6h4v6"/>',
+  money: '<path d="M3 10h18M5 10V20M9 10v10M15 10v10M19 10v10M3 20h18M12 3l9 5H3z"/>',
+  luach: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M12 12l1.2 2.4 2.6.4-1.9 1.8.5 2.6-2.4-1.3-2.4 1.3.5-2.6-1.9-1.8 2.6-.4z"/>',
+  brief: '<path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5M8 12h8M8 16h6"/>', taxpilot: '<path d="M12 3v18M17 7.5c0-1.9-2.2-3-5-3s-5 1.1-5 3 2.2 2.7 5 3.3 5 1.4 5 3.5-2.2 3.2-5 3.2-5-1.3-5-3.2"/>',
+  rules: '<path d="M4 6h16M4 12h10M4 18h6"/><path d="M17 14l2 2 3-4"/>',
   android: '<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/>',
   values: '<path d="M12 21s-7-4.4-9.3-9A5.4 5.4 0 0 1 12 6a5.4 5.4 0 0 1 9.3 6c-2.3 4.6-9.3 9-9.3 9z"/>', star: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
 };
@@ -375,7 +386,7 @@ async function render() {
   if (ME) {
     const groups = ME.role === 'admin' ? [['Owner', ADMIN_TABS], ...NAV] : NAV;
     await accounts();
-    $('#nav').innerHTML = modeSwitch() + groups.map(([g, items]) => `<div class="grp">${g}</div>` + items.map(([k, t]) => `<a href="#/${k}" class="${k === route ? 'on' : ''}">${icon(k)}${t}</a>`).join('')).join('')
+    $('#nav').innerHTML = modeSwitch() + groups.map(([g, items]) => `<div class="grp">${g}</div>` + items.filter(([k]) => !(ADDON_PAGES[k] && ME.addons?.[ADDON_PAGES[k]] === false)).map(([k, t]) => `<a href="#/${k}" class="${k === route ? 'on' : ''}">${icon(k)}${t}</a>`).join('')).join('')
       + (isPaid(ME) ? '' : `<a href="#/funding" class="upsell">${icon('star')}${ME.trialUsed ? 'Upgrade to Pro' : 'Try Pro free for 14 days'}</a>`)
       + `<div class="grp">${esc(ME.email)}</div><a href="#" id="navLogout">${icon('account')}Sign out</a>`;
     wireModeSwitch();
@@ -1250,7 +1261,7 @@ routes.settings = async view => {
 
 // ---------- admin ----------
 // Owner pages: one route per section so each has its own place in the menu.
-const ADMIN_TABS = [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-money', 'Money & fees'], ['admin-upgrades', 'Upgrades'], ['admin-yiddish', 'Yiddish Labs'], ['admin-phone', 'Phone line'], ['admin-ai', 'AI & privacy'], ['admin-readme', 'README'], ['admin-admins', 'Admins'], ['admin-keys', 'Keys'], ['admin-support', 'Support inbox'], ['admin-system', 'System health'], ['admin-setup', 'Setup']];
+const ADMIN_TABS = [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-money', 'Money & fees'], ['admin-upgrades', 'Upgrades'], ['admin-yiddish', 'Yiddish Labs'], ['admin-phone', 'Phone line'], ['admin-ai', 'AI & privacy'], ['admin-readme', 'README'], ['admin-admins', 'Admins'], ['admin-keys', 'Keys'], ['admin-support', 'Support inbox'], ['admin-trust', 'Trust'], ['admin-system', 'System health'], ['admin-setup', 'Setup']];
 // Pages with their own module (owner.js, protect.js) draw themselves under the same tabs.
 const adminTabs = current => `<div class="chips admintabs">${ADMIN_TABS.map(([k, t]) => `<a href="#/${k}"><button type="button" class="${k === current ? 'on' : ''}">${t}</button></a>`).join('')}</div>`;
 async function adminPage(view, tab) {
@@ -1312,7 +1323,7 @@ async function adminPage(view, tab) {
   $$('[data-role]', view).forEach(b => (b.onclick = () => userCall(b.dataset.role, { role: b.dataset.to })));
   if ($('#userFind', view)) $('#userFind', view).oninput = e => { const q = e.target.value.trim().toLowerCase(); $$('#userTable tr[data-email]', view).forEach(tr => (tr.hidden = !!q && !tr.dataset.email.toLowerCase().includes(q))); };
 }
-for (const [k] of ADMIN_TABS.filter(([k]) => !['admin-system', 'admin-upgrades', 'admin-yiddish', 'admin-admins', 'admin-keys'].includes(k))) routes[k] = view => (ME?.role === 'admin' ? adminPage(view, k) : routes.dashboard(view, new URLSearchParams()));
+for (const [k] of ADMIN_TABS.filter(([k]) => !['admin-system', 'admin-trust', 'admin-upgrades', 'admin-yiddish', 'admin-admins', 'admin-keys'].includes(k))) routes[k] = view => (ME?.role === 'admin' ? adminPage(view, k) : routes.dashboard(view, new URLSearchParams()));
 
 registerStrategies(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, cls, date, api, form, act, render, drawChart, onLeave, me: () => ME });
 registerBrokers(routes, { $, $$, esc, money, api, form, act, render, accounts });
@@ -1329,6 +1340,11 @@ registerOptionsLab(routes, shared);
 registerProtect(routes, shared);
 registerOwner(routes, shared);
 registerAlts(routes, shared);
+registerMoney(routes, shared);
+registerRules(routes, shared);
+registerTrustAdmin(routes, shared);
+registerLuach(routes, shared);
+registerAddons(routes, shared);
 registerWealth(routes, shared);
 registerTools(routes, shared);
 

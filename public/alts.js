@@ -1,5 +1,6 @@
 // Private markets and real estate: the user's investments outside the stock market, with a net
 // worth across everything. Brightfolio records and calculates; it does not offer or arrange deals.
+import { propertyExtras, privateExtras, k1Overview } from './altlive.js';
 let H;
 export function registerAlts(routes, helpers) {
   H = helpers;
@@ -19,7 +20,7 @@ async function page(view, kind) {
     <div class="tablewrap"><table>${priv ? '<tr><th>Investment</th><th>Type</th><th>Put in</th><th>Back</th><th>Value</th><th>Multiple</th><th>Yearly return</th><th></th></tr>' : '<tr><th>Property</th><th>Type</th><th>Value</th><th>Mortgage</th><th>Equity</th><th>Cash flow / month</th><th>Cap rate</th><th>Cash-on-cash</th><th></th></tr>'}
     ${d.items.map(a => priv ? `<tr><td><b>${H.esc(a.name)}</b>${a.company ? `<br><span class="mu" style="font-size:12px">${H.esc(a.company)}</span>` : ''}</td><td>${H.esc(types[a.type] || '')}</td><td>${H.money(a.stats.invested)}</td><td>${H.money(a.stats.distributions)}</td><td>${H.money(a.stats.value)}</td><td>${a.stats.moic == null ? '-' : a.stats.moic + 'x'}</td><td>${pc(a.stats.irr)}</td><td><button class="small ghost" data-open="${a.id}">Open</button></td></tr>`
       : `<tr><td><b>${H.esc(a.name)}</b>${a.address ? `<br><span class="mu" style="font-size:12px">${H.esc(a.address)}</span>` : ''}</td><td>${H.esc(types[a.type] || '')}</td><td>${H.money(a.value)}</td><td>${H.money(a.mortgage)}</td><td>${H.money(a.stats.equity)}</td><td class="${H.cls(a.stats.monthlyCashFlow)}">${H.money(a.stats.monthlyCashFlow)}</td><td>${pc(a.stats.capRate)}</td><td>${pc(a.stats.cashOnCash)}</td><td><button class="small ghost" data-open="${a.id}">Open</button></td></tr>`).join('') || `<tr><td colspan="9" class="mu">Nothing added yet.</td></tr>`}</table></div></div>
-  <div id="detail"></div>
+  <div id="detail"></div>${priv ? '<div id="k1box"></div>' : ''}
   <form class="card" id="add"><h2>Add ${priv ? 'a private investment' : 'a property'}</h2>${fields(kind, {}, types)}
     ${priv ? '<div class="row"><label>Amount put in ($)<input name="invested" type="number" min="0" step="any"></label><label>On<input name="investedOn" type="date"></label></div>' : ''}
     <button>Add</button><div class="err"></div></form>
@@ -29,6 +30,7 @@ async function page(view, kind) {
   const f = H.$('#add', view);
   H.act(H.$('button', f), async () => { await H.api('/alts/' + kind, { body: H.form(f) }); H.render(); return ''; });
   H.$$('[data-open]', view).forEach(b => (b.onclick = () => detail(view, kind, d.items.find(x => x.id === +b.dataset.open), types)));
+  if (priv) k1Overview(H.$('#k1box', view), H);
 }
 
 function fields(kind, a, types) {
@@ -53,4 +55,5 @@ function detail(view, kind, a, types) {
   H.act(H.$('#del', box), async () => { if (!confirm(`Delete ${a.name}?`)) return ''; await H.api('/alts/item/' + a.id, { method: 'DELETE' }); H.render(); return ''; });
   if (H.$('#ev', box)) H.act(H.$('#ev button', box), async () => { await H.api(`/alts/item/${a.id}/events`, { body: H.form(H.$('#ev', box)) }); H.render(); return ''; });
   H.$$('[data-rmev]', box).forEach(b => (b.onclick = async () => { await H.api(`/alts/item/${a.id}/events/${b.dataset.rmev}`, { method: 'DELETE' }); H.render(); }));
+  (priv ? privateExtras : propertyExtras)(box, a, H);
 }

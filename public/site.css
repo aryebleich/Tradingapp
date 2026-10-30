@@ -497,3 +497,23 @@ section.dark .sub, section.dark .trust .feature p { color: #b6c4da; }
 .applink { margin: 14px 0 0; }
 .applink .btn, .startbox .btn.wide { display: inline-flex; align-items: center; gap: 8px; }
 .startbox .btn.wide { justify-content: center; width: 100%; }
+/* Trust pages: status, security, insurance */
+.st-banner { border-radius: 12px; padding: 14px 18px; margin: 18px 0; border: 1px solid var(--bd); background: var(--bg2); }
+.st-banner.ok { background: color-mix(in srgb, var(--gr) 12%, var(--card)); border-color: color-mix(in srgb, var(--gr) 40%, var(--bd)); }
+.st-banner.warn { background: color-mix(in srgb, #f59e0b 14%, var(--card)); border-color: color-mix(in srgb, #f59e0b 45%, var(--bd)); }
+.st-banner.bad { background: color-mix(in srgb, var(--rd) 12%, var(--card)); border-color: color-mix(in srgb, var(--rd) 45%, var(--bd)); }
+.st-list { border: 1px solid var(--bd); border-radius: 12px; overflow: hidden; }
+.st-comp { padding: 14px 18px; border-top: 1px solid var(--bd); }
+.st-comp:first-child { border-top: 0; }
+.st-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.st-pill { font-size: 13px; font-weight: 600; }
+.st-pill.ok { color: var(--gr); } .st-pill.warn { color: #d97706; } .st-pill.bad { color: var(--rd); }
+.st-days { display: flex; gap: 2px; margin: 10px 0 6px; height: 30px; }
+.st-days i { flex: 1; border-radius: 2px; background: var(--bd); }
+.st-days i.ok { background: var(--gr); } .st-days i.warn { background: #f59e0b; } .st-days i.bad { background: var(--rd); }
+.st-foot { display: flex; justify-content: space-between; font-size: 12.5px; }
+.st-inc { border-inline-start: 4px solid #f59e0b; padding: 8px 14px; margin: 12px 0; background: var(--bg2); border-radius: 8px; }
+.st-inc.major { border-color: var(--rd); } .st-inc.maintenance { border-color: var(--ac); }
+.st-inc p { margin: 8px 0 0; }
+.st-table { width: 100%; border-collapse: collapse; } .st-table th, .st-table td { text-align: start; padding: 8px; border-bottom: 1px solid var(--bd); vertical-align: top; }
+@media (max-width: 600px) { .st-days { gap: 1px; } }

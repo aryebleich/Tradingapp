@@ -56,7 +56,7 @@ export async function addTransactions(userId, txs, settings) {
 // ---------- Plaid ----------
 const PLAID = () => `https://${['production', 'development'].includes(process.env.PLAID_ENV) ? process.env.PLAID_ENV : 'sandbox'}.plaid.com`;
 export const plaidEnabled = () => !!(process.env.PLAID_CLIENT_ID && process.env.PLAID_SECRET);
-async function plaid(path, body) {
+export async function plaid(path, body) {
   const base = process.env.PLAID_BASE_URL || PLAID();
   const r = await fetch(base + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ client_id: process.env.PLAID_CLIENT_ID, secret: process.env.PLAID_SECRET, ...body }), signal: AbortSignal.timeout(20000) });
   const d = await r.json().catch(() => ({}));

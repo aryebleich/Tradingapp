@@ -72,6 +72,8 @@ export const ENV_GROUPS = [
   ['Other brokerages', ['SCHWAB_APP_KEY', 'SCHWAB_APP_SECRET', 'TRADESTATION_CLIENT_ID', 'TRADESTATION_CLIENT_SECRET', 'PLAID_CLIENT_ID', 'PLAID_SECRET', 'PLAID_ENV']],
   ['Market events (earnings, IPOs)', ['FINNHUB_API_KEY']],
   ['QuickBooks (bookkeeping and taxes)', ['QBO_CLIENT_ID', 'QBO_CLIENT_SECRET', 'QBO_ENV']],
+  ['All my money and property values', ['RENTCAST_API_KEY', 'BTC_API_URL', 'ETH_RPC_URL']],
+  ['Android app', ['ANDROID_CERT_SHA256', 'ANDROID_APK_URL']],
   ['Extras', ['YIDDISH_CREDIT', 'MARGIN_FEED_URL', 'METRICS_TOKEN', 'SEC_CONTACT']],
   ['Render', ['RENDER_API_KEY', 'RENDER_SERVICE_ID']],
   ['GitHub (Yiddish Labs runs)', ['GITHUB_TOKEN', 'GITHUB_REPO']],

@@ -501,6 +501,7 @@ YI.update({
  "Already know what you want? Pick a goal": "ווייסט איר שוין וואס איר ווילט? קלייבט אן ציל",
 })
 YI.update({"Download the Android app": "אראפלאדן די אנדרויד עפּ"})
+YI.update({"Trust": "צוטרוי", "System status": "סיסטעם סטאַטוס", "Security": "זיכערהייט", "Insurance and protection": "פאַרזיכערונג און שוץ"})
 # Translations made with Yiddish Labs (npm run yiddish:import) take precedence.
 import json as _json, os as _os
 _labs = _os.path.join(_os.path.dirname(__file__), 'yi_labs.json')

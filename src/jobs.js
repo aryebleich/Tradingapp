@@ -16,6 +16,25 @@ import { monthlyBooksEmail } from './books.js';
 
 const slot = (t, min) => Math.floor(t / (min * 60e3));
 export const JOBS = [
+  // The public status page's checks.
+  // Opt-in reminders before Shabbos and Yom Tov (the luach).
+  ['luach', 30, async t => (await import('./luach.js')).runLuachReminders(t)],
+  // Add-ons: property values (monthly per property), K-1 reminders, the weekly brief, tax autopilot.
+  ['propvalues', 1440, async t => (await import('./altlive.js')).refreshEstimates(t)],
+  ['k1remind', 1440, async t => (await import('./altlive.js')).k1Reminders(t)],
+  ['brief', 60, async t => (await import('./brief.js')).weeklyBriefs(t)],
+  ['taxpilot', 60, async t => (await import('./taxpilot.js')).weeklyScan(t)],
+  ['status', 5, async t => (await import('./trust.js')).checkAll(t)],
+  // Rules across accounts: check due rules on weekdays after 10:30 New York (approval needed).
+  ['rules', 30, async t => (await import('./rules.js')).runRules(t)],
+  // One app for all your money: bank balances, transactions and crypto wallets, every 6 hours.
+  ['money', 360, async () => {
+    const { all, run, now } = await import('./db.js'); const M = await import('./money.js');
+    let n = 0;
+    for (const u of await all('SELECT DISTINCT user_id FROM money_items')) { await M.refreshAll(u.user_id); n++; }
+    for (const w of await all('SELECT * FROM crypto_wallets')) { const a = await M.walletAmount(w.chain, w.address).catch(() => null); if (a != null) { await run('UPDATE crypto_wallets SET amount = ?, checked_at = ? WHERE id = ?', a, now(), w.id); n++; } }
+    return n;
+  }],
   // Guardian: stop-loss / take-profit on whole accounts, every 5 minutes.
   ['guard', 5, async () => {
     const r = await runGuardian({ summarize: accountSummary, place: placeOrder });

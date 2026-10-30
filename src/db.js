@@ -438,6 +438,147 @@ CREATE TABLE IF NOT EXISTS alt_events (
   at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS alt_events_asset ON alt_events(asset_id);
+-- One app for all your money (src/money.js): linked banks and cards (Plaid), their accounts and
+-- transactions, and crypto wallets watched by address.
+CREATE TABLE IF NOT EXISTS money_items (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  institution TEXT,
+  token TEXT NOT NULL,
+  cursor TEXT,
+  accounts TEXT NOT NULL DEFAULT '[]',
+  refreshed_at INTEGER,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS money_items_user ON money_items(user_id);
+CREATE TABLE IF NOT EXISTS money_tx (
+  id TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  item_id INTEGER NOT NULL,
+  account_id TEXT,
+  day TEXT NOT NULL,
+  name TEXT,
+  amount REAL NOT NULL,
+  category TEXT
+);
+CREATE INDEX IF NOT EXISTS money_tx_user ON money_tx(user_id, day);
+CREATE TABLE IF NOT EXISTS crypto_wallets (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  chain TEXT NOT NULL,
+  address TEXT NOT NULL,
+  label TEXT,
+  amount REAL,
+  checked_at INTEGER,
+  created_at INTEGER NOT NULL
+);
+-- Rules across accounts (src/rules.js): a target mix for several accounts and trades awaiting approval.
+CREATE TABLE IF NOT EXISTS rules (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  targets TEXT NOT NULL,
+  accounts TEXT NOT NULL,
+  schedule TEXT NOT NULL DEFAULT 'quarterly',
+  options TEXT NOT NULL DEFAULT '{}',
+  pending TEXT,
+  last_run INTEGER,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at INTEGER NOT NULL
+);
+-- Public status page: the app's own checks every few minutes, and incidents the admin posts.
+CREATE TABLE IF NOT EXISTS status_checks (
+  id INTEGER PRIMARY KEY,
+  t INTEGER NOT NULL,
+  component TEXT NOT NULL,
+  ok INTEGER NOT NULL,
+  ms INTEGER
+);
+CREATE INDEX IF NOT EXISTS status_checks_t ON status_checks(t);
+CREATE TABLE IF NOT EXISTS incidents (
+  id INTEGER PRIMARY KEY,
+  title TEXT NOT NULL,
+  impact TEXT NOT NULL DEFAULT 'minor',
+  status TEXT NOT NULL DEFAULT 'investigating',
+  components TEXT NOT NULL DEFAULT '[]',
+  updates TEXT NOT NULL DEFAULT '[]',
+  started_at INTEGER NOT NULL,
+  resolved_at INTEGER
+);
+-- Tzedakah ledger (the luach page): what was given, to whom; it counts toward maaser.
+CREATE TABLE IF NOT EXISTS tzedakah (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  day TEXT NOT NULL,
+  amount REAL NOT NULL,
+  recipient TEXT NOT NULL,
+  note TEXT,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS tzedakah_user ON tzedakah(user_id, day);
+-- Yiddish on the phone line: the owner's recorded clips, and pieces callers heard with no clip yet.
+CREATE TABLE IF NOT EXISTS voice_clips (
+  k TEXT PRIMARY KEY,
+  id TEXT NOT NULL UNIQUE,
+  mime TEXT NOT NULL,
+  data TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS voice_missing (
+  k TEXT PRIMARY KEY,
+  english TEXT NOT NULL,
+  heard INTEGER NOT NULL DEFAULT 1,
+  last_at INTEGER NOT NULL
+);
+-- Live data for private investments and real estate (add-ons).
+CREATE TABLE IF NOT EXISTS property_estimates (
+  asset_id INTEGER PRIMARY KEY REFERENCES alt_assets(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  value REAL, value_low REAL, value_high REAL,
+  rent REAL, rent_low REAL, rent_high REAL,
+  auto INTEGER NOT NULL DEFAULT 0,
+  apply INTEGER NOT NULL DEFAULT 0,
+  at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS cap_tables (
+  asset_id INTEGER PRIMARY KEY REFERENCES alt_assets(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  data TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS k1s (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  asset_id INTEGER NOT NULL REFERENCES alt_assets(id) ON DELETE CASCADE,
+  year INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'expected',
+  boxes TEXT NOT NULL DEFAULT '{}',
+  file TEXT,
+  file_name TEXT,
+  received_on TEXT,
+  updated_at INTEGER NOT NULL,
+  UNIQUE (asset_id, year)
+);
+-- The weekly AI money brief.
+CREATE TABLE IF NOT EXISTS briefs (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  week TEXT NOT NULL,
+  data TEXT NOT NULL,
+  text TEXT NOT NULL,
+  by_ai INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  UNIQUE (user_id, week)
+);
+-- Tax-saving autopilot: the harvest plan waiting for approval.
+CREATE TABLE IF NOT EXISTS tax_pilot (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  options TEXT NOT NULL DEFAULT '{}',
+  pending TEXT,
+  last_scan INTEGER,
+  harvested REAL NOT NULL DEFAULT 0
+);
 -- Money in and out of each account, by date, for time-weighted returns.
 CREATE TABLE IF NOT EXISTS cashflows (
   id INTEGER PRIMARY KEY,

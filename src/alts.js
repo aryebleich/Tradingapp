@@ -72,6 +72,7 @@ async function list(userId, kind) {
     return { ...a, events, stats: kind === 'private' ? privateStats(a, events) : propertyStats(a) };
   });
 }
+export const listAlts = list;
 function clean(kind, b) {
   if (kind === 'private') return { type: PRIVATE_TYPES[b.type] ? b.type : 'equity', company: txt(b.company), platform: txt(b.platform, 60), stage: txt(b.stage, 40), ownership: b.ownership === '' || b.ownership == null ? null : num(b.ownership, 0, 100), value: num(b.value || 0, 0), valuedOn: day(b.valuedOn), notes: txt(b.notes, 1000) };
   return { type: PROPERTY_TYPES[b.type] ? b.type : 'rental', address: txt(b.address, 160), price: num(b.price || 0, 0), bought: day(b.bought), value: num(b.value || 0, 0), mortgage: num(b.mortgage || 0, 0), rate: num(b.rate || 0, 0, 30), yearsLeft: num(b.yearsLeft || 30, 0, 50), payment: b.payment === '' || b.payment == null ? null : num(b.payment, 0), rent: num(b.rent || 0, 0), costs: num(b.costs || 0, 0), cashInvested: num(b.cashInvested || 0, 0), notes: txt(b.notes, 1000) };

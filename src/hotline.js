@@ -26,6 +26,13 @@ import { createUser, rateLimit } from './auth.js';
 import { nyTime, stockSession } from './time.js';
 import * as N from './notify.js';
 import { trySpend } from './credits.js';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { getSetting, setSetting } from './settings.js';
+import { sayYiddish, freshClips, clipById } from './voice-yi.js';
+
+// The language of the call being answered (English, or Yiddish from the owner's recordings).
+const call = new AsyncLocalStorage();
+const lang = () => call.getStore()?.lang || 'en';
 
 export const DEFAULTS = {
   enabled: true,
@@ -35,6 +42,7 @@ export const DEFAULTS = {
   allowSignup: true,
   freePaper: false,
   voice: 'Polly.Joanna',
+  yiddish: false, // callers may press 8 for Yiddish (Admin → Phone line → Yiddish voice)
 };
 const NAMES = { AAPL: 'Apple', MSFT: 'Microsoft', NVDA: 'Nvidia', AMZN: 'Amazon', GOOGL: 'Google', GOOG: 'Google', META: 'Meta', TSLA: 'Tesla', SPY: 'the S and P 500 fund', QQQ: 'the Nasdaq 100 fund', VOO: 'the Vanguard S and P 500 fund', NFLX: 'Netflix', AMD: 'A M D', KO: 'Coca-Cola', PEP: 'Pepsi', DIA: 'the Dow fund', IWM: 'the Russell 2000 fund' };
 export const settings = () => ({ ...DEFAULTS, ...(siteGet('ivr', {}) || {}) });
@@ -43,6 +51,7 @@ export async function saveSettings(b = {}) {
   if ('enabled' in b) out.enabled = !!b.enabled;
   if ('allowSignup' in b) out.allowSignup = !!b.allowSignup;
   if ('freePaper' in b) out.freePaper = !!b.freePaper;
+  if ('yiddish' in b) out.yiddish = !!b.yiddish;
   if ('greeting' in b) out.greeting = String(b.greeting || '').replace(/[<>&]/g, '').trim().slice(0, 200) || DEFAULTS.greeting;
   if ('voice' in b) out.voice = /^(Polly\.[A-Za-z-]+|man|woman|alice)$/.test(b.voice) ? b.voice : DEFAULTS.voice;
   if ('maxQty' in b) { const q = Math.floor(+b.maxQty); if (!(q >= 1 && q <= 10000)) throw Object.assign(new Error('The share limit must be between 1 and 10,000'), { status: 400 }); out.maxQty = q; }
@@ -58,17 +67,17 @@ export async function saveSettings(b = {}) {
 const xml = N.xml;
 const money = x => `${x < 0 ? 'minus ' : ''}${Math.abs(x).toLocaleString('en-US', { maximumFractionDigits: 2 })} dollars`;
 const spell = s => NAMES[s] ? `${NAMES[s]}, ${s.split('').join(' ')}` : s.split('').join(' ');
-const q = o => '?' + new URLSearchParams(Object.entries(o).filter(([, v]) => v != null && v !== '')).toString();
+const q = o => '?' + new URLSearchParams(Object.entries({ ...o, l: lang() === 'yi' ? 'yi' : null }).filter(([, v]) => v != null && v !== '')).toString();
 const ENVS = { paper: 'paper trading', live: 'live trading' };
 const acctOf = e => (e === 'live' ? 'alpaca' : 'paper');
 
 export function registerHotline(app, { twilioOk, twiml }) {
-  const say = (text, o = settings()) => `<Say voice="${xml(o.voice)}">${xml(text)}</Say>`;
+  const say = (text, o = settings()) => (lang() === 'yi' ? sayYiddish(text, { base: call.getStore().base, voice: o.voice }) : `<Say voice="${xml(o.voice)}">${xml(text)}</Say>`);
   const gather = (action, text, { digits = 1, finish = '', timeout = 8 } = {}) =>
     `<Gather input="dtmf" ${digits ? `numDigits="${digits}"` : ''} ${finish ? `finishOnKey="${finish}"` : ''} timeout="${timeout}" action="${xml(action)}" method="POST">${say(text)}</Gather>`;
   const bye = text => `${text ? say(text) : ''}<Hangup/>`;
 
-  const menuText = (e, o) => `Main menu, ${ENVS[e]}. Press 1 for account info. 2 for positions. 3 for the market clock. 4 to place a trade. 5 to cancel open orders. 6 to close all positions.${o.ai ? ' 7 to ask the assistant.' : ''} 9 to switch to ${ENVS[e === 'paper' ? 'live' : 'paper']}. 0 to hang up.`;
+  const menuText = (e, o) => `Main menu, ${ENVS[e]}. Press 1 for account info. 2 for positions. 3 for the market clock. 4 to place a trade. 5 to cancel open orders. 6 to close all positions.${o.ai ? ' 7 to ask the assistant.' : ''}${o.yiddish ? ` 8 for ${lang() === 'yi' ? 'English' : 'Yiddish'}.` : ''} 9 to switch to ${ENVS[e === 'paper' ? 'live' : 'paper']}. 0 to hang up.`;
   const menu = (e, lead = '') => { const o = { ...settings(), ai: aiOn() }; return gather(`/twilio/voice/menu${q({ e })}`, `${lead ? lead + ' ' : ''}${menuText(e, o)}`) + bye('Goodbye.'); };
   let aiOn = () => false;
   import('./assistant.js').then(m => { aiOn = m.aiEnabled; }).catch(() => {});
@@ -81,10 +90,20 @@ export function registerHotline(app, { twilioOk, twiml }) {
     if (!twilioOk(req)) return res.status(403).send('forbidden');
     const o = settings();
     if (!o.enabled) return twiml(res, bye('The Brightfolio phone line is closed right now. Please use the app. Goodbye.'));
-    try { await handler(req, res, o); } catch (e) {
-      console.warn('hotline', e.message);
-      twiml(res, say('Sorry, something went wrong.') + (req.query.e ? menu(req.query.e) : bye('Goodbye.')));
+    // Yiddish when the caller chose it (kept in the signed URLs, and saved for their next call).
+    let l = 'en';
+    if (o.yiddish) {
+      await freshClips();
+      if (['yi', 'en'].includes(req.query.l)) l = req.query.l;
+      else { const u = await userByPhone(normalizePhone(req.body.From)).catch(() => null); if (u && (await getSetting(u.id, 'phoneLang', 'en')) === 'yi') l = 'yi'; }
     }
+    const base = (process.env.PUBLIC_URL || `https://${req.get('host')}`).replace(/\/$/, '');
+    await call.run({ lang: l, base }, async () => {
+      try { await handler(req, res, o); } catch (e) {
+        console.warn('hotline', e.message);
+        twiml(res, say('Sorry, something went wrong.') + (req.query.e ? menu(req.query.e) : bye('Goodbye.')));
+      }
+    });
   };
   const caller = async req => {
     const u = await userByPhone(normalizePhone(req.body.From));
@@ -132,6 +151,12 @@ export function registerHotline(app, { twilioOk, twiml }) {
     if (d === '5') return twiml(res, pinPrompt(u, { e, do: 'cancel' }, 'To cancel all open orders,'));
     if (d === '6') return twiml(res, gather(`/twilio/voice/closeall${q({ e })}`, `This sells every position in your ${e} account at the market price. Press 1 to continue. Press 2 to go back.`) + menu(e));
     if (d === '7' && aiOn()) return twiml(res, `<Gather input="speech" speechTimeout="auto" timeout="6" action="${xml(`/twilio/voice/ask${q({ e })}`)}" method="POST">${say('Ask your question after the tone. For example: how is my account doing?')}</Gather>${menu(e)}`);
+    if (d === '8' && o.yiddish) {
+      const to = lang() === 'yi' ? 'en' : 'yi';
+      call.getStore().lang = to;
+      await setSetting(u.id, 'phoneLang', to);
+      return twiml(res, menu(e, to === 'yi' ? 'Switched to Yiddish.' : 'Switched to English.'));
+    }
     if (d === '9') {
       const to = e === 'paper' ? 'live' : 'paper';
       if (to === 'live' && (access(u) !== 'full' || !(await liveTrading(u)))) return twiml(res, menu(e, access(u) !== 'full' ? 'Live trading by phone is part of the Pro plan.' : 'You do not have a live brokerage account connected yet.'));
@@ -283,6 +308,12 @@ export function registerHotline(app, { twilioOk, twiml }) {
   }));
 
   app.post('/twilio/voice/status', (req, res) => res.sendStatus(204));
+  // The owner's Yiddish recordings, fetched by Twilio while a call plays them.
+  app.get('/voice/yi/:id', async (req, res) => {
+    const c = /^[0-9a-f]{16}$/.test(req.params.id) ? await clipById(req.params.id) : null;
+    if (!c) return res.sendStatus(404);
+    res.type(c.mime).set('Cache-Control', 'public, max-age=300').send(c.data);
+  });
 }
 
 // Market clock: the broker's clock when the caller has an Alpaca account, else New York time.

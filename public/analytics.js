@@ -158,13 +158,13 @@ async function values(view, q) {
       <p class="mu" style="margin-top:0">A tenth (or a fifth, chomesh) of what your investments earned this year: realized gains, dividends and interest, less losses, from your accounts here. Add other income if you want it in the same count.</p>
       <div class="row"><label>Year<select name="year">${[0, 1, 2].map(i => `<option>${y - i}</option>`).join('')}</select></label>
         <label>Share<select name="pct"><option value="10" ${v.maaserPct === 10 ? 'selected' : ''}>Maaser (10%)</option><option value="20" ${v.maaserPct === 20 ? 'selected' : ''}>Chomesh (20%)</option></select></label>
-        <label>Other income ($)<input name="otherIncome" type="number" min="0" step="any" value="0"></label><label>Already given ($)<input name="alreadyGiven" type="number" min="0" step="any" value="0"></label></div>
+        <label>Other income ($)<input name="otherIncome" type="number" min="0" step="any" value="0"></label><label>Given outside the tzedakah ledger ($)<input name="alreadyGiven" type="number" min="0" step="any" value="0"></label></div>
       <div class="row" style="flex-wrap:wrap;gap:6px 18px">${accts.filter(a => a.connected !== false).map(a => `<label class="chk"><input type="checkbox" name="acc" value="${H.esc(a.id)}" ${a.id === 'paper' ? '' : 'checked'}> ${H.esc(H.acctLabel(a))}</label>`).join('')}</div>
       <button>Calculate</button><div class="err"></div><div id="mzOut"></div></form>`;
     const f = H.$('#mz', view);
     H.act(H.$('button', f), async () => {
       const r = await H.api('/values/maaser', { body: { year: +f.year.value, pct: +f.pct.value, otherIncome: +f.otherIncome.value, alreadyGiven: +f.alreadyGiven.value, accounts: H.$$('[name=acc]:checked', f).map(c => c.value) } });
-      H.$('#mzOut', view).innerHTML = `<div class="stats" style="margin-top:12px">${stat('Profit counted', H.money(r.profit), H.cls(r.profit))}${stat(r.pct === 20 ? 'Chomesh' : 'Maaser', H.money(r.maaser))}${stat('Already given', H.money(r.given))}${stat('Still to give', H.money(r.remaining))}</div>`;
+      H.$('#mzOut', view).innerHTML = `<div class="stats" style="margin-top:12px">${stat('Profit counted', H.money(r.profit), H.cls(r.profit))}${stat(r.pct === 20 ? 'Chomesh' : 'Maaser', H.money(r.maaser))}${stat('Already given', H.money(r.given))}${stat('Still to give', H.money(r.remaining))}</div>${r.ledger ? `<p class="mu">Includes ${H.money(r.ledger)} from your <a href="#/luach?tab=tzedakah">tzedakah ledger</a>.</p>` : `<p class="mu">Keep track of what you give in the <a href="#/luach?tab=tzedakah">tzedakah ledger</a>; it counts here.</p>`}`;
       return '';
     });
     return wireTabs(view, 'values');

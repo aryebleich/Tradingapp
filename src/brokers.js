@@ -223,6 +223,9 @@ export async function placeOrder(userId, account, order, source = 'manual') {
   // Values investing: no trading on Shabbos and Yom Tov for users who turned it on (every source).
   const holy = await (await import('./values.js')).shabbosBlock(userId);
   if (holy) throw Object.assign(new Error(`${holy.name}: trading is paused until ${new Date(holy.until).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' })} New York time (Settings → Values investing).`), { status: 423, shabbos: true });
+  // Tax-saving autopilot: no buying back a stock harvested in the last 31 days (a wash sale).
+  const wash = order.allowWashSale ? null : await (await import('./taxpilot.js')).washBlock(userId, account, symbol, side);
+  if (wash) throw Object.assign(new Error(`${symbol} was sold for a tax loss recently. Buying it back before ${new Date(wash).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} would be a wash sale and cancel the tax saving. Remove the guard under Taxes → Autopilot to buy anyway.`), { status: 409, washSale: true });
   // Guardrails first (account lock, limits, speed bumps, daily loss stop, kill switch), for every source.
   const chk = await checkOrder(userId, account, { symbol, side, qty: q, notional: n }, source, riskDeps(userId));
   if (chk?.resize) { if (chk.resize.notional) { n = chk.resize.notional; q = 0; } else { q = chk.resize.qty; n = 0; } }

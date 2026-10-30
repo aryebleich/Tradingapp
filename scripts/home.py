@@ -52,6 +52,7 @@ def layout(title, desc, body, lang='en', home='index.html'):
       <p class="phoneline" data-phone hidden>{T('Text or call us:')} <a data-phone-link dir="ltr"></a></p></div>
     <div><b>{T('Product')}</b><a href="{home}#how">{T('How it works')}</a><a href="{home}#strategies">{T('Strategies')}</a><a href="{home}#reality">{T('Reality Check')}</a><a href="{home}#sp500">{T('S&amp;P 500')}</a><a href="{home}#pricing">{T('Pricing')}</a><a data-app="#/register" href="app">{T('Create account')}</a></div>
     <div><b>{T('Company')}</b><a href="contact.html">{T('Contact &amp; support')}</a><a href="terms.html">{T('Terms of Service')}</a><a href="privacy.html">{T('Privacy Policy')}</a><a href="risk.html">{T('Risk Disclosure')}</a></div>
+    <div><b>{T('Trust')}</b><a href="status.html">{T('System status')}</a><a href="security.html">{T('Security')}</a><a href="insurance.html">{T('Insurance and protection')}</a></div>
   </div>
   <p class="disc">{T('Investing involves risk, including possible loss of principal. Backtests and projections are hypothetical, are built with the benefit of hindsight and do not guarantee future results. Brightfolio is a software provider and is not a broker-dealer. Brokerage services are provided by your own broker (for example Alpaca Securities LLC, member FINRA/SIPC) under your own account agreement. Nothing on this site is an offer, solicitation or recommendation to buy or sell any security.')}</p>
   <p class="disc">© 2026 Brightfolio. {T('All rights reserved.')}<span data-credit></span></p>

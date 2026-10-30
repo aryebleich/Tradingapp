@@ -238,7 +238,7 @@ router.post('/logout', async (req, res) => {
   res.json({ ok: true });
 });
 
-router.get('/me', async (req, res) => res.json({ user: publicUser(req.user) || null, mfaPending: !!req.pending }));
+router.get('/me', async (req, res) => res.json({ user: req.user ? { ...publicUser(req.user), addons: await (await import('./addons.js')).addonsFor(req.user.id) } : null, mfaPending: !!req.pending }));
 
 router.post('/totp/setup', requireUser, async (req, res) => {
   const secret = newTotpSecret();
