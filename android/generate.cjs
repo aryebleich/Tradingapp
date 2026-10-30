@@ -39,7 +39,7 @@ const manifest = new TwaManifest({
   isMetaQuest: false,
   orientation: 'default',
   fingerprints: [],
-  minSdkVersion: 21,
+  minSdkVersion: 24, // Android 7.0 and newer (what the browser helper library needs)
 });
 new TwaGenerator().createTwaProject(path.resolve(__dirname, 'project'), manifest, new ConsoleLog('android'))
   .then(() => console.log('Android project generated for', host, 'version', versionCode))
