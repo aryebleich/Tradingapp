@@ -6,6 +6,7 @@ import crypto from 'node:crypto';
 import { one, run, now, audit } from './db.js';
 import { hashSecret, randomToken, safeEqual } from './crypto.js';
 import { createSession, createUser, rateLimit } from './auth.js';
+import { makeState, readState } from './google.js';
 
 export const githubEnabled = () => !!(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET);
 const WEB = () => (process.env.GITHUB_URL || 'https://github.com').replace(/\/$/, '');
@@ -13,8 +14,8 @@ const API = () => (process.env.GITHUB_API_URL || 'https://api.github.com').repla
 const appUrl = () => (process.env.PUBLIC_URL || 'http://localhost:3000').replace(/\/$/, '');
 const redirectUri = () => appUrl() + '/auth/github/callback';
 const STATE_COOKIE = 'qp_ghstate';
-const STATE_MS = 10 * 60e3;
-const states = new Map(); // state -> { ref, at }
+// Signed state (no server memory, survives restarts), valid for an hour; see google.js.
+const STATE_MS = 60 * 60e3;
 
 function stateCookie(res, value, ms) {
   res.append('Set-Cookie', `${STATE_COOKIE}=${value}; Path=/auth/github; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(ms / 1000)}${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`);
@@ -62,21 +63,18 @@ export const router = express.Router();
 router.get('/', (req, res) => {
   if (!githubEnabled()) return fail(res, 'GitHub sign-in is not set up yet. Use your email instead.');
   if (!rateLimit('github:' + req.ip, 30, 15 * 60e3)) return fail(res, 'Too many attempts, try again in a few minutes.');
-  for (const [k, v] of states) if (now() - v.at > STATE_MS) states.delete(k);
-  const state = crypto.randomBytes(24).toString('base64url');
   const ref = /^[a-z0-9]{6,12}$/.test(String(req.query.ref || '')) ? String(req.query.ref) : null;
-  states.set(state, { ref, at: now() });
+  const state = makeState(ref);
   stateCookie(res, state, STATE_MS);
   const p = new URLSearchParams({ client_id: process.env.GITHUB_CLIENT_ID, redirect_uri: redirectUri(), scope: 'read:user user:email', state, allow_signup: 'true' });
   res.redirect(`${WEB()}/login/oauth/authorize?${p}`);
 });
 
 router.get('/callback', async (req, res) => {
-  const state = String(req.query.state || ''), saved = states.get(state);
-  states.delete(state);
+  const state = String(req.query.state || ''), saved = readState(state);
   stateCookie(res, '', 0);
   if (req.query.error) return fail(res, req.query.error === 'access_denied' ? 'GitHub sign-in was cancelled.' : 'GitHub sign-in failed. Please try again.');
-  if (!saved || now() - saved.at > STATE_MS || !safeEqual(cookie(req, STATE_COOKIE), state)) return fail(res, 'This GitHub sign-in expired. Please try again.');
+  if (!saved || !safeEqual(cookie(req, STATE_COOKIE), state)) return fail(res, 'This GitHub sign-in expired. Please try again.');
   try {
     const r = await fetch(WEB() + '/login/oauth/access_token', {
       method: 'POST',

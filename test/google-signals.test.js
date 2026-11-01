@@ -81,8 +81,17 @@ test('Google sign-up, sign-in, account linking and safety checks', async () => {
   const c3 = client();
   const s3 = new URL((await c3.get('/auth/google')).headers.get('location')).searchParams.get('state');
   const other = client(); // a different browser cannot finish this sign-in
-  assert.match(decodeURIComponent((await other.get(`/auth/google/callback?state=${s3}&code=good-code`)).headers.get('location')), /expired/);
-  assert.match(decodeURIComponent((await c3.get(`/auth/google/callback?state=${s3}&code=good-code`)).headers.get('location')), /expired/); // state is single-use
+  // It is not signed in: the sign-in starts again once by itself, then shows an error.
+  assert.equal((await other.get(`/auth/google/callback?state=${s3}&code=good-code`)).headers.get('location'), '/auth/google');
+  assert.match(decodeURIComponent((await other.get(`/auth/google/callback?state=${s3}&code=good-code`)).headers.get('location')), /could not be completed/);
+  assert.equal((await other.call('/auth/me')).body.user, null);
+  await c3.get(`/auth/google/callback?state=${s3}&code=good-code`);
+  assert.equal((await c3.get(`/auth/google/callback?state=${s3}&code=good-code`)).headers.get('location').includes('dashboard'), false, 'state is single-use');
+  // The state is signed, not kept in server memory, so it survives a restart; it lasts an hour.
+  const G = await import('../src/google.js'), st = G.makeState('abc123', Date.now() - 50 * 60e3);
+  assert.equal(G.readState(st).ref, 'abc123');
+  assert.equal(G.readState(G.makeState(null, Date.now() - 61 * 60e3)), null);
+  assert.equal(G.readState(st.slice(0, -2) + 'xx'), null, 'a changed state is refused');
   assert.match(await googleSignIn(client(), { sub: 'g-2', email: 'x@example.com', aud: 'someone-else' }), /different app/);
   assert.match(await googleSignIn(client(), { sub: 'g-2', email: 'x@example.com', email_verified: false }), /Verify your Google email/);
   assert.match(await googleSignIn(client(), { sub: 'g-2', email: 'x@example.com' }, { code: 'bad' }), /did not accept/);

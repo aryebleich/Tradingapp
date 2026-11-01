@@ -159,7 +159,9 @@ app.post('/internal/tick', async (req, res) => {
   if (!secret || !safeEqual(req.headers.authorization || '', `Bearer ${secret}`)) return res.status(401).json({ error: 'unauthorized' });
   const out = await runDueJobs();
   if (req.query.snapshot) await snapshotAll();
-  res.json(out);
+  // Whether accounts and sign-ins live in a lasting database (a local file on Render is wiped on
+  // every restart and deploy, which signs everyone out).
+  res.json({ ...out, database: process.env.DATABASE_URL ? 'lasting (DATABASE_URL)' : 'local file: wiped on restart' });
 });
 
 // What crawlers and AI tools may read (Admin → AI & privacy): AI crawlers blocked unless allowed.

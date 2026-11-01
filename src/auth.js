@@ -9,8 +9,9 @@ import { isOwner, addedAdminEmails, isAdminPhone, normalizePhone, freshSite, sit
 // The last email the service refused (wrong sender, unverified domain), shown in Admin → Setup.
 const noteEmailError = msg => siteSet('emailError', { msg: String(msg).slice(0, 300), at: now() }).catch(() => {});
 
-// Signed-in sessions last 30 days and renew themselves while used, so a refresh never asks again.
-const SESSION_MS = 30 * 86400e3;
+// Signed-in sessions last a year and renew themselves every day they are used, so someone who uses
+// the site stays signed in (until they sign out, change their password or lock the account).
+const SESSION_MS = 365 * 86400e3;
 const RENEW_MS = 86400e3;
 const MFA_MS = 5 * 60e3;
 const MAX_FAILS = 5;
