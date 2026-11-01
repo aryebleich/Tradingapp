@@ -85,7 +85,7 @@ export const deskRouter = (() => {
     const symbol = String(req.params.symbol || '').toUpperCase().slice(0, 15), account = String(req.query.account || 'paper');
     const t0 = Date.now(); let q = null;
     try { q = await DS.quote(symbol, req.user.id); } catch (e) { if (e.status === 404) throw bad(`Unknown symbol ${symbol}`, 404); }
-    if (!q) { const { lastPrice } = await import('./brokers.js'); q = { price: await lastPrice(symbol, req.user.id), source: 'fallback' }; }
+    if (!q) { const { lastPrice } = await import('./brokers.js'); q = { price: await lastPrice(symbol, req.user.id), source: 'Last known price (no live source)' }; }
     const ms = Date.now() - t0;
     let bid = null, ask = null;
     const { quoteAt } = await import('./execution.js');
@@ -93,7 +93,8 @@ export const deskRouter = (() => {
     if (nb?.bid) { bid = nb.bid; ask = nb.ask; }
     const qty = +req.query.qty || 0, side = req.query.side === 'sell' ? 'sell' : 'buy';
     res.json({ symbol, price: q.price, source: DS.PROVIDERS[q.source]?.name || q.source, sourceId: q.source, latencyMs: ms, bid, ask, feed: nb?.feed || null, holding: await holding(req.user.id, account, symbol), session: session(),
-      costs: qty ? costs({ side, qty, price: q.price, bid, ask, type: req.query.type || 'market' }) : null, fees: fees(), orderLatency: await latencies(req.user.id) });
+      // A limit or stop order is valued at its own price.
+      costs: qty ? costs({ side, qty, price: +req.query.price > 0 ? +req.query.price : q.price, bid, ask, type: req.query.type || 'market' }) : null, fees: fees(), orderLatency: await latencies(req.user.id) });
   });
   return r;
 })();

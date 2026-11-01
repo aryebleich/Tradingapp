@@ -18,12 +18,14 @@ export async function searchAll(user, qRaw) {
     if (I.MUTUAL_FUNDS[Q]) add(Q, I.MUTUAL_FUNDS[Q][0], 'Mutual fund', '#/invest?tab=funds');
     if (I.FUTURES[Q]) add(Q, I.FUTURES[Q][0], 'Futures', '#/invest?tab=futures');
   }
+  // Names match at the start of a word (so "sell" does not find "Russell").
+  const word = new RegExp(`\\b${Q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
   const map = await F.tickerCiks().catch(() => ({}));
   const exact = map[Q]; if (exact) add(Q, exact.name, 'Stock', `#/trade?symbol=${Q}`);
-  for (const [k, v] of Object.entries(F.ETFS)) if (symbols.length < 12 && (k.startsWith(Q) || v[0].toUpperCase().includes(Q))) add(k, v[0], 'ETF', `#/trade?symbol=${k}`);
-  for (const [k, v] of Object.entries(I.MUTUAL_FUNDS)) if (symbols.length < 12 && (k.startsWith(Q) || v[0].toUpperCase().includes(Q))) add(k, v[0], 'Mutual fund', '#/invest?tab=funds');
-  for (const [k, v] of Object.entries(I.FUTURES)) if (symbols.length < 12 && q.length > 2 && v[0].toUpperCase().includes(Q)) add(k, v[0], 'Futures', '#/invest?tab=futures');
-  if (q.length >= 2) for (const [t, v] of Object.entries(map)) { if (symbols.length >= 12) break; if (t.startsWith(Q) || (q.length >= 3 && v.name.toUpperCase().includes(Q))) add(t, v.name, 'Stock', `#/trade?symbol=${encodeURIComponent(t)}`); }
+  for (const [k, v] of Object.entries(F.ETFS)) if (symbols.length < 12 && (k.startsWith(Q) || word.test(v[0].toUpperCase()))) add(k, v[0], 'ETF', `#/trade?symbol=${k}`);
+  for (const [k, v] of Object.entries(I.MUTUAL_FUNDS)) if (symbols.length < 12 && (k.startsWith(Q) || word.test(v[0].toUpperCase()))) add(k, v[0], 'Mutual fund', '#/invest?tab=funds');
+  for (const [k, v] of Object.entries(I.FUTURES)) if (symbols.length < 12 && q.length > 2 && word.test(v[0].toUpperCase())) add(k, v[0], 'Futures', '#/invest?tab=futures');
+  if (q.length >= 2) for (const [t, v] of Object.entries(map)) { if (symbols.length >= 12) break; if (t.startsWith(Q) || (q.length >= 3 && word.test(v.name.toUpperCase()))) add(t, v.name, 'Stock', `#/trade?symbol=${encodeURIComponent(t)}`); }
   const mine = [], uid = user.id, L = like(q);
   const pick = async (sql, kind, url) => { for (const r of await all(sql, uid, L).catch(() => [])) mine.push({ kind, title: r.t, url: url(r) }); };
   await pick('SELECT id, name t FROM user_strategies WHERE user_id = ? AND name LIKE ? LIMIT 5', 'My strategy', () => '#/strategies');

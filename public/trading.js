@@ -566,7 +566,7 @@ function renderTicket(box, symbol, kind, acct, lastPx, q, onPlaced) {
     const desk = async () => {
       if (kind !== 'stock') return;
       const my = ++dseq, qty = +f.qty?.value || (+f.notional?.value && lastPx() ? f.notional.value / lastPx() : 0);
-      const d = await H.api(`/desk/quote/${encodeURIComponent(symbol)}?account=alpaca&side=${st.side}&type=${st.type}&qty=${qty}`).catch(() => null);
+      const d = await H.api(`/desk/quote/${encodeURIComponent(symbol)}?account=alpaca&side=${st.side}&type=${st.type}&qty=${qty}&price=${+f.limit_price?.value || +f.stop_price?.value || ''}`).catch(() => null);
       if (!d || my !== dseq || !H.$('#tkDesk', box)) return;
       st.hold = d.holding;
       H.$('#tkDesk', box).innerHTML = OD.deskStrip(d);

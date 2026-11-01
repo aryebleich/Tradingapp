@@ -331,6 +331,7 @@ const ICONS = {
   money: '<path d="M3 10h18M5 10V20M9 10v10M15 10v10M19 10v10M3 20h18M12 3l9 5H3z"/>',
   luach: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M12 12l1.2 2.4 2.6.4-1.9 1.8.5 2.6-2.4-1.3-2.4 1.3.5-2.6-1.9-1.8 2.6-.4z"/>',
   brief: '<path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5M8 12h8M8 16h6"/>', taxpilot: '<path d="M12 3v18M17 7.5c0-1.9-2.2-3-5-3s-5 1.1-5 3 2.2 2.7 5 3.3 5 1.4 5 3.5-2.2 3.2-5 3.2-5-1.3-5-3.2"/>',
+  'admin-comms': '<path d="M4 5h16v11H8l-4 4z"/><path d="M8 9h8M8 12h5"/>', 'admin-data': '<path d="M3 12h4l3-7 4 14 3-7h4"/><circle cx="12" cy="12" r="0.5"/>', 'admin-trust': '<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/>',
   invest: '<path d="M4 19h16M6 16V9M10 16V5M14 16v-6M18 16V7"/>',
   rules: '<path d="M4 6h16M4 12h10M4 18h6"/><path d="M17 14l2 2 3-4"/>',
   android: '<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/>',
@@ -750,7 +751,7 @@ function wireQuickTicket(t, view, a) {
   const refresh = async () => {
     const f = form(t), sym = f.symbol.trim().toUpperCase(); if (!sym) return;
     const my = ++seq;
-    const d = await api(`/desk/quote/${encodeURIComponent(sym)}?account=${state.account}&side=${st.side}&type=${st.type}&qty=${+f.qty || (f.notional && st.last ? f.notional / st.last : 0)}`).catch(e => ({ error: e.message }));
+    const d = await api(`/desk/quote/${encodeURIComponent(sym)}?account=${state.account}&side=${st.side}&type=${st.type}&qty=${+f.qty || (f.notional && st.last ? f.notional / st.last : 0)}&price=${+f.limit_price || +f.stop_price || ''}`).catch(e => ({ error: e.message }));
     if (my !== seq || !$('#qGuide', t)) return;
     if (d.error) { $('#deskStrip', t).innerHTML = `<p class="err">${esc(d.error)}</p>`; return; }
     st.last = d.price; st.hold = d.holding;

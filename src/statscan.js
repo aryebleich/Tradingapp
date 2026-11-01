@@ -134,7 +134,8 @@ async function run(job, user, b, size) {
     const near = [];
     for (let j = 0; j < keep.length; j++) if (i !== j) { const a = Z[keep[i]], c = Z[keep[j]]; let s = 0; for (let t = 0; t < a.length; t++) s += a[t] * c[t]; near.push([s / a.length, keep[j]]); }
     near.sort((x, y) => y[0] - x[0]);
-    for (const [c, o] of near.slice(0, 10)) if (c > 0.5) cand.set([keep[i], o].sort().join('|'), c);
+    // Small lists: every pair is tested; large ones only the 10 most related partners of each stock.
+    for (const [c, o] of keep.length <= 30 ? near : near.slice(0, 10)) if (keep.length <= 30 || c > 0.5) cand.set([keep[i], o].sort().join('|'), c);
     if (i % 25 === 0) await new Promise(r => setImmediate(r));
   }
   job.pairs = cand.size;

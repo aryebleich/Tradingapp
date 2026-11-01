@@ -788,7 +788,8 @@ dialog.search #sq { width: 100%; font-size: 17px; padding: 12px 14px; }
 .sitem:hover, .sitem:focus { background: var(--bg2, #f1f5f9); outline: none; }
 .sitem .mu { font-size: 13px; }
 /* Collapsible menu sections */
-#nav .grp.sec { display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; background: none; border: 0; width: 100%; padding: inherit; font: inherit; color: inherit; text-align: start; }
+#nav button.grp.sec { display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; background: none !important; border: 0 !important; box-shadow: none !important; border-radius: 6px; width: calc(100% - 20px); padding: 4px 0; min-height: 0; font: inherit; font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .06em; color: var(--mu); text-align: start; transform: none; }
+#nav button.grp.sec:hover { color: var(--tx); }
 #nav .grp.sec .chev { transition: transform .2s; font-size: 10px; opacity: .7; }
 #nav .grp.sec[aria-expanded="false"] .chev { transform: rotate(-90deg); }
 [dir=rtl] #nav .grp.sec[aria-expanded="false"] .chev { transform: rotate(90deg); }
