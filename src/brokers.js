@@ -2,6 +2,7 @@
 import * as DS from './datasources.js';
 import { recordCommission } from './revenue.js';
 import { one, all, run, now, tx } from './db.js';
+import { nyTime } from './time.js';
 import { decrypt } from './crypto.js';
 import { rng } from './engine.js';
 import { tradingFor, requireTrading, tradingForAccount, requireTradingFor, isExtraAlpaca } from './alpaca/connections.js';
@@ -334,7 +335,7 @@ export async function portfolioHistory(userId, account) {
 
 export async function snapshotEquity(userId) {
   const s = await accountSummary(userId, 'paper');
-  await run("INSERT INTO equity_history (user_id, account, day, equity) VALUES (?, 'paper', ?, ?) ON CONFLICT DO UPDATE SET equity = excluded.equity", userId, new Date().toISOString().slice(0, 10), s.equity);
+  await run("INSERT INTO equity_history (user_id, account, day, equity) VALUES (?, 'paper', ?, ?) ON CONFLICT DO UPDATE SET equity = excluded.equity", userId, nyTime().day, s.equity);
   return s;
 }
 

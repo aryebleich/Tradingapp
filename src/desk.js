@@ -20,7 +20,15 @@ export const HOLIDAYS = new Set(['2026-01-01', '2026-01-19', '2026-02-16', '2026
 export const EARLY_CLOSE = new Set(['2026-11-27', '2026-12-24', '2027-11-26']);
 const addDays = (iso, n) => new Date(Date.parse(iso + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
 const tradingDay = iso => { const wd = new Date(iso + 'T12:00:00Z').getUTCDay(); return wd !== 0 && wd !== 6 && !HOLIDAYS.has(iso); };
-const closeMin = iso => (EARLY_CLOSE.has(iso) ? 780 : 960);
+export const closeMin = iso => (EARLY_CLOSE.has(iso) ? 780 : 960);
+// The New York date of the session an order placed now belongs to: today until today's close,
+// after that (or on a weekend or holiday) the next trading day.
+export function orderDay(t = Date.now()) {
+  const n = nyTime(t);
+  if (tradingDay(n.day) && n.minutes < closeMin(n.day)) return n.day;
+  let d = addDays(n.day, 1); while (!tradingDay(d)) d = addDays(d, 1);
+  return d;
+}
 
 export function session(t = Date.now()) {
   const n = nyTime(t), today = n.day, open = tradingDay(today) && n.minutes >= 570 && n.minutes < closeMin(today);

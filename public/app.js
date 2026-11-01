@@ -675,7 +675,7 @@ routes.dashboard = async (view, q) => {
   const base = a.startCash ?? a.history[0]?.equity ?? a.equity;
   const pnl = a.equity - base, pnlPct = base ? pnl / base * 100 : 0;
   // Today's change: Alpaca reports yesterday's close; for paper use the last snapshot before today.
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
   const prev = a.lastEquity || [...a.history].reverse().find(x => x.day < today)?.equity;
   const dayChg = prev ? a.equity - prev : null;
   const steps = [[!!localStorage.getItem('qp_seen_strategies'), 'Try a ready-made strategy', '#/strategies'], [ME.totpEnabled, 'Turn on two-factor login', '#/settings'], [a.positions.length > 0 || state.account !== 'paper', 'Place your first paper trade', '#/dashboard'],

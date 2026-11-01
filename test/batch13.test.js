@@ -241,3 +241,13 @@ test('business inbox: texts from strangers, inbound email, replies; keypad ticke
     assert.match(pdf, /Price: \$29/); assert.match(pdf, /A to B/); assert.doesNotMatch(pdf, /\| *\$29/);
   } finally { console.log = orig; s.close(); }
 });
+
+test('a paper Day order placed after the close stays for the next session', async () => {
+  const { orderDay } = await import('../src/desk.js');
+  const { nyAt } = await import('../src/time.js');
+  assert.equal(orderDay(nyAt('2026-11-02', 600)), '2026-11-02'); // Monday 10 AM
+  assert.equal(orderDay(nyAt('2026-11-02', 1000)), '2026-11-03'); // Monday after the close
+  assert.equal(orderDay(nyAt('2026-11-06', 1000)), '2026-11-09'); // Friday evening → Monday
+  assert.equal(orderDay(nyAt('2026-11-26', 600)), '2026-11-27'); // Thanksgiving
+  assert.equal(orderDay(nyAt('2026-11-27', 800)), '2026-11-30'); // after the 1 PM early close
+});

@@ -54,7 +54,7 @@ async function tzedakah(view, q, head) {
   const year = +q.get('year') || new Date().getFullYear(), d = await H.api('/luach/tzedakah?year=' + year);
   view.innerHTML = `${head}<div class="grid">
     <form class="card" id="tz"><h2>Record a gift</h2>
-      <div class="row"><label>Date<input type="date" name="day" value="${new Date().toISOString().slice(0, 10)}"></label><label>Amount ($)<input name="amount" type="number" min="0.01" step="0.01" required></label></div>
+      <div class="row"><label>Date<input type="date" name="day" value="${new Date().toLocaleDateString('en-CA')}"></label><label>Amount ($)<input name="amount" type="number" min="0.01" step="0.01" required></label></div>
       <label>Given to<input name="recipient" maxlength="100" required list="tzr" placeholder="Name of the tzedakah or person"></label><datalist id="tzr">${d.byRecipient.map(r => `<option value="${H.esc(r.recipient)}">`).join('')}</datalist>
       <label>Note<input name="note" maxlength="300"></label><button>Add</button><div class="err"></div>
       <p class="mu small-print">Your ledger counts toward the <a href="#/values?tab=maaser">maaser calculator</a>. Keep the receipts for tax-deductible gifts.</p></form>

@@ -7,6 +7,7 @@ import { one, all, run, now } from './db.js';
 import { requireUser } from './auth.js';
 import { placeOrder, lastPrice, validSymbol } from './brokers.js';
 import { nyTime } from './time.js';
+import { orderDay, closeMin } from './desk.js';
 
 const bad = (msg, status = 400) => Object.assign(new Error(msg), { status });
 export const TYPES = ['limit', 'stop', 'stop_limit'];
@@ -42,7 +43,7 @@ export async function place(userId, b) {
     const px = limit || stop || await lastPrice(symbol, userId);
     if (qty * px > (a?.cash || 0) + 1e-6) throw bad(`Not enough paper cash ($${(a?.cash || 0).toFixed(2)})`, 409);
   }
-  const id = Number((await run('INSERT INTO paper_orders (user_id, symbol, side, qty, type, limit_price, stop_price, tif, day, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)', userId, symbol, side, qty, type, limit, stop, tif, nyTime().day, now())).lastInsertRowid);
+  const id = Number((await run('INSERT INTO paper_orders (user_id, symbol, side, qty, type, limit_price, stop_price, tif, day, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)', userId, symbol, side, qty, type, limit, stop, tif, orderDay(), now())).lastInsertRowid);
   // A marketable order fills right away.
   const px = await lastPrice(symbol, userId).catch(() => null);
   if (px) await check(await one('SELECT * FROM paper_orders WHERE id = ?', id), px);
@@ -67,7 +68,7 @@ async function check(o, px) {
 // Every minute: fill what reached its price; Day orders end at the close, GTC after 90 days.
 export async function runPaperOrders(t = now()) {
   const n = nyTime(t); let done = 0;
-  await run("UPDATE paper_orders SET status = 'expired' WHERE status = 'open' AND ((tif = 'day' AND (day < ? OR ?)) OR created_at < ?)", n.day, n.minutes >= 960 ? 1 : 0, t - 90 * 864e5);
+  await run("UPDATE paper_orders SET status = 'expired' WHERE status = 'open' AND ((tif = 'day' AND (day < ? OR (day = ? AND ?))) OR created_at < ?)", n.day, n.day, n.minutes >= closeMin(n.day) ? 1 : 0, t - 90 * 864e5);
   const open = await all("SELECT * FROM paper_orders WHERE status = 'open' ORDER BY id LIMIT 500");
   const prices = new Map();
   for (const o of open) {

@@ -12,7 +12,7 @@ export function startBell(helpers) {
   const tick = async () => {
     if (document.hidden || !H.me()) return;
     const s = await H.api('/desk/session').catch(() => null); if (!s) return;
-    const day = new Date().toISOString().slice(0, 10);
+    const day = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
     // A change while the app is open, or the app opened within 10 minutes after the bell.
     let event = null;
     if (last && last.open !== s.open) event = s.open ? 'open' : 'close';

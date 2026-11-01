@@ -866,7 +866,7 @@ async function calendar(view, q) {
   (mon.actions || []).forEach(a => add(a.date, { k: a.type === 'dividend' || /div/i.test(a.type) ? 'div' : 'split', t: a.symbol, d: `${a.symbol} ${a.type}${a.detail ? ' ' + a.detail : ''} (ex-date)`, link: a.symbol }));
   const open = mon.tradingDays ? new Map(mon.tradingDays.map(d => [d.date, d])) : null;
   const first = new Date(ym + '-01T12:00:00Z'), lead = first.getUTCDay(), last = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date().toLocaleDateString('en-CA');
   const cells = [];
   for (let i = 0; i < lead; i++) cells.push('<div class="cal-d out"></div>');
   for (let d = 1; d <= last; d++) {
