@@ -17,6 +17,9 @@ const ago = t => { const m = Math.round((Date.now() - t) / 60e3); return m < 1 ?
 async function scanner(view) {
   const [meta, saved, accts] = await Promise.all([H.api('/scanners/meta'), H.api('/scanners'), H.accounts()]);
   view.innerHTML = `<div class="pagehead"><h1>Scanner</h1><p class="mu">Check a list of stocks or crypto against your rules and candlestick patterns. Saved scanners run around the clock: stocks during market hours, crypto any time, and alert you or buy.</p></div>
+  <div class="card" id="gv"><div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">Growth and value stocks</h2><div class="seg" id="gvTab"><button type="button" data-g="growth" class="on">Growth</button><button type="button" data-g="value">Value</button></div></div>
+    <p class="mu" style="margin:6px 0 10px"><b>Growth</b>: sales and earnings rising fast (the market pays up for them). <b>Value</b>: priced low compared with earnings and assets (P/E and price-to-book). From each company's SEC filings and today's prices, across 130 large US companies.</p>
+    <div id="gvOut"><button type="button" id="gvRun">Scan the market</button></div></div>
   <form class="card" id="scan">
     <div class="row">
       <label>Universe<select name="universe">${Object.entries(meta.universes).map(([k, u]) => `<option value="${k}">${H.esc(u.name)} (${u.count})</option>`).join('')}<option value="custom">My symbols...</option></select></label>
@@ -48,6 +51,20 @@ async function scanner(view) {
   <h2 style="margin-top:18px">Recent matches</h2><div class="tablewrap"><table><tr><th>When</th><th>Symbol</th><th>Price</th><th>Result</th></tr>
     ${saved.hits.slice(0, 30).map(h => `<tr><td>${ago(h.at)}</td><td><a href="#/chart?symbol=${encodeURIComponent(h.symbol)}">${H.esc(h.symbol)}</a></td><td>${H.money(h.price)}</td><td>${H.esc(h.result)}</td></tr>`).join('') || '<tr><td colspan="4" class="mu">Nothing yet</td></tr>'}
   </table></div></div>`;
+  // Growth and value screen.
+  let gvData = null, gvTab = 'growth';
+  const gvDraw = () => {
+    if (gvData.unavailable) { H.$('#gvOut', view).innerHTML = `<p class="mu">${H.esc(gvData.message)}</p><button type="button" id="gvRun">Try again</button>`; H.$('#gvRun', view).onclick = run; return; }
+    const rows = gvData[gvTab], big = v => (v >= 1e12 ? `$${(v / 1e12).toFixed(2)}T` : v >= 1e9 ? `$${(v / 1e9).toFixed(0)}B` : '-');
+    H.$('#gvOut', view).innerHTML = `<div class="tablewrap"><table class="slim"><tr><th>Stock</th><th>Size</th><th>${gvTab === 'growth' ? 'Sales growth' : 'P/E'}</th><th>${gvTab === 'growth' ? 'Earnings growth' : 'Price / book'}</th><th>Margin</th><th>Score</th><th></th></tr>
+      ${rows.map(r => `<tr><td><b data-no-tr>${H.esc(r.symbol)}</b> <span class="mu" style="font-size:12px">${H.esc(r.name)}</span>${r.blueChip ? ' <span class="pill blue">Blue chip</span>' : ''}</td><td>${r.capClass ? `<span class="pill cap-${r.capClass.id}">${H.esc(r.capClass.name)}</span> ${big(r.marketCap)}` : '-'}</td>
+        <td>${gvTab === 'growth' ? (r.revenueGrowth == null ? '-' : r.revenueGrowth + '%') : r.pe}</td><td>${gvTab === 'growth' ? (r.epsGrowth == null ? '-' : r.epsGrowth + '%') : r.pb ?? '-'}</td><td>${r.netMargin == null ? '-' : r.netMargin + '%'}</td><td><b>${r.score}</b></td><td><a href="#/trade?symbol=${encodeURIComponent(r.symbol)}">Trade</a> · <a href="#/chart?symbol=${encodeURIComponent(r.symbol)}">Chart</a></td></tr>`).join('') || '<tr><td class="mu">Nothing matched.</td></tr>'}</table></div>
+      <p class="mu small-print">${gvData.scanned} companies scanned · financials for ${gvData.year} · score 0–100 ranks them against each other. Information, not a recommendation.</p>`;
+  };
+  H.$$('#gvTab button', view).forEach(b => (b.onclick = () => { gvTab = b.dataset.g; H.$$('#gvTab button', view).forEach(x => x.classList.toggle('on', x === b)); if (gvData) gvDraw(); }));
+  const run = async e => { e.target.disabled = true; e.target.textContent = 'Scanning about 130 companies…'; try { gvData = await H.api('/fundamentals/screen'); gvDraw(); } catch (x) { H.$('#gvOut', view).innerHTML = `<p class="err">${H.esc(x.message)}</p>`; } };
+  H.$('#gvRun', view).onclick = run;
+
   const f = H.$('#scan', view), sf = H.$('#saveScan', view);
   f.universe.onchange = () => (H.$('#symsL', view).hidden = f.universe.value !== 'custom');
   sf.action.onchange = () => H.$$('.buyOnly', sf).forEach(x => (x.hidden = sf.action.value !== 'buy'));

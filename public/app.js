@@ -21,6 +21,11 @@ import { registerRules } from './rules.js';
 import { registerTrustAdmin } from './trust-admin.js';
 import { registerLuach } from './luach.js';
 import { registerAddons } from './addons.js';
+import * as OD from './orderdesk.js';
+import { startBell } from './bell.js';
+import { registerInstruments } from './instruments.js';
+import { registerAdmin13 } from './admin13.js';
+import { initSearch } from './search.js';
 import { attachGlossary } from './glossary.js';
 import { startI18n, setLang, canvasNote, LANGS, current as currentLang } from './i18n.js';
 const $ = (s, el = document) => el.querySelector(s);
@@ -274,11 +279,12 @@ async function showUpgrade(feature) {
 // Pages of add-ons the user can switch off (Settings → Add-ons) leave the menu when off.
 const ADDON_PAGES = { brief: 'brief', taxpilot: 'taxPilot' };
 const NAV = [
-  ['Trading', [['dashboard', 'Portfolio'], ['trade', 'Trade'], ['chart', 'Chart'], ['orders', 'Orders'], ['positions', 'Positions'], ['watchlists', 'Watchlists']]],
-  ['AI', [['ai', 'AI assistant'], ['agents', 'Forecasts & AI agents'], ['news', 'News & sentiment']]],
-  ['Markets', [['sp500', 'S&P 500 plan'], ['alpaca-tools', 'Bonds, crypto & AI'], ['markets', 'Markets & news'], ['scanner', 'Scanner'], ['options', 'Options chain'], ['optionslab', 'Options lab'], ['institutions', 'Institutional portfolios'], ['calendar', 'Calendar & events']]],
-  ['Strategies', [['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['code', 'Code lab'], ['portfolios', 'Portfolios'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['marketplace', 'Marketplace'], ['pairs', 'Pairs trading'], ['statarb', 'Statistical arbitrage'], ['schedule', 'Scheduled trades'], ['quantconnect', 'Cloud algorithms'], ['workspace', 'Workspace']]],
-  ['Money', [['money', 'All my money'], ['brief', 'Weekly brief'], ['rules', 'Rules across accounts'], ['wealth', 'Wealth builder'], ['longterm', 'Long-term view'], ['insights', 'Insights & journal'], ['risk', 'Risk controls'], ['execution', 'Execution & routing'], ['spend', 'Invest as you spend'], ['private', 'Private markets'], ['realestate', 'Real estate'], ['values', 'Values investing'], ['luach', 'Luach & tzedakah'], ['tax', 'Taxes'], ['taxpilot', 'Tax autopilot']]],
+  ['Home', [['dashboard', 'Portfolio'], ['money', 'All my money'], ['brief', 'Weekly brief']]],
+  ['Trade', [['trade', 'Trade'], ['chart', 'Chart'], ['orders', 'Orders'], ['positions', 'Positions'], ['watchlists', 'Watchlists'], ['options', 'Options chain'], ['optionslab', 'Options lab']]],
+  ['Invest', [['sp500', 'S&P 500 plan'], ['wealth', 'Wealth builder'], ['invest', 'Futures, funds & savings'], ['alpaca-tools', 'Bonds, rates & crypto'], ['longterm', 'Long-term view'], ['private', 'Private markets'], ['realestate', 'Real estate'], ['values', 'Values investing'], ['spend', 'Invest as you spend']]],
+  ['Research', [['markets', 'Markets & news'], ['news', 'News & sentiment'], ['scanner', 'Scanner'], ['calendar', 'Calendar & events'], ['institutions', 'Institutional portfolios'], ['ai', 'AI assistant'], ['agents', 'Forecasts & AI agents']]],
+  ['Strategies & automation', [['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['rules', 'Rules across accounts'], ['schedule', 'Scheduled trades'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['portfolios', 'Portfolios'], ['marketplace', 'Marketplace'], ['pairs', 'Pairs trading'], ['statarb', 'Statistical arbitrage'], ['code', 'Code lab'], ['quantconnect', 'Cloud algorithms'], ['workspace', 'Workspace']]],
+  ['Plan & protect', [['insights', 'Insights & journal'], ['risk', 'Risk controls'], ['execution', 'Execution & routing'], ['tax', 'Taxes'], ['taxpilot', 'Tax autopilot'], ['luach', 'Luach & tzedakah']]],
   ['Account', [['security', 'Security & help'], ['learn', 'Learn'], ['accounts', 'All accounts'], ['brokers', 'Brokerages'], ['account', 'Alpaca account'], ['android', 'Android app'], ['funding', 'Plans & billing'], ['referrals', 'Invite & earn'], ['text', 'Text & hotline'], ['settings', 'Settings']]],
 ];
 // Simple line icons (24x24 paths) for the menu.
@@ -325,6 +331,7 @@ const ICONS = {
   money: '<path d="M3 10h18M5 10V20M9 10v10M15 10v10M19 10v10M3 20h18M12 3l9 5H3z"/>',
   luach: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M12 12l1.2 2.4 2.6.4-1.9 1.8.5 2.6-2.4-1.3-2.4 1.3.5-2.6-1.9-1.8 2.6-.4z"/>',
   brief: '<path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5M8 12h8M8 16h6"/>', taxpilot: '<path d="M12 3v18M17 7.5c0-1.9-2.2-3-5-3s-5 1.1-5 3 2.2 2.7 5 3.3 5 1.4 5 3.5-2.2 3.2-5 3.2-5-1.3-5-3.2"/>',
+  invest: '<path d="M4 19h16M6 16V9M10 16V5M14 16v-6M18 16V7"/>',
   rules: '<path d="M4 6h16M4 12h10M4 18h6"/><path d="M17 14l2 2 3-4"/>',
   android: '<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/>',
   values: '<path d="M12 21s-7-4.4-9.3-9A5.4 5.4 0 0 1 12 6a5.4 5.4 0 0 1 9.3 6c-2.3 4.6-9.3 9-9.3 9z"/>', star: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
@@ -386,10 +393,18 @@ async function render() {
   if (ME) {
     const groups = ME.role === 'admin' ? [['Owner', ADMIN_TABS], ...NAV] : NAV;
     await accounts();
-    $('#nav').innerHTML = modeSwitch() + groups.map(([g, items]) => `<div class="grp">${g}</div>` + items.filter(([k]) => !(ADDON_PAGES[k] && ME.addons?.[ADDON_PAGES[k]] === false)).map(([k, t]) => `<a href="#/${k}" class="${k === route ? 'on' : ''}">${icon(k)}${t}</a>`).join('')).join('')
+    // Sections fold away with their arrow (remembered); the one holding the current page stays open.
+    const closed = (() => { try { return JSON.parse(localStorage.getItem('qp_nav_closed') || '[]'); } catch { return []; } })();
+    $('#nav').innerHTML = modeSwitch() + groups.map(([g, items]) => { const list = items.filter(([k]) => !(ADDON_PAGES[k] && ME.addons?.[ADDON_PAGES[k]] === false)), open = !closed.includes(g) || list.some(([k]) => k === route);
+      return `<button type="button" class="grp sec" data-g="${esc(g)}" aria-expanded="${open}">${g}<span class="chev" aria-hidden="true">▾</span></button><div class="grpbody" ${open ? '' : 'hidden'}>${list.map(([k, t]) => `<a href="#/${k}" class="${k === route ? 'on' : ''}">${icon(k)}${t}</a>`).join('')}</div>`; }).join('')
       + (isPaid(ME) ? '' : `<a href="#/funding" class="upsell">${icon('star')}${ME.trialUsed ? 'Upgrade to Pro' : 'Try Pro free for 14 days'}</a>`)
       + `<div class="grp">${esc(ME.email)}</div><a href="#" id="navLogout">${icon('account')}Sign out</a>`;
     wireModeSwitch();
+    $$('#nav .grp.sec').forEach(b => (b.onclick = () => {
+      const open = b.getAttribute('aria-expanded') !== 'true'; b.setAttribute('aria-expanded', open); b.nextElementSibling.hidden = !open;
+      const set = new Set((() => { try { return JSON.parse(localStorage.getItem('qp_nav_closed') || '[]'); } catch { return []; } })()); open ? set.delete(b.dataset.g) : set.add(b.dataset.g);
+      try { localStorage.setItem('qp_nav_closed', JSON.stringify([...set])); } catch {}
+    }));
     $('#navLogout').onclick = e => { e.preventDefault(); $('#logout').click(); };
     updateBadge();
   }
@@ -688,11 +703,17 @@ routes.dashboard = async (view, q) => {
     <div class="card"><h2>Positions</h2><div class="tablewrap"><table><tr><th>Symbol</th><th>Qty</th><th>Avg</th><th>Price</th><th>Value</th><th>P/L</th></tr>
       ${a.positions.map(p => `<tr><td>${esc(p.symbol)}</td><td>${num(p.qty, 4)}</td><td>${money(p.avgPrice)}</td><td>${money(p.price)}</td><td>${money(p.value)}</td><td class="${cls(p.pnl)}">${money(p.pnl)}</td></tr>`).join('') || '<tr><td colspan="6" class="mu">No positions</td></tr>'}
     </table></div></div>
-    <form class="card" id="ticket"><h2>Trade</h2>
-      <div class="row"><label>Symbol<input name="symbol" value="SPY" required></label>
-        <label>Side<select name="side"><option value="buy">Buy</option><option value="sell">Sell</option></select></label></div>
-      <div class="row"><label>Shares<input name="qty" type="number" step="any" min="0"></label><label>or Dollars<input name="notional" type="number" step="any" min="0"></label></div>
-      <button>Place market order</button> <button type="button" class="ghost" id="quote">Quote</button><div class="err"></div>
+    <form class="card ticket" id="ticket"><h2>Trade</h2>
+      <div id="deskStrip"></div>
+      <div class="row"><label>Symbol<input name="symbol" value="SPY" required autocomplete="off" dir="ltr"></label>
+        <label>Order type<select name="type">${['market', 'limit', 'stop', 'stop_limit'].map(t => `<option value="${t}">${{ market: 'Market', limit: 'Limit', stop: 'Stop', stop_limit: 'Stop limit' }[t]}</option>`).join('')}</select></label></div>
+      <div class="seg" id="qSide"><button type="button" class="buy on" data-s="buy">Buy</button><button type="button" class="sell" data-s="sell">Sell</button></div><input type="hidden" name="side" value="buy">
+      <div id="qHold"></div>
+      <div class="row"><label>Shares<input name="qty" type="number" step="any" min="0"></label><label class="qnot">or Dollars<input name="notional" type="number" step="any" min="0"></label></div>
+      <div class="row qpx"><label class="qlim" hidden>Limit price<input name="limit_price" type="number" step="any" min="0"></label><label class="qstp" hidden>Stop price<input name="stop_price" type="number" step="any" min="0"></label><label class="qtif" hidden>Good for<select name="time_in_force"><option value="day">Today (Day)</option><option value="gtc">Until cancelled (GTC)</option></select></label></div>
+      ${state.account !== 'paper' ? '<label class="check qshort" hidden><input type="checkbox" name="allow_short"> Sell short (I do not own it; margin account with $2,000+ needed)</label>' : ''}
+      <div id="qGuide"></div><div id="qCost"></div><div id="qBear"></div>
+      <button id="qPlace">Review order</button> <button type="button" class="ghost" id="quote">Quote</button><div class="err"></div>
       ${a.live ? '<p class="warn">This sends a real order with real money.</p>' : ''}
     </form>
   </div>
@@ -714,18 +735,81 @@ routes.dashboard = async (view, q) => {
     onLeave(() => clearInterval(t));
   }
   const t = $('#ticket', view);
-  act($('button', t), async () => {
-    const f = form(t);
-    if (a.live && !confirm(`Send a LIVE ${f.side} order for ${f.symbol}?`)) return;
-    const r = await api('/orders', { body: { ...f, account: state.account } });
-    setTimeout(render, 600);
-    return `${r.side} ${r.symbol}: ${r.status}${r.price ? ' @ ' + money(r.price) : ''}`;
-  });
-  act($('#quote', t), async () => { const q = await api('/quote/' + encodeURIComponent(form(t).symbol)); return `${q.symbol} ${money(q.price)}`; });
+  wireQuickTicket(t, view, a);
   if ($('#reset', view)) act($('#reset', view), async () => { if (confirm('Reset paper account to $100,000?')) { await api('/paper/reset', { body: {} }); render(); } });
   const orders = await api('/orders?account=' + state.account).catch(() => []);
-  $('#orders', view).innerHTML = `<table><tr><th>Time</th><th>Symbol</th><th>Side</th><th>Qty</th><th>Price</th><th>Status</th><th>Source</th></tr>${orders.map(o => `<tr><td>${date(o.at)}</td><td>${esc(o.symbol)}</td><td>${o.side}</td><td>${o.qty ? num(o.qty, 4) : money(o.notional)}</td><td>${o.price ? money(o.price) : '-'}</td><td>${esc(o.status)}</td><td>${esc(o.source || '')}</td></tr>`).join('') || '<tr><td colspan="7" class="mu">None yet</td></tr>'}</table>`;
+  $('#orders', view).innerHTML = `<table><tr><th>Time</th><th>Symbol</th><th>Side</th><th>Qty</th><th>Price</th><th>Status</th><th>Source</th></tr>${orders.map(o => `<tr><td>${date(o.at)}</td><td>${esc(o.symbol)}</td><td>${o.side}</td><td>${o.qty ? num(o.qty, 4) : money(o.notional)}</td><td>${o.price ? money(o.price) : '-'}</td><td>${esc(o.status)}${o.orderId ? ` <button class="small ghost" data-pcancel="${o.orderId}">Cancel</button>` : ''}</td><td>${esc(o.source || '')}</td></tr>`).join('') || '<tr><td colspan="7" class="mu">None yet</td></tr>'}</table>`;
+  $$('[data-pcancel]', view).forEach(b => act(b, async () => { await api('/paper/orders/' + b.dataset.pcancel, { method: 'DELETE' }); render(); return ''; }));
 };
+
+// The quick ticket: order types, the desk strip, a guide to the chosen type, costs, what the
+// account holds (with "Sell all") and, for sells of something not held, the alternatives.
+function wireQuickTicket(t, view, a) {
+  const st = { side: 'buy', type: 'market', last: null };
+  let tmr = null, seq = 0;
+  const refresh = async () => {
+    const f = form(t), sym = f.symbol.trim().toUpperCase(); if (!sym) return;
+    const my = ++seq;
+    const d = await api(`/desk/quote/${encodeURIComponent(sym)}?account=${state.account}&side=${st.side}&type=${st.type}&qty=${+f.qty || (f.notional && st.last ? f.notional / st.last : 0)}`).catch(e => ({ error: e.message }));
+    if (my !== seq || !$('#qGuide', t)) return;
+    if (d.error) { $('#deskStrip', t).innerHTML = `<p class="err">${esc(d.error)}</p>`; return; }
+    st.last = d.price; st.hold = d.holding;
+    $('#deskStrip', t).innerHTML = OD.deskStrip(d);
+    $('#qHold', t).innerHTML = OD.holdingLine(d.holding, sym, st.side);
+    $('#qGuide', t).innerHTML = OD.guide(st.type, st.side, d.price, f.limit_price, f.stop_price);
+    $('#qCost', t).innerHTML = OD.costBox(d.costs, st.side);
+    $('#qBear', t).innerHTML = st.side === 'sell' && !(d.holding?.qty > 0) ? OD.bearishAlternatives(sym) : '';
+    const all = $('#sellAll', t); if (all) all.onclick = () => { t.qty.value = d.holding.available ?? d.holding.qty; t.notional.value = ''; schedule(); };
+  };
+  const schedule = () => { clearTimeout(tmr); tmr = setTimeout(refresh, 300); };
+  const layout = () => {
+    const ty = st.type, lim = ty === 'limit' || ty === 'stop_limit', stp = ty === 'stop' || ty === 'stop_limit';
+    $('.qlim', t).hidden = !lim; $('.qstp', t).hidden = !stp; $('.qtif', t).hidden = ty === 'market'; $('.qnot', t).hidden = ty !== 'market';
+    if (ty !== 'market') t.notional.value = '';
+    if ($('.qshort', t)) $('.qshort', t).hidden = st.side !== 'sell';
+    $('#qPlace', t).className = st.side === 'sell' ? 'danger' : '';
+  };
+  $$('#qSide button', t).forEach(b => (b.onclick = () => { st.side = b.dataset.s; t.side.value = st.side; $$('#qSide button', t).forEach(x => x.classList.toggle('on', x === b)); layout(); schedule(); }));
+  t.type.onchange = () => { st.type = t.type.value; layout(); schedule(); };
+  t.oninput = e => { if (e.target.name !== 'type') schedule(); };
+  layout(); refresh();
+  act($('#qPlace', t), async () => {
+    const f = form(t); for (const k of Object.keys(f)) if (f[k] === '' || f[k] === false) delete f[k];
+    f.symbol = f.symbol.trim().toUpperCase(); f.type = st.type; f.side = st.side;
+    if (!(+f.qty > 0) && !(+f.notional > 0)) throw new Error('Enter shares or dollars');
+    if (st.side === 'sell' && !f.allow_short && st.hold && +f.qty > (st.hold.available ?? st.hold.qty) + 1e-9) throw new Error(st.hold.qty > 0 ? `You can sell up to ${st.hold.available ?? st.hold.qty} ${f.symbol}` : `You do not own ${f.symbol} in this account`);
+    const what = `${f.side.toUpperCase()} ${f.qty ? f.qty + ' shares of' : money(+f.notional) + ' of'} ${f.symbol} · ${OD.ORDER_TYPES[st.type].name}${f.limit_price ? ' limit ' + money(+f.limit_price) : ''}${f.stop_price ? ' stop ' + money(+f.stop_price) : ''}${st.type !== 'market' ? ' · ' + (f.time_in_force === 'gtc' ? 'GTC' : 'Day') : ''}`;
+    if (!confirm(`${a.live ? 'LIVE ORDER WITH REAL MONEY\n' : ''}${what}\n\nPlace this order?`)) return '';
+    if (f.allow_short) { f.allowShort = true; f.allow_short = true; }
+    let r;
+    if (st.type !== 'market' && state.account === 'alpaca') r = await api('/alpaca/orders', { body: { ...f, time_in_force: f.time_in_force || 'day' } });
+    else if (st.type !== 'market' && state.account !== 'paper') throw new Error('Limit and stop orders on this brokerage: use its own app for now; market orders work here.');
+    else r = await api('/orders', { body: { ...f, account: state.account } });
+    setTimeout(render, 900);
+    return `${r.side || f.side} ${r.symbol || f.symbol}: ${r.status}${r.price ? ' @ ' + money(r.price) : r.fillPrice ? ' @ ' + money(r.fillPrice) : ''}`;
+  });
+  act($('#quote', t), async () => { await refresh(); return st.last ? `${form(t).symbol.toUpperCase()} ${money(st.last)}` : ''; });
+}
+
+// Settings → Taxes: state, filing status and income set the rates automatically each year.
+async function taxSettings(f) {
+  const d = await api('/taxrates'), p = d.profile, r = d.rates;
+  const pc = x => (x * 100).toFixed(x * 100 % 1 ? 2 : 0) + '%';
+  $('#taxBox', f).innerHTML = `<div class="row"><label>State<select name="state"><option value="">Pick…</option>${d.states.map(s => `<option ${s === p.state ? 'selected' : ''}>${s}</option>`).join('')}</select></label><label>City (optional)<input name="city" value="${esc(p.city || '')}"></label></div>
+    <div class="row"><label>Filing status<select name="filing">${Object.entries(d.filing).map(([k, t]) => `<option value="${k}" ${k === p.filing ? 'selected' : ''}>${t}</option>`).join('')}</select></label><label>Yearly income before deductions ($)<input name="income" type="number" min="0" step="1000" value="${p.income || ''}"></label></div>
+    <label class="check"><input type="checkbox" name="auto" ${p.auto !== false ? 'checked' : ''}> Set my rates automatically and update them every January</label>
+    ${r ? `<div class="stats">${['Federal bracket', 'Long-term gains', 'State', 'Net investment income tax'].map((k, i) => `<div class="stat"><span>${k}</span><b>${[pc(r.federal), pc(r.longTerm), pc(r.stateRate), r.niit ? '3.8%' : 'None'][i]}</b></div>`).join('')}</div>
+      <p class="mu small-print">${r.year} ${r.estimated ? 'rates estimated from last year\'s tables indexed for inflation (the official tables are added when the IRS publishes them)' : 'IRS tables'}; standard deduction ${money(r.standardDeduction)}. ${esc(r.stateNote)}. Estimates for planning, not tax advice.</p>` : ''}
+    <div id="manualTax" ${p.auto !== false && p.state ? 'hidden' : ''}><div class="row"><label>Federal bracket (manual)<select name="bracket">${[0.10, 0.12, 0.22, 0.24, 0.32, 0.35, 0.37].map(b => `<option value="${b}" ${b === ME.taxBracket ? 'selected' : ''}>${b * 100}%</option>`).join('')}</select></label><label>State rate % (manual)<input name="stateTax" type="number" step="0.1" value="${(ME.stateTax * 100).toFixed(2)}"></label></div></div>
+    <button>Save</button><div class="err"></div>`;
+  f.auto.onchange = () => ($('#manualTax', f).hidden = f.auto.checked);
+  act($('button', f), async () => {
+    const v = form(f);
+    if (v.auto) { if (!v.state) throw new Error('Pick your state'); await api('/taxrates', { method: 'PUT', body: { state: v.state, city: v.city, filing: v.filing, income: +v.income, auto: true } }); }
+    else { if (v.state) await api('/taxrates', { method: 'PUT', body: { state: v.state, city: v.city, filing: v.filing, income: +v.income, auto: false } }); await api('/tax/settings', { body: { bracket: +v.bracket, stateTax: v.stateTax / 100 } }); }
+    await refreshMe(); setTimeout(() => taxSettings(f), 300); return 'Saved';
+  });
+}
 
 // ---------- backtest + AI builder ----------
 routes.backtest = async (view, q) => {
@@ -1211,9 +1295,8 @@ routes.settings = async view => {
       <label>Mobile number<input name="phone" placeholder="+17185551234" value="${esc(ME.phone || '')}"></label><button>Send code</button>
       <label>Code<input name="code" inputmode="numeric"></label><button type="button" id="phv">Verify</button><div class="err"></div>
       <h3>Trading PIN</h3>${pw ? '' : '<p class="mu">Add a password in the Password card first.</p>'}<label>Account password<input type="password" name="pinpw"></label><label>New PIN (4-8 digits)<input name="pin" inputmode="numeric"></label><button type="button" id="pinb">Save PIN</button><div class="err"></div></form>
-    <form class="card" id="taxs"><h2>Tax rates</h2>
-      <label>Federal bracket<select name="bracket">${[0.10, 0.12, 0.22, 0.24, 0.32, 0.35, 0.37].map(b => `<option value="${b}" ${b === ME.taxBracket ? 'selected' : ''}>${b * 100}%</option>`).join('')}</select></label>
-      <label>State rate %<input name="stateTax" type="number" step="0.1" value="${ME.stateTax * 100}"></label><button>Save</button><div class="err"></div></form>
+    <form class="card" id="taxs"><h2>Taxes</h2><p class="mu" style="margin-top:0">Where you live and roughly what you earn set your tax rates automatically, and they update every January.</p>
+      <div id="taxBox"><p class="mu">Loading…</p></div></form>
     <form class="card" id="pw"><h2>${pw ? 'Password' : 'Add a password'}</h2>${ME.google ? '<p class="mu"><span class="pill">Google</span> Sign in with Google is connected.</p>' : ''}${ME.github ? '<p class="mu"><span class="pill">GitHub</span> Sign in with GitHub is connected.</p>' : ''}
       ${pw ? '<label>Current<input type="password" name="current" autocomplete="current-password"></label>' : '<p class="mu">Add one to also sign in with your email and password.</p>'}<label>New<input type="password" name="next" autocomplete="new-password"></label><button>${pw ? 'Change password' : 'Save password'}</button><div class="err"></div>
       <p class="mu" style="font-size:12px">${pw ? 'Changing it signs out every other device.' : '10+ characters with upper, lower and a digit.'}</p></form>
@@ -1238,7 +1321,7 @@ routes.settings = async view => {
   act($('button', ph), async () => { const r = await api('/phone', { body: { phone: ph.phone.value } }); await refreshMe(); return r.devCode ? `SMS is off on this server - your dev code is ${r.devCode}` : 'Code sent'; }, $$('.err', ph)[0]);
   act($('#phv', view), async () => { await api('/phone/verify', { body: { code: ph.code.value } }); await refreshMe(); return 'Phone verified'; }, $$('.err', ph)[0]);
   act($('#pinb', view), async () => { await api('/pin', { body: { password: ph.pinpw.value, pin: ph.pin.value } }); await refreshMe(); return 'PIN saved'; }, $$('.err', ph)[1]);
-  act($('button', $('#taxs', view)), async () => { const f = form($('#taxs', view)); await api('/tax/settings', { body: { bracket: +f.bracket, stateTax: f.stateTax / 100 } }); await refreshMe(); return 'Saved'; });
+  taxSettings($('#taxs', view));
   act($('button', $('#pw', view)), async () => { await api('/auth/password', { body: form($('#pw', view)) }); if (!pw) { await refreshMe(); setTimeout(render, 1200); } return pw ? 'Password changed' : 'Password saved'; });
   $$('[data-s]', view).forEach(b => (b.onclick = async () => { await api('/auth/sessions/' + b.dataset.s, { method: 'DELETE' }); render(); }));
   act($('#delacct', view), async () => {
@@ -1261,7 +1344,7 @@ routes.settings = async view => {
 
 // ---------- admin ----------
 // Owner pages: one route per section so each has its own place in the menu.
-const ADMIN_TABS = [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-money', 'Money & fees'], ['admin-upgrades', 'Upgrades'], ['admin-yiddish', 'Yiddish Labs'], ['admin-phone', 'Phone line'], ['admin-ai', 'AI & privacy'], ['admin-readme', 'README'], ['admin-admins', 'Admins'], ['admin-keys', 'Keys'], ['admin-support', 'Support inbox'], ['admin-trust', 'Trust'], ['admin-system', 'System health'], ['admin-setup', 'Setup']];
+const ADMIN_TABS = [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-money', 'Money & fees'], ['admin-upgrades', 'Upgrades'], ['admin-yiddish', 'Yiddish Labs'], ['admin-phone', 'Phone line'], ['admin-ai', 'AI & privacy'], ['admin-readme', 'README'], ['admin-admins', 'Admins'], ['admin-keys', 'Keys'], ['admin-comms', 'Calls, texts & email'], ['admin-support', 'Support inbox'], ['admin-data', 'Market data'], ['admin-trust', 'Trust'], ['admin-system', 'System health'], ['admin-setup', 'Setup']];
 // Pages with their own module (owner.js, protect.js) draw themselves under the same tabs.
 const adminTabs = current => `<div class="chips admintabs">${ADMIN_TABS.map(([k, t]) => `<a href="#/${k}"><button type="button" class="${k === current ? 'on' : ''}">${t}</button></a>`).join('')}</div>`;
 async function adminPage(view, tab) {
@@ -1323,7 +1406,7 @@ async function adminPage(view, tab) {
   $$('[data-role]', view).forEach(b => (b.onclick = () => userCall(b.dataset.role, { role: b.dataset.to })));
   if ($('#userFind', view)) $('#userFind', view).oninput = e => { const q = e.target.value.trim().toLowerCase(); $$('#userTable tr[data-email]', view).forEach(tr => (tr.hidden = !!q && !tr.dataset.email.toLowerCase().includes(q))); };
 }
-for (const [k] of ADMIN_TABS.filter(([k]) => !['admin-system', 'admin-trust', 'admin-upgrades', 'admin-yiddish', 'admin-admins', 'admin-keys'].includes(k))) routes[k] = view => (ME?.role === 'admin' ? adminPage(view, k) : routes.dashboard(view, new URLSearchParams()));
+for (const [k] of ADMIN_TABS.filter(([k]) => !['admin-system', 'admin-trust', 'admin-data', 'admin-comms', 'admin-upgrades', 'admin-yiddish', 'admin-admins', 'admin-keys'].includes(k))) routes[k] = view => (ME?.role === 'admin' ? adminPage(view, k) : routes.dashboard(view, new URLSearchParams()));
 
 registerStrategies(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, cls, date, api, form, act, render, drawChart, onLeave, me: () => ME });
 registerBrokers(routes, { $, $$, esc, money, api, form, act, render, accounts });
@@ -1345,6 +1428,10 @@ registerRules(routes, shared);
 registerTrustAdmin(routes, shared);
 registerLuach(routes, shared);
 registerAddons(routes, shared);
+registerInstruments(routes, shared);
+registerAdmin13(routes, shared);
+initSearch(shared, NAV);
+startBell(shared);
 registerWealth(routes, shared);
 registerTools(routes, shared);
 

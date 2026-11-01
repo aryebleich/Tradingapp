@@ -45,6 +45,14 @@ import { altsRouter } from './src/alts.js';
 import { moneyRouter } from './src/money.js';
 import { trustPublicRouter, trustAdminRouter } from './src/trust.js';
 import { luachRouter } from './src/luach.js';
+import { deskRouter } from './src/desk.js';
+import { fundamentalsRouter } from './src/fundamentals.js';
+import { instrumentsRouter } from './src/instruments.js';
+import { taxRatesRouter } from './src/taxrates.js';
+import { commsAdminRouter, registerCalls, inboundSms } from './src/comms.js';
+import { statScanRouter } from './src/statscan.js';
+import { searchRouter } from './src/search.js';
+import { paperOrdersRouter, place as placePaperOrder, TYPES as PAPER_TYPES } from './src/paperorders.js';
 import { addonsRouter } from './src/addons.js';
 import { altLiveRouter } from './src/altlive.js';
 import { briefRouter } from './src/brief.js';
@@ -281,7 +289,8 @@ app.post('/twilio/sms', async (req, res) => {
   if (!twilioOk(req)) return res.status(403).send('forbidden');
   const user = await userByPhone(req.body.From);
   let reply;
-  if (!user) reply = 'This number is not linked to a Brightfolio account. Add it under Settings > Phone.';
+  // Someone who is not a customer: into the business inbox (Admin → Calls, texts & email).
+  if (!user) reply = await inboundSms(req.body.From, String(req.body.Body || '')).catch(() => 'Thanks for your message to Brightfolio. We will get back to you soon.');
   else if (!isPaid(user)) reply = 'Trading and questions by text are part of Brightfolio Pro. Start a free trial in the app under Plans & billing.';
   else if (!auth.rateLimit('sms:' + user.id, 30, 3600e3)) reply = 'Too many messages, try again later.';
   else if (!(await CR.trySpend(user, 'sms', { memo: 'reply' }))) reply = 'You are out of credits for text replies. Buy a credit pack in the app under Plans & billing.';
@@ -307,6 +316,7 @@ async function smsReply(user, body) {
 
 // The phone line's menus (IVR), account opening by phone and its Admin settings: src/hotline.js.
 registerHotline(app, { twilioOk, twiml });
+registerCalls(app, { twilioOk, twiml });
 
 // Alerts from TradingView, TrendSpider, Zapier or any script. TradingView sends text/plain unless the
 // message is valid JSON, so any body type is accepted.
@@ -449,6 +459,14 @@ api.use('/money', moneyRouter);
 api.use('/public', trustPublicRouter);
 api.use('/admin/trust', trustAdminRouter);
 api.use('/luach', luachRouter);
+api.use('/desk', deskRouter);
+api.use('/fundamentals', fundamentalsRouter);
+api.use('/instruments', instrumentsRouter);
+api.use('/taxrates', taxRatesRouter);
+api.use('/admin/comms', commsAdminRouter);
+api.use('/statscan', statScanRouter);
+api.use('/search', searchRouter);
+api.use('/paper/orders', paperOrdersRouter);
 api.use('/addons', addonsRouter);
 api.use('/altlive', altLiveRouter);
 api.use('/brief', briefRouter);
@@ -584,6 +602,8 @@ api.get('/account', U, wrap(async (req, res) => {
 api.get('/orders', U, wrap(async (req, res) => res.json(await listOrders(req.user.id, acct(req)))));
 api.post('/orders', U, wrap(async (req, res) => {
   const a = acct(req);
+  // Paper limit, stop and stop-limit orders wait for their price (src/paperorders.js).
+  if (a === 'paper' && PAPER_TYPES.includes(req.body?.type)) { const o = await placePaperOrder(req.user.id, req.body); await audit(req.user.id, 'paper_order', { id: o.id, type: o.type, status: o.status }, req.ip); return res.json({ ...o, status: o.status === 'filled' ? 'filled' : 'open (waiting for its price)' }); }
   const r = await placeOrder(req.user.id, a, req.body, 'web');
   await audit(req.user.id, 'order', { ...r }, req.ip);
   res.json(r);

@@ -273,6 +273,15 @@ adminSiteRouter.put('/phone', wrap(async (req, res) => {
   res.json({ settings: s });
 }));
 
+// Market data: which free sources are on, their order, and how the fastest is chosen.
+adminSiteRouter.get('/data', wrap(async (req, res) => { const D = await import('./datasources.js'); res.json(D.report()); }));
+adminSiteRouter.put('/data', wrap(async (req, res) => { const D = await import('./datasources.js'); await D.saveSettings(req.body || {}); await audit(req.user.id, 'data_sources', D.settings(), req.ip); res.json(D.report()); }));
+adminSiteRouter.get('/fees', wrap(async (req, res) => { const D = await import('./desk.js'); res.json({ fees: D.fees(), defaults: D.FEE_DEFAULTS }); }));
+adminSiteRouter.put('/fees', wrap(async (req, res) => { const D = await import('./desk.js'); res.json({ fees: await D.saveFees(req.body || {}) }); }));
+adminSiteRouter.get('/savings', wrap(async (req, res) => { const I = await import('./instruments.js'); res.json({ offers: I.savingsOffers() }); }));
+adminSiteRouter.put('/savings', wrap(async (req, res) => { const I = await import('./instruments.js'); res.json({ offers: await I.saveOffers(req.body?.offers) }); }));
+adminSiteRouter.post('/data/test', wrap(async (req, res) => { const D = await import('./datasources.js'); const results = await D.benchmark(String(req.body?.symbol || 'SPY').toUpperCase().slice(0, 10)); res.json({ results, ...D.report() }); }));
+
 // Yiddish voice: the clips the owner records, and the pieces callers heard with no clip yet.
 adminSiteRouter.get('/phone/clips', wrap(async (req, res) => { const V = await import('./voice-yi.js'); res.json(await V.clipList()); }));
 adminSiteRouter.post('/phone/clips', wrap(async (req, res) => {
@@ -307,7 +316,11 @@ const readme = async () => {
   const r = S.siteGet('privateReadme', null);
   if (!r) return null;
   const { tryDecrypt } = await import('./crypto.js');
-  return { ...r, text: tryDecrypt(r.enc, 'private README') ?? '' };
+  const text = tryDecrypt(r.enc, 'private README') ?? '';
+  // Sections that come with the code (src/readme-auto.js) are kept current with every change.
+  const { mergeSections } = await import('./readme-auto.js'), merged = text ? mergeSections(text) : text;
+  if (merged !== text) await saveReadme(merged).catch(() => {});
+  return { ...r, text: merged };
 };
 const saveReadme = async (text, extra = {}) => {
   const { encrypt } = await import('./crypto.js');

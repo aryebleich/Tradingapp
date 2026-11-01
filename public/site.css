@@ -517,3 +517,16 @@ section.dark .sub, section.dark .trust .feature p { color: #b6c4da; }
 .st-inc p { margin: 8px 0 0; }
 .st-table { width: 100%; border-collapse: collapse; } .st-table th, .st-table td { text-align: start; padding: 8px; border-bottom: 1px solid var(--bd); vertical-align: top; }
 @media (max-width: 600px) { .st-days { gap: 1px; } }
+/* Top message and "two ways to grow" */
+.topmsg { background: linear-gradient(90deg, #0b1324, #1d4ed8); color: #e2e8f0; text-align: center; padding: 9px 16px; font-size: 14px; }
+.topmsg b { color: #fff; }
+.twoways { padding: 56px 0; }
+.tw-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 26px; }
+.tw { border: 1px solid var(--bd); border-radius: 18px; padding: 26px; background: var(--card); box-shadow: var(--shadow, 0 8px 30px rgba(15,23,42,.06)); }
+.tw-trade { border-top: 4px solid #2563eb; } .tw-invest { border-top: 4px solid #16a34a; }
+.tw h3 { margin: 6px 0 12px; font-size: 22px; }
+.tw ul { padding-inline-start: 18px; margin: 0 0 18px; line-height: 1.6; color: var(--mu); }
+@media (max-width: 760px) { .tw-grid { grid-template-columns: 1fr; } }
+.tw-grid > .tw { min-width: 0; }
+.tw .btn { white-space: normal; max-width: 100%; }
+@media (max-width: 420px) { .tw { padding: 18px 16px; } .tw h3 { font-size: 19px; } }

@@ -1,6 +1,7 @@
 // Bonds, crypto & AI: Alpaca's newer add-ons in one place. Treasury and bond prices by ISIN,
 // crypto quotes across liquidity venues, connecting AI assistants (Brightfolio's own MCP server,
 // Alpaca's Trading MCP server and CLI), and multi-leg options.
+import { ratesCard } from './instruments.js';
 let H;
 export function registerTools(routes, helpers) { H = helpers; routes['alpaca-tools'] = tools; }
 
@@ -11,7 +12,8 @@ const fields = o => (o ? Object.entries(o).map(([k, v]) => `<span class="kvp"><s
 async function tools(view) {
   const origin = location.origin, paid = H.paid(), admin = H.me()?.role === 'admin';
   const tokens = await H.api('/tokens').catch(() => []);
-  view.innerHTML = `<h1>Bonds, crypto & AI</h1><p class="mu">The newest Alpaca add-ons, ready to use.</p>
+  view.innerHTML = `<h1>Bonds, rates & crypto</h1><p class="mu">Interest rates and the news that moves them, bonds and Treasuries, crypto and AI tools.</p>
+  <div id="ratesBox" class="grid"></div>
   <form class="card" id="fi"><h2>Treasuries and bonds</h2><p class="mu">Latest prices and quotes (bid, ask and yield) for bonds and Treasury bills by ISIN. Beta data from Alpaca.</p>
     <div class="row"><label>ISINs (comma-separated)<input name="isins" value="US912797KJ59, US912797KS58, US912797SX61" data-no-tr></label><button>Look up</button></div><div class="err"></div><div id="fiOut"></div></form>
 
@@ -51,6 +53,7 @@ alpaca order cancel-all`)}
 }`)}` : ''}</div>
 
   <div class="card"><h2>Multi-leg options</h2><p>Spreads, straddles and iron condors go out as one order with up to four legs, so every leg fills together or not at all. Build one in the <a href="#/optionslab">Options lab</a> or the <a href="#/options">options chain</a>. Professional desks can send the same orders over FIX (New Order - Multileg).</p></div>`;
+  ratesCard(H.$('#ratesBox', view), H);
 
   const fi = H.$('#fi', view);
   H.act(H.$('button', fi), async () => {

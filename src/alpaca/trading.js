@@ -86,6 +86,24 @@ export const isCryptoSymbol = s => /^[A-Z0-9]{2,10}\/[A-Z]{3,4}$/.test(s);
 
 // Turns the order ticket into an Alpaca order body, enforcing the rules each asset class has
 // (crypto: gtc/ioc and no shorting; options: whole contracts, day orders, market/limit).
+// A sell must match the account: no more than the shares held and not already set aside for open
+// sell orders. Selling more (or something not held) would quietly open a short position, so it is
+// refused unless the user explicitly chose to sell short (which needs a margin account with at
+// least $2,000, FINRA rule 4210).
+export async function sellCheck(t, body, { allowShort = false } = {}) {
+  if (body.side !== 'sell' || !body.symbol || body.order_class === 'mleg' || body.legs) return null;
+  if (/^[A-Z]{1,6}\d{6}[CP]\d{8}$/.test(body.symbol)) return null; // options: the broker checks contracts
+  let pos = null;
+  try { pos = await t.position(body.symbol.replace('/', '')); }
+  catch (e) { if (!(e.status === 404 || /does not exist|not found/i.test(e.message || ''))) return null; }
+  const qty = pos ? +pos.qty : 0, held = pos ? +(pos.qty_available ?? pos.qty) : 0, px = +pos?.current_price || 0;
+  const want = body.qty ? +body.qty : body.notional && px ? +body.notional / px : 0;
+  if (allowShort) return { held, qty };
+  if (qty <= 0) throw Object.assign(new Error(`You do not own any ${body.symbol} in this account${qty < 0 ? ' (you are already short)' : ''}, so there is nothing to sell. Selling it anyway would open a short position, which needs a margin account with at least $2,000; tick "Sell short" if that is what you want.`), { status: 409, notHeld: true });
+  if (want > held + 1e-9) throw Object.assign(new Error(`You can sell up to ${+held.toFixed(6)} ${body.symbol}${held < qty ? ` (you own ${qty}; ${+(qty - held).toFixed(6)} are set aside for open sell orders)` : ''}. Lower the quantity or use "Sell all".`), { status: 409, tooMany: true, held });
+  return { held, qty };
+}
+
 export function buildOrder(f) {
   const o = {};
   const cls = f.order_class || 'simple';

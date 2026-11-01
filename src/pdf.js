@@ -32,22 +32,35 @@ function layout(md) {
   const src = String(md).replace(/\r/g, '').split('\n');
   for (let i = 0; i < src.length; i++) {
     const l = src[i];
-    if (/^```/.test(l)) { // code block
-      i++; while (i < src.length && !/^```/.test(src[i])) { wrap(latin(src[i]) || ' ', 7.5, BODY - 12, true).forEach(t => add(t, { size: 7.5, font: 'F3', indent: 12, gap: 9.5 })); i++; }
+    if (/^```/.test(l)) { // code block; drawn diagrams lose their lines and boxes (easier to read on paper)
+      i++; const block = []; while (i < src.length && !/^```/.test(src[i])) block.push(src[i++]);
+      const diagram = block.some(x => /[─│┌┐└┘├┤┬┴┼═║╔╗╚╝▶◀▲▼→←↑↓]|\+-{2,}|-{3,}>|\|\s{2,}\|/.test(x));
+      for (const raw of block) {
+        const x = diagram ? raw.replace(/[─│┌┐└┘├┤┬┴┼═║╔╗╚╝]/g, ' ').replace(/[▶→]|-{2,}>/g, ' to ').replace(/[◀←]|<-{2,}/g, ' from ').replace(/[▲▼↑↓]/g, ' ').replace(/\+-+\+|-{3,}|={3,}|\|/g, ' ').replace(/\s{2,}/g, ' ').trim() : raw;
+        if (diagram && !x) continue;
+        wrap(latin(x) || ' ', diagram ? 8.5 : 7.5, BODY - 12, !diagram).forEach(t => add(t, { size: diagram ? 8.5 : 7.5, font: diagram ? 'F1' : 'F3', indent: 12, gap: diagram ? 11 : 9.5 }));
+      }
       add('', { size: 6, gap: 6 }); continue;
     }
     const h = /^(#{1,4})\s+(.*)$/.exec(l);
     if (h) { const size = [0, 16, 12.5, 10.5, 9.5][h[1].length]; add('', { size: 6, gap: h[1].length === 1 ? 4 : 10 }); const at = lines.length; para(h[2], { size, font: 'F2', gap: size * 1.35 }); lines[at].heading = { level: h[1].length, text: latin(inline(h[2])) }; continue; }
-    if (/^\s*\|.*\|\s*$/.test(l)) { // table row; separator rows are skipped
-      if (/^\s*\|[\s:|-]+\|\s*$/.test(l)) continue;
-      const cells = l.trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim());
-      const head = /^\s*\|[\s:|-]+\|\s*$/.test(src[i + 1] || '');
-      para(cells.join('   |   '), { size: 8, font: head ? 'F2' : 'F1', indent: 6, gap: 11.5 }); continue;
+    if (/^\s*\|.*\|\s*$/.test(l)) { // a table: each row as "Column: value" lines, no grid lines
+      const rows = []; while (i < src.length && /^\s*\|.*\|\s*$/.test(src[i])) { if (!/^\s*\|[\s:|-]+\|\s*$/.test(src[i])) rows.push(src[i].trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim())); i++; }
+      i--;
+      const [head, ...body] = rows;
+      if (!body.length) { para(head.join(', '), { size: 9, indent: 6 }); continue; }
+      for (const r of body) {
+        para(r[0] || '', { size: 9, font: 'F2', indent: 6, gap: 12 });
+        r.slice(1).forEach((c, k) => { if (c) para(`${head[k + 1] ? head[k + 1] + ': ' : ''}${c}`, { size: 8.5, indent: 16, gap: 11 }); });
+        add('', { size: 4, gap: 4 });
+      }
+      continue;
     }
     const b = /^(\s*)[-*]\s+(.*)$/.exec(l), n = /^(\s*)(\d+)\.\s+(.*)$/.exec(l);
     if (b) { para(b[2], { bullet: true, indent: 10 + Math.min(3, Math.floor(b[1].length / 2)) * 10 }); continue; }
     if (n) { para(`${n[2]}. ${n[3]}`, { indent: 10 + Math.min(3, Math.floor(n[1].length / 2)) * 10 }); continue; }
-    if (/^\s*(---|\*\*\*)\s*$/.test(l)) { add('', { size: 6, gap: 8, rule: true }); continue; }
+    if (/^\s*(---|\*\*\*)\s*$/.test(l)) { add('', { size: 6, gap: 12 }); continue; } // no drawn rule, just space
+    if (/^\s*<!--.*-->\s*$/.test(l)) continue; // markers of the automatic README sections
     if (!l.trim()) { add('', { size: 6, gap: 6 }); continue; }
     // A paragraph: join the following plain lines.
     let t = l.trim();

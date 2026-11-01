@@ -4,6 +4,7 @@ import http from 'node:http';
 
 export function startMock() {
   const log = [];
+  const api = { autoFill: false };
   const accounts = new Map(); // broker account id -> { status, polls, acct }
   const books = new Map();    // trading account key -> { orders, positions, watchlists }
   const ach = new Map(), transfers = new Map();
@@ -26,7 +27,21 @@ export function startMock() {
     if (path === '/account') return tradeAccount();
     if (path === '/account/configurations') return method === 'PATCH' ? Object.assign(b.config, body) : b.config;
     if (path === '/account/portfolio/history') return { timestamp: [1700000000, 1700086400, 1700172800], equity: [100000, 99000, 101800], profit_loss: [0, -1000, 1800], profit_loss_pct: [0, -0.01, 0.018], base_value: 100000, timeframe: query.timeframe };
-    if (path === '/orders' && method === 'POST') { const o = { id: id('ord'), status: 'accepted', ...body, submitted_at: new Date().toISOString(), filled_qty: '0' }; b.orders.unshift(o); return o; }
+    if (path === '/orders' && method === 'POST') {
+      const o = { id: id('ord'), status: 'accepted', ...body, submitted_at: new Date().toISOString(), filled_qty: '0' };
+      // With autoFill on, simple market orders fill at once and move the position, like Alpaca.
+      if (api.autoFill && (body.type || 'market') === 'market' && !body.order_class && body.symbol && !body.symbol.includes('/')) {
+        let p = b.positions.find(x => x.symbol === body.symbol); const px = p ? +p.current_price : 100;
+        const qty = body.qty ? +body.qty : +(+body.notional / px).toFixed(6), signed = body.side === 'sell' ? -qty : qty;
+        if (!p) { p = { symbol: body.symbol, asset_class: 'us_equity', side: 'long', qty: '0', qty_available: '0', avg_entry_price: String(px), current_price: String(px), market_value: '0', cost_basis: '0', unrealized_pl: '0', unrealized_plpc: '0', unrealized_intraday_pl: '0', unrealized_intraday_plpc: '0', change_today: '0' }; b.positions.push(p); }
+        const nq = +(+p.qty + signed).toFixed(6);
+        Object.assign(p, { qty: String(nq), qty_available: String(nq), side: nq < 0 ? 'short' : 'long', market_value: String(+(nq * px).toFixed(2)) });
+        if (nq === 0) b.positions = b.positions.filter(x => x !== p);
+        Object.assign(o, { status: 'filled', filled_qty: String(qty), filled_avg_price: String(px), filled_at: new Date().toISOString() });
+      }
+      b.orders.unshift(o); return o;
+    }
+    if ((m = /^\/positions\/([^/]+)$/.exec(path)) && method === 'GET') { const p = b.positions.find(x => x.symbol === decodeURIComponent(m[1])); return p || { __status: 404, code: 40410000, message: 'position does not exist' }; }
     if (path === '/orders' && method === 'GET') return b.orders.filter(o => query.status !== 'open' || ['accepted', 'new'].includes(o.status));
     if (path === '/orders' && method === 'DELETE') { const r = b.orders.filter(o => o.status === 'accepted').map(o => ((o.status = 'canceled'), { id: o.id, status: 200 })); return r; }
     if ((m = /^\/orders\/([^/]+)$/.exec(path))) {
@@ -82,6 +97,15 @@ export function startMock() {
       AAPL261120C00150000: { latestQuote: { bp: 5.1, ap: 5.3 }, latestTrade: { p: 5.2 }, impliedVolatility: 0.31, greeks: { delta: 0.55, gamma: 0.03, theta: -0.05, vega: 0.12, rho: 0.04 } },
       AAPL261120P00150000: { latestQuote: { bp: 4.0, ap: 4.2 }, impliedVolatility: 0.33, greeks: { delta: -0.45, gamma: 0.03, theta: -0.04, vega: 0.12, rho: -0.03 } },
       AAPL261218C00160000: { latestQuote: { bp: 3.0, ap: 3.2 }, impliedVolatility: 0.29, greeks: { delta: 0.4, gamma: 0.02, theta: -0.03, vega: 0.15, rho: 0.05 } },
+      // More strikes in the first expiration, so spreads (bull call, iron condor) can be built.
+      AAPL261120C00160000: { latestQuote: { bp: 2.4, ap: 2.6 }, impliedVolatility: 0.3, greeks: { delta: 0.35, gamma: 0.03, theta: -0.04, vega: 0.11, rho: 0.03 } },
+      AAPL261120C00170000: { latestQuote: { bp: 1.0, ap: 1.2 }, impliedVolatility: 0.3, greeks: { delta: 0.2, gamma: 0.02, theta: -0.03, vega: 0.09, rho: 0.02 } },
+      AAPL261120P00140000: { latestQuote: { bp: 1.9, ap: 2.1 }, impliedVolatility: 0.34, greeks: { delta: -0.3, gamma: 0.03, theta: -0.03, vega: 0.11, rho: -0.02 } },
+      AAPL261218C00170000: { latestQuote: { bp: 1.6, ap: 1.8 }, impliedVolatility: 0.29, greeks: { delta: 0.25, gamma: 0.02, theta: -0.02, vega: 0.13, rho: 0.03 } },
+      AAPL261218C00180000: { latestQuote: { bp: 0.7, ap: 0.9 }, impliedVolatility: 0.29, greeks: { delta: 0.12, gamma: 0.01, theta: -0.02, vega: 0.1, rho: 0.02 } },
+      AAPL261218P00150000: { latestQuote: { bp: 4.5, ap: 4.7 }, impliedVolatility: 0.32, greeks: { delta: -0.45, gamma: 0.02, theta: -0.03, vega: 0.15, rho: -0.04 } },
+      AAPL261218P00140000: { latestQuote: { bp: 2.2, ap: 2.4 }, impliedVolatility: 0.33, greeks: { delta: -0.28, gamma: 0.02, theta: -0.03, vega: 0.13, rho: -0.03 } },
+      AAPL261120P00130000: { latestQuote: { bp: 0.8, ap: 1.0 }, impliedVolatility: 0.35, greeks: { delta: -0.15, gamma: 0.02, theta: -0.02, vega: 0.08, rho: -0.01 } },
     } };
     if (path === '/v1/corporate-actions') return { corporate_actions: { cash_dividends: [{ symbol: 'AAPL', rate: 0.26, ex_date: '2026-11-07' }] } };
     return { __status: 404, message: 'not found ' + path };
@@ -160,5 +184,5 @@ export function startMock() {
       return send(data(path, query));
     });
   });
-  return new Promise(r => server.listen(0, '127.0.0.1', () => r({ url: `http://127.0.0.1:${server.address().port}`, log, close: () => { for (const l of listeners) l.end(); server.close(); }, accounts, setStatus, events, docs })));
+  return new Promise(r => server.listen(0, '127.0.0.1', () => r(Object.assign(api, { url: `http://127.0.0.1:${server.address().port}`, log, close: () => { for (const l of listeners) l.end(); server.close(); }, accounts, setStatus, events, docs, books }))));
 }

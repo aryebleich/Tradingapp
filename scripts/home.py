@@ -10,7 +10,7 @@ def T(s):
     if s not in YI: MISSING.add(s); return s
     return YI[s]
 
-def layout(title, desc, body, lang='en', home='index.html'):
+def layout(title, desc, body, lang='en', home='index.html', banner=''):
     LANG['cur'] = lang
     rtl = lang == 'yi'
     nav = ''.join(f'<a href="{home}#{a}">{T(t)}</a>' for a, t in [('how', 'How it works'), ('strategies', 'Strategies'), ('sp500', 'S&amp;P 500'), ('pricing', 'Pricing'), ('faq', 'FAQ')])
@@ -37,7 +37,7 @@ def layout(title, desc, body, lang='en', home='index.html'):
 <script type="module" src="site.js"></script>
 </head>
 <body>
-<header class="top"><div class="wrap">
+{f'<div class="topmsg" role="note">{banner}</div>' if banner else ''}<header class="top"><div class="wrap">
   <a class="logo" href="{home}"><img src="favicon.svg" alt=""><b>Bright<span>folio</span></b></a>
   <nav class="links">{nav}</nav>
   <a class="btn ghost" data-app="#/login" href="app">{T('Sign in')}</a>
@@ -290,8 +290,8 @@ def index(lang='en'):
 <section class="hero"><div class="wrap hero-grid">
   <div>
     <a class="eyebrow" href="#reality"><span>{T('New')}</span> {T('Reality Check tells you when a strategy stops working')} &rarr;</a>
-    <h1>{T('Every trade you take, <span>executed from one place.</span>')}</h1>
-    <p class="lead">{T('Stocks, ETFs, options and crypto through your own brokerage account. Ready-made strategies, webhook alerts, pairs trading and an S&amp;P 500 plan: test them, paper trade them and automate them on one platform.')}</p>
+    <h1>{T('Trade every day. <span>Invest for a lifetime.</span>')}</h1>
+    <p class="lead">{T('One platform for both. Trade stocks, options, futures and crypto with a professional order desk, and build long-term wealth with index plans, funds, bonds, savings, real estate and private markets, all on your own brokerage account.')}</p>
     <div class="cta">{gbtn()}{ghbtn()}<a class="btn outline lg" data-app="#/register" href="app">{T('Start free with email')}</a></div>
     <ul class="ticks"><li>{T('Set up in 3 minutes')}</li><li>{T('$100,000 paper account')}</li><li>{T('No card needed')}</li></ul>
     <p class="demolink"><a href="#start">{T('New to investing? Start here')} &darr;</a> · <a href="#demo">{T('Try the live demo, no sign-up')} &darr;</a></p>
@@ -304,6 +304,14 @@ def index(lang='en'):
 <div class="marquee" aria-hidden="true"><div class="track">{''.join(f'<span>{ic(i, 16)}{T(t)}</span>' for i, t, d in FEATURES) * 2}</div></div>
 <div class="wrap"><div class="logos"><span>{T('Brokers:')} <b>Alpaca</b> · <b>Schwab</b> · <b>tastytrade</b> · <b>Tradier</b> · <b>TradeStation</b></span><span>{T('Payments by')} <b>Stripe</b> &amp; <b>Helcim</b></span></div></div>
 </section>
+
+<section class="twoways"><div class="wrap">
+  <h2 class="sec center">{T('Two ways to grow your money. One place.')}</h2>
+  <div class="tw-grid">
+    <div class="tw tw-trade"><span class="kicker">{T('For trading')}</span><h3>{T('A professional trading desk')}</h3><ul>{''.join(f'<li>{T(x)}</li>' for x in ['Live order desk: price source and speed, bid and ask, costs and slippage before you send', 'Market, limit, stop and stop-limit orders, explained with a picture', 'Charts with bull and bear market signals and company size', 'Scanners for growth and value stocks, and statistical arbitrage across the market', 'Bots, alerts and rules that trade while you work', 'Practise with $100,000 in paper money, futures included'])}</ul><a class="btn" data-app="#/register" href="app">{T('Start trading free')} &rarr;</a></div>
+    <div class="tw tw-invest"><span class="kicker">{T('For investing')}</span><h3>{T('Wealth that builds itself')}</h3><ul>{''.join(f'<li>{T(x)}</li>' for x in ['An S&amp;P 500 plan that invests every month on its own', 'Index funds and ETFs compared by what they cost you each year', 'Bonds, Treasury bills and savings, with today\'s rates where you live', 'One mix for all your accounts, rebalanced with one tap', 'Your whole net worth: banks, crypto, real estate and private investments', 'Tax-saving autopilot and a plain-English weekly money brief'])}</ul><a class="btn" data-app="#/register" href="app">{T('Start investing free')} &rarr;</a></div>
+  </div>
+</div></section>
 
 <section id="start"><div class="wrap">
   <h2 class="sec center">{T('New to investing? Start here.')}</h2>
@@ -476,6 +484,7 @@ def index(lang='en'):
 </div></div></section>
 <div class="stickycta"><a class="btn lg" data-app="#/register" href="app">{T('Start free')}</a></div>
 '''
-    title = T('Brightfolio: automate your trading from one place')
-    desc = T('Ready-made strategies, webhook alerts, pairs trading and an S&P 500 autopilot on your own brokerage account, with Reality Check watching every strategy. In English and Yiddish.')
-    return layout(title, desc, body, lang, home)
+    title = T('Brightfolio: trade and invest from one place')
+    desc = T('A professional trading desk and a long-term investing plan on your own brokerage account: stocks, ETFs, options, futures, funds, bonds and savings, with automation and Reality Check. In English and Yiddish.')
+    banner = T('<b>Trade today. Build wealth for decades.</b> One platform for both, on your own brokerage account.')
+    return layout(title, desc, body, lang, home, banner)

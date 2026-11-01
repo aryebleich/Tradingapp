@@ -144,6 +144,32 @@ def portfolio(prices):
 }
 
 let liveTimer = null;
+// The live market scan for pairs: progress, the stock being loaded, and the best pairs so far.
+async function scanSetup(view) {
+  const meta = await H.api('/statscan/meta'), f = H.$('#scanf', view), out = H.$('#scanLive', view);
+  H.$('#scanU', view).innerHTML = Object.entries(meta.universes).map(([k, t]) => `<option value="${H.esc(k)}">${H.esc(t)}</option>`).join('');
+  H.$('#scanM', view).innerHTML = Object.entries(meta.methods).map(([k, t]) => `<option value="${k}">${H.esc(t)}</option>`).join('');
+  f.size.max = meta.limit; f.size.value = Math.min(100, meta.limit);
+  const sync = () => { H.$('#scanSymsL', view).hidden = f.universe.value !== 'custom'; H.$('#scanSizeL', view).hidden = f.universe.value !== 'market'; };
+  f.universe.onchange = sync; sync();
+  let timer = null, id = null;
+  const show = j => {
+    const pct = j.total ? Math.round((j.loaded / j.total) * (j.status === 'loading' ? 70 : 70) + (j.status === 'loading' ? 0 : j.pairs ? 30 * j.tested / j.pairs : 30)) : 0;
+    out.innerHTML = `<div class="scanbar"><i style="width:${j.status === 'done' ? 100 : pct}%"></i></div>
+      <p class="scanstat">${j.status === 'loading' ? `Loading prices <b data-no-tr>${H.esc(j.current || '')}</b> · ${j.loaded} of ${j.total} stocks` : j.status === 'testing' ? `Testing pairs · ${j.tested} of ${j.pairs} (${H.esc(j.methodName)})` : j.status === 'done' ? `Done in ${j.seconds} s · ${j.total} stocks, ${j.pairs} related pairs tested` : `Stopped: ${H.esc(j.error || '')}`}${j.synthetic ? ' · simulated prices (no market data on this server)' : ''}</p>
+      ${j.top.length ? `<div class="tablewrap"><table class="slim"><tr><th>Pair</th><th>Score</th><th>Correlation</th><th>Cointegration t</th><th>Half-life</th><th>Gap today (z)</th><th>Signal</th><th></th></tr>${j.top.map(r => `<tr><td data-no-tr><b>${H.esc(r.a)}</b> / <b>${H.esc(r.b)}</b></td><td>${r.score}</td><td>${r.correlation}</td><td class="${r.cointegrated ? 'pos' : ''}">${r.adf}${r.cointegrated ? ' ✓' : ''}</td><td>${r.halfLife ?? '-'} d</td><td class="${Math.abs(r.z) >= 2 ? 'neg' : ''}"><b>${r.z}</b></td><td>${H.esc(r.signal)}</td><td><a href="#/pairs?a=${encodeURIComponent(r.a)}&b=${encodeURIComponent(r.b)}">Open</a></td></tr>`).join('')}</table></div>` : ''}
+      ${j.limit ? `<p class="mu small-print">Your plan scans up to ${j.limit} stocks at once. A cointegration t below -3.34 means a lasting relationship (5% level); half-life is how many days a gap usually takes to close by half. Past relationships can break.</p>` : ''}`;
+    H.$('#scanStop', view).hidden = !['loading', 'testing'].includes(j.status);
+  };
+  H.act(H.$('#scanGo', view), async () => {
+    clearInterval(timer);
+    const j = await H.api('/statscan', { body: H.form(f) }); id = j.id; show(j);
+    timer = setInterval(async () => { if (!out.isConnected) return clearInterval(timer); const s = await H.api('/statscan/' + id).catch(() => null); if (!s) return; show(s); if (['done', 'error'].includes(s.status)) clearInterval(timer); }, 800);
+    return '';
+  });
+  H.$('#scanStop', view).onclick = async () => { if (id) await H.api('/statscan/' + id, { method: 'DELETE' }); clearInterval(timer); H.$('#scanStop', view).hidden = true; };
+}
+
 async function statarb(view, q) {
   clearInterval(liveTimer);
   const info = await H.api('/statarb/baskets');
@@ -156,12 +182,20 @@ async function statarb(view, q) {
     <label style="grid-column:span 2">Stocks (3 to ${lim.symbols})<input name="symbols" value="${H.esc(q.get('symbols') || info.baskets[first].join(', '))}" autocomplete="off"></label>
     <label>Window (days)<input name="window" type="number" value="${info.defaults.window}"></label>
     <label>Enter at |s| ≥<input name="entry" type="number" step="0.05" value="${info.defaults.entry}"></label>
-    <label>Exit at |s| ≤<input name="exit" type="number" step="0.05" value="${info.defaults.exit}"></label></div>
+    <label>Exit at |s| ≤<input name="exit" type="number" step="0.05" value="${info.defaults.exit}"></label>
+    <label>Gap detection<select name="method"><option value="ols">Cointegration (Engle-Granger)</option><option value="kalman">Kalman filter (adaptive hedge)</option><option value="distance">Distance (normalized prices)</option><option value="ratio">Price ratio, Bollinger bands</option></select></label>
+    <label>Common move<select name="factor"><option value="basket">Equal-weight basket</option><option value="pca">First principal component (PCA)</option></select></label></div>
     <button>Analyze basket</button>
     <label class="chk" style="display:inline-flex;margin-inline-start:12px"><input type="checkbox" id="live" ${lim.refresh ? '' : 'disabled'}> Live: refresh ${lim.refresh ? `every ${lim.refresh} seconds` : '(Pro)'}</label>
     <p class="mu" style="font-size:12.5px;margin:8px 0 0">Your plan: up to ${lim.symbols} stocks${lim.refresh ? `, live every ${lim.refresh} s` : ', refresh by hand'}. ${Object.entries(info.plans).filter(([k]) => k !== 'free').map(([k, v]) => `${k[0].toUpperCase() + k.slice(1)}: ${v.symbols} stocks, every ${v.refresh} s`).join(' · ')}.</p>
     <div class="err"></div></form>
-  <div id="sOut"></div>`;
+  <div id="sOut"></div>
+  <form class="card" id="scanf"><h2>Scan the market for pairs</h2><p class="mu" style="margin-top:0">Loads every stock you choose, finds the ones that move together, tests each pair for a lasting relationship, and ranks the ones stretched apart today. You can watch it work.</p>
+    <div class="row"><label>What to scan<select name="universe" id="scanU"></select></label><label id="scanSizeL">How many (biggest first)<input name="size" type="number" min="10" step="10" value="100"></label><label>Gap detection<select name="method" id="scanM"></select></label></div>
+    <label id="scanSymsL" hidden>My stocks<input name="symbols" placeholder="AAPL, MSFT, GOOGL, …" data-no-tr></label>
+    <div class="row" style="gap:8px"><button id="scanGo">Start scan</button><button type="button" class="ghost" id="scanStop" hidden>Stop</button></div><div class="err"></div>
+    <div id="scanLive"></div></form>`;
+  scanSetup(view);
   const f = H.$('#sf', view), out = H.$('#sOut', view);
   f.preset.onchange = () => { if (f.preset.value) f.symbols.value = info.baskets[f.preset.value].join(', '); };
   let metric = 'correlation', last = null;
@@ -191,7 +225,7 @@ async function statarb(view, q) {
     H.$$('#metric button', view).forEach(x => (x.onclick = () => { metric = x.dataset.m; H.$('#mx', view).innerHTML = drawMatrix(last); wire(); }));
     H.$$('td[data-a]', view).forEach(td => (td.onclick = () => (location.hash = `#/pairs?a=${encodeURIComponent(td.dataset.a)}&b=${encodeURIComponent(td.dataset.b)}`)));
   };
-  const body = () => { const d = H.form(f); return { symbols: d.symbols, window: d.window, entry: d.entry, exit: d.exit }; };
+  const body = () => { const d = H.form(f); return { symbols: d.symbols, window: d.window, entry: d.entry, exit: d.exit, method: d.method, factor: d.factor }; };
   H.act(H.$('button', f), async () => { const r = await H.api('/statarb/analyze', { body: body() }); draw(r); return ''; });
   H.$('#live', view).onchange = e => {
     clearInterval(liveTimer);

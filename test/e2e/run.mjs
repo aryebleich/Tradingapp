@@ -148,6 +148,27 @@ console.log('Desktop (1360x900)');
     await p.click('#cancelAll'); await confirmDialog(p); await p.waitForTimeout(1200);
     if (await p.$$eval('[data-cancel]', e => e.length)) throw new Error('open orders remain');
   });
+  // Selling must match the account: "Sell all" sells exactly what Alpaca holds, and nothing more.
+  await step('live: sell all matches the Alpaca account, and a sell of shares not held is refused', async () => {
+    mock.autoFill = true;
+    try {
+      await p.goto(B + '/app#/trade?symbol=AAPL&side=sell'); await p.waitForSelector('#tk');
+      await p.waitForSelector('#sellAll', { timeout: 15000 }); await p.click('#sellAll');
+      const held = await p.inputValue('#tk [name=qty]'); if (held !== '10') throw new Error(`Sell all filled ${held}, the account holds 10`);
+      await p.click('#review'); await confirmDialog(p); await p.waitForSelector('#tkErr.ok');
+      const pos = await p.evaluate(() => fetch('/api/alpaca/positions', { headers: { 'X-Requested-With': 'qp' } }).then(r => r.json()));
+      if (pos.some(x => x.symbol === 'AAPL')) throw new Error('AAPL is still held after selling all of it');
+      await p.goto(B + '/app#/orders'); await p.waitForSelector('#orderTabs');
+      await p.goto(B + '/app#/trade?symbol=AAPL&side=sell'); await p.waitForSelector('#tk [name=qty]'); await p.waitForSelector('#tkHold:has-text("do not own")', { timeout: 15000 });
+      await p.fill('#tk [name=qty]', '1'); await p.click('#review');
+      await p.waitForFunction(() => /do not own/.test(document.querySelector('#tkErr')?.textContent || ''), null, { timeout: 10000 });
+      // The server refuses it too, even if the page were skipped.
+      const r = await p.evaluate(() => fetch('/api/alpaca/orders', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ symbol: 'AAPL', side: 'sell', qty: 1, type: 'market', time_in_force: 'day' }) }).then(x => x.status));
+      if (r !== 409) throw new Error(`server accepted a sell of shares not held (${r})`);
+      // Put the 10 shares back for the steps that follow.
+      await p.evaluate(() => fetch('/api/alpaca/orders', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ symbol: 'AAPL', side: 'buy', qty: 10, type: 'market', time_in_force: 'day' }) }));
+    } finally { mock.autoFill = false; }
+  });
   await step('partial close', async () => {
     await p.goto(B + '/app#/positions'); await p.waitForSelector('[data-close]');
     await p.click('[data-close]'); await p.selectOption('dialog[open] [name=mode]', 'qty'); await p.fill('dialog[open] [name=amount]', '4'); await p.click('dialog[open] button[value=yes]');
@@ -183,6 +204,7 @@ console.log('Desktop (1360x900)');
     await p.screenshot({ path: path.join(OUT, 'admin-upgrades.png'), fullPage: true });
     await p.goto(B + '/app#/admin-trust'); await p.waitForSelector('#tr'); await p.fill('#inc [name=title]', 'Test incident'); await p.click('#inc button'); await p.waitForSelector('[data-inc]');
     await p.click('[data-delinc]').catch(() => {});
+    await p.goto(B + '/app#/admin-data'); await p.waitForSelector('.datasrc'); await p.goto(B + '/app#/admin-comms'); await p.waitForSelector('#cs');
     await p.goto(B + '/app#/admin-phone'); await p.waitForSelector('text=Yiddish voice'); await p.waitForSelector('tr[data-k="press"]');
     // View as each plan from the header, then back to the owner view.
     // A preview asks for the password and a tick first.
@@ -293,7 +315,7 @@ console.log('Settings → Language');
   await p.click("form.auth button:not([type=button])"); await p.waitForSelector('#tabs a.on', { state: 'attached' });
   const go = async (r, sel) => { if (p.url() === B + '/app' + r) await p.reload(); else await p.goto(B + '/app' + r); await p.waitForSelector(sel, { timeout: 15000 }); };
   const okText = async box => { await p.waitForSelector(`${box} .ok`, { timeout: 20000 }).catch(async () => { throw new Error((await p.textContent(`${box} .err`).catch(() => '')) || 'no result'); }); };
-  await step('menu lists the new pages', async () => { for (const k of ['chart', 'ai', 'scanner', 'optionslab', 'portfolios', 'fleet', 'insights', 'risk', 'values', 'private', 'realestate', 'money', 'rules', 'brief', 'luach', 'taxpilot']) await p.waitForSelector(`#nav a[href="#/${k}"]`, { state: 'attached' }); });
+  await step('menu lists the new pages', async () => { for (const k of ['chart', 'ai', 'scanner', 'optionslab', 'portfolios', 'fleet', 'insights', 'risk', 'values', 'private', 'realestate', 'money', 'rules', 'brief', 'luach', 'taxpilot', 'invest']) await p.waitForSelector(`#nav a[href="#/${k}"]`, { state: 'attached' }); });
   await step('AI assistant answers (basic mode)', async () => {
     await go('#/ai', '#ask'); await p.fill('#ask textarea', 'How does AAPL look technically?'); await p.click('#send');
     await p.waitForSelector('.msg.assistant:not(.typing)', { timeout: 20000 });
@@ -346,6 +368,31 @@ console.log('Settings → Language');
     await go('#/realestate', '[data-open]'); await p.click('[data-open]'); await p.waitForSelector('text=Live value and rent');
     await go('#/settings', '#addonsCard');
   });
+  await step('paper: buy, then sell all matches the paper account', async () => {
+    await go('#/dashboard', '#ticket'); await p.fill('#ticket [name=symbol]', 'MSFT'); await p.fill('#ticket [name=qty]', '3');
+    await p.click('#qPlace'); await p.waitForFunction(() => /MSFT: filled/.test(document.querySelector('#ticket .ok')?.textContent || ''), null, { timeout: 15000 });
+    await go('#/dashboard', '#ticket'); await p.fill('#ticket [name=symbol]', 'MSFT'); await p.click('#qSide [data-s=sell]');
+    await p.waitForSelector('#sellAll', { timeout: 15000 }); await p.click('#sellAll');
+    if (await p.inputValue('#ticket [name=qty]') !== '3') throw new Error('Sell all did not take the 3 shares held');
+    await p.click('#qPlace'); await p.waitForFunction(() => /MSFT: filled/.test(document.querySelector('#ticket .ok')?.textContent || ''), null, { timeout: 15000 });
+    const h = await p.evaluate(() => fetch('/api/desk/quote/MSFT?account=paper', { headers: { 'X-Requested-With': 'qp' } }).then(r => r.json()));
+    if (h.holding.qty !== 0) throw new Error(`still holding ${h.holding.qty} MSFT`);
+    const r = await p.evaluate(() => fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ account: 'paper', symbol: 'MSFT', side: 'sell', qty: 1 }) }).then(x => x.status));
+    if (r === 200) throw new Error('a sell of shares not held went through');
+  });
+  await step('paper limit order waits, then cancels', async () => {
+    await go('#/dashboard', '#ticket'); await p.fill('#ticket [name=symbol]', 'SPY'); await p.selectOption('#ticket [name=type]', 'limit');
+    await p.fill('#ticket [name=qty]', '1'); await p.fill('#ticket [name=limit_price]', '1'); await p.waitForSelector('#qGuide .oguide');
+    await p.click('#qPlace'); await p.waitForFunction(() => /open/.test(document.querySelector('#ticket .ok')?.textContent || ''), null, { timeout: 15000 });
+    await go('#/dashboard', '[data-pcancel]'); await p.click('[data-pcancel]'); await p.waitForTimeout(800);
+  });
+  await step('futures, funds & savings; growth and value scan; stat-arb live scan; search', async () => {
+    await go('#/invest', '[data-trade]'); await go('#/invest?tab=funds', '[data-buy]'); await go('#/invest?tab=savings', '#sg');
+    await go('#/scanner', '#gvRun'); await p.click('#gvRun'); await p.waitForSelector('#gvOut table, #gvOut p', { timeout: 60000 });
+    await go('#/statarb', '#scanGo'); await p.selectOption('#scanU', 'Banks'); await p.click('#scanGo'); await p.waitForSelector('.scanstat:has-text("Done")', { timeout: 60000 });
+    await p.screenshot({ path: path.join(OUT, 'statarb-scan.png'), fullPage: true });
+    await p.click('#searchBtn'); await p.fill('dialog.search #sq', 'futures'); await p.waitForSelector('dialog.search a.sitem[href="#/invest"]'); await p.keyboard.press('Escape');
+  });
   await step('round-ups import', async () => { await go('#/spend', '#csv'); await p.fill('#csv', '2026-10-20,STARBUCKS #1,5.45\n2026-10-21,AMAZON,23.10'); await p.click('#imp'); await p.waitForFunction(() => /purchases read/.test(document.body.textContent), null, { timeout: 15000 }); });
   await step('news sentiment', async () => { await go('#/news', '#nf'); await p.waitForSelector('#sent .cards', { timeout: 20000 }); });
   await step('chart draws with candles and a trend line', async () => {
@@ -392,7 +439,7 @@ for (const [device, width, lang] of [['iPhone 13', 390, 'en'], ['iPhone SE', 320
   await p.evaluate(() => fetch('/api/alpaca/keys', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ keyId: 'AUDIT' + innerWidth, secret: 'S' }) }));
   await p.evaluate(() => localStorage.setItem('qp_account', 'alpaca'));
   const lib = await p.evaluate(() => fetch('/api/library', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ templateId: 'multi_model' }) }).then(r => r.json()));
-  for (const r of ['/', '/yi', '/terms', '/app#/register', '/app#/login', '#/dashboard', '#/trade?symbol=AAPL', '#/orders', '#/positions', '#/watchlists', '#/markets', '#/options?underlying=AAPL', '#/calendar', '#/account', '#/open-account', '#/brokers', '#/strategies', `#/strategy?id=${lib.id}`, '#/signals', '#/pairs', '#/statarb', '#/sp500', '#/backtest', '#/bots', '#/schedule', '#/text', '#/tax', '#/funding', '#/settings', '#/chart?symbol=AAPL', '#/ai', '#/agents', '#/code', '#/news', '#/scanner', '#/optionslab', '#/institutions', '#/portfolios', '#/portfolios?tab=mine', '#/fleet', '#/marketplace', '#/insights', '#/insights?tab=journal', '#/risk', '#/spend', '#/values', '#/values?tab=maaser', '#/values?tab=shabbos', '#/private', '#/realestate', '#/money', '#/rules', '#/android', '#/luach', '#/luach?tab=month', '#/luach?tab=tzedakah', '#/brief', '#/taxpilot', '#/security', '#/execution', '#/learn', '#/longterm', '#/workspace', '#/accounts', '#/wealth', '#/wealth?tab=compound', '#/wealth?tab=auto', '#/wealth?tab=hold', '#/wealth?tab=drip', '#/wealth?tab=understand', '#/wealth?tab=tax', '#/wealth?tab=core', '#/wealth?tab=diversify', '#/alpaca-tools', '#/referrals']) {
+  for (const r of ['/', '/yi', '/terms', '/app#/register', '/app#/login', '#/dashboard', '#/trade?symbol=AAPL', '#/orders', '#/positions', '#/watchlists', '#/markets', '#/options?underlying=AAPL', '#/calendar', '#/account', '#/open-account', '#/brokers', '#/strategies', `#/strategy?id=${lib.id}`, '#/signals', '#/pairs', '#/statarb', '#/sp500', '#/backtest', '#/bots', '#/schedule', '#/text', '#/tax', '#/funding', '#/settings', '#/chart?symbol=AAPL', '#/ai', '#/agents', '#/code', '#/news', '#/scanner', '#/optionslab', '#/institutions', '#/portfolios', '#/portfolios?tab=mine', '#/fleet', '#/marketplace', '#/insights', '#/insights?tab=journal', '#/risk', '#/spend', '#/values', '#/values?tab=maaser', '#/values?tab=shabbos', '#/private', '#/realestate', '#/money', '#/rules', '#/android', '#/luach', '#/luach?tab=month', '#/luach?tab=tzedakah', '#/brief', '#/taxpilot', '#/invest', '#/invest?tab=funds', '#/invest?tab=savings', '#/security', '#/execution', '#/learn', '#/longterm', '#/workspace', '#/accounts', '#/wealth', '#/wealth?tab=compound', '#/wealth?tab=auto', '#/wealth?tab=hold', '#/wealth?tab=drip', '#/wealth?tab=understand', '#/wealth?tab=tax', '#/wealth?tab=core', '#/wealth?tab=diversify', '#/alpaca-tools', '#/referrals']) {
     await step(r, async () => {
       await p.goto(r.startsWith('#') ? B + '/app' + r : B + r); if (r === '#/dashboard') await p.reload();
       await p.waitForTimeout(r.includes('strategy') || r.includes('sp500') ? 3000 : 1300);

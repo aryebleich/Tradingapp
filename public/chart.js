@@ -13,6 +13,24 @@ export function registerChart(routes, helpers) {
 // ---------- indicators ----------
 const sma = (c, n) => c.map((_, i) => (i < n - 1 ? null : c.slice(i - n + 1, i + 1).reduce((a, b) => a + b, 0) / n));
 const ema = (c, n) => { const k = 2 / (n + 1), out = []; let e = null; c.forEach((v, i) => { e = e == null ? v : v * k + e * (1 - k); out.push(i < n - 1 ? null : e); }); return out; };
+// Bull and bear markets: above or below the 200-day average (with the 50-day agreeing), golden and
+// death crosses of the 50- and 200-day averages, and the 20% rule (a 20% fall from a peak starts a
+// bear market; a 20% rise from a low starts a bull market).
+export function regimes(c) {
+  const s50 = sma(c, 50), s200 = sma(c, 200), state = [], marks = [];
+  let peak = c[0], trough = c[0], phase = null;
+  for (let i = 0; i < c.length; i++) {
+    state.push(s200[i] == null ? null : c[i] > s200[i] && s50[i] > s200[i] ? 'bull' : c[i] < s200[i] && s50[i] < s200[i] ? 'bear' : null);
+    if (i && s200[i] != null && s200[i - 1] != null && s50[i - 1] != null) {
+      if (s50[i - 1] <= s200[i - 1] && s50[i] > s200[i]) marks.push({ i, kind: 'golden', label: 'Golden cross' });
+      if (s50[i - 1] >= s200[i - 1] && s50[i] < s200[i]) marks.push({ i, kind: 'death', label: 'Death cross' });
+    }
+    peak = Math.max(peak, c[i]); trough = Math.min(trough, c[i]);
+    if (phase !== 'bear' && c[i] <= peak * 0.8) { phase = 'bear'; marks.push({ i, kind: 'bear', label: 'Bear market (-20%)' }); trough = c[i]; }
+    else if (phase !== 'bull' && trough > 0 && c[i] >= trough * 1.2 && (phase === 'bear' || i > 0)) { if (phase === 'bear') marks.push({ i, kind: 'bull', label: 'Bull market (+20%)' }); phase = 'bull'; peak = c[i]; }
+  }
+  return { s200, state, marks, now: state.at(-1) };
+}
 function rsi(c, n = 14) {
   const out = Array(c.length).fill(null); let g = 0, l = 0;
   for (let i = 1; i < c.length; i++) {
@@ -35,6 +53,17 @@ function macd(c) {
 
 // ---------- data ----------
 const TFS = { '5Min': [5, 6], '15Min': [15, 15], '1Hour': [60, 45], '1Day': [1440, 730], '1Week': [10080, 3650] };
+// Size of the company (mega to micro cap) and blue chip, from the profile.
+const capCache = new Map();
+async function capBadge(sym, el) {
+  if (!el || sym.includes('/')) { if (el) el.textContent = ''; return; }
+  if (!capCache.has(sym)) capCache.set(sym, H.api('/fundamentals/profile/' + encodeURIComponent(sym)).catch(() => null));
+  const p = await capCache.get(sym); if (!p || !el.isConnected) return;
+  const mc = p.ratios?.marketCap, cc = p.ratios?.capClass;
+  const big = v => (v >= 1e12 ? `$${(v / 1e12).toFixed(2)}T` : v >= 1e9 ? `$${(v / 1e9).toFixed(1)}B` : `$${(v / 1e6).toFixed(0)}M`);
+  el.innerHTML = p.kind === 'etf' ? `<span class="pill" title="${H.esc(p.etf.about)}">ETF · ${H.esc(p.etf.index)} · ${p.etf.expenseRatio}% a year</span>`
+    : cc ? `<span class="pill cap-${cc.id}" title="${H.esc(cc.about)}">${H.esc(cc.name)} · ${big(mc)}</span>${p.blueChip ? ' <span class="pill blue" title="A large, long-established company with a record of steady results">Blue chip</span>' : ''}${p.style ? ` <span class="pill">${H.esc(p.style[0].toUpperCase() + p.style.slice(1))}</span>` : ''}` : '';
+}
 async function loadBars(symbol, tf) {
   const start = new Date(Date.now() - TFS[tf][1] * 864e5).toISOString();
   try {
@@ -50,7 +79,7 @@ async function loadBars(symbol, tf) {
 // ---------- settings (remembered on this device) ----------
 const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
 const keep = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
-const DEF = { tf: '1Day', layout: 1, symbols: ['SPY', 'QQQ', 'AAPL', 'BTC/USD'], ind: { sma20: true, sma50: true, ema20: false, bb: false, vol: true, rsi: true, macd: false, pat: true } };
+const DEF = { tf: '1Day', layout: 1, symbols: ['SPY', 'QQQ', 'AAPL', 'BTC/USD'], ind: { sma20: true, sma50: true, ema20: false, bb: false, vol: true, rsi: true, macd: false, pat: true, regime: true } };
 
 async function chartPage(view, q) {
   const cfg = { ...DEF, ...load('qp_chart', {}) }; cfg.ind = { ...DEF.ind, ...cfg.ind };
@@ -63,7 +92,7 @@ async function chartPage(view, q) {
   document.body.classList.toggle('popout', popout);
   H.onLeave(() => document.body.classList.remove('popout'));
   const accts = await H.accounts();
-  const IND = { sma20: 'SMA 20', sma50: 'SMA 50', ema20: 'EMA 20', bb: 'Bollinger', vol: 'Volume', rsi: 'RSI', macd: 'MACD', pat: 'Patterns' };
+  const IND = { regime: 'Bull / bear', sma20: 'SMA 20', sma50: 'SMA 50', ema20: 'EMA 20', bb: 'Bollinger', vol: 'Volume', rsi: 'RSI', macd: 'MACD', pat: 'Patterns' };
   view.innerHTML = `<div class="charttop">
       ${popout ? '' : '<h1 style="margin:0">Chart</h1>'}
       <div class="seg" id="tf">${Object.keys(TFS).map(t => `<button type="button" data-tf="${t}" class="${t === cfg.tf ? 'on' : ''}">${{ '5Min': '5m', '15Min': '15m', '1Hour': '1h', '1Day': '1D', '1Week': '1W' }[t]}</button>`).join('')}</div>
@@ -79,7 +108,7 @@ async function chartPage(view, q) {
   const save = () => keep('qp_chart', { tf: cfg.tf, layout: cfg.layout, symbols: cfg.symbols, ind: cfg.ind });
   const grid = H.$('#grid', view);
   for (let i = 0; i < cfg.layout; i++) {
-    const el = document.createElement('div'); el.className = 'card cpanel'; el.innerHTML = `<div class="chead"><input class="csym" value="${H.esc(cfg.symbols[i] || 'SPY')}" aria-label="Symbol" data-no-tr><span class="ohlc mu" data-no-tr></span></div><div class="cwrap"><canvas></canvas></div><div class="cnote mu small-print"></div>`;
+    const el = document.createElement('div'); el.className = 'card cpanel'; el.innerHTML = `<div class="chead"><input class="csym" value="${H.esc(cfg.symbols[i] || 'SPY')}" aria-label="Symbol" data-no-tr><span class="ohlc mu" data-no-tr></span><span class="capbadge"></span><span class="regbadge"></span></div><div class="cwrap"><canvas></canvas></div><div class="cnote mu small-print"></div>`;
     grid.append(el);
     const p = new Panel(el, i, cfg, () => tool, () => setActive(i));
     panels.push(p);
@@ -163,6 +192,10 @@ class Panel {
       const d = await loadBars(this.sym, this.cfg.tf);
       this.bars = d.bars; this.ohlc = d.ohlc; this.view = { end: this.bars.length, n: Math.min(this.bars.length, this.cfg.layout > 1 ? 90 : 140) };
       this.pats = d.ohlc ? detect(this.bars, Math.max(0, this.bars.length - 400)) : [];
+      this.reg = regimes(this.bars.map(x => x.c));
+      const rb = H.$('.regbadge', this.el), rn = this.reg.now;
+      if (rb) { rb.className = `regbadge ${rn || ''}`; rb.textContent = this.cfg.tf === '1Day' || this.cfg.tf === '1Week' ? (rn === 'bull' ? '▲ Bull trend' : rn === 'bear' ? '▼ Bear trend' : 'Mixed trend') : ''; rb.title = 'Bull: price and the 50-day average above the 200-day average. Bear: both below.'; }
+      capBadge(this.sym, H.$('.capbadge', this.el));
       note.textContent = !d.ohlc ? (d.synthetic ? 'Simulated daily prices: connect a market-data source for real candles and volume.' : 'Daily closes only: connect a market-data source for full candles and volume.') : 'Scroll to zoom, drag to pan.';
       this.drawings = load(this.dkey, []);
     } catch (e) { note.textContent = e.message; }
@@ -203,6 +236,20 @@ class Panel {
     // Bollinger
     g.save(); g.beginPath(); g.rect(0, G.top, G.w - G.axis, G.priceH - G.top); g.clip();
     if (ind.bb) { const bb = bands(c); g.fillStyle = C('--ac'); g.globalAlpha = 0.08; g.beginPath(); let s = false; for (let i = G.from; i < G.to; i++) if (bb[i]) { s ? g.lineTo(G.X(i), G.Y(bb[i].u)) : g.moveTo(G.X(i), G.Y(bb[i].u)); s = true; } for (let i = G.to - 1; i >= G.from; i--) if (bb[i]) g.lineTo(G.X(i), G.Y(bb[i].l)); g.fill(); g.globalAlpha = 1; }
+    // Bull and bear: shaded background, the 200-day average, crosses and 20% turns.
+    if (ind.regime && this.reg && (this.cfg.tf === '1Day' || this.cfg.tf === '1Week')) {
+      const R = this.reg;
+      for (let i = G.from; i < G.to; i++) if (R.state[i]) { g.fillStyle = R.state[i] === 'bull' ? 'rgba(34,197,94,.07)' : 'rgba(239,68,68,.08)'; g.fillRect(G.X(i) - G.bw / 2, G.top, G.bw + 0.5, G.priceH - G.top); }
+      line(g, G, R.s200, '#64748b', 1.6);
+      g.font = '10.5px Inter, system-ui, sans-serif'; g.textAlign = 'center';
+      for (const m of R.marks) {
+        if (m.i < G.from || m.i >= G.to) continue;
+        const X = G.X(m.i), up = m.kind === 'golden' || m.kind === 'bull', y = up ? G.Y(b[m.i].l ?? c[m.i]) + 22 : G.Y(b[m.i].h ?? c[m.i]) - 16;
+        g.fillStyle = up ? '#16a34a' : '#dc2626'; g.beginPath(); g.arc(X, y, 4, 0, 7); g.fill();
+        g.fillText(m.label, X, up ? y + 14 : y - 7);
+      }
+      g.font = '11px Inter, system-ui, sans-serif';
+    }
     // candles (or a line for close-only data)
     if (this.ohlc) {
       for (let i = G.from; i < G.to; i++) {

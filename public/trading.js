@@ -1,6 +1,8 @@
 // Alpaca trading pages: brokerage account & KYC, portfolio, trade ticket, orders, positions,
 // markets & news, option chains, watchlists, calendar & corporate actions.
 import { canvasNote } from './i18n.js';
+import * as OD from './orderdesk.js';
+import { profileCard } from './profile.js';
 let H; // helpers from app.js
 
 export function registerTrading(routes, helpers) {
@@ -449,6 +451,7 @@ async function trade(view, q) {
         <div class="chartbox"><canvas id="candles" style="height:340px"></canvas><div class="tip" id="tip" hidden></div></div>`}
       </div>
       <div class="card ticket" id="ticket"></div>
+      ${kind === 'stock' ? '<div class="card" id="profileCard"></div>' : ''}
       <div class="card" id="ordersCard"><div class="row" style="justify-content:space-between"><h2>Open orders for ${H.esc(symbol)}</h2><a href="#/orders">All orders →</a></div><div id="symOrders" class="tablewrap"></div></div>
       ${kind === 'option' ? '' : '<div class="card news" id="newsCard"><h2>News</h2><div id="news"><p class="mu">Loading…</p></div></div>'}
   </div>
@@ -495,6 +498,7 @@ async function trade(view, q) {
     H.$('#assetName', view).innerHTML = `Option on <a href="#/options?underlying=${root}">${root}</a>`;
   }
 
+  profileCard(H.$('#profileCard', view), symbol, H);
   const acct = await A('/account').catch(() => null);
   const loadOrders = async () => {
     const os = await A('/orders?status=open&symbols=' + encodeURIComponent(symbol)).catch(() => []);
@@ -526,7 +530,9 @@ function renderTicket(box, symbol, kind, acct, lastPx, q, onPlaced) {
     box.innerHTML = `<h2>${st.side === 'buy' ? 'Buy' : 'Sell'} ${H.esc(symbol)}</h2>
       <div class="seg" id="sideSeg"><button type="button" class="buy ${st.side === 'buy' ? 'on' : ''}" data-s="buy">Buy</button><button type="button" class="sell ${st.side === 'sell' ? 'on' : ''}" data-s="sell">Sell</button></div>
       <form id="tk">
+        <div id="tkDesk"></div>
         <label>Order type<select name="type">${typesFor.map(([v, n]) => `<option value="${v}" ${v === t ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+        <div id="tkGuide">${kind === 'option' ? '' : OD.guide(t, st.side, lastPx())}</div><div id="tkHold"></div>
         ${dollars ? `<div class="chips" style="margin-top:8px"><button type="button" data-m="qty" class="${st.mode === 'qty' ? 'on' : ''}">${kind === 'crypto' ? 'Quantity' : 'Shares'}</button><button type="button" data-m="notional" class="${st.mode === 'notional' ? 'on' : ''}">Dollars</button></div>` : ''}
         ${st.mode === 'notional' ? '<label>Amount (USD)<input name="notional" type="number" min="1" step="0.01" required></label>' : `<label>${kind === 'option' ? 'Contracts' : kind === 'crypto' ? 'Quantity' : 'Shares'}<input name="qty" type="number" min="0" step="${kind === 'option' ? '1' : 'any'}" required></label>`}
         ${needLimit ? '<label>Limit price<input name="limit_price" type="number" step="any" min="0" required></label>' : ''}
@@ -540,6 +546,8 @@ function renderTicket(box, symbol, kind, acct, lastPx, q, onPlaced) {
           ${t === 'limit' ? '<label class="check" style="margin-top:8px"><input type="checkbox" name="extended_hours"> Allow pre-market & after-hours (Day orders)</label>' : ''}
         </details>` : ''}
         ${kind === 'option' ? `<label>Position intent<select name="position_intent"><option value="">Automatic</option><option value="${st.side}_to_open">${st.side === 'buy' ? 'Buy' : 'Sell'} to open</option><option value="${st.side}_to_close">${st.side === 'buy' ? 'Buy' : 'Sell'} to close</option></select></label>` : ''}
+        ${kind === 'stock' && st.side === 'sell' ? '<label class="check"><input type="checkbox" name="allow_short"> Sell short (I do not own it; margin account with $2,000+ needed)</label>' : ''}
+        <div id="tkCost"></div><div id="tkBear"></div>
         <div class="kv" style="margin-top:12px"><span>Estimated ${st.side === 'buy' ? 'cost' : 'proceeds'}</span><span id="est">-</span>
           ${acct ? `<span>Buying power</span><span>${usd(kind === 'option' ? acct.optionsBuyingPower ?? acct.buyingPower : kind === 'crypto' ? acct.nonMarginableBuyingPower ?? acct.cash : acct.buyingPower)}</span>` : ''}</div>
         <button style="width:100%;margin-top:12px" class="${st.side === 'sell' ? 'danger' : ''}" id="review">Review order</button><div class="err" id="tkErr"></div>
@@ -553,11 +561,27 @@ function renderTicket(box, symbol, kind, acct, lastPx, q, onPlaced) {
       const px = +f.limit_price?.value || +f.stop_price?.value || lastPx(), mult = kind === 'option' ? 100 : 1;
       H.$('#est', box).textContent = st.mode === 'notional' ? usd(+f.notional.value || 0) : px && +f.qty?.value ? `~${usd(px * f.qty.value * mult)}` : '-';
     };
-    f.oninput = est; est();
+    // The desk: source and speed of the price, what the account holds, costs, guide.
+    let dt = null, dseq = 0;
+    const desk = async () => {
+      if (kind !== 'stock') return;
+      const my = ++dseq, qty = +f.qty?.value || (+f.notional?.value && lastPx() ? f.notional.value / lastPx() : 0);
+      const d = await H.api(`/desk/quote/${encodeURIComponent(symbol)}?account=alpaca&side=${st.side}&type=${st.type}&qty=${qty}`).catch(() => null);
+      if (!d || my !== dseq || !H.$('#tkDesk', box)) return;
+      st.hold = d.holding;
+      H.$('#tkDesk', box).innerHTML = OD.deskStrip(d);
+      H.$('#tkHold', box).innerHTML = OD.holdingLine(d.holding, symbol, st.side);
+      H.$('#tkGuide', box).innerHTML = OD.guide(st.type, st.side, d.price, f.limit_price?.value, f.stop_price?.value);
+      H.$('#tkCost', box).innerHTML = OD.costBox(d.costs, st.side);
+      H.$('#tkBear', box).innerHTML = st.side === 'sell' && kind === 'stock' && !(d.holding?.qty > 0) ? OD.bearishAlternatives(symbol) : '';
+      const all = H.$('#sellAll', box); if (all) all.onclick = () => { st.mode = 'qty'; if (f.qty) { f.qty.value = d.holding.available ?? d.holding.qty; est(); desk(); } };
+    };
+    f.oninput = () => { est(); clearTimeout(dt); dt = setTimeout(desk, 350); }; est(); desk();
     H.act(H.$('#review', box), async () => {
       const bad = [...f.querySelectorAll('input,select')].find(i => !i.checkValidity()); if (bad) { bad.focus(); throw new Error('Fill in the highlighted field'); }
       const o = { ...H.form(f), symbol, side: st.side, order_class: f.order_class?.value || 'simple' };
-      for (const k of Object.keys(o)) if (o[k] === '') delete o[k];
+      for (const k of Object.keys(o)) if (o[k] === '' || o[k] === false) delete o[k];
+      if (o.side === 'sell' && kind === 'stock' && !o.allow_short && st.hold && +o.qty > (st.hold.available ?? st.hold.qty) + 1e-9) throw new Error(st.hold.qty > 0 ? `You can sell up to ${st.hold.available ?? st.hold.qty} ${symbol}; use "Sell all" or tick "Sell short".` : `You do not own ${symbol} in this account. Tick "Sell short" only if you mean to short it.`);
       if (o.order_class === 'bracket' && lastPx()) o.ref_price = o.limit_price || lastPx();
       const live = H.$('.pill.warn', document.getElementById('top')) ? '<p class="warn"><b>This is a LIVE order with real money.</b></p>' : '';
       const desc = `${o.side.toUpperCase()} ${o.notional ? usd(+o.notional) + ' of' : o.qty} ${H.esc(symbol)} · ${o.type.replace('_', ' ')}${o.limit_price ? ' @ ' + o.limit_price : ''}${o.stop_price ? ' stop ' + o.stop_price : ''}${o.trail_percent ? ' trail ' + o.trail_percent + '%' : o.trail_price ? ' trail $' + o.trail_price : ''} · ${o.time_in_force.toUpperCase()}`;

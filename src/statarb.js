@@ -83,7 +83,8 @@ export function pairMatrix({ px, syms }, { lookback = 252, zWindow = 60 } = {}) 
 // s-score of every stock on the last `window` days of returns against the equal-weight basket.
 export function sScores(px, syms, end, o = DEFAULTS) {
   const W = o.window, ret = s => { const p = px[s], out = []; for (let t = end - W + 1; t <= end; t++) out.push(p[t] / p[t - 1] - 1); return out; };
-  const R = Object.fromEntries(syms.map(s => [s, ret(s)])), mkt = R[syms[0]].map((_, t) => mean(syms.map(s => R[s][t])));
+  // The common move: the equal-weight basket, or its first principal component (o.factor = 'pca').
+  const R = Object.fromEntries(syms.map(s => [s, ret(s)])), mkt = o.factor === 'pca' && pcaFactorRef ? pcaFactorRef(R) : R[syms[0]].map((_, t) => mean(syms.map(s => R[s][t])));
   return syms.map(s => {
     const { beta, res } = ols(R[s], mkt);
     const X = []; res.reduce((acc, e) => (X.push(acc + e), acc + e), 0);
@@ -143,9 +144,13 @@ function parse(b, user) {
   const o = { ...DEFAULTS };
   for (const [k, lo, hi] of [['window', 20, 250], ['entry', 0.5, 4], ['exit', 0, 3]]) if (b[k] !== undefined && b[k] !== '') { const v = +b[k]; if (!(v >= lo && v <= hi)) throw bad(`${k} must be between ${lo} and ${hi}`); o[k] = v; }
   if (o.exit >= o.entry) throw bad('The exit level must be below the entry level');
+  o.factor = b.factor === 'pca' ? 'pca' : 'basket';
+  o.method = ['ols', 'kalman', 'distance', 'ratio'].includes(b.method) ? b.method : 'ols';
   return { syms, o, lim };
 }
 
+let pcaFactorRef = null, testPairRef = null;
+import('./statscan.js').then(m => { pcaFactorRef = m.pcaFactor; testPairRef = m.testPair; }).catch(() => {});
 export const statArbRouter = express.Router();
 statArbRouter.use(requireUser);
 statArbRouter.get('/baskets', (req, res) => res.json({ baskets: BASKETS, limits: limitsFor(req.user), plans: LIMITS, defaults: DEFAULTS }));
@@ -155,5 +160,6 @@ statArbRouter.post('/analyze', async (req, res) => {
   if (!rateLimit('statarb:' + req.user.id, lim.refresh ? Math.ceil(3600 / lim.refresh) + 60 : 60, 3600e3)) throw bad('Too many refreshes this hour', 429);
   const d = await loadBasket(syms, req.user.id, true);
   const scores = sScores(d.px, syms, d.dates.length - 1, o).map(x => ({ ...x, signal: x.meanReverting ? signalOf(x.s, o) : 'flat' }));
-  res.json({ symbols: syms, params: o, asOf: d.dates[d.dates.length - 1], matrix: pairMatrix(d), scores, backtest: req.body.live ? null : backtest(d, o), refresh: lim.refresh, source: d.source });
+  const matrix = o.method === 'ols' || !testPairRef ? pairMatrix(d) : syms.flatMap((a, i) => syms.slice(i + 1).map(b2 => ({ a, b: b2, ...testPairRef(d.px[a], d.px[b2], o.method) })));
+  res.json({ symbols: syms, params: o, asOf: d.dates[d.dates.length - 1], matrix, scores, backtest: req.body.live ? null : backtest(d, o), refresh: lim.refresh, source: d.source });
 });

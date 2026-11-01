@@ -4,7 +4,7 @@ import { one, run, now, audit } from '../db.js';
 import { requireUser, rateLimit } from '../auth.js';
 import * as B from '../alpaca/broker.js';
 import * as D from '../alpaca/data.js';
-import { buildOrder, buildReplace } from '../alpaca/trading.js';
+import { buildOrder, buildReplace, sellCheck } from '../alpaca/trading.js';
 import { connections, tradingFor, requireTrading, saveCred, oauthEnabled, oauthStartUrl, extraAlpaca, requireTradingFor } from '../alpaca/connections.js';
 import { sseHandler, streamEnabled } from '../alpaca/stream.js';
 import { syncAlpacaFills, accountSummary, lastPrice, riskDeps } from '../brokers.js';
@@ -207,6 +207,7 @@ router.post('/orders', async (req, res) => {
   const t = await T(req);
   if (!rateLimit('order:' + req.user.id, 60, 60e3)) throw Object.assign(new Error('Too many orders in a minute'), { status: 429 });
   const body = buildOrder(req.body || {});
+  await sellCheck(t, body, { allowShort: req.body?.allow_short === true || req.body?.allow_short === 'true' });
   const chk = await checkOrder(req.user.id, 'alpaca', { symbol: body.symbol || '', side: body.side || 'buy', qty: +body.qty || 0, notional: +body.notional || 0, limitPrice: +body.limit_price || 0, order_class: body.order_class, legs: body.legs }, 'web', riskDeps(req.user.id));
   if (chk?.resize && !body.order_class) { if (chk.resize.notional && body.notional) body.notional = chk.resize.notional.toFixed(2); else if (chk.resize.qty && body.qty) body.qty = String(chk.resize.qty); }
   const ref = crypto.randomUUID(), quote = body.symbol ? await quoteAt(body.symbol, null) : null;

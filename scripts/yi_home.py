@@ -502,6 +502,29 @@ YI.update({
 })
 YI.update({"Download the Android app": "אראפלאדן די אנדרויד עפּ"})
 YI.update({"Trust": "צוטרוי", "System status": "סיסטעם סטאַטוס", "Security": "זיכערהייט", "Insurance and protection": "פאַרזיכערונג און שוץ"})
+YI.update({
+    "Brightfolio: trade and invest from one place": "Brightfolio: האנדלט און אינוועסטירט פון איין ארט",
+    "A professional trading desk and a long-term investing plan on your own brokerage account: stocks, ETFs, options, futures, funds, bonds and savings, with automation and Reality Check. In English and Yiddish.": "א פראפעסיאנעלער טרעידינג טיש און א לאנג-טערמיניגער אינוועסטירונג פלאן אויף אייער אייגענעם בראקערעדזש אקאונט: סטאקס, ETFs, אפציעס, פיוטשערס, פאנדס, באנדס און סעיווינגס, מיט אויטאמאציע און Reality Check. אויף ענגליש און אידיש.",
+    "<b>Trade today. Build wealth for decades.</b> One platform for both, on your own brokerage account.": "<b>האנדלט היינט. בויט עשירות פאר צענדליגער יארן.</b> איין פלאטפארמע פאר ביידע, אויף אייער אייגענעם בראקערעדזש אקאונט.",
+    "Trade every day. <span>Invest for a lifetime.</span>": "האנדלט יעדן טאג. <span>אינוועסטירט פארן גאנצן לעבן.</span>",
+    "One platform for both. Trade stocks, options, futures and crypto with a professional order desk, and build long-term wealth with index plans, funds, bonds, savings, real estate and private markets, all on your own brokerage account.": "איין פלאטפארמע פאר ביידע. האנדלט סטאקס, אפציעס, פיוטשערס און קריפטא מיט א פראפעסיאנעלן ארדער-טיש, און בויט לאנג-טערמיניגע עשירות מיט אינדעקס פלענער, פאנדס, באנדס, סעיווינגס, ריעל עסטעיט און פריוואטע מארקעטס, אלעס אויף אייער אייגענעם בראקערעדזש אקאונט.",
+    "Two ways to grow your money. One place.": "צוויי וועגן צו וואקסן אייער געלט. איין ארט.",
+    "For trading": "פאר האנדלען", "For investing": "פאר אינוועסטירן",
+    "A professional trading desk": "א פראפעסיאנעלער טרעידינג טיש", "Wealth that builds itself": "עשירות וואס בויט זיך אליין",
+    "Live order desk: price source and speed, bid and ask, costs and slippage before you send": "לעבעדיגער ארדער-טיש: פון וואו דער פרייז קומט און ווי שנעל, ביד און אַסק, קאסטן און סליפעדזש איידער איר שיקט",
+    "Market, limit, stop and stop-limit orders, explained with a picture": "מארקעט, לימיט, סטאפ און סטאפ-לימיט ארדערס, ערקלערט מיט א בילד",
+    "Charts with bull and bear market signals and company size": "טשארטס מיט סיגנאלן פאר בול און בער מארקעטס און די גרייס פון דער פירמע",
+    "Scanners for growth and value stocks, and statistical arbitrage across the market": "סקענערס פאר וואוקס און ווערט סטאקס, און סטאטיסטישע ארביטראזש איבערן גאנצן מארק",
+    "Bots, alerts and rules that trade while you work": "באטס, אלערטס און כללים וואס האנדלען בשעת איר ארבעט",
+    "Practise with $100,000 in paper money, futures included": "פראקטיצירט מיט $100,000 פאפיר-געלט, פיוטשערס אריינגערעכנט",
+    "Start trading free": "הייבט אן האנדלען אומזיסט", "Start investing free": "הייבט אן אינוועסטירן אומזיסט",
+    "An S&amp;P 500 plan that invests every month on its own": "אן S&amp;P 500 פלאן וואס אינוועסטירט אליין יעדן חודש",
+    "Index funds and ETFs compared by what they cost you each year": "אינדעקס פאנדס און ETFs פארגליכן לויט וויפיל זיי קאסטן אייך יעדעס יאר",
+    "Bonds, Treasury bills and savings, with today's rates where you live": "באנדס, טרעזשורי בילס און סעיווינגס, מיט די היינטיגע ראטעס וואו איר וואוינט",
+    "One mix for all your accounts, rebalanced with one tap": "איין מישונג פאר אלע אייערע אקאונטס, איבערבאלאנסירט מיט איין קליק",
+    "Your whole net worth: banks, crypto, real estate and private investments": "אייער גאנצע נעטא ווערט: בענק, קריפטא, ריעל עסטעיט און פריוואטע אינוועסטמענטס",
+    "Tax-saving autopilot and a plain-English weekly money brief": "א שטייער-שפארנדיגער אויטאפילאט און א קלארער וועכנטלעכער געלט-באריכט",
+})
 # Translations made with Yiddish Labs (npm run yiddish:import) take precedence.
 import json as _json, os as _os
 _labs = _os.path.join(_os.path.dirname(__file__), 'yi_labs.json')

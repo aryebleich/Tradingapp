@@ -185,9 +185,10 @@ test('other brokerages: Tradier connect, summary, orders and shorts', async () =
   assert.equal(s.equity, 25000); assert.equal(s.positions[0].price, 65); assert.equal(s.positions[0].pnl, 50);
   // Free users place their own orders on a real brokerage too; automation there needs a paid plan.
   assert.equal((await call('/schedule', { account: 'tradier', symbol: 'KO', side: 'buy', qty: 1 })).status, 402);
-  // An upgraded user's sell of more than held opens a short.
+  // A sell of something not held is refused unless the user chose to sell short; then it opens a short.
   await run("UPDATE users SET plan = 'pro', plan_status = 'active' WHERE email = 'broker@example.com'");
-  const o = (await call('/orders', { account: 'tradier', symbol: 'PEP', side: 'sell', qty: 3 })).body;
+  assert.equal((await call('/orders', { account: 'tradier', symbol: 'PEP', side: 'sell', qty: 3 })).status, 409);
+  const o = (await call('/orders', { account: 'tradier', symbol: 'PEP', side: 'sell', qty: 3, allowShort: true })).body;
   assert.equal(o.id, '777');
   const post = seen.filter(x => x.method === 'POST' && x.url === '/v1/accounts/VA123/orders').pop();
   assert.match(post.body, /side=sell_short/); assert.match(post.body, /quantity=3/);

@@ -24,6 +24,12 @@ export const JOBS = [
   ['k1remind', 1440, async t => (await import('./altlive.js')).k1Reminders(t)],
   ['brief', 60, async t => (await import('./brief.js')).weeklyBriefs(t)],
   ['taxpilot', 60, async t => (await import('./taxpilot.js')).weeklyScan(t)],
+  // Market data sources: measure each one hourly so "fastest first" stays current.
+  ['databench', 60, async () => (await import('./datasources.js')).benchmark('SPY')],
+  // Paper limit / stop orders: fill the ones that reached their price.
+  ['paperorders', 1, async t => (await import('./paperorders.js')).runPaperOrders(t)],
+  // Tax rates on automatic move to the new year's tables in January.
+  ['taxyear', 1440, async t => (await import('./taxrates.js')).yearlyUpdate(t)],
   ['status', 5, async t => (await import('./trust.js')).checkAll(t)],
   // Rules across accounts: check due rules on weekdays after 10:30 New York (approval needed).
   ['rules', 30, async t => (await import('./rules.js')).runRules(t)],

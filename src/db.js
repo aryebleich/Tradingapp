@@ -579,6 +579,50 @@ CREATE TABLE IF NOT EXISTS tax_pilot (
   last_scan INTEGER,
   harvested REAL NOT NULL DEFAULT 0
 );
+-- Paper account limit, stop and stop-limit orders waiting for their price.
+CREATE TABLE IF NOT EXISTS paper_orders (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  symbol TEXT NOT NULL,
+  side TEXT NOT NULL,
+  qty REAL NOT NULL,
+  type TEXT NOT NULL,
+  limit_price REAL,
+  stop_price REAL,
+  tif TEXT NOT NULL DEFAULT 'day',
+  day TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'open',
+  triggered INTEGER NOT NULL DEFAULT 0,
+  fill_price REAL,
+  note TEXT,
+  created_at INTEGER NOT NULL,
+  filled_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS paper_orders_open ON paper_orders(status, user_id);
+-- Practice futures positions (contracts) in the paper account.
+CREATE TABLE IF NOT EXISTS paper_futures (
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  root TEXT NOT NULL,
+  contracts INTEGER NOT NULL,
+  entry REAL NOT NULL,
+  opened_at INTEGER NOT NULL,
+  PRIMARY KEY (user_id, root)
+);
+-- Business calls, texts and email (Admin → Calls, texts & email).
+CREATE TABLE IF NOT EXISTS comms (
+  id INTEGER PRIMARY KEY,
+  channel TEXT NOT NULL,
+  direction TEXT NOT NULL DEFAULT 'in',
+  party TEXT NOT NULL,
+  name TEXT,
+  subject TEXT,
+  body TEXT NOT NULL,
+  media TEXT,
+  duration INTEGER,
+  status TEXT NOT NULL DEFAULT 'open',
+  at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS comms_party ON comms(party, id);
 -- Money in and out of each account, by date, for time-weighted returns.
 CREATE TABLE IF NOT EXISTS cashflows (
   id INTEGER PRIMARY KEY,

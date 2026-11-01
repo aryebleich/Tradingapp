@@ -115,7 +115,11 @@ export function registerHotline(app, { twilioOk, twiml }) {
   // ---------- welcome ----------
   app.post('/twilio/voice', step(async (req, res, o) => {
     const u = await userByPhone(normalizePhone(req.body.From));
+    // Business calls: put straight through when "forward all calls" is on (Admin → Calls, texts & email).
+    const C = await import('./comms.js'), fwd = C.forwardTwiml((process.env.PUBLIC_URL || '').replace(/\/$/, ''));
+    if (fwd && C.settings().forwardAll) return twiml(res, `${say(o.greeting)}${fwd}`);
     if (!u) {
+      if (fwd) return twiml(res, gather('/twilio/voice/signup', `${o.greeting} ${o.allowSignup ? 'Press 1 to open a free account by phone. ' : ''}Press 9 to talk to us. Press 0 to hang up.`) + bye('Goodbye.'));
       if (!o.allowSignup) return twiml(res, bye(`${o.greeting} This phone number is not linked to an account. Add it in the app under Settings, Phone. Goodbye.`));
       return twiml(res, gather('/twilio/voice/signup', `${o.greeting} This phone number does not have an account yet. Press 1 to open a free account. Press 0 to hang up.`) + bye('Goodbye.'));
     }
@@ -147,7 +151,7 @@ export function registerHotline(app, { twilioOk, twiml }) {
       return twiml(res, menu(e, text));
     }
     if (d === '3') return twiml(res, menu(e, await clockText(u)));
-    if (d === '4') return twiml(res, gather(`/twilio/voice/trade/ticker${q({ e })}`, 'Pick a stock. ' + o.tickers.map((s, i) => `Press ${i + 1} for ${spell(s)}.`).join(' ') + ' Press star to go back.', { digits: 1 }) + menu(e));
+    if (d === '4') return twiml(res, gather(`/twilio/voice/trade/ticker${q({ e })}`, 'Pick a stock. ' + o.tickers.map((s, i) => `Press ${i + 1} for ${spell(s)}.`).join(' ') + ' Press 0 to spell any ticker on the keypad. Press star to go back.', { digits: 1 }) + menu(e));
     if (d === '5') return twiml(res, pinPrompt(u, { e, do: 'cancel' }, 'To cancel all open orders,'));
     if (d === '6') return twiml(res, gather(`/twilio/voice/closeall${q({ e })}`, `This sells every position in your ${e} account at the market price. Press 1 to continue. Press 2 to go back.`) + menu(e));
     if (d === '7' && aiOn()) return twiml(res, `<Gather input="speech" speechTimeout="auto" timeout="6" action="${xml(`/twilio/voice/ask${q({ e })}`)}" method="POST">${say('Ask your question after the tone. For example: how is my account doing?')}</Gather>${menu(e)}`);
@@ -169,29 +173,47 @@ export function registerHotline(app, { twilioOk, twiml }) {
   // ---------- trade ----------
   app.post('/twilio/voice/trade/ticker', step(async (req, res, o) => {
     const u = await caller(req); if (!u) return twiml(res, bye('Goodbye.'));
-    const e = envOf(req, u), s = o.tickers[+req.body.Digits - 1];
+    const e = envOf(req, u);
+    if (req.body.Digits === '0') return twiml(res, gather(`/twilio/voice/trade/keypad${q({ e })}`, 'Spell the ticker on the keypad, one key for each letter: 2 for A, B or C; 3 for D, E or F; and so on, 7 for P, Q, R or S, and 9 for W, X, Y or Z. Then press pound.', { digits: 0, finish: '#', timeout: 12 }) + menu(e));
+    const s = o.tickers[+req.body.Digits - 1];
     if (!s) return twiml(res, menu(e));
     twiml(res, gather(`/twilio/voice/trade/side${q({ e, s })}`, `${spell(s)}. Press 1 to buy. Press 2 to sell.`) + menu(e));
+  }));
+  // A ticker typed on the keypad: one key per letter; the matches are read out to choose from.
+  app.post('/twilio/voice/trade/keypad', step(async (req, res, o) => {
+    const u = await caller(req); if (!u) return twiml(res, bye('Goodbye.'));
+    const e = envOf(req, u), digits = String(req.body.Digits || '').replace(/\D/g, '');
+    if (!/^[2-9]{1,5}$/.test(digits)) return twiml(res, menu(e, 'Use the keys 2 to 9, one for each letter.'));
+    const found = await keypadTickers(digits, o.tickers);
+    if (!found.length) return twiml(res, menu(e, `No ticker matches ${digits.split('').join(' ')}.`));
+    if (found.length === 1) return twiml(res, gather(`/twilio/voice/trade/side${q({ e, s: found[0], k: 1 })}`, `${spell(found[0])}. Press 1 to buy. Press 2 to sell.`) + menu(e));
+    twiml(res, gather(`/twilio/voice/trade/pick${q({ e, c: found.join(',') })}`, found.map((s, i) => `Press ${i + 1} for ${spell(s)}.`).join(' '), { digits: 1 }) + menu(e));
+  }));
+  app.post('/twilio/voice/trade/pick', step(async (req, res) => {
+    const u = await caller(req); if (!u) return twiml(res, bye('Goodbye.'));
+    const e = envOf(req, u), s = String(req.query.c || '').split(',')[+req.body.Digits - 1];
+    if (!s) return twiml(res, menu(e));
+    twiml(res, gather(`/twilio/voice/trade/side${q({ e, s, k: 1 })}`, `${spell(s)}. Press 1 to buy. Press 2 to sell.`) + menu(e));
   }));
   app.post('/twilio/voice/trade/side', step(async (req, res) => {
     const u = await caller(req); if (!u) return twiml(res, bye('Goodbye.'));
     const e = envOf(req, u), s = req.query.s, side = { 1: 'buy', 2: 'sell' }[req.body.Digits];
     if (!side) return twiml(res, menu(e));
-    twiml(res, gather(`/twilio/voice/trade/qty${q({ e, s, side })}`, `How many shares do you want to ${side}? Enter the number, then press pound.`, { digits: 0, finish: '#', timeout: 10 }) + menu(e));
+    twiml(res, gather(`/twilio/voice/trade/qty${q({ e, s, side, k: req.query.k })}`, `How many shares do you want to ${side}? Enter the number, then press pound.`, { digits: 0, finish: '#', timeout: 10 }) + menu(e));
   }));
   app.post('/twilio/voice/trade/qty', step(async (req, res, o) => {
     const u = await caller(req); if (!u) return twiml(res, bye('Goodbye.'));
-    const e = envOf(req, u), { s, side } = req.query, qty = Math.floor(+String(req.body.Digits || '').replace(/\D/g, ''));
+    const e = envOf(req, u), { s, side, k } = req.query, qty = Math.floor(+String(req.body.Digits || '').replace(/\D/g, ''));
     if (!(qty >= 1)) return twiml(res, menu(e, 'No quantity entered.'));
-    if (qty > o.maxQty) return twiml(res, gather(`/twilio/voice/trade/qty${q({ e, s, side })}`, `The phone line allows up to ${o.maxQty.toLocaleString('en-US')} shares per order. Enter a smaller number, then press pound.`, { digits: 0, finish: '#', timeout: 10 }) + menu(e));
+    if (qty > o.maxQty) return twiml(res, gather(`/twilio/voice/trade/qty${q({ e, s, side, k })}`, `The phone line allows up to ${o.maxQty.toLocaleString('en-US')} shares per order. Enter a smaller number, then press pound.`, { digits: 0, finish: '#', timeout: 10 }) + menu(e));
     const px = await lastPrice(s, u.id).catch(() => null);
-    twiml(res, gather(`/twilio/voice/trade/confirm${q({ e, s, side, n: qty })}`, `${side === 'buy' ? 'Buy' : 'Sell'} ${qty} ${qty === 1 ? 'share' : 'shares'} of ${spell(s)} at the market price${px ? `, about ${money(px * qty)} in total` : ''}, in your ${e} account. Press 1 to confirm. Press 2 to cancel.`) + menu(e));
+    twiml(res, gather(`/twilio/voice/trade/confirm${q({ e, s, side, n: qty, k })}`, `${side === 'buy' ? 'Buy' : 'Sell'} ${qty} ${qty === 1 ? 'share' : 'shares'} of ${spell(s)} at the market price${px ? `, about ${money(px * qty)} in total` : ''}, in your ${e} account. Press 1 to confirm. Press 2 to cancel.`) + menu(e));
   }));
   app.post('/twilio/voice/trade/confirm', step(async (req, res) => {
     const u = await caller(req); if (!u) return twiml(res, bye('Goodbye.'));
     const e = envOf(req, u);
     if (req.body.Digits !== '1') return twiml(res, menu(e, 'Order cancelled.'));
-    twiml(res, pinPrompt(u, { e, do: 'trade', s: req.query.s, side: req.query.side, n: req.query.n }, 'To place the order,'));
+    twiml(res, pinPrompt(u, { e, do: 'trade', s: req.query.s, side: req.query.side, n: req.query.n, k: req.query.k }, 'To place the order,'));
   }));
   app.post('/twilio/voice/closeall', step(async (req, res) => {
     const u = await caller(req); if (!u) return twiml(res, bye('Goodbye.'));
@@ -216,7 +238,7 @@ export function registerHotline(app, { twilioOk, twiml }) {
     }
     if (p.do === 'trade') {
       const n = Math.floor(+p.n);
-      if (!o.tickers.includes(p.s) || !['buy', 'sell'].includes(p.side) || !(n >= 1 && n <= o.maxQty)) return twiml(res, menu(e, 'That order is no longer valid.'));
+      if (!(o.tickers.includes(p.s) || (p.k === '1' && /^[A-Z][A-Z0-9.]{0,9}$/.test(p.s || ''))) || !['buy', 'sell'].includes(p.side) || !(n >= 1 && n <= o.maxQty)) return twiml(res, menu(e, 'That order is no longer valid.'));
       try {
         const r = await placeOrder(u.id, acct, { symbol: p.s, side: p.side, qty: n, type: 'market' }, 'hotline');
         await audit(u.id, 'hotline_order', { account: acct, symbol: p.s, side: p.side, qty: n }, req.body.From);
@@ -267,6 +289,7 @@ export function registerHotline(app, { twilioOk, twiml }) {
   // ---------- open an account by phone ----------
   // 1: text a 6-digit code to the calling number (proves the caller holds that phone).
   app.post('/twilio/voice/signup', step(async (req, res, o) => {
+    if (req.body.Digits === '9') { const C = await import('./comms.js'), fwd = C.forwardTwiml((process.env.PUBLIC_URL || '').replace(/\/$/, '')); if (fwd) return twiml(res, say('Connecting you now.') + fwd); }
     if (req.body.Digits !== '1' || !o.allowSignup) return twiml(res, bye('Goodbye.'));
     const phone = normalizePhone(req.body.From), sid = req.body.CallSid;
     if (!/^\+\d{10,15}$/.test(phone) || await userByPhone(phone)) return twiml(res, bye('This number cannot open an account by phone. Please use the app. Goodbye.'));
@@ -314,6 +337,18 @@ export function registerHotline(app, { twilioOk, twiml }) {
     if (!c) return res.sendStatus(404);
     res.type(c.mime).set('Cache-Control', 'public, max-age=300').send(c.data);
   });
+}
+
+// Keypad spelling: 2 = ABC, 3 = DEF, 4 = GHI, 5 = JKL, 6 = MNO, 7 = PQRS, 8 = TUV, 9 = WXYZ.
+const KEYS = { A: 2, B: 2, C: 2, D: 3, E: 3, F: 3, G: 4, H: 4, I: 4, J: 5, K: 5, L: 5, M: 6, N: 6, O: 6, P: 7, Q: 7, R: 7, S: 7, T: 8, U: 8, V: 8, W: 9, X: 9, Y: 9, Z: 9 };
+export const keypadOf = t => String(t).toUpperCase().replace(/[^A-Z]/g, '').split('').map(c => KEYS[c]).join('');
+// Tickers that match the keys, best known first (the line's own stocks, big companies and ETFs).
+export async function keypadTickers(digits, own = []) {
+  const F = await import('./fundamentals.js');
+  const known = [...own, ...F.UNIVERSE, ...Object.keys(F.ETFS), 'SPY', 'QQQ', 'DIA', 'IWM'];
+  const all = Object.keys(await F.tickerCiks().catch(() => ({}))).filter(t => /^[A-Z]{1,5}$/.test(t));
+  const hits = [...new Set([...known, ...all])].filter(t => /^[A-Z.]{1,6}$/.test(t) && !t.includes('.') && keypadOf(t) === digits);
+  return hits.slice(0, 5);
 }
 
 // Market clock: the broker's clock when the caller has an Alpaca account, else New York time.

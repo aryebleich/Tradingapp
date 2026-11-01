@@ -35,7 +35,7 @@ test('register, trade, schedule, tax, 2FA login', async () => {
   assert.equal(buy.body.status, 'filled');
   const sell = await call('/orders', { account: 'paper', symbol: 'SPY', side: 'sell', qty: 4 });
   assert.equal(sell.body.status, 'filled');
-  assert.equal((await call('/orders', { account: 'paper', symbol: 'SPY', side: 'sell', qty: 100 })).status, 400);
+  assert.equal((await call('/orders', { account: 'paper', symbol: 'SPY', side: 'sell', qty: 100 })).status, 409);
 
   const acct = await call('/account?account=paper');
   assert.equal(acct.body.positions[0].qty, 6);
