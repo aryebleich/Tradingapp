@@ -1,10 +1,10 @@
 {
- "at": 1793635938540,
- "since": "6de5ade1964dfc6b03064ba36844326ca29c2b66",
- "translated": 6,
- "kept": 1,
+ "at": 1793650421240,
+ "since": "bf882adfea629c9f59afed8efd01fc2cc21ffcc6",
+ "translated": 14,
+ "kept": 9,
  "notReached": 0,
- "requests": 4,
- "credits": 14093,
+ "requests": 14,
+ "credits": 14029,
  "stopped": null
 }

@@ -1562,5 +1562,19 @@ export default {
  "How did SPY move this year?": "וויאזוי האט SPY פערפארמט דעם יאר?",
  "Did my practice orders fill? What is my buying power?": "זענען מיינע פרעקטיס ארדערס שוין אויסגעפירט געווארן? וואס איז מיין יעצטיגע בייאינג פאער?",
  "What do I hold in my real account?": "וועלכע פאזיציעס האלט איך יעצט אין מיין לייוו אקאונט?",
- "Place paper order": "לייג אריין די פעיפער ארידער"
+ "Place paper order": "לייג אריין די פעיפער ארידער",
+ "Start a new strategy": "לאנטשן א פרישן מהלך",
+ "Start with this design": "הייבט אן מיט דעם דאזיגן דיזיין",
+ "What each plan includes": "וואס איז אלס אריינגערעכנט אין יעדן פלאן",
+ "ETFs and stocks": "סטאקס און ETF'ס",
+ "Fill the empty ones with the examples": "זייט אזוי גוט און פילט אויס די ליידיגע פלעצער מיט די משלים וואס זענען דא צוגעשטעלט.",
+ "Fill with the examples": "ברענגט אראפ עטליכע דוגמאות",
+ "+ Add a step": "לייג צו א סטעפ",
+ "Publish to the community": "מפרסם זיין פאר'ן ציבור",
+ "Description for others (optional)": "באשרייבונג פאר אנדערע (נישט קיין חוב)",
+ "Open a copy": "עפנט א קאפי",
+ "Place real order": "לייג ארויף א ריכטיגע ארדער",
+ "Real-money orders by chat": "מאכן ארדערס מיט עכטע געלט דורכן טשעט",
+ "Let the assistant prepare real-money orders": "ערלויב פארן אסיסטענט צוצוגרייטן באשטעלונגען מיט עכטע געלט.",
+ "Limit per order ($)": "ארדער לימיט ($)"
 };
