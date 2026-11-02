@@ -30,7 +30,8 @@ test('load shedding keeps trading up; capacity planner and metrics', async () =>
   // Market open on a Wednesday in New York is a scale-up moment; a macro event day as well.
   const open = Date.parse('2026-10-21T13:35:00Z'); // 9:35 New York
   assert.ok(R.recommendedReplicas(open, { base: 2 }).replicas >= 6);
-  assert.deepEqual(R.recommendedReplicas(Date.parse('2026-10-24T18:00:00Z'), { base: 2 }).reasons, ['normal']); // Saturday
+  // Saturday, with the test machine's own load held at zero (a busy CI runner would add "current load").
+  R.forceLoad(0); try { assert.deepEqual(R.recommendedReplicas(Date.parse('2026-10-24T18:00:00Z'), { base: 2 }).reasons, ['normal']); } finally { R.forceLoad(null); }
   assert.equal((await fetch(srv.base + '/readyz')).status, 200);
 });
 
