@@ -763,6 +763,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS credit_ledger_ref ON credit_ledger (ref) WHERE
 
 // Columns added after the first release; ALTER fails harmlessly when they already exist.
 const MIGRATIONS = [
+  'ALTER TABLE user_strategies ADD COLUMN leverage REAL NOT NULL DEFAULT 1',
+  'ALTER TABLE user_strategies ADD COLUMN public INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE user_strategies ADD COLUMN published_at INTEGER',
+  'ALTER TABLE user_strategies ADD COLUMN notes TEXT',
+  'ALTER TABLE user_strategies ADD COLUMN copied_from INTEGER',
   // Scheduled trades at a fixed New York time, on chosen weekdays, as market or limit orders.
   'ALTER TABLE scheduled_orders ADD COLUMN run_minutes INTEGER',
   'ALTER TABLE scheduled_orders ADD COLUMN weekdays TEXT',

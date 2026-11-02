@@ -4,6 +4,7 @@ import { one, all, run, now } from '../db.js';
 import { adviserMode } from '../site.js';
 import { placeOrder, accountSummary, lastPrice, validSymbol } from '../brokers.js';
 import { TEMPLATES, template } from './templates.js';
+import { isDesign, materialize, missingSlots } from './blueprints.js';
 import { Market, decide, tickersOf, sizeOrders, stopsFor, isRebalanceDay, keyOf } from './engine.js';
 import { FNS } from './indicators.js';
 import { realityFor } from './reality.js';
@@ -14,10 +15,20 @@ export { ACCOUNT_IDS as ACCOUNTS } from '../brokers.js';
 const bad = (msg, status = 400) => Object.assign(new Error(msg), { status });
 const J = s => { try { return JSON.parse(s || 'null'); } catch { return null; } };
 
-export const parse = row => row && ({
-  id: row.id, userId: row.user_id, templateId: row.template_id, name: row.name, spec: J(row.spec), account: row.account, allocation: row.allocation, cashBuffer: row.cash_buffer,
-  mode: row.mode, wholeShares: !!row.whole_shares, stopPct: row.stop_pct, runAt: row.run_at, state: J(row.state) || {}, lastRun: row.last_run, lastResult: J(row.last_result), createdAt: row.created_at,
-});
+// `design` is what the user edits (ticker slots and lists for strategies made from a blueprint);
+// `spec` is the concrete rules the engine runs, ready once every slot has a ticker.
+export const parse = row => {
+  if (!row) return row;
+  const design = J(row.spec);
+  let spec = design, ready = true, missing = [];
+  if (isDesign(design)) { missing = missingSlots(design); ready = !missing.length; if (ready) spec = materialize(design); }
+  return {
+    id: row.id, userId: row.user_id, templateId: row.template_id, name: row.name, design, spec, ready, missing, account: row.account, allocation: row.allocation, cashBuffer: row.cash_buffer,
+    mode: row.mode, wholeShares: !!row.whole_shares, stopPct: row.stop_pct, runAt: row.run_at, state: J(row.state) || {}, lastRun: row.last_run, lastResult: J(row.last_result), createdAt: row.created_at,
+    leverage: row.leverage || 1, public: !!row.public, publishedAt: row.published_at || null, notes: row.notes || '',
+  };
+};
+const needTickers = s => bad(`Choose the tickers first: ${s.missing.join(', ')}`, 409);
 export async function mine(id, userId) {
   const r = await one('SELECT * FROM user_strategies WHERE id = ? AND user_id = ?', +id, userId);
   if (!r) throw bad('Strategy not found', 404);
@@ -87,6 +98,24 @@ export function validateSpec(spec, base) {
   return out;
 }
 
+// ---------- margin ----------
+// How much margin the account allows for positions held overnight: none on the practice
+// account or a cash account, up to 2x on a margin account (Reg T), and none under $2,000 equity.
+export async function marginMultiple(userId, account) {
+  if (account === 'paper') return { max: 1, margin: false, why: 'The practice account has no margin.' };
+  if (account === 'alpaca' || /^alpaca/.test(account)) {
+    const { tradingForAccount } = await import('../alpaca/connections.js');
+    const t = await tradingForAccount(userId, account).catch(() => null);
+    const a = t ? await t.account().catch(() => null) : null;
+    if (!a) return { max: 1, margin: false, why: 'Connect the account to read its margin.' };
+    const mult = +a.multiplier || 1, eq = +a.equity || 0;
+    if (mult <= 1) return { max: 1, margin: false, why: 'This is a cash account (no margin).' };
+    if (eq < 2000) return { max: 1, margin: true, why: 'Margin needs at least $2,000 in the account (FINRA rule).' };
+    return { max: Math.min(2, mult), margin: true, why: `Margin account (${mult}x buying power${mult > 2 ? ' during the day' : ''}); strategies hold overnight, so up to 2x.` };
+  }
+  return { max: 1, margin: false, why: 'Margin is used only on Alpaca accounts for now.' };
+}
+
 // ---------- walkdown + orders ----------
 
 const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
@@ -95,12 +124,15 @@ export async function capitalFor(s, userId) {
   const a = await accountSummary(userId, s.account);
   // Reality Check auto-throttle: less money (or none) while live results drift from the backtest.
   const throttle = s.state.throttle ? s.state.reality?.multiplier ?? 1 : 1;
-  const investable = a.equity * (s.allocation / 100) * (1 - s.cashBuffer / 100) * throttle;
-  return { equity: a.equity, cash: a.cash, investable, throttle, positions: a.positions };
+  // Margin: up to the multiple the user chose, never more than the account allows today.
+  const leverage = Math.min(s.leverage || 1, await marginMultiple(userId, s.account).then(m => m.max).catch(() => 1));
+  const investable = a.equity * (s.allocation / 100) * (1 - s.cashBuffer / 100) * throttle * leverage;
+  return { equity: a.equity, cash: a.cash, investable, throttle, leverage, positions: a.positions };
 }
 
 // The full picture for the strategy page: today's walk, target weights, sized orders, stops.
 export async function walkdown(s, userId, { overrides, spec } = {}) {
+  if (!spec && !s.ready) throw needTickers(s);
   spec = spec || s.spec;
   const mkt = await new Market(userId).load(tickersOf(spec));
   const day = today();
@@ -164,7 +196,7 @@ export async function runAuto(t = now(), claim) {
   const rows = (await all("SELECT * FROM user_strategies WHERE mode IN ('auto', 'approve')")).map(parse);
   let ran = 0;
   for (const s of rows) {
-    if (n.minutes < s.runAt || n.minutes > 960 || !isRebalanceDay(s.spec, n.day)) continue;
+    if (!s.ready || n.minutes < s.runAt || n.minutes > 960 || !isRebalanceDay(s.spec, n.day)) continue;
     if (!await claim(`strategy:${s.id}:${n.day}`)) continue;
     // Ready-made strategies trade real accounts by themselves only in registered-adviser mode.
     // Otherwise (and in "approve" mode) the orders are prepared and the user approves them.
@@ -236,6 +268,7 @@ export async function recordDaily(t = now()) {
   const rows = (await all("SELECT * FROM user_strategies WHERE mode = 'auto' OR last_result IS NOT NULL")).map(parse);
   let done = 0;
   for (const s of rows) {
+    if (!s.ready) continue;
     try {
       const mkt = await new Market(s.userId).load(tickersOf(s.spec));
       const cal = mkt.calendar('SPY');

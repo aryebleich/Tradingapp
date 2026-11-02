@@ -83,7 +83,7 @@ test('approve each trade: orders are prepared, wait for the user, and are placed
   const s = await serve();
   try {
     const u = s.client(); const me = await u.signup('approve@example.com');
-    const st = (await u('/library', { templateId: 'bg_ensemble' })).body;
+    const st = (await u('/library', { blueprintId: 'bp_regime_tree', fillExamples: true })).body;
     // On every plan: approving each trade on a real account is the user's own trading.
     assert.equal((await u('/library/' + st.id, { mode: 'approve', account: 'alpaca' }, 'PUT')).status, 200);
     assert.equal((await u('/library/' + st.id, { mode: 'auto', account: 'alpaca' }, 'PUT')).status, 402);

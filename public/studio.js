@@ -43,7 +43,7 @@ async function assistant(view) {
     <form id="ask" class="chatin"><textarea name="q" rows="2" placeholder="Ask anything, or describe a strategy..." aria-label="Message"></textarea>
       <div class="chatbtns">${Rec ? '<button type="button" class="ghost" id="mic" title="Speak">🎤</button>' : ''}<button type="button" class="ghost ${speak ? 'on' : ''}" id="spk" title="Read answers aloud">🔊</button><button id="send">Send</button></div></form>
     <div class="err" id="chatErr"></div><p class="mu small-print">Information and education, not investment advice. It never places real-money orders. Practice orders are sent only when you press the button.</p></div>
-    <div id="orderBox"></div><div id="draftBox"></div></div>`;
+    <div id="orderBox"></div><div id="draftBox"></div><div id="liveSet"></div></div>`;
   const log = H.$('#log', view), box = H.$('#draftBox', view), ta = H.$('textarea', view);
   const save = () => { try { sessionStorage.setItem('qp_chat', JSON.stringify(msgs.slice(-30))); } catch {} };
   const draw = () => {
@@ -74,6 +74,7 @@ async function assistant(view) {
   // A practice order the assistant prepared: sent only when the user presses the button.
   const obox = H.$('#orderBox', view);
   const showOrder = o => {
+    if (o.live) return showLive(o);
     obox.innerHTML = `<div class="card draft paperorder"><h2>Practice order</h2><p style="font-size:16px;margin:4px 0 10px">${H.esc(o.summary)}</p>
       <div class="kv"><span>Symbol</span><span data-no-tr>${H.esc(o.symbol)}</span><span>Kind</span><span>${H.esc(o.assetClass)}</span><span>Side</span><span>${o.side === 'buy' ? 'Buy' : 'Sell'}</span>
       <span>Amount</span><span>${o.dollars ? H.money(o.dollars) : H.esc(String(o.qty))}</span><span>Order type</span><span>${H.esc(o.type.replace('_', ' '))}${o.limit_price ? ' · limit ' + H.money(o.limit_price) : ''}${o.stop_price ? ' · stop ' + H.money(o.stop_price) : ''}</span></div>
@@ -88,6 +89,46 @@ async function assistant(view) {
       return '';
     });
   };
+  // A REAL-MONEY order (Ultimate, turned on below): one tap, then one confirmation.
+  const showLive = o => {
+    obox.innerHTML = `<div class="card draft liveorder"><h2>Real-money order <span class="pill warn">LIVE MONEY</span></h2><p style="font-size:16px;margin:4px 0 10px">${H.esc(o.summary)}</p>
+      <div class="kv"><span>Account</span><span>${H.esc(o.destination)}</span><span>Symbol</span><span data-no-tr>${H.esc(o.symbol)}</span><span>Side</span><span>${o.side === 'buy' ? 'Buy' : 'Sell'}</span>
+      <span>Amount</span><span>${o.dollars ? H.money(o.dollars) : H.esc(String(o.qty))}</span><span>Order type</span><span>${H.esc(o.type.replace('_', ' '))}${o.limit_price ? ' · limit ' + H.money(o.limit_price) : ''}${o.stop_price ? ' · stop ' + H.money(o.stop_price) : ''}</span><span>Your limit</span><span>${H.money(o.maxOrder)} per order</span></div>
+      <div class="row" style="gap:8px;margin-top:10px"><button type="button" class="danger" id="loGo">Place real order</button><button type="button" class="ghost" id="loNo">Cancel</button></div><div class="err"></div>
+      <p class="mu small-print">This uses real money. Your risk limits and the usual checks apply. Nothing is sent until you press the button and confirm.</p></div>`;
+    H.$('#loNo', obox).onclick = () => { obox.innerHTML = ''; };
+    H.act(H.$('#loGo', obox), async () => {
+      if (!confirm(`Place this REAL order?\n\n${o.summary}\n\nThis uses real money in ${o.destination}.`)) return '';
+      const r = await H.api('/ai/live-order', { body: o });
+      const done = `Real order sent to ${r.destination}: ${r.status}${r.filledQty ? `, ${r.filledQty} filled` : ''}${r.avgPrice ? ` at ${H.money(r.avgPrice)}` : ''}.`;
+      msgs.push({ role: 'assistant', content: done }); save(); draw();
+      obox.innerHTML = `<div class="card"><p class="ok" style="margin:0">${H.esc(done)}</p></div>`;
+      return '';
+    });
+  };
+  // Settings: real-money orders from the chat (Ultimate plan).
+  const lsBox = H.$('#liveSet', view);
+  const drawLive = async () => {
+    const ls = await H.api('/ai/live-settings').catch(() => null); if (!ls || !lsBox) return;
+    lsBox.innerHTML = `<details class="card" ${ls.enabled ? 'open' : ''}><summary><b>Real-money orders by chat</b> ${ls.enabled ? '<span class="pill warn">On</span>' : '<span class="pill">Off</span>'} <span class="mu">Ultimate plan</span></summary>
+      ${ls.allowed ? `<p class="mu">When this is on, you can ask the assistant to buy or sell in your real account. It prepares the order as a red card; it is sent only when you press <b>Place real order</b> and confirm. Each order must be under your limit, and your risk limits and kill switch still apply.</p>
+        <form id="lsForm"><label class="chk2"><input type="checkbox" name="enabled" ${ls.enabled ? 'checked' : ''}> Let the assistant prepare real-money orders</label>
+        <div class="row"><label>Limit per order ($)<input name="maxOrder" type="number" min="10" step="10" value="${ls.maxOrder}"></label>
+        <label>Account<select name="account"><option value="">${ls.accounts.length ? 'First connected' : 'No real account connected'}</option>${ls.accounts.map(a => `<option value="${H.esc(a.id)}" ${a.id === ls.account ? 'selected' : ''}>${H.esc(a.name)}</option>`).join('')}</select></label></div>
+        <button>Save</button><div class="err"></div><p class="mu small-print">Turning it on or raising the limit asks for your password.</p></form>`
+      : '<p class="mu">Place real-money orders just by asking, with a one-tap confirmation. Part of the Ultimate plan.</p><a href="#/funding"><button type="button" class="small">See the Ultimate plan</button></a>'}</details>`;
+    const f = H.$('#lsForm', lsBox); if (!f) return;
+    H.act(H.$('button', f), async () => {
+      const v = H.form(f), body = { enabled: !!v.enabled, maxOrder: +v.maxOrder, account: v.account || null };
+      if ((body.enabled && !ls.enabled) || body.maxOrder > ls.maxOrder) {
+        const ok = await H.secureConfirm({ title: 'Real-money orders by chat', html: `<p>${body.enabled ? 'The assistant will be able to prepare real-money orders' : 'Raise the limit'} (up to ${H.money(body.maxOrder)} per order). You still confirm every order.</p>`, okText: 'Turn on' });
+        if (!ok) return '';
+        Object.assign(body, { password: ok.password, confirm: ok.confirm });
+      }
+      await H.api('/ai/live-settings', { method: 'PUT', body }); setTimeout(drawLive, 300); return 'Saved';
+    });
+  };
+  drawLive();
   const send = async text => {
     if (!text.trim()) return;
     msgs.push({ role: 'user', content: text.trim() }); draw(); ta.value = '';

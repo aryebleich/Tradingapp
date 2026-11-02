@@ -98,8 +98,8 @@ test('strategy API: copy, edit, walkdown, execute on paper, plan limits, backtes
   const call = client();
   await call('/auth/register', { email: 'lib@example.com', password: 'Library12345x' });
   await call('/auth/register', { email: 'lib2@example.com', password: 'Library12345x' }); // second account: not admin, free plan
-  const s = (await call('/library', { templateId: 'macro_rotation' })).body;
-  assert.equal(s.templateId, 'macro_rotation'); assert.equal(s.mode, 'manual');
+  const s = (await call('/library', { blueprintId: 'bp_return_mix', fillExamples: true })).body;
+  assert.equal(s.templateId, 'bp_return_mix'); assert.equal(s.mode, 'manual');
   const w = (await call(`/library/${s.id}/walkdown`, {})).body;
   assert.ok(w.orders.find(o => o.ticker === 'SPY' && o.action === 'BUY'));
   const ex = (await call(`/library/${s.id}/execute`, {})).body;
@@ -112,7 +112,7 @@ test('strategy API: copy, edit, walkdown, execute on paper, plan limits, backtes
   assert.equal((await call(`/library/${s.id}`, { mode: 'auto' }, 'PUT')).status, 402);
   assert.equal((await call(`/library/${s.id}`, { account: 'paper' }, 'PUT')).status, 200);
   assert.equal((await call(`/library/${s.id}`, { mode: 'auto', allocation: 50 }, 'PUT')).status, 200);
-  const s2 = (await call('/library', { templateId: 'pullback_mr' })).body;
+  const s2 = (await call('/library', { blueprintId: 'bp_dip_buyer', fillExamples: true })).body;
   assert.equal((await call(`/library/${s2.id}`, { mode: 'auto' }, 'PUT')).status, 402);
   // Edits are validated; the backtest becomes Reality Check's yardstick.
   assert.equal((await call(`/library/${s2.id}`, { spec: { params: { rsiEntry: 500 } } }, 'PUT')).status, 400);
@@ -120,9 +120,9 @@ test('strategy API: copy, edit, walkdown, execute on paper, plan limits, backtes
   assert.ok(Number.isFinite(bt.m.cagr));
   const d = (await call(`/library/${s2.id}`)).body;
   assert.equal(d.reality.status, 'learning'); assert.ok(d.state.bt.sd > 0);
-  const gm = (await call('/library', { templateId: 'gold_miner' })).body;
+  const gm = (await call('/library', { blueprintId: 'bp_exhaustion_fade', fillExamples: true })).body;
   assert.equal((await call(`/library/${gm.id}/backtest`, {})).status, 400); // rules incomplete
-  assert.equal((await call('/library', { templateId: 'cl_momentum' })).status, 402); // 4th saved strategy on the free plan
+  assert.equal((await call('/library', { blueprintId: 'bp_top_momentum' })).status, 402); // 4th saved strategy on the free plan
 });
 
 test('Reality Check verdicts and the win-rate split', () => {

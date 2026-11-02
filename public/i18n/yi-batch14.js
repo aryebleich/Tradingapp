@@ -31,6 +31,17 @@ export const strings = {
   'Buy 1 share of AAPL with practice money': 'קויפט 1 שער AAPL מיט פראקטיק געלט', 'Did my practice orders fill? What is my buying power?': 'זענען מיינע פראקטיק ארדערס דורכגעגאנגען? וויפיל קען איך קויפן?',
   'What do I hold in my real account?': 'וואס האב איך אין מיין עכטע קאנטע?',
   'Practice order': 'פראקטיק ארדער', 'Place paper order': 'שיקט דעם פראקטיק ארדער', 'Cancel': 'אפשטעלן', 'Kind': 'סארט', 'Side': 'זייט', 'Amount': 'סומע',
+  // Strategy builder
+  'Strategy builder': 'סטראטעגיע בויער', 'Start a new strategy': 'הייבט אן א נייע סטראטעגיע', 'Start with this design': 'הייבט אן מיט דעם פלאן',
+  'Community strategies': 'סטראטעגיעס פון דער קהילה', 'Copy': 'קאפירן', 'What each plan includes': 'וואס יעדער פלאן גיט',
+  'Your tickers': 'אייערע טיקערס', 'Leveraged ETFs': 'לעווערידזש ETFs', 'ETFs and stocks': 'ETFs און סטאקס', 'Save tickers': 'היט אפ די טיקערס',
+  'Fill the empty ones with the examples': 'פילט אויס די ליידיגע מיט די ביישפילן', 'Fill with the examples': 'פילט אויס מיט די ביישפילן',
+  '+ Add a step': '+ לייגט צו א שריט', '+ condition': '+ באדינג', 'Needs tickers': 'דארף טיקערס', 'Ready': 'גרייט', 'Public': 'עפנטלעך',
+  'Publish to the community': 'פארעפנטלעכט פאר דער קהילה', 'Description for others (optional)': 'באשרייבונג פאר אנדערע (נישט נויטיג)', 'Margin': 'מארדזשין',
+  'Original strategies': 'ארגינעלע סטראטעגיעס', 'Open a copy': 'עפנט א קאפיע',
+  // AI real-money orders
+  'Real-money order': 'ארדער מיט עכטע געלט', 'Place real order': 'שיקט דעם עכטן ארדער', 'Real-money orders by chat': 'ארדערס מיט עכטע געלט דורכן טשאט',
+  'Let the assistant prepare real-money orders': 'לאזט דעם אסיסטענט צוגרייטן ארדערס מיט עכטע געלט', 'Limit per order ($)': 'מאקסימום פאר יעדן ארדער ($)',
   // Android page
   'Brightfolio for Android': 'Brightfolio פאר אנדרויד',
 };

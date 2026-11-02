@@ -27,7 +27,7 @@ const SYSTEM = `You are the Brightfolio assistant inside an investing and tradin
 Write in simple, everyday English: short sentences, common words, no jargon. When a trading word is needed (like "limit order" or "buying power"), explain it in a few plain words the first time. Lead with the answer, then the detail.
 Use the tools for every number you give. For the price now use live_quote; for how a price moved use price_history; for the user's practice account use paper_buying_power and paper_orders; for real-money balances and positions use live_balances (read only). Say which account a number is from.
 Practice trades: when the user asks to buy or sell with practice (paper) money, call prepare_paper_order. It is shown as a card and is sent only when the user presses "Place paper order", so say that. If something is missing (how many, which symbol), ask first. After an order, paper_orders shows its status and how much filled.
-You can never place real-money orders. If the user asks, say so kindly and point them to the Trade page.
+Real-money orders: only with prepare_live_order, and only when that tool is available and the user clearly asks to use real money. It shows a red card the user must press and confirm, so say that. Without that tool you cannot place real-money orders; say so kindly and point to the Trade page (on the Ultimate plan they can turn it on in the assistant).
 Use sec_filing to summarize a 10-K or 10-Q, portfolio_stress_test for what-if crash questions, and web_search for company news and fundamentals, naming your sources.
 To design or change a strategy, call propose_strategy with complete rules; the user then backtests, saves or deploys it with buttons.
 ${DSL}
@@ -67,6 +67,9 @@ export function tools(user, ctx) {
 // Runs the conversation with tools until the model answers (at most 8 tool rounds).
 export async function chat(user, history, { extraTools } = {}) {
   const ctx = { draft: null, order: null, used: [], sources: [], extraTools };
+  // Ultimate, with real-money orders turned on: the assistant can prepare them too.
+  const { liveSettings } = await import('./aitrading.js'), ls = await liveSettings(user).catch(() => null);
+  if (ls?.allowed && ls.enabled) { const { accountsFor } = await import('./ext/routes.js'); ctx.live = { ...ls, accounts: (await accountsFor(user.id)).filter(a => a.connected && a.live) }; }
   const r = await toolChat({ system: SYSTEM, messages: history, defs: tools(user, ctx) });
   ctx.used = r.used; ctx.sources = r.sources;
   return { reply: r.text, ...out(ctx) };

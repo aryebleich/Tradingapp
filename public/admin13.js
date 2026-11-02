@@ -4,7 +4,7 @@ let H;
 export function registerAdmin13(routes, helpers) {
   H = helpers;
   const guard = fn => (view, q) => (H.me()?.role === 'admin' ? fn(view, q) : (location.hash = '#/dashboard'));
-  Object.assign(routes, { 'admin-data': guard(dataPage), 'admin-comms': guard(commsPage) });
+  Object.assign(routes, { 'admin-data': guard(dataPage), 'admin-comms': guard(commsPage), 'admin-strategies': guard(originalsPage) });
 }
 
 async function dataPage(view) {
@@ -83,4 +83,24 @@ async function commsPage(view, q) {
   const cs = H.$('#cs', view);
   H.act(H.$('button', cs), async () => { await H.api('/admin/comms/settings', { method: 'PUT', body: H.form(cs) }); setTimeout(H.render, 500); return 'Saved'; });
   H.act(H.$('#newTok', view), async () => { if (!confirm('Make a new incoming-email address? The old one stops working.')) return ''; await H.api('/admin/comms/settings', { method: 'PUT', body: { newToken: true } }); H.render(); return ''; });
+}
+
+// ---------- Admin → Original strategies ----------
+// The library's original strategies with their recorded figures and full rules, kept for the owner.
+// Users build from the renamed designs (blueprints) with their own tickers.
+async function originalsPage(view) {
+  const list = await H.api('/library/originals');
+  const fmtM = m => (typeof m === 'number' ? String(m) : `${m[1]} ${m[0] === 'close' ? 'Close' : `${m[0].toUpperCase()}(${m[2]})`}`);
+  const stepTxt = st => st.t === 'cmp' ? `If ${fmtM(st.a)} ${st.op} ${fmtM(st.b)} → ${st.yes} else → ${st.no}`
+    : st.t === 'band' ? `${fmtM(st.a)}${st.hi != null ? ` > ${st.hi} → ${st.hiTo}` : ''}${st.lo != null ? ` · < ${st.lo} → ${st.loTo}` : ''} · else → ${st.mid}`
+    : st.t === 'higher' ? `Higher of ${fmtM(st.a)} → ${st.aTo} / ${fmtM(st.b)} → ${st.bTo}`
+    : st.t === 'vote' ? `${st.conds.map(c => `${fmtM(c.a)} ${c.op} ${fmtM(c.b)}`).join('; ')}: ${st.need}+ → ${st.yes} else → ${st.no}` : `(missing) ${st.label || ''}`;
+  view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-strategies')}
+  <div class="card"><h2>Original strategies</h2><p class="mu" style="margin-top:0">The library's original strategies, saved here with their tickers, recorded figures and rules. Users now start from the renamed designs with empty tickers (Strategy builder). You can open a working copy of an original for yourself.</p></div>
+  ${list.map(t => `<div class="card"><div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap"><h2 style="margin:0">${H.esc(t.name)} <span class="mu" style="font-size:13px;font-weight:500" data-no-tr>${H.esc(t.id)}</span></h2><button class="small" data-open="${t.id}">Open a copy</button></div>
+    <p class="mu">${H.esc(t.tagline)} · ${H.esc(t.rebalance)} · ${H.esc(t.risk)} risk${t.blueprint ? ` · now the design <b>${H.esc(t.blueprint)}</b>` : ''}</p><p>${H.esc(t.about)}</p>
+    ${t.qc ? `<p class="mu">Recorded: ${t.qc.cagr5y}%/yr over 5 years · worst drop ${t.qc.maxdd}% · Sharpe (1y) ${t.qc.sharpe1y} · 3 months live ${t.qc.oos3m}%</p>` : ''}
+    ${t.sleeves ? t.sleeves.map(sl => `<h3 class="sleeve">${H.esc(sl.name)} <span class="mu">${Math.round(sl.weight * 100)}%</span></h3><table class="slim">${sl.steps.map(st => `<tr><td><b>${H.esc(st.id)}</b></td><td data-no-tr style="font-size:13px">${H.esc(stepTxt(st))}</td></tr>`).join('')}</table>`).join('') : `<pre style="white-space:pre-wrap;font-size:12px" data-no-tr>${H.esc(JSON.stringify(t.params, null, 1))}</pre>`}
+    ${t.note ? `<p class="note">${H.esc(t.note)}</p>` : ''}<div class="err"></div></div>`).join('')}`;
+  H.$$('[data-open]', view).forEach(b => H.act(b, async () => { const s = await H.api('/library', { body: { templateId: b.dataset.open } }); location.hash = '#/strategy?id=' + s.id; return ''; }));
 }

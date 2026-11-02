@@ -444,7 +444,7 @@ api.use(auth.csrfGuard);
 // Only API calls look up the session; static files and pages skip the database round trip.
 api.use(auth.sessionMiddleware);
 // A session flagged by the behavior check confirms itself before trading or moving money.
-api.use(['/orders', '/alpaca/orders', '/alpaca/positions', '/alpaca/broker/transfers', '/fleet/inbox'], stepUpGuard);
+api.use(['/orders', '/alpaca/orders', '/alpaca/positions', '/alpaca/broker/transfers', '/fleet/inbox', '/ai/live-order'], stepUpGuard);
 api.use('/auth', auth.router);
 api.use('/alpaca', alpacaRouter);
 api.use('/signals', signalsRouter);

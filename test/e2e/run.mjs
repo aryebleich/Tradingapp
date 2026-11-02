@@ -336,6 +336,19 @@ console.log('Settings → Language');
   const go = async (r, sel) => { if (p.url() === B + '/app' + r) await p.reload(); else await p.goto(B + '/app' + r); await p.waitForSelector(sel, { timeout: 15000 }); };
   const okText = async box => { await p.waitForSelector(`${box} .ok`, { timeout: 20000 }).catch(async () => { throw new Error((await p.textContent(`${box} .err`).catch(() => '')) || 'no result'); }); };
   await step('menu lists the new pages', async () => { for (const k of ['chart', 'ai', 'scanner', 'optionslab', 'portfolios', 'fleet', 'insights', 'risk', 'values', 'private', 'realestate', 'money', 'rules', 'brief', 'luach', 'taxpilot', 'invest']) await p.waitForSelector(`#nav a[href="#/${k}"]`, { state: 'attached' }); });
+  await step('strategy builder: a design, my tickers, step a value with +, save, today\'s result', async () => {
+    await p.goto(B + '/app#/strategies'); await p.waitForSelector('[data-use="bp_four_sleeve"]');
+    await p.screenshot({ path: path.join(OUT, 'strategy-builder.png'), fullPage: true });
+    await p.click('[data-use="bp_four_sleeve"]'); await p.waitForSelector('#tickers');
+    await p.waitForSelector('#walk .banner:has-text("Choose your tickers")');
+    await p.click('#exTk'); await p.click('#saveTk'); await p.waitForSelector('#tickers .pill.pos', { timeout: 15000 });
+    const len = p.locator('#ruleBody input[data-path="sleeves.0.steps.1.a.2"]');
+    const before = +(await len.inputValue());
+    await p.locator('#ruleBody input[data-path="sleeves.0.steps.1.a.2"] + button.stp').click();
+    if (+(await len.inputValue()) !== before + 1) throw new Error('+ did not step the value');
+    await p.click('#saveRules'); await p.waitForSelector('#walk table.walk', { timeout: 20000 });
+    await p.screenshot({ path: path.join(OUT, 'strategy-editor.png'), fullPage: true });
+  });
   await step('AI assistant answers (basic mode)', async () => {
     await go('#/ai', '#ask'); await p.fill('#ask textarea', 'How does AAPL look technically?'); await p.click('#send');
     await p.waitForSelector('.msg.assistant:not(.typing)', { timeout: 20000 });
@@ -458,7 +471,7 @@ for (const [device, width, lang] of [['iPhone 13', 390, 'en'], ['iPhone SE', 320
   await p.tap("form.auth button:not([type=button])"); await p.waitForSelector('#tabs a.on');
   await p.evaluate(() => fetch('/api/alpaca/keys', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ keyId: 'AUDIT' + innerWidth, secret: 'S' }) }));
   await p.evaluate(() => localStorage.setItem('qp_account', 'alpaca'));
-  const lib = await p.evaluate(() => fetch('/api/library', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ templateId: 'multi_model' }) }).then(r => r.json()));
+  const lib = await p.evaluate(() => fetch('/api/library', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ blueprintId: 'bp_four_sleeve', fillExamples: true }) }).then(r => r.json()));
   for (const r of ['/', '/yi', '/terms', '/app#/register', '/app#/login', '#/dashboard', '#/trade?symbol=AAPL', '#/orders', '#/positions', '#/watchlists', '#/markets', '#/options?underlying=AAPL', '#/calendar', '#/account', '#/open-account', '#/brokers', '#/strategies', `#/strategy?id=${lib.id}`, '#/signals', '#/pairs', '#/statarb', '#/sp500', '#/backtest', '#/bots', '#/schedule', '#/text', '#/tax', '#/funding', '#/settings', '#/chart?symbol=AAPL', '#/ai', '#/agents', '#/code', '#/news', '#/scanner', '#/optionslab', '#/institutions', '#/portfolios', '#/portfolios?tab=mine', '#/fleet', '#/marketplace', '#/insights', '#/insights?tab=journal', '#/risk', '#/spend', '#/values', '#/values?tab=maaser', '#/values?tab=shabbos', '#/private', '#/realestate', '#/money', '#/rules', '#/android', '#/luach', '#/luach?tab=month', '#/luach?tab=tzedakah', '#/brief', '#/taxpilot', '#/invest', '#/invest?tab=funds', '#/invest?tab=savings', '#/security', '#/execution', '#/learn', '#/longterm', '#/workspace', '#/accounts', '#/wealth', '#/wealth?tab=compound', '#/wealth?tab=auto', '#/wealth?tab=hold', '#/wealth?tab=drip', '#/wealth?tab=understand', '#/wealth?tab=tax', '#/wealth?tab=core', '#/wealth?tab=diversify', '#/alpaca-tools', '#/referrals']) {
     await step(r, async () => {
       await p.goto(r.startsWith('#') ? B + '/app' + r : B + r); if (r === '#/dashboard') await p.reload();

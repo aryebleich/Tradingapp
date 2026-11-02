@@ -9,10 +9,14 @@
 //   paper_orders        recent practice orders: status, how much filled and at what price
 //   paper_buying_power  cash and buying power in the practice account
 //   live_balances       read only: balances and positions of the user's real-money accounts
-// Real-money orders are never placed by the assistant.
+//   prepare_live_order  Ultimate plan, once the user turned it on (Assistant → Real-money orders):
+//                       a REAL order shown as a card; placed only when the user presses
+//                       "Place real order" and confirms, within the per-order limit they set
+// Without that setting the assistant never places real-money orders.
 import express from 'express';
 import { one, audit } from './db.js';
-import { requireUser } from './auth.js';
+import { requireUser, confirmsIdentity } from './auth.js';
+import { getSetting, setSetting } from './settings.js';
 import { getBars, lastPrice, accountSummary, listOrders, placeOrder } from './brokers.js';
 import { tradingFor } from './alpaca/connections.js';
 import { isOptionSymbol, isCryptoSymbol } from './alpaca/trading.js';
@@ -88,6 +92,43 @@ async function holdingIn(userId, account, symbol) {
   return p ? { qty: p.qty, avgPrice: r2(p.avgPrice), value: r2(p.value), gainOrLoss: r2(p.pnl) } : { qty: 0 };
 }
 
+// ---------- real-money orders from the chat (Ultimate) ----------
+export const LIVE_DEFAULTS = { enabled: false, maxOrder: 1000, account: null };
+const ultimate = u => (u.role === 'admin' && !u.previewPlan) || (u.plan === 'ultimate' && ['active', 'trialing', null, undefined].includes(u.plan_status));
+export async function liveSettings(user) { return { ...LIVE_DEFAULTS, ...((await getSetting(user.id, 'aiLiveOrders', {})) || {}), allowed: ultimate(user) }; }
+async function liveAccounts(userId) {
+  const { accountsFor } = await import('./ext/routes.js');
+  return (await accountsFor(userId)).filter(a => a.connected && a.live);
+}
+// Places a confirmed real-money order: same checks as the Trade page, plus the user's limit.
+export async function placeLive(user, input, ip) {
+  const st = await liveSettings(user);
+  if (!st.allowed) throw bad('Real-money orders from the assistant are part of the Ultimate plan', 402);
+  if (!st.enabled) throw bad('Turn on real-money orders in the assistant first');
+  const accounts = await liveAccounts(user.id), account = input.account || st.account || accounts[0]?.id;
+  const acct = accounts.find(a => a.id === account);
+  if (!acct) throw bad('That real-money account is not connected');
+  const o = cleanPaperOrder(input, /^alpaca/.test(account) ? 'alpaca' : 'other');
+  const px = o.limit_price || o.stop_price || await lastPrice(o.symbol, user.id).catch(() => null);
+  const value = o.dollars || (px ? o.qty * px * (o.assetClass === 'option' ? 100 : 1) : null);
+  if (!value) throw bad('Could not price this order; try again in a moment');
+  if (value > st.maxOrder + 0.01) throw bad(`This order is about $${Math.round(value).toLocaleString('en-US')}, above your limit of $${st.maxOrder.toLocaleString('en-US')} per order from the assistant`);
+  let r;
+  if (/^alpaca/.test(account)) {
+    const { tradingForAccount } = await import('./alpaca/connections.js'), { placeAlpacaOrder } = await import('./routes/alpaca.js');
+    const t = await tradingForAccount(user.id, account);
+    if (!t?.live) throw bad('That Alpaca account is not a real-money account');
+    const x = await placeAlpacaOrder(user, t, { symbol: o.symbol, side: o.side, type: o.type, time_in_force: o.time_in_force, ...(o.qty ? { qty: o.qty } : { notional: o.dollars }), ...(o.limit_price ? { limit_price: o.limit_price } : {}), ...(o.stop_price ? { stop_price: o.stop_price } : {}) }, { ip, source: 'ai-live' });
+    r = { id: x.id, status: x.status, filledQty: +x.filled_qty || 0, avgPrice: +x.filled_avg_price || null };
+  } else {
+    if (o.type !== 'market') throw bad('From the assistant, this brokerage takes market orders; use the Trade page for other types');
+    const x = await placeOrder(user.id, account, { symbol: o.symbol, side: o.side, ...(o.qty ? { qty: o.qty } : { notional: o.dollars }) }, 'ai-live');
+    r = { status: x.status || 'sent', filledQty: x.qty || 0, avgPrice: x.price || null };
+  }
+  await audit(user.id, 'ai_live_order', { account, symbol: o.symbol, side: o.side, type: o.type, qty: o.qty, dollars: o.dollars, value: Math.round(value), status: r.status }, ip);
+  return { destination: acct.name, symbol: o.symbol, ...r };
+}
+
 export function tradingTools(user, ctx) {
   const share = () => mayShareAccount(provider());
   const hidden = { note: 'The owner keeps account numbers away from this AI service (Admin → AI & privacy). The user can see them in the app.' };
@@ -157,6 +198,19 @@ export function tradingTools(user, ctx) {
         return { account: dest.name, cash: r2(p?.cash), buyingPower: r2(p?.cash), totalValue: r2(s?.equity), note: 'The practice account has no margin: buying power is the cash.' };
       },
     },
+    ...(ctx.live ? { prepare_live_order: {
+      description: `Prepare a REAL-MONEY order in the user's real account (${ctx.live.accounts.map(a => a.name).join(', ') || 'none connected'}). The user sees it as a red card and must press "Place real order" and confirm. Only use it when the user clearly asks to trade real money. The limit is $${ctx.live.maxOrder} per order. Give qty or dollars (market orders only).`,
+      schema: { symbol: { type: 'string' }, side: { type: 'string', enum: ['buy', 'sell'] }, qty: { type: 'number' }, dollars: { type: 'number' }, type: { type: 'string', enum: ['market', 'limit', 'stop', 'stop_limit'] }, limit_price: { type: 'number' }, stop_price: { type: 'number' }, time_in_force: { type: 'string', enum: ['day', 'gtc'] }, account: { type: 'string', description: 'Account id; leave empty for the default' } },
+      required: ['symbol', 'side'],
+      run: async a => {
+        const account = a.account || ctx.live.account || ctx.live.accounts[0]?.id, acct = ctx.live.accounts.find(x => x.id === account);
+        if (!acct) return { error: 'No real-money account is connected (or that one is not). The user can connect one on the Account page.' };
+        const o = cleanPaperOrder(a, /^alpaca/.test(account) ? 'alpaca' : 'other');
+        const summary = describe(o, { name: acct.name }).replace('Practice money, in', 'REAL MONEY, in');
+        ctx.order = { ...o, live: true, account, destination: acct.name, summary, maxOrder: ctx.live.maxOrder };
+        return { shownToUser: true, summary, note: 'Not sent yet: the user presses "Place real order" and confirms.' };
+      },
+    } } : {}),
     live_balances: {
       description: "Read only: the user's real-money accounts with their total value, cash, buying power and positions. The assistant cannot trade these.",
       schema: { account: { type: 'string', description: 'Optional: one account id' } }, required: [],
@@ -181,6 +235,22 @@ export const aiTradingRouter = (() => {
   const r = express.Router();
   r.use(requireUser);
   r.post('/paper-order', async (req, res) => res.json(await placePaper(req.user, req.body || {}, req.ip)));
+  r.get('/live-settings', async (req, res) => res.json({ ...(await liveSettings(req.user)), accounts: (await liveAccounts(req.user.id)).map(a => ({ id: a.id, name: a.name })) }));
+  r.put('/live-settings', async (req, res) => {
+    const b = req.body || {}, cur = await liveSettings(req.user);
+    if (!cur.allowed) throw bad('Real-money orders from the assistant are part of the Ultimate plan', 402);
+    // Turning it on, or raising the limit, needs the password (or the email for accounts without one).
+    const max = b.maxOrder === undefined ? cur.maxOrder : Math.round(+b.maxOrder);
+    if (!(max >= 10 && max <= 1000000)) throw bad('Set a limit per order from $10 to $1,000,000');
+    if ((b.enabled && !cur.enabled) || max > cur.maxOrder) { if (!confirmsIdentity(req.user, b)) throw bad(req.user.password_set === 0 ? 'Type your email address to confirm' : 'Wrong password', 401); }
+    const accounts = await liveAccounts(req.user.id), account = b.account === undefined ? cur.account : b.account || null;
+    if (account && !accounts.some(a => a.id === account)) throw bad('That real-money account is not connected');
+    const next = { enabled: b.enabled === undefined ? cur.enabled : !!b.enabled, maxOrder: max, account };
+    await setSetting(req.user.id, 'aiLiveOrders', next);
+    await audit(req.user.id, 'ai_live_settings', next, req.ip);
+    res.json({ ...next, allowed: true });
+  });
+  r.post('/live-order', async (req, res) => res.json(await placeLive(req.user, req.body || {}, req.ip)));
   r.get('/paper-destination', async (req, res) => { const d = await paperDestination(req.user.id); res.json({ kind: d.kind, name: d.name }); });
   return r;
 })();

@@ -828,3 +828,16 @@ dialog.search #sq { width: 100%; font-size: 17px; padding: 12px 14px; }
 .welcome-hero h2 { margin: 0 0 4px; }
 #nav .grpbody[hidden] { display: none; }
 table.slim td.mu { white-space: normal; }
+/* Strategy builder: − / + steppers, ticker slots, sleeves */
+.stepper { display: inline-flex; align-items: stretch; vertical-align: middle; border: 1px solid var(--line, rgba(127,127,127,.3)); border-radius: 8px; overflow: hidden; }
+.stepper .cell { border: 0 !important; border-radius: 0 !important; width: 4.6em; text-align: center; margin: 0; -moz-appearance: textfield; }
+.stepper .cell::-webkit-inner-spin-button, .stepper .cell::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.stepper .stp { min-height: 0; padding: 0 9px; border: 0 !important; border-radius: 0 !important; background: var(--chip, rgba(127,127,127,.12)) !important; color: var(--tx) !important; box-shadow: none !important; font-size: 15px; line-height: 1; transform: none; }
+.stepper .stp:hover { background: var(--hover, rgba(127,127,127,.22)) !important; }
+.slotrow { display: grid; grid-template-columns: 1fr 9em; gap: 8px; align-items: center; margin: 6px 0; }
+.slotrow span { font-size: 13px; color: var(--mu); } .slotrow span b { color: var(--tx); }
+.sleevebox { border: 1px solid var(--line, rgba(127,127,127,.18)); border-radius: 10px; padding: 8px 10px; margin: 10px 0; }
+.sleevebox h3.sleeve input { font-weight: 600; }
+table.rules td:first-child select { font-size: 12px; margin-top: 4px; max-width: 9.5em; }
+@media (max-width: 640px) { .slotrow { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { #rules input, #rules select, #tickers input, #tickers textarea, .stepper .cell { font-size: 16px !important; } table.rules td:first-child select { max-width: 8em; } }
