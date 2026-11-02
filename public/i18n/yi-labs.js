@@ -1557,5 +1557,11 @@ export default {
  "The Trade page": "די טרעיד פעידזש",
  "Turn on two-factor login in Settings": "צינד אן די צוויי-שטופעדיגע וועריפיקאציע אין די סעטינגס.",
  "Apply by text": "מעלדט אייך דורך א טעקסט מעסעדזש",
- "Brightfolio for Android": "ברייטפאליא פאר אנדרויד"
+ "Brightfolio for Android": "ברייטפאליא פאר אנדרויד",
+ "What is the price of AAPL right now?": "וואס איז די יעצטיגע פרייז פון AAPL?",
+ "How did SPY move this year?": "וויאזוי האט SPY פערפארמט דעם יאר?",
+ "Buy 1 share of AAPL with practice money": "קויפט איין איין שער פון AAPL מיט ווירטואלע געלט.",
+ "Did my practice orders fill? What is my buying power?": "זענען מיינע פרעקטיס ארדערס שוין אויסגעפירט געווארן? וואס איז מיין יעצטיגע בייאינג פאער?",
+ "What do I hold in my real account?": "וועלכע פאזיציעס האלט איך יעצט אין מיין לייוו אקאונט?",
+ "Place paper order": "לייג אריין די פעיפער ארידער"
 };
