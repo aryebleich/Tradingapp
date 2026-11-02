@@ -203,26 +203,28 @@ router.get('/orders', async (req, res) => {
   res.json(await (await T(req)).orders({ status, limit: Math.min(+req.query.limit || 100, 500), symbols: req.query.symbols || undefined }));
 });
 router.get('/orders/:id', async (req, res) => res.json(await (await T(req)).order(req.params.id)));
-router.post('/orders', async (req, res) => {
-  const t = await T(req);
-  if (!rateLimit('order:' + req.user.id, 60, 60e3)) throw Object.assign(new Error('Too many orders in a minute'), { status: 429 });
-  const body = buildOrder(req.body || {});
-  await sellCheck(t, body, { allowShort: req.body?.allow_short === true || req.body?.allow_short === 'true' });
-  const chk = await checkOrder(req.user.id, 'alpaca', { symbol: body.symbol || '', side: body.side || 'buy', qty: +body.qty || 0, notional: +body.notional || 0, limitPrice: +body.limit_price || 0, order_class: body.order_class, legs: body.legs }, 'web', riskDeps(req.user.id));
+// Sends one order to an Alpaca account with every check the app applies (sell check, risk rules,
+// the hash-chained execution log). Used by the Trade page and by the AI assistant's paper orders.
+export async function placeAlpacaOrder(user, t, input, { ip, source = 'web' } = {}) {
+  if (!rateLimit('order:' + user.id, 60, 60e3)) throw Object.assign(new Error('Too many orders in a minute'), { status: 429 });
+  const body = buildOrder(input || {});
+  await sellCheck(t, body, { allowShort: input?.allow_short === true || input?.allow_short === 'true' });
+  const chk = await checkOrder(user.id, 'alpaca', { symbol: body.symbol || '', side: body.side || 'buy', qty: +body.qty || 0, notional: +body.notional || 0, limitPrice: +body.limit_price || 0, order_class: body.order_class, legs: body.legs }, source, riskDeps(user.id));
   if (chk?.resize && !body.order_class) { if (chk.resize.notional && body.notional) body.notional = chk.resize.notional.toFixed(2); else if (chk.resize.qty && body.qty) body.qty = String(chk.resize.qty); }
   const ref = crypto.randomUUID(), quote = body.symbol ? await quoteAt(body.symbol, null) : null;
-  await auditAppend(req.user.id, 'order', { event: 'sent', orderRef: ref, venue: 'alpaca', symbol: body.symbol || 'mleg', legs: body.legs || null, side: body.side || null, qty: body.qty || null, notional: body.notional || null, type: body.type, limitPrice: body.limit_price || null, source: 'web', quote, at: Date.now() });
+  await auditAppend(user.id, 'order', { event: 'sent', orderRef: ref, venue: 'alpaca', symbol: body.symbol || 'mleg', legs: body.legs || null, side: body.side || null, qty: body.qty || null, notional: body.notional || null, type: body.type, limitPrice: body.limit_price || null, source, quote, at: Date.now() });
   let o;
   try { o = await breaker('alpaca').run(async () => { await chaos(); return t.placeOrder(body); }); }
-  catch (e) { await auditAppend(req.user.id, 'order', { event: 'rejected', orderRef: ref, venue: 'alpaca', symbol: body.symbol || 'mleg', reason: String(e.message).slice(0, 200), at: Date.now() }); throw e; }
-  await auditAppend(req.user.id, 'order', { event: 'accepted', orderRef: ref, brokerOrderId: String(o.id), venue: 'alpaca', symbol: o.symbol || 'mleg', side: o.side, status: o.status, at: Date.now() });
-  if (t.type === 'broker') await recordCommission(req.user.id, o, quote?.ask || quote?.price).catch(() => {});
-  await logOrder(req.user.id, 'alpaca', { symbol: body.symbol || 'mleg', side: body.side, value: +body.notional || 0 }, 'web');
-  await audit(req.user.id, 'alpaca_order', { id: o.id, symbol: o.symbol || 'mleg', side: o.side, type: o.type, class: o.order_class, live: t.live }, req.ip);
+  catch (e) { await auditAppend(user.id, 'order', { event: 'rejected', orderRef: ref, venue: 'alpaca', symbol: body.symbol || 'mleg', reason: String(e.message).slice(0, 200), at: Date.now() }); throw e; }
+  await auditAppend(user.id, 'order', { event: 'accepted', orderRef: ref, brokerOrderId: String(o.id), venue: 'alpaca', symbol: o.symbol || 'mleg', side: o.side, status: o.status, at: Date.now() });
+  if (t.type === 'broker') await recordCommission(user.id, o, quote?.ask || quote?.price).catch(() => {});
+  await logOrder(user.id, 'alpaca', { symbol: body.symbol || 'mleg', side: body.side, value: +body.notional || 0 }, source);
+  await audit(user.id, 'alpaca_order', { id: o.id, symbol: o.symbol || 'mleg', side: o.side, type: o.type, class: o.order_class, live: t.live, source }, ip);
   if (chk?.notes?.length) o.notes = chk.notes;
-  setTimeout(() => syncAlpacaFills(req.user.id).catch(() => {}), 4000);
-  res.json(o);
-});
+  setTimeout(() => syncAlpacaFills(user.id).catch(() => {}), 4000);
+  return o;
+}
+router.post('/orders', async (req, res) => res.json(await placeAlpacaOrder(req.user, await T(req), req.body || {}, { ip: req.ip })));
 router.patch('/orders/:id', async (req, res) => {
   const t = await T(req);
   const o = await t.replaceOrder(req.params.id, buildReplace(req.body || {}));

@@ -2,7 +2,8 @@
 // Claude as the upgrade) answers market
 // questions with live tools (prices, technicals, news, the user's portfolio, backtests, web search
 // for fundamentals) and drafts strategies in the rule language; the user saves, backtests or
-// deploys a draft with a button. The assistant never places orders itself.
+// deploys a draft with a button. Practice (paper) orders are prepared by the assistant and sent
+// only when the user presses the button on the order card; it never places real-money orders.
 import express from 'express';
 import { trySpend } from './credits.js';
 import { mayShareAccount } from './aiaccess.js';
@@ -16,16 +17,21 @@ import { snapshot } from './ta.js';
 import { researchTools } from './research.js';
 import { isPaid, AI_LIMITS } from './fees.js';
 import * as D from './alpaca/data.js';
+import { tradingTools, aiTradingRouter } from './aitrading.js';
 
 export const chatEnabled = llmEnabled;
 const DSL = `Strategy rules use one condition per line: <operand> <op> <operand>. Ops: > < >= <= crosses_above crosses_below.
 Operands: Close, numbers, SMA(n), EMA(n), RSI(n), BBU(n,k), BBL(n,k), HIGH(n), LOW(n), ROC(n), MACD(f,s), MACDSIG(f,s,sig).
 Entry lines must all be true (AND); any exit line closes the trade (OR). Daily bars, long only.`;
-const SYSTEM = `You are the Brightfolio trading assistant inside a trading web app. Help with market questions, technical and fundamental analysis, trading concepts, and designing systematic strategies.
-Use the tools for any number you quote (prices, indicators, backtests, the user's holdings); use sec_filing to summarize a 10-K or 10-Q and portfolio_stress_test for what-if crash questions; use web_search for company fundamentals, earnings or recent events, and name your sources.
-To design or change a strategy, call propose_strategy with complete rules; the user then backtests, saves or deploys it with buttons. Refine the draft when the user asks.
+const SYSTEM = `You are the Brightfolio assistant inside an investing and trading app. Help with prices, the user's accounts, practice trades, market questions, analysis and simple strategies.
+Write in simple, everyday English: short sentences, common words, no jargon. When a trading word is needed (like "limit order" or "buying power"), explain it in a few plain words the first time. Lead with the answer, then the detail.
+Use the tools for every number you give. For the price now use live_quote; for how a price moved use price_history; for the user's practice account use paper_buying_power and paper_orders; for real-money balances and positions use live_balances (read only). Say which account a number is from.
+Practice trades: when the user asks to buy or sell with practice (paper) money, call prepare_paper_order. It is shown as a card and is sent only when the user presses "Place paper order", so say that. If something is missing (how many, which symbol), ask first. After an order, paper_orders shows its status and how much filled.
+You can never place real-money orders. If the user asks, say so kindly and point them to the Trade page.
+Use sec_filing to summarize a 10-K or 10-Q, portfolio_stress_test for what-if crash questions, and web_search for company news and fundamentals, naming your sources.
+To design or change a strategy, call propose_strategy with complete rules; the user then backtests, saves or deploys it with buttons.
 ${DSL}
-You cannot place orders. Do not give personal investment advice or promise returns; explain risks plainly. Keep answers short and concrete, use Markdown lists or tables when helpful.
+Do not give personal investment advice or promise returns; explain risks plainly. Keep answers short. Use Markdown lists or small tables when they help.
 Reply in the language the user writes in (Yiddish if they write Yiddish).`;
 
 const sym = s => String(s || '').trim().toUpperCase();
@@ -33,8 +39,6 @@ const yearsAgo = n => new Date(Date.now() - n * 365 * 864e5).toISOString().slice
 
 export function tools(user, ctx) {
   const defs = {
-    get_quote: { description: 'Latest price of a stock, ETF or crypto pair (e.g. AAPL, SPY, BTC/USD).', schema: { symbol: { type: 'string' } }, required: ['symbol'],
-      run: async ({ symbol }) => ({ symbol: sym(symbol), price: await lastPrice(sym(symbol), user.id) }) },
     technical_snapshot: { description: 'Technical indicators from daily bars: RSI, moving averages, momentum (ROC), volatility, 52-week range, MACD.', schema: { symbol: { type: 'string' } }, required: ['symbol'],
       run: async ({ symbol }) => { const b = await getBars(sym(symbol), yearsAgo(2), user.id); return { symbol: sym(symbol), dataSource: b.source, ...snapshot(b.closes) }; } },
     market_news: { description: 'Recent news headlines for symbols.', schema: { symbols: { type: 'string', description: 'Comma separated' } }, required: ['symbols'],
@@ -55,19 +59,19 @@ export function tools(user, ctx) {
         return { shown: true };
       } },
   };
-  Object.assign(defs, researchTools(user));
+  Object.assign(defs, researchTools(user), tradingTools(user, ctx));
   for (const [k, f] of Object.entries(ctx.extraTools || {})) defs[k] = f;
   return defs;
 }
 
 // Runs the conversation with tools until the model answers (at most 8 tool rounds).
 export async function chat(user, history, { extraTools } = {}) {
-  const ctx = { draft: null, used: [], sources: [], extraTools };
+  const ctx = { draft: null, order: null, used: [], sources: [], extraTools };
   const r = await toolChat({ system: SYSTEM, messages: history, defs: tools(user, ctx) });
   ctx.used = r.used; ctx.sources = r.sources;
   return { reply: r.text, ...out(ctx) };
 }
-const out = ctx => ({ draft: ctx.draft, tools: [...new Set(ctx.used)], sources: ctx.sources.filter((s, i, a) => a.findIndex(x => x.url === s.url) === i).slice(0, 6) });
+const out = ctx => ({ draft: ctx.draft, order: ctx.order || null, tools: [...new Set(ctx.used)], sources: ctx.sources.filter((s, i, a) => a.findIndex(x => x.url === s.url) === i).slice(0, 6) });
 
 // Without an AI key the assistant still answers the common questions from live data.
 export async function fallbackChat(user, history) {
@@ -90,6 +94,7 @@ export async function fallbackChat(user, history) {
 export function chatRouter({ extraTools } = {}) {
   const r = express.Router();
   r.use(requireUser);
+  r.use('/', aiTradingRouter);
   r.get('/status', (req, res) => res.json({ ai: chatEnabled(), model: llmInfo() }));
   r.post('/chat', async (req, res) => {
     const limit = req.user.role === 'admin' && !req.user.previewPlan ? AI_LIMITS.ultimate : isPaid(req.user) ? AI_LIMITS[req.user.plan] || AI_LIMITS.pro : AI_LIMITS.free;

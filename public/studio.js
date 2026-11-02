@@ -30,20 +30,20 @@ export function md(src) {
 }
 
 // ---------- AI assistant ----------
-const SUGGEST = ['How does NVDA look technically?', 'What did Apple report last quarter?', 'Forecast SPY for the next 10 days', 'Build a strategy that buys QQQ dips in an uptrend', 'Explain the Sharpe ratio simply', 'How is my paper portfolio doing?'];
+const SUGGEST = ['What is the price of AAPL right now?', 'How did SPY move this year?', 'Buy 1 share of AAPL with practice money', 'Did my practice orders fill? What is my buying power?', 'What do I hold in my real account?', 'How does NVDA look technically?', 'Build a strategy that buys QQQ dips in an uptrend', 'Explain the Sharpe ratio simply'];
 async function assistant(view) {
   const [st, accts] = await Promise.all([H.api('/ai/status'), H.accounts()]);
   let msgs = []; try { msgs = JSON.parse(sessionStorage.getItem('qp_chat') || '[]'); } catch {}
   let draft = null, speak = false;
   try { speak = localStorage.getItem('qp_speak') === '1'; } catch {}
   const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
-  view.innerHTML = `<div class="pagehead"><h1>AI assistant</h1><p class="mu" style="margin:4px 0 0">Ask about markets, a stock's technicals or fundamentals, trading ideas, or have it design a strategy with you. ${st.ai ? '' : '<b>Basic mode:</b> set a free AI key on the server (GROQ_API_KEY or GEMINI_API_KEY) for the full assistant.'}</p></div>
+  view.innerHTML = `<div class="pagehead"><h1>AI assistant</h1><p class="mu" style="margin:4px 0 0">Ask in plain words: prices right now, how a price moved, practice trades (you press the button to send them), whether your orders filled, your buying power, and your real account's balances. It can also explain ideas or design a strategy with you. ${st.ai ? '' : '<b>Basic mode:</b> set a free AI key on the server (GROQ_API_KEY or GEMINI_API_KEY) for the full assistant.'}</p></div>
   <div class="chatwrap"><div class="card chat"><div id="log" class="chatlog"></div>
     <div class="chips" id="sugg">${SUGGEST.map(s => `<button type="button">${H.esc(s)}</button>`).join('')}</div>
     <form id="ask" class="chatin"><textarea name="q" rows="2" placeholder="Ask anything, or describe a strategy..." aria-label="Message"></textarea>
       <div class="chatbtns">${Rec ? '<button type="button" class="ghost" id="mic" title="Speak">🎤</button>' : ''}<button type="button" class="ghost ${speak ? 'on' : ''}" id="spk" title="Read answers aloud">🔊</button><button id="send">Send</button></div></form>
-    <div class="err" id="chatErr"></div><p class="mu small-print">Information and education, not investment advice. The assistant never places orders: you do, with the buttons.</p></div>
-    <div id="draftBox"></div></div>`;
+    <div class="err" id="chatErr"></div><p class="mu small-print">Information and education, not investment advice. It never places real-money orders. Practice orders are sent only when you press the button.</p></div>
+    <div id="orderBox"></div><div id="draftBox"></div></div>`;
   const log = H.$('#log', view), box = H.$('#draftBox', view), ta = H.$('textarea', view);
   const save = () => { try { sessionStorage.setItem('qp_chat', JSON.stringify(msgs.slice(-30))); } catch {} };
   const draw = () => {
@@ -71,6 +71,23 @@ async function assistant(view) {
       return 'Saved under Bots.';
     });
   };
+  // A practice order the assistant prepared: sent only when the user presses the button.
+  const obox = H.$('#orderBox', view);
+  const showOrder = o => {
+    obox.innerHTML = `<div class="card draft paperorder"><h2>Practice order</h2><p style="font-size:16px;margin:4px 0 10px">${H.esc(o.summary)}</p>
+      <div class="kv"><span>Symbol</span><span data-no-tr>${H.esc(o.symbol)}</span><span>Kind</span><span>${H.esc(o.assetClass)}</span><span>Side</span><span>${o.side === 'buy' ? 'Buy' : 'Sell'}</span>
+      <span>Amount</span><span>${o.dollars ? H.money(o.dollars) : H.esc(String(o.qty))}</span><span>Order type</span><span>${H.esc(o.type.replace('_', ' '))}${o.limit_price ? ' · limit ' + H.money(o.limit_price) : ''}${o.stop_price ? ' · stop ' + H.money(o.stop_price) : ''}</span></div>
+      <div class="row" style="gap:8px;margin-top:10px"><button type="button" id="poGo">Place paper order</button><button type="button" class="ghost" id="poNo">Cancel</button></div><div class="err"></div>
+      <p class="mu small-print">Practice money only (${H.esc(o.destination)}). Nothing is sent until you press the button.</p></div>`;
+    H.$('#poNo', obox).onclick = () => { obox.innerHTML = ''; };
+    H.act(H.$('#poGo', obox), async () => {
+      const r = await H.api('/ai/paper-order', { body: o });
+      const done = `Sent to ${r.destination}: ${r.status}${r.filledQty ? `, ${r.filledQty} filled` : ''}${r.avgPrice ? ` at ${H.money(r.avgPrice)}` : ''}.`;
+      msgs.push({ role: 'assistant', content: done }); save(); draw();
+      obox.innerHTML = `<div class="card"><p class="ok" style="margin:0">${H.esc(done)} Ask "did my order fill?" any time.</p></div>`;
+      return '';
+    });
+  };
   const send = async text => {
     if (!text.trim()) return;
     msgs.push({ role: 'user', content: text.trim() }); draw(); ta.value = '';
@@ -79,6 +96,7 @@ async function assistant(view) {
       const r = await H.api('/ai/chat', { body: { messages: msgs.map(({ role, content }) => ({ role, content })) } });
       msgs.push({ role: 'assistant', content: r.reply || '(no answer)', sources: r.sources });
       if (r.draft) { draft = r.draft; showDraft(); }
+      if (r.order) showOrder(r.order);
       say(r.reply || '');
     } catch (e) { msgs.pop(); H.$('#chatErr', view).textContent = e.message; }
     save(); draw();

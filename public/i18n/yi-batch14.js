@@ -26,6 +26,11 @@ export const strings = {
   'Apply by text': 'אפליקירן דורך טעקסט',
   'Answer texts from new numbers with the application': 'ענטפערט טעקסטן פון נייע נומערן מיט דער אפליקאציע',
   'Read the ID and card photos with AI (otherwise every detail is asked by text)': 'לייענט די ID און קארטל בילדער מיט AI (אנדערש ווערט יעדע פרט געפרעגט דורך טעקסט)',
+  // AI assistant: prices, practice orders, balances
+  'What is the price of AAPL right now?': 'וואס איז דער פרייז פון AAPL יעצט?', 'How did SPY move this year?': 'ווי האט זיך SPY באוועגט דאס יאר?',
+  'Buy 1 share of AAPL with practice money': 'קויפט 1 שער AAPL מיט פראקטיק געלט', 'Did my practice orders fill? What is my buying power?': 'זענען מיינע פראקטיק ארדערס דורכגעגאנגען? וויפיל קען איך קויפן?',
+  'What do I hold in my real account?': 'וואס האב איך אין מיין עכטע קאנטע?',
+  'Practice order': 'פראקטיק ארדער', 'Place paper order': 'שיקט דעם פראקטיק ארדער', 'Cancel': 'אפשטעלן', 'Kind': 'סארט', 'Side': 'זייט', 'Amount': 'סומע',
   // Android page
   'Brightfolio for Android': 'Brightfolio פאר אנדרויד',
 };
