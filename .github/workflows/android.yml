@@ -49,7 +49,7 @@ jobs:
           fi
           keytool -list -v -keystore android/release.keystore -alias brightfolio -storepass "$PASS" | grep 'SHA256:' | sed 's/.*SHA256: //' > android/cert-sha256.txt
           echo "Signing certificate SHA-256: $(cat android/cert-sha256.txt)"
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.14.3'
       - name: Build and sign
