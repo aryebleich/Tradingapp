@@ -45,6 +45,7 @@ export async function createSession(res, req, userId, mfaPending) {
   await run('INSERT INTO sessions (token_hash, user_id, mfa_pending, ip, ua, created_at, expires_at) VALUES (?,?,?,?,?,?,?)',
     sha256(token), userId, mfaPending ? 1 : 0, req.ip, (req.headers['user-agent'] || '').slice(0, 200), now(), now() + ttl);
   setCookie(res, token, ttl);
+  res.locals.sessionToken = token; // the Android app keeps the session token itself
   return sha256(token);
 }
 
@@ -237,6 +238,30 @@ router.post('/logout', async (req, res) => {
   if (req.sessionHash) await run('DELETE FROM sessions WHERE token_hash = ?', req.sessionHash);
   setCookie(res, '', 0);
   res.json({ ok: true });
+});
+
+// The Android app signs in with any method the site has (Google, GitHub, passkeys...) in the phone's
+// browser: once signed in there, this hands the app a one-time code (2 minutes) through its own
+// link (brightfolio://signin), and the app swaps the code for its own session.
+router.get('/app-handoff', async (req, res) => {
+  if (!req.user) return res.redirect(302, '/app?next=handoff#/login');
+  const code = randomToken(24);
+  await run('DELETE FROM app_handoffs WHERE expires_at < ?', now());
+  await run('INSERT INTO app_handoffs (code_hash, user_id, expires_at) VALUES (?,?,?)', sha256(code), req.user.id, now() + 120e3);
+  await audit(req.user.id, 'app_handoff', null, req.ip);
+  res.redirect(302, 'brightfolio://signin?code=' + encodeURIComponent(code));
+});
+router.post('/app-exchange', async (req, res) => {
+  if (!rateLimit('appx:' + req.ip, 20, 15 * 60e3)) return res.status(429).json({ error: 'Too many attempts, try later' });
+  const h = sha256(String(req.body?.code || ''));
+  const row = await one('SELECT * FROM app_handoffs WHERE code_hash = ?', h);
+  await run('DELETE FROM app_handoffs WHERE code_hash = ?', h);
+  if (!row || row.expires_at < now()) return res.status(401).json({ error: 'That sign-in link expired. Please sign in again.' });
+  const u = await one('SELECT * FROM users WHERE id = ?', row.user_id);
+  if (!u) return res.status(401).json({ error: 'Account not found' });
+  await createSession(res, req, u.id, false);
+  await audit(u.id, 'login', { via: 'android' }, req.ip);
+  res.json({ token: res.locals.sessionToken, user: publicUser(u) });
 });
 
 router.get('/me', async (req, res) => res.json({ user: req.user ? { ...publicUser(req.user), addons: await (await import('./addons.js')).addonsFor(req.user.id) } : null, mfaPending: !!req.pending }));

@@ -291,8 +291,21 @@ app.post('/twilio/sms', async (req, res) => {
   if (!twilioOk(req)) return res.status(403).send('forbidden');
   const user = await userByPhone(req.body.From);
   let reply;
+  // Opening a brokerage account by text: anyone who is not a customer yet, a customer without a
+  // brokerage account who texts APPLY, and anyone with an application in progress.
+  const TA = await import('./src/textapply.js'), text = String(req.body.Body || '').trim();
+  const media = [...Array(Math.min(4, +req.body.NumMedia || 0))].map((_, i) => ({ url: req.body['MediaUrl' + i], type: req.body['MediaContentType' + i] })).filter(m => m.url);
+  // TALK reaches a person instead (the business inbox).
+  const applying = !/^talk\b/i.test(text) && (await TA.hasOpen(req.body.From)
+    || (TA.settings().enabled && brokerEnabled() && (!user || (/^apply$/i.test(text) && !(await one('SELECT 1 FROM broker_accounts WHERE user_id = ?', user.id))))));
+  if (applying) {
+    // The first message of a new conversation also shows in the business inbox (never one with a number that could be an SSN).
+    if (!user && !(await TA.hasOpen(req.body.From)) && !/\d{3}\D?\d{2}\D?\d{4}/.test(text)) await import('./src/comms.js').then(C => C.record({ channel: 'sms', party: normalizePhone(req.body.From), body: (text || '(photo)') + '  [started Apply by text]', status: 'done' })).catch(() => {});
+    if (!auth.rateLimit('textapply:' + req.body.From, 60, 3600e3)) reply = 'Too many messages, try again later.';
+    else reply = await TA.handle(req.body.From, text, media, { ip: req.ip }).catch(e => { console.warn('text apply', e.message); return 'Sorry, something went wrong. Reply CONTINUE to try again.'; });
+  }
   // Someone who is not a customer: into the business inbox (Admin → Calls, texts & email).
-  if (!user) reply = await inboundSms(req.body.From, String(req.body.Body || '')).catch(() => 'Thanks for your message to Brightfolio. We will get back to you soon.');
+  else if (!user) reply = await inboundSms(req.body.From, String(req.body.Body || '')).catch(() => 'Thanks for your message to Brightfolio. We will get back to you soon.');
   else if (!isPaid(user)) reply = 'Trading and questions by text are part of Brightfolio Pro. Start a free trial in the app under Plans & billing.';
   else if (!auth.rateLimit('sms:' + user.id, 30, 3600e3)) reply = 'Too many messages, try again later.';
   else if (!(await CR.trySpend(user, 'sms', { memo: 'reply' }))) reply = 'You are out of credits for text replies. Buy a credit pack in the app under Plans & billing.';

@@ -263,7 +263,7 @@ const LOGNAMES = { hotline_call: 'Call', hotline_order: 'Order', hotline_cancel_
 async function phoneLine(view) {
   const d = await H.api('/admin/site/phone'), s = d.settings, c = d.counts;
   const tree = `Welcome: "${s.greeting}"
-  New number → 1 open a free account (texted code, then a 4-digit PIN)
+  New number → 1 open a free account (all on the call: caller-ID check or a call-back, then a 4-digit PIN)
   ▸ 1 Paper trading   ▸ 2 Live trading${s.freePaper ? ' (free plan: paper only)' : ''}
 Main menu
   ▸ 1 Account info   ▸ 2 Positions   ▸ 3 Market clock   ▸ 4 Place a trade

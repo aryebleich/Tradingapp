@@ -129,15 +129,24 @@ test('phone line: open an account by phone, then trade on paper with the PIN', a
     const call = caller(s.base, '+18455550123');
     let r = await call('/twilio/voice');
     assert.match(r.say, /does not have an account yet. Press 1 to open a free account/);
+    process.env.SIGNUP_CALLBACK_MS = '5';
     r = await call(r.next, '1');
-    const code = /Brightfolio code: (\d{6})/.exec(logs.join('\n'))?.[1];
-    assert.ok(code, 'the code was texted');
-    // A wrong code first, then the right one.
-    let w = await call(r.next, '000000'); assert.match(w.say, /not right/);
-    r = await call(w.next, code); assert.match(r.say, /choose a 4-digit PIN/);
-    const weak = await call(r.next, '1111'); assert.match(weak.say, /harder to guess/);
-    r = await call(weak.next, '2468'); assert.match(r.say, /same PIN again/);
-    r = await call(r.next, '2468'); assert.match(r.say, /Your account is ready/); assert.match(r.say, /Main menu, paper trading/);
+    // No texted code: without the carrier's caller-ID check, we hang up and call the number back.
+    assert.match(r.say, /we will call you right back/); assert.match(r.text, /<Hangup\/>/);
+    assert.ok(!/Brightfolio code/.test(logs.join('\n')), 'no code is texted');
+    let cb; for (let i = 0; i < 50 && !cb; i++) { await new Promise(z => setTimeout(z, 20)); cb = /\[call disabled\] to \+18455550123: (\S+)/.exec(logs.join('\n'))?.[1]; }
+    assert.ok(cb, 'the call-back was placed');
+    const path = new URL(cb).pathname + new URL(cb).search;
+    // A forged call-back link (another number) is refused.
+    const other = await (async () => { const r2 = await fetch(s.base + path, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ From: '+18885550000', To: '+18455559999', Direction: 'outbound-api', CallSid: 'CAx' }) }); return say(await r2.text()); })();
+    assert.match(other, /expired/);
+    const cbCall = async (p, d) => { const r2 = await fetch(s.base + p, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ From: '+18885550000', To: '+18455550123', Direction: 'outbound-api', CallSid: 'CAback', ...(d != null ? { Digits: d } : {}) }) }); const text = await r2.text(); return { text, say: say(text), next: action(text) }; };
+    r = await cbCall(path); assert.match(r.say, /calling back/);
+    r = await cbCall(r.next, '1'); assert.match(r.say, /choose a 4-digit PIN/);
+    const weak = await cbCall(r.next, '1111'); assert.match(weak.say, /harder to guess/);
+    r = await cbCall(weak.next, '2468'); assert.match(r.say, /same PIN again/);
+    r = await cbCall(r.next, '2468'); assert.match(r.say, /Your free account is ready/);
+    r = await cbCall(r.next, '1'); assert.match(r.say, /Main menu, paper trading/);
     const u = await one("SELECT * FROM users WHERE phone = '+18455550123'");
     assert.ok(u && u.phone_verified === 1 && u.pin_hash); assert.match(u.email, /@phone\.invalid$/);
     // A second call from the same number goes straight to the paper menu (free plan).

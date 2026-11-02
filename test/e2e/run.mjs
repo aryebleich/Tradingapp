@@ -36,6 +36,12 @@ for (let i = 0; i < 50; i++) { if (await fetch(B + '/healthz').then(r => r.ok, (
 
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 
+// Menu groups start folded: open the one holding the link first (as a person would), then click.
+async function navTo(p, k, how = 'click') {
+  const sel = `#nav a[href="#/${k}"]`;
+  if (!(await p.isVisible(sel))) { const g = await p.$eval(sel, a => a.closest('.grpbody')?.previousElementSibling?.dataset.g); if (g) await p[how](`#nav button.grp.sec[data-g="${g}"]`); }
+  await p[how](sel);
+}
 function harness(p, label) {
   const errors = [];
   p.on('pageerror', e => errors.push(e.message));
@@ -69,7 +75,9 @@ console.log('Desktop (1360x900)');
   const { step, done } = harness(p, 'desktop');
   await step('register', async () => {
     await p.goto(B + '/app#/register'); await p.fill('input[name=email]', 'desk@example.com'); await p.fill('input[name=password]', 'Str0ngPassword'); await p.check('input[name=agree]');
-    await p.click('button:has-text("Create account")'); await p.waitForSelector('#ticket');
+    await p.click('button:has-text("Create account")'); await p.waitForSelector('.st-card');
+    // New accounts start on the guided setup; "Skip the setup" goes to the portfolio.
+    await p.click('#stExit'); await p.waitForSelector('#ticket');
     await unlockHighRisk(p);
   });
   await step('homepage demo + legal pages', async () => {
@@ -190,12 +198,12 @@ console.log('Desktop (1360x900)');
   await step('calendar & events', async () => { await p.goto(B + '/app#/calendar'); await p.waitForSelector('text=Early close'); await p.waitForSelector('text=dividend'); });
   await step('admin: every owner page is in the menu and opens', async () => {
     for (const [k, h] of [['admin', 'Funnel'], ['admin-users', 'Changing a plan here'], ['admin-money', 'Payment processors'], ['admin-support', 'Support inbox'], ['admin-setup', 'Alpaca Broker API']]) {
-      await p.click(`#nav a[href="#/${k}"]`); await p.waitForSelector(`.admintabs button.on`); await p.waitForSelector(`text=${h}`);
+      await navTo(p, k); await p.waitForSelector(`.admintabs button.on`); await p.waitForSelector(`text=${h}`);
     }
     await p.screenshot({ path: path.join(OUT, 'admin-setup.png'), fullPage: true });
-    await p.click('#nav a[href="#/admin-system"]'); await p.waitForSelector('text=Capacity plan');
+    await navTo(p, 'admin-system'); await p.waitForSelector('text=Capacity plan');
     // Upgrades: the version, each tab, and an upgrade behind the password and UPGRADE.
-    await p.click('#nav a[href="#/admin-upgrades"]'); await p.waitForSelector('.upgradehead .ver b');
+    await navTo(p, 'admin-upgrades'); await p.waitForSelector('.upgradehead .ver b');
     for (const t of ['alpaca', 'render', 'history', 'github']) { await p.goto(B + '/app#/admin-upgrades?tab=' + t); await p.waitForSelector('.upgradehead'); }
     const v0 = await p.textContent('.upgradehead .ver b');
     await p.click('[data-rec="github:pro"]'); await p.waitForSelector('dialog.secure');
@@ -212,7 +220,7 @@ console.log('Desktop (1360x900)');
     await p.fill('dialog.secure [name=password]', 'Str0ngPassword'); await p.check('dialog.secure [name=ok]'); await p.click('dialog.secure button[value=yes]');
     await p.waitForSelector('#viewAs.on'); await p.waitForSelector('#nav a.upsell');
     await p.selectOption('#viewAs', ''); await p.waitForSelector('#viewAs:not(.on)'); await p.waitForFunction(() => !document.querySelector('#nav a.upsell'));
-    await p.click('#nav a[href="#/admin-users"]'); await p.fill('#userFind', 'desk'); await p.waitForTimeout(200);
+    await navTo(p, 'admin-users'); await p.fill('#userFind', 'desk'); await p.waitForTimeout(200);
     if ((await p.$$('#userTable tr[data-email]:not([hidden])')).length !== 1) throw new Error('user search');
   });
   await step('strategy backtest', async () => { await p.goto(B + '/app#/backtest'); await p.click('button:has-text("Run backtest")'); await p.waitForSelector('#btc'); });
@@ -247,7 +255,7 @@ console.log('Phone (iPhone 13)');
     await unlockHighRisk(p);
   });
   await step('connect API keys from the menu', async () => {
-    await p.tap('#moreTab'); await p.waitForSelector('#nav.open'); await p.tap('#nav a:has-text("Alpaca account")'); await p.waitForSelector('#keysForm');
+    await p.tap('#moreTab'); await p.waitForSelector('#nav.open'); await navTo(p, 'account', 'tap'); await p.waitForSelector('#keysForm');
     await p.fill('#keysForm [name=keyId]', 'PHONEKEY'); await p.fill('#keysForm [name=secret]', 'S'); await p.tap('#keysForm button'); await p.waitForSelector('#keysForm .ok');
   });
   await step('sticky Buy bar places an order', async () => {
@@ -290,6 +298,18 @@ console.log('Settings → Language');
   await step('switch to Yiddish and back', async () => {
     await p.goto(B + '/app#/register'); await p.fill('input[name=email]', 'lang@example.com'); await p.fill('input[name=password]', 'Str0ngPassword'); await p.check('input[name=agree]');
     await p.click('form.auth button:not([type=button])'); await p.waitForSelector('#nav a.on');
+    // The guided setup, all the way through: a goal, practice money, a first practice purchase, safety, next steps.
+    await p.waitForSelector('.st-card h1:has-text("Welcome")'); await p.click('[data-goal=grow]'); await p.click('#stNext');
+    await p.waitForSelector('text=$100,000 of practice money'); await p.click('#stNext');
+    await p.click('[data-pick=SPY]'); await p.click('[data-amt="100"]'); await p.click('#stBuy'); await p.waitForSelector('#stOut .banner.ok');
+    await p.screenshot({ path: path.join(OUT, 'get-started.png') });
+    await p.click('#stBuy'); await p.waitForSelector('text=Keep your account safe'); await p.click('#stSkip');
+    await p.waitForSelector('a.st-choice[href="#/sp500"]'); await p.click('#stDone'); await p.waitForSelector('#ticket');
+    if (await p.$('#nav a[href="#/start"]')) throw new Error('Get started still in the menu after finishing');
+    // Menu groups start folded and open with their arrow.
+    if (await p.isVisible('#nav a[href="#/statarb"]')) throw new Error('a folded group shows its pages');
+    await p.click('#nav button.grp.sec[data-g="Quant lab"]'); await p.waitForSelector('#nav a[href="#/statarb"]', { state: 'visible' });
+    await p.screenshot({ path: path.join(OUT, 'menu.png') });
     if (await p.$('header #langSel, header .langsel')) throw new Error('language picker still in the header');
     await p.goto(B + '/app#/settings'); await p.selectOption('#langSel', 'yi');
     await p.waitForSelector('html[dir=rtl]'); await p.waitForFunction(() => document.querySelector('#langSel')?.value === 'yi'); await p.waitForFunction(() => /[\u05D0-\u05EA]/.test(document.querySelector('#view h1')?.textContent || ''));

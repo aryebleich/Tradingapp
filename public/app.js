@@ -25,6 +25,7 @@ import * as OD from './orderdesk.js';
 import { startBell } from './bell.js';
 import { registerInstruments } from './instruments.js';
 import { registerAdmin13 } from './admin13.js';
+import { registerStart } from './start.js';
 import { initSearch } from './search.js';
 import { attachGlossary } from './glossary.js';
 import { startI18n, setLang, canvasNote, LANGS, current as currentLang } from './i18n.js';
@@ -115,6 +116,7 @@ function act(btn, fn, out) {
 }
 
 let ME = null, CFG = null;
+try { if (new URLSearchParams(location.search).get('next') === 'handoff') sessionStorage.setItem('qp_next', 'handoff'); } catch {}
 // The user's display preferences (Settings → Portfolio numbers), loaded once after sign-in.
 const PREFS = { portfolio: { mode: 'live', hideToday: false }, chart: { mode: 'colorful', color: '#2563eb' }, loaded: false };
 async function loadPrefs() {
@@ -278,14 +280,17 @@ async function showUpgrade(feature) {
 // ---------- routing ----------
 // Pages of add-ons the user can switch off (Settings → Add-ons) leave the menu when off.
 const ADDON_PAGES = { brief: 'brief', taxpilot: 'taxPilot' };
+// The menu: the everyday pages always show; every other group starts folded and opens with its arrow.
+const CORE = [['dashboard', 'Home'], ['start', 'Get started'], ['trade', 'Trade'], ['positions', 'Positions'], ['orders', 'Orders'], ['watchlists', 'Watchlists'], ['markets', 'Markets & news']];
 const NAV = [
-  ['Home', [['dashboard', 'Portfolio'], ['money', 'All my money'], ['brief', 'Weekly brief']]],
-  ['Trade', [['trade', 'Trade'], ['chart', 'Chart'], ['orders', 'Orders'], ['positions', 'Positions'], ['watchlists', 'Watchlists'], ['options', 'Options chain'], ['optionslab', 'Options lab']]],
-  ['Invest', [['sp500', 'S&P 500 plan'], ['wealth', 'Wealth builder'], ['invest', 'Futures, funds & savings'], ['alpaca-tools', 'Bonds, rates & crypto'], ['longterm', 'Long-term view'], ['private', 'Private markets'], ['realestate', 'Real estate'], ['values', 'Values investing'], ['spend', 'Invest as you spend']]],
-  ['Research', [['markets', 'Markets & news'], ['news', 'News & sentiment'], ['scanner', 'Scanner'], ['calendar', 'Calendar & events'], ['institutions', 'Institutional portfolios'], ['ai', 'AI assistant'], ['agents', 'Forecasts & AI agents']]],
-  ['Strategies & automation', [['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['rules', 'Rules across accounts'], ['schedule', 'Scheduled trades'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['portfolios', 'Portfolios'], ['marketplace', 'Marketplace'], ['pairs', 'Pairs trading'], ['statarb', 'Statistical arbitrage'], ['code', 'Code lab'], ['quantconnect', 'Cloud algorithms'], ['workspace', 'Workspace']]],
-  ['Plan & protect', [['insights', 'Insights & journal'], ['risk', 'Risk controls'], ['execution', 'Execution & routing'], ['tax', 'Taxes'], ['taxpilot', 'Tax autopilot'], ['luach', 'Luach & tzedakah']]],
-  ['Account', [['security', 'Security & help'], ['learn', 'Learn'], ['accounts', 'All accounts'], ['brokers', 'Brokerages'], ['account', 'Alpaca account'], ['android', 'Android app'], ['funding', 'Plans & billing'], ['referrals', 'Invite & earn'], ['text', 'Text & hotline'], ['settings', 'Settings']]],
+  ['Investing', [['sp500', 'S&P 500 plan'], ['wealth', 'Wealth builder'], ['longterm', 'Long-term view'], ['invest', 'Futures, funds & savings'], ['alpaca-tools', 'Bonds, rates & crypto'], ['values', 'Values investing'], ['spend', 'Invest as you spend']]],
+  ['Trading tools', [['chart', 'Chart'], ['options', 'Options chain'], ['optionslab', 'Options lab'], ['scanner', 'Scanner'], ['calendar', 'Calendar & events'], ['execution', 'Execution & routing'], ['workspace', 'Workspace']]],
+  ['Research & AI', [['news', 'News & sentiment'], ['ai', 'AI assistant'], ['agents', 'Forecasts & AI agents'], ['institutions', 'Institutional portfolios']]],
+  ['Automation', [['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['schedule', 'Scheduled trades'], ['rules', 'Rules across accounts'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['portfolios', 'Portfolios'], ['marketplace', 'Marketplace']]],
+  ['Quant lab', [['pairs', 'Pairs trading'], ['statarb', 'Statistical arbitrage'], ['code', 'Code lab'], ['quantconnect', 'Cloud algorithms']]],
+  ['Planning', [['money', 'All my money'], ['brief', 'Weekly brief'], ['insights', 'Insights & journal'], ['risk', 'Risk controls'], ['tax', 'Taxes'], ['taxpilot', 'Tax autopilot'], ['private', 'Private markets'], ['realestate', 'Real estate'], ['luach', 'Luach & tzedakah']]],
+  ['Accounts', [['account', 'Open or connect an account'], ['accounts', 'All accounts'], ['brokers', 'Brokerages'], ['funding', 'Plans & billing'], ['referrals', 'Invite & earn']]],
+  ['Help & settings', [['learn', 'Learn'], ['security', 'Security & help'], ['text', 'Text & hotline'], ['android', 'Android app'], ['settings', 'Settings']]],
 ];
 // Simple line icons (24x24 paths) for the menu.
 const ICONS = {
@@ -334,6 +339,7 @@ const ICONS = {
   'admin-comms': '<path d="M4 5h16v11H8l-4 4z"/><path d="M8 9h8M8 12h5"/>', 'admin-data': '<path d="M3 12h4l3-7 4 14 3-7h4"/><circle cx="12" cy="12" r="0.5"/>', 'admin-trust': '<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/>',
   invest: '<path d="M4 19h16M6 16V9M10 16V5M14 16v-6M18 16V7"/>',
   rules: '<path d="M4 6h16M4 12h10M4 18h6"/><path d="M17 14l2 2 3-4"/>',
+  start: '<path d="M5 21V4h11l-2 4 2 4H5"/>',
   android: '<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/>',
   values: '<path d="M12 21s-7-4.4-9.3-9A5.4 5.4 0 0 1 12 6a5.4 5.4 0 0 1 9.3 6c-2.3 4.6-9.3 9-9.3 9z"/>', star: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
 };
@@ -390,21 +396,26 @@ async function render() {
     };
   }
   setMenu(false);
-  $$('#tabs a[data-r]').forEach(a => a.classList.toggle('on', a.dataset.r === route || (route === '' && a.dataset.r === 'dashboard')));
+  $$('#tabs a[data-r]').forEach(a => a.classList.toggle('on', a.dataset.r === route || ((route === '' || route === 'start') && a.dataset.r === 'dashboard')));
   if (ME) {
+    // Signing in for the Android app: back to the app once signed in here.
+    if (sessionStorage.getItem('qp_next') === 'handoff') { sessionStorage.removeItem('qp_next'); location.href = '/api/auth/app-handoff'; return; }
     const groups = ME.role === 'admin' ? [['Owner', ADMIN_TABS], ...NAV] : NAV;
     await accounts();
-    // Sections fold away with their arrow (remembered); the one holding the current page stays open.
-    const closed = (() => { try { return JSON.parse(localStorage.getItem('qp_nav_closed') || '[]'); } catch { return []; } })();
-    $('#nav').innerHTML = modeSwitch() + groups.map(([g, items]) => { const list = items.filter(([k]) => !(ADDON_PAGES[k] && ME.addons?.[ADDON_PAGES[k]] === false)), open = !closed.includes(g) || list.some(([k]) => k === route);
-      return `<button type="button" class="grp sec" data-g="${esc(g)}" aria-expanded="${open}">${g}<span class="chev" aria-hidden="true">▾</span></button><div class="grpbody" ${open ? '' : 'hidden'}>${list.map(([k, t]) => `<a href="#/${k}" class="${k === route ? 'on' : ''}">${icon(k)}${t}</a>`).join('')}</div>`; }).join('')
+    // Groups start folded; their arrow opens them (remembered). The group holding the current page opens.
+    const opened = (() => { try { return JSON.parse(localStorage.getItem('qp_nav_open') || '[]'); } catch { return []; } })();
+    const START = await import('./start.js').then(m => m.startDone()).catch(() => true);
+    const link = ([k, t]) => `<a href="#/${k}" class="${k === route ? 'on' : ''}">${icon(k)}${t}</a>`;
+    const core = CORE.filter(([k]) => k !== 'start' || !START || route === 'start');
+    $('#nav').innerHTML = modeSwitch() + `<div class="navcore">${core.map(link).join('')}</div>` + groups.map(([g, items]) => { const list = items.filter(([k]) => !(ADDON_PAGES[k] && ME.addons?.[ADDON_PAGES[k]] === false)), open = opened.includes(g) || list.some(([k]) => k === route);
+      return `<button type="button" class="grp sec" data-g="${esc(g)}" aria-expanded="${open}"><span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span><span class="gname">${g}</span><span class="gcount" aria-hidden="true">${list.length}</span></button><div class="grpbody" ${open ? '' : 'hidden'}>${list.map(link).join('')}</div>`; }).join('')
       + (isPaid(ME) ? '' : `<a href="#/funding" class="upsell">${icon('star')}${ME.trialUsed ? 'Upgrade to Pro' : 'Try Pro free for 14 days'}</a>`)
       + `<div class="grp">${esc(ME.email)}</div><a href="#" id="navLogout">${icon('account')}Sign out</a>`;
     wireModeSwitch();
     $$('#nav .grp.sec').forEach(b => (b.onclick = () => {
       const open = b.getAttribute('aria-expanded') !== 'true'; b.setAttribute('aria-expanded', open); b.nextElementSibling.hidden = !open;
-      const set = new Set((() => { try { return JSON.parse(localStorage.getItem('qp_nav_closed') || '[]'); } catch { return []; } })()); open ? set.delete(b.dataset.g) : set.add(b.dataset.g);
-      try { localStorage.setItem('qp_nav_closed', JSON.stringify([...set])); } catch {}
+      const set = new Set((() => { try { return JSON.parse(localStorage.getItem('qp_nav_open') || '[]'); } catch { return []; } })()); open ? set.add(b.dataset.g) : set.delete(b.dataset.g);
+      try { localStorage.setItem('qp_nav_open', JSON.stringify([...set])); } catch {}
     }));
     $('#navLogout').onclick = e => { e.preventDefault(); $('#logout').click(); };
     updateBadge();
@@ -558,7 +569,7 @@ routes.register = async (view, q) => {
     const f = form(view);
     if (!f.agree) throw new Error('Please accept the Terms to continue');
     let ref = null; try { ref = localStorage.getItem('qp_ref'); } catch {}
-    ME = (await api('/auth/register', { body: { ...f, ref } })).user; location.hash = '#/dashboard';
+    ME = (await api('/auth/register', { body: { ...f, ref } })).user; location.hash = '#/start';
   });
 };
 // Sign in with a code sent by text message to a verified phone number.
@@ -680,10 +691,13 @@ routes.dashboard = async (view, q) => {
   const dayChg = prev ? a.equity - prev : null;
   const steps = [[!!localStorage.getItem('qp_seen_strategies'), 'Try a ready-made strategy', '#/strategies'], [ME.totpEnabled, 'Turn on two-factor login', '#/settings'], [a.positions.length > 0 || state.account !== 'paper', 'Place your first paper trade', '#/dashboard'],
     [ME.phoneVerified && ME.hasPin, 'Add your phone and PIN for SMS', '#/settings'], [!!sessionStorage.getItem('qp_strategy'), 'Backtest a strategy', '#/backtest']];
-  const todo = steps.filter(x => !x[0]).length > 1 && !localStorage.getItem('qp_onboard_done');
+  const START = await import('./start.js').then(m => m.startDone()).catch(() => true);
+  const fresh = !START && state.account === 'paper' && a.positions.length === 0;
+  const todo = !fresh && steps.filter(x => !x[0]).length > 1 && !localStorage.getItem('qp_onboard_done');
   const approvals = await approvalsBanner(), P = PREFS.portfolio;
   const since = P.mode !== 'live' ? sinceStat(await sinceLastLook(state.account, a.equity)) : '';
   view.innerHTML = `${approvals}
+  ${fresh ? `<div class="card onboard welcome-hero"><div><h2>Welcome! Let's get you started</h2><p class="mu" style="margin:0">A 2-minute guided setup: what you want to do, how practice money works, and your first practice purchase. Nothing uses real money.</p></div><a href="#/start"><button type="button">Start the guided setup</button></a></div>` : ''}
   ${todo ? `<div class="card onboard"><div class="ob-head"><div><h2>Get started</h2><p class="mu">${steps.filter(x => x[0]).length} of ${steps.length} done</p></div><button class="ghost small" id="hideOnboard">Hide</button></div>
     <div class="ob-bar"><i style="width:${Math.round(steps.filter(x => x[0]).length / steps.length * 100)}%"></i></div>
     <div class="ob-list">${steps.map(([done, t, href]) => `<a class="ob-item${done ? ' done' : ''}" href="${href}"><span class="ob-check" aria-hidden="true"></span><span class="ob-t">${t}</span><span class="ob-go" aria-hidden="true">→</span></a>`).join('')}</div></div>` : ''}
@@ -1096,7 +1110,7 @@ routes.android = async view => {
   const isAndroid = /Android/i.test(navigator.userAgent);
   view.innerHTML = `<h1>Android app</h1><div class="card androidcard"><div class="row" style="gap:18px;align-items:center;flex-wrap:wrap">
     <img src="/icon-512.png" width="72" height="72" alt="" style="border-radius:18px"><div style="flex:1;min-width:220px"><h2 style="margin:0">Brightfolio for Android</h2>
-    <p class="mu" style="margin:4px 0 0">The same app as on your phone's browser, full screen with its own icon and notifications. It always shows the newest version: every update reaches it at once, nothing to reinstall.</p></div>
+    <p class="mu" style="margin:4px 0 0">A real Android app: your portfolio, quotes, buying and selling, orders and a watchlist on native screens, with everything else a tap away. Sign in with your email, or with Google, GitHub or a phone code.</p></div>
     <a href="/download/android"><button>Download the Android app</button></a></div>
     <h3>Install</h3><ol class="steps"><li>${isAndroid ? 'Tap' : 'On your Android phone, open this page and tap'} <b>Download the Android app</b>.</li><li>Open the downloaded file. If Android asks, allow installing apps from your browser (Settings → Apps → Special access → Install unknown apps).</li><li>Tap <b>Install</b>, then open Brightfolio and sign in.</li></ol>
     <p class="mu small-print">On iPhone: open Brightfolio in Safari, tap Share, then Add to Home Screen.</p></div>`;
@@ -1430,8 +1444,9 @@ registerTrustAdmin(routes, shared);
 registerLuach(routes, shared);
 registerAddons(routes, shared);
 registerInstruments(routes, shared);
+registerStart(routes, shared);
 registerAdmin13(routes, shared);
-initSearch(shared, NAV);
+initSearch(shared, [['Main', CORE], ...NAV]);
 startBell(shared);
 registerWealth(routes, shared);
 registerTools(routes, shared);

@@ -52,6 +52,14 @@ async function commsPage(view, q) {
       ${m.subject ? `<div><b>${H.esc(m.subject)}</b></div>` : ''}<div class="mbody" style="white-space:pre-wrap">${H.esc(m.body)}</div>${m.media ? `<audio controls preload="none" src="${H.esc(m.media)}.mp3"></audio>` : ''}
       ${m.direction === 'in' ? `<div class="row" style="gap:6px;margin-top:6px">${m.status === 'open' ? `<button class="small" data-reply="${m.id}">Reply</button><button class="small ghost" data-done="${m.id}">Done</button>` : '<span class="mu">Answered</span>'}${/^\+\d+$/.test(m.party) ? ` <a href="tel:${H.esc(m.party)}"><button class="small ghost" type="button">Call back</button></a>` : ''}</div><div class="replybox" hidden></div>` : ''}</div>`).join('') || '<p class="mu">Nothing waiting. 🎉</p>'}</div></div>
   <form class="card" id="newMsg"><h2>New message</h2><div class="row"><label>To (phone or email)<input name="to" required></label><label>Subject (email)<input name="subject"></label></div><label>Message<textarea name="body" rows="3" required></textarea></label><button>Send</button><div class="err"></div></form>
+  <form class="card" id="ta"><h2>Apply by text</h2>
+    <p class="mu" style="margin-top:0">Anyone who texts your number and is not a customer yet gets the brokerage application by text (photo of the ID and Social Security card, the missing details, a check of what we have, then the agreement); customers without a brokerage account start it by texting APPLY. Texting TALK reaches this inbox instead. ${d.apply.open ? `<b>${d.apply.open}</b> in progress.` : ''}</p>
+    ${d.apply.brokerEnabled ? '' : '<p class="banner">Needs the Alpaca Broker API keys (Admin → Keys: BROKER_API_KEY and BROKER_API_SECRET). Until then texts go to the inbox.</p>'}
+    <label class="check"><input type="checkbox" name="enabled" ${d.apply.enabled ? 'checked' : ''}> Answer texts from new numbers with the application</label>
+    <label class="check"><input type="checkbox" name="aiRead" ${d.apply.aiRead ? 'checked' : ''}> Read the ID and card photos with AI (otherwise every detail is asked by text)</label>
+    <label class="check"><input type="checkbox" name="aiAnyProvider" ${d.apply.aiAnyProvider ? 'checked' : ''}> Also with a free AI provider (by default only Claude, whose API does not train on your data, reads ID photos)</label>
+    <p class="mu small-print">${d.apply.aiReady ? 'Photos are read automatically.' : 'Photos are not read now (no Claude key, or AI reading is off); the details are asked by text.'} Answers are kept encrypted only while the application is open (at most 7 days) and deleted once it is sent; the Social Security card photo is never kept.</p>
+    <button>Save</button><div class="err"></div></form>
   <form class="card" id="cs"><h2>Settings</h2>
     <div class="row"><label>Forward calls to (your phone)<input name="forwardTo" value="${H.esc(s.forwardTo)}" placeholder="+18455551234" dir="ltr"></label><label>Ring for (seconds)<input name="ringSeconds" type="number" min="5" max="60" value="${s.ringSeconds}"></label></div>
     <label class="check"><input type="checkbox" name="forwardAll" ${s.forwardAll ? 'checked' : ''}> Forward every call to this phone (otherwise only callers who are not customers can press 9 to reach you; customers get the trading line)</label>
@@ -70,6 +78,8 @@ async function commsPage(view, q) {
     H.act(box.querySelector('[data-send]'), async () => { await H.api(`/admin/comms/${m.id}/reply`, { body: { body: box.querySelector('textarea').value, via: box.querySelector('[data-via]').value } }); setTimeout(H.render, 600); return 'Sent'; }, box.querySelector('.err'));
   }));
   const nm = H.$('#newMsg', view); H.act(H.$('button', nm), async () => { await H.api('/admin/comms/send', { body: H.form(nm) }); nm.reset(); return 'Sent'; });
+  const ta = H.$('#ta', view);
+  H.act(H.$('button', ta), async () => { const v = H.form(ta); await H.api('/admin/comms/apply', { method: 'PUT', body: { enabled: !!v.enabled, aiRead: !!v.aiRead, aiAnyProvider: !!v.aiAnyProvider } }); setTimeout(H.render, 500); return 'Saved'; });
   const cs = H.$('#cs', view);
   H.act(H.$('button', cs), async () => { await H.api('/admin/comms/settings', { method: 'PUT', body: H.form(cs) }); setTimeout(H.render, 500); return 'Saved'; });
   H.act(H.$('#newTok', view), async () => { if (!confirm('Make a new incoming-email address? The old one stops working.')) return ''; await H.api('/admin/comms/settings', { method: 'PUT', body: { newToken: true } }); H.render(); return ''; });

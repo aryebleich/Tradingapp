@@ -16,6 +16,8 @@ import { monthlyBooksEmail } from './books.js';
 
 const slot = (t, min) => Math.floor(t / (min * 60e3));
 export const JOBS = [
+  // Brokerage applications by text left unfinished for 7 days are deleted.
+  ['textApplyPurge', 360, async () => (await import('./textapply.js')).purgeOld()],
   // The public status page's checks.
   // Opt-in reminders before Shabbos and Yom Tov (the luach).
   ['luach', 30, async t => (await import('./luach.js')).runLuachReminders(t)],

@@ -1,6 +1,7 @@
 // The stock-market phone line (IVR): what callers hear and press.
 //
-//   Welcome              new number: 1 = open a free account (text-message code, then a PIN)
+//   Welcome              new number: 1 = open a free account on the call (caller-ID check or a
+//                        call-back, then a PIN; no texted code)
 //     1 paper / 2 live   (live needs a connected Alpaca account)
 //   Main menu            1 account info · 2 positions · 3 market clock · 4 place a trade
 //                        5 cancel open orders (PIN) · 6 close ALL positions (extra confirm + PIN)
@@ -286,48 +287,73 @@ export function registerHotline(app, { twilioOk, twiml }) {
     twiml(res, menu(e, String(reply).replace(/\$/g, ' dollars ').replace(/\n/g, '. ').slice(0, 600)));
   }));
 
-  // ---------- open an account by phone ----------
-  // 1: text a 6-digit code to the calling number (proves the caller holds that phone).
+  // ---------- open an account by phone (everything on the call, no texted code) ----------
+  // The phone is proven by the carrier's caller-ID check (STIR/SHAKEN "A": the carrier vouches the
+  // caller owns the number) or, without it, by calling the number back: only the real owner of
+  // the phone can answer that call. Then a PIN, entered twice. The signed token ties every step
+  // to the phone number and expires after 30 minutes.
+  const party = req => normalizePhone(/^outbound/.test(req.body.Direction || '') ? req.body.To : req.body.From);
+  const signupToken = (phone, x) => hmac(`signup|${phone}|${x}`);
+  const okToken = (req, phone) => +req.query.x > now() && req.query.v === signupToken(phone, req.query.x);
+  const newPinText = 'Now choose a 4-digit PIN. You will need it for every trade by phone or text. Enter it now.';
   app.post('/twilio/voice/signup', step(async (req, res, o) => {
     if (req.body.Digits === '9') { const C = await import('./comms.js'), fwd = C.forwardTwiml((process.env.PUBLIC_URL || '').replace(/\/$/, '')); if (fwd) return twiml(res, say('Connecting you now.') + fwd); }
     if (req.body.Digits !== '1' || !o.allowSignup) return twiml(res, bye('Goodbye.'));
-    const phone = normalizePhone(req.body.From), sid = req.body.CallSid;
+    const phone = party(req);
     if (!/^\+\d{10,15}$/.test(phone) || await userByPhone(phone)) return twiml(res, bye('This number cannot open an account by phone. Please use the app. Goodbye.'));
-    if (!rateLimit('ivrsignup:' + phone, 3, 24 * 3600e3)) return twiml(res, bye('Too many sign-up attempts today. Please use the app. Goodbye.'));
-    const code = String(Math.floor(100000 + Math.random() * 900000)), x = now() + 10 * 60e3;
-    await N.sendSms(phone, `Brightfolio code: ${code}. Enter it on the call to open your account.`);
-    twiml(res, gather(`/twilio/voice/signup/code${q({ h: hmac(`${sid}|${phone}|${code}|${x}`), x })}`, 'We just texted you a 6-digit code. Enter it now.', { digits: 6, timeout: 30 }) + bye('No code entered. Goodbye.'));
-  }));
-  app.post('/twilio/voice/signup/code', step(async (req, res) => {
-    const phone = normalizePhone(req.body.From), sid = req.body.CallSid, { h, x } = req.query, tries = +req.query.t || 0;
-    if (now() > +x) return twiml(res, bye('The code expired. Please call again. Goodbye.'));
-    if (hmac(`${sid}|${phone}|${String(req.body.Digits || '')}|${x}`) !== h) {
-      if (tries >= 2) return twiml(res, bye('That code is not right. Please call again. Goodbye.'));
-      return twiml(res, gather(`/twilio/voice/signup/code${q({ h, x, t: tries + 1 })}`, 'That code is not right. Enter the 6-digit code again.', { digits: 6, timeout: 30 }) + bye('Goodbye.'));
+    if (!rateLimit('ivrsignup:' + phone, 3, 24 * 3600e3)) return twiml(res, bye('Too many sign-up attempts today. Please try again tomorrow. Goodbye.'));
+    const x = now() + 30 * 60e3, t = q({ v: signupToken(phone, x), x });
+    if (/^TN-Validation-Passed-A/.test(req.body.StirVerstat || '')) {
+      return twiml(res, gather(`/twilio/voice/signup/pin${t}`, `Let's open your free account. It takes about one minute. ${newPinText}`, { digits: 4, timeout: 15 }) + bye('Goodbye.'));
     }
-    twiml(res, gather(`/twilio/voice/signup/pin${q({ v: hmac(`${sid}|${phone}|verified`) })}`, 'Thank you. Now choose a 4-digit PIN. You will need it for every trade by phone or text.', { digits: 4, timeout: 15 }) + bye('Goodbye.'));
+    // Hang up first so the line is free, then ring back.
+    const base = call.getStore().base, l = lang();
+    setTimeout(() => N.placeCall(phone, `${base}/twilio/voice/signup/callback${t}${l === 'yi' ? '&l=yi' : ''}`).catch(e => console.warn('signup call-back', e.message)), +process.env.SIGNUP_CALLBACK_MS || 6000);
+    twiml(res, bye('To make sure this phone is yours, we will call you right back on this number. Please hang up now and answer our call in a few seconds.'));
+  }));
+  // The call-back: answering it proves the caller holds this phone.
+  app.post('/twilio/voice/signup/callback', step(async (req, res) => {
+    const phone = party(req);
+    if (!okToken(req, phone)) return twiml(res, bye('This call has expired. Please call us again. Goodbye.'));
+    const t = q({ v: req.query.v, x: req.query.x });
+    twiml(res, gather(`/twilio/voice/signup/verified${t}`, 'Hello, this is Brightfolio calling back to finish opening your free account. Press 1 to continue.', { timeout: 10 })
+      + gather(`/twilio/voice/signup/verified${t}`, 'Press 1 to continue opening your account.', { timeout: 10 }) + bye('Goodbye.'));
+  }));
+  app.post('/twilio/voice/signup/verified', step(async (req, res) => {
+    const phone = party(req);
+    if (!okToken(req, phone) || req.body.Digits !== '1') return twiml(res, bye('Goodbye.'));
+    twiml(res, gather(`/twilio/voice/signup/pin${q({ v: req.query.v, x: req.query.x })}`, `Thank you, your phone is confirmed. ${newPinText}`, { digits: 4, timeout: 15 }) + bye('Goodbye.'));
   }));
   app.post('/twilio/voice/signup/pin', step(async (req, res) => {
-    const phone = normalizePhone(req.body.From), sid = req.body.CallSid, pin = String(req.body.Digits || '');
-    if (req.query.v !== hmac(`${sid}|${phone}|verified`)) return twiml(res, bye('Goodbye.'));
-    if (!/^\d{4}$/.test(pin) || /^(\d)\1{3}$/.test(pin) || ['1234', '4321', '0123', '9876'].includes(pin)) return twiml(res, gather(`/twilio/voice/signup/pin${q({ v: req.query.v })}`, 'Please choose a PIN that is harder to guess, not the same digit four times or a simple sequence. Enter 4 digits.', { digits: 4, timeout: 15 }) + bye('Goodbye.'));
-    twiml(res, gather(`/twilio/voice/signup/done${q({ v: req.query.v, p: hmac(`${sid}|pin|${pin}`) })}`, 'Enter the same PIN again.', { digits: 4, timeout: 15 }) + bye('Goodbye.'));
+    const phone = party(req), pin = String(req.body.Digits || ''), t = { v: req.query.v, x: req.query.x };
+    if (!okToken(req, phone)) return twiml(res, bye('This call has expired. Please call us again. Goodbye.'));
+    if (!/^\d{4}$/.test(pin) || /^(\d)\1{3}$/.test(pin) || ['1234', '4321', '0123', '9876'].includes(pin)) return twiml(res, gather(`/twilio/voice/signup/pin${q(t)}`, 'Please choose a PIN that is harder to guess, not the same digit four times or a simple sequence. Enter 4 digits.', { digits: 4, timeout: 15 }) + bye('Goodbye.'));
+    twiml(res, gather(`/twilio/voice/signup/done${q({ ...t, p: hmac(`${phone}|pin|${pin}|${t.x}`) })}`, 'Enter the same PIN again.', { digits: 4, timeout: 15 }) + bye('Goodbye.'));
   }));
-  app.post('/twilio/voice/signup/done', step(async (req, res, o) => {
-    const phone = normalizePhone(req.body.From), sid = req.body.CallSid, pin = String(req.body.Digits || '');
-    if (req.query.v !== hmac(`${sid}|${phone}|verified`)) return twiml(res, bye('Goodbye.'));
-    if (req.query.p !== hmac(`${sid}|pin|${pin}`)) return twiml(res, gather(`/twilio/voice/signup/pin${q({ v: req.query.v })}`, 'The PINs did not match. Choose a 4-digit PIN.', { digits: 4, timeout: 15 }) + bye('Goodbye.'));
+  app.post('/twilio/voice/signup/done', step(async (req, res) => {
+    const phone = party(req), pin = String(req.body.Digits || ''), t = { v: req.query.v, x: req.query.x };
+    if (!okToken(req, phone)) return twiml(res, bye('This call has expired. Please call us again. Goodbye.'));
+    if (req.query.p !== hmac(`${phone}|pin|${pin}|${t.x}`)) return twiml(res, gather(`/twilio/voice/signup/pin${q(t)}`, 'The PINs did not match. Choose a 4-digit PIN.', { digits: 4, timeout: 15 }) + bye('Goodbye.'));
     if (await userByPhone(phone)) return twiml(res, bye('This number already has an account. Goodbye.'));
-    // The account's sign-in is the phone number (text-message code); the user adds an email later.
+    // The account's sign-in is the phone number; the user can add an email later in the app.
     const id = await createUser({ email: `p${phone.replace(/\D/g, '')}.${randomToken(4).toLowerCase().replace(/[^a-z0-9]/g, '')}@phone.invalid` });
     await run('UPDATE users SET phone = NULL WHERE phone = ? AND phone_verified = 0', phone);
     await run('UPDATE users SET phone = ?, phone_verified = 1, pin_hash = ? WHERE id = ?', phone, hashSecret(pin), id);
-    await audit(id, 'hotline_signup', null, req.body.From);
-    const base = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
-    N.sendSms(phone, `Welcome to Brightfolio! Your free account with a $100,000 paper account is ready. Sign in with this phone number: ${base}/app#/login-phone . To open a real brokerage account, finish the short application in the app under Open an account.`).catch(() => {});
-    const u = await one('SELECT * FROM users WHERE id = ?', id);
-    if (!access(u)) return twiml(res, bye('Your account is ready. We texted you a link to sign in. Trading by phone is part of the Pro plan, and you can start a free trial in the app. Goodbye.'));
-    twiml(res, menu('paper', 'Your account is ready, with 100,000 dollars of paper money. We texted you a link to the app.'));
+    await audit(id, 'hotline_signup', { verified: /^outbound/.test(req.body.Direction || '') ? 'call-back' : 'caller-id' }, phone);
+    twiml(res, gather(`/twilio/voice/signup/next${q(t)}`, 'Your free account is ready, with 100,000 dollars of paper money to practice with. Press 1 to go to the main menu. Press 2 if you would also like a text message with a link to the app. Press 0 to hang up.', { timeout: 10 }) + bye('Goodbye.'));
+  }));
+  app.post('/twilio/voice/signup/next', step(async (req, res) => {
+    const phone = party(req), u = await userByPhone(phone);
+    if (!u || !okToken(req, phone)) return twiml(res, bye('Goodbye.'));
+    if (req.body.Digits === '0') return twiml(res, bye('Thank you for joining Brightfolio. Goodbye.'));
+    let lead = '';
+    if (req.body.Digits === '2') {
+      const base = call.getStore().base;
+      N.sendSms(phone, `Welcome to Brightfolio! Sign in to the app with this phone number: ${base}/app#/login-phone . To open a real brokerage account, reply APPLY.`).catch(() => {});
+      lead = 'We sent the link.';
+    }
+    if (!access(u)) return twiml(res, bye(`${lead} Trading by phone is part of the Pro plan, and you can start a free trial in the app. Goodbye.`));
+    twiml(res, menu('paper', lead));
   }));
 
   app.post('/twilio/voice/status', (req, res) => res.sendStatus(204));

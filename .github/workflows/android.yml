@@ -1,8 +1,8 @@
 name: Android app
 # Builds the Brightfolio Android app and publishes it at
 # https://github.com/<repo>/releases/download/android-latest/brightfolio.apk (the "Download the
-# Android app" button). The app shows the live site, so every push reaches it at once; this
-# rebuilds the app itself when its icon, name or this workflow changes, or when run by hand.
+# Android app" button). A native app (Kotlin, Jetpack Compose) that talks to the site's API;
+# rebuilt when anything under android/, the icon or this workflow changes, or when run by hand.
 # Signing: repository secret ANDROID_KEY_PASSWORD (any long password you choose). The first run
 # creates android/release.keystore with it and commits it; every later version is signed with the
 # same key, so phones update in place. Without the secret the app is signed with a one-time key.
@@ -49,28 +49,26 @@ jobs:
           fi
           keytool -list -v -keystore android/release.keystore -alias brightfolio -storepass "$PASS" | grep 'SHA256:' | sed 's/.*SHA256: //' > android/cert-sha256.txt
           echo "Signing certificate SHA-256: $(cat android/cert-sha256.txt)"
-      - name: Generate the Android project
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14.3'
+      - name: Build and sign
         env:
           APP_HOST: ${{ vars.APP_URL }}
           VERSION_CODE: ${{ github.run_number }}
         run: |
-          npm install --no-save --prefix android @bubblewrap/core@1
-          NODE_PATH=android/node_modules node android/generate.cjs
-      - name: Build and sign
-        run: |
-          cd android/project
-          chmod +x gradlew
-          ./gradlew --no-daemon assembleRelease
+          cd android
+          gradle --no-daemon assembleRelease
           BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
           "$BT/zipalign" -f -p 4 app/build/outputs/apk/release/app-release-unsigned.apk aligned.apk
-          "$BT/apksigner" sign --ks ../release.keystore --ks-key-alias brightfolio --ks-pass env:KEY_PASS --key-pass env:KEY_PASS --out ../brightfolio.apk aligned.apk
-          "$BT/apksigner" verify ../brightfolio.apk && ls -l ../brightfolio.apk
+          "$BT/apksigner" sign --ks release.keystore --ks-key-alias brightfolio --ks-pass env:KEY_PASS --key-pass env:KEY_PASS --out brightfolio.apk aligned.apk
+          "$BT/apksigner" verify brightfolio.apk && ls -l brightfolio.apk
       - name: Publish the download
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete android-latest --yes --cleanup-tag 2>/dev/null || true
-          gh release create android-latest android/brightfolio.apk --title "Brightfolio for Android" --notes "Install: open this file on your Android phone and allow installing from your browser. The app shows the live site, so it is always up to date. Build ${{ github.run_number }}." --latest=false
+          gh release create android-latest android/brightfolio.apk --title "Brightfolio for Android" --notes "Install: open this file on your Android phone and allow installing from your browser. Native Brightfolio app, build ${{ github.run_number }}." --latest=false
       - name: Keep the signing key and fingerprint
         if: env.ONE_TIME_KEY != '1'
         run: |

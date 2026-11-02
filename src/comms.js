@@ -127,8 +127,11 @@ export const commsAdminRouter = (() => {
     const s = settings(), base = (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
     const counts = Object.fromEntries((await all("SELECT channel, COUNT(*) n FROM comms WHERE status = 'open' GROUP BY channel")).map(x => [x.channel, x.n]));
     counts.form = (await one("SELECT COUNT(*) n FROM messages WHERE status = 'open'")).n;
-    res.json({ items, counts, settings: s, inboundUrl: `${base}/hooks/email/inbound?token=${s.emailToken || '(save settings to create)'}`, twilio: N.twilioEnabled(), number: process.env.TWILIO_FROM || null });
+    const TA = await import('./textapply.js'), B = await import('./alpaca/broker.js');
+    const apply = { ...TA.settings(), brokerEnabled: B.brokerEnabled(), aiReady: TA.aiReady(), open: (await one('SELECT COUNT(*) n FROM text_applications')).n };
+    res.json({ items, counts, settings: s, apply, inboundUrl: `${base}/hooks/email/inbound?token=${s.emailToken || '(save settings to create)'}`, twilio: N.twilioEnabled(), number: process.env.TWILIO_FROM || null });
   });
+  r.put('/apply', async (req, res) => { const s = await (await import('./textapply.js')).saveSettings(req.body || {}); await audit(req.user.id, 'text_apply_settings', s, req.ip); res.json(s); });
   r.put('/settings', async (req, res) => { const s = await saveSettings(req.body || {}); await audit(req.user.id, 'comms_settings', { forwardTo: !!s.forwardTo, aiSms: s.aiSms, aiEmail: s.aiEmail }, req.ip); res.json(s); });
   const item = async id => {
     if (String(id).startsWith('f')) { const m = await one('SELECT * FROM messages WHERE id = ?', +String(id).slice(1)); if (!m) throw bad('Not found', 404); return { id, form: m.id, channel: 'email', party: m.email, name: m.name, subject: m.subject, body: m.body }; }

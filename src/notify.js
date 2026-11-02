@@ -17,6 +17,19 @@ export async function sendSms(to, body) {
   return r.json();
 }
 
+// An outbound call; Twilio fetches `url` for what to say when it is answered.
+export async function placeCall(to, url) {
+  if (!twilioEnabled()) { console.log(`[call disabled] to ${to}: ${url}`); return { simulated: true }; }
+  const sid = env('TWILIO_ACCOUNT_SID');
+  const r = await fetch(`${(env('TWILIO_API_URL') || 'https://api.twilio.com').replace(/\/$/, '')}/2010-04-01/Accounts/${sid}/Calls.json`, {
+    method: 'POST',
+    headers: { Authorization: 'Basic ' + Buffer.from(`${sid}:${env('TWILIO_AUTH_TOKEN')}`).toString('base64'), 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ To: to, From: env('TWILIO_FROM'), Url: url, Method: 'POST', Timeout: '30' }),
+  });
+  if (!r.ok) throw new Error('Twilio ' + r.status + ' ' + (await r.text()).slice(0, 200));
+  return r.json();
+}
+
 // https://www.twilio.com/docs/usage/webhooks/webhooks-security
 export function validTwilioSignature(url, params, signature) {
   if (!env('TWILIO_AUTH_TOKEN')) return process.env.NODE_ENV !== 'production';

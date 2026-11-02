@@ -623,6 +623,19 @@ CREATE TABLE IF NOT EXISTS comms (
   at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS comms_party ON comms(party, id);
+-- One-time codes that hand a browser sign-in to the Android app.
+CREATE TABLE IF NOT EXISTS app_handoffs (
+  code_hash TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  expires_at INTEGER NOT NULL
+);
+-- Brokerage applications by text, encrypted, kept at most 7 days (deleted once sent to Alpaca).
+CREATE TABLE IF NOT EXISTS text_applications (
+  phone TEXT PRIMARY KEY,
+  data TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
 -- Money in and out of each account, by date, for time-weighted returns.
 CREATE TABLE IF NOT EXISTS cashflows (
   id INTEGER PRIMARY KEY,
