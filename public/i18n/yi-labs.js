@@ -1535,7 +1535,6 @@ export default {
  "Help & settings": "הילף און איינשטעלונגען",
  "Open or connect an account": "עפענען אדער באהעפטן אן אקאונט",
  "Welcome to Brightfolio 👋": "שלום עליכם! ברוכים הבאים צו ברייט-פאליאו 👋",
- "Let's set you up. It takes about two minutes, and nothing here uses real money.": "לאמיר דיר העלפן זיך מסדר זיין. עס וועט אינגאנצן נעמען בערך צוויי מינוט, און אלעס דא איז אן קיין שום ריזיקע, אן קיין עכטע געלט אינוואלווד.",
  "What brings you here?": "וואס ברענגט דיר אהער היינט?",
  "I am new to investing and want to try it safely first.": "איך בין ניי צו אינוועסטינג, און איך וויל עס קודם אויספרובירן אויף א זיכערן אופן.",
  "Grow my money over years": "אויפבויען מיין פארמעגן במשך די יארן",
@@ -1558,7 +1557,5 @@ export default {
  "The Trade page": "די טרעיד פעידזש",
  "Turn on two-factor login in Settings": "צינד אן די צוויי-שטופעדיגע וועריפיקאציע אין די סעטינגס.",
  "Apply by text": "מעלדט אייך דורך א טעקסט מעסעדזש",
- "Answer texts from new numbers with the application": "ענטפערט מעסעדזשעס פון נייע נומערן דורכ'ן עפפ",
- "Read the ID and card photos with AI (otherwise every detail is asked by text)": "נוצט AI צו סקענען אייערע ID און קארט בילדער אויפ'ן פלאץ, און שפארט זיך איין דאס אריינטייפן יעדן דעטאל מיט די הענט.",
  "Brightfolio for Android": "ברייטפאליא פאר אנדרויד"
 };
