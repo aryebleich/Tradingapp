@@ -41,7 +41,6 @@ async function stripe(path, params) {
 export function stripeDeposit({ method, amount, fee, email, userId, ledgerId, baseUrl }) {
   const p = {
     mode: 'payment', customer_email: email, client_reference_id: String(userId),
-    'payment_method_types[0]': method === 'stripe_ach' ? 'us_bank_account' : 'card',
     'metadata[kind]': 'deposit', 'metadata[ledger_id]': String(ledgerId), 'metadata[method]': method,
     'line_items[0][price_data][currency]': 'usd', 'line_items[0][price_data][product_data][name]': 'Account deposit',
     'line_items[0][price_data][unit_amount]': String(Math.round(amount * 100)), 'line_items[0][quantity]': '1',

@@ -27,7 +27,11 @@ const stripe = http.createServer((req, res) => {
     if (p.startsWith('/v1/webhook_endpoints/')) { const wid = p.split('/')[3]; if (req.method === 'DELETE') { db.hooks = db.hooks.filter(x => x.id !== wid); return send({ deleted: true }); } const x = db.hooks.find(o => o.id === wid); return x ? send({ ...x, secret: undefined }) : send({ error: { message: 'No such webhook' } }, 404); }
     if (p === '/v1/billing_portal/configurations' && req.method === 'GET') return send({ data: db.portals });
     if (p.startsWith('/v1/billing_portal/configurations')) { let x = db.portals.find(o => o.id === p.split('/')[4]); if (!x) { x = { id: id('bpc'), metadata: { brightfolio: q['metadata[brightfolio]'] } }; db.portals.push(x); } x.body = q; return send(x); }
+    // Like the real API (2025+): payment methods come from the dashboard, not the request.
+    if (p === '/v1/checkout/sessions' && Object.keys(q).some(k => k.startsWith('payment_method_types'))) return send({ error: { message: 'The `payment_method_types` parameter is no longer supported when creating a Checkout Session.' } }, 400);
     if (p === '/v1/checkout/sessions') { db.sessions.push(q); return send({ id: id('cs'), url: 'https://checkout.stripe.example/pay' }); }
+    if (p.startsWith('/v1/payment_intents/')) return send({ id: p.split('/')[3], latest_charge: { payment_method_details: { type: 'card', card: { funding: p.includes('credit') ? 'credit' : 'debit' } } } });
+    if (p === '/v1/refunds') { db.refunds = [...(db.refunds || []), q.payment_intent]; return send({ id: id('re') }); }
     if (p === '/v1/billing_portal/sessions') { db.sessions.push(q); return send({ url: 'https://billing.stripe.example/p' }); }
     send({ error: { message: 'unknown ' + p } }, 404);
   });
@@ -99,7 +103,7 @@ test('customers can pay: checkout, then the signed webhook switches the plan on'
   const sess = db.sessions.at(-1);
   assert.equal(sess['line_items[0][price]'], process.env.STRIPE_PRICE_PRO_YEARLY);
   assert.equal(sess.success_url, 'https://pay.example/app#/funding?ok=1');
-  assert.equal(sess['payment_method_types[0]'], 'card'); // no Stripe Link code step
+  assert.equal(sess['payment_method_types[0]'], undefined); // Stripe rejects it now; methods come from the dashboard
   const u = await one('SELECT id FROM users WHERE email = ?', 'payer@example.com');
   const ev = JSON.stringify({ id: 'evt_1', type: 'checkout.session.completed', livemode: false, data: { object: { id: 'cs_1', customer: 'cus_9', client_reference_id: String(u.id), amount_total: 53000, invoice: 'in_1', metadata: { kind: 'subscription', plan: 'pro', interval: 'year' } } } });
   const t = Math.floor(Date.now() / 1000), sig = crypto.createHmac('sha256', process.env.STRIPE_WEBHOOK_SECRET).update(`${t}.${ev}`).digest('hex');
@@ -113,6 +117,24 @@ test('customers can pay: checkout, then the signed webhook switches the plan on'
   assert.equal(s.lastEvent.type, 'checkout.session.completed'); assert.ok(s.badSignature);
   const portal = await user('/billing/portal', {});
   assert.equal(portal.status, 200); assert.equal(db.sessions.at(-1).configuration, process.env.STRIPE_PORTAL_CONFIG);
+});
+
+test('deposits: a bank transfer waits, a debit card is received, a credit card is refunded', async () => {
+  const { run } = await import('../src/db.js');
+  const u = await one('SELECT id FROM users WHERE email = ?', 'payer@example.com');
+  const sign = ev => { const b = JSON.stringify(ev), t = Math.floor(Date.now() / 1000); return fetch(base + '/webhooks/stripe', { method: 'POST', headers: { 'Content-Type': 'application/json', 'stripe-signature': `t=${t},v1=${crypto.createHmac('sha256', process.env.STRIPE_WEBHOOK_SECRET).update(`${t}.${b}`).digest('hex')}` }, body: b }); };
+  const dep = async () => (await run("INSERT INTO ledger (user_id, kind, amount, status, memo, at) VALUES (?, 'deposit', 100, 'pending', 'test', ?)", u.id, Date.now())).lastInsertRowid;
+  const status = async lid => (await one('SELECT status FROM ledger WHERE id = ?', lid)).status;
+  const done = (lid, paid, pi) => ({ id: 'evt_' + lid, type: 'checkout.session.completed', data: { object: { id: 'cs_d' + lid, payment_status: paid ? 'paid' : 'unpaid', payment_intent: pi, client_reference_id: String(u.id), metadata: { kind: 'deposit', ledger_id: String(lid), method: 'stripe_card' } } } });
+  const bank = await dep(); assert.equal((await sign(done(bank, false, 'pi_bank'))).status, 200); assert.equal(await status(bank), 'processing');
+  await sign({ id: 'evt_b2', type: 'checkout.session.async_payment_succeeded', data: { object: { payment_intent: 'pi_bank', metadata: { kind: 'deposit', ledger_id: String(bank) } } } });
+  assert.equal(await status(bank), 'received');
+  const debit = await dep(); await sign(done(debit, true, 'pi_debit')); assert.equal(await status(debit), 'received');
+  const credit = await dep(); await sign(done(credit, true, 'pi_credit')); assert.equal(await status(credit), 'refunded'); assert.ok(db.refunds.includes('pi_credit'));
+  // Starting a card deposit works against the current API (no payment_method_types).
+  const { stripeDeposit } = await import('../src/payments.js');
+  const s = await stripeDeposit({ method: 'stripe_ach', amount: 50, fee: 0, email: 'payer@example.com', userId: u.id, ledgerId: bank, baseUrl: 'https://pay.example' });
+  assert.ok(s.url);
 });
 
 test('a wrong key is reported plainly', async () => {

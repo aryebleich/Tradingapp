@@ -228,13 +228,15 @@ app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (r
     } else if (ev.type === 'checkout.session.completed' && o.metadata?.kind === 'deposit') {
       const id = +o.metadata.ledger_id;
       if ((await one('SELECT status FROM ledger WHERE id = ?', id))?.status !== 'pending') return res.json({ received: true });
-      if (o.metadata.method === 'stripe_ach' || o.payment_method_types?.includes('us_bank_account')) {
-        // Bank transfers settle days later (checkout.session.async_payment_succeeded / _failed).
-        if (o.payment_status === 'paid') await depositReceived(id, o.payment_intent);
-        else await run("UPDATE ledger SET status = 'processing', ref = ? WHERE id = ?", o.payment_intent, id);
+      // The page shows the methods switched on in the Stripe dashboard, so what counts is how the
+      // customer paid: a bank transfer is still processing here (it settles days later through
+      // checkout.session.async_payment_succeeded / _failed); a payment that is already paid must
+      // be a debit card, anything else is refunded.
+      if (o.payment_status !== 'paid') {
+        await run("UPDATE ledger SET status = 'processing', ref = ? WHERE id = ?", o.payment_intent, id);
       } else if (await N.cardFunding(o.payment_intent) !== 'debit') {
         await N.refund(o.payment_intent);
-        await run("UPDATE ledger SET status = 'refunded', memo = 'Only debit cards are accepted' WHERE id = ?", id);
+        await run("UPDATE ledger SET status = 'refunded', memo = 'Only debit cards or bank transfers are accepted' WHERE id = ?", id);
         await run("UPDATE ledger SET status = 'refunded' WHERE kind = 'deposit_fee' AND ref = ?", `fee:${id}`);
       } else {
         // Card funds land in the platform's Stripe balance; moving them into the user's

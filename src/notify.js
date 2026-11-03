@@ -52,9 +52,7 @@ async function stripe(path, params) {
 }
 
 // A one-time credit pack payment; the webhook adds the credits (metadata.kind = 'credits').
-const cardOnly = () => (env('STRIPE_CHECKOUT_LINK') === '1' ? {} : { 'payment_method_types[0]': 'card' });
 export const checkoutCredits = ({ pack, email, userId, baseUrl }) => stripe('/checkout/sessions', {
-  ...cardOnly(),
   mode: 'payment', customer_email: email, client_reference_id: String(userId),
   'metadata[kind]': 'credits', 'metadata[credits]': String(pack.credits), 'metadata[pack]': pack.id,
   'line_items[0][price_data][currency]': 'usd', 'line_items[0][price_data][product_data][name]': `${pack.credits.toLocaleString('en-US')} Brightfolio credits`,
@@ -67,10 +65,9 @@ export function checkoutSubscription({ plan, interval = 'month', trialDays = 0, 
   const key = `STRIPE_PRICE_${plan.toUpperCase()}${interval === 'year' ? '_YEARLY' : ''}`;
   const price = env(key);
   if (!price) throw Object.assign(new Error('Paid plans are almost ready: the site owner needs to finish the Stripe setup (Admin → Money & fees → Stripe).'), { status: 503 });
-  // Card only: no Stripe Link step (Link asks returning customers for a texted code first, which
-  // confused people on phones). STRIPE_CHECKOUT_LINK=1 brings Link and the account's other methods back.
+    // Which payment methods appear (card, Link, bank...) is set in the Stripe dashboard (Settings →
+  // Payment methods); Stripe no longer accepts payment_method_types on Checkout Sessions.
   return stripe('/checkout/sessions', {
-    ...cardOnly(),
     mode: 'subscription', ...(customer ? { customer } : { customer_email: email }), client_reference_id: String(userId),
     'metadata[plan]': plan, 'metadata[kind]': 'subscription', 'metadata[interval]': interval,
     'subscription_data[metadata][plan]': plan, 'subscription_data[metadata][user_id]': String(userId),
@@ -88,11 +85,11 @@ export const billingPortal = ({ customer, baseUrl }) => stripe('/billing_portal/
 export const creditCustomer = (customer, dollars, description) =>
   stripe(`/customers/${encodeURIComponent(customer)}/balance_transactions`, { amount: String(-Math.round(dollars * 100)), currency: 'usd', description });
 
-// Card deposit. payment_method_types=card accepts debit and credit; we restrict to debit
-// by checking card funding in the webhook (Stripe reports card.funding = 'debit').
+// Card deposit. The methods offered come from the Stripe dashboard; the webhook accepts a debit
+// card (Stripe reports card.funding = 'debit') or a bank transfer, and refunds anything else.
 export function checkoutDeposit({ amount, email, userId, ledgerId, baseUrl }) {
   return stripe('/checkout/sessions', {
-    mode: 'payment', customer_email: email, client_reference_id: String(userId), 'payment_method_types[0]': 'card',
+    mode: 'payment', customer_email: email, client_reference_id: String(userId),
     'metadata[kind]': 'deposit', 'metadata[ledger_id]': String(ledgerId),
     'line_items[0][price_data][currency]': 'usd', 'line_items[0][price_data][product_data][name]': 'Account deposit',
     'line_items[0][price_data][unit_amount]': String(Math.round(amount * 100)), 'line_items[0][quantity]': '1',
