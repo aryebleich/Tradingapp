@@ -1572,4 +1572,9 @@ export default {
  "Open a copy": "עפנט א קאפי",
  "Real-money orders by chat": "מאכן ארדערס מיט עכטע געלט דורכן טשעט",
  "Let the assistant prepare real-money orders": "ערלויב פארן אסיסטענט צוצוגרייטן באשטעלונגען מיט עכטע געלט.",
+ "Trading involves risk of loss. Backtests and projections are hypothetical and do not guarantee future results. Brightfolio is software, not a broker or investment adviser; orders go to the brokerage account you choose.": "האנדלען אין די בערזע (Trading) פארמאגט א ריזיקע פון פינאנציעלע פארלוסטן. די אלע \"בעק-טעסטס\" און פאראויסשאצונגען זענען בלויז טעארעטיש און דינען נישט אלס קיין שום גאראנטי אדער פארזיכערונג אויף די רעזולטאטן אינעם צוקונפט. Brightfolio פונקציאנירט בלויז אלס א סאפטוועיר און נישט אלס א בראוקער אדער אן אינוועסטמענט אדווייזער, און אלע \"ארדערס\" ווערן געשיקט דירעקט צו אייער אויסגעוועלטע בראוקערעדזש אקאונט.",
+ "Choose your brokerage": "קלויבט אויס אייער בראוקערעדזש",
+ "Open or connect Alpaca": "עפנט אדער קאנעקט אלפאקא",
+ "Search a stock, ETF or crypto: AAPL, Apple, BTC/USD…": "זוך א סטאק, ETF, אדער קריפטא: למשל, AAPL, Apple, BTC/USD...",
+ "No match. Press Go to open this symbol anyway.": "ס'איז נישט געפונען געווארן קיין שום רעזולטאט. דרוקט אויף \"Go\" צו עפענען דעם סימבאל סיי ווי."
 };
