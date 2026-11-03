@@ -7,7 +7,7 @@ import { startMock } from './mock-alpaca.js';
 const mock = await startMock();
 Object.assign(process.env, {
   BROKER_API_KEY: 'BKEY', BROKER_API_SECRET: 'BSECRET', BROKER_BASE_URL: mock.url,
-  ALPACA_TRADING_URL: mock.url, ALPACA_LIVE_URL: mock.url, ALPACA_DATA_URL: mock.url, ALPACA_DATA_SANDBOX_URL: mock.url,
+  ALPACA_TRADING_URL: mock.url, ALPACA_LIVE_URL: mock.liveUrl, ALPACA_DATA_URL: mock.url, ALPACA_DATA_SANDBOX_URL: mock.url,
   ALPACA_KEY_ID: 'DKEY', ALPACA_SECRET: 'DSECRET',
   ALPACA_OAUTH_CLIENT_ID: 'cid', ALPACA_OAUTH_CLIENT_SECRET: 'csecret', ALPACA_OAUTH_TOKEN_URL: mock.url + '/oauth/token', ALPACA_OAUTH_AUTHORIZE_URL: mock.url + '/oauth/authorize',
 });

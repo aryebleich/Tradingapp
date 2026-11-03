@@ -62,7 +62,7 @@ async function insights(view, q) {
       <h3 style="margin-top:16px">By weekday</h3><div class="tablewrap"><table><tr><th>Day</th><th>Trades</th><th>Win rate</th><th>P/L</th></tr>${s.byWeekday.map(r => `<tr><td>${H.esc(r.key)}</td><td>${r.trades}</td><td>${r.winRate}%</td><td class="${H.cls(r.pnl)}">${H.money(r.pnl)}</td></tr>`).join('') || '<tr><td colspan="4" class="mu">-</td></tr>'}</table></div></div>
   </div>
   <div class="card"><h2>What if the market moves?</h2><p class="mu">Profit or loss on today's holdings if every position moved by the same percentage.</p><canvas class="chart" id="wiCh" style="height:200px"></canvas></div>`;
-  H.drawChart(H.$('#twrCh', view), d.twr.series.map(x => 100 + x.twr), { base: 100 });
+  H.drawChart(H.$('#twrCh', view), d.twr.series.map(x => 100 + x.twr), { base: 100, unit: '' });
   bars(H.$('#symCh', view), d.bySymbol.slice(0, 12).map(r => ({ k: r.symbol, v: r.total })));
   bars(H.$('#wiCh', view), d.whatIf.map(r => ({ k: (r.move > 0 ? '+' : '') + r.move + '%', v: r.pnl })));
   wire();

@@ -6,7 +6,7 @@ import { startMock } from './mock-alpaca.js';
 
 const mock = await startMock();
 mock.autoFill = true;
-Object.assign(process.env, { ALPACA_TRADING_URL: mock.url, ALPACA_LIVE_URL: mock.url, ALPACA_DATA_URL: mock.url, ALPACA_DATA_SANDBOX_URL: mock.url, ALPACA_KEY_ID: 'DKEY', ALPACA_SECRET: 'DSECRET', ANTHROPIC_API_KEY: 'test-only' }); // a non-free provider: account figures may be shared (Admin → AI & privacy default)
+Object.assign(process.env, { ALPACA_TRADING_URL: mock.url, ALPACA_LIVE_URL: mock.liveUrl, ALPACA_DATA_URL: mock.url, ALPACA_DATA_SANDBOX_URL: mock.url, ALPACA_KEY_ID: 'DKEY', ALPACA_SECRET: 'DSECRET', ANTHROPIC_API_KEY: 'test-only' }); // a non-free provider: account figures may be shared (Admin → AI & privacy default)
 const { app } = await import('../server.js');
 const { tradingTools, cleanPaperOrder } = await import('../src/aitrading.js');
 const { one } = await import('../src/db.js');

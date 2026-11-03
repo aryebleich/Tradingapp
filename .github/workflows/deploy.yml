@@ -31,3 +31,31 @@ jobs:
             sleep $((i * 10))
           done
           echo "::error::Render did not accept the deploy hook."; exit 1
+      # After the new version is live: paper must still go to paper and real money to real money.
+      - name: Check paper and live routing on the live site
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          if [ -z "$APP_URL" ]; then echo "::warning::Set the APP_URL repository variable to check routing after each deploy."; exit 0; fi
+          url="${APP_URL%/}/healthz/routing"
+          # Wait (up to 20 minutes) for Render to serve this commit, then check it.
+          for i in $(seq 1 40); do
+            body=$(curl -fsS --max-time 20 "$url" 2>/dev/null || true)
+            commit=$(printf '%s' "$body" | python3 -c "import sys,json;print(json.load(sys.stdin).get('commit') or '')" 2>/dev/null || true)
+            if [ -n "$body" ] && { [ -z "$commit" ] || [ "${commit:0:7}" = "${SHA:0:7}" ]; }; then break; fi
+            sleep 30
+          done
+          [ -n "$body" ] || { echo "::error::$url did not answer."; exit 1; }
+          printf '%s' "$body" | python3 -c "
+          import sys, json
+          r = json.load(sys.stdin)
+          print('Paper practice account:', r['paper']['practiceAccount'])
+          print('Alpaca paper orders go to:', r['paper']['alpacaPaper'])
+          print('Alpaca real-money orders go to:', r['live']['alpacaLive'])
+          print('Live commit:', r.get('commit') or 'unknown')
+          if not r['ok']:
+              for p in r['problems']: print('::error::' + p)
+              sys.exit(1)
+          print('OK: paper is paper and live is live.')
+          "

@@ -5,6 +5,18 @@
 import { detect, PATTERNS } from './patterns.js';
 import { canvasNote } from './i18n.js';
 let H;
+// Round price levels (1, 2, 2.5 or 5 × a power of ten) and their labels with just enough decimals.
+function niceTicks(lo, hi, count = 6) {
+  if (!(hi > lo)) return [];
+  const raw = (hi - lo) / Math.max(1, count - 1), p = 10 ** Math.floor(Math.log10(raw)), m = raw / p;
+  const step = (m <= 1 ? 1 : m <= 2 ? 2 : m <= 2.5 ? 2.5 : m <= 5 ? 5 : 10) * p, out = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(10));
+  return out;
+}
+function tickLabel(ticks) {
+  const step = ticks.length > 1 ? ticks[1] - ticks[0] : 1, d = step >= 1 ? (Math.max(...ticks) >= 1000 ? 0 : 2) : step >= 0.1 ? 2 : step >= 0.01 ? 2 : 4;
+  return v => v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+}
 export function registerChart(routes, helpers) {
   H = helpers;
   routes.chart = chartPage;
@@ -204,12 +216,14 @@ class Panel {
   // Layout: price pane on top, optional RSI and MACD panes below.
   geom() {
     const w = this.cv.clientWidth, h = this.cv.clientHeight, ind = this.cfg.ind, subs = (ind.rsi ? 1 : 0) + (ind.macd ? 1 : 0), sub = subs ? Math.min(90, h * 0.2) : 0;
-    const axis = 58, top = 6, priceH = h - subs * sub - 22;
-    const from = Math.max(0, this.view.end - this.view.n), to = this.view.end, n = to - from, bw = (w - axis) / Math.max(n, 1);
+    // Price scale on both sides (left one dropped on narrow screens to keep room for the candles).
+    const axis = 58, axisL = w >= 520 ? 58 : 0, top = 6, priceH = h - subs * sub - 22;
+    const from = Math.max(0, this.view.end - this.view.n), to = this.view.end, n = to - from, bw = (w - axis - axisL) / Math.max(n, 1);
     const vis = this.bars.slice(from, to);
     let lo = Math.min(...vis.map(b => b.l)), hi = Math.max(...vis.map(b => b.h)); if (!(hi > lo)) { hi = (hi || 1) * 1.01; lo = (lo || 1) * 0.99; }
     const pad = (hi - lo) * 0.06; lo -= pad; hi += pad;
-    return { w, h, axis, top, priceH, sub, from, to, n, bw, lo, hi, X: i => (i - from + 0.5) * bw, Y: p => top + (1 - (p - lo) / (hi - lo)) * (priceH - top), P: y => lo + (1 - (y - top) / (priceH - top)) * (hi - lo), I: x => Math.floor(x / bw) + from };
+    const ticks = niceTicks(lo, hi, Math.max(4, Math.min(9, Math.floor((priceH - top) / 50))));
+    return { w, h, axis, axisL, top, priceH, sub, from, to, n, bw, lo, hi, ticks, X: i => axisL + (i - from + 0.5) * bw, Y: p => top + (1 - (p - lo) / (hi - lo)) * (priceH - top), P: y => lo + (1 - (y - top) / (priceH - top)) * (hi - lo), I: x => Math.floor((x - axisL) / bw) + from };
   }
   draw() {
     const cv = this.cv, dpr = devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
@@ -222,10 +236,18 @@ class Panel {
     g.font = '11px Inter, system-ui, sans-serif';
     // grid + price axis
     g.strokeStyle = C('--bd'); g.fillStyle = C('--mu'); g.lineWidth = 1; g.textAlign = 'left';
-    for (let k = 0; k <= 5; k++) { const p = G.lo + (G.hi - G.lo) * k / 5, y = G.Y(p); g.globalAlpha = 0.5; g.beginPath(); g.moveTo(0, y); g.lineTo(G.w - G.axis, y); g.stroke(); g.globalAlpha = 1; g.fillText(fmt(p), G.w - G.axis + 6, y + 4); }
+    // Round price levels that follow the prices on screen, labelled on both sides.
+    const tf = tickLabel(G.ticks);
+    for (const p of G.ticks) {
+      const y = G.Y(p); if (y < G.top || y > G.priceH) continue;
+      g.globalAlpha = 0.5; g.beginPath(); g.moveTo(G.axisL, y); g.lineTo(G.w - G.axis, y); g.stroke(); g.globalAlpha = 1;
+      g.textAlign = 'left'; g.fillText(tf(p), G.w - G.axis + 6, y + 4);
+      if (G.axisL) { g.textAlign = 'right'; g.fillText(tf(p), G.axisL - 6, y + 4); }
+    }
+    g.textAlign = 'left';
     // time axis
     g.textAlign = 'center';
-    const step = Math.max(1, Math.ceil(G.n / Math.max(2, Math.floor((G.w - G.axis) / 90))));
+    const step = Math.max(1, Math.ceil(G.n / Math.max(2, Math.floor((G.w - G.axis - G.axisL) / 90))));
     for (let i = G.from; i < G.to; i += step) g.fillText(tlabel(b[i].t, this.cfg.tf), G.X(i), G.h - 6);
     // volume
     if (ind.vol && this.ohlc) {
@@ -234,7 +256,7 @@ class Panel {
       g.globalAlpha = 1;
     }
     // Bollinger
-    g.save(); g.beginPath(); g.rect(0, G.top, G.w - G.axis, G.priceH - G.top); g.clip();
+    g.save(); g.beginPath(); g.rect(G.axisL, G.top, G.w - G.axis - G.axisL, G.priceH - G.top); g.clip();
     if (ind.bb) { const bb = bands(c); g.fillStyle = C('--ac'); g.globalAlpha = 0.08; g.beginPath(); let s = false; for (let i = G.from; i < G.to; i++) if (bb[i]) { s ? g.lineTo(G.X(i), G.Y(bb[i].u)) : g.moveTo(G.X(i), G.Y(bb[i].u)); s = true; } for (let i = G.to - 1; i >= G.from; i--) if (bb[i]) g.lineTo(G.X(i), G.Y(bb[i].l)); g.fill(); g.globalAlpha = 1; }
     // Bull and bear: shaded background, the 200-day average, crosses and 20% turns.
     if (ind.regime && this.reg && (this.cfg.tf === '1Day' || this.cfg.tf === '1Week')) {
@@ -276,7 +298,7 @@ class Panel {
     g.restore();
     // last price tag
     const last = b.at(-1).c, ly = G.Y(last);
-    g.fillStyle = b.at(-1).c >= b.at(-1).o ? C('--gr') : C('--rd'); g.fillRect(G.w - G.axis + 1, ly - 9, G.axis - 2, 18); g.fillStyle = '#fff'; g.textAlign = 'left'; g.fillText(fmt(last), G.w - G.axis + 6, ly + 4);
+    g.fillStyle = b.at(-1).c >= b.at(-1).o ? C('--gr') : C('--rd'); g.fillRect(G.w - G.axis + 1, ly - 9, G.axis - 2, 18); if (G.axisL) g.fillRect(1, ly - 9, G.axisL - 2, 18); g.fillStyle = '#fff'; g.textAlign = 'left'; g.fillText(fmt(last), G.w - G.axis + 6, ly + 4); if (G.axisL) { g.textAlign = 'right'; g.fillText(fmt(last), G.axisL - 6, ly + 4); g.textAlign = 'left'; }
     // sub panes
     let y0 = G.priceH;
     if (ind.rsi) { sub(g, G, y0, rsi(c), 0, 100, [30, 70], C, 'RSI 14'); y0 += G.sub; }
@@ -285,8 +307,8 @@ class Panel {
     const ro = H.$('.ohlc', this.el);
     if (this.mouse) {
       const { x, y } = this.mouse, i = Math.max(G.from, Math.min(G.to - 1, G.I(x)));
-      g.strokeStyle = C('--mu'); g.setLineDash([3, 3]); g.beginPath(); g.moveTo(G.X(i), 0); g.lineTo(G.X(i), G.h - 18); if (y < G.priceH) { g.moveTo(0, y); g.lineTo(G.w - G.axis, y); } g.stroke(); g.setLineDash([]);
-      if (y < G.priceH) { g.fillStyle = C('--tx'); g.fillRect(G.w - G.axis + 1, y - 9, G.axis - 2, 18); g.fillStyle = C('--card'); g.fillText(fmt(G.P(y)), G.w - G.axis + 6, y + 4); }
+      g.strokeStyle = C('--mu'); g.setLineDash([3, 3]); g.beginPath(); g.moveTo(G.X(i), 0); g.lineTo(G.X(i), G.h - 18); if (y < G.priceH) { g.moveTo(G.axisL, y); g.lineTo(G.w - G.axis, y); } g.stroke(); g.setLineDash([]);
+      if (y < G.priceH) { g.fillStyle = C('--tx'); g.fillRect(G.w - G.axis + 1, y - 9, G.axis - 2, 18); if (G.axisL) g.fillRect(1, y - 9, G.axisL - 2, 18); g.fillStyle = C('--card'); g.textAlign = 'left'; g.fillText(fmt(G.P(y)), G.w - G.axis + 6, y + 4); if (G.axisL) { g.textAlign = 'right'; g.fillText(fmt(G.P(y)), G.axisL - 6, y + 4); g.textAlign = 'left'; } }
       const x0 = b[i], pat = (this.pats || []).filter(p => p.i === i).map(p => PATTERNS[p.name]);
       ro.textContent = `${tlabel(x0.t, this.cfg.tf, true)}  O ${fmt(x0.o)}  H ${fmt(x0.h)}  L ${fmt(x0.l)}  C ${fmt(x0.c)}${x0.v ? '  V ' + compact(x0.v) : ''}${pat.length ? '  · ' + pat.join(', ') : ''}`;
     } else { const x0 = b.at(-1), ch = b.length > 1 ? (x0.c / b.at(-2).c - 1) * 100 : 0; ro.textContent = `${fmt(x0.c)}  ${ch >= 0 ? '+' : ''}${ch.toFixed(2)}%`; }
@@ -327,7 +349,7 @@ class Panel {
 const idx = (bars, t) => { let lo = 0, hi = bars.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (bars[m].t < t) lo = m + 1; else hi = m; } return lo; };
 function drawShape(g, G, d, bars, C) {
   g.strokeStyle = C('--ac'); g.lineWidth = 1.5; g.fillStyle = C('--ac');
-  if (d.type === 'hline') { const y = G.Y(d.a.p); g.beginPath(); g.moveTo(0, y); g.lineTo(G.w - G.axis, y); g.stroke(); g.textAlign = 'left'; g.fillText(fmt(d.a.p), 4, y - 4); return; }
+  if (d.type === 'hline') { const y = G.Y(d.a.p); g.beginPath(); g.moveTo(G.axisL, y); g.lineTo(G.w - G.axis, y); g.stroke(); g.textAlign = 'left'; g.fillText(fmt(d.a.p), G.axisL + 4, y - 4); return; }
   const x1 = G.X(idx(bars, d.a.t)), x2 = G.X(idx(bars, d.b.t)), y1 = G.Y(d.a.p), y2 = G.Y(d.b.p);
   if (d.type === 'trend') { g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke(); return; }
   if (d.type === 'rect') { g.globalAlpha = 0.1; g.fillRect(x1, y1, x2 - x1, y2 - y1); g.globalAlpha = 1; g.strokeRect(x1, y1, x2 - x1, y2 - y1); return; }
@@ -345,8 +367,8 @@ function line(g, G, s, color, w = 1.3) {
 function sub(g, G, y0, s, lo, hi, levels, C, label) {
   const Y = v => y0 + 6 + (1 - (v - lo) / (hi - lo)) * (G.sub - 12);
   g.strokeStyle = C('--bd'); g.beginPath(); g.moveTo(0, y0); g.lineTo(G.w, y0); g.stroke();
-  g.setLineDash([3, 3]); for (const l of levels) { g.beginPath(); g.moveTo(0, Y(l)); g.lineTo(G.w - G.axis, Y(l)); g.stroke(); } g.setLineDash([]);
-  g.fillStyle = C('--mu'); g.textAlign = 'left'; g.fillText(label, 4, y0 + 13);
+  g.setLineDash([3, 3]); for (const l of levels) { g.beginPath(); g.moveTo(G.axisL, Y(l)); g.lineTo(G.w - G.axis, Y(l)); g.stroke(); } g.setLineDash([]);
+  g.fillStyle = C('--mu'); g.textAlign = 'left'; g.fillText(label, G.axisL + 4, y0 + 13);
   if (typeof s[0] === 'object' && s[0] !== null) {
     for (let i = G.from; i < G.to; i++) { const h = s[i].h; if (h == null) continue; g.fillStyle = h >= 0 ? C('--gr') : C('--rd'); g.globalAlpha = 0.5; g.fillRect(G.X(i) - G.bw * 0.3, Math.min(Y(0), Y(h)), G.bw * 0.6, Math.abs(Y(h) - Y(0))); }
     g.globalAlpha = 1;

@@ -39,7 +39,9 @@ test('apply by text: photos read, missing details asked, a fix, then sent to Alp
   http0(async () => reads[last]);
   const send = async (body, url) => { last = url; return text('+18455550199', body, url ? [url] : []); };
 
-  let r = await send('hi');
+  // Strangers get the sign-up by text; APPLY starts the brokerage application.
+  assert.match(await send('hi'), /Welcome to Brightfolio!/);
+  let r = await send('APPLY');
   assert.match(r, /^Welcome to Brightfolio - apply by text\./);
   assert.match(r, /Reply NO ID/); assert.match(r, /Reply CONTINUE/); assert.match(r, /Reply RESTART/);
   r = await send('', '/id.jpg'); assert.match(r, /Got your ID\. Now please text a clear photo of your Social Security card/);
@@ -87,7 +89,7 @@ test('apply by text: photos read, missing details asked, a fix, then sent to Alp
 test('apply by text without photos, RESTART, CANCEL and the in-app hand-off', async () => {
   TA.setReader(async () => null);
   const t = (b, u) => text('+18455550188', b, u);
-  assert.match(await t('Hello'), /Welcome to Brightfolio/);
+  assert.match(await t('APPLY'), /Welcome to Brightfolio - apply by text/);
   assert.match(await t('NO ID'), /Social Security card/);
   {
     const x = await t('NO CARD'); assert.match(x, /We need a few details\./); assert.match(x, /first name/);
@@ -98,7 +100,7 @@ test('apply by text without photos, RESTART, CANCEL and the in-app hand-off', as
   assert.match(await t('CANCEL'), /cancelled/);
   assert.equal(await one("SELECT 1 FROM text_applications WHERE phone = '+18455550188'"), undefined);
   // A photo nobody can read (AI off) still counts, and the details are asked.
-  await t('hi');
+  await t('APPLY');
   assert.match(await t('', ['/a.jpg']), /Got your ID/);
   assert.match(await t('', ['/b.jpg']), /Got your Social Security card and ID\.[\s\S]*We could not read everything/);
   for (const v of ['Sam', 'Tester', '01/02/1980', '5 Main St', 'Albany', 'NY', '12207', '123456789', 'sam@example.com']) await t(v);

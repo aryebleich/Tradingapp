@@ -28,6 +28,7 @@ import { registerAdmin13 } from './admin13.js';
 import { registerStart } from './start.js';
 import { initSearch } from './search.js';
 import { registerRiskPages } from './riskpages.js';
+import { registerRetirement } from './retirement.js';
 import { attachGlossary } from './glossary.js';
 import { startI18n, setLang, canvasNote, LANGS, current as currentLang } from './i18n.js';
 const $ = (s, el = document) => el.querySelector(s);
@@ -88,18 +89,6 @@ function stepUpBox() {
     };
   });
 }
-// Typing rhythm (timing only, never which keys): sent with sign-in and about once a minute.
-const kd = { last: 0, down: new Map(), flight: [], dwell: [] };
-addEventListener('keydown', e => { const t = performance.now(); if (kd.last && t - kd.last < 2000) kd.flight.push(t - kd.last); kd.last = t; kd.down.set(e.code, t); }, true);
-addEventListener('keyup', e => { const t0 = kd.down.get(e.code); if (t0) { kd.dwell.push(performance.now() - t0); kd.down.delete(e.code); } }, true);
-const msd = a => { const m = a.reduce((x, y) => x + y, 0) / (a.length || 1); return [m, Math.sqrt(a.reduce((x, y) => x + (y - m) ** 2, 0) / (a.length || 1))]; };
-function typingSample(reset = true) {
-  if (kd.flight.length < 6 || kd.dwell.length < 6) return null;
-  const [fm, fs] = msd(kd.flight), [dm, ds] = msd(kd.dwell), out = { flightMean: fm, flightSd: fs, dwellMean: dm, dwellSd: ds, keys: kd.dwell.length };
-  if (reset) { kd.flight = []; kd.dwell = []; }
-  return out;
-}
-setInterval(() => { if (!ME) return; const x = typingSample(); if (x) api('/security/behavior', { body: x }).catch(() => {}); }, 60e3);
 
 // Wire a button to an async action with an error/ok line under it.
 // Wire a button to an async action with a status line under it ("Working…", then the result or error).
@@ -167,7 +156,7 @@ function chartLegend(canvas, series, states, base) {
 // The last data drawn in each chart spot, so a refresh with the same numbers does not replay the
 // drawing animation (a chart that keeps redrawing while you look at it is unsettling).
 const chartSeen = new Map();
-function drawChart(canvas, series, { base, compare, legend = true, dates = null, time = false } = {}) {
+function drawChart(canvas, series, { base, compare, legend = true, dates = null, time = false, axis = true, unit = '$' } = {}) {
   cancelAnimationFrame(canvas.__anim || 0);
   const key = (canvas.id || 'chart') + location.hash.split('?')[0], sig = JSON.stringify([series, base, compare]);
   const seen = chartSeen.has(key);
@@ -182,7 +171,15 @@ function drawChart(canvas, series, { base, compare, legend = true, dates = null,
   if (legend && (PREFS.chart?.mode || 'colorful') === 'colorful') chartLegend(canvas, series, states, base); else canvas.nextElementSibling?.classList.contains('chartlegend') && canvas.nextElementSibling.remove();
   const all = [...series, ...(compare || []), base];
   let lo = Math.min(...all), hi = Math.max(...all); if (hi === lo) { hi += 1; lo -= 1; }
-  const pad = 10, X = i => pad + (i / Math.max(series.length - 1, 1)) * (w - 2 * pad), Y = v => pad + (1 - (v - lo) / (hi - lo)) * (h - 2 * pad);
+  // Price scale on both sides, in round numbers that follow the prices shown (like trading charts);
+  // too narrow a chart keeps the full width for the line.
+  const ticks = axis && w >= 300 && h >= 120 ? niceTicks(lo, hi, Math.max(3, Math.min(6, Math.floor(h / 45)))) : [];
+  if (ticks.length) { lo = Math.min(lo, ticks[0]); hi = Math.max(hi, ticks.at(-1)); }
+  const tickFmt = axisFormat(ticks, unit);
+  g.font = '11px Inter, system-ui, sans-serif';
+  const gut = ticks.length ? Math.ceil(Math.max(...ticks.map(t => g.measureText(tickFmt(t)).width))) + 12 : 0;
+  const pad = 10, padL = pad + gut, padR = pad + gut;
+  const X = i => padL + (i / Math.max(series.length - 1, 1)) * (w - padL - padR), Y = v => pad + (1 - (v - lo) / (hi - lo)) * (h - 2 * pad);
   const yb = Y(base);
   // Colors (Settings → Chart colors): one color, a color the user picked, or colorful with blending.
   const cm = PREFS.chart || {}, one = cm.mode === 'one' ? '#2563eb' : cm.mode === 'custom' && /^#[0-9a-f]{6}$/i.test(cm.color || '') ? cm.color : null;
@@ -196,9 +193,18 @@ function drawChart(canvas, series, { base, compare, legend = true, dates = null,
   };
   const frame = t => {
     g.clearRect(0, 0, w, h);
-    g.strokeStyle = C('--bd'); g.lineWidth = 1; g.setLineDash([4, 4]); g.beginPath(); g.moveTo(0, yb); g.lineTo(w, yb); g.stroke(); g.setLineDash([]);
+    if (ticks.length) {
+      g.font = '11px Inter, system-ui, sans-serif'; g.fillStyle = C('--mu'); g.strokeStyle = C('--bd'); g.lineWidth = 1;
+      for (const t of ticks) {
+        const y = Y(t); if (y < 4 || y > h - 4) continue;
+        g.globalAlpha = 0.35; g.beginPath(); g.moveTo(padL, y); g.lineTo(w - padR, y); g.stroke(); g.globalAlpha = 1;
+        g.textAlign = 'right'; g.fillText(tickFmt(t), padL - 6, y + 4);
+        g.textAlign = 'left'; g.fillText(tickFmt(t), w - padR + 6, y + 4);
+      }
+    }
+    g.strokeStyle = C('--bd'); g.lineWidth = 1; g.setLineDash([4, 4]); g.beginPath(); g.moveTo(padL, yb); g.lineTo(w - padR, yb); g.stroke(); g.setLineDash([]);
     if (compare) { g.strokeStyle = C('--mu'); g.globalAlpha = 0.7; g.lineWidth = 1.2; g.beginPath(); compare.forEach((v, i) => (i ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v)))); g.stroke(); g.globalAlpha = 1; }
-    g.save(); g.beginPath(); g.rect(0, 0, pad + t * (w - pad), h); g.clip();
+    g.save(); g.beginPath(); g.rect(0, 0, padL + t * (w - padL), h); g.clip();
     // The area between the line and the starting value, then the line, each in the blended colors.
     g.beginPath(); g.moveTo(X(0), yb); series.forEach((v, i) => g.lineTo(X(i), Y(v))); g.lineTo(X(series.length - 1), yb); g.closePath();
     g.fillStyle = grad(0.18); g.fill();
@@ -208,7 +214,7 @@ function drawChart(canvas, series, { base, compare, legend = true, dates = null,
     if (t >= 1) { const x = X(series.length - 1), y = Y(series[series.length - 1]); g.fillStyle = colorAt(series.length - 1); g.beginPath(); g.arc(x - 1, y, 4, 0, 7); g.fill(); g.globalAlpha = 0.25; g.beginPath(); g.arc(x - 1, y, 9, 0, 7); g.fill(); g.globalAlpha = 1; }
   };
   // Pointing at the chart (mouse or finger) shows the date and value at that spot.
-  canvas.__hover = { series, dates, time, base, X, Y, w, h, pad, frame, color: colorAt, label: i => (rich ? RICH_STATES[rich[i]].label : null) };
+  canvas.__hover = { series, dates, time, base, X, Y, w, h, pad, padL, padR, frame, color: colorAt, label: i => (rich ? RICH_STATES[rich[i]].label : null) };
   if (!canvas.__hoverWired) { canvas.__hoverWired = true; wireChartHover(canvas); }
   // Animate only the first time this chart is shown; later redraws (new data, resize, theme) are instant.
   if (calmMotion() || seen) return frame(1);
@@ -216,6 +222,22 @@ function drawChart(canvas, series, { base, compare, legend = true, dates = null,
   canvas.__anim = requestAnimationFrame(run);
 }
 
+// Round price levels for an axis: 1, 2, 2.5 or 5 times a power of ten, about `count` of them.
+export function niceTicks(lo, hi, count = 5) {
+  if (!(hi > lo)) return [];
+  const raw = (hi - lo) / Math.max(1, count - 1), p = 10 ** Math.floor(Math.log10(raw)), m = raw / p;
+  const step = (m <= 1 ? 1 : m <= 2 ? 2 : m <= 2.5 ? 2.5 : m <= 5 ? 5 : 10) * p;
+  const out = []; for (let v = Math.floor(lo / step) * step; v <= hi + step * 0.5; v += step) out.push(+v.toFixed(10));
+  return out.length > 12 ? out.filter((_, i) => i % 2 === 0) : out;
+}
+// Labels for those levels: $1.2M / $45.5K for big numbers, cents only when the steps need them.
+export function axisFormat(ticks, unit = '$') {
+  const step = ticks.length > 1 ? Math.abs(ticks[1] - ticks[0]) : 1, big = Math.max(...ticks.map(Math.abs), 0);
+  if (big >= 1e6) return v => `${unit}${(v / 1e6).toFixed(step >= 1e6 ? 0 : step >= 1e5 ? 1 : 2)}M`;
+  if (big >= 1e5) return v => `${unit}${(v / 1e3).toFixed(step >= 1e3 ? 0 : 1)}K`;
+  const d = step >= 1 ? 0 : step >= 0.1 ? 1 : step >= 0.01 ? 2 : 4;
+  return v => `${v < 0 ? '-' : ''}${unit}${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d })}`;
+}
 // The read-out for drawChart: a thin line, a dot and a label with the date and value.
 function wireChartHover(canvas) {
   const box = canvas.parentElement;
@@ -225,7 +247,8 @@ function wireChartHover(canvas) {
   const show = e => {
     const c = canvas.__hover; if (!c || c.series.length < 2) return;
     const r = canvas.getBoundingClientRect(), x = e.clientX - r.left;
-    const i = Math.max(0, Math.min(c.series.length - 1, Math.round((x - c.pad) / (c.w - 2 * c.pad) * (c.series.length - 1))));
+    const pl = c.padL ?? c.pad, pr = c.padR ?? c.pad;
+    const i = Math.max(0, Math.min(c.series.length - 1, Math.round((x - pl) / (c.w - pl - pr) * (c.series.length - 1))));
     const v = c.series[i], px = c.X(i), py = c.Y(v);
     cancelAnimationFrame(canvas.__anim || 0); c.frame(1);
     const g = canvas.getContext('2d'), css = getComputedStyle(document.documentElement);
@@ -289,13 +312,14 @@ const NAV = [
   ['Research & AI', [['research', 'Plain-language research'], ['news', 'News & sentiment'], ['ai', 'AI assistant'], ['agents', 'Forecasts & AI agents'], ['institutions', 'Institutional portfolios']]],
   ['Automation', [['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['schedule', 'Scheduled trades'], ['rules', 'Rules across accounts'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['portfolios', 'Portfolios'], ['marketplace', 'Marketplace']]],
   ['Quant lab', [['pairs', 'Pairs trading'], ['statarb', 'Statistical arbitrage'], ['code', 'Code lab'], ['quantconnect', 'Cloud algorithms']]],
-  ['Planning', [['riskview', 'Portfolio & risk'], ['money', 'All my money'], ['brief', 'Weekly brief'], ['insights', 'Insights & journal'], ['risk', 'Risk controls'], ['tax', 'Taxes'], ['taxpilot', 'Tax autopilot'], ['private', 'Private markets'], ['realestate', 'Real estate'], ['luach', 'Luach & tzedakah']]],
+  ['Planning', [['riskview', 'Portfolio & risk'], ['retirement', 'Retirement & IRAs'], ['money', 'All my money'], ['brief', 'Weekly brief'], ['insights', 'Insights & journal'], ['risk', 'Risk controls'], ['tax', 'Taxes'], ['taxpilot', 'Tax autopilot'], ['private', 'Private markets'], ['realestate', 'Real estate'], ['luach', 'Luach & tzedakah']]],
   ['Accounts', [['brokers', 'Choose your brokerage'], ['account', 'Alpaca account'], ['accounts', 'All accounts'], ['funding', 'Plans & billing'], ['referrals', 'Invite & earn']]],
   ['Help & settings', [['learn', 'Learn'], ['security', 'Security & help'], ['protection', 'Investor protection'], ['text', 'Text & hotline'], ['android', 'Android app'], ['settings', 'Settings']]],
 ];
 // Simple line icons (24x24 paths) for the menu.
 const ICONS = {
   riskview: '<path d="M12 3v9l7 4"/><circle cx="12" cy="12" r="9"/>',
+  retirement: '<path d="M3 21h18M5 21V10l7-6 7 6v11"/><path d="M10 21v-6h4v6"/>',
   research: '<path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h5"/>',
   tokenized: '<path d="M12 2l8 5v10l-8 5-8-5V7z"/><path d="M8 12h8"/>',
   protection: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
@@ -566,7 +590,7 @@ routes.login = async (view, q) => {
     ME = (await api('/auth/passkey/verify', { body: { challengeId: o.challengeId, response } })).user; location.hash = '#/dashboard';
   });
   act($('button', view), async () => {
-    const r = await api('/auth/login', { body: { ...form(view), kd: typingSample() } });
+    const r = await api('/auth/login', { body: form(view) });
     if (r.mfaRequired) { location.hash = '#/mfa'; return; }
     ME = r.user; location.hash = '#/dashboard';
   });
@@ -1148,6 +1172,7 @@ routes.tax = async (view, q) => {
   const [t, bk] = await Promise.all([api(`/tax?account=${state.account}&year=${year}`), api(`/tax/books?account=${state.account}&year=${year}`).catch(() => null)]);
   view.innerHTML = `<div class="row" style="justify-content:space-between"><h1>Tax information</h1></div>
   ${q.get('qbo') ? `<div class="banner${q.get('qbo') === 'connected' ? '' : ' err'}">${q.get('qbo') === 'connected' ? 'QuickBooks is connected. Choose your accounts below, then send.' : esc(q.get('qbo'))}</div>` : ''}
+  ${t.ira ? `<div class="banner">This account is marked as a <b>${esc(t.ira.name)}</b>. ${esc(t.ira.note)} <a href="#/retirement">Retirement &amp; IRAs</a></div>` : ''}
   <div class="banner">Estimates for planning only (US federal + flat state rate, FIFO lots). Your broker's 1099-B is the official record; check with a tax professional.</div>
   <div class="card"><div class="row"><label>Year<select id="yr">${[0, 1, 2, 3].map(i => new Date().getFullYear() - i).map(y => `<option ${y === year ? 'selected' : ''}>${y}</option>`).join('')}</select></label>
     <a href="/api/tax?account=${state.account}&year=${year}&format=csv"><button type="button" class="ghost">Download Form 8949 CSV</button></a>
@@ -1412,10 +1437,11 @@ async function adminPage(view, tab) {
     ${steps.map(([t, n]) => `<div class="bar"><span>${t}</span><i style="width:${f.signups ? Math.max(1, n / f.signups * 100) : 0}%"></i><b>${n}</b></div>`).join('')}</div></div>`,
     'admin-users': () => `
   <div class="card tablewrap"><div class="row" style="justify-content:space-between;align-items:center"><h2>Users</h2><input id="userFind" type="search" placeholder="Search email or nickname" style="max-width:260px;margin:0"></div>
-    <table id="userTable"><tr><th>Email</th><th>Nickname</th><th>Plan</th><th>Role</th><th>2FA</th><th>Phone</th><th>Joined</th></tr>${s.users.map(u => `<tr data-email="${esc(u.email + ' ' + u.nickname)}"><td data-no-tr>${esc(u.email)}${u.google ? ' <span class="pill">Google</span>' : ''}${u.github ? ' <span class="pill">GitHub</span>' : ''}</td><td data-no-tr class="mu">${esc(u.nickname)}</td>
+    <div class="card" id="livePnlCard" style="margin:0 0 12px"><div class="row" style="justify-content:space-between;align-items:center"><h3 style="margin:0">Real-money results across users</h3><button class="small" id="livePnlLoad">Load live P&amp;L</button></div><div id="livePnlOut" class="mu">Totals of every user's connected real-money accounts: open (unrealized) and realized P&amp;L, today's change and equity. Paper accounts are left out.</div></div>
+    <table id="userTable"><tr><th>Email</th><th>Nickname</th><th>Plan</th><th>Role</th><th>2FA</th><th>Phone</th><th>Joined</th><th></th></tr>${s.users.map(u => `<tr data-email="${esc(u.email + ' ' + u.nickname)}"><td data-no-tr>${esc(u.email)}${u.google ? ' <span class="pill">Google</span>' : ''}${u.github ? ' <span class="pill">GitHub</span>' : ''}</td><td data-no-tr class="mu">${esc(u.nickname)}</td>
       <td><select data-plan="${u.id}" style="margin:0;min-width:110px">${['free', 'pro', 'elite', 'ultimate'].map(p => `<option value="${p}" ${u.plan === p ? 'selected' : ''}>${{ free: 'Starter', pro: 'Pro', elite: 'Elite', ultimate: 'Ultimate' }[p]}</option>`).join('')}</select></td>
       <td>${u.role === 'admin' ? `<span class="pill">Admin</span>${u.id !== ME.id ? ` <button class="small ghost" data-role="${u.id}" data-to="user">Remove admin</button>` : ''}` : `<button class="small ghost" data-role="${u.id}" data-to="admin">Make admin</button>`}</td>
-      <td>${u.totp_enabled ? 'yes' : '-'}</td><td>${u.phone_verified ? 'yes' : '-'}</td><td>${date(u.created_at)}</td></tr>`).join('')}</table><div class="err" id="userErr"></div>
+      <td>${u.totp_enabled ? 'yes' : '-'}</td><td>${u.phone_verified ? 'yes' : '-'}</td><td>${date(u.created_at)}</td><td><button class="small ghost" data-more="${u.id}" aria-expanded="false">Details</button></td></tr><tr class="userMore" data-for="${u.id}" hidden><td colspan="8"><div class="mu">Loading…</div></td></tr>`).join('')}</table><div class="err" id="userErr"></div>
     <p class="mu" style="font-size:12.5px">Changing a plan here gives it without payment (for friends, testers or support cases). Paying customers change plans themselves under Plans &amp; billing.</p></div>`,
     'admin-money': () => `
   <div class="card"><div class="stats">
@@ -1447,6 +1473,38 @@ async function adminPage(view, tab) {
   const userCall = async (id, body) => { uerr.textContent = ''; try { await api('/admin/users/' + id, { body }); render(); } catch (e) { uerr.textContent = e.message; } };
   $$('[data-plan]', view).forEach(sel => (sel.onchange = () => userCall(sel.dataset.plan, { plan: sel.value })));
   $$('[data-role]', view).forEach(b => (b.onclick = () => userCall(b.dataset.role, { role: b.dataset.to })));
+  if ($('#livePnlLoad', view)) act($('#livePnlLoad', view), async () => {
+    const d = await api('/admin/users/live-pnl'), sg = x => `<b class="${cls(x)}">${money(x)}</b>`;
+    $('#livePnlOut', view).innerHTML = d.count ? `<div class="stats"><div class="stat"><span>Users with real money</span><b>${d.count}</b></div><div class="stat"><span>Total P&amp;L</span>${sg(d.total)}</div><div class="stat"><span>Open (unrealized)</span>${sg(d.open)}</div><div class="stat"><span>Realized</span>${sg(d.realized)}</div><div class="stat"><span>Today</span>${sg(d.today)}</div><div class="stat"><span>Equity</span><b>${money(d.equity)}</b></div></div>
+      <div class="tablewrap"><table class="slim"><tr><th>User</th><th class="num">Total</th><th class="num">Open</th><th class="num">Realized</th><th class="num">Today</th><th class="num">Equity</th></tr>${d.users.map(u => `<tr><td data-no-tr>${esc(u.email || '#' + u.userId)}${u.error ? ` <span class="err">${esc(u.error)}</span>` : ''}</td><td class="num">${sg(u.total)}</td><td class="num">${sg(u.open)}</td><td class="num">${sg(u.realized)}</td><td class="num">${sg(u.today)}</td><td class="num">${money(u.equity)}</td></tr>`).join('')}</table></div>` : 'No users have a real-money account connected yet.';
+    return 'Loaded';
+  });
+  $$('[data-more]', view).forEach(b => (b.onclick = async () => {
+    const id = b.dataset.more, row = $(`.userMore[data-for="${id}"]`, view), open = row.hidden;
+    row.hidden = !open; b.setAttribute('aria-expanded', String(open)); if (!open) return;
+    const box = row.firstElementChild;
+    const draw = async (fresh = false) => {
+      const [u, p] = await Promise.all([api('/admin/users/' + id), api(`/admin/users/${id}/pnl${fresh ? '?fresh=1' : ''}`).catch(e => ({ error: e.message, accounts: [] }))]);
+      const sg = x => (x == null ? '-' : `<b class="${cls(x)}">${money(x)}</b>`);
+      box.innerHTML = `<div class="grid" style="gap:12px">
+        <div><h3 style="margin:0 0 6px">Account</h3><ul class="plain"><li>Plan: <b>${esc(u.plan || 'free')}</b>${u.plan_status ? ` (${esc(u.plan_status)})` : ''}${u.plan_renews ? ` · renews ${date(u.plan_renews)}` : ''}</li><li>Last sign-in: ${u.lastLogin ? `${date(u.lastLogin.at)} (${esc(u.lastLogin.event)})` : '-'}</li><li>Signed in on ${u.sessions} device${u.sessions === 1 ? '' : 's'}</li><li>Credits: ${u.credits ?? '-'}</li><li>Paper account: ${u.paper ? `${money(u.paper.equity)} (${u.paper.positions} positions)` : '-'}</li><li>Connected: ${u.accounts.map(a => `${esc(a.name)} <span class="pill ${a.live ? 'warn' : ''}">${a.live ? 'real money' : 'paper'}</span>`).join(', ') || 'only the paper account'}</li>${u.stripe_customer ? `<li>Stripe customer: <code>${esc(u.stripe_customer)}</code></li>` : ''}</ul></div>
+        <div><h3 style="margin:0 0 6px">Real-money P&amp;L</h3>${p.accounts?.length ? `<div class="stats"><div class="stat"><span>Total</span>${sg(p.total)}</div><div class="stat"><span>Open</span>${sg(p.open)}</div><div class="stat"><span>Realized</span>${sg(p.realized)}</div><div class="stat"><span>Today</span>${sg(p.today)}</div></div><table class="slim">${p.accounts.map(a => `<tr><td>${esc(a.name)}</td><td class="num">${a.error ? `<span class="err">${esc(a.error)}</span>` : `${sg(a.total)} · equity ${money(a.equity)}`}</td></tr>`).join('')}</table>` : `<p class="mu">${p.error ? esc(p.error) : 'No real-money account connected.'}</p>`}<button class="small ghost" data-fresh>Refresh</button></div></div>
+        <div class="row" style="margin-top:10px;gap:8px"><button class="small ghost" data-signout>Sign out everywhere</button>${u.role === 'admin' ? '' : '<button class="small danger" data-del>Delete account…</button>'}</div><div class="err"></div>`;
+      const err = $('.err', box);
+      $('[data-fresh]', box).onclick = () => draw(true);
+      $('[data-signout]', box).onclick = async () => { try { const r = await api(`/admin/users/${id}/signout`, { body: {} }); err.textContent = ''; $('[data-signout]', box).textContent = `Signed out (${r.sessions})`; } catch (e) { err.textContent = e.message; } };
+      if ($('[data-del]', box)) $('[data-del]', box).onclick = async () => {
+        const c = await secureConfirm({ title: `Delete ${u.email}?`, html: `<p>This deletes the account and all its data (strategies, bots, alerts, paper account, connections, settings) for good.${u.stripe_customer ? ' Their Stripe subscription is cancelled now.' : ''} Brokerage accounts at the broker are not closed. The security and order audit logs are kept.</p>`, word: 'DELETE', okText: 'Delete account' });
+        if (!c) return;
+        try {
+          const r = await api('/admin/users/' + id, { method: 'DELETE', body: { word: c.typed, password: c.password, confirm: c.confirm } });
+          b.closest('tr').hidden = true; row.hidden = true;
+          uerr.textContent = `Deleted ${r.email}.${r.stripe?.cancelled ? ` Cancelled ${r.stripe.cancelled} subscription(s).` : ''}${r.stripe?.error ? ' Stripe: ' + r.stripe.error : ''}`;
+        } catch (e) { err.textContent = e.message; }
+      };
+    };
+    try { await draw(); } catch (e) { box.innerHTML = `<p class="err">${esc(e.message)}</p>`; }
+  }));
   if ($('#userFind', view)) $('#userFind', view).oninput = e => { const q = e.target.value.trim().toLowerCase(); $$('#userTable tr[data-email]', view).forEach(tr => (tr.hidden = !!q && !tr.dataset.email.toLowerCase().includes(q))); };
 }
 for (const [k] of ADMIN_TABS.filter(([k]) => !['admin-system', 'admin-trust', 'admin-data', 'admin-comms', 'admin-upgrades', 'admin-yiddish', 'admin-admins', 'admin-keys'].includes(k))) routes[k] = view => (ME?.role === 'admin' ? adminPage(view, k) : routes.dashboard(view, new URLSearchParams()));
@@ -1479,6 +1537,7 @@ startBell(shared);
 registerWealth(routes, shared);
 registerTools(routes, shared);
 registerRiskPages(routes, shared);
+registerRetirement(routes, shared);
 
 // Static files are cached for instant repeat visits (sw.js); pages and data always come fresh.
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});

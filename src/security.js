@@ -160,14 +160,9 @@ export function securityRouter({ cancelAlpaca }) {
     await audit(req.user.id, req.body.on ? 'passkey_only_on' : 'passkey_only_off', null, req.ip);
     res.json({ passkeyOnly: !!req.body.on });
   });
-  // Interaction cadence from the open app, about once a minute.
-  r.post('/behavior', async (req, res) => {
-    const x = cleanSample(req.body); if (!x) return res.json({ ok: true });
-    const prof = await getSetting(req.user.id, 'behavior'), score = anomaly(prof, x);
-    if (score != null && score >= ANOMALY_AT * 1.5 && !stepUp.has(req.sessionHash)) { stepUp.set(req.sessionHash, 'interaction'); await audit(req.user.id, 'behavior_step_up', { score }, req.ip); }
-    else if (score == null || score < ANOMALY_AT) await setSetting(req.user.id, 'behavior', updateProfile(prof, x));
-    res.json({ ok: true, stepUp: stepUp.has(req.sessionHash) });
-  });
+  // The typing-rhythm check (which asked for the password again when typing looked unusual) was
+  // removed at the owner's request; old apps that still post samples get an empty answer.
+  r.post('/behavior', (req, res) => res.json({ ok: true, stepUp: false }));
   r.post('/step-up', async (req, res) => {
     if (!rateLimit('stepup:' + req.user.id, 8, 15 * 60e3)) throw bad('Too many attempts', 429);
     if (!verifySecret(String(req.body.password || ''), req.user.pass_hash || '') ) throw bad('Wrong password', 401);

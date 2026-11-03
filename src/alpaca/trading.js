@@ -8,6 +8,20 @@ import { brokerAuth } from './broker.js';
 import { withCommission } from '../revenue.js';
 
 const enc = encodeURIComponent;
+const LIVE_HOST = 'api.alpaca.markets';
+const err = (m, s = 409) => Object.assign(new Error(m), { status: s });
+// Paper keys must reach the paper servers and live keys the live ones, every request. A host
+// set up wrong (ALPACA_LIVE_URL / ALPACA_TRADING_URL swapped) is refused before anything is sent.
+export function assertVenue(url, live) {
+  const h = new URL(url).hostname;
+  if (live && /paper/i.test(h)) throw err('Safety check: a real-money request was about to go to a paper server. Nothing was sent; the site owner must fix ALPACA_LIVE_URL.', 500);
+  if (!live && h === LIVE_HOST) throw err('Safety check: a paper request was about to go to the real-money server. Nothing was sent; the site owner must fix ALPACA_TRADING_URL.', 500);
+  return url;
+}
+// Alpaca paper account numbers start with "PA". Keys saved as live that open a paper account
+// (or the other way round) are refused, so "live" always means real money and "paper" never does.
+export const isPaperAccountNumber = n => /^PA/i.test(String(n || ''));
+const envSeen = new Map(); // key id or token tail -> { paper, at }
 
 export class Trading {
   constructor(conn) {
@@ -21,13 +35,27 @@ export class Trading {
   acct(path, opts = {}) {
     const c = this.conn;
     if (c.type === 'broker') return request(URLS.broker(), `/v1/trading/accounts/${enc(c.accountId)}${path}`, { ...opts, auth: brokerAuth() });
-    return request(URLS.trading(c.live), '/v2' + path, { ...opts, auth: c.type === 'oauth' ? { bearer: c.token } : { keys: [c.k, c.s] } });
+    return request(assertVenue(URLS.trading(c.live), !!c.live), '/v2' + path, { ...opts, auth: c.type === 'oauth' ? { bearer: c.token } : { keys: [c.k, c.s] } });
+  }
+  // Checks that this connection's account really is what it is labelled: paper or real money.
+  async verifyEnvironment() {
+    if (this.type === 'broker') return { paper: !this.live, checked: false };
+    const key = this.type === 'oauth' ? 'o:' + String(this.conn.token).slice(-12) : 'k:' + this.conn.k;
+    let hit = envSeen.get(key);
+    if (!hit || Date.now() - hit.at > 10 * 60e3) {
+      const a = await this.account();
+      hit = { paper: a?.account_number ? isPaperAccountNumber(a.account_number) : null, at: Date.now() };
+      envSeen.set(key, hit);
+    }
+    if (hit.paper === true && this.live) throw err('These Alpaca keys belong to a paper (practice) account but are saved as real money. Nothing was sent. Reconnect them as paper in Accounts.');
+    if (hit.paper === false && !this.live) throw err('These Alpaca keys belong to a real-money account but are saved as paper. Nothing was sent. Reconnect them as live in Accounts.');
+    return { paper: hit.paper ?? !this.live, checked: hit.paper != null };
   }
   // Market-wide resources (clock, calendar, assets, option contracts, corporate actions).
   global(path, opts = {}) {
     const c = this.conn;
     if (c.type === 'broker') return request(URLS.broker(), '/v1' + path, { ...opts, auth: brokerAuth() });
-    return request(URLS.trading(c.live), '/v2' + path, { ...opts, auth: c.type === 'oauth' ? { bearer: c.token } : { keys: [c.k, c.s] } });
+    return request(assertVenue(URLS.trading(c.live), !!c.live), '/v2' + path, { ...opts, auth: c.type === 'oauth' ? { bearer: c.token } : { keys: [c.k, c.s] } });
   }
 
   account() { return this.acct('/account'); }
@@ -37,7 +65,7 @@ export class Trading {
   orders(query) { return this.acct('/orders', { query: { status: 'all', limit: 100, nested: true, ...query } }); }
   order(id) { return this.acct(`/orders/${enc(id)}`, { query: { nested: true } }); }
   // Accounts opened through Brightfolio carry the partner commission set in Admin.
-  placeOrder(body) { return this.acct('/orders', { method: 'POST', body: this.type === 'broker' ? withCommission(body) : body }); }
+  async placeOrder(body) { await this.verifyEnvironment(); return this.acct('/orders', { method: 'POST', body: this.type === 'broker' ? withCommission(body) : body }); }
   replaceOrder(id, body) { return this.acct(`/orders/${enc(id)}`, { method: 'PATCH', body }); }
   cancelOrder(id) { return this.acct(`/orders/${enc(id)}`, { method: 'DELETE' }); }
   cancelAllOrders() { return this.acct('/orders', { method: 'DELETE' }); }

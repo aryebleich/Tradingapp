@@ -165,14 +165,7 @@ router.post('/login', async (req, res) => {
   await run('UPDATE users SET failed_logins = 0, locked_until = 0 WHERE id = ?', u.id);
   const sec = await import('./security.js'), { getSetting } = await import('./settings.js');
   if (await getSetting(u.id, 'passkeyOnly')) return res.status(403).json({ error: 'This account signs in with a passkey only. Use "Sign in with a passkey".', passkeyRequired: true });
-  // Typing rhythm that does not match the account's history asks for the second factor (or a
-  // passkey); without either, the session must confirm itself before trading or moving money.
-  const beh = await sec.checkLoginBehavior(u.id, req.body.kd).catch(() => ({}));
-  const hash = await createSession(res, req, u.id, !!u.totp_enabled);
-  if (beh.unusual) {
-    await audit(u.id, 'login_unusual_typing', { score: beh.score }, req.ip);
-    if (!u.totp_enabled) sec.stepUpSessions.set(hash, 'login');
-  }
+  await createSession(res, req, u.id, !!u.totp_enabled);
   await audit(u.id, u.totp_enabled ? 'login_password_ok' : 'login', null, req.ip);
   res.json(u.totp_enabled ? { mfaRequired: true } : { user: publicUser(u) });
 });
@@ -408,16 +401,43 @@ router.get('/export', requireUser, async (req, res) => {
   };
   res.attachment('brightfolio-export.json').json(data);
 });
+// Everything of one user, in one transaction (also used by Admin → Users → Delete).
+export const KEEP_ON_DELETE = ['audit_log', 'exec_audit']; // security log and the hash-chained order log
+export async function deleteUserData(userId) {
+  // Every table that holds a user_id, found at run time so new features are never left behind
+  // (hosted libSQL does not always enforce ON DELETE CASCADE). The security audit log and the
+  // order audit chain are kept, as records the law can require.
+  const names = (await all("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")).map(r => r.name);
+  const cols = {}, fks = {};
+  for (const n of names) { cols[n] = (await all(`PRAGMA table_info(${n})`)).map(c => c.name); fks[n] = await all(`PRAGMA foreign_key_list(${n})`); }
+  const owned = names.filter(n => n !== 'users' && !KEEP_ON_DELETE.includes(n) && cols[n].includes('user_id'));
+  // Rows that belong to the user through a parent row (a channel's signals, a fill's tax lot...),
+  // deepest first; then the user's own rows, tables that point at other ones first.
+  const childSql = [];
+  const walk = (parent, where, depth) => {
+    if (depth > 3) return;
+    for (const n of names) for (const f of fks[n]) {
+      if (f.table !== parent || KEEP_ON_DELETE.includes(n) || n === 'users') continue;
+      const sub = `${f.from} IN (SELECT ${f.to || 'id'} FROM ${parent} WHERE ${where})`;
+      walk(n, sub, depth + 1);
+      childSql.push(`DELETE FROM ${n} WHERE ${sub}`);
+    }
+  };
+  for (const n of owned) walk(n, 'user_id = ?', 0);
+  const refs = n => fks[n].filter(f => owned.includes(f.table) && f.table !== n).length;
+  const order = [...owned].sort((x, y) => refs(y) - refs(x));
+  await tx(async ({ run }) => {
+    for (const q of childSql) await run(q, userId);
+    for (const t of order) await run(`DELETE FROM ${t} WHERE user_id = ?`, userId);
+    await run('DELETE FROM users WHERE id = ?', userId);
+  });
+  const tables = owned;
+  return { tables: tables.length };
+}
 router.post('/delete', requireUser, async (req, res) => {
   if (!confirmsIdentity(req.user, req.body)) return res.status(401).json({ error: req.user.password_set === 0 ? 'Type your email address to confirm' : 'Wrong password' });
   await audit(null, 'account_deleted', { id: req.user.id }, req.ip);
-  // Explicit deletes: hosted libSQL does not always enforce ON DELETE CASCADE.
-  await tx(async ({ run }) => {
-    await run('DELETE FROM strategy_days WHERE strategy_id IN (SELECT id FROM user_strategies WHERE user_id = ?)', req.user.id);
-    for (const t of ['sessions', 'api_tokens', 'drip_log', 'credentials', 'strategies', 'paper_accounts', 'positions', 'fills', 'equity_history', 'scheduled_orders', 'fee_state', 'ledger', 'alerts', 'signal_hooks', 'signals', 'user_strategies', 'strategy_runs', 'pair_bots'])
-      await run(`DELETE FROM ${t} WHERE user_id = ?`, req.user.id);
-    await run('DELETE FROM users WHERE id = ?', req.user.id);
-  });
+  await deleteUserData(req.user.id);
   setCookie(res, '', 0);
   res.json({ ok: true });
 });

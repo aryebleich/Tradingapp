@@ -19,12 +19,13 @@ export function startMock() {
   };
   const id = p => `${p}-${++seq}`;
   const book = k => books.get(k) || books.set(k, { orders: [], positions: [{ symbol: 'AAPL', asset_class: 'us_equity', side: 'long', qty: '10', qty_available: '10', avg_entry_price: '150', current_price: '180', market_value: '1800', cost_basis: '1500', unrealized_pl: '300', unrealized_plpc: '0.2', unrealized_intraday_pl: '20', unrealized_intraday_plpc: '0.011', change_today: '0.011' }], watchlists: [], config: { dtbp_check: 'entry', fractional_trading: true, max_margin_multiplier: '4', no_shorting: false, pdt_check: 'entry', suspend_trade: false, trade_confirm_email: 'all' } }).get(k);
-  const tradeAccount = () => ({ id: 'acct', account_number: 'PA123', status: 'ACTIVE', currency: 'USD', equity: '101800', last_equity: '100500', cash: '100000', buying_power: '200000', regt_buying_power: '200000', daytrading_buying_power: '400000', non_marginable_buying_power: '100000', options_buying_power: '100000', long_market_value: '1800', short_market_value: '0', initial_margin: '900', maintenance_margin: '540', multiplier: '2', sma: '0', daytrade_count: 0, pattern_day_trader: false, trading_blocked: false, shorting_enabled: true, crypto_status: 'ACTIVE', options_trading_level: 2 });
+  // Like Alpaca: paper accounts are numbered PA…, real-money ones are not (requests under /live).
+  const tradeAccount = (live = false) => ({ id: 'acct', account_number: live ? '312345678' : 'PA123', status: 'ACTIVE', currency: 'USD', equity: '101800', last_equity: '100500', cash: '100000', buying_power: '200000', regt_buying_power: '200000', daytrading_buying_power: '400000', non_marginable_buying_power: '100000', options_buying_power: '100000', long_market_value: '1800', short_market_value: '0', initial_margin: '900', maintenance_margin: '540', multiplier: '2', sma: '0', daytrade_count: 0, pattern_day_trader: false, trading_blocked: false, shorting_enabled: true, crypto_status: 'ACTIVE', options_trading_level: 2 });
 
-  function trading(key, path, method, body, query) {
+  function trading(key, path, method, body, query, live = false) {
     const b = book(key);
     let m;
-    if (path === '/account') return tradeAccount();
+    if (path === '/account') return tradeAccount(live);
     if (path === '/account/configurations') return method === 'PATCH' ? Object.assign(b.config, body) : b.config;
     if (path === '/account/portfolio/history') return { timestamp: [1700000000, 1700086400, 1700172800], equity: [100000, 99000, 101800], profit_loss: [0, -1000, 1800], profit_loss_pct: [0, -0.01, 0.018], base_value: 100000, timeframe: query.timeframe };
     if (path === '/orders' && method === 'POST') {
@@ -115,10 +116,10 @@ export function startMock() {
     let raw = '';
     req.on('data', c => (raw += c));
     req.on('end', () => {
-      const u = new URL(req.url, 'http://x'), path = u.pathname, query = Object.fromEntries(u.searchParams);
+      const u = new URL(req.url, 'http://x'), isLive = u.pathname.startsWith('/live/'), path = isLive ? u.pathname.slice(5) : u.pathname, query = Object.fromEntries(u.searchParams);
       const ct = req.headers['content-type'] || '';
       const body = raw ? (ct.includes('json') ? JSON.parse(raw) : Object.fromEntries(new URLSearchParams(raw))) : null;
-      log.push({ method: req.method, path, query, body, headers: req.headers });
+      log.push({ method: req.method, path, query, body, headers: req.headers, live: isLive });
       const send = (out, status = 200) => {
         if (out && out.__status) { status = out.__status; out = { code: status * 100, message: out.message }; }
         res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(out == null ? '' : JSON.stringify(out));
@@ -178,11 +179,11 @@ export function startMock() {
       if (path.startsWith('/v2/') && !path.startsWith('/v2/stocks')) {
         const k = auth.startsWith('Bearer ') ? 'oauth:' + auth.slice(7) : key ? 'keys:' + key : null;
         if (!k || (auth.startsWith('Bearer ') && auth !== 'Bearer oauth-token-123')) return send({ __status: 401, message: 'unauthorized' });
-        return send(trading(k, path.slice(3), req.method, body, query));
+        return send(trading(k, path.slice(3), req.method, body, query, isLive));
       }
       if (!key && !auth.startsWith('Basic ')) return send({ __status: 401, message: 'no data auth' });
       return send(data(path, query));
     });
   });
-  return new Promise(r => server.listen(0, '127.0.0.1', () => r(Object.assign(api, { url: `http://127.0.0.1:${server.address().port}`, log, close: () => { for (const l of listeners) l.end(); server.close(); }, accounts, setStatus, events, docs, books }))));
+  return new Promise(r => server.listen(0, '127.0.0.1', () => r(Object.assign(api, { url: `http://127.0.0.1:${server.address().port}`, liveUrl: `http://127.0.0.1:${server.address().port}/live`, log, close: () => { for (const l of listeners) l.end(); server.close(); }, accounts, setStatus, events, docs, books }))));
 }

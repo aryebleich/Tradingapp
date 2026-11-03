@@ -3,6 +3,8 @@ import * as SEO from './src/seo.js';
 import { agentsRouter } from './src/agents.js';
 import { overviewRouter } from './src/overview.js';
 import { portfolioRiskRouter } from './src/portfoliorisk.js';
+import { adminUsersRouter } from './src/adminusers.js';
+import { retirementRouter, isIra, ACCOUNT_TYPES } from './src/retirement.js';
 import { plainResearchRouter } from './src/plainresearch.js';
 import express from 'express';
 import compression from 'compression';
@@ -30,7 +32,7 @@ import { drain as drainQueue, queueStats, userQueue } from './src/orderqueue.js'
 import { booksFor, booksCsv } from './src/books.js';
 import { taxSummary, harvestCandidates, form8949Csv, scheduleD, scheduleDCsv, markToMarket } from './src/tax.js';
 import { buildStrategy } from './src/ai.js';
-import { handleCommand, userByPhone, normalize, HELP, KNOWN, CHAT_WORDS } from './src/commands.js';
+import { handleCommand, userByPhone, normalize, HELP, KNOWN, CHAT_WORDS, FREE_COMMANDS } from './src/commands.js';
 import { aiEnabled, interpret, toCommand } from './src/assistant.js';
 import { startScheduler, assessAllFees, runDueJobs, snapshotAll, nextRunOf } from './src/scheduler.js';
 import { nyAt } from './src/time.js';
@@ -156,6 +158,8 @@ app.get('/.well-known/assetlinks.json', async (req, res) => {
 export const androidApkUrl = () => process.env.ANDROID_APK_URL || `https://github.com/${process.env.GITHUB_REPO || 'aryebleich/Tradingapp'}/releases/download/android-latest/brightfolio.apk`;
 app.get('/download/android', (req, res) => res.redirect(302, androidApkUrl()));
 
+// Paper stays paper and live stays live: checked by the deploy workflow after every push.
+app.get('/healthz/routing', async (req, res) => { const { routingReport } = await import('./src/routingcheck.js'); const r = routingReport(); res.status(r.ok ? 200 : 500).json(r); });
 app.get('/healthz', async (req, res) => {
   try { await one('SELECT 1 AS ok'); res.json({ ok: true, time: new Date().toISOString() }); }
   catch (e) { res.status(503).json({ ok: false }); }
@@ -305,22 +309,34 @@ app.post('/twilio/sms', async (req, res) => {
   if (!twilioOk(req)) return res.status(403).send('forbidden');
   const user = await userByPhone(req.body.From);
   let reply;
-  // Opening a brokerage account by text: anyone who is not a customer yet, a customer without a
-  // brokerage account who texts APPLY, and anyone with an application in progress.
+  // Opening a brokerage account by text: whoever texts APPLY (customers without a brokerage
+  // account, and people without a Brightfolio account), and anyone with an application in progress.
+  // Everyone else without an account gets the sign-up by text (src/smssignup.js).
   const TA = await import('./src/textapply.js'), text = String(req.body.Body || '').trim();
   const media = [...Array(Math.min(4, +req.body.NumMedia || 0))].map((_, i) => ({ url: req.body['MediaUrl' + i], type: req.body['MediaContentType' + i] })).filter(m => m.url);
   // TALK reaches a person instead (the business inbox).
   const applying = !/^talk\b/i.test(text) && (await TA.hasOpen(req.body.From)
-    || (TA.settings().enabled && brokerEnabled() && (!user || (/^apply$/i.test(text) && !(await one('SELECT 1 FROM broker_accounts WHERE user_id = ?', user.id))))));
+    || (TA.settings().enabled && brokerEnabled() && /^apply$/i.test(text) && (!user || !(await one('SELECT 1 FROM broker_accounts WHERE user_id = ?', user.id)))));
   if (applying) {
     // The first message of a new conversation also shows in the business inbox (never one with a number that could be an SSN).
     if (!user && !(await TA.hasOpen(req.body.From)) && !/\d{3}\D?\d{2}\D?\d{4}/.test(text)) await import('./src/comms.js').then(C => C.record({ channel: 'sms', party: normalizePhone(req.body.From), body: (text || '(photo)') + '  [started Apply by text]', status: 'done' })).catch(() => {});
     if (!auth.rateLimit('textapply:' + req.body.From, 60, 3600e3)) reply = 'Too many messages, try again later.';
     else reply = await TA.handle(req.body.From, text, media, { ip: req.ip }).catch(e => { console.warn('text apply', e.message); return 'Sorry, something went wrong. Reply CONTINUE to try again.'; });
   }
-  // Someone who is not a customer: into the business inbox (Admin → Calls, texts & email).
-  else if (!user) reply = await inboundSms(req.body.From, String(req.body.Body || '')).catch(() => 'Thanks for your message to Brightfolio. We will get back to you soon.');
-  else if (!isPaid(user)) reply = 'Trading and questions by text are part of Brightfolio Pro. Start a free trial in the app under Plans & billing.';
+  // Someone who is not a customer: the sign-up by text (welcome, then email + optional referral
+  // code); TALK, or sign-up switched off, goes to the business inbox (Admin → Calls, texts & email).
+  else if (!user) {
+    if (!auth.rateLimit('smssignup:' + req.body.From, 20, 3600e3)) reply = 'Too many messages, try again later.';
+    else {
+      const SU = await import('./src/smssignup.js');
+      reply = /^talk\b/i.test(text) ? null : await SU.handleSignup(req.body.From, text).catch(e => { console.warn('sms signup', e.message); return 'Sorry, something went wrong. Please reply with your email address again.'; });
+      if (reply == null) reply = await inboundSms(req.body.From, String(req.body.Body || '')).catch(() => 'Thanks for your message to Brightfolio. We will get back to you soon.');
+      else if (!/@/.test(text) && !/^(help|start|stop)$/i.test(text) && text.length > 3) await import('./src/comms.js').then(C => C.record({ channel: 'sms', party: normalizePhone(req.body.From), body: text + '  [sent the sign-up welcome]' })).catch(() => {});
+    }
+  }
+  // Starter (free): look-ups, watchlist, alerts, plan and their own trades by text; questions in
+  // their own words, recurring buys and bots are Pro and up.
+  else if (!isPaid(user) && !FREE_COMMANDS.includes(normalize(String(req.body.Body || '')).split(' ')[0]) && !isLookup(String(req.body.Body || ''))) reply = 'Questions in your own words, recurring buys and bots by text are part of Brightfolio Pro. On your plan: any ticker (AAPL), AAPL CHART, AAPL INFO, WATCH AAPL, ALERT AAPL 250, BAL, PLAN. Text HELP for all.';
   else if (!auth.rateLimit('sms:' + user.id, 30, 3600e3)) reply = 'Too many messages, try again later.';
   else if (!(await CR.trySpend(user, 'sms', { memo: 'reply' }))) reply = 'You are out of credits for text replies. Buy a credit pack in the app under Plans & billing.';
   else {
@@ -330,11 +346,14 @@ app.post('/twilio/sms', async (req, res) => {
   twiml(res, `<Message>${N.xml(reply)}</Message>`);
 });
 
+// A stock look-up ("AAPL", "AAPL CHART", "CHART AAPL", "AAPL INFO"), answered without the AI.
+const isLookup = body => (/^\s*[A-Za-z][A-Za-z0-9.]{0,5}\s*$/.test(body) && !CHAT_WORDS.has(body.trim().toUpperCase()))
+  || /^\s*[A-Za-z][A-Za-z0-9.]{0,5}\s+(chart|earnings|news|price|quote|info)\s*$/i.test(body) || /^\s*(chart|earnings|news|info)\s+[A-Za-z][A-Za-z0-9.]{0,5}\s*$/i.test(body);
 // Commands first; anything else goes to the AI assistant, which turns it into a command or answers.
 // A trade the AI understood still needs the PIN, so the reply tells the user exactly what to send.
 async function smsReply(user, body) {
   // Stock look-ups ("AAPL", "AAPL CHART", "TSLA EARNINGS") are answered directly, without the AI.
-  const lookup = (/^\s*[A-Za-z][A-Za-z0-9.]{0,5}\s*$/.test(body) && !CHAT_WORDS.has(body.trim().toUpperCase())) || /^\s*[A-Za-z][A-Za-z0-9.]{0,5}\s+(chart|earnings|news|price|quote)\s*$/i.test(body) || /^\s*(chart|earnings|news)\s+[A-Za-z][A-Za-z0-9.]{0,5}\s*$/i.test(body);
+  const lookup = isLookup(body);
   if (lookup || KNOWN.includes(normalize(body).split(' ')[0]) || !aiEnabled()) return handleCommand(user, body);
   const r = await interpret(user, body), cmd = toCommand(r);
   if (!cmd) return (r.reply || HELP).slice(0, 600);
@@ -513,6 +532,8 @@ const cancelAlpaca = async id => { const t = await tradingFor(id); return t ? t.
 api.use('/admin/agents', agentsRouter());
 api.use('/market/overview', overviewRouter);
 api.use('/portfolio-risk', portfolioRiskRouter);
+api.use('/admin/users', adminUsersRouter);
+api.use('/retirement', retirementRouter);
 api.use('/plain-research', plainResearchRouter);
 // Live market-data stream (Admin → Market data → Live stream).
 api.get('/admin/streams', auth.requireUser, auth.requireAdmin, async (req, res) => { const S = await import('./src/streams.js'); res.json(S.hub.status()); });
@@ -889,7 +910,10 @@ api.get('/tax', U, wrap(async (req, res) => {
   const d = scheduleD(s);
   if (req.query.format === 'scheduled') return res.type('text/csv').attachment(`schedule-d-${a}-${year}.csv`).send(scheduleDCsv(d));
   const mtm = markToMarket(fills, year === new Date().getUTCFullYear() ? pos : [], { year, bracket: req.user.tax_bracket, stateRate: req.user.state_tax });
-  res.json({ ...s, harvest: harvestCandidates(pos), scheduleD: d, mtmElection: !!req.user.mtm_election, markToMarket: mtm });
+  // An account marked as an IRA (Retirement & IRAs) is tax-sheltered: no capital-gains tax on trades.
+  const accountType = (await getSetting(req.user.id, 'accountTax', {}))?.[a] || 'taxable';
+  const ira = isIra(accountType) ? { type: accountType, name: ACCOUNT_TYPES[accountType], note: accountType === 'roth_ira' ? 'Trades inside a Roth IRA are not taxed, and qualified withdrawals (after age 59½ and 5 years) are tax-free. Nothing here goes on Schedule D.' : 'Trades inside a Traditional IRA are not taxed when you make them; withdrawals are taxed as ordinary income later. Nothing here goes on Schedule D.' } : null;
+  res.json({ ...s, harvest: ira ? [] : harvestCandidates(pos), scheduleD: d, mtmElection: !!req.user.mtm_election, markToMarket: mtm, accountType, ira, ...(ira ? { estimatedTax: 0 } : {}) });
 }));
 // Monthly bookkeeping: month-by-month totals, estimated-tax periods and a journal CSV.
 api.get('/tax/books', U, wrap(async (req, res) => {

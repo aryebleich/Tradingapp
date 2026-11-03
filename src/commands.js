@@ -6,24 +6,27 @@ import { nextRunAfter } from './scheduler.js';
 import { isPaid } from './fees.js';
 import { performance, earnings, chartText, earningsText } from './events.js';
 
-export const HELP = `Brightfolio commands:
-AAPL - price   AAPL CHART - 1 week, 1 month, 1 year
-AAPL EARNINGS - next date and results   AAPL NEWS - headlines
-(try any stock)
-BAL - balance   POS - positions   PRICE AAPL
-BUY 5 AAPL 1234   SELL 5 AAPL 1234   BUY $100 AAPL 1234
-(last number is your PIN; add LIVE for Alpaca, or SCHWAB, TRADIER, TASTYTRADE, TRADESTATION)
-Or just write what you want: "how is my account doing?"
-DCA $50 SPY WEEKLY 1234 - scheduled buy
-ORDERS - scheduled trades   CANCEL 7 1234
-BOTS - auto strategies   PAUSE 1234 - stop all bots & schedules`;
+export const HELP = `Brightfolio by text (every plan):
+AAPL - price   AAPL CHART - 1 week, month, year
+AAPL EARNINGS - next date   AAPL NEWS - headlines
+AAPL INFO - what the company does, size, P/E
+WATCH AAPL · UNWATCH AAPL · LIST - your watchlist
+ALERT AAPL 250 - text me when AAPL crosses $250 · ALERTS
+BAL · POS - practice account   PLAN - what your plan includes
+MY CODE - your referral code
+Trading (PIN at the end): BUY 5 AAPL 1234 · SELL 5 AAPL 1234 · BUY $100 AAPL 1234
+(add LIVE for Alpaca, or SCHWAB, TRADIER, TASTYTRADE, TRADESTATION)
+Pro and up: DCA $50 SPY WEEKLY 1234 · ORDERS · CANCEL 7 1234 · BOTS · PAUSE 1234
+and questions in your own words ("how is my account doing?")`;
 
 const WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, twenty: 20, fifty: 50, hundred: 100 };
 const NAMES = { apple: 'AAPL', microsoft: 'MSFT', tesla: 'TSLA', amazon: 'AMZN', google: 'GOOGL', nvidia: 'NVDA', meta: 'META', 's&p': 'SPY', spy: 'SPY', qqq: 'QQQ' };
 // Words that pick the account: LIVE / ALPACA, or another connected brokerage.
 const ACCOUNT_WORDS = { LIVE: 'alpaca', ALPACA: 'alpaca', TRADIER: 'tradier', TASTYTRADE: 'tastytrade', SCHWAB: 'schwab', TRADESTATION: 'tradestation' };
 const ACCOUNT_NAMES = { paper: 'Paper', alpaca: 'Alpaca', tradier: 'Tradier', tastytrade: 'tastytrade', schwab: 'Schwab', tradestation: 'TradeStation' };
-export const KNOWN = ['HELP', 'MENU', '?', 'BAL', 'BALANCE', 'POS', 'POSITIONS', 'PRICE', 'QUOTE', 'CHART', 'EARNINGS', 'NEWS', 'BUY', 'SELL', 'DCA', 'ORDERS', 'CANCEL', 'BOTS', 'PAUSE'];
+export const KNOWN = ['HELP', 'MENU', '?', 'BAL', 'BALANCE', 'POS', 'POSITIONS', 'PRICE', 'QUOTE', 'CHART', 'EARNINGS', 'NEWS', 'INFO', 'BUY', 'SELL', 'DCA', 'ORDERS', 'CANCEL', 'BOTS', 'PAUSE', 'WATCH', 'UNWATCH', 'LIST', 'ALERT', 'ALERTS', 'PLAN', 'MY', 'CODE'];
+// Commands that work on every plan, including Starter (free).
+export const FREE_COMMANDS = ['HELP', 'MENU', '?', 'BAL', 'BALANCE', 'POS', 'POSITIONS', 'PRICE', 'QUOTE', 'CHART', 'EARNINGS', 'NEWS', 'INFO', 'BUY', 'SELL', 'WATCH', 'UNWATCH', 'LIST', 'ALERT', 'ALERTS', 'PLAN', 'MY', 'CODE'];
 const money = x => '$' + (+x).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function normalize(text) {
@@ -45,11 +48,11 @@ export async function handleCommand(user, text, { pinVerified = false } = {}) {
   const needPin = 'That needs your PIN at the end. Set one in Settings > Phone.';
 
   // Stock look-ups: "AAPL", "AAPL CHART", "AAPL EARNINGS", "AAPL NEWS" (or "CHART AAPL"...).
-  const LOOK = ['CHART', 'EARNINGS', 'NEWS', 'PRICE', 'QUOTE'];
+  const LOOK = ['CHART', 'EARNINGS', 'NEWS', 'PRICE', 'QUOTE', 'INFO'];
   const isTicker = x => /^[A-Z][A-Z0-9.]{0,5}$/.test(x || '') && !KNOWN.includes(x) && !ACCOUNT_WORDS[x];
   let look = null;
   if (isTicker(args[0]) && (args.length === 1 ? !CHAT_WORDS.has(args[0]) : LOOK.includes(args[1]))) look = { sym: args[0], what: args[1] || 'PRICE' };
-  else if (['CHART', 'EARNINGS', 'NEWS'].includes(cmd) && isTicker(args[1])) look = { sym: args[1], what: cmd };
+  else if (['CHART', 'EARNINGS', 'NEWS', 'INFO'].includes(cmd) && isTicker(args[1])) look = { sym: args[1], what: cmd };
   if (look) return lookup(user, look.sym, look.what);
 
   switch (cmd) {
@@ -102,6 +105,46 @@ export async function handleCommand(user, text, { pinVerified = false } = {}) {
       await run('UPDATE scheduled_orders SET active = 0 WHERE user_id = ?', user.id);
       return 'All bots and scheduled trades paused.';
     }
+    case 'WATCH': case 'UNWATCH': case 'LIST': {
+      const { getSetting, setSetting } = await import('./settings.js');
+      let list = (await getSetting(user.id, 'marketWatch', ['AAPL', 'MSFT', 'NVDA'])) || [];
+      const syms = args.slice(1).filter(x => /^[A-Z][A-Z0-9.]{0,5}$/.test(x));
+      if (cmd !== 'LIST') {
+        if (!syms.length) return `Add the symbol: ${cmd} AAPL`;
+        list = cmd === 'WATCH' ? [...new Set([...list, ...syms])].slice(0, 30) : list.filter(x => !syms.includes(x));
+        await setSetting(user.id, 'marketWatch', list);
+      }
+      if (!list.length) return 'Your watchlist is empty. Text WATCH AAPL to add one.';
+      const rows = await Promise.all(list.slice(0, 12).map(async x => { const p = await lastPrice(x, user.id).catch(() => null); return `${x} ${p ? money(p) : '-'}`; }));
+      return `${cmd === 'LIST' ? 'Your watchlist' : cmd === 'WATCH' ? `Added ${syms.join(', ')}. Your watchlist` : `Removed ${syms.join(', ')}. Your watchlist`}:\n${rows.join('\n')}${list.length > 12 ? `\n(+${list.length - 12} more in the app)` : ''}`;
+    }
+    case 'ALERT': {
+      const sym = args.find(x => /^[A-Z][A-Z0-9.]{0,5}$/.test(x) && x !== 'ALERT'), price = +args.find(x => /^\$?\d+(\.\d+)?$/.test(x))?.replace('$', '');
+      if (!sym || !(price > 0)) return 'Write it like this: ALERT AAPL 250';
+      const now$ = await lastPrice(sym, user.id).catch(() => null);
+      const op = now$ && price < now$ ? 'below' : 'above';
+      const n = (await one('SELECT COUNT(*) n FROM alerts WHERE user_id = ? AND active = 1', user.id)).n;
+      const max = { free: 5, pro: 50, elite: 200, ultimate: 1000 }[isPaid(user) ? user.plan : 'free'] || 5;
+      if (n >= max) return `You have ${n} alerts, the most your plan allows (${max}). Text ALERTS to see them, or remove some in the app.`;
+      await run('INSERT INTO alerts (user_id, symbol, op, price, created_at) VALUES (?,?,?,?,?)', user.id, sym, op, price, now());
+      return `Alert set: we'll text you when ${sym} goes ${op} ${money(price)}${now$ ? ` (now ${money(now$)})` : ''}.`;
+    }
+    case 'ALERTS': {
+      const list = await all('SELECT symbol, op, price FROM alerts WHERE user_id = ? AND active = 1 ORDER BY id DESC LIMIT 10', user.id);
+      return list.length ? 'Your alerts:\n' + list.map(a => `${a.symbol} ${a.op} ${money(a.price)}`).join('\n') : 'No alerts yet. Text ALERT AAPL 250 to add one.';
+    }
+    case 'PLAN': {
+      const { PLANS } = await import('./fees.js'), { config } = await import('./credits.js');
+      const plan = isPaid(user) ? user.plan : 'free', p = PLANS[plan] || PLANS.free;
+      const st = await one('SELECT monthly_left + bought AS left FROM credit_state WHERE user_id = ?', user.id).catch(() => null);
+      return `Your plan: ${p.name}.\nBy text: prices, charts, earnings, news, company info, watchlist, alerts and your own trades${plan === 'free' ? '' : ', plus recurring buys, bots and questions in your own words'}.\nEach reply uses 1 credit (${config().monthly[plan] ?? 0} a month on ${p.name}${st?.left != null ? `; ${st.left} left now` : ''}).${plan === 'free' ? '\nUpgrade in the app under Plans & billing.' : ''}`;
+    }
+    case 'MY': case 'CODE': {
+      if (cmd === 'MY' && args[1] !== 'CODE') return 'Unknown command. Text HELP for the list.';
+      const { refNumFor } = await import('./smssignup.js');
+      const code = await refNumFor(user.id);
+      return `Your referral code: ${code}\nFriends text their email and your code to this number, for example: name@example.com ${code}`;
+    }
     default: return 'Unknown command. Text HELP for the list.';
   }
 }
@@ -112,6 +155,13 @@ async function lookup(user, sym, what) {
   try {
     if (what === 'CHART') return chartText(await performance(sym, user.id));
     if (what === 'EARNINGS') return earningsText(await earnings(sym));
+    if (what === 'INFO') {
+      const { profile } = await import('./fundamentals.js');
+      const p = await profile(sym, user.id);
+      if (p.kind === 'etf') return `${p.name} (${sym}): ${p.etf.about} Tracks ${p.etf.index}. Yearly cost ${p.etf.expenseRatio}%${p.price ? `. Price ${money(p.price)}` : ''}.`;
+      const r = p.ratios || {}, c = p.company || {};
+      return [`${p.name} (${sym})${c.industry ? `: ${c.industry.toLowerCase()}` : ''}`, p.price ? `Price ${money(p.price)}` : null, r.capClass ? `Size: ${r.capClass.name}${r.marketCap ? ` (about $${Math.round(r.marketCap / 1e9)} billion)` : ''}` : null, r.pe ? `P/E ${r.pe}` : null, p.fundamentals?.revenueGrowth != null ? `Sales growth ${p.fundamentals.revenueGrowth}%` : null, p.perf?.change1y != null ? `1 year ${p.perf.change1y >= 0 ? '+' : ''}${p.perf.change1y}%` : null].filter(Boolean).join('\n');
+    }
     if (what === 'NEWS') {
       const D = await import('./alpaca/data.js');
       if (!D.dataEnabled()) return 'News is not set up on this server yet.';

@@ -786,6 +786,9 @@ const MIGRATIONS = [
   'ALTER TABLE users ADD COLUMN trial_used INTEGER NOT NULL DEFAULT 0',
   'ALTER TABLE users ADD COLUMN ref_code TEXT',
   'ALTER TABLE users ADD COLUMN referred_by INTEGER',
+  // 5-digit referral code that works by text ("name@example.com 12345").
+  'ALTER TABLE users ADD COLUMN ref_num TEXT',
+  'CREATE UNIQUE INDEX IF NOT EXISTS users_ref_num ON users (ref_num) WHERE ref_num IS NOT NULL',
   'ALTER TABLE users ADD COLUMN referral_rewarded INTEGER NOT NULL DEFAULT 0',
   'CREATE UNIQUE INDEX IF NOT EXISTS users_ref_code ON users (ref_code) WHERE ref_code IS NOT NULL',
   'ALTER TABLE users ADD COLUMN google_sub TEXT',
