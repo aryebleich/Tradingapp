@@ -12,7 +12,17 @@ function creds() {
   if (brokerEnabled()) return { key: process.env.BROKER_API_KEY, secret: process.env.BROKER_API_SECRET, base: URLS.stream().replace('stream.data.', 'stream.data.sandbox.') };
   return null;
 }
-export const streamEnabled = () => !!creds() && typeof WebSocket === 'function';
+// Live prices come from Alpaca's stream, or from another provider's WebSocket (src/streams.js).
+import { hub, alertSymbols, checkTick } from '../streams.js';
+const alpacaReady = () => !!creds() && typeof WebSocket === 'function';
+export const streamEnabled = () => alpacaReady() || !!hub.provider();
+const usingAlpaca = () => alpacaReady() && !hub.provider();
+// Symbols with an active price alert are followed live too, even with no browser open.
+let alertSet = new Set();
+async function refreshAlerts() { alertSet = new Set((await alertSymbols().catch(() => [])).map(a => a.symbol)); syncAll(); }
+setInterval(() => refreshAlerts(), 60e3).unref?.();
+setTimeout(() => refreshAlerts(), 5000).unref?.();
+const notify = async (uid, msg) => (await import('../notify-user.js')).notifyUser(uid, msg);
 
 class Feed {
   constructor(name, path) { this.name = name; this.path = path; this.ws = null; this.ready = false; this.subscribed = new Set(); this.backoff = 1000; }
@@ -49,14 +59,26 @@ class Feed {
 const feeds = { stocks: new Feed('stocks', `/v2/${process.env.ALPACA_STOCK_FEED || 'iex'}`), crypto: new Feed('crypto', '/v1beta3/crypto/us') };
 
 function wanted(name) {
+  if (!usingAlpaca()) return new Set();
   const all = new Set();
   for (const c of clients) for (const s of c.symbols) if ((name === 'crypto') === s.includes('/')) all.add(s);
+  for (const s of alertSet) if ((name === 'crypto') === s.includes('/')) all.add(s);
   return new Set([...all].slice(0, MAX_SYMBOLS));
 }
+// Every symbol any browser or alert follows, for the other providers' stream.
+function wantedAll() { const all = new Set(alertSet); for (const c of clients) for (const s of c.symbols) all.add(s); return all; }
+function syncAll() { feeds.stocks.sync(); feeds.crypto.sync(); hub.sync(); }
+hub.configure({ sink: u => push(u), want: wantedAll, alpacaReady });
 
 function dispatch(m) {
   const update = m.T === 't' ? { symbol: m.S, price: m.p, size: m.s, time: m.t } : m.T === 'q' ? { symbol: m.S, bid: m.bp, ask: m.ap, time: m.t } : { symbol: m.S, price: m.c, time: m.t };
+  push({ ...update, source: 'Alpaca', realtime: true });
+}
+// One update from any stream: to the browsers following it, and to the price alerts.
+export function push(update) {
+  if (update.price > 0) checkTick(update.symbol, update.price, notify).catch(() => {});
   for (const c of clients) {
+    const m = { S: update.symbol };
     if (!c.symbols.has(m.S)) continue;
     c.pending.set(m.S, { ...(c.pending.get(m.S) || {}), ...update });
     c.timer ||= setTimeout(() => flush(c), 500);
@@ -75,11 +97,12 @@ export function sseHandler(req, res) {
   const uid = req.user?.id;
   if (uid && [...clients].filter(c => c.uid === uid).length >= 5) return res.status(429).json({ error: 'Too many live price streams open; close some tabs.' });
   res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
-  res.write(`event: hello\ndata: ${JSON.stringify({ live: streamEnabled(), symbols: [...symbols] })}\n\n`);
+  const via = usingAlpaca() ? { source: `Alpaca (${(process.env.ALPACA_STOCK_FEED || 'iex').toUpperCase()})`, realtime: true } : hub.provider() ? { source: hub.status().available[hub.provider()].name, realtime: hub.status().available[hub.provider()].realtime } : null;
+  res.write(`event: hello\ndata: ${JSON.stringify({ live: streamEnabled(), symbols: [...symbols], ...(via || {}) })}\n\n`);
   if (!streamEnabled()) return res.end();
   const c = { res, symbols, pending: new Map(), timer: null, uid };
   clients.add(c);
-  feeds.stocks.sync(); feeds.crypto.sync();
+  syncAll();
   const ping = setInterval(() => res.write(': ping\n\n'), 25000);
-  res.on('close', () => { clearInterval(ping); clearTimeout(c.timer); clients.delete(c); feeds.stocks.sync(); feeds.crypto.sync(); });
+  res.on('close', () => { clearInterval(ping); clearTimeout(c.timer); clients.delete(c); syncAll(); });
 }

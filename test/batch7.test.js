@@ -47,9 +47,10 @@ test('the public README is short; the private one is edited, imported and publis
     const row = await one("SELECT v FROM site_settings WHERE k = 'privateReadme'");
     assert.doesNotMatch(row.v, /full guide/);
     assert.equal((await owner('/admin/site/readme', { text: '# Edited\n\nNew text.' }, 'PUT')).status, 200);
-    // The README keeps the owner's text and gains the sections that come with the code (readme-auto.js).
+    // The README keeps the owner's text and gains the sections that come with the code (readme-auto.js),
+    // with the generated Product overview right under the title.
     const rt = (await owner('/admin/site/readme')).body.text;
-    assert.ok(rt.startsWith('# Edited\n\nNew text.')); assert.match(rt, /<!-- auto:owner-faq -->/);
+    assert.ok(rt.startsWith('# Edited\n\n<!-- auto:overview -->\n## Product overview')); assert.match(rt, /<!-- \/auto:overview -->\n\nNew text\./); assert.match(rt, /<!-- auto:owner-faq -->/);
     // A large guide fits.
     assert.equal((await owner('/admin/site/readme', { text: 'x'.repeat(300e3) }, 'PUT')).status, 200);
     await owner('/admin/site/readme', { text: '# Edited\n\nNew text.' }, 'PUT');
@@ -62,7 +63,7 @@ test('the public README is short; the private one is edited, imported and publis
       assert.equal(pub.status, 200, JSON.stringify(pub.body)); assert.equal(pub.body.commit, 'newsha123');
       const put = calls.find(c => c.method === 'PUT');
       const body = JSON.parse(put.body);
-      assert.equal(body.sha, 'oldsha'); assert.ok(Buffer.from(body.content, 'base64').toString().startsWith('# Edited\n\nNew text.'));
+      assert.equal(body.sha, 'oldsha'); assert.ok(Buffer.from(body.content, 'base64').toString().startsWith('# Edited\n\n<!-- auto:overview -->'));
       assert.ok((await owner('/admin/site/readme')).body.publishedAt);
     } finally { delete process.env.GITHUB_TOKEN; }
   } finally { s.close(); }

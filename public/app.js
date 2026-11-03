@@ -27,6 +27,7 @@ import { registerInstruments } from './instruments.js';
 import { registerAdmin13 } from './admin13.js';
 import { registerStart } from './start.js';
 import { initSearch } from './search.js';
+import { registerRiskPages } from './riskpages.js';
 import { attachGlossary } from './glossary.js';
 import { startI18n, setLang, canvasNote, LANGS, current as currentLang } from './i18n.js';
 const $ = (s, el = document) => el.querySelector(s);
@@ -281,19 +282,23 @@ async function showUpgrade(feature) {
 // Pages of add-ons the user can switch off (Settings → Add-ons) leave the menu when off.
 const ADDON_PAGES = { brief: 'brief', taxpilot: 'taxPilot' };
 // The menu: the everyday pages always show; every other group starts folded and opens with its arrow.
-const CORE = [['dashboard', 'Home'], ['start', 'Get started'], ['trade', 'Trade'], ['positions', 'Positions'], ['orders', 'Orders'], ['watchlists', 'Watchlists'], ['markets', 'Markets & news']];
+const CORE = [['dashboard', 'Home'], ['start', 'Get started'], ['trade', 'Trade'], ['positions', 'Positions'], ['orders', 'Orders'], ['watchlists', 'Watchlists'], ['markets', 'Market overview']];
 const NAV = [
-  ['Investing', [['sp500', 'S&P 500 plan'], ['wealth', 'Wealth builder'], ['longterm', 'Long-term view'], ['invest', 'Futures, funds & savings'], ['alpaca-tools', 'Bonds, rates & crypto'], ['values', 'Values investing'], ['spend', 'Invest as you spend']]],
+  ['Investing', [['sp500', 'S&P 500 plan'], ['wealth', 'Wealth builder'], ['longterm', 'Long-term view'], ['invest', 'Futures, funds & savings'], ['alpaca-tools', 'Bonds, rates & crypto'], ['tokenized', 'Tokenized securities'], ['values', 'Values investing'], ['spend', 'Invest as you spend']]],
   ['Trading tools', [['chart', 'Chart'], ['options', 'Options chain'], ['optionslab', 'Options lab'], ['scanner', 'Scanner'], ['calendar', 'Calendar & events'], ['execution', 'Execution & routing'], ['workspace', 'Workspace']]],
-  ['Research & AI', [['news', 'News & sentiment'], ['ai', 'AI assistant'], ['agents', 'Forecasts & AI agents'], ['institutions', 'Institutional portfolios']]],
+  ['Research & AI', [['research', 'Plain-language research'], ['news', 'News & sentiment'], ['ai', 'AI assistant'], ['agents', 'Forecasts & AI agents'], ['institutions', 'Institutional portfolios']]],
   ['Automation', [['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['schedule', 'Scheduled trades'], ['rules', 'Rules across accounts'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['portfolios', 'Portfolios'], ['marketplace', 'Marketplace']]],
   ['Quant lab', [['pairs', 'Pairs trading'], ['statarb', 'Statistical arbitrage'], ['code', 'Code lab'], ['quantconnect', 'Cloud algorithms']]],
-  ['Planning', [['money', 'All my money'], ['brief', 'Weekly brief'], ['insights', 'Insights & journal'], ['risk', 'Risk controls'], ['tax', 'Taxes'], ['taxpilot', 'Tax autopilot'], ['private', 'Private markets'], ['realestate', 'Real estate'], ['luach', 'Luach & tzedakah']]],
+  ['Planning', [['riskview', 'Portfolio & risk'], ['money', 'All my money'], ['brief', 'Weekly brief'], ['insights', 'Insights & journal'], ['risk', 'Risk controls'], ['tax', 'Taxes'], ['taxpilot', 'Tax autopilot'], ['private', 'Private markets'], ['realestate', 'Real estate'], ['luach', 'Luach & tzedakah']]],
   ['Accounts', [['brokers', 'Choose your brokerage'], ['account', 'Alpaca account'], ['accounts', 'All accounts'], ['funding', 'Plans & billing'], ['referrals', 'Invite & earn']]],
-  ['Help & settings', [['learn', 'Learn'], ['security', 'Security & help'], ['text', 'Text & hotline'], ['android', 'Android app'], ['settings', 'Settings']]],
+  ['Help & settings', [['learn', 'Learn'], ['security', 'Security & help'], ['protection', 'Investor protection'], ['text', 'Text & hotline'], ['android', 'Android app'], ['settings', 'Settings']]],
 ];
 // Simple line icons (24x24 paths) for the menu.
 const ICONS = {
+  riskview: '<path d="M12 3v9l7 4"/><circle cx="12" cy="12" r="9"/>',
+  research: '<path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h5"/>',
+  tokenized: '<path d="M12 2l8 5v10l-8 5-8-5V7z"/><path d="M8 12h8"/>',
+  protection: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
   brokers: '<path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/>',
   sp500: '<path d="M3 17l5-5 4 4 8-9"/><path d="M14 7h6v6"/>',
   pairs: '<path d="M7 4v16M17 4v16M4 8h6M14 16h6"/>',
@@ -336,7 +341,7 @@ const ICONS = {
   money: '<path d="M3 10h18M5 10V20M9 10v10M15 10v10M19 10v10M3 20h18M12 3l9 5H3z"/>',
   luach: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M12 12l1.2 2.4 2.6.4-1.9 1.8.5 2.6-2.4-1.3-2.4 1.3.5-2.6-1.9-1.8 2.6-.4z"/>',
   brief: '<path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5M8 12h8M8 16h6"/>', taxpilot: '<path d="M12 3v18M17 7.5c0-1.9-2.2-3-5-3s-5 1.1-5 3 2.2 2.7 5 3.3 5 1.4 5 3.5-2.2 3.2-5 3.2-5-1.3-5-3.2"/>',
-  'admin-comms': '<path d="M4 5h16v11H8l-4 4z"/><path d="M8 9h8M8 12h5"/>', 'admin-strategies': '<path d="M12 3v18M5 8h14M7 13h10M9 18h6"/>', 'admin-seo': '<circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5M8 12l2-2 2 2 2-3"/>', 'admin-data': '<path d="M3 12h4l3-7 4 14 3-7h4"/><circle cx="12" cy="12" r="0.5"/>', 'admin-trust': '<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/>',
+  'admin-comms': '<path d="M4 5h16v11H8l-4 4z"/><path d="M8 9h8M8 12h5"/>', 'admin-strategies': '<path d="M12 3v18M5 8h14M7 13h10M9 18h6"/>', 'admin-seo': '<circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5M8 12l2-2 2 2 2-3"/>', 'admin-agents': '<path d="M8 8l-5 4 5 4M16 8l5 4-5 4"/><circle cx="12" cy="12" r="1.5"/>', 'admin-data': '<path d="M3 12h4l3-7 4 14 3-7h4"/><circle cx="12" cy="12" r="0.5"/>', 'admin-trust': '<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/>',
   invest: '<path d="M4 19h16M6 16V9M10 16V5M14 16v-6M18 16V7"/>',
   rules: '<path d="M4 6h16M4 12h10M4 18h6"/><path d="M17 14l2 2 3-4"/>',
   start: '<path d="M5 21V4h11l-2 4 2 4H5"/>',
@@ -1117,14 +1122,25 @@ async function qboCard(view, year, q) {
   act($('#qboSendM', el), () => send($('#qboMonth', el).value), $('#qboErr', el));
   act($('#qboSendY', el), () => send(String(year)), $('#qboErr', el));
 }
-// Android app: download and install steps (the app shows this live site, so it is always current).
+// Android app: from Google Play when it is listed there (installs and updates like any app),
+// otherwise the signed file from GitHub with step-by-step install help.
 routes.android = async view => {
   const isAndroid = /Android/i.test(navigator.userAgent);
+  CFG ||= await api('/config').catch(() => null);
+  const play = CFG?.androidPlay;
   view.innerHTML = `<h1>Android app</h1><div class="card androidcard"><div class="row" style="gap:18px;align-items:center;flex-wrap:wrap">
     <img src="/icon-512.png" width="72" height="72" alt="" style="border-radius:18px"><div style="flex:1;min-width:220px"><h2 style="margin:0">Brightfolio for Android</h2>
     <p class="mu" style="margin:4px 0 0">A real Android app: your portfolio, quotes, buying and selling, orders and a watchlist on native screens, with everything else a tap away. Sign in with your email, or with Google, GitHub or a phone code.</p></div>
-    <a href="/download/android"><button>Download the Android app</button></a></div>
-    <h3>Install</h3><ol class="steps"><li>${isAndroid ? 'Tap' : 'On your Android phone, open this page and tap'} <b>Download the Android app</b>.</li><li>Open the downloaded file. If Android asks, allow installing apps from your browser (Settings → Apps → Special access → Install unknown apps).</li><li>Tap <b>Install</b>, then open Brightfolio and sign in.</li></ol>
+    ${play ? `<a href="${esc(play)}" target="_blank" rel="noopener" class="playbadge" aria-label="Get it on Google Play"><span>GET IT ON</span><b>Google Play</b></a>` : '<a href="/download/android"><button>Download the Android app</button></a>'}</div>
+    ${play ? `<h3>Install</h3><ol class="steps"><li>${isAndroid ? 'Tap' : 'On your Android phone, open this page and tap'} <b>Get it on Google Play</b> (or search “Brightfolio” in the Play Store).</li><li>Tap <b>Install</b>. The app appears with your other apps and updates itself from the Play Store.</li><li>Open Brightfolio and sign in.</li></ol>
+      <p class="mu small-print">Can't use Google Play? <a href="/download/android">Download the app file</a> instead.</p>`
+    : `<h3>Install (about a minute)</h3><ol class="steps">
+      <li>${isAndroid ? 'Tap' : 'On your Android phone, open this page and tap'} <b>Download the Android app</b>. If Chrome says the file might be harmful, tap <b>Download anyway</b>: it is the app signed by Brightfolio.</li>
+      <li>Tap <b>Open</b> when the download finishes (or find <b>brightfolio.apk</b> in Downloads).</li>
+      <li>The first time, Android asks to allow your browser to install apps: tap <b>Settings</b>, switch on <b>Allow from this source</b>, then go back.</li>
+      <li>Tap <b>Install</b>. If Google Play Protect asks, tap <b>More details → Install anyway</b> (it asks about any app that is not from the Play Store yet).</li>
+      <li>Tap <b>Open</b>. Brightfolio is now with your other apps; new versions install over it and keep you signed in.</li></ol>
+      <p class="mu small-print">Brightfolio is on its way to Google Play; once it is listed there this page shows the Play Store button, and installing works like any other app.</p>`}
     <p class="mu small-print">On iPhone: open Brightfolio in Safari, tap Share, then Add to Home Screen.</p></div>`;
 };
 routes.tax = async (view, q) => {
@@ -1371,7 +1387,7 @@ routes.settings = async view => {
 
 // ---------- admin ----------
 // Owner pages: one route per section so each has its own place in the menu.
-const ADMIN_TABS = [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-money', 'Money & fees'], ['admin-upgrades', 'Upgrades'], ['admin-yiddish', 'Yiddish Labs'], ['admin-phone', 'Phone line'], ['admin-ai', 'AI & privacy'], ['admin-readme', 'README'], ['admin-admins', 'Admins'], ['admin-keys', 'Keys'], ['admin-comms', 'Calls, texts & email'], ['admin-support', 'Support inbox'], ['admin-data', 'Market data'], ['admin-strategies', 'Original strategies'], ['admin-seo', 'SEO'], ['admin-trust', 'Trust'], ['admin-system', 'System health'], ['admin-setup', 'Setup']];
+const ADMIN_TABS = [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-money', 'Money & fees'], ['admin-upgrades', 'Upgrades'], ['admin-yiddish', 'Yiddish Labs'], ['admin-phone', 'Phone line'], ['admin-ai', 'AI & privacy'], ['admin-readme', 'README'], ['admin-admins', 'Admins'], ['admin-keys', 'Keys'], ['admin-comms', 'Calls, texts & email'], ['admin-support', 'Support inbox'], ['admin-data', 'Market data'], ['admin-strategies', 'Original strategies'], ['admin-seo', 'SEO'], ['admin-agents', 'AI coding agents'], ['admin-trust', 'Trust'], ['admin-system', 'System health'], ['admin-setup', 'Setup']];
 // Pages with their own module (owner.js, protect.js) draw themselves under the same tabs.
 const adminTabs = current => `<div class="chips admintabs">${ADMIN_TABS.map(([k, t]) => `<a href="#/${k}"><button type="button" class="${k === current ? 'on' : ''}">${t}</button></a>`).join('')}</div>`;
 async function adminPage(view, tab) {
@@ -1462,6 +1478,7 @@ initSearch(shared, [['Main', CORE], ...NAV]);
 startBell(shared);
 registerWealth(routes, shared);
 registerTools(routes, shared);
+registerRiskPages(routes, shared);
 
 // Static files are cached for instant repeat visits (sw.js); pages and data always come fresh.
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});

@@ -13,6 +13,7 @@ import * as batch12 from './yi-batch12.js';
 import * as batch13 from './yi-batch13.js';
 import * as batch14 from './yi-batch14.js';
 import * as batch15 from './yi-batch15.js';
+import * as batch16 from './yi-batch16.js';
 
 export const credit = '';
 
@@ -349,7 +350,7 @@ export const strings = {
   'Admin user update': 'אדמין האט געטוישט א באניצער',
 };
 
-Object.assign(strings, features.strings, protect.strings, wealth.strings, batch5.strings, batch6.strings, { ...batch15.strings, ...batch14.strings, ...batch13.strings, ...batch12.strings, ...batch11.strings, ...batch9.strings, ...batch8.strings, ...strings }, labs);
+Object.assign(strings, features.strings, protect.strings, wealth.strings, batch5.strings, batch6.strings, { ...batch16.strings, ...batch15.strings, ...batch14.strings, ...batch13.strings, ...batch12.strings, ...batch11.strings, ...batch9.strings, ...batch8.strings, ...strings }, labs);
 
 // Sentences that contain numbers or names.
 export const patterns = [

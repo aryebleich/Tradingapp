@@ -17,6 +17,7 @@ async function tools(view) {
   <form class="card" id="fi"><h2>Treasuries and bonds</h2><p class="mu">Latest prices and quotes (bid, ask and yield) for bonds and Treasury bills by ISIN. Beta data from Alpaca.</p>
     <div class="row"><label>ISINs (comma-separated)<input name="isins" value="US912797KJ59, US912797KS58, US912797SX61" data-no-tr></label><button>Look up</button></div><div class="err"></div><div id="fiOut"></div></form>
 
+  <div class="card"><h2>Tokenized securities</h2><p>Stocks, funds and Treasuries recorded on a blockchain: what they are, who can buy them, the extra risks and a price check against the real thing. <a href="#/tokenized">Learn about tokenized securities →</a></p></div>
   <form class="card" id="cv"><h2>Crypto across venues</h2><p class="mu">The same coin can trade at slightly different prices at each liquidity source: Alpaca US, Kraken US and Kraken EU.</p>
     <div class="row"><label>Pairs<input name="syms" value="BTC/USD, ETH/USD" data-no-tr></label><button>Compare</button></div><div class="err"></div><div id="cvOut"></div></form>
 

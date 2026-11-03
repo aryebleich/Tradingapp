@@ -101,7 +101,8 @@ export const deskRouter = (() => {
     // A bid/ask far from the live price is stale or from another market: not shown.
     if (nb?.bid && nb?.ask && q.price > 0 && Math.abs((nb.bid + nb.ask) / 2 - q.price) / q.price <= 0.03) { bid = nb.bid; ask = nb.ask; }
     const qty = +req.query.qty || 0, side = req.query.side === 'sell' ? 'sell' : 'buy';
-    res.json({ symbol, price: q.price, source: DS.PROVIDERS[q.source]?.name || q.source, sourceId: q.source, latencyMs: ms, bid, ask, feed: nb?.feed || null, holding: await holding(req.user.id, account, symbol), session: session(),
+    const sess = session(), fresh = DS.PROVIDERS[q.source] ? DS.freshness(q.source, sess.open || symbol.includes('/')) : { level: 'unknown', label: DS.FRESH_LABELS.unknown };
+    res.json({ symbol, price: q.price, source: DS.PROVIDERS[q.source]?.name || q.source, sourceId: q.source, latencyMs: ms, freshness: fresh, bid, ask, feed: nb?.feed || null, holding: await holding(req.user.id, account, symbol), session: session(),
       // A limit or stop order is valued at its own price.
       costs: qty ? costs({ side, qty, price: +req.query.price > 0 ? +req.query.price : q.price, bid, ask, type: req.query.type || 'market' }) : null, fees: fees(), orderLatency: await latencies(req.user.id) });
   });

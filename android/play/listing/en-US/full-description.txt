@@ -1,0 +1,10 @@
+Brightfolio helps you learn, practice and invest on the brokerage account you choose.
+
+• Practice first: a $100,000 paper account to try ideas with no real money.
+• Your portfolio at a glance: value, today's change, positions and an equity line.
+• Buy and sell in dollars or shares, market or limit orders, with a review step before anything is sent. Real-money orders are clearly marked.
+• Live quotes with bid and ask, market status, and a clear label on every price: real-time, delayed or previous close.
+• Portfolio & risk: allocation, concentration and "what if the market fell?" scenarios, explained simply.
+• Watchlist, orders and the rest of Brightfolio a tap away.
+
+Brightfolio is software, not a broker-dealer: your money and securities stay with your broker. Investing involves risk, including the loss of money you invest. No one, including AI, can guarantee returns. Past results do not predict future results.

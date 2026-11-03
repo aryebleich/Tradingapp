@@ -1,5 +1,9 @@
 // Brightfolio web server: JSON API + static single-page app.
 import * as SEO from './src/seo.js';
+import { agentsRouter } from './src/agents.js';
+import { overviewRouter } from './src/overview.js';
+import { portfolioRiskRouter } from './src/portfoliorisk.js';
+import { plainResearchRouter } from './src/plainresearch.js';
 import express from 'express';
 import compression from 'compression';
 import path from 'node:path';
@@ -499,6 +503,13 @@ api.use('/ai', chatRouter({ extraTools: user => ({
     run: async ({ symbol, horizon }) => { const r = await forecastSymbol(user.id, String(symbol).toUpperCase(), { horizon: horizon || 5 }); return { symbol: r.symbol, ...r.forecast, outOfSample: r.metrics, topFeatures: r.importance.slice(0, 4) }; } },
 }) }));
 const cancelAlpaca = async id => { const t = await tradingFor(id); return t ? t.cancelAllOrders() : null; };
+api.use('/admin/agents', agentsRouter());
+api.use('/market/overview', overviewRouter);
+api.use('/portfolio-risk', portfolioRiskRouter);
+api.use('/plain-research', plainResearchRouter);
+// Live market-data stream (Admin → Market data → Live stream).
+api.get('/admin/streams', auth.requireUser, auth.requireAdmin, async (req, res) => { const S = await import('./src/streams.js'); res.json(S.hub.status()); });
+api.put('/admin/streams', auth.requireUser, auth.requireAdmin, async (req, res) => { const S = await import('./src/streams.js'); await S.saveSettings(req.body || {}); await audit(req.user.id, 'stream_settings', { provider: req.body?.provider }, req.ip); res.json(S.hub.status()); });
 api.use('/admin/seo', SEO.seoAdminRouter({ onChange: () => htmlCache.clear() }));
 api.use('/admin/site', adminSiteRouter);
 api.use('/tokens', tokensRouter);
@@ -540,6 +551,8 @@ const needPlan = feature => (req, res, next) => (isPaid(req.user) ? next() : nex
 api.get('/config', async (req, res) => res.json({
   plans: PLANS, trialDays: TRIAL_DAYS, presets: PRESETS, twilio: N.twilioEnabled(), stripe: N.stripeEnabled(), ai: llmEnabled(), aiModel: llmInfo(), email: N.emailEnabled(),
   marketData: dataEnabled(), hotline: process.env.TWILIO_FROM || null, broker: brokerEnabled(), oauth: oauthEnabled(), google: googleEnabled(), github: githubEnabled(), assistant: aiEnabled(), adviser: adviserFor(req.user), version: version(),
+  // The Google Play listing, once the app is published there (ANDROID_PLAY_URL, or ANDROID_PLAY=1 for the standard address).
+  androidPlay: process.env.ANDROID_PLAY_URL || (process.env.ANDROID_PLAY === '1' ? 'https://play.google.com/store/apps/details?id=com.brightfolio.app' : null),
 }));
 
 // Lets the landing page (also the GitHub Pages copy) show only sign-up options that work.
@@ -1009,6 +1022,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const server = app.listen(port, () => console.log(`Brightfolio on http://localhost:${port}`));
   const timer = startScheduler();
   const stopKyc = startKycEvents();
+  // Each deploy brings the private README's generated overview up to date (a few seconds after start).
+  setTimeout(() => import('./src/admin-site.js').then(m => m.refreshReadme()).catch(() => {}), 5000).unref();
   const stop = () => { clearInterval(timer); stopKyc(); server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 8000).unref(); };
   process.on('SIGTERM', stop);
   process.on('SIGINT', stop);

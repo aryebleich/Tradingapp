@@ -7,6 +7,11 @@ name: Android app
 # creates android/release.keystore with it and commits it; every later version is signed with the
 # same key, so phones update in place. Without the secret the app is signed with a one-time key.
 # Repository variable APP_URL: the site's address (the scheduler uses the same one).
+# Google Play (installs and updates like any other app): the same run builds an Android App Bundle
+# (brightfolio.aab), signed with the same key as the upload key. Add the repository secret
+# PLAY_SERVICE_ACCOUNT_JSON (a Google Cloud service account with release rights in Play Console)
+# and every build is uploaded to the Play track in the PLAY_TRACK variable (default: internal).
+# The very first upload has to be done by hand in Play Console (Google's rule); see android/play/.
 on:
   push:
     branches: [main]
@@ -58,17 +63,37 @@ jobs:
           VERSION_CODE: ${{ github.run_number }}
         run: |
           cd android
-          gradle --no-daemon assembleRelease
+          gradle --no-daemon assembleRelease bundleRelease
           BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
           "$BT/zipalign" -f -p 4 app/build/outputs/apk/release/app-release-unsigned.apk aligned.apk
           "$BT/apksigner" sign --ks release.keystore --ks-key-alias brightfolio --ks-pass env:KEY_PASS --key-pass env:KEY_PASS --out brightfolio.apk aligned.apk
           "$BT/apksigner" verify brightfolio.apk && ls -l brightfolio.apk
+          # The bundle for Google Play, signed with the upload key.
+          cp app/build/outputs/bundle/release/app-release.aab brightfolio.aab
+          jarsigner -keystore release.keystore -storepass:env KEY_PASS -keypass:env KEY_PASS -sigalg SHA256withRSA -digestalg SHA-256 brightfolio.aab brightfolio
+          jarsigner -verify brightfolio.aab >/dev/null && ls -l brightfolio.aab
       - name: Publish the download
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete android-latest --yes --cleanup-tag 2>/dev/null || true
-          gh release create android-latest android/brightfolio.apk --title "Brightfolio for Android" --notes "Install: open this file on your Android phone and allow installing from your browser. Native Brightfolio app, build ${{ github.run_number }}." --latest=false
+          gh release create android-latest android/brightfolio.apk android/brightfolio.aab --title "Brightfolio for Android" --notes "Install: open this file on your Android phone and allow installing from your browser. Native Brightfolio app, build ${{ github.run_number }}." --latest=false
+      - name: Is Google Play set up?
+        id: play
+        env:
+          PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [ -n "$PLAY_JSON" ] && [ "$ONE_TIME_KEY" != "1" ]; then echo "ready=1" >> "$GITHUB_OUTPUT"; else echo "::notice::Google Play upload skipped: add the PLAY_SERVICE_ACCOUNT_JSON secret (and ANDROID_KEY_PASSWORD) to publish there."; fi
+      - name: Upload to Google Play
+        if: steps.play.outputs.ready == '1'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.brightfolio.app
+          releaseFiles: android/brightfolio.aab
+          track: ${{ vars.PLAY_TRACK || 'internal' }}
+          status: ${{ vars.PLAY_STATUS || 'completed' }}
+          whatsNewDirectory: android/play/whatsnew
       - name: Keep the signing key and fingerprint
         if: env.ONE_TIME_KEY != '1'
         run: |

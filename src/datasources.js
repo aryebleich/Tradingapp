@@ -121,6 +121,19 @@ const NOT_FOUND = Symbol('not found');
 const unknown = () => Object.assign(new Error('not found'), { status: 404 });
 
 // The latest price from the configured sources, with which one answered.
+// How fresh each source's prices are, so every price on screen can say so plainly.
+//   realtime      consolidated or exchange prices as they trade
+//   realtime-iex  real time, but from the IEX exchange only (a few % of US volume)
+//   delayed       up to about 15 minutes late
+//   close         the previous day's close
+export const FRESH = { alpaca: () => ((process.env.ALPACA_STOCK_FEED || 'iex') === 'sip' ? 'realtime' : 'realtime-iex'), yahoo: 'delayed', stooq: 'delayed', finnhub: 'realtime', twelvedata: 'delayed', tiingo: 'realtime-iex', alphavantage: 'delayed', fmp: 'delayed', polygon: 'close' };
+const FRESH_LABEL = { realtime: 'Real-time', 'realtime-iex': 'Real-time (IEX)', delayed: 'Delayed up to 15 min', close: 'Previous close', closed: 'Market closed: last price', unknown: 'Last known price' };
+export function freshness(id, marketOpen = true) {
+  const f = typeof FRESH[id] === 'function' ? FRESH[id]() : FRESH[id] || 'unknown';
+  const level = !marketOpen && f !== 'close' ? 'closed' : f;
+  return { level, label: FRESH_LABEL[level] };
+}
+export const FRESH_LABELS = FRESH_LABEL;
 export async function quote(symbol, userId) {
   const s = settings(), list = plan('quote');
   if (s.mode === 'race' && list.length > 1) {

@@ -145,7 +145,7 @@ export async function screen(userId, { refresh = false } = {}) {
   const growth = rows.filter(r => r.revenueGrowth != null && r.revenueGrowth > 8).map(r => ({ ...r, score: r2(100 * (1 - ((r._revenueGrowth ?? 1) + (r._epsGrowth ?? 1)) / 2), 0) })).sort((a, b) => b.score - a.score).slice(0, 25);
   const value = rows.filter(r => r.pe != null && r.pe > 0 && r.pe < 25).map(r => ({ ...r, score: r2(100 * (1 - ((r._pe ?? 1) + (r._pb ?? 1)) / 2), 0) })).sort((a, b) => b.score - a.score).slice(0, 25);
   const clean = r => { const o = { ...r }; for (const k of Object.keys(o)) if (k.startsWith('_')) delete o[k]; return o; };
-  const v = { year: f.year, scanned: rows.length, growth: growth.map(clean), value: value.map(clean), at: Date.now() };
+  const v = { year: f.year, scanned: rows.length, growth: growth.map(clean), value: value.map(clean), all: rows.map(clean).sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0)), at: Date.now() };
   screenCache = { at: Date.now(), v };
   return v;
 }

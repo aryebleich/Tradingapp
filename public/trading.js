@@ -13,6 +13,7 @@ export function registerTrading(routes, helpers) {
 // ---------- shared helpers ----------
 const A = (path, opts) => H.api('/alpaca' + path, opts);
 const fmt = (x, d = 2) => (x == null || !isFinite(x) ? '-' : (+x).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }));
+const fmtInt = x => (x == null || !isFinite(x) ? '-' : Math.round(+x).toLocaleString('en-US'));
 const usd = x => (x == null || !isFinite(x) ? '-' : H.money(x));
 const isCrypto = s => s.includes('/');
 const isOption = s => /^[A-Z]{1,6}\d{6}[CP]\d{8}$/.test(s);
@@ -521,7 +522,7 @@ async function trade(view, q) {
       // Only a real live source replaces the feed's price; a "last known price" fallback does not.
       if (!H.$('#px', view) || !(d.price > 0) || !d.sourceId || /no live source/i.test(d.source || '')) return;
       livePx = true; showPx(d.price, prevClose);
-      H.$('#ba', view).textContent = `${d.bid && d.ask ? `Bid ${fmt(d.bid)} · Ask ${fmt(d.ask)} · ` : ''}${d.source}`;
+      H.$('#ba', view).innerHTML = `${d.bid && d.ask ? `Bid ${fmt(d.bid)} · Ask ${fmt(d.ask)} · ` : ''}${H.esc(d.source)}${d.freshness ? ` <span class="fresh ${H.esc(d.freshness.level)}">${H.esc(d.freshness.label)}</span>` : ''}`;
     }).catch(() => {});
     // Stocks and ETFs; crypto keeps its own live stream and snapshot.
     if (kind === 'stock') {
@@ -757,32 +758,60 @@ async function positions(view) {
 // Markets: overview, most active, movers, news
 // =====================================================================
 const OVERVIEW = ['SPY', 'QQQ', 'DIA', 'IWM', 'BTC/USD', 'ETH/USD'];
+// Market overview: the session, indexes, sectors, crypto, your watchlist, movers and news. Every
+// price says where it came from and whether it is real-time, delayed or the last close.
 async function markets(view, q) {
   const by = q.get('by') === 'trades' ? 'trades' : 'volume', mk = q.get('market') === 'crypto' ? 'crypto' : 'stocks';
-  view.innerHTML = `<h1>Markets & news</h1><p class="mu" id="clock"></p>
-  <div class="stats" id="ov">${OVERVIEW.map(s => `<a class="stat" href="#/trade?symbol=${encodeURIComponent(s)}" data-s="${s}" style="text-decoration:none;color:inherit"><span>${s}</span><b data-px>-</b><span data-chg></span></a>`).join('')}</div>
-  <div class="grid" style="margin-top:16px">
-    <div class="card"><div class="row" style="justify-content:space-between"><h2>Most active</h2><div class="chips" id="by"><button data-v="volume" class="${by === 'volume' ? 'on' : ''}">Volume</button><button data-v="trades" class="${by === 'trades' ? 'on' : ''}">Trades</button></div></div><div id="active" class="tablewrap"><p class="mu">Loading…</p></div></div>
-    <div class="card"><div class="row" style="justify-content:space-between"><h2>Top movers</h2><div class="chips" id="mk"><button data-v="stocks" class="${mk === 'stocks' ? 'on' : ''}">Stocks</button><button data-v="crypto" class="${mk === 'crypto' ? 'on' : ''}">Crypto</button></div></div><div id="movers"><p class="mu">Loading…</p></div></div>
+  const d = await H.api('/market/overview');
+  const s = d.session, until = t => { const m = Math.max(0, Math.round((t - Date.now()) / 60000)); return m >= 1440 ? `${Math.floor(m / 1440)}d ${Math.floor(m % 1440 / 60)}h` : `${Math.floor(m / 60)}h ${m % 60}m`; };
+  const STATUS = { open: ['Open', 'pos'], 'pre-market': ['Pre-market', 'warn'], 'after-hours': ['After hours', 'warn'], closed: ['Closed', ''] };
+  const [stT, stC] = s.holiday ? ['Holiday: closed', ''] : STATUS[s.status] || [s.status, ''];
+  const badge = r => r.freshness ? `<span class="fresh ${H.esc(r.freshness.level)}" data-fresh title="${H.esc((d.labels[r.freshness.level] || r.freshness.label) + (r.source ? ' · ' + r.source : ''))}">${H.esc(r.freshness.label)}</span>` : '';
+  const chg = r => (r.changePct == null ? '<span class="mu">-</span>' : `<span class="${H.cls(r.changePct)}">${r.change >= 0 ? '+' : ''}${fmt(r.change)} (${H.pct(r.changePct, 2)})</span>`);
+  const tile = r => `<a class="stat mtile" href="#/trade?symbol=${encodeURIComponent(r.symbol)}" data-s="${H.esc(r.symbol)}"><span>${H.esc(r.name || r.symbol)} <b class="mu" data-no-tr>${H.esc(r.symbol)}</b></span><b data-px>${r.price == null ? '-' : fmt(r.price)}</b><span data-chg>${chg(r)}</span>${badge(r)}</a>`;
+  const maxAbs = Math.max(1, ...d.sectors.map(x => Math.abs(x.changePct || 0)));
+  view.innerHTML = `<h1>Market overview</h1>
+  <div class="card mstatus"><div class="row" style="gap:14px;align-items:center;flex-wrap:wrap"><span class="pill ${stC}" style="font-size:14px">${stT}</span>
+    <span>${s.open ? `Closes in <b>${until(s.nextClose)}</b>${s.earlyClose ? ' (early close today, 1 PM New York)' : ''}` : `Opens in <b>${until(s.nextOpen)}</b> (${new Date(s.nextOpen).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })})`}</span>
+    <span class="mu">US stocks trade 9:30 AM to 4 PM New York time, Monday to Friday. Crypto trades all the time.</span></div></div>
+  <h2 class="sec2">Indexes</h2><div class="stats mtiles" id="ov">${d.indexes.map(tile).join('')}${d.crypto.map(tile).join('')}</div>
+  <div class="grid" style="margin-top:12px">
+    <div class="card"><h2>Sectors today</h2><div class="sectors">${d.sectors.map(x => `<a class="secrow" href="#/trade?symbol=${encodeURIComponent(x.symbol)}"><span>${H.esc(x.name)} <span class="mu" data-no-tr>${H.esc(x.symbol)}</span></span><span class="secbar"><i class="${(x.changePct || 0) >= 0 ? 'up' : 'dn'}" style="width:${Math.round(Math.abs(x.changePct || 0) / maxAbs * 100)}%"></i></span><span class="num">${x.changePct == null ? '-' : H.pct(x.changePct, 2)}</span></a>`).join('')}</div>
+      <p class="mu small-print">Sector funds (SPDR) as a stand-in for each part of the market.</p></div>
+    <div class="card"><div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">My watchlist</h2></div>
+      <form id="wf" class="row" style="gap:8px;margin:10px 0"><input name="s" placeholder="Add a symbol, e.g. AMZN" style="flex:1" dir="ltr" autocomplete="off"><button class="small">Add</button></form><div class="err" id="wErr"></div>
+      <div class="tablewrap"><table class="slim" id="wt">${d.watch.map(r => `<tr data-s="${H.esc(r.symbol)}"><td><a href="#/trade?symbol=${encodeURIComponent(r.symbol)}"><b data-no-tr>${H.esc(r.symbol)}</b></a></td><td class="num" data-px>${r.price == null ? '-' : fmt(r.price)}</td><td class="num" data-chg>${chg(r)}</td><td>${badge(r)}</td><td><button class="small ghost" data-rm="${H.esc(r.symbol)}" aria-label="Remove ${H.esc(r.symbol)}">×</button></td></tr>`).join('') || '<tr><td class="mu">Add symbols to follow them here.</td></tr>'}</table></div></div>
   </div>
-  <div class="card news"><div class="row" style="justify-content:space-between"><h2>News</h2><form id="nf" class="row"><input name="symbols" placeholder="Filter: AAPL, TSLA, BTCUSD" style="max-width:240px"><button class="small">Filter</button></form></div><div id="news"><p class="mu">Loading…</p></div></div>`;
-  const link = s => `<a href="#/trade?symbol=${encodeURIComponent(s)}">${H.esc(s)}</a>`;
-  A('/clock').then(c => (H.$('#clock', view).innerHTML = `US market is <b class="${c.is_open ? 'pos' : ''}">${c.is_open ? 'open' : 'closed'}</b> · next ${c.is_open ? 'close ' + new Date(c.next_close).toLocaleString() : 'open ' + new Date(c.next_open).toLocaleString()}`)).catch(() => {});
-  const ovSet = (sym, p, chg) => {
-    const el = H.$(`[data-s="${CSS.escape(sym)}"]`, view); if (!el) return;
-    if (p != null) { const b = H.$('[data-px]', el), old = +b.dataset.v; b.textContent = fmt(p); b.dataset.v = p; if (old) flash(b, p >= old); }
-    if (chg != null) { const c = H.$('[data-chg]', el); c.textContent = H.pct(chg, 2); c.className = H.cls(chg); }
-  };
-  const prev = {};
-  A('/data/snapshots?symbols=' + encodeURIComponent(OVERVIEW.join(','))).then(sn => { for (const [k, v] of Object.entries(sn)) { prev[k] = v.prevDailyBar?.c; ovSet(k, v.price, v.changePct); } }).catch(e => (H.$('#ov', view).insertAdjacentHTML('afterend', `<p class="err">${H.esc(e.message)}</p>`)));
-  live(OVERVIEW, u => u.price != null && ovSet(u.symbol, u.price, prev[u.symbol] ? (u.price / prev[u.symbol] - 1) * 100 : null));
-  A('/data/most-actives?top=15&by=' + by).then(d => (H.$('#active', view).innerHTML = `<table><tr><th>Symbol</th><th class="num">Volume</th><th class="num">Trades</th></tr>${(d.most_actives || []).map(a => `<tr><td>${link(a.symbol)}</td><td class="num">${fmt(a.volume, 0)}</td><td class="num">${fmt(a.trade_count, 0)}</td></tr>`).join('')}</table>`)).catch(e => (H.$('#active', view).innerHTML = `<p class="err">${H.esc(e.message)}</p>`));
-  A('/data/movers?top=8&market=' + mk).then(d => (H.$('#movers', view).innerHTML = `<div class="movers">${[['Gainers', d.gainers], ['Losers', d.losers]].map(([t, l]) => `<div><h3>${t}</h3><table><tr><th>Symbol</th><th class="num">Price</th><th class="num">Change</th></tr>${(l || []).map(m => `<tr><td>${link(m.symbol)}</td><td class="num">${fmt(m.price)}</td><td class="num ${H.cls(m.percent_change)}">${H.pct(m.percent_change)}</td></tr>`).join('')}</table></div>`).join('')}</div>`)).catch(e => (H.$('#movers', view).innerHTML = `<p class="err">${H.esc(e.message)}</p>`));
-  const loadNews = syms => A('/data/news?limit=25' + (syms ? '&symbols=' + encodeURIComponent(syms) : '')).then(n => (H.$('#news', view).innerHTML = newsHtml(n))).catch(e => (H.$('#news', view).innerHTML = `<p class="err">${H.esc(e.message)}</p>`));
+  <div class="grid" style="margin-top:12px">
+    <div class="card"><div class="row" style="justify-content:space-between"><h2>Top movers</h2><div class="chips" id="mk"><button data-v="stocks" class="${mk === 'stocks' ? 'on' : ''}">Stocks</button><button data-v="crypto" class="${mk === 'crypto' ? 'on' : ''}">Crypto</button></div></div><div id="movers"><p class="mu">Loading…</p></div></div>
+    <div class="card"><div class="row" style="justify-content:space-between"><h2>Most active</h2><div class="chips" id="by"><button data-v="volume" class="${by === 'volume' ? 'on' : ''}">Volume</button><button data-v="trades" class="${by === 'trades' ? 'on' : ''}">Trades</button></div></div><div id="active"><p class="mu">Loading…</p></div></div>
+  </div>
+  <div class="card news"><div class="row" style="justify-content:space-between"><h2>News</h2><form id="nf" class="row"><input name="symbols" placeholder="Filter: AAPL, TSLA, BTCUSD" style="max-width:240px"><button class="small">Filter</button></form></div><div id="news"><p class="mu">Loading…</p></div></div>
+  <details class="card"><summary><b>What the price labels mean</b></summary><ul class="freshlist">${Object.entries(d.labels).map(([k, v]) => `<li><span class="fresh ${k}">${H.esc({ realtime: 'Real-time', 'realtime-iex': 'Real-time (IEX)', delayed: 'Delayed up to 15 min', close: 'Previous close', closed: 'Market closed: last price' }[k])}</span> ${H.esc(v)}</li>`).join('')}<li><span class="fresh live">Live</span> Updated by a live stream the moment a trade happens.</li></ul></details>`;
+  const link = sym => `<a href="#/trade?symbol=${encodeURIComponent(sym)}">${H.esc(sym)}</a>`;
+  const need = '<p class="mu">Movers and most active need a market-data connection (an Alpaca account or the server\'s Alpaca data key).</p>';
+  A('/data/most-actives?top=15&by=' + by).then(x => (H.$('#active', view).innerHTML = `<table><tr><th>Symbol</th><th class="num">Volume</th><th class="num">Trades</th></tr>${(x.most_actives || []).map(a => `<tr><td>${link(a.symbol)}</td><td class="num">${fmtInt(a.volume)}</td><td class="num">${fmtInt(a.trade_count)}</td></tr>`).join('')}</table>`)).catch(() => (H.$('#active', view).innerHTML = need));
+  A('/data/movers?top=8&market=' + mk).then(x => (H.$('#movers', view).innerHTML = `<div class="movers">${[['Gainers', x.gainers], ['Losers', x.losers]].map(([t, l]) => `<div><h3>${t}</h3><table><tr><th>Symbol</th><th class="num">Price</th><th class="num">Change</th></tr>${(l || []).map(m => `<tr><td>${link(m.symbol)}</td><td class="num">${fmt(m.price)}</td><td class="num ${H.cls(m.percent_change)}">${H.pct(m.percent_change, 2)}</td></tr>`).join('')}</table></div>`).join('')}</div>`)).catch(() => (H.$('#movers', view).innerHTML = need));
+  const loadNews = syms => A('/data/news?limit=25' + (syms ? '&symbols=' + encodeURIComponent(syms) : '')).then(n => (H.$('#news', view).innerHTML = newsHtml(n))).catch(() => (H.$('#news', view).innerHTML = '<p class="mu">News needs a market-data connection.</p>'));
   loadNews();
   H.$('#nf', view).onsubmit = e => { e.preventDefault(); loadNews(H.form(e.target).symbols.replace(/\s/g, '').toUpperCase()); };
   H.$$('#by button', view).forEach(b => (b.onclick = () => (location.hash = `#/markets?by=${b.dataset.v}&market=${mk}`)));
   H.$$('#mk button', view).forEach(b => (b.onclick = () => (location.hash = `#/markets?by=${by}&market=${b.dataset.v}`)));
+  // Watchlist: add and remove.
+  const syms = d.watch.map(r => r.symbol);
+  const saveWatch = async list => { await H.api('/market/overview/watch', { method: 'PUT', body: { symbols: list } }); H.render(); };
+  H.$('#wf', view).onsubmit = async e => { e.preventDefault(); const v = e.target.s.value.trim().toUpperCase(); if (!v) return; try { await saveWatch([...syms.filter(x => x !== v), v]); } catch (err) { H.$('#wErr', view).textContent = err.message; } };
+  H.$$('[data-rm]', view).forEach(b => (b.onclick = () => saveWatch(syms.filter(x => x !== b.dataset.rm))));
+  // Live: every followed price updates from the stream and is marked Live.
+  const prev = Object.fromEntries([...d.indexes, ...d.crypto, ...d.watch].map(r => [r.symbol, r.prevClose]));
+  live([...new Set([...d.indexes, ...d.crypto, ...d.watch].map(r => r.symbol))], u => {
+    if (u.price == null) return;
+    for (const el of H.$$(`[data-s="${CSS.escape(u.symbol)}"]`, view)) {
+      const px = H.$('[data-px]', el), old = +px.dataset.v; px.textContent = fmt(u.price); px.dataset.v = u.price; if (old) flash(px, u.price >= old);
+      const pc = prev[u.symbol]; if (pc) { const c = u.price - pc; H.$('[data-chg]', el).innerHTML = `<span class="${H.cls(c)}">${c >= 0 ? '+' : ''}${fmt(c)} (${H.pct(c / pc * 100, 2)})</span>`; }
+      const f = H.$('[data-fresh]', el); if (f) { f.className = 'fresh live'; f.textContent = 'Live'; f.title = `Live stream${u.source ? ' · ' + u.source : ''}`; }
+    }
+  });
 }
 
 // =====================================================================

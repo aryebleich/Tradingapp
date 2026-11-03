@@ -1,0 +1,81 @@
+name: AI coding agent
+# Started from Admin → AI coding agents. Claude Code works on the task in a fresh branch:
+#   write   build or change a feature, with tests
+#   test    add or improve tests for the named area (no behavior changes)
+#   debug   find the root cause of a failed run (its log is attached) and fix it
+#   review  read the named area and report problems as a pull request comment (no code changes)
+# It runs the tests and the end-to-end run, then opens a pull request for the owner to review and
+# merge. It never pushes to main and never touches secrets or workflow files.
+# Needs the repository secret CLAUDE_CODE_OAUTH_TOKEN (run `claude setup-token`) or ANTHROPIC_API_KEY.
+on:
+  workflow_dispatch:
+    inputs:
+      task: { description: 'What the agent should do', required: true, type: string }
+      kind: { description: 'write, test, debug or review', required: true, default: write, type: choice, options: [write, test, debug, review] }
+      run_id: { description: 'For debug: the failed run to look at', required: false, type: string }
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+  id-token: write
+concurrency:
+  group: ai-agent-${{ github.run_id }}
+  cancel-in-progress: false
+jobs:
+  agent:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BRANCH: ai-agent/${{ github.run_id }}
+    steps:
+      - name: Is the agent set up?
+        env:
+          HAS_CLAUDE: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' || secrets.ANTHROPIC_API_KEY != '' }}
+        run: |
+          if [ "$HAS_CLAUDE" != "true" ]; then echo "::error::Add the CLAUDE_CODE_OAUTH_TOKEN (or ANTHROPIC_API_KEY) repository secret first."; exit 1; fi
+      - uses: actions/checkout@v7
+        with: { ref: main, fetch-depth: 20 }
+      - uses: actions/setup-node@v7
+        with: { node-version-file: .node-version, check-latest: true, cache: npm }
+      - name: Install
+        run: npm ci && npx playwright install --with-deps chromium && pip install --quiet pillow || true
+      - name: Failed run's log
+        if: inputs.kind == 'debug' && inputs.run_id != ''
+        env:
+          RUN: ${{ inputs.run_id }}
+        run: |
+          case "$RUN" in *[!0-9]*) echo "run_id must be a number"; exit 1;; esac
+          gh run view "$RUN" --log-failed --repo "$GITHUB_REPOSITORY" | tail -400 > failed.log || true
+      - name: Branch
+        run: git checkout -b "$BRANCH"
+      - name: Claude Code
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
+          claude_args: --allowedTools "Bash,Read,Edit,Write,Glob,Grep" --max-turns 80
+          prompt: |
+            You are working on the Brightfolio repository, on the branch ${{ env.BRANCH }}. Kind of task: ${{ inputs.kind }}.
+            Task from the owner:
+            ${{ inputs.task }}
+
+            Rules:
+            - write: make the change in the style of the surrounding code, add or update tests for it.
+            - test: add or improve tests only; do not change app behavior.
+            - debug: failed.log has the failed run's log. Reproduce it (npm test, npm run e2e), find the root cause and fix it.
+            - review: do not change code; write your findings (file:line, what is wrong, how to fix) to review.md.
+            - Never skip, disable, delete or weaken a test. Never touch secrets or files under .github/workflows.
+            - Run npm test (and npm run e2e when the app's pages changed) until they pass. If public/i18n or scripts/home.py changed, run python3 scripts/pages.py.
+            - Commit on this branch with a clear message. Do not push to main.
+      - name: Open the pull request
+        env:
+          TASK: ${{ inputs.task }}
+          KIND: ${{ inputs.kind }}
+        run: |
+          if [ "$KIND" = "review" ] && [ -f review.md ]; then git add review.md; git -c user.name="ai-agent" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -qm "AI review: ${TASK:0:60}" || true; fi
+          if [ -z "$(git log origin/main..HEAD --oneline)" ]; then echo "The agent made no commits."; exit 0; fi
+          git push -q origin "$BRANCH"
+          { printf 'Task (%s): %s\n\n' "$KIND" "$TASK"; echo "Opened by the AI coding agent from Admin → AI coding agents (run $GITHUB_RUN_ID). Review the changes and the checks before merging."; } > body.md
+          gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$BRANCH" --title "AI agent ($KIND): ${TASK:0:70}" --body-file body.md

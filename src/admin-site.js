@@ -318,10 +318,13 @@ const readme = async () => {
   const { tryDecrypt } = await import('./crypto.js');
   const text = tryDecrypt(r.enc, 'private README') ?? '';
   // Sections that come with the code (src/readme-auto.js) are kept current with every change.
-  const { mergeSections } = await import('./readme-auto.js'), merged = text ? mergeSections(text) : text;
+  const { mergeSections } = await import('./readme-auto.js'), { overviewMd } = await import('./readme-overview.js');
+  const top = await overviewMd().catch(() => null), merged = text ? mergeSections(text, top) : text;
   if (merged !== text) await saveReadme(merged).catch(() => {});
   return { ...r, text: merged };
 };
+// On start (every deploy): bring the stored README up to date with this version of the code.
+export const refreshReadme = () => readme().then(() => true, () => false);
 const saveReadme = async (text, extra = {}) => {
   const { encrypt } = await import('./crypto.js');
   const cur = S.siteGet('privateReadme', {}) || {};

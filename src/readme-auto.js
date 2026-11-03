@@ -40,6 +40,18 @@ Helcim uses "interchange-plus" pricing: you pay the exact interchange, plus Helc
 
 Debit cards keep the cost lowest, which is why card deposits here are debit-only.
 ` },
+  { id: 'batch16', title: 'Changes: November 2026 (4)', md: `
+- **AI coding agents (Admin → AI coding agents).** Give a coding agent a task in plain words (write a feature, add tests, debug a failed run, review): it runs in GitHub Actions (\`ai-agent.yml\`), works on its own branch and opens a pull request; it never pushes to main, never weakens tests and cannot change workflows or secrets. The page lists agent runs, CI and end-to-end runs on main and the agents' pull requests; any run's failed log can be read, explained in plain words by AI (cause, where, fix, flaky or not), sent to an agent to fix, or re-run. Needs GITHUB_TOKEN on the server and CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY as a repository secret.
+- **Live market-data streams.** One shared WebSocket connection feeds quotes, the Trade page and price alerts the moment trades happen: Alpaca when connected, otherwise Finnhub, Polygon or Twelve Data with their keys (Admin → Market data → Live stream: automatic, a chosen provider, or off, with connection status, ticks and delay). Price alerts are checked on every tick.
+- **Price labels.** Every price says where it came from and whether it is real-time, real-time (IEX only), delayed up to 15 minutes, the previous close, or the last price with the market closed; a stream update marks it Live.
+- **Market overview** (replaces Markets & news): market open/closed with the time to the next open or close, index and crypto tiles, sector bars, the user's own watchlist (add/remove), top movers and most active, news, and what each label means.
+- **Portfolio & risk** (menu → Planning): allocation by kind and sector, concentration in plain words ("acts like N holdings"), warnings for one big holding, a big sector, leveraged funds and crypto, beta, a bad day (1 in 20), the worst day and yearly bumpiness, performance vs the S&P 500 with the biggest drop, market-fall scenarios plus a slider, and "what if I added…" pretend holdings. Works on the practice account, so it doubles as the practice and scenario tool.
+- **Plain-language research** (menu → Research & AI): a screener by numbers anyone can check (size, P/E, P/B, P/S, profit margin, sales and earnings growth, sector) with presets and an explanation of each; a summary of a company's latest 10-K or 10-Q with a link to the filing on SEC.gov and its dates; news in short, every point citing its numbered headlines, each with source, link and time.
+- **Tokenized securities** (menu → Investing, linked from the crypto section): what they are, the main kinds and who can buy them, the extra risks (issuer, custody, redemption, price gaps, wallets, SIPC, rules), a checklist before buying, and a price check of a token against the real share.
+- **Trust.** The Risk Disclosure now says plainly that no one, including AI, can guarantee returns, links the SEC/FINRA/NASAA investor alert on AI fraud, BrokerCheck, the SEC adviser search, NFA BASIC and sec.gov/tcr, and covers price data, crypto and tokenized securities, leveraged funds and estimates. The Privacy Policy starts with an at-a-glance box and explains what goes to AI providers. A new in-app Investor protection page sums it up. A test fails the build if public text claims guaranteed or risk-free returns.
+- **This README.** A "Product overview" generated from the code (menu and pages, admin tabs, plans and limits, brokerages, data and stream sources, jobs, key names, workflows) now sits at the top and is rebuilt on every deploy, so the README is always a full picture, not only a list of additions.
+- **Android.** The Android page explains each install screen (download anyway, allow from this source, Play Protect, updates in place). Every build also makes a Google Play bundle; with the PLAY_SERVICE_ACCOUNT_JSON secret it is uploaded to Google Play automatically, and with ANDROID_PLAY=1 the page shows "Get it on Google Play". The owner's one-time Play Console steps are in android/play/README.md.
+` },
   { id: 'batch15', title: 'Changes: November 2026 (3)', md: `
 - **Any brokerage.** "Choose your brokerage" (menu → Accounts) is the place to connect Alpaca (marked Suggested), Schwab, tastytrade, Tradier or TradeStation; the Alpaca page links back to it. The header badge shows whichever brokerage is connected and opens the chooser. The footers, the homepage, the Terms and the Risk Disclosure no longer name Alpaca as the only broker.
 - **SEO (Admin → SEO).** A score with what to fix first; each public page's title and description with a Google-style preview and a noindex switch; Google Search Console, Bing and Yandex verification codes; social profiles; FAQ structured data. Every public page now carries a canonical address, hreflang (English, Yiddish, x-default), Open Graph and Twitter tags, a robots meta tag and JSON-LD (Organization, WebSite, SoftwareApplication with the plan prices, FAQPage from the homepage questions). The sitemap has last-modified dates and language alternates; llms.txt lists the pages; "Announce pages now" sends them to IndexNow (Bing, Yandex and others; Bing also feeds ChatGPT search). AI search assistants (OAI-SearchBot, ChatGPT-User, Claude-SearchBot, Claude-User, PerplexityBot...) may now read and cite the public pages by default; AI training crawlers stay blocked unless allowed in AI & privacy. The GitHub Pages copy points its canonical links to the app's address, so search engines do not see two sites. To finish setup: add the site in Google Search Console and Bing Webmaster Tools, paste their codes, and submit the sitemap in Search Console.
@@ -119,13 +131,18 @@ Each source shows its key status, speed and failures. Choose how they are used:
 ` },
 ];
 const START = id => `<!-- auto:${id} -->`, END = id => `<!-- /auto:${id} -->`;
-// The stored README with every code section in place (replaced, or added at the end).
-export function mergeSections(text) {
+// The stored README with every code section in place (replaced, or added at the end). `top` is
+// the generated Product overview: it is replaced in place, or put right after the title.
+export function mergeSections(text, top = null) {
   let out = String(text || '');
-  for (const s of SECTIONS) {
-    const block = `${START(s.id)}\n## ${s.title}\n${s.md.trim()}\n${END(s.id)}`;
-    const a = out.indexOf(START(s.id)), b = out.indexOf(END(s.id));
-    out = a >= 0 && b > a ? out.slice(0, a) + block + out.slice(b + END(s.id).length) : `${out.trimEnd()}\n\n${block}\n`;
-  }
+  const put = (id, title, md, first) => {
+    const block = `${START(id)}\n## ${title}\n${md.trim()}\n${END(id)}`;
+    const a = out.indexOf(START(id)), b = out.indexOf(END(id));
+    if (a >= 0 && b > a) out = out.slice(0, a) + block + out.slice(b + END(id).length);
+    else if (first) { const m = /^# .*\n/m.exec(out); out = m ? out.slice(0, m.index + m[0].length) + '\n' + block + '\n\n' + out.slice(m.index + m[0].length).replace(/^\n+/, '') : `${block}\n\n${out}`; }
+    else out = `${out.trimEnd()}\n\n${block}\n`;
+  };
+  if (top) put('overview', 'Product overview', top, true);
+  for (const s of SECTIONS) put(s.id, s.title, s.md, false);
   return out;
 }

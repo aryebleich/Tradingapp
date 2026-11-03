@@ -3,7 +3,7 @@
 import os, sys, html
 sys.path.insert(0, os.path.dirname(__file__))
 OUT = os.path.join(os.path.dirname(__file__), '..', 'public')
-UPDATED = 'October 22, 2026'
+UPDATED = 'November 3, 2026'
 
 from home import layout, index
 
@@ -44,6 +44,7 @@ TERMS = '''
 '''
 PRIVACY = '''
 <p>This policy explains what personal information Brightfolio collects, why, and the choices you have.</p>
+<div class="callout"><b>At a glance:</b> we do not sell your personal information; we use no advertising or tracking cookies; your Social Security number and bank numbers go straight to the broker and are not stored by us; you can download or delete everything from Settings at any time.</div>
 <h2>What we collect</h2>
 <ul>
 <li><b>Account data:</b> email address, a hashed password, optional phone number, a hashed PIN, two-factor settings, and tax-rate preferences. If you sign in with Google, Google shares your email address and an account identifier with us; we do not receive your Google password.</li>
@@ -57,9 +58,11 @@ PRIVACY = '''
 <li><b>Payments:</b> handled by Stripe. We never see or store full card numbers.</li>
 </ul>
 <h2>How we use it</h2>
-<p>To provide the Service, open and maintain your brokerage account with Alpaca, secure your account, process payments and fees, send messages you request (such as SMS replies, alerts and password resets), comply with law, and improve the product. We do not sell personal information.</p>
+<p>To provide the Service, open and maintain your brokerage account with the broker you choose, secure your account, process payments and fees, send messages you request (such as SMS replies, alerts and password resets), comply with law, and improve the product. We do not sell personal information.</p>
 <h2>Who we share it with</h2>
 <p>Service providers that run parts of the Service on our behalf: hosting and database (Render, Turso), brokerages you choose to connect (Alpaca, Charles Schwab, tastytrade, Tradier, TradeStation), research (QuantConnect), messaging (Twilio, Resend), payments (Stripe, Helcim), sign-in (Google, if you use it) and AI (Anthropic: for the strategy builder, and for messages you send to the text and phone assistant). We may disclose information when required by law.</p>
+<h2>AI and your data</h2>
+<p>When you use AI features, the text needed for that request is sent to the AI provider set up for the Service. Email addresses, phone numbers, Social Security and account numbers, and access keys are removed before anything is sent, and account balances are shared only with providers the site owner allows. If you do not want AI to see a request, do not use the AI features for it; everything else works without them.</p>
 <h2>Cookies</h2>
 <p>We use one essential, HttpOnly session cookie to keep you signed in. We do not use advertising or tracking cookies.</p>
 <h2>Retention</h2>
@@ -83,6 +86,18 @@ RISK = '''
 <p>Bots, scheduled trades, SMS and voice commands can fail, run late, run more than once, or act on bad data. Speech recognition can mishear a command. Always monitor your account and keep the ability to act directly with your broker.</p>
 <h2>AI-generated strategies</h2>
 <p>The AI builder turns descriptions into rules automatically and can misunderstand you. Always review and backtest rules before using them.</p>
+<h2>No one can guarantee returns, including AI</h2>
+<p>No person, tool, bot or AI can promise profits or "guaranteed" returns. Brightfolio's AI assistant, forecasts, agents and strategy builder can be wrong, and past results do not predict future results. The SEC, FINRA and state securities regulators (NASAA) have warned investors together about <a href="https://www.investor.gov/introduction-investing/general-resources/news-alerts/alerts-bulletins/investor-alerts/artificial-intelligence-fraud" rel="noopener">AI and investment fraud</a>, and FINRA explains the warning signs in <a href="https://www.finra.org/investors/insights/artificial-intelligence-and-investment-fraud" rel="noopener">Artificial Intelligence (AI) and Investment Fraud</a>. Promises of high returns with little or no risk, or claims that AI can guarantee results, are classic signs of fraud, here or anywhere else. You can report possible fraud to the SEC at <a href="https://www.sec.gov/tcr" rel="noopener">sec.gov/tcr</a>.</p>
+<h2>Check who you are dealing with</h2>
+<p>Before you send money anywhere, check that the firm is registered: brokers on <a href="https://brokercheck.finra.org/" rel="noopener">FINRA BrokerCheck</a>, investment advisers on the <a href="https://adviserinfo.sec.gov/" rel="noopener">SEC's Investment Adviser Public Disclosure</a> site, and futures firms on <a href="https://www.nfa.futures.org/basicnet/" rel="noopener">NFA BASIC</a>. Unregistered investment platforms are a common source of fraud. Brightfolio is software: it is not a broker-dealer, and your money and securities are held by the broker you choose. Learn more at <a href="https://www.investor.gov/" rel="noopener">Investor.gov</a>.</p>
+<h2>Price data</h2>
+<p>Prices are labeled real-time, delayed (up to about 15 minutes late) or previous close. Free real-time stock data may come from a single exchange (IEX) and can differ from the price you get. Your broker's confirmation is the price that counts.</p>
+<h2>Crypto and tokenized securities</h2>
+<p>Crypto is not covered by SIPC and can lose most of its value quickly. Tokenized securities (shares or funds recorded on a blockchain) are still securities. They carry the risks of the underlying asset plus the risks of the issuer, the custodian holding the real shares, the blockchain and the platform; many are not offered to US residents, and a token may trade above or below the value of what it represents.</p>
+<h2>Leveraged and inverse funds</h2>
+<p>Leveraged and inverse ETFs reset every day. Held for more than a day they can lose money even when the index moves the way you expected, and they can fall very fast.</p>
+<h2>Estimates and scenarios</h2>
+<p>Portfolio risk numbers, "what if the market fell" scenarios, stress tests and practice (paper) results are estimates from past prices. Real losses can be larger, and paper trading does not include the emotions, slippage or partial fills of real trading.</p>
 <h2>Brokerage</h2>
 <p>Brokerage services are provided by the broker you choose (for example Alpaca, Charles Schwab, tastytrade, Tradier or TradeStation), each a FINRA member broker-dealer with SIPC coverage. Brightfolio is not a broker-dealer and is not affiliated with any of these brokers, QuantConnect, Twilio or Stripe. SIPC protection does not cover market losses.</p>
 <h2>Margin and short selling</h2>

@@ -4,15 +4,21 @@ let H;
 export function registerAdmin13(routes, helpers) {
   H = helpers;
   const guard = fn => (view, q) => (H.me()?.role === 'admin' ? fn(view, q) : (location.hash = '#/dashboard'));
-  Object.assign(routes, { 'admin-data': guard(dataPage), 'admin-comms': guard(commsPage), 'admin-strategies': guard(originalsPage), 'admin-seo': guard(seoPage) });
+  Object.assign(routes, { 'admin-data': guard(dataPage), 'admin-comms': guard(commsPage), 'admin-strategies': guard(originalsPage), 'admin-seo': guard(seoPage), 'admin-agents': guard(agentsPage) });
 }
 
 async function dataPage(view) {
-  const [d, f, sv] = await Promise.all([H.api('/admin/site/data'), H.api('/admin/site/fees'), H.api('/admin/site/savings')]);
+  const [d, f, sv, st] = await Promise.all([H.api('/admin/site/data'), H.api('/admin/site/fees'), H.api('/admin/site/savings'), H.api('/admin/streams').catch(() => null)]);
   let order = [...d.order];
   const prov = id => d.providers.find(p => p.id === id);
+  const wireStream = () => { const sf = H.$('#streamForm', view); if (sf) H.act(H.$('button', sf), async () => { await H.api('/admin/streams', { method: 'PUT', body: { provider: sf.provider.value } }); setTimeout(H.render, 600); return 'Saved'; }); };
   const draw = () => {
-    view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-data')}
+    const streamCard = st ? `<form class="card" id="streamForm"><h2>Live stream (WebSocket)</h2>
+      <p class="mu" style="margin-top:0">Prices pushed the moment they trade, to every open page and to price alerts, instead of asking again and again. One connection for the whole server.</p>
+      <p>${st.connected ? `<span class="pill pos">Connected</span> ${H.esc(st.available[st.active]?.name || st.active)} · ${st.subscribed.length} symbols · ${st.ticks} updates${st.lastLatencyMs != null ? ` · last one ${st.lastLatencyMs} ms after the trade` : ''}` : st.active === 'alpaca' ? '<span class="pill pos">Alpaca stream</span> (opens when a page follows a price)' : st.active ? `<span class="pill">Waiting</span> ${H.esc(st.available[st.active]?.name)}: connects when a page or an alert follows a price` : '<span class="pill warn">Off</span> no stream key; prices refresh every 15 seconds instead'}${st.lastError ? ` <span class="err">${H.esc(st.lastError)}</span>` : ''}</p>
+      <label>Provider<select name="provider"><option value="auto" ${st.provider === 'auto' ? 'selected' : ''}>Automatic (Alpaca, else the first with a key)</option><option value="alpaca" ${st.provider === 'alpaca' ? 'selected' : ''}>Alpaca</option>${Object.entries(st.available).map(([k, v]) => `<option value="${k}" ${st.provider === k ? 'selected' : ''} ${v.configured ? '' : 'disabled'}>${H.esc(v.name)}${v.configured ? '' : ` (add ${v.key} in Keys)`} · ${v.realtime ? 'real-time' : 'delayed'} · up to ${v.maxSymbols} symbols</option>`).join('')}<option value="off" ${st.provider === 'off' ? 'selected' : ''}>Off</option></select></label>
+      <button>Save</button><div class="err"></div></form>` : '';
+    view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-data')}${streamCard}
     <div class="card"><div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">Market data sources</h2><button class="small" id="bench">Test all now</button></div>
       <p class="mu">Prices and history come from these, in this order or fastest first. Free keys go in <a href="#/admin-keys">Keys</a>. Every call is timed; the hourly test keeps "fastest first" current.</p>
       <label>How to choose<select id="mode">${Object.entries(d.modes).map(([k, t]) => `<option value="${k}" ${k === d.mode ? 'selected' : ''}>${H.esc(t)}</option>`).join('')}</select></label>
@@ -29,6 +35,7 @@ async function dataPage(view) {
     <form class="card" id="sav"><h2>Savings offers (Futures, funds & savings → Savings)</h2><p class="mu">Banks with high-yield savings you want to show. Leave empty to show general guidance only. Rates change often; keep them current.</p>
       <div id="savRows">${[...sv.offers, {}, {}].slice(0, Math.max(3, sv.offers.length + 1)).map(o => `<div class="row savrow"><label>Bank<input data-k="bank" value="${H.esc(o.bank || '')}"></label><label>APY %<input data-k="apy" type="number" step="0.01" value="${o.apy ?? ''}"></label><label style="flex:2">Note<input data-k="note" value="${H.esc(o.note || '')}"></label><label style="flex:2">Link (https)<input data-k="url" value="${H.esc(o.url || '')}"></label></div>`).join('')}</div>
       <button>Save offers</button><div class="err"></div></form>`;
+    wireStream();
     H.$$('[data-up]', view).forEach(b => (b.onclick = () => { const i = +b.dataset.up; [order[i - 1], order[i]] = [order[i], order[i - 1]]; draw(); }));
     H.$$('[data-down]', view).forEach(b => (b.onclick = () => { const i = +b.dataset.down; [order[i + 1], order[i]] = [order[i], order[i + 1]]; draw(); }));
     H.act(H.$('#saveData', view), async () => { const off = H.$$('[data-on]', view).filter(c => !c.checked).map(c => c.dataset.on); Object.assign(d, await H.api('/admin/site/data', { method: 'PUT', body: { mode: H.$('#mode', view).value, order, off } })); order = [...d.order]; draw(); return 'Saved'; });
@@ -190,4 +197,46 @@ async function seoPage(view) {
     await H.api('/admin/seo', { method: 'PUT', body: { pages } }); setTimeout(H.render, 500); return 'Saved. The pages now show these.';
   });
   H.act(H.$('#ping', view), async () => { const r = await H.api('/admin/seo/indexnow', { body: {} }); setTimeout(H.render, 800); return `Announced ${r.sent} pages.`; });
+}
+
+// ---------- Admin → AI coding agents ----------
+async function agentsPage(view) {
+  const d = await H.api('/admin/agents');
+  const pill = r => r.status !== 'completed' ? `<span class="pill">${H.esc(r.status.replace('_', ' '))}</span>` : `<span class="pill ${r.conclusion === 'success' ? 'pos' : r.conclusion === 'failure' ? 'neg' : ''}">${H.esc(r.conclusion || '')}</span>`;
+  const row = r => `<tr><td>${pill(r)}</td><td><a href="${H.esc(r.url)}" target="_blank" rel="noopener">${H.esc(r.title || r.name)}</a><div class="mu" style="font-size:12px" data-no-tr>${H.esc(r.sha)} · ${H.date(Date.parse(r.at))}</div></td>
+    <td>${r.conclusion === 'failure' ? `<div class="row" style="gap:6px;flex-wrap:wrap"><button class="small ghost" data-log="${r.id}">Log</button><button class="small ghost" data-explain="${r.id}">Explain</button><button class="small" data-fix="${r.id}">Send to agent to fix</button><button class="small ghost" data-rerun="${r.id}">Re-run</button></div>` : ''}</td></tr>`;
+  view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-agents')}
+  <div class="card"><h2>AI coding agents</h2><p class="mu" style="margin-top:0">Tools that help write, test and debug the app's code. Give the agent (Claude Code) a task: it works on its own branch in GitHub, runs the tests and the end-to-end run, and opens a pull request for you to review and merge. It never changes the live site by itself.</p>
+    ${d.configured ? '' : '<p class="banner">Add <b>GITHUB_TOKEN</b> in Admin → Keys (a fine-grained token for this repository: Actions read and write, Contents read, Pull requests read). The agent also needs the repository secret <b>CLAUDE_CODE_OAUTH_TOKEN</b> (run <code>claude setup-token</code>) or <b>ANTHROPIC_API_KEY</b> in GitHub → Settings → Secrets → Actions.</p>'}
+    ${d.agentError ? `<p class="banner err">${H.esc(d.agentError)}</p>` : ''}</div>
+  ${d.configured ? `
+  <form class="card" id="agTask"><h2>New task</h2>
+    <label>What kind<select name="kind">${Object.entries(d.kinds).map(([k, v]) => `<option value="${k}">${H.esc(v)}</option>`).join('')}</select></label>
+    <label>Task<textarea name="task" rows="4" maxlength="4000" placeholder="For example: On the Orders page, add a filter for filled orders in the last 7 days, with a test."></textarea></label>
+    <label id="agRunPick" hidden>Failed run to debug<select name="runId">${[...d.ci, ...d.e2e].filter(r => r.conclusion === 'failure').map(r => `<option value="${r.id}">${H.esc(r.name)}: ${H.esc(r.title)} (${H.esc(r.sha)})</option>`).join('') || '<option value="">No failed runs</option>'}</select></label>
+    <button>Start the agent</button><div class="err"></div>
+    <p class="mu small-print">Write the task like a ticket: what should change, where, and how you will know it works. The agent runs up to an hour; its pull request appears below.</p></form>
+  <div class="card"><div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap"><h2 style="margin:0">Tests</h2>
+      <div class="row" style="gap:8px"><button class="ghost" id="runCi" type="button">Run the tests</button><button class="ghost" id="runE2e" type="button">Run the end-to-end check</button></div></div><div class="err"></div>
+    <h3>Tests (CI)</h3><div class="tablewrap"><table class="slim">${d.ci.map(row).join('') || '<tr><td class="mu">No runs yet.</td></tr>'}</table></div>
+    <h3>End-to-end (the app in a real browser)</h3><div class="tablewrap"><table class="slim">${d.e2e.map(row).join('') || '<tr><td class="mu">No runs yet.</td></tr>'}</table></div>
+    <div id="agOut"></div></div>
+  <div class="card"><h2>Agent work</h2>
+    ${d.pulls.length ? `<h3>Waiting for your review</h3><ul>${d.pulls.map(p => `<li><a href="${H.esc(p.url)}" target="_blank" rel="noopener">#${p.number} ${H.esc(p.title)}</a> <span class="mu">${H.date(Date.parse(p.at))}</span></li>`).join('')}</ul>` : '<p class="mu">No pull requests from the agent waiting.</p>'}
+    <h3>Recent agent runs</h3><div class="tablewrap"><table class="slim">${d.agentRuns.map(row).join('') || '<tr><td class="mu">No agent runs yet.</td></tr>'}</table></div></div>` : ''}`;
+  if (!d.configured) return;
+  const f = H.$('#agTask', view);
+  f.kind.onchange = () => { H.$('#agRunPick', view).hidden = f.kind.value !== 'debug'; };
+  H.act(H.$('button', f), async () => { const v = H.form(f); await H.api('/admin/agents/task', { body: { task: v.task, kind: v.kind, runId: v.kind === 'debug' ? v.runId : '' } }); f.task.value = ''; setTimeout(H.render, 3000); return 'Started. It shows under Recent agent runs in a few seconds.'; });
+  H.act(H.$('#runCi', view), async () => { await H.api('/admin/agents/tests', { body: { which: 'ci' } }); setTimeout(H.render, 3000); return 'Tests started'; });
+  H.act(H.$('#runE2e', view), async () => { await H.api('/admin/agents/tests', { body: { which: 'e2e' } }); setTimeout(H.render, 3000); return 'End-to-end check started'; });
+  const out = H.$('#agOut', view);
+  H.$$('[data-log]', view).forEach(b => H.act(b, async () => { const l = await H.api(`/admin/agents/runs/${b.dataset.log}/log`); out.innerHTML = l.map(j => `<h3>${H.esc(j.job)} ${j.steps.length ? `<span class="mu">· failed at ${H.esc(j.steps.join(', '))}</span>` : ''}</h3><pre class="logbox" data-no-tr>${H.esc(j.log)}</pre>`).join(''); out.scrollIntoView({ behavior: 'smooth' }); return ''; }));
+  H.$$('[data-explain]', view).forEach(b => H.act(b, async () => {
+    const e = await H.api(`/admin/agents/runs/${b.dataset.explain}/explain`, { body: {} });
+    out.innerHTML = `<div class="card explain"><h3>${H.esc(e.summary)}</h3><p><b>Likely cause:</b> ${H.esc(e.cause)}</p><p><b>Where to look:</b> ${H.esc(e.where)}</p><p><b>How to fix:</b> ${H.esc(e.fix)}</p>${e.flaky ? '<p class="banner">This looks like a network or runner problem: try Re-run first.</p>' : ''}</div>`;
+    out.scrollIntoView({ behavior: 'smooth' }); return '';
+  }));
+  H.$$('[data-fix]', view).forEach(b => H.act(b, async () => { if (!confirm('Start the agent to find and fix this failure? It opens a pull request for you to review.')) return ''; await H.api('/admin/agents/task', { body: { kind: 'debug', runId: b.dataset.fix, task: 'Find the root cause of this failed run and fix it, with a test that would have caught it.' } }); setTimeout(H.render, 3000); return 'Agent started'; }));
+  H.$$('[data-rerun]', view).forEach(b => H.act(b, async () => { await H.api(`/admin/agents/runs/${b.dataset.rerun}/rerun`, { body: {} }); setTimeout(H.render, 3000); return 'Re-running'; }));
 }

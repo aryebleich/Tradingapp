@@ -889,3 +889,34 @@ header#top .closeall:hover:not(:disabled) { background: color-mix(in srgb, var(-
 [data-theme=dark] .serp-title { color: #8ab4f8; }
 .tips li { margin: 6px 0; }
 @media (max-width: 900px) { header#top #logout.hdrbtn { display: none; } }
+.logbox { max-height: 360px; overflow: auto; font-size: 12px; line-height: 1.45; background: var(--bg2, #0b1220); color: var(--tx); border: 1px solid var(--bd); border-radius: 10px; padding: 10px; white-space: pre-wrap; }
+.explain h3 { margin-top: 0; }
+/* Market overview */
+.mtiles { grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); }
+.mtile { text-decoration: none; color: inherit; display: flex; flex-direction: column; gap: 3px; }
+.mtile > span:first-child { font-size: 12px; }
+.fresh { display: inline-block; align-self: flex-start; font-size: 10.5px; font-weight: 600; padding: 1px 7px; border-radius: 999px; background: var(--chip, rgba(127,127,127,.14)); color: var(--mu); white-space: nowrap; }
+.fresh.realtime, .fresh.live { background: color-mix(in srgb, var(--gn, #1e9e6a) 16%, transparent); color: var(--gn, #1e9e6a); }
+.fresh.realtime-iex { background: color-mix(in srgb, var(--accent, #4f7cff) 14%, transparent); color: var(--accent, #4f7cff); }
+.fresh.delayed { background: color-mix(in srgb, #d97706 16%, transparent); color: #b45309; }
+.fresh.live::before { content: '● '; }
+.freshlist { list-style: none; padding: 0; display: grid; gap: 8px; } .freshlist li { font-size: 14px; }
+.sectors { display: grid; gap: 4px; }
+.secrow { display: grid; grid-template-columns: minmax(0, 1.4fr) 1fr 4.5em; gap: 10px; align-items: center; text-decoration: none; color: inherit; padding: 4px 2px; border-radius: 6px; font-size: 14px; }
+.secrow:hover { background: var(--hover, rgba(127,127,127,.08)); }
+.secbar { height: 8px; background: var(--chip, rgba(127,127,127,.12)); border-radius: 4px; overflow: hidden; }
+.secbar i { display: block; height: 100%; border-radius: 4px; } .secbar i.up { background: var(--gn, #1e9e6a); } .secbar i.dn { background: var(--rd, #d64545); }
+.mstatus .pill { padding: 4px 12px; }
+/* Portfolio & risk, research, tokenized securities, investor protection */
+.warnlist{padding-left:0;list-style:none;margin:8px 0}
+.warnlist li{padding:8px 10px 8px 34px;margin:6px 0;border-radius:10px;background:color-mix(in srgb,var(--warn,#d69e2e) 12%,transparent);position:relative}
+.warnlist li::before{content:"!";position:absolute;inset-inline-start:10px;top:8px;width:16px;height:16px;border-radius:50%;background:var(--warn,#d69e2e);color:#111;font:700 11px/16px system-ui;text-align:center}
+.crit{display:grid;gap:8px;margin:10px 0}
+.critrow{display:grid;grid-template-columns:minmax(150px,1.4fr) 90px 90px 2fr;gap:8px;align-items:center}
+.critrow input{width:100%}
+@media (max-width:700px){.critrow{grid-template-columns:1fr 1fr}.critrow>span:first-child,.critrow>span:last-child{grid-column:1/-1}}
+.newslist{padding-inline-start:22px}.newslist li{margin:6px 0}.newslist li:target{background:color-mix(in srgb,var(--accent,#5b8cff) 15%,transparent);border-radius:6px}
+.checklist{padding-inline-start:0;list-style:none}.checklist li{margin:6px 0}
+.playbadge{display:inline-flex;flex-direction:column;justify-content:center;background:#000;color:#fff;border-radius:10px;padding:6px 16px 7px 44px;min-width:150px;text-decoration:none;position:relative;line-height:1.1;border:1px solid #444}
+.playbadge::before{content:"";position:absolute;left:14px;top:50%;transform:translateY(-50%);border-left:20px solid #34a853;border-top:12px solid transparent;border-bottom:12px solid transparent}
+.playbadge span{font-size:10px;letter-spacing:.06em}.playbadge b{font-size:19px;font-weight:600}
