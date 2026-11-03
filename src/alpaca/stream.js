@@ -41,7 +41,7 @@ class Feed {
     };
     ws.onclose = () => {
       this.ws = null; this.ready = false;
-      if (wanted(this.name).size) setTimeout(() => this.connect(), this.backoff = Math.min(this.backoff * 2, 60000));
+      if (wanted(this.name).size) setTimeout(() => this.connect(), this.backoff = Math.min(this.backoff * 2, 60000)).unref?.();
     };
     ws.onerror = () => {};
   }

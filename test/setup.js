@@ -3,6 +3,9 @@ import os from 'node:os';
 import path from 'node:path';
 process.env.DB_FILE = path.join(os.tmpdir(), `qp-test-${process.pid}-${Date.now()}.db`);
 process.env.FREE_DATA = 'off';
+// Live price streams never reach Alpaca's real servers from tests (an open connection would keep
+// the test process running after its tests end). A file can still point it at its own fake.
+process.env.ALPACA_STREAM_URL ||= 'ws://127.0.0.1:1';
 // Tests never reach a real AI service.
 for (const k of ['GROQ_API_KEY', 'GEMINI_API_KEY', 'OPENROUTER_API_KEY', 'AI_BASE_URL', 'AI_API_KEY', 'AI_PROVIDER', 'AI_MODEL']) delete process.env[k];
 // Parallel test files load the machine; load shedding is tested on its own (reliability.test.js).

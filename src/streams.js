@@ -79,7 +79,7 @@ class Hub {
     let ws;
     try { ws = this.ws = new WebSocket(P.url(key)); } catch (e) { this.stats.lastError = e.message; return; }
     ws.onopen = () => { this.ready = true; this.backoff = 1000; this.stats.connectedAt = Date.now(); this.subscribed.clear(); try { P.open(ws, key); } catch {} this.sync();
-      if (P.heartbeat) { clearInterval(this.timer); this.timer = setInterval(() => { try { P.heartbeat(ws); } catch {} }, 10000); } };
+      if (P.heartbeat) { clearInterval(this.timer); this.timer = setInterval(() => { try { P.heartbeat(ws); } catch {} }, 10000); this.timer.unref?.(); } };
     ws.onmessage = ev => {
       this.stats.messages++;
       let m; try { m = JSON.parse(typeof ev.data === 'string' ? ev.data : String(ev.data)); } catch { return; }
@@ -95,7 +95,7 @@ class Hub {
     ws.onclose = () => {
       clearInterval(this.timer);
       if (this.ws === ws) { this.ws = null; this.ready = false; }
-      if (this.provider() && this.wantFn().size) setTimeout(() => this.sync(), this.backoff = Math.min(this.backoff * 2, 60000));
+      if (this.provider() && this.wantFn().size) setTimeout(() => this.sync(), this.backoff = Math.min(this.backoff * 2, 60000)).unref?.();
     };
     ws.onerror = e => { this.stats.errors++; this.stats.lastError = e?.message || 'connection error'; };
   }
