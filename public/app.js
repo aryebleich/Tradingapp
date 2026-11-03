@@ -1132,9 +1132,9 @@ routes.android = async view => {
     <img src="/icon-512.png" width="72" height="72" alt="" style="border-radius:18px"><div style="flex:1;min-width:220px"><h2 style="margin:0">Brightfolio for Android</h2>
     <p class="mu" style="margin:4px 0 0">A real Android app: your portfolio, quotes, buying and selling, orders and a watchlist on native screens, with everything else a tap away. Sign in with your email, or with Google, GitHub or a phone code.</p></div>
     ${play ? `<a href="${esc(play)}" target="_blank" rel="noopener" class="playbadge" aria-label="Get it on Google Play"><span>GET IT ON</span><b>Google Play</b></a>` : '<a href="/download/android"><button>Download the Android app</button></a>'}</div>
-    ${play ? `<h3>Install</h3><ol class="steps"><li>${isAndroid ? 'Tap' : 'On your Android phone, open this page and tap'} <b>Get it on Google Play</b> (or search “Brightfolio” in the Play Store).</li><li>Tap <b>Install</b>. The app appears with your other apps and updates itself from the Play Store.</li><li>Open Brightfolio and sign in.</li></ol>
+    ${play ? `<h3>Install</h3><ol class="installsteps"><li>${isAndroid ? 'Tap' : 'On your Android phone, open this page and tap'} <b>Get it on Google Play</b> (or search “Brightfolio” in the Play Store).</li><li>Tap <b>Install</b>. The app appears with your other apps and updates itself from the Play Store.</li><li>Open Brightfolio and sign in.</li></ol>
       <p class="mu small-print">Can't use Google Play? <a href="/download/android">Download the app file</a> instead.</p>`
-    : `<h3>Install (about a minute)</h3><ol class="steps">
+    : `<h3>Install (about a minute)</h3><ol class="installsteps">
       <li>${isAndroid ? 'Tap' : 'On your Android phone, open this page and tap'} <b>Download the Android app</b>. If Chrome says the file might be harmful, tap <b>Download anyway</b>: it is the app signed by Brightfolio.</li>
       <li>Tap <b>Open</b> when the download finishes (or find <b>brightfolio.apk</b> in Downloads).</li>
       <li>The first time, Android asks to allow your browser to install apps: tap <b>Settings</b>, switch on <b>Allow from this source</b>, then go back.</li>

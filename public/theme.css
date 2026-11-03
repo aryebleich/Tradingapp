@@ -920,3 +920,4 @@ header#top .closeall:hover:not(:disabled) { background: color-mix(in srgb, var(-
 .playbadge{display:inline-flex;flex-direction:column;justify-content:center;background:#000;color:#fff;border-radius:10px;padding:6px 16px 7px 44px;min-width:150px;text-decoration:none;position:relative;line-height:1.1;border:1px solid #444}
 .playbadge::before{content:"";position:absolute;left:14px;top:50%;transform:translateY(-50%);border-left:20px solid #34a853;border-top:12px solid transparent;border-bottom:12px solid transparent}
 .playbadge span{font-size:10px;letter-spacing:.06em}.playbadge b{font-size:19px;font-weight:600}
+.installsteps{padding-inline-start:22px;margin:8px 0}.installsteps li{margin:8px 0;overflow-wrap:anywhere}
