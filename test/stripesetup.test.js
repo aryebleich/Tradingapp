@@ -99,6 +99,7 @@ test('customers can pay: checkout, then the signed webhook switches the plan on'
   const sess = db.sessions.at(-1);
   assert.equal(sess['line_items[0][price]'], process.env.STRIPE_PRICE_PRO_YEARLY);
   assert.equal(sess.success_url, 'https://pay.example/app#/funding?ok=1');
+  assert.equal(sess['payment_method_types[0]'], 'card'); // no Stripe Link code step
   const u = await one('SELECT id FROM users WHERE email = ?', 'payer@example.com');
   const ev = JSON.stringify({ id: 'evt_1', type: 'checkout.session.completed', livemode: false, data: { object: { id: 'cs_1', customer: 'cus_9', client_reference_id: String(u.id), amount_total: 53000, invoice: 'in_1', metadata: { kind: 'subscription', plan: 'pro', interval: 'year' } } } });
   const t = Math.floor(Date.now() / 1000), sig = crypto.createHmac('sha256', process.env.STRIPE_WEBHOOK_SECRET).update(`${t}.${ev}`).digest('hex');

@@ -1217,7 +1217,7 @@ routes.funding = routes.billing = async (view, q) => {
         <ul>${p.features.map(f => `<li>${esc(f)}</li>`).join('')}</ul>
         ${p.monthly && !cur ? `<button data-plan="${k}" class="${p.popular ? '' : 'ghost'}">${trial ? `Start ${days}-day free trial` : `Choose ${esc(p.name)}`}</button>` : cur ? '<button class="ghost" disabled>Your plan</button>' : ''}</div>`;
     }).join('')}</div>
-    <div class="err" id="planErr"></div>
+    <div class="err" id="planErr"></div><p class="mu small-print">Payment is on Stripe's secure page. On a phone, if the card numbers you type don't show, turn off your browser's dark theme for websites (Chrome: Settings → Theme; Samsung Internet: dark mode off) or open the page in another browser.</p>
     <p class="mu" style="text-align:center;font-size:13px">Secure checkout by Stripe. Cancel anytime from "Manage billing". Prices in USD.</p>
     ${cr ? `<div class="card" id="credits"><div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">Credits</h2><b class="credbal">${cr.balance.total.toLocaleString()} <span class="mu" style="font-weight:500;font-size:14px">credits</span></b></div>
       <div class="credbar" title="Monthly credits left"><i style="width:${cr.balance.allowance ? Math.min(100, cr.balance.monthly / cr.balance.allowance * 100) : 0}%"></i></div>
