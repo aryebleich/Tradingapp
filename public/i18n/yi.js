@@ -12,6 +12,7 @@ import * as batch11 from './yi-batch11.js';
 import * as batch12 from './yi-batch12.js';
 import * as batch13 from './yi-batch13.js';
 import * as batch14 from './yi-batch14.js';
+import * as batch15 from './yi-batch15.js';
 
 export const credit = '';
 
@@ -201,7 +202,7 @@ export const strings = {
   'Fractional shares': 'שטיקלעך שערס', 'Disable short selling': 'שאלט אויס שארט סעלינג', 'Suspend all trading (kill switch)': 'שטעלט אפ אלע טרעידינג (נויט קנעפל)', 'Orders go to': 'ארדערס גייען צו',
   'Day-trade buying power check': 'דעי-טרעיד קויף-קראפט טשעק', 'Pattern day trader check': 'פעטערן דעי טרעידער טשעק', 'Max margin': 'מאקסימום מארדזשין', 'Trade confirmations': 'טרעיד באשטעטיגונגען',
   // footer, status lines, common server messages
-  'Trading involves risk of loss. Backtests and projections are hypothetical and do not guarantee future results. Brightfolio is software, not a broker or investment adviser; orders route to your own Alpaca account.': 'טרעידינג טראגט מיט זיך א ריזיקע פון פארלוסט. באקטעסטס און פראיעקציעס זענען היפאטעטיש און זענען נישט קיין גאראנטיע פאר די צוקונפט. Brightfolio איז א סאפטוועיר, נישט קיין בראוקער אדער אינוועסטמענט אדווייזער; ארדערס גייען צו אייער אייגענע בראוקער קאנטע.',
+  'Trading involves risk of loss. Backtests and projections are hypothetical and do not guarantee future results. Brightfolio is software, not a broker or investment adviser; orders go to the brokerage account you choose.': 'טרעידינג טראגט מיט זיך א ריזיקע פון פארלוסט. באקטעסטס און פראיעקציעס זענען היפאטעטיש און זענען נישט קיין גאראנטיע פאר די צוקונפט. Brightfolio איז א סאפטוועיר, נישט קיין בראוקער אדער אינוועסטמענט אדווייזער; ארדערס גייען צו אייער אייגענע בראוקער קאנטע.',
   'Text or call from your verified phone.': 'שיקט א טעקסט אדער רופט פון אייער באשטעטיגטן טעלעפאן.',
   'The AI assistant understands plain language: "how am I doing this month?", "put $200 into the S&P every week", "what does RSI mean?". Trades always need your PIN.': 'דער AI אסיסטענט פארשטייט פשוט\'ע שפראך: "וויאזוי שטיי איך דעם חודש?", "לייג אריין $200 אין S&P יעדע וואך", "וואס מיינט RSI?". טרעידס דארפן אלעמאל אייער PIN.',
   'Phone:': 'טעלעפאן:', 'PIN:': 'PIN:', 'not set': 'נישט איינגעשטעלט', 'set': 'איינגעשטעלט', 'verified': 'באשטעטיגט', 'change in Settings': 'טוישט אין סעטינגס',
@@ -348,7 +349,7 @@ export const strings = {
   'Admin user update': 'אדמין האט געטוישט א באניצער',
 };
 
-Object.assign(strings, features.strings, protect.strings, wealth.strings, batch5.strings, batch6.strings, { ...batch14.strings, ...batch13.strings, ...batch12.strings, ...batch11.strings, ...batch9.strings, ...batch8.strings, ...strings }, labs);
+Object.assign(strings, features.strings, protect.strings, wealth.strings, batch5.strings, batch6.strings, { ...batch15.strings, ...batch14.strings, ...batch13.strings, ...batch12.strings, ...batch11.strings, ...batch9.strings, ...batch8.strings, ...strings }, labs);
 
 // Sentences that contain numbers or names.
 export const patterns = [

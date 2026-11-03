@@ -1,4 +1,4 @@
-// Brokerages page: connect Tradier, tastytrade, Schwab and TradeStation next to Alpaca.
+// Choose your brokerage: Alpaca (suggested), Schwab, tastytrade, Tradier and TradeStation.
 let H; // helpers from app.js
 
 export function registerBrokers(routes, helpers) {
@@ -10,13 +10,13 @@ async function brokers(view, q) {
   const [list, accounts] = await Promise.all([H.api('/brokerages'), H.api('/accounts')]);
   const alpaca = accounts.find(a => a.id === 'alpaca');
   view.innerHTML = `
-  <div class="pagehead"><div><h1>Brokerages</h1><p class="mu" style="margin:4px 0 0">Connect every account you trade. Each one then shows up in the account pickers: alerts, strategies, pairs and the S&amp;P 500 plan can send orders to any of them, or to several at once.</p></div></div>
+  <div class="pagehead"><div><h1>Choose your brokerage</h1><p class="mu" style="margin:4px 0 0">Brightfolio works with the brokerage you prefer. Connect the account you already have, or open a new one: we suggest Alpaca (commission-free, opens in minutes inside the app). Connect as many as you like; each shows up in the account pickers, so alerts, strategies, pairs and the S&amp;P 500 plan can send orders to any of them.</p></div></div>
   ${q.get('connected') ? `<div class="banner">Connected. Your ${H.esc(list.find(b => b.id === q.get('connected'))?.name || 'brokerage')} account is ready.</div>` : ''}
   ${q.get('error') ? `<div class="banner err">${H.esc(q.get('error'))}</div>` : ''}
   <div class="libgrid">
-    <div class="card lib"><div class="libhead"><h3>Alpaca</h3>${alpaca?.connected ? `<span class="pill pos">Connected${alpaca.live ? ' · live' : ''}</span>` : '<span class="pill">Not connected</span>'}</div>
-      <p class="about">Open a new brokerage account inside Brightfolio, sign in with Alpaca, or use API keys. Stocks, ETFs, options and crypto, with fractional shares.</p>
-      <a href="#/account"><button type="button">${alpaca?.connected ? 'Manage' : 'Connect Alpaca'}</button></a></div>
+    <div class="card lib suggested"><div class="libhead"><h3>Alpaca <span class="pill">Suggested</span></h3>${alpaca?.connected ? `<span class="pill pos">Connected${alpaca.live ? ' · live' : ''}</span>` : '<span class="pill">Not connected</span>'}</div>
+      <p class="about">The easiest start: open a new commission-free account right here, sign in to an Alpaca account you have, or use API keys. Stocks, ETFs, options and crypto, with fractional shares.</p>
+      <a href="#/account"><button type="button">${alpaca?.connected ? 'Manage' : 'Open or connect Alpaca'}</button></a></div>
     ${list.map(b => `
     <div class="card lib" data-b="${b.id}"><div class="libhead"><h3>${H.esc(b.name)}</h3>${b.connected ? `<span class="pill pos">Connected${b.live ? ' · live' : ' · test'}${b.account ? ' · …' + H.esc(b.account) : ''}</span>` : '<span class="pill">Not connected</span>'}</div>
       <p class="about">${H.esc(b.about)}</p>

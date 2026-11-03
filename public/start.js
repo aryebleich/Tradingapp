@@ -58,7 +58,7 @@ async function page(view, q) {
     }[s.goal || 'learn'];
     body = `<h1>You're all set 🎉</h1><p class="st-lead">Here's where to go next${s.goal ? ', based on what you told us' : ''}:</p>
       <div class="st-next">${NEXT.map(([k, t, d]) => `<a href="#/${k}" class="st-choice"><b>${t}</b><span class="mu">${d}</span><span class="st-go" aria-hidden="true">→</span></a>`).join('')}</div>
-      <div class="card st-real"><h2>Ready for real money?</h2><p class="mu" style="margin-top:0">Open a brokerage account in about 10 minutes, here in the app or by text message: text <b>APPLY</b> to our number and we'll guide you. You choose when to switch from practice to real.</p><a href="#/account"><button type="button" class="ghost">Open a real account</button></a></div>
+      <div class="card st-real"><h2>Ready for real money?</h2><p class="mu" style="margin-top:0">Connect the brokerage you already use, or open a new account in about 10 minutes (we suggest Alpaca: here in the app, or text <b>APPLY</b> to our number and we'll guide you). You choose when to switch from practice to real.</p><a href="#/brokers"><button type="button" class="ghost">Open a real account</button></a></div>
       <p class="mu small-print">Everything else is in the menu, grouped by what it's for. Open a group with its arrow. Search anything with Ctrl+K.</p>
       ${nav('Go to my portfolio', { id: 'stDone' })}`;
   }

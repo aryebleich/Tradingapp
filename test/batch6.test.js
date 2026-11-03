@@ -22,7 +22,9 @@ test('AI privacy: personal details are removed, crawlers blocked by default', ()
   assert.doesNotMatch(r, /gmail|845|4111|sk-ant/);
   assert.match(r, /AAPL 10 shares at \$187\.25 on 2026-10-27/);
   const robots = defaultRobots();
-  for (const bot of ['Google-Extended', 'GPTBot', 'ClaudeBot', 'CCBot', 'PerplexityBot']) assert.match(robots, new RegExp(`User-agent: ${bot}\\n(?:User-agent: .*\\n)*Disallow: /\\n`));
+  // Training crawlers blocked; AI search assistants (they cite and link back) may read the public pages.
+  for (const bot of ['Google-Extended', 'GPTBot', 'ClaudeBot', 'CCBot']) assert.match(robots, new RegExp(`User-agent: ${bot}\\n(?:User-agent: .*\\n)*Disallow: /\\n`));
+  for (const bot of ['OAI-SearchBot', 'Claude-SearchBot', 'PerplexityBot']) assert.match(robots, new RegExp(`AI search assistants[^\\n]*\\n(?:User-agent: .*\\n)*User-agent: ${bot}\\n(?:User-agent: .*\\n)*(?:Disallow: .*\\n)+Allow: /\\n`));
   assert.match(robots, /User-agent: \*\n(?:Disallow: .*\n)*Disallow: \/app\n/);
   assert.equal(robots, robotsTxt());
   // Account figures only to providers that do not train on them (by default).

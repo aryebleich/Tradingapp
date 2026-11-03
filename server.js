@@ -1,4 +1,5 @@
 // Brightfolio web server: JSON API + static single-page app.
+import * as SEO from './src/seo.js';
 import express from 'express';
 import compression from 'compression';
 import path from 'node:path';
@@ -166,9 +167,11 @@ app.post('/internal/tick', async (req, res) => {
 
 // What crawlers and AI tools may read (Admin → AI & privacy): AI crawlers blocked unless allowed.
 app.get('/robots.txt', (req, res) => res.type('text/plain').send(AIX.robotsTxt() + `Sitemap: ${PUBLIC_URL}/sitemap.xml\n`));
-app.get('/llms.txt', (req, res) => { const t = AIX.llmsTxt(); return t ? res.type('text/plain').send(t) : res.status(404).type('text/plain').send('Not published.'); });
+app.get('/llms.txt', (req, res) => { const a = AIX.settings(); return a.llmsOn ? res.type('text/plain').send(SEO.llms(a.llms)) : res.status(404).type('text/plain').send('Not published.'); });
+// IndexNow key file (Admin → SEO → Announce pages): only the current key, nothing else.
+app.get(/^\/([A-Za-z0-9]{16,64})\.txt$/, async (req, res, next) => { const k = await SEO.indexnowKey(); return req.params[0] === k ? res.type('text/plain').send(k) : next(); });
 app.use((req, res, next) => { const x = AIX.xRobots(); if (x) res.setHeader('X-Robots-Tag', x); next(); });
-app.get('/sitemap.xml', (req, res) => res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/', '/yi', '/pricing', '/status', '/security', '/insurance', '/terms', '/privacy', '/risk', '/contact'].map(u => `<url><loc>${PUBLIC_URL}${u}</loc></url>`).join('')}</urlset>`));
+app.get('/sitemap.xml', async (req, res) => res.type('application/xml').send(await SEO.sitemap(PUBLIC_URL)));
 // The browser demo on the landing page reuses the exact engine the server runs.
 app.get('/config.js', (req, res) => res.type('text/javascript').send('window.QP = { api: "" };'));
 app.get('/engine.js', (req, res) => res.type('text/javascript').sendFile(path.join(here, 'src/engine.js')));
@@ -444,7 +447,7 @@ api.use(auth.csrfGuard);
 // Only API calls look up the session; static files and pages skip the database round trip.
 api.use(auth.sessionMiddleware);
 // A session flagged by the behavior check confirms itself before trading or moving money.
-api.use(['/orders', '/alpaca/orders', '/alpaca/positions', '/alpaca/broker/transfers', '/fleet/inbox', '/ai/live-order'], stepUpGuard);
+api.use(['/orders', '/alpaca/orders', '/alpaca/positions', '/alpaca/broker/transfers', '/fleet/inbox', '/ai/live-order', '/positions/close-all'], stepUpGuard);
 api.use('/auth', auth.router);
 api.use('/alpaca', alpacaRouter);
 api.use('/signals', signalsRouter);
@@ -496,6 +499,7 @@ api.use('/ai', chatRouter({ extraTools: user => ({
     run: async ({ symbol, horizon }) => { const r = await forecastSymbol(user.id, String(symbol).toUpperCase(), { horizon: horizon || 5 }); return { symbol: r.symbol, ...r.forecast, outOfSample: r.metrics, topFeatures: r.importance.slice(0, 4) }; } },
 }) }));
 const cancelAlpaca = async id => { const t = await tradingFor(id); return t ? t.cancelAllOrders() : null; };
+api.use('/admin/seo', SEO.seoAdminRouter({ onChange: () => htmlCache.clear() }));
 api.use('/admin/site', adminSiteRouter);
 api.use('/tokens', tokensRouter);
 api.use('/wealth', wealthRouter);
@@ -622,6 +626,35 @@ api.post('/orders', U, wrap(async (req, res) => {
   const r = await placeOrder(req.user.id, a, req.body, 'web');
   await audit(req.user.id, 'order', { ...r }, req.ip);
   res.json(r);
+}));
+// "Close all positions" (the header button): sells everything in one account at the market price,
+// after cancelling its open orders. Needs the word CLOSE, and the password for real money.
+api.post('/positions/close-all', U, wrap(async (req, res) => {
+  const a = String(req.body?.account || 'paper');
+  if (!ACCOUNT_IDS.includes(a) && !/^alpaca/.test(a)) throw Object.assign(new Error('Pick an account'), { status: 400 });
+  if (String(req.body?.confirmWord || '').trim().toUpperCase() !== 'CLOSE') throw Object.assign(new Error('Type CLOSE to confirm'), { status: 400 });
+  const { accountsFor } = await import('./src/ext/routes.js');
+  const acct = (await accountsFor(req.user.id)).find(x => x.id === a);
+  if (!acct?.connected) throw Object.assign(new Error('That account is not connected'), { status: 409 });
+  if (acct.live && !auth.confirmsIdentity(req.user, req.body || {})) throw Object.assign(new Error(req.user.password_set === 0 ? 'Type your email address to confirm' : 'Wrong password'), { status: 401 });
+  const results = [];
+  if (/^alpaca/.test(a)) {
+    const { tradingForAccount } = await import('./src/alpaca/connections.js');
+    const t = await tradingForAccount(req.user.id, a);
+    if (!t) throw Object.assign(new Error('That Alpaca account is not connected'), { status: 409 });
+    const r = await t.closeAllPositions(true);
+    for (const x of Array.isArray(r) ? r : []) results.push({ symbol: x.symbol || x.body?.symbol, ok: !x.status || x.status < 300 });
+  } else {
+    if (a === 'paper') await run("UPDATE paper_orders SET status = 'cancelled' WHERE user_id = ? AND status = 'open'", req.user.id);
+    const s = await accountSummary(req.user.id, a);
+    for (const p of s.positions || []) {
+      if (!(p.qty > 0)) continue;
+      try { await placeOrder(req.user.id, a, { symbol: p.symbol, side: 'sell', qty: p.qty }, 'close-all'); results.push({ symbol: p.symbol, ok: true }); }
+      catch (e) { results.push({ symbol: p.symbol, ok: false, error: e.message }); }
+    }
+  }
+  await audit(req.user.id, 'positions_closed_all', { account: a, count: results.length }, req.ip);
+  res.json({ account: acct.name, closed: results.filter(r => r.ok).length, failed: results.filter(r => !r.ok), results });
 }));
 api.get('/quote/:symbol', U, wrap(async (req, res) => res.json({ symbol: req.params.symbol.toUpperCase(), price: await lastPrice(req.params.symbol, req.user.id) })));
 api.post('/paper/reset', U, async (req, res) => {
@@ -934,9 +967,12 @@ app.use('/api', api);
 const pub = path.join(here, 'public');
 // Marketing pages get absolute social-preview image URLs (crawlers ignore relative ones).
 const htmlCache = new Map();
+// Public pages: the owner's SEO settings (titles, descriptions, canonical, structured data) applied.
 const page = file => async (req, res) => {
-  if (!htmlCache.has(file) || process.env.NODE_ENV !== 'production')
-    htmlCache.set(file, (await fs.readFile(path.join(pub, file), 'utf8')).replace('content="og.png"', `content="${PUBLIC_URL}/og.png"`));
+  if (!htmlCache.has(file) || process.env.NODE_ENV !== 'production') {
+    const raw = (await fs.readFile(path.join(pub, file), 'utf8')).replace('content="og.png"', `content="${PUBLIC_URL}/og.png"`);
+    htmlCache.set(file, SEO.transform(raw, file.replace(/\.html$/, ''), SEO.settings(), PUBLIC_URL));
+  }
   res.type('html').send(htmlCache.get(file));
 };
 // The app page lists every module it imports (modulepreload), so the browser downloads them all at

@@ -289,7 +289,7 @@ const NAV = [
   ['Automation', [['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['schedule', 'Scheduled trades'], ['rules', 'Rules across accounts'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['portfolios', 'Portfolios'], ['marketplace', 'Marketplace']]],
   ['Quant lab', [['pairs', 'Pairs trading'], ['statarb', 'Statistical arbitrage'], ['code', 'Code lab'], ['quantconnect', 'Cloud algorithms']]],
   ['Planning', [['money', 'All my money'], ['brief', 'Weekly brief'], ['insights', 'Insights & journal'], ['risk', 'Risk controls'], ['tax', 'Taxes'], ['taxpilot', 'Tax autopilot'], ['private', 'Private markets'], ['realestate', 'Real estate'], ['luach', 'Luach & tzedakah']]],
-  ['Accounts', [['account', 'Open or connect an account'], ['accounts', 'All accounts'], ['brokers', 'Brokerages'], ['funding', 'Plans & billing'], ['referrals', 'Invite & earn']]],
+  ['Accounts', [['brokers', 'Choose your brokerage'], ['account', 'Alpaca account'], ['accounts', 'All accounts'], ['funding', 'Plans & billing'], ['referrals', 'Invite & earn']]],
   ['Help & settings', [['learn', 'Learn'], ['security', 'Security & help'], ['text', 'Text & hotline'], ['android', 'Android app'], ['settings', 'Settings']]],
 ];
 // Simple line icons (24x24 paths) for the menu.
@@ -336,7 +336,7 @@ const ICONS = {
   money: '<path d="M3 10h18M5 10V20M9 10v10M15 10v10M19 10v10M3 20h18M12 3l9 5H3z"/>',
   luach: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M12 12l1.2 2.4 2.6.4-1.9 1.8.5 2.6-2.4-1.3-2.4 1.3.5-2.6-1.9-1.8 2.6-.4z"/>',
   brief: '<path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5M8 12h8M8 16h6"/>', taxpilot: '<path d="M12 3v18M17 7.5c0-1.9-2.2-3-5-3s-5 1.1-5 3 2.2 2.7 5 3.3 5 1.4 5 3.5-2.2 3.2-5 3.2-5-1.3-5-3.2"/>',
-  'admin-comms': '<path d="M4 5h16v11H8l-4 4z"/><path d="M8 9h8M8 12h5"/>', 'admin-strategies': '<path d="M12 3v18M5 8h14M7 13h10M9 18h6"/>', 'admin-data': '<path d="M3 12h4l3-7 4 14 3-7h4"/><circle cx="12" cy="12" r="0.5"/>', 'admin-trust': '<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/>',
+  'admin-comms': '<path d="M4 5h16v11H8l-4 4z"/><path d="M8 9h8M8 12h5"/>', 'admin-strategies': '<path d="M12 3v18M5 8h14M7 13h10M9 18h6"/>', 'admin-seo': '<circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5M8 12l2-2 2 2 2-3"/>', 'admin-data': '<path d="M3 12h4l3-7 4 14 3-7h4"/><circle cx="12" cy="12" r="0.5"/>', 'admin-trust': '<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/>',
   invest: '<path d="M4 19h16M6 16V9M10 16V5M14 16v-6M18 16V7"/>',
   rules: '<path d="M4 6h16M4 12h10M4 18h6"/><path d="M17 14l2 2 3-4"/>',
   start: '<path d="M5 21V4h11l-2 4 2 4H5"/>',
@@ -373,7 +373,7 @@ async function render() {
   // A new page starts at the top instead of keeping the previous page's scroll position.
   scrollTo(0, 0);
   if (!ME && !['login', 'login-phone', 'register', 'mfa', 'forgot', 'reset', 'verify', 'open-account'].includes(route)) { location.hash = '#/login'; return; }
-  $('#top').hidden = !ME; $('#nav').hidden = !ME; $('#tabs').hidden = !ME; $('#lockBtn').hidden = !ME;
+  $('#top').hidden = !ME; $('#nav').hidden = !ME; $('#tabs').hidden = !ME; $('#closeAllBtn').hidden = !ME;
   // Owner: switch between the full owner view and the view of each plan.
   const va = $('#viewAs'); va.hidden = ME?.role !== 'admin';
   if (!va.hidden) {
@@ -486,16 +486,28 @@ let badgeAt = 0;
 async function updateBadge(force) {
   if (!force && Date.now() - badgeAt < 60e3) return;
   badgeAt = Date.now();
-  const s = await api('/alpaca/status').catch(() => null), b = $('#connBadge');
-  if (!s?.active) { b.textContent = 'No brokerage connected'; b.className = 'pill'; return; }
-  const kind = { broker: 'Brokerage account', oauth: 'Alpaca (OAuth)', keys: 'Alpaca (API keys)' }[s.active.type];
-  b.innerHTML = `<span class="long">${kind} · </span>${s.active.live ? 'LIVE' : s.active.type === 'broker' ? 'Sandbox' : 'Paper'}`;
-  b.className = 'pill' + (s.active.live ? ' warn' : '');
+  // Any brokerage the user connected (Alpaca, Schwab, tastytrade, Tradier, TradeStation).
+  const list = (await api('/accounts').catch(() => [])).filter(a => a.id !== 'paper' && a.connected), b = $('#connBadge');
+  b.onclick = () => { location.hash = '#/brokers'; }; b.style.cursor = 'pointer'; b.title = 'Choose your brokerage';
+  if (!list.length) { b.textContent = 'No brokerage connected'; b.className = 'pill'; return; }
+  const live = list.some(a => a.live), first = list.find(a => a.live) || list[0];
+  b.innerHTML = `<span class="long">${esc(first.name)}${list.length > 1 ? ` +${list.length - 1}` : ''} · </span>${live ? 'LIVE' : 'Test money'}`;
+  b.className = 'pill' + (live ? ' warn' : '');
 }
-// One-tap account lock, on every page.
-$('#lockBtn').onclick = async () => {
-  if (!ME || !confirm('Lock your account now? All orders and withdrawals freeze immediately and open orders are cancelled.')) return;
-  try { await api('/security/lock', { body: { reason: 'header lock button' } }); alert('Your account is locked. Unlock it under Security & help.'); location.hash = '#/security'; } catch (e) { alert(e.message); }
+// "Close all positions", on every page: the account in view, after a typed confirmation.
+$('#closeAllBtn').onclick = async () => {
+  if (!ME) return;
+  await accounts();
+  const acct = (ACCTS?.list || []).find(a => a.id === state.account) || { id: state.account, name: state.account };
+  const live = !!acct.live;
+  const ok = await secureConfirm({ title: 'Close all positions', word: 'CLOSE', okText: 'Close all positions',
+    html: `<p>This sells <b>everything</b> in <b>${esc(acct.name || acct.id)}</b> at the market price and cancels its open orders.${live ? ' <b class="warn">This is a real-money account.</b>' : ''}</p><p class="mu">To freeze your account instead, use Lock under Security &amp; help.</p>` });
+  if (!ok) return;
+  try {
+    const r = await api('/positions/close-all', { body: { account: acct.id, confirmWord: ok.typed, password: ok.password, confirm: ok.confirm } });
+    alert(`${r.closed} position${r.closed === 1 ? '' : 's'} closed in ${r.account}.${r.failed.length ? ` Not closed: ${r.failed.map(f => `${f.symbol} (${f.error || 'refused'})`).join(', ')}.` : ''}`);
+    render();
+  } catch (e) { alert(e.message); }
 };
 // Calm mode (default on): no flashing prices or celebratory effects.
 const setCalm = on => { document.body.classList.toggle('calm', on); try { localStorage.setItem('qp_calm', on ? '1' : '0'); } catch {} };
@@ -1295,9 +1307,9 @@ routes.settings = async view => {
       <p class="mu">The language of the app on this device.</p>
       <label>Language<select id="langSel" data-no-tr>${Object.entries(LANGS).map(([k, v]) => `<option value="${k}" ${k === currentLang() ? 'selected' : ''} lang="${k}">${v.name}${k === 'en' ? ' (original)' : k === 'yi' ? ' (full translation)' : ''}</option>`).join('')}</select></label>
       ${LANGS[currentLang()]?.simple ? '<p class="mu small-print">Simple translation: menus and main buttons are translated; the rest of the app stays in English.</p>' : ''}</div>
-    <div class="card"><h2>Alpaca brokerage</h2>
-      <p class="mu">Open a brokerage account, connect your Alpaca account with one click, or use API keys.</p>
-      <a href="#/account"><button type="button">Manage brokerage connection</button></a></div>
+    <div class="card"><h2>Your brokerage</h2>
+      <p class="mu">Connect the brokerage you use (Alpaca, Schwab, tastytrade, Tradier or TradeStation), or open a new account; we suggest Alpaca.</p>
+      <a href="#/brokers"><button type="button">Choose your brokerage</button></a></div>
     <form class="card" id="qcf"><h2>QuantConnect</h2>
       <p class="mu">${integ.quantconnect.connected ? 'Connected as user ' + esc(integ.quantconnect.userId) : 'quantconnect.com → Account → API Access'}</p>
       <label>User id<input name="userId" autocomplete="off"></label><label>API token<input name="token" type="password" autocomplete="off"></label>
@@ -1359,7 +1371,7 @@ routes.settings = async view => {
 
 // ---------- admin ----------
 // Owner pages: one route per section so each has its own place in the menu.
-const ADMIN_TABS = [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-money', 'Money & fees'], ['admin-upgrades', 'Upgrades'], ['admin-yiddish', 'Yiddish Labs'], ['admin-phone', 'Phone line'], ['admin-ai', 'AI & privacy'], ['admin-readme', 'README'], ['admin-admins', 'Admins'], ['admin-keys', 'Keys'], ['admin-comms', 'Calls, texts & email'], ['admin-support', 'Support inbox'], ['admin-data', 'Market data'], ['admin-strategies', 'Original strategies'], ['admin-trust', 'Trust'], ['admin-system', 'System health'], ['admin-setup', 'Setup']];
+const ADMIN_TABS = [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-money', 'Money & fees'], ['admin-upgrades', 'Upgrades'], ['admin-yiddish', 'Yiddish Labs'], ['admin-phone', 'Phone line'], ['admin-ai', 'AI & privacy'], ['admin-readme', 'README'], ['admin-admins', 'Admins'], ['admin-keys', 'Keys'], ['admin-comms', 'Calls, texts & email'], ['admin-support', 'Support inbox'], ['admin-data', 'Market data'], ['admin-strategies', 'Original strategies'], ['admin-seo', 'SEO'], ['admin-trust', 'Trust'], ['admin-system', 'System health'], ['admin-setup', 'Setup']];
 // Pages with their own module (owner.js, protect.js) draw themselves under the same tabs.
 const adminTabs = current => `<div class="chips admintabs">${ADMIN_TABS.map(([k, t]) => `<a href="#/${k}"><button type="button" class="${k === current ? 'on' : ''}">${t}</button></a>`).join('')}</div>`;
 async function adminPage(view, tab) {

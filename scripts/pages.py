@@ -13,7 +13,7 @@ def doc(title, desc, content, dated=True):
 TERMS = '''
 <p>These Terms of Service ("Terms") govern your use of the Brightfolio website, apps, SMS and voice services (together, the "Service"). By creating an account you agree to these Terms.</p>
 <h2>1. What Brightfolio is</h2>
-<p>Brightfolio is software for researching, testing and automating trading strategies. We are not a broker-dealer, bank or custodian, and we do not hold customer securities. Live trading happens in your own brokerage account with Alpaca Securities LLC under your separate agreement with Alpaca.</p>
+<p>Brightfolio is software for researching, testing and automating trading strategies. We are not a broker-dealer, bank or custodian, and we do not hold customer securities. Live trading happens in your own brokerage account with the brokerage you choose (such as Alpaca Securities LLC, Charles Schwab, tastytrade, Tradier or TradeStation) under your separate agreement with that broker.</p>
 <h2>2. No investment advice</h2>
 <p>Content, backtests, projections, templates and AI-generated rules are for information and education. They are not a recommendation to buy or sell any security. You decide which strategies to run and are responsible for every order placed from your account, including orders placed by bots, schedules, SMS or voice commands you set up.</p>
 <h2>3. Eligibility and accounts</h2>
@@ -84,7 +84,7 @@ RISK = '''
 <h2>AI-generated strategies</h2>
 <p>The AI builder turns descriptions into rules automatically and can misunderstand you. Always review and backtest rules before using them.</p>
 <h2>Brokerage</h2>
-<p>Brokerage services are provided by Alpaca Securities LLC, member FINRA/SIPC. Brightfolio is not a broker-dealer and is not affiliated with Alpaca, QuantConnect, Twilio or Stripe. SIPC protection does not cover market losses.</p>
+<p>Brokerage services are provided by the broker you choose (for example Alpaca, Charles Schwab, tastytrade, Tradier or TradeStation), each a FINRA member broker-dealer with SIPC coverage. Brightfolio is not a broker-dealer and is not affiliated with any of these brokers, QuantConnect, Twilio or Stripe. SIPC protection does not cover market losses.</p>
 <h2>Margin and short selling</h2>
 <p>Brightfolio strategies are long-only by default. If your brokerage account has margin enabled, losses can exceed your deposits.</p>
 <h2>No advice</h2>

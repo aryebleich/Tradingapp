@@ -38,14 +38,15 @@ function onResize(fn) {
 function every(ms, fn) { const t = setInterval(() => { if (!document.hidden) fn(); }, ms); H.onLeave(() => clearInterval(t)); }
 function flash(el, up) { if (!el || document.body.classList.contains('calm')) return; el.classList.remove('flash-up', 'flash-dn'); void el.offsetWidth; el.classList.add(up ? 'flash-up' : 'flash-dn'); }
 
-// Shown instead of a trading page when no Alpaca account is connected yet.
+// Shown instead of an Alpaca trading page when no Alpaca account is connected.
 async function needConnection(view, title) {
   const s = await A('/status');
   if (s.active && !(s.active.type === 'broker' && s.broker.account?.status !== 'ACTIVE')) return s;
   const pending = s.broker.account && s.broker.account.status !== 'ACTIVE';
-  view.innerHTML = `<h1>${title}</h1><div class="card"><h2>${pending ? 'Your account is being reviewed' : 'Connect a brokerage account to start'}</h2>
-    <p class="mu">${pending ? `Application status: <b>${H.esc(s.broker.account.status)}</b>. Trading opens once it is ACTIVE.` : 'Open a new Alpaca brokerage account, connect your existing Alpaca account, or use API keys. Everything starts in the paper / sandbox environment.'}</p>
-    <a href="#/account"><button>${pending ? 'Check status' : 'Set up brokerage'}</button></a></div>`;
+  // Practice money and the other brokerages trade from the order ticket on Home.
+  view.innerHTML = `<h1>${title}</h1><div class="card"><h2>${pending ? 'Your account is being reviewed' : 'This page works with an Alpaca account'}</h2>
+    <p class="mu">${pending ? `Application status: <b>${H.esc(s.broker.account.status)}</b>. Trading opens once it is ACTIVE.` : 'The full trading screen (charts, every order type, options) runs on Alpaca accounts for now. With practice money or any other brokerage you connected (Schwab, tastytrade, Tradier, TradeStation), trade from the order ticket on Home.'}</p>
+    <div class="row" style="gap:8px;flex-wrap:wrap"><a href="#/dashboard"><button type="button">Trade from Home</button></a><a href="${pending ? '#/account' : '#/brokers'}"><button type="button" class="ghost">${pending ? 'Check status' : 'Choose your brokerage'}</button></a></div></div>`;
   return null;
 }
 
@@ -116,7 +117,8 @@ async function account(view, q) {
   const banner = q.get('connected') ? '<div class="banner">Your Alpaca account is connected.</div>' : q.get('error') ? `<div class="banner err">${H.esc(q.get('error'))}</div>` : '';
   const conn = s.active;
   const label = { broker: 'Brokerage account (Broker API)', oauth: 'Alpaca account (OAuth)', keys: 'Alpaca API keys' };
-  view.innerHTML = `<h1>Brokerage account</h1>${banner}
+  view.innerHTML = `<h1>Alpaca account</h1>${banner}
+  <p class="mu" style="margin-top:-6px">Prefer another broker? <a href="#/brokers">Choose your brokerage</a>: Schwab, tastytrade, Tradier and TradeStation work too.</p>
   <div class="card"><h2>Trading connection</h2>
     ${conn ? `<p>Orders go to: <b>${label[conn.type]}</b> <span class="pill ${conn.live ? 'warn' : ''}">${conn.live ? 'LIVE MONEY' : conn.type === 'broker' ? 'Sandbox' : 'Paper'}</span></p>` : '<p class="mu">Nothing connected yet. Choose one of the options below.</p>'}
     ${s.available.length > 1 ? `<div class="chips" id="connPick">${s.available.map(t => `<button data-t="${t}" class="${conn?.type === t ? 'on' : ''}">${label[t]}</button>`).join('')}</div>` : ''}
@@ -443,8 +445,10 @@ async function trade(view, q) {
   try { localStorage.setItem('qp_symbol', symbol); } catch {}
   const range = q.get('range') || '6M';
   const kind = isOption(symbol) ? 'option' : isCrypto(symbol) ? 'crypto' : 'stock';
-  view.innerHTML = `<div class="row" style="justify-content:space-between;align-items:center"><h1>Trade</h1>
-    <form id="search" class="row" style="flex:0 1 420px"><label style="flex:1">Symbol or company<input name="q" list="symList" placeholder="AAPL, BTC/USD, Apple…" autocomplete="off" value=""></label><datalist id="symList"></datalist><button>Go</button></form></div>
+  view.innerHTML = `<h1>Trade</h1>
+    <form id="search" class="tsearch" role="search" autocomplete="off"><div class="tsbox"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/></svg>
+      <input name="q" placeholder="Search a stock, ETF or crypto: AAPL, Apple, BTC/USD…" aria-label="Symbol or company" role="combobox" aria-expanded="false" aria-controls="symList" aria-autocomplete="list" spellcheck="false" dir="ltr">
+      <button type="submit">Go</button></div><ul id="symList" class="tslist" role="listbox" hidden></ul></form>
   <div class="cols tradegrid">
       <div class="card" id="chartCard"><div class="quote"><h2 style="margin:0">${H.esc(symbol)}</h2><span class="px" id="px">-</span><span id="chg"></span><span class="mu" id="ba"></span><span class="mu" id="assetName"></span></div>
         ${kind === 'option' ? '' : `<div class="chips" id="ranges" style="margin:10px 0">${Object.keys(RANGES).map(r => `<button data-r="${r}" class="${r === range ? 'on' : ''}">${r}</button>`).join('')}</div>
@@ -457,14 +461,49 @@ async function trade(view, q) {
   </div>
   <div class="actionbar" id="tradeBar" hidden><button class="buy" data-s="buy">Buy</button><button class="sell danger" data-s="sell">Sell</button></div>`;
 
-  const sf = H.$('#search', view), dl = H.$('#symList', view);
-  let tmr;
-  sf.q.oninput = () => { clearTimeout(tmr); tmr = setTimeout(async () => {
-    const v = sf.q.value.trim(); if (!v) return;
-    const hits = await A('/assets/search?q=' + encodeURIComponent(v) + (v.includes('/') ? '&class=crypto' : '')).catch(() => []);
-    dl.innerHTML = hits.map(a => `<option value="${H.esc(a.symbol)}">${H.esc(a.name || '')}</option>`).join('');
-  }, 250); };
-  sf.onsubmit = e => { e.preventDefault(); const v = sf.q.value.trim().toUpperCase(); if (v) location.hash = '#/trade?symbol=' + encodeURIComponent(v); };
+  // Symbol search: tickers and company names (stocks, ETFs, crypto), arrow keys and Enter, recent picks.
+  const sf = H.$('#search', view), list = H.$('#symList', view), inp = sf.q;
+  const RKEY = 'qp_recent_syms', recent = () => { try { return JSON.parse(localStorage.getItem(RKEY) || '[]'); } catch { return []; } };
+  const remember = s => { try { localStorage.setItem(RKEY, JSON.stringify([s, ...recent().filter(x => x !== s)].slice(0, 6))); } catch {} };
+  let items = [], sel = -1, tmr, seq = 0;
+  const go = s => { s = String(s || '').trim().toUpperCase(); if (!s) return; remember(s); location.hash = '#/trade?symbol=' + encodeURIComponent(s); };
+  const show = (rows, head = '') => {
+    items = rows; sel = rows.length ? 0 : -1;
+    list.innerHTML = (head ? `<li class="tshead" role="presentation">${head}</li>` : '') + rows.map((r, i) => `<li role="option" id="ts${i}" data-i="${i}" class="${i === sel ? 'on' : ''}" aria-selected="${i === sel}"><b data-no-tr>${H.esc(r.symbol)}</b><span>${H.esc(r.name || '')}</span><em>${H.esc(r.kind || '')}</em></li>`).join('')
+      || '<li class="tshead" role="presentation">No match. Press Go to open this symbol anyway.</li>';
+    list.hidden = false; inp.setAttribute('aria-expanded', 'true');
+    H.$$('li[data-i]', list).forEach(li => (li.onmousedown = e => { e.preventDefault(); go(items[+li.dataset.i].symbol); }));
+  };
+  const hide = () => { list.hidden = true; inp.setAttribute('aria-expanded', 'false'); };
+  const mark = () => H.$$('li[data-i]', list).forEach((li, i) => { li.classList.toggle('on', i === sel); li.setAttribute('aria-selected', i === sel); if (i === sel) { li.scrollIntoView({ block: 'nearest' }); inp.setAttribute('aria-activedescendant', li.id); } });
+  inp.onfocus = () => { if (!inp.value.trim() && recent().length) show(recent().map(s => ({ symbol: s, kind: 'Recent' })), 'Recent'); };
+  inp.onblur = () => setTimeout(hide, 120);
+  inp.oninput = () => {
+    // Typing drops the old list at once, so Enter never picks a stale suggestion.
+    clearTimeout(tmr); items = []; sel = -1; hide(); const v = inp.value.trim(); if (!v) return;
+    tmr = setTimeout(async () => {
+      const my = ++seq;
+      const [g, a] = await Promise.all([H.api('/search?q=' + encodeURIComponent(v)).catch(() => ({ symbols: [] })), A('/assets/search?q=' + encodeURIComponent(v) + (v.includes('/') ? '&class=crypto' : '')).catch(() => [])]);
+      if (my !== seq) return;
+      const seen = new Set(), rows = [];
+      for (const r of [...(g.symbols || []).filter(x => /trade/.test(x.url || '')), ...a.map(x => ({ symbol: x.symbol, name: x.name, kind: x.class === 'crypto' ? 'Crypto' : x.exchange || 'Stock' }))]) {
+        if (!r.symbol || seen.has(r.symbol)) continue; seen.add(r.symbol); rows.push(r);
+      }
+      // The exact ticker first.
+      rows.sort((x, y) => (y.symbol === v.toUpperCase()) - (x.symbol === v.toUpperCase()));
+      show(rows.slice(0, 10));
+    }, 180);
+  };
+  inp.onkeydown = e => {
+    const open = !list.hidden && items.length;
+    if (e.key === 'Enter') { e.preventDefault(); go(open && sel >= 0 ? items[sel].symbol : inp.value); return; }
+    if (!open) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); sel = (sel + 1) % items.length; mark(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); sel = (sel - 1 + items.length) % items.length; mark(); }
+    else if (e.key === 'Escape') hide();
+  };
+  sf.onsubmit = e => { e.preventDefault(); go(inp.value); };
+  remember(symbol);
 
   // Quote header from a snapshot, then live updates.
   let last = null;
@@ -474,13 +513,27 @@ async function trade(view, q) {
     last = p; el.textContent = usd(p);
     if (prev) { const c = p - prev; H.$('#chg', view).innerHTML = `<b class="${H.cls(c)}">${c >= 0 ? '+' : ''}${fmt(c)} (${H.pct(c / prev * 100, 2)})</b>`; }
   };
-  let prevClose = null;
+  let prevClose = null, livePx = false;
   if (kind !== 'option') {
+    // The live price comes from the same quote the order ticket and the portfolio use (the fastest
+    // working data source), refreshed every 15 seconds; streaming updates replace it in between.
+    const deskQuote = () => H.api(`/desk/quote/${encodeURIComponent(symbol)}?account=${encodeURIComponent(H.state?.account || 'paper')}`).then(d => {
+      // Only a real live source replaces the feed's price; a "last known price" fallback does not.
+      if (!H.$('#px', view) || !(d.price > 0) || !d.sourceId || /no live source/i.test(d.source || '')) return;
+      livePx = true; showPx(d.price, prevClose);
+      H.$('#ba', view).textContent = `${d.bid && d.ask ? `Bid ${fmt(d.bid)} · Ask ${fmt(d.ask)} · ` : ''}${d.source}`;
+    }).catch(() => {});
+    // Stocks and ETFs; crypto keeps its own live stream and snapshot.
+    if (kind === 'stock') {
+      deskQuote();
+      const pxTimer = setInterval(() => { if (!document.hidden) deskQuote(); }, 15000);
+      H.onLeave?.(() => clearInterval(pxTimer));
+    }
     A('/data/snapshots?symbols=' + encodeURIComponent(symbol)).then(snap => {
       const sn = snap[symbol]; if (!sn) return;
-      prevClose = sn.prevDailyBar?.c; showPx(sn.price ?? sn.latestTrade?.p, prevClose);
-      if (sn.latestQuote) H.$('#ba', view).textContent = `Bid ${fmt(sn.latestQuote.bp)} · Ask ${fmt(sn.latestQuote.ap)}`;
-    }).catch(e => (H.$('#ba', view).textContent = e.message));
+      prevClose = sn.prevDailyBar?.c;
+      if (!livePx) showPx(sn.price ?? sn.latestTrade?.p, prevClose); else if (last != null) showPx(last, prevClose);
+    }).catch(() => {});
     live([symbol], u => { if (u.price != null) showPx(u.price, prevClose); if (u.bid != null) H.$('#ba', view).textContent = `Bid ${fmt(u.bid)} · Ask ${fmt(u.ask)}`; });
     const [tf, days] = RANGES[range];
     A(`/data/bars?symbols=${encodeURIComponent(symbol)}&timeframe=${tf}&start=${new Date(Date.now() - days * 86400e3).toISOString()}`).then(b => {
@@ -488,7 +541,7 @@ async function trade(view, q) {
       if (range === '1D' && bars.length) { const lastDay = bars[bars.length - 1].t.slice(0, 10); bars = bars.filter(x => x.t.slice(0, 10) === lastDay); }
       const draw = () => H.$('#candles', view) && drawCandles(H.$('#candles', view), bars, H.$('#tip', view));
       draw(); onResize(draw);
-      if (last == null && bars.length) showPx(bars[bars.length - 1].c, prevClose);
+      if (last == null && !livePx && bars.length) showPx(bars[bars.length - 1].c, prevClose);
     }).catch(e => { const c = H.$('#candles', view); if (c) c.replaceWith(Object.assign(document.createElement('p'), { className: 'err', textContent: e.message })); });
     H.$$('#ranges button', view).forEach(b => (b.onclick = () => (location.hash = `#/trade?symbol=${encodeURIComponent(symbol)}&range=${b.dataset.r}`)));
     A('/data/news?limit=8&symbols=' + encodeURIComponent(symbol.replace('/', ''))).then(n => (H.$('#news', view).innerHTML = newsHtml(n))).catch(() => (H.$('#news', view).innerHTML = '<p class="mu">News unavailable.</p>'));

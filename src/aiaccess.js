@@ -21,6 +21,7 @@ export async function saveSettings(b = {}) {
   const cur = settings(), out = { ...cur, allow: { ...cur.allow } };
   if (b.allow) for (const k of Object.keys(CRAWLERS)) if (k in b.allow) out.allow[k] = !!b.allow[k];
   if ('search' in b) out.search = !!b.search;
+  if ('aiSearch' in b) out.aiSearch = !!b.aiSearch;
   if ('llmsOn' in b) out.llmsOn = !!b.llmsOn;
   if ('llms' in b) out.llms = redact(String(b.llms || '')).slice(0, 2000);
   if ('accountData' in b) out.accountData = ['private', 'always', 'never'].includes(b.accountData) ? b.accountData : 'private';

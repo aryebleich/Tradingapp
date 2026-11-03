@@ -98,7 +98,8 @@ export const deskRouter = (() => {
     let bid = null, ask = null;
     const { quoteAt } = await import('./execution.js');
     const nb = await quoteAt(symbol, q.price).catch(() => null);
-    if (nb?.bid) { bid = nb.bid; ask = nb.ask; }
+    // A bid/ask far from the live price is stale or from another market: not shown.
+    if (nb?.bid && nb?.ask && q.price > 0 && Math.abs((nb.bid + nb.ask) / 2 - q.price) / q.price <= 0.03) { bid = nb.bid; ask = nb.ask; }
     const qty = +req.query.qty || 0, side = req.query.side === 'sell' ? 'sell' : 'buy';
     res.json({ symbol, price: q.price, source: DS.PROVIDERS[q.source]?.name || q.source, sourceId: q.source, latencyMs: ms, bid, ask, feed: nb?.feed || null, holding: await holding(req.user.id, account, symbol), session: session(),
       // A limit or stop order is valued at its own price.

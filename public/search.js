@@ -9,7 +9,7 @@ export function initSearch(helpers, nav) {
   H = helpers;
   pages = nav.flatMap(([g, items]) => items.map(([k, t]) => ({ k, t, g, words: `${t} ${g} ${ALIASES[k] || ''}`.toLowerCase() })));
   const top = document.getElementById('top'), btn = document.createElement('button');
-  btn.id = 'searchBtn'; btn.className = 'ghost'; btn.type = 'button'; btn.setAttribute('aria-label', 'Search'); btn.title = 'Search (Ctrl+K)';
+  btn.id = 'searchBtn'; btn.className = 'ghost hdrbtn'; btn.type = 'button'; btn.setAttribute('aria-label', 'Search'); btn.title = 'Search (Ctrl+K)';
   btn.innerHTML = '🔎<span class="long"> Search</span>';
   top.insertBefore(btn, document.getElementById('viewAs'));
   btn.onclick = open;

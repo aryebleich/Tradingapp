@@ -12,19 +12,26 @@ export const CRAWLERS = {
   amazon: { name: 'Amazon', agents: ['Amazonbot'] },
   others: { name: 'Other AI crawlers', agents: ['cohere-ai', 'Diffbot', 'YouBot', 'DuckAssistBot', 'MistralAI-User', 'Timpibot', 'ImagesiftBot'] },
 };
+// AI *search* assistants: they fetch a page to answer a question and cite it with a link (ChatGPT
+// search, Claude, Perplexity...). They are not the training crawlers. Allowing them is how a site
+// shows up in AI answers; training crawlers stay blocked unless the owner allows each company.
+export const SEARCH_AGENTS = ['OAI-SearchBot', 'ChatGPT-User', 'Claude-SearchBot', 'Claude-User', 'PerplexityBot', 'Perplexity-User', 'DuckAssistBot', 'MistralAI-User'];
 // Never open to any crawler.
 export const PRIVATE_PATHS = ['/app', '/api/', '/admin', '/auth/', '/oauth/', '/twilio/', '/webhooks/', '/mcp'];
 export const DEFAULTS = {
   allow: Object.fromEntries(Object.keys(CRAWLERS).map(k => [k, false])),
   search: true, // Google Search, Bing and others may list the public pages
+  aiSearch: true, // AI search assistants may read and cite the public pages (Admin → SEO)
   llms: 'Brightfolio is software for testing, paper trading and automating stock strategies on your own brokerage account. It is not a broker or an investment adviser. Website: the homepage, Terms, Privacy and Risk Disclosure pages.',
   llmsOn: false,
   accountData: 'private', // 'private': only to providers that do not train on it · 'always' · 'never'
 };
 export function robotsTxt(s = DEFAULTS) {
   const lines = ['# Set in Brightfolio Admin → AI & privacy.', ''];
-  const blockedAgents = Object.entries(CRAWLERS).filter(([k]) => !s.allow[k]).flatMap(([, c]) => c.agents);
-  const allowedAgents = Object.entries(CRAWLERS).filter(([k]) => s.allow[k]).flatMap(([, c]) => c.agents);
+  const aiSearch = s.aiSearch !== false ? SEARCH_AGENTS : [];
+  const blockedAgents = Object.entries(CRAWLERS).filter(([k]) => !s.allow[k]).flatMap(([, c]) => c.agents).filter(a => !aiSearch.includes(a));
+  const allowedAgents = Object.entries(CRAWLERS).filter(([k]) => s.allow[k]).flatMap(([, c]) => c.agents).filter(a => !aiSearch.includes(a));
+  if (aiSearch.length) lines.push('# AI search assistants: may read and cite the public pages (not used for training).', ...aiSearch.map(a => `User-agent: ${a}`), ...PRIVATE_PATHS.map(p => `Disallow: ${p}`), 'Allow: /', '');
   if (blockedAgents.length) lines.push('# AI crawlers: not allowed to read or train on this site.', ...blockedAgents.map(a => `User-agent: ${a}`), 'Disallow: /', '');
   if (allowedAgents.length) lines.push('# AI crawlers allowed on the public pages.', ...allowedAgents.map(a => `User-agent: ${a}`), ...PRIVATE_PATHS.map(p => `Disallow: ${p}`), 'Allow: /', '');
   lines.push('# Everyone else (search engines).', 'User-agent: *', ...(s.search ? PRIVATE_PATHS.map(p => `Disallow: ${p}`) : ['Disallow: /']), '');

@@ -54,7 +54,7 @@ def layout(title, desc, body, lang='en', home='index.html', banner=''):
     <div><b>{T('Company')}</b><a href="contact.html">{T('Contact &amp; support')}</a><a href="terms.html">{T('Terms of Service')}</a><a href="privacy.html">{T('Privacy Policy')}</a><a href="risk.html">{T('Risk Disclosure')}</a></div>
     <div><b>{T('Trust')}</b><a href="status.html">{T('System status')}</a><a href="security.html">{T('Security')}</a><a href="insurance.html">{T('Insurance and protection')}</a></div>
   </div>
-  <p class="disc">{T('Investing involves risk, including possible loss of principal. Backtests and projections are hypothetical, are built with the benefit of hindsight and do not guarantee future results. Brightfolio is a software provider and is not a broker-dealer. Brokerage services are provided by your own broker (for example Alpaca Securities LLC, member FINRA/SIPC) under your own account agreement. Nothing on this site is an offer, solicitation or recommendation to buy or sell any security.')}</p>
+  <p class="disc">{T('Investing involves risk, including possible loss of principal. Backtests and projections are hypothetical, are built with the benefit of hindsight and do not guarantee future results. Brightfolio is a software provider and is not a broker-dealer. Brokerage services are provided by the broker you choose, under your own account agreement. Nothing on this site is an offer, solicitation or recommendation to buy or sell any security.')}</p>
   <p class="disc">© 2026 Brightfolio. {T('All rights reserved.')}<span data-credit></span></p>
 </div></footer>
 </body>
@@ -296,7 +296,7 @@ def index(lang='en'):
     <ul class="ticks"><li>{T('Set up in 3 minutes')}</li><li>{T('$100,000 paper account')}</li><li>{T('No card needed')}</li></ul>
     <p class="demolink"><a href="#start">{T('New to investing? Start here')} &darr;</a> · <a href="#demo">{T('Try the live demo, no sign-up')} &darr;</a></p>
     <p class="applink"><a class="btn outline" href="https://github.com/aryebleich/Tradingapp/releases/download/android-latest/brightfolio.apk" rel="noopener">{ic('phone', 18)} {T('Download the Android app')}</a></p>
-    <p class="acctlink"><a data-app="#/open-account" href="app">{T('Open a brokerage account')} &rarr;</a> <span>{T('Commission-free, held at Alpaca Securities LLC (FINRA/SIPC)')}</span></p>
+    <p class="acctlink"><a data-app="#/brokers" href="app">{T('Connect your brokerage')} &rarr;</a> <span>{T('Use the broker you already have, or open a commission-free account (we suggest Alpaca)')}</span></p>
     <p class="phoneline hero-phone" data-phone hidden>{ic('msg', 16)} {T('Text or call us:')} <a data-phone-link dir="ltr"></a></p>
   </div>
   <figure class="shot"><div class="frame"><i></i><i></i><i></i></div><img src="hero-app.webp" width="1600" height="1000" alt="{T('Brightfolio portfolio dashboard with equity chart, positions and order ticket')}" fetchpriority="high"><figcaption>{T('Illustrative paper-trading account')}</figcaption></figure>

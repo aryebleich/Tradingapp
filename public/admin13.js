@@ -4,7 +4,7 @@ let H;
 export function registerAdmin13(routes, helpers) {
   H = helpers;
   const guard = fn => (view, q) => (H.me()?.role === 'admin' ? fn(view, q) : (location.hash = '#/dashboard'));
-  Object.assign(routes, { 'admin-data': guard(dataPage), 'admin-comms': guard(commsPage), 'admin-strategies': guard(originalsPage) });
+  Object.assign(routes, { 'admin-data': guard(dataPage), 'admin-comms': guard(commsPage), 'admin-strategies': guard(originalsPage), 'admin-seo': guard(seoPage) });
 }
 
 async function dataPage(view) {
@@ -103,4 +103,91 @@ async function originalsPage(view) {
     ${t.sleeves ? t.sleeves.map(sl => `<h3 class="sleeve">${H.esc(sl.name)} <span class="mu">${Math.round(sl.weight * 100)}%</span></h3><table class="slim">${sl.steps.map(st => `<tr><td><b>${H.esc(st.id)}</b></td><td data-no-tr style="font-size:13px">${H.esc(stepTxt(st))}</td></tr>`).join('')}</table>`).join('') : `<pre style="white-space:pre-wrap;font-size:12px" data-no-tr>${H.esc(JSON.stringify(t.params, null, 1))}</pre>`}
     ${t.note ? `<p class="note">${H.esc(t.note)}</p>` : ''}<div class="err"></div></div>`).join('')}`;
   H.$$('[data-open]', view).forEach(b => H.act(b, async () => { const s = await H.api('/library', { body: { templateId: b.dataset.open } }); location.hash = '#/strategy?id=' + s.id; return ''; }));
+}
+
+// ---------- Admin → SEO ----------
+// Google and AI search visibility: an audit with fixes, each page's title and description with a
+// search-result preview, verification codes, profiles, AI search and llms.txt, IndexNow and tools.
+async function seoPage(view) {
+  const d = await H.api('/admin/seo'), s = d.settings, a = d.audit, B = d.base || location.origin;
+  const bad = a.checks.filter(c => !c.ok), good = a.checks.filter(c => c.ok);
+  const enc = encodeURIComponent;
+  const pageRow = p => {
+    const cur = a.pages.find(x => x.key === p.key) || {}, o = s.pages[p.key] || {};
+    return `<div class="seopage" data-key="${p.key}"><h3>${H.esc(p.name)} <span class="mu" data-no-tr style="font-size:13px;font-weight:500">${H.esc(p.path)}</span></h3>
+      <label>Title <span class="cnt" data-for="t"></span><input data-f="title" maxlength="120" value="${H.esc(o.title || '')}" placeholder="${H.esc(cur.title || '')}"></label>
+      <label>Description <span class="cnt" data-for="d"></span><textarea data-f="description" rows="2" maxlength="320" placeholder="${H.esc(cur.description || '')}">${H.esc(o.description || '')}</textarea></label>
+      <label class="chk2"><input type="checkbox" data-f="noindex" ${o.noindex ? 'checked' : ''}> Hide from search engines (noindex)</label>
+      <div class="serp"><div class="serp-url" data-no-tr>${H.esc(B.replace(/^https?:\/\//, ''))}${H.esc(p.path === '/' ? '' : ' › ' + p.path.slice(1))}</div><div class="serp-title"></div><div class="serp-desc"></div></div></div>`;
+  };
+  view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-seo')}
+  <div class="card seoscore"><div class="row" style="gap:18px;align-items:center;flex-wrap:wrap">
+    <div class="ring" style="--p:${a.score}"><b>${a.score}</b><span>/100</span></div>
+    <div style="flex:1;min-width:240px"><h2 style="margin:0">Search visibility</h2><p class="mu" style="margin:4px 0 0">How ready the public pages are for Google, Bing and AI search (ChatGPT, Claude, Perplexity). ${bad.length ? `<b>${bad.length}</b> thing${bad.length === 1 ? '' : 's'} to fix, most important first.` : 'Everything checked is in place.'}</p></div></div>
+    ${bad.length ? `<ul class="seochecks">${bad.sort((x, y) => y.weight - x.weight).map(c => `<li class="no"><b>${H.esc(c.title)}</b> <span class="mu">· ${H.esc(c.where)}</span><div>${H.esc(c.fix)}</div></li>`).join('')}</ul>` : ''}
+    <details><summary class="mu">${good.length} checks passed</summary><ul class="seochecks">${good.map(c => `<li class="yes">${H.esc(c.title)} <span class="mu">· ${H.esc(c.where)}</span></li>`).join('')}</ul></details></div>
+
+  <form class="card" id="seoSite"><h2>Search engines and AI search</h2>
+    <label class="chk2"><input type="checkbox" name="search" ${d.ai.search !== false ? 'checked' : ''}> Search engines may list the public pages (Google, Bing...)</label>
+    <label class="chk2"><input type="checkbox" name="aiSearch" ${d.ai.aiSearch ? 'checked' : ''}> AI search may read and cite the public pages (ChatGPT search, Claude, Perplexity). AI <b>training</b> crawlers stay blocked (AI &amp; privacy).</label>
+    <label class="chk2"><input type="checkbox" name="llmsOn" ${d.ai.llmsOn ? 'checked' : ''}> Publish llms.txt (a short description and the page list for AI tools)</label>
+    <label>What AI tools should say about the business (llms.txt)<textarea name="llms" rows="3" maxlength="2000">${H.esc(d.ai.llms || '')}</textarea></label>
+    <div class="grid2"><label>Google Search Console code<input name="google" value="${H.esc(s.google)}" placeholder="the content=&quot;…&quot; part of the HTML tag" dir="ltr"></label>
+      <label>Bing Webmaster Tools code<input name="bing" value="${H.esc(s.bing)}" placeholder="msvalidate.01 code" dir="ltr"></label>
+      <label>Yandex code (optional)<input name="yandex" value="${H.esc(s.yandex)}" dir="ltr"></label>
+      <label>X / Twitter handle (optional)<input name="twitter" value="${H.esc(s.twitter)}" placeholder="@brightfolio" dir="ltr"></label></div>
+    <label>Business name in search<input name="orgName" value="${H.esc(s.orgName)}"></label>
+    <label>Social and business profiles (one per line: LinkedIn, X, YouTube, Crunchbase…)<textarea name="sameAs" rows="2" dir="ltr">${H.esc((s.sameAs || []).join('\n'))}</textarea></label>
+    <label class="chk2"><input type="checkbox" name="faq" ${s.faq ? 'checked' : ''}> Show the homepage questions as an FAQ in search (structured data)</label>
+    <button>Save</button><div class="err"></div></form>
+
+  <div class="card" id="seoPages"><h2>Pages: titles and descriptions</h2>
+    <p class="mu" style="margin-top:0">Leave a box empty to keep the page's own text (shown in grey). Titles: 30–60 characters with the main words first; descriptions: 70–160 characters that say what the visitor gets. Each page should be different.</p>
+    ${d.pages.map(pageRow).join('')}
+    <button id="savePages">Save pages</button><div class="err"></div></div>
+
+  <div class="card"><h2>Announce and check</h2>
+    <p class="mu" style="margin-top:0">After changing pages, announce them: IndexNow tells Bing (which also powers ChatGPT search and DuckDuckGo), Yandex and others at once. For Google, submit the sitemap once in Search Console; it then re-reads it by itself.</p>
+    <div class="row" style="gap:8px;flex-wrap:wrap"><button id="ping" type="button">Announce pages now (IndexNow)</button>
+      <a href="/sitemap.xml" target="_blank" rel="noopener"><button class="ghost" type="button">sitemap.xml</button></a><a href="/robots.txt" target="_blank" rel="noopener"><button class="ghost" type="button">robots.txt</button></a><a href="/llms.txt" target="_blank" rel="noopener"><button class="ghost" type="button">llms.txt</button></a></div><div class="err"></div>
+    <p class="mu small-print">${s.lastPing ? `Last announced ${H.date(s.lastPing)}.` : 'Not announced yet.'}</p>
+    <div class="row" style="gap:8px;flex-wrap:wrap">
+      <a href="https://search.google.com/search-console" target="_blank" rel="noopener"><button class="small ghost" type="button">Google Search Console</button></a>
+      <a href="https://www.bing.com/webmasters" target="_blank" rel="noopener"><button class="small ghost" type="button">Bing Webmaster Tools</button></a>
+      <a href="https://search.google.com/test/rich-results?url=${enc(B + '/')}" target="_blank" rel="noopener"><button class="small ghost" type="button">Rich results test</button></a>
+      <a href="https://pagespeed.web.dev/analysis?url=${enc(B + '/')}" target="_blank" rel="noopener"><button class="small ghost" type="button">PageSpeed Insights</button></a></div></div>
+
+  <details class="card"><summary><b>What ranks well (current best practice)</b></summary><ul class="tips">
+    <li><b>Helpful, specific content</b> that answers what people search for ("how to backtest a strategy", "paper trading app"), written by people who know the subject; show who is behind the business (about, contact, licences).</li>
+    <li><b>One topic per page</b>, one h1, a clear title and description, and plain internal links between pages.</li>
+    <li><b>Fast and mobile-friendly</b>: good Core Web Vitals (check PageSpeed Insights); the site is served over https.</li>
+    <li><b>Structured data</b> (already added: organization, website, the app with its prices, FAQ) helps Google show rich results and helps AI tools describe the business correctly.</li>
+    <li><b>AI search</b>: allow the AI search bots (on above), keep facts consistent across the site and profiles, publish llms.txt, and get mentioned on trusted sites (reviews, comparisons, news): AI answers cite pages that others cite.</li>
+    <li><b>Links from other sites</b> still matter most: partner pages, app directories, fintech reviews, guest articles. Never buy links.</li>
+    <li>Nothing guarantees a top position; these are the things search engines say they reward.</li></ul></details>`;
+
+  const site = H.$('#seoSite', view);
+  H.act(H.$('button', site), async () => {
+    const v = H.form(site);
+    await H.api('/admin/seo', { method: 'PUT', body: { search: !!v.search, aiSearch: !!v.aiSearch, llmsOn: !!v.llmsOn, llms: v.llms, google: v.google, bing: v.bing, yandex: v.yandex, twitter: v.twitter, orgName: v.orgName, sameAs: v.sameAs, faq: !!v.faq } });
+    setTimeout(H.render, 500); return 'Saved';
+  });
+  // Live counters and the search-result preview.
+  H.$$('.seopage', view).forEach(box => {
+    const t = H.$('[data-f=title]', box), dsc = H.$('[data-f=description]', box);
+    const upd = () => {
+      const tv = t.value || t.placeholder, dv = dsc.value || dsc.placeholder;
+      const ct = H.$('[data-for=t]', box), cd = H.$('[data-for=d]', box);
+      ct.textContent = `${tv.length} characters`; ct.className = 'cnt ' + (tv.length >= 30 && tv.length <= 60 ? 'pos' : 'warn');
+      cd.textContent = `${dv.length} characters`; cd.className = 'cnt ' + (dv.length >= 70 && dv.length <= 160 ? 'pos' : 'warn');
+      H.$('.serp-title', box).textContent = tv.length > 62 ? tv.slice(0, 60) + '…' : tv;
+      H.$('.serp-desc', box).textContent = dv.length > 160 ? dv.slice(0, 157) + '…' : dv;
+    };
+    t.oninput = dsc.oninput = upd; upd();
+  });
+  H.act(H.$('#savePages', view), async () => {
+    const pages = Object.fromEntries(H.$$('.seopage', view).map(box => [box.dataset.key, { title: H.$('[data-f=title]', box).value, description: H.$('[data-f=description]', box).value, noindex: H.$('[data-f=noindex]', box).checked }]));
+    await H.api('/admin/seo', { method: 'PUT', body: { pages } }); setTimeout(H.render, 500); return 'Saved. The pages now show these.';
+  });
+  H.act(H.$('#ping', view), async () => { const r = await H.api('/admin/seo/indexnow', { body: {} }); setTimeout(H.render, 800); return `Announced ${r.sent} pages.`; });
 }

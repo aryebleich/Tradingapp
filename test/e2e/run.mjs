@@ -157,6 +157,14 @@ console.log('Desktop (1360x900)');
     if (await p.$$eval('[data-cancel]', e => e.length)) throw new Error('open orders remain');
   });
   // Selling must match the account: "Sell all" sells exactly what Alpaca holds, and nothing more.
+  await step('trade: symbol search lists matches and opens one with the keyboard', async () => {
+    await p.goto(B + '/app#/trade?symbol=AAPL'); await p.waitForSelector('#search input[name=q]', { timeout: 15000 });
+    await p.fill('#search input[name=q]', 'SPY'); await p.waitForSelector('#symList:not([hidden]) li[data-i] b:text-is("SPY")', { timeout: 15000 });
+    await p.screenshot({ path: path.join(OUT, 'trade-search.png') });
+    await p.keyboard.press('ArrowDown'); await p.keyboard.press('ArrowUp'); await p.keyboard.press('Enter');
+    await p.waitForFunction(() => /symbol=SPY/.test(location.hash), null, { timeout: 10000 });
+    await p.waitForSelector('#search input[name=q]'); await p.click('#search input[name=q]'); await p.waitForSelector('#symList li:has-text("Recent")');
+  });
   await step('live: sell all matches the Alpaca account, and a sell of shares not held is refused', async () => {
     mock.autoFill = true;
     try {
@@ -415,7 +423,8 @@ console.log('Settings → Language');
   });
   await step('paper limit order waits, then cancels', async () => {
     await go('#/dashboard', '#ticket'); await p.fill('#ticket [name=symbol]', 'SPY'); await p.selectOption('#ticket [name=type]', 'limit');
-    await p.fill('#ticket [name=qty]', '1'); await p.fill('#ticket [name=limit_price]', '1'); await p.waitForSelector('#qGuide .oguide');
+    await p.fill('#ticket [name=qty]', '1'); await p.fill('#ticket [name=limit_price]', '1'); await p.waitForSelector('#qGuide .oguide .og-facts');
+    await (await p.$('#ticket')).screenshot({ path: path.join(OUT, 'order-type-box.png') });
     await p.click('#qPlace'); await p.waitForFunction(() => /open/.test(document.querySelector('#ticket .ok')?.textContent || ''), null, { timeout: 15000 });
     await go('#/dashboard', '[data-pcancel]'); await p.click('[data-pcancel]'); await p.waitForTimeout(800);
   });
@@ -450,8 +459,15 @@ console.log('Settings → Language');
     await p.click('#ver'); await p.waitForFunction(() => /check out/.test(document.querySelector('#vOut')?.textContent || ''), null, { timeout: 15000 });
   });
   await step('glossary tooltip explains a term', async () => { await go('#/longterm', '.gl'); await p.click('.gl'); await p.waitForSelector('.glpop:not([hidden])'); });
-  await step('lock from the header, unlock on Security', async () => {
-    await go('#/dashboard', '#lockBtn'); await p.click('#lockBtn'); await p.waitForFunction(() => location.hash === '#/security', null, { timeout: 15000 });
+  await step('close all positions from the header (typed CLOSE and the password)', async () => {
+    await p.evaluate(() => fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ account: 'paper', symbol: 'MSFT', side: 'buy', type: 'market', qty: 2 }) }));
+    await go('#/dashboard', '#closeAllBtn'); await p.click('#closeAllBtn');
+    await p.waitForSelector('dialog.secure[open]'); await p.fill('dialog.secure input[name=password]', 'Str0ngPassword'); await p.fill('dialog.secure input[name=typed]', 'CLOSE');
+    await p.check('dialog.secure input[name=ok]'); await p.click('dialog.secure button[value=yes]');
+    await p.waitForFunction(async () => (await (await fetch('/api/account?account=paper')).json()).positions.length === 0, null, { timeout: 15000, polling: 500 });
+  });
+  await step('lock on Security, then unlock', async () => {
+    await go('#/security', '#lockNow'); await p.click('#lockNow'); await p.waitForSelector('#unl', { timeout: 15000 });
     await p.waitForSelector('#unl'); await p.fill('#unl input[name=password]', 'Str0ngPassword'); await p.click('#unl button');
     await p.waitForSelector('#unl .ok, .killcard + .card', { timeout: 15000 });
     await p.waitForFunction(() => /work again/.test(document.body.textContent), null, { timeout: 15000 });

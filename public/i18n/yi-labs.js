@@ -639,7 +639,6 @@ export default {
  "Stock A": "סטאק א'",
  "of new profit. You only pay when an account is above its previous peak, after deposits and withdrawals.": "נאר אויף פרישע רווחים. איר צאלט נאר ווען די אקאונט שטייגט איבער איר פריערדיגן העכסטן שטאפל, נאכדעם וואס מ'רעכנט אויס די דעפאזיטס און וויטדראולס.",
  "(existing Alpaca account or API keys)": "(אן עקזיסטירנדע Alpaca אקאונט אדער API קיס)",
- "Trading involves risk of loss. Backtests and projections are hypothetical and do not guarantee future results. Brightfolio is software, not a broker or investment adviser; orders route to your own Alpaca account.": "טרעידינג קומט מיט א ריזיקע פון פארלירן געלט. בעק-טעסטס און השערות זענען בלויז היפאטעטיש און זענען נישט קיין שום גאראנטי אויף די הצלחה אין די צוקונפט. Brightfolio איז א פראגראם פראוויידער, נישט קיין בראוקער אדער אינוועסטמענט עדווייזער; אלע ארדערס ווערן געשיקט דירעקט דורך אייער פערזענליכע אלפאקא (Alpaca) אקאונט.",
  "Required by law to verify your identity (KYC). Your SSN goes to Alpaca over an encrypted connection and is not stored by Brightfolio.": "לויט'ן געזעץ איז מען מחויב דורכצוגיין א וועריפיקאציע פון די אידענטיטעט (KYC). דיין סאשעל סעקיוריטי נומער (SSN) ווערט געשיקט צו Alpaca דורך א פארזיכערטע ענקריפטעד קאנעקשן, און Brightfolio סטאורט דאס נישט ביי זיך.",
  "Choose a file to upload": "קלויבט אויס א פייל ארויפצולייגן",
  ", then open Account → Alpaca account.": ", און דערנאך גייט אריבער צו 'Account' און סעלעקטירט דעם 'Alpaca account'.",

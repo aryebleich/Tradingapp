@@ -40,7 +40,10 @@ export function guide(type, side, px, limit, stop) {
     stop: side === 'buy' ? 'When the price rises to your stop, buys at the market.' : 'When the price falls to your stop, sells at the market.',
     stop_limit: side === 'buy' ? 'When the price rises to the stop, places a buy limit; fills in the shaded zone.' : 'When the price falls to the stop, places a sell limit; fills in the shaded zone.',
     trailing_stop: side === 'buy' ? 'Follows the price down and buys when it bounces back up by your trail.' : 'Follows the price up and sells when it drops back by your trail.' }[type] || '';
-  return `<div class="oguide"><div><b>${esc(t.name)}</b>: ${esc(t.short)} ${esc(how)}<br><span class="mu"><b>Use it when</b> ${esc(t.when)} <b>Watch out:</b> ${esc(t.risk)}</span></div>${type === 'trailing_stop' ? '' : orderPicture(type, side, px, limit, stop)}</div>`;
+  // Stacked so it reads well in a narrow ticket: what it does, the picture, then when to use it.
+  return `<div class="oguide"><div class="og-head"><span class="og-tag">${esc(t.name)}</span><span>${esc(t.short)} ${esc(how)}</span></div>
+    ${type === 'trailing_stop' ? '' : `<div class="og-pic">${orderPicture(type, side, px, limit, stop)}</div>`}
+    <dl class="og-facts"><div><dt>Use it when</dt><dd>${esc(t.when)}</dd></div><div><dt>Watch out</dt><dd>${esc(t.risk)}</dd></div></dl></div>`;
 }
 export function costBox(c, side) {
   if (!c) return '<p class="mu small-print">Enter a quantity to see what the trade costs.</p>';

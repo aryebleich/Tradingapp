@@ -537,7 +537,7 @@ private fun MoreScreen(user: JSONObject, onSignedOut: () -> Unit) {
     val scope = rememberCoroutineScope()
     val links = listOf(
         "Get started (guided setup)" to "/app#/start", "Learn: short lessons" to "/app#/learn", "S&P 500 plan" to "/app#/sp500",
-        "Ready-made strategies" to "/app#/strategies", "Charts" to "/app#/chart", "Open a real brokerage account" to "/app#/account",
+        "Ready-made strategies" to "/app#/strategies", "Charts" to "/app#/chart", "Choose your brokerage" to "/app#/brokers",
         "Plans & billing" to "/app#/funding", "Settings" to "/app#/settings", "Security & help" to "/app#/security", "Everything else (full website)" to "/app",
     )
     LazyColumn(contentPadding = PaddingValues(16.dp)) {
