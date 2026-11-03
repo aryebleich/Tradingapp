@@ -1594,5 +1594,13 @@ export default {
  "Check before you send money": "שטענדיג איבערקוקן און זיכער מאכן פארן ארויסשיקן די פעימענט.",
  "The risks in plain words": "די סכנות אויף א פשוט'ן אופן",
  "AI coding agents": "AI קאודינג עידזשענטס",
- "Download the Android app": "לאדט אראפ די אנדרויד עפפ"
+ "Download the Android app": "לאדט אראפ די אנדרויד עפפ",
+ "Retirement & IRAs": "ריטייערמענט און IRA קאנטעס",
+ "Traditional or Roth?": "טרעדישענעל אדער ראט?",
+ "How much can I put in?": "וואס איז מיין לימיט אריינצולייגן (קאנטריביושן לימיט)?",
+ "Which of my accounts are IRAs?": "וועלכע פון מיינע אקאונטס ווערן פאררעכנט אלס IRA?",
+ "Saved so far ($)": "סך הכל וואס איך האב שוין אנגעזאמלט ביז היינט ($)",
+ "Tax rate now %": "די יעצטיגע טעקס ראטע: %",
+ "Tax rate in retirement %": "ריטייערמענט טעקס ראטע (%)",
+ "Taxable (regular brokerage)": "א טעקסעבל אקאונט (א געווענליכע בראוקערעדזש אקאונט)"
 };
