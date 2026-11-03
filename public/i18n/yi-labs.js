@@ -1576,5 +1576,4 @@ export default {
  "Choose your brokerage": "קלויבט אויס אייער בראוקערעדזש",
  "Open or connect Alpaca": "עפנט אדער קאנעקט אלפאקא",
  "Search a stock, ETF or crypto: AAPL, Apple, BTC/USD…": "זוך א סטאק, ETF, אדער קריפטא: למשל, AAPL, Apple, BTC/USD...",
- "No match. Press Go to open this symbol anyway.": "ס'איז נישט געפונען געווארן קיין שום רעזולטאט. דרוקט אויף \"Go\" צו עפענען דעם סימבאל סיי ווי."
 };
