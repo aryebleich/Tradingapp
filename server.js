@@ -96,6 +96,9 @@ import { router as sp500Router } from './src/sp500.js';
 import { router as extRouter, oauthCallback as extOauthCallback, accountsFor } from './src/ext/routes.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+// On Render the service's own address is known (RENDER_EXTERNAL_URL) when PUBLIC_URL is not set, so
+// payment return links and the Stripe webhook never point at localhost.
+if (!process.env.PUBLIC_URL && process.env.RENDER_EXTERNAL_URL) process.env.PUBLIC_URL = process.env.RENDER_EXTERNAL_URL;
 const PUBLIC_URL = (process.env.PUBLIC_URL || 'http://localhost:3000').replace(/\/$/, '');
 // Node.js must carry the latest security fixes (security/node-floor.json). In production an
 // unpatched runtime refuses to start, so a deploy on it fails its health check and the previous,
@@ -194,8 +197,10 @@ app.use((req, res, next) => {
 // Stripe needs the raw body for signature checks, so mount it before the JSON parser.
 app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
   const raw = req.body.toString('utf8');
-  if (!N.verifyStripe(raw, req.headers['stripe-signature'])) return res.status(400).send('bad signature');
+  if (!N.verifyStripe(raw, req.headers['stripe-signature'])) { siteSet('stripeBadSignature', { at: now() }).catch(() => {}); return res.status(400).send('bad signature'); }
   const ev = JSON.parse(raw), o = ev.data.object;
+  // Shown in Admin → Money & fees → Stripe, so the owner can see events arriving.
+  siteSet('stripeLastEvent', { type: ev.type, id: ev.id, livemode: !!ev.livemode, at: now() }).catch(() => {});
   try {
     // Stripe retries deliveries, so every ledger write is keyed by a Stripe id (unique index ledger_ref).
     if (ev.type === 'checkout.session.completed' && o.metadata?.kind === 'subscription') {

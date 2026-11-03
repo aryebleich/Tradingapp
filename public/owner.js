@@ -35,7 +35,35 @@ const modeHtml = (mode, ria, doneSteps) => `<div class="card"><h2>Business mode<
 
 // Money & fees: the money levers, referrals, ways the business earns and credits, under the
 // overview figures (Admin → Money & fees).
+// Stripe: is everything in place for customers to pay, and one button to finish the setup.
+async function stripeCard(view) {
+  const box = document.createElement('div'); box.className = 'card'; box.id = 'stripeCard';
+  const h1 = view.querySelector('h1'); (h1?.nextElementSibling ? h1.nextElementSibling.after(box) : view.prepend(box));
+  const draw = async (note = '') => {
+    const s = await H.api('/admin/site/stripe').catch(e => ({ error: e.message }));
+    const ok = v => (v ? '<span class="pill pos">Done</span>' : '<span class="pill warn">Missing</span>');
+    const priceRows = Object.entries(s.prices || {}).map(([k, v]) => `<li>${ok(v)} <code>${H.esc(k)}</code></li>`).join('');
+    const ev = s.lastEvent ? `${H.esc(s.lastEvent.type)} · ${new Date(s.lastEvent.at).toLocaleString()}${s.lastEvent.livemode ? '' : ' (test mode)'}` : 'none yet';
+    box.innerHTML = `<div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">Stripe: plan payments</h2>${s.ready ? '<span class="pill pos">Customers can pay</span>' : s.keySet ? '<span class="pill warn">Setup not finished</span>' : '<span class="pill">Not connected</span>'}</div>
+      ${!s.keySet ? '<p>Add <code>STRIPE_SECRET_KEY</code> in Render (or Admin → Keys), then come back here.</p>' : `
+      <ul class="plain" style="margin:10px 0">
+        <li>${ok(s.keySet)} Secret key · <b>${s.mode === 'live' ? 'live mode (real money)' : s.mode === 'test' ? 'test mode (no real money)' : 'mode unknown'}</b>${s.account ? ` · account ${H.esc(s.account.name || s.account.id)}` : ''}</li>
+        ${s.account ? `<li>${ok(s.account.chargesEnabled)} Stripe lets this account take payments${s.account.chargesEnabled ? '' : ': finish the account details in the Stripe dashboard (business, bank account, identity)'}</li>` : ''}
+        <li>${ok(s.webhookSecret && !s.webhook?.missing)} Webhook <code>${H.esc(s.webhookUrl)}</code>${s.webhook?.status && s.webhook.status !== 'enabled' ? ` (${H.esc(s.webhook.status)})` : ''}</li>
+        <li>${ok(s.portal)} Billing portal (customers change card, switch plan, see invoices, cancel)</li>
+        <li>Plan prices<ul class="plain" style="margin:4px 0 0 18px">${priceRows}</ul></li>
+        <li class="mu">Last event received: ${ev}${s.badSignature ? ` · last rejected (bad signature): ${new Date(s.badSignature.at).toLocaleString()}` : ''}</li></ul>
+      ${s.error ? `<p class="err">${H.esc(s.error)}</p>` : ''}
+      ${/^http:\/\/localhost/.test(s.siteUrl) ? '<p class="err">The site address is not known: set <code>PUBLIC_URL</code> in Render to your site\'s https address first.</p>' : ''}
+      <p class="mu small-print">“Finish setup” creates (or updates) the Pro, Elite and Ultimate products with monthly and yearly prices matching the site, the webhook for ${s.events.length} events, and the billing portal, and saves their ids${s.renderConnected ? ' here and in Render' : ' here (kept in the database)'}. Running it again changes nothing that is already right. Plan prices come from the site's plan settings.</p>
+      <div class="row"><button id="stripeSetup">${s.ready ? 'Check and update' : 'Finish setup'}</button></div><div id="stripeOut" class="mu">${note}</div>`}`;
+    const b = box.querySelector('#stripeSetup');
+    if (b) H.act(b, async () => { const r = await H.api('/admin/site/stripe/setup', { body: {} }); await draw(`<ul class="plain">${r.report.map(x => `<li>✓ ${H.esc(x)}</li>`).join('')}</ul>${r.saved.length ? `Saved: ${r.saved.map(H.esc).join(', ')}${r.render ? ' (also in Render)' : ''}.` : 'Nothing needed saving.'}`); return 'Done'; }, box.querySelector('#stripeOut'));
+  };
+  await draw();
+}
 async function moneyExtras(view) {
+  await stripeCard(view);
   const [mode, sum, money, ria] = await Promise.all([H.api('/admin/site/mode'), H.api('/admin/summary'), H.api('/admin/site/money'), H.api('/admin/site/ria')]);
   const f = sum.funnel, m = money.settings, st = money.stats, doneSteps = ria.steps.filter(x => x.done).length;
   const ms = [...m.milestones, { at: '', bonus: '' }, { at: '', bonus: '' }].slice(0, Math.max(3, m.milestones.length));

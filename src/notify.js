@@ -41,7 +41,7 @@ export function validTwilioSignature(url, params, signature) {
 export const xml = s => String(s).replace(/[<>&'"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[c]));
 
 async function stripe(path, params) {
-  const r = await fetch('https://api.stripe.com/v1' + path, {
+  const r = await fetch((env('STRIPE_API_URL') || 'https://api.stripe.com') + '/v1' + path, {
     method: 'POST',
     headers: { Authorization: 'Bearer ' + env('STRIPE_SECRET_KEY'), 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams(params),
@@ -64,7 +64,7 @@ export const checkoutCredits = ({ pack, email, userId, baseUrl }) => stripe('/ch
 export function checkoutSubscription({ plan, interval = 'month', trialDays = 0, email, customer, userId, baseUrl }) {
   const key = `STRIPE_PRICE_${plan.toUpperCase()}${interval === 'year' ? '_YEARLY' : ''}`;
   const price = env(key);
-  if (!price) throw new Error(`Set ${key} to the Stripe price id for this plan`);
+  if (!price) throw Object.assign(new Error('Paid plans are almost ready: the site owner needs to finish the Stripe setup (Admin → Money & fees → Stripe).'), { status: 503 });
   return stripe('/checkout/sessions', {
     mode: 'subscription', ...(customer ? { customer } : { customer_email: email }), client_reference_id: String(userId),
     'metadata[plan]': plan, 'metadata[kind]': 'subscription', 'metadata[interval]': interval,
@@ -77,7 +77,7 @@ export function checkoutSubscription({ plan, interval = 'month', trialDays = 0, 
 }
 
 // Stripe-hosted page where customers update cards, switch plans, download invoices or cancel.
-export const billingPortal = ({ customer, baseUrl }) => stripe('/billing_portal/sessions', { customer, return_url: `${baseUrl}/app#/funding` });
+export const billingPortal = ({ customer, baseUrl }) => stripe('/billing_portal/sessions', { customer, return_url: `${baseUrl}/app#/funding`, ...(env('STRIPE_PORTAL_CONFIG') ? { configuration: env('STRIPE_PORTAL_CONFIG') } : {}) });
 
 // Account credit applied to the customer's next invoice (negative amount = credit).
 export const creditCustomer = (customer, dollars, description) =>
@@ -97,7 +97,7 @@ export function checkoutDeposit({ amount, email, userId, ledgerId, baseUrl }) {
 }
 
 export async function cardFunding(paymentIntentId) {
-  const r = await fetch(`https://api.stripe.com/v1/payment_intents/${paymentIntentId}?expand[]=latest_charge`, { headers: { Authorization: 'Bearer ' + env('STRIPE_SECRET_KEY') } });
+  const r = await fetch(`${env('STRIPE_API_URL') || 'https://api.stripe.com'}/v1/payment_intents/${paymentIntentId}?expand[]=latest_charge`, { headers: { Authorization: 'Bearer ' + env('STRIPE_SECRET_KEY') } });
   const d = await r.json();
   return d.latest_charge?.payment_method_details?.card?.funding;
 }

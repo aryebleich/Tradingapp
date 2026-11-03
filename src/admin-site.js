@@ -100,6 +100,20 @@ async function apply(req, changes, toRender) {
   await audit(req.user.id, 'env_changed', { keys: Object.keys(changes), render: !!render }, req.ip);
   return { ok: true, keys: Object.keys(changes), render, restart: Object.keys(changes).filter(S.needsRestart) };
 }
+// Stripe: what is set, and one button that creates the plan prices, the webhook and the portal.
+const siteUrl = () => (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || 'http://localhost:3000').replace(/\/$/, '');
+adminSiteRouter.get('/stripe', wrap(async (req, res) => {
+  const { stripeStatus } = await import('./stripesetup.js');
+  res.json({ ...(await stripeStatus({ siteUrl: siteUrl(), lastEvent: S.siteGet('stripeLastEvent', null), savedWebhookId: S.siteGet('stripeWebhookId', null) })), badSignature: S.siteGet('stripeBadSignature', null), renderConnected: S.renderEnabled() });
+}));
+adminSiteRouter.post('/stripe/setup', wrap(async (req, res) => {
+  const { setupStripe } = await import('./stripesetup.js');
+  const r = await setupStripe({ siteUrl: siteUrl(), savedWebhookId: S.siteGet('stripeWebhookId', null) });
+  await S.siteSet('stripeWebhookId', r.webhookId);
+  const saved = Object.keys(r.changes).length ? await apply(req, r.changes, true) : null;
+  await audit(req.user.id, 'stripe_setup', { mode: r.mode, keys: Object.keys(r.changes) }, req.ip);
+  res.json({ mode: r.mode, account: r.account, report: r.report, saved: saved ? saved.keys : [], render: !!saved?.render });
+}));
 adminSiteRouter.put('/env', wrap(async (req, res) => {
   const { key, value, render = true } = req.body || {};
   const k = String(key || '').trim().toUpperCase();
