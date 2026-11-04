@@ -131,6 +131,8 @@ export function startKycEvents({ idleMs = 5 * 60e3, maxDelay = 60e3 } = {}) {
   let stopped = false, ctrl = null, delay = 1000;
   (async () => {
     while (!stopped) {
+      // A standby server (Admin → Hosting) leaves account events to the active one.
+      if (!(await import('../hosting.js')).isActiveHost()) { await new Promise(r => setTimeout(r, 60e3).unref?.()); continue; }
       ctrl = new AbortController();
       try { await consume(ctrl.signal, idleMs); delay = 1000; }
       catch (e) { if (!stopped) { feedState.error = e.message; console.warn('kyc events:', e.message); } }

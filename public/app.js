@@ -365,7 +365,8 @@ const ICONS = {
   money: '<path d="M3 10h18M5 10V20M9 10v10M15 10v10M19 10v10M3 20h18M12 3l9 5H3z"/>',
   luach: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M12 12l1.2 2.4 2.6.4-1.9 1.8.5 2.6-2.4-1.3-2.4 1.3.5-2.6-1.9-1.8 2.6-.4z"/>',
   brief: '<path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5M8 12h8M8 16h6"/>', taxpilot: '<path d="M12 3v18M17 7.5c0-1.9-2.2-3-5-3s-5 1.1-5 3 2.2 2.7 5 3.3 5 1.4 5 3.5-2.2 3.2-5 3.2-5-1.3-5-3.2"/>',
-  'admin-comms': '<path d="M4 5h16v11H8l-4 4z"/><path d="M8 9h8M8 12h5"/>', 'admin-strategies': '<path d="M12 3v18M5 8h14M7 13h10M9 18h6"/>', 'admin-seo': '<circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5M8 12l2-2 2 2 2-3"/>', 'admin-agents': '<path d="M8 8l-5 4 5 4M16 8l5 4-5 4"/><circle cx="12" cy="12" r="1.5"/>', 'admin-data': '<path d="M3 12h4l3-7 4 14 3-7h4"/><circle cx="12" cy="12" r="0.5"/>', 'admin-trust': '<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/>',
+  'admin-comms': '<path d="M4 5h16v11H8l-4 4z"/><path d="M8 9h8M8 12h5"/>',
+  'admin-hosting': '<rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><path d="M7 7.5h.01M7 16.5h.01"/>', 'admin-strategies': '<path d="M12 3v18M5 8h14M7 13h10M9 18h6"/>', 'admin-seo': '<circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5M8 12l2-2 2 2 2-3"/>', 'admin-agents': '<path d="M8 8l-5 4 5 4M16 8l5 4-5 4"/><circle cx="12" cy="12" r="1.5"/>', 'admin-data': '<path d="M3 12h4l3-7 4 14 3-7h4"/><circle cx="12" cy="12" r="0.5"/>', 'admin-trust': '<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/>',
   invest: '<path d="M4 19h16M6 16V9M10 16V5M14 16v-6M18 16V7"/>',
   rules: '<path d="M4 6h16M4 12h10M4 18h6"/><path d="M17 14l2 2 3-4"/>',
   start: '<path d="M5 21V4h11l-2 4 2 4H5"/>',
@@ -389,7 +390,10 @@ const EVENT_LABELS = {
 // Live streams and timers belong to the page that opened them; they stop on navigation.
 const cleanups = [];
 const onLeave = fn => cleanups.push(fn);
-async function render() {
+// quiet: the same page drawn again in the background with fresh data (live refresh); the page on
+// screen stays until the new one is ready, then they swap at the same scroll position.
+async function render(opts) {
+  const quiet = opts?.quiet === true;
   while (cleanups.length) { try { cleanups.pop()(); } catch {} }
   const [route, q] = (location.hash.slice(2) || 'dashboard').split('?');
   // Each render gets a fresh container: requests still in flight from the previous page then
@@ -398,9 +402,13 @@ async function render() {
   const view = document.createElement('div');
   // Moving to another page fades its cards in; re-drawing the same page does not.
   if (route !== render.last) { view.className = 'enter'; render.last = route; }
-  $('#view').replaceChildren(view);
-  // A new page starts at the top instead of keeping the previous page's scroll position.
-  scrollTo(0, 0);
+  const keepY = scrollY;
+  if (quiet) { $('#view').style.position = 'relative'; view.style.cssText = 'visibility:hidden;position:absolute;left:0;right:0;top:0'; $('#view').append(view); }
+  else {
+    $('#view').replaceChildren(view);
+    // A new page starts at the top instead of keeping the previous page's scroll position.
+    scrollTo(0, 0);
+  }
   if (!ME && !['login', 'login-phone', 'register', 'mfa', 'forgot', 'reset', 'verify', 'open-account'].includes(route)) { location.hash = '#/login'; return; }
   $('#top').hidden = !ME; $('#nav').hidden = !ME; $('#tabs').hidden = !ME; $('#closeAllBtn').hidden = !ME;
   // Owner: switch between the full owner view and the view of each plan.
@@ -449,14 +457,41 @@ async function render() {
     $('#navLogout').onclick = e => { e.preventDefault(); $('#logout').click(); };
     updateBadge();
   }
-  view.innerHTML = '<div class="skel"><div class="h1"></div><div class="box"></div><div class="w60"></div><div></div><div class="box"></div></div>';
+  if (!quiet) view.innerHTML = '<div class="skel"><div class="h1"></div><div class="box"></div><div class="w60"></div><div></div><div class="box"></div></div>';
   try {
     await loadPrefs();
     await (routes[route] || routes.dashboard)(view, new URLSearchParams(q));
+    if (quiet) {
+      if (!view.isConnected) return; // the user moved to another page meanwhile
+      for (const c of [...$('#view').children]) if (c !== view) c.remove();
+      view.style.cssText = ''; scrollTo(0, keepY);
+    }
   }
-  catch (e) { view.innerHTML = `<div class="card err">${esc(e.message)}</div>`; }
+  catch (e) { if (quiet) { view.remove(); return; } view.innerHTML = `<div class="card err">${esc(e.message)}</div>`; }
 }
-window.addEventListener('hashchange', render);
+window.addEventListener('hashchange', () => render());
+
+// ---------- live pages: account pages refresh themselves while they are open ----------
+// Prices stream live everywhere; balances, positions, orders and similar pages are drawn again
+// with fresh data every 20 seconds (and when you come back to the tab), but never while you are
+// typing, clicking, have a dialog or a section open, or the tab is hidden.
+const LIVE_PAGES = new Set(['dashboard', 'positions', 'orders', 'accounts', 'account', 'money', 'bots', 'schedule', 'signals', 'fleet', 'riskview', 'insights', 'admin', 'admin-users', 'admin-hosting', 'admin-system']);
+let lastTouch = Date.now(), hiddenAt = 0, liveBusy = false;
+for (const ev of ['pointerdown', 'keydown', 'wheel', 'touchstart', 'input']) addEventListener(ev, () => (lastTouch = Date.now()), { passive: true, capture: true });
+// A page where the user typed or picked something is never redrawn under them (it would lose it).
+addEventListener('input', e => { const v = e.target?.closest?.('#view > div'); if (v) v.dataset.dirty = '1'; }, true);
+addEventListener('change', e => { const v = e.target?.closest?.('#view > div'); if (v) v.dataset.dirty = '1'; }, true);
+async function liveRefresh() {
+  const route = (location.hash.slice(2) || 'dashboard').split('?')[0];
+  if (liveBusy || !ME || document.hidden || !LIVE_PAGES.has(route) || PREFS.live === false) return;
+  if (Date.now() - lastTouch < 8000 || document.querySelector('#view > div[data-dirty]') || document.querySelector('dialog[open]') || document.querySelector('#view details[open], #view .userMore:not([hidden])')) return;
+  const a = document.activeElement;
+  if (a && a.matches('input, textarea, select, [contenteditable="true"]')) return;
+  liveBusy = true;
+  try { await render({ quiet: true }); } finally { liveBusy = false; }
+}
+setInterval(liveRefresh, 20e3);
+document.addEventListener('visibilitychange', () => { if (document.hidden) hiddenAt = Date.now(); else if (hiddenAt && Date.now() - hiddenAt > 15e3) liveRefresh(); });
 
 // ---------- news pop-ups: today's headlines about the stocks in the open account ----------
 const newsToasts = { list: [], at: 0, acct: null, timer: null, shown: new Set(JSON.parse(sessionStorage.getItem('qp_news_seen') || '[]')) };
@@ -1412,7 +1447,7 @@ routes.settings = async view => {
 
 // ---------- admin ----------
 // Owner pages: one route per section so each has its own place in the menu.
-const ADMIN_TABS = [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-money', 'Money & fees'], ['admin-upgrades', 'Upgrades'], ['admin-yiddish', 'Yiddish Labs'], ['admin-phone', 'Phone line'], ['admin-ai', 'AI & privacy'], ['admin-readme', 'README'], ['admin-admins', 'Admins'], ['admin-keys', 'Keys'], ['admin-comms', 'Calls, texts & email'], ['admin-support', 'Support inbox'], ['admin-data', 'Market data'], ['admin-strategies', 'Original strategies'], ['admin-seo', 'SEO'], ['admin-agents', 'AI coding agents'], ['admin-trust', 'Trust'], ['admin-system', 'System health'], ['admin-setup', 'Setup']];
+const ADMIN_TABS = [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-money', 'Money & fees'], ['admin-upgrades', 'Upgrades'], ['admin-yiddish', 'Yiddish Labs'], ['admin-phone', 'Phone line'], ['admin-ai', 'AI & privacy'], ['admin-readme', 'README'], ['admin-admins', 'Admins'], ['admin-keys', 'Keys'], ['admin-comms', 'Calls, texts & email'], ['admin-support', 'Support inbox'], ['admin-data', 'Market data'], ['admin-strategies', 'Original strategies'], ['admin-seo', 'SEO'], ['admin-agents', 'AI coding agents'], ['admin-hosting', 'Hosting'], ['admin-trust', 'Trust'], ['admin-system', 'System health'], ['admin-setup', 'Setup']];
 // Pages with their own module (owner.js, protect.js) draw themselves under the same tabs.
 const adminTabs = current => `<div class="chips admintabs">${ADMIN_TABS.map(([k, t]) => `<a href="#/${k}"><button type="button" class="${k === current ? 'on' : ''}">${t}</button></a>`).join('')}</div>`;
 async function adminPage(view, tab) {

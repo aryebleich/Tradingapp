@@ -19,7 +19,7 @@ export const streamEnabled = () => alpacaReady() || !!hub.provider();
 const usingAlpaca = () => alpacaReady() && !hub.provider();
 // Symbols with an active price alert are followed live too, even with no browser open.
 let alertSet = new Set();
-async function refreshAlerts() { alertSet = new Set((await alertSymbols().catch(() => [])).map(a => a.symbol)); syncAll(); }
+async function refreshAlerts() { const { isActiveHost } = await import('../hosting.js'); alertSet = isActiveHost() ? new Set((await alertSymbols().catch(() => [])).map(a => a.symbol)) : new Set(); syncAll(); }
 setInterval(() => refreshAlerts(), 60e3).unref?.();
 setTimeout(() => refreshAlerts(), 5000).unref?.();
 const notify = async (uid, msg) => (await import('../notify-user.js')).notifyUser(uid, msg);

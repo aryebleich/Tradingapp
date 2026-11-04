@@ -182,10 +182,11 @@ async function hourly() {
   await refreshKyc();
 }
 
-export function startScheduler() {
+// active(): false on a standby server (Admin → Hosting), which then runs no jobs at all.
+export function startScheduler(active = () => true) {
   let busy = false;
   return setInterval(async () => {
-    if (busy) return; // a slow tick (many users) must not overlap with the next one
+    if (busy || !active()) return; // a slow tick (many users) must not overlap with the next one
     busy = true;
     try { await runDueJobs(); } catch (e) { console.error('scheduler', e); }
     busy = false;

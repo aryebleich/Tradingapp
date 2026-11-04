@@ -31,6 +31,14 @@ jobs:
             sleep $((i * 10))
           done
           echo "::error::Render did not accept the deploy hook."; exit 1
+      # Other servers (Admin → Hosting) with a deploy hook: one https address per line in the
+      # EXTRA_DEPLOY_HOOKS secret. (The Oracle VM updates itself from GitHub every 2 minutes.)
+      - name: Deploy to the other servers
+        env:
+          HOOKS: ${{ secrets.EXTRA_DEPLOY_HOOKS }}
+        run: |
+          [ -z "$HOOKS" ] && exit 0
+          n=0; while IFS= read -r h; do h="$(echo "$h" | tr -d '[:space:]')"; [ -z "$h" ] && continue; n=$((n+1)); curl -fsS -X POST "$h" -o /dev/null && echo "Server $n: deploy started" || echo "::warning::Server $n did not accept the deploy hook"; done <<< "$HOOKS"
       # After the new version is live: paper must still go to paper and real money to real money.
       - name: Check paper and live routing on the live site
         env:

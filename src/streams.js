@@ -119,6 +119,8 @@ export async function alertSymbols() {
 export function resetAlertCache() { alertCache.at = 0; }
 // Called on every tick with a price: fires (once) the alerts it crosses.
 export async function checkTick(symbol, price, notify) {
+  // A standby server (Admin → Hosting) never sends alerts, so nobody gets a text twice.
+  if (!(await import('./hosting.js')).isActiveHost()) return;
   if (!(price > 0)) return 0;
   let n = 0;
   for (const a of (await alertSymbols()).filter(x => x.symbol === symbol && x.active)) {

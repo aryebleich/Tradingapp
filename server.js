@@ -5,6 +5,7 @@ import { overviewRouter } from './src/overview.js';
 import { portfolioRiskRouter } from './src/portfoliorisk.js';
 import { adminUsersRouter } from './src/adminusers.js';
 import { retirementRouter, isIra, ACCOUNT_TYPES } from './src/retirement.js';
+import { hostingRouter, isActiveHost, startKeepWarm, startHostingSync, thisHost } from './src/hosting.js';
 import { plainResearchRouter } from './src/plainresearch.js';
 import express from 'express';
 import compression from 'compression';
@@ -119,6 +120,14 @@ await loadSite().catch(e => console.warn('site settings', e.message));
 await applySavedEnv();
 export const app = express();
 app.set('trust proxy', 1);
+// Behind the Cloudflare edge (edge/worker.js) every request comes from Cloudflare: the edge passes
+// the visitor's own address, signed with EDGE_SECRET, so rate limits and the security log see the
+// real visitor. Without the secret the header is ignored (nobody can fake their address).
+app.use((req, res, next) => {
+  const sec = process.env.EDGE_SECRET, ip = req.headers['x-edge-client-ip'];
+  if (sec && ip && safeEqual(String(req.headers['x-edge-secret'] || ''), sec) && /^[0-9a-f:.]{3,45}$/i.test(String(ip))) Object.defineProperty(req, 'ip', { value: String(ip), configurable: true });
+  next();
+});
 app.disable('x-powered-by');
 // Server-Sent Events must not be buffered by compression.
 app.use(compression({ filter: (req, res) => !String(req.headers.accept).includes('text/event-stream') && compression.filter(req, res) }));
@@ -169,6 +178,8 @@ app.get('/healthz', async (req, res) => {
 app.post('/internal/tick', async (req, res) => {
   const secret = process.env.CRON_SECRET;
   if (!secret || !safeEqual(req.headers.authorization || '', `Bearer ${secret}`)) return res.status(401).json({ error: 'unauthorized' });
+  // Only the active server (Admin → Hosting) runs jobs, so nothing runs twice on two servers.
+  if (!isActiveHost()) return res.json({ skipped: true, reason: `${thisHost()} is not the active server` });
   const out = await runDueJobs();
   if (req.query.snapshot) await snapshotAll();
   // Whether accounts and sign-ins live in a lasting database (a local file on Render is wiped on
@@ -534,6 +545,7 @@ api.use('/market/overview', overviewRouter);
 api.use('/portfolio-risk', portfolioRiskRouter);
 api.use('/admin/users', adminUsersRouter);
 api.use('/retirement', retirementRouter);
+api.use('/admin/hosting', hostingRouter);
 api.use('/plain-research', plainResearchRouter);
 // Live market-data stream (Admin → Market data → Live stream).
 api.get('/admin/streams', auth.requireUser, auth.requireAdmin, async (req, res) => { const S = await import('./src/streams.js'); res.json(S.hub.status()); });
@@ -1051,7 +1063,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   process.on('unhandledRejection', e => { countUnhandled(); console.error('Unhandled promise rejection (server keeps running):', e?.stack || e); });
   const port = +process.env.PORT || 3000;
   const server = app.listen(port, () => console.log(`Brightfolio on http://localhost:${port}`));
-  const timer = startScheduler();
+  startHostingSync();
+  const timer = startScheduler(isActiveHost);
+  startKeepWarm();
   const stopKyc = startKycEvents();
   // Each deploy brings the private README's generated overview up to date (a few seconds after start).
   setTimeout(() => import('./src/admin-site.js').then(m => m.refreshReadme()).catch(() => {}), 5000).unref();

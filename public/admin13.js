@@ -4,7 +4,7 @@ let H;
 export function registerAdmin13(routes, helpers) {
   H = helpers;
   const guard = fn => (view, q) => (H.me()?.role === 'admin' ? fn(view, q) : (location.hash = '#/dashboard'));
-  Object.assign(routes, { 'admin-data': guard(dataPage), 'admin-comms': guard(commsPage), 'admin-strategies': guard(originalsPage), 'admin-seo': guard(seoPage), 'admin-agents': guard(agentsPage) });
+  Object.assign(routes, { 'admin-data': guard(dataPage), 'admin-comms': guard(commsPage), 'admin-strategies': guard(originalsPage), 'admin-seo': guard(seoPage), 'admin-agents': guard(agentsPage), 'admin-hosting': guard(hostingPage) });
 }
 
 async function dataPage(view) {
@@ -239,4 +239,51 @@ async function agentsPage(view) {
   }));
   H.$$('[data-fix]', view).forEach(b => H.act(b, async () => { if (!confirm('Start the agent to find and fix this failure? It opens a pull request for you to review.')) return ''; await H.api('/admin/agents/task', { body: { kind: 'debug', runId: b.dataset.fix, task: 'Find the root cause of this failed run and fix it, with a test that would have caught it.' } }); setTimeout(H.render, 3000); return 'Agent started'; }));
   H.$$('[data-rerun]', view).forEach(b => H.act(b, async () => { await H.api(`/admin/agents/runs/${b.dataset.rerun}/rerun`, { body: {} }); setTimeout(H.render, 3000); return 'Re-running'; }));
+}
+
+// Admin → Hosting: the servers the site runs on, live health and speed, deploys, switching the
+// active server, keep-warm, and the free Cloudflare edge in front.
+async function hostingPage(view) {
+  const d = await H.api('/admin/hosting');
+  const health = h => !h ? '' : h.up ? `<span class="pill pos">Up</span> <b>${h.ms} ms</b>${h.cold ? ' <span class="pill warn">was asleep</span>' : ''}${h.commit ? ` · version <code>${H.esc(h.commit)}</code>` : ''}${h.routingOk === false ? ' <span class="pill neg">paper/live check failed</span>' : ''}` : `<span class="pill neg">Down</span> <span class="mu">${H.esc(h.error || String(h.status || ''))}</span>`;
+  const kindOpts = sel => Object.entries(d.kinds).map(([k, v]) => `<option value="${k}" ${sel === k ? 'selected' : ''}>${H.esc(v.name)}</option>`).join('');
+  view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-hosting')}
+  <div class="card"><h2>Servers</h2><p class="mu" style="margin-top:0">Every server runs the same code and shares one database, so switching moves no data. Only the <b>active</b> server runs bots, scheduled trades and alerts; the others only serve pages, so nothing is sent twice. This page is served by <b data-no-tr>${H.esc(d.thisHost)}</b>.</p>
+    ${/^local file/.test(d.database) ? `<p class="banner err">${H.esc(d.database)}</p>` : ''}
+    <div class="tablewrap"><table><tr><th>Server</th><th>Address</th><th>Health</th><th></th></tr>${d.servers.map(s => `<tr><td><b>${H.esc(s.name)}</b> <span class="mu" data-no-tr>${H.esc(s.id)}</span><div class="mu small-print">${H.esc(d.kinds[s.kind]?.name || s.kind)}</div>${d.active === s.id ? '<span class="pill pos">Active</span>' : ''}</td>
+      <td><a href="${H.esc(s.url)}" target="_blank" rel="noopener" data-no-tr>${H.esc(s.url.replace('https://', ''))}</a></td><td>${health(s.health)}</td>
+      <td><div class="row" style="gap:6px;flex-wrap:wrap">${d.active === s.id ? '' : `<button class="small" data-switch="${H.esc(s.id)}">Make active</button>`}${s.hook ? `<button class="small ghost" data-deploy="${H.esc(s.id)}">Deploy now</button>` : ''}<button class="small ghost" data-edit="${H.esc(s.id)}">Edit</button>${d.active === s.id ? '' : `<button class="small ghost" data-rm="${H.esc(s.id)}">Remove</button>`}</div></td></tr>`).join('') || '<tr><td colspan="4" class="mu">No servers yet. Add the one you use now (for Render: id <b>render</b>, its onrender.com address and its deploy hook).</td></tr>'}</table></div>
+    <div class="err" id="hErr"></div><div id="hOut"></div>
+    <label class="chk"><input type="checkbox" id="warm" ${d.keepWarm ? 'checked' : ''}> Keep the active server awake (it calls itself every 9 minutes, so a free host never makes the next visitor wait while it wakes up)</label></div>
+  <form class="card" id="srv"><h2>Add or edit a server</h2>
+    <div class="row"><label>Id <span class="mu">(= HOST_ID on that server)</span><input name="id" placeholder="oracle" required data-no-tr></label><label>Kind<select name="kind">${kindOpts('oracle-vm')}</select></label><label>Name<input name="name" placeholder="Oracle Cloud"></label></div>
+    <div class="row"><label style="flex:2">Address<input name="url" placeholder="https://brightfolio.example.com" required data-no-tr></label><label style="flex:2">Deploy hook <span class="mu">(optional, kept encrypted)</span><input name="hook" type="password" placeholder="https://..." autocomplete="off" data-no-tr></label></div>
+    <p class="mu small-print" id="kindNote"></p><button>Save server</button><div class="err"></div></form>
+  <div class="card"><h2>The edge: fast pages and automatic failover</h2>
+    <p>A small free server on Cloudflare's network (edge/worker.js) sits in front: it serves the app's files from the nearest Cloudflare location, sends everything else to the active server, falls back to the next server if the active one is down (reads only; an order is never sent twice), passes the visitor's real address, and calls every server every 5 minutes so none falls asleep. Cloudflare also blocks attacks and floods before they reach a server.</p>
+    <ul class="plain"><li>${d.edge.ready ? '<span class="pill pos">Connected</span> Switching updates the edge at once' : '<span class="pill warn">Not set up</span> Add CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_KV_ID in Admin → Keys (steps in edge/README.md)'}</li>
+      <li>${d.edge.dns ? `<span class="pill pos">DNS</span> ${H.esc(d.edge.domain)} is switched too` : '<span class="mu">Own domain on Cloudflare (optional): CLOUDFLARE_ZONE_ID and SITE_DOMAIN</span>'}</li>
+      <li>${d.edge.secret ? '<span class="pill pos">EDGE_SECRET set</span> visitors\' real addresses are trusted' : '<span class="mu">Set the same EDGE_SECRET here and in the edge so rate limits see real visitors</span>'}</li>
+      <li>Public address: <b data-no-tr>${H.esc(d.edge.publicUrl || '(PUBLIC_URL not set)')}</b>. With the edge, set PUBLIC_URL on every server to the edge's address.</li></ul></div>
+  <details class="card"><summary><b>Free servers that do not sleep</b></summary>
+    <ul><li><b>Oracle Cloud Always Free</b>: an ARM virtual machine that is yours and always on (in 2026 the free allowance is 2 CPUs and 12 GB of memory). Run <code>deploy/vm/setup.sh</code> on it: firewall, keys-only SSH, automatic security updates, HTTPS and auto-deploy from GitHub. Idle free machines can be reclaimed; keep-warm and a pay-as-you-go account (still free within the limits) help.</li>
+      <li><b>Northflank</b> free sandbox: 2 always-on services. Connect the GitHub repository; it builds the Dockerfile.</li>
+      <li><b>Render</b> (now): free, but sleeps after 15 minutes without visitors; keep-warm and the edge stop that.</li>
+      <li><b>Koyeb</b> free: scales to zero when idle.</li></ul>
+    <p class="mu small-print">Every server needs the same DATABASE_URL, DATABASE_AUTH_TOKEN and ENCRYPTION_KEY (otherwise saved keys cannot be read), and its own HOST_ID. Free plans change; check each host's current terms.</p></details>`;
+  const out = H.$('#hOut', view), err = H.$('#hErr', view), f = H.$('#srv', view);
+  const note = () => (H.$('#kindNote', view).textContent = d.kinds[f.kind.value]?.note || '');
+  f.kind.onchange = note; note();
+  f.onsubmit = async e => { e.preventDefault(); const b = H.form(f); try { await H.api('/admin/hosting/servers', { body: b }); H.render(); } catch (x) { H.$('.err', f).textContent = x.message; } };
+  H.$$('[data-edit]', view).forEach(b => (b.onclick = () => { const s = d.servers.find(x => x.id === b.dataset.edit); f.id.value = s.id; f.kind.value = s.kind; f.name.value = s.name; f.url.value = s.url; f.hook.placeholder = s.hook ? '(saved; leave empty to keep)' : 'https://...'; note(); f.scrollIntoView({ behavior: 'smooth' }); }));
+  H.$$('[data-rm]', view).forEach(b => (b.onclick = async () => { try { await H.api('/admin/hosting/servers/' + b.dataset.rm, { method: 'DELETE' }); H.render(); } catch (x) { err.textContent = x.message; } }));
+  H.$$('[data-deploy]', view).forEach(b => H.act(b, async () => (await H.api(`/admin/hosting/servers/${b.dataset.deploy}/deploy`, { body: {} })).message, out));
+  H.$$('[data-switch]', view).forEach(b => (b.onclick = async () => {
+    const s = d.servers.find(x => x.id === b.dataset.switch);
+    const c = await H.secureConfirm({ title: `Make ${s.name} the active server?`, html: `<p>Visitors are sent to ${H.esc(s.url)} and it takes over bots, scheduled trades and alerts. The other servers keep serving pages as backups.</p>`, okText: 'Switch' });
+    if (!c) return;
+    try { const r = await H.api('/admin/hosting/switch', { body: { id: s.id, password: c.password, confirm: c.confirm } }); err.textContent = ''; out.innerHTML = `<ul class="plain">${r.steps.map(x => `<li>✓ ${H.esc(x)}</li>`).join('')}</ul>`; setTimeout(H.render, 2500); }
+    catch (x) { err.textContent = x.message; }
+  }));
+  H.$('#warm', view).onchange = e => H.api('/admin/hosting/settings', { method: 'PUT', body: { keepWarm: e.target.checked } }).catch(x => (err.textContent = x.message));
 }

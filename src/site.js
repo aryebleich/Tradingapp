@@ -73,6 +73,7 @@ export const ENV_GROUPS = [
   ['Market data (free keys)', ['FINNHUB_API_KEY', 'TWELVEDATA_API_KEY', 'TIINGO_API_KEY', 'ALPHAVANTAGE_API_KEY', 'FMP_API_KEY', 'POLYGON_API_KEY', 'FRED_API_KEY']],
   ['QuickBooks (bookkeeping and taxes)', ['QBO_CLIENT_ID', 'QBO_CLIENT_SECRET', 'QBO_ENV']],
   ['All my money and property values', ['RENTCAST_API_KEY', 'BTC_API_URL', 'ETH_RPC_URL']],
+  ['Hosting and the edge', ['HOST_ID', 'EDGE_SECRET', 'CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_KV_ID', 'CLOUDFLARE_ZONE_ID', 'SITE_DOMAIN']],
   ['Android app', ['ANDROID_CERT_SHA256', 'ANDROID_APK_URL', 'ANDROID_PLAY', 'ANDROID_PLAY_URL']],
   ['Extras', ['YIDDISH_CREDIT', 'MARGIN_FEED_URL', 'METRICS_TOKEN', 'SEC_CONTACT']],
   ['Render', ['RENDER_API_KEY', 'RENDER_SERVICE_ID']],

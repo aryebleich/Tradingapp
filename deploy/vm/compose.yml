@@ -1,0 +1,17 @@
+# Brightfolio on a VM: the app container, locked down. Caddy (on the host) serves HTTPS and passes
+# requests to 127.0.0.1:3000 only, so the container is never reachable from outside directly.
+services:
+  app:
+    image: brightfolio:latest
+    env_file: .env
+    ports: ['127.0.0.1:3000:3000']
+    restart: unless-stopped
+    read_only: true
+    tmpfs: ['/tmp']
+    volumes: ['./data:/app/data']
+    security_opt: ['no-new-privileges:true']
+    cap_drop: ['ALL']
+    user: '1000:1000'
+    mem_limit: 2g
+    pids_limit: 512
+    logging: { driver: json-file, options: { max-size: 10m, max-file: '3' } }
