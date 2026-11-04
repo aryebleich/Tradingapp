@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Sets up Brightfolio on a fresh Ubuntu 24.04 server (Oracle Cloud Always Free ARM VM, or any VM).
-# Run once as the default user:  IP=$(curl -4s https://ifconfig.me); curl -fsSL https://raw.githubusercontent.com/<owner>/<repo>/main/deploy/vm/setup.sh | sudo bash -s -- <your-domain-or-ip.sslip.io> <owner/repo>
+# Run once:  curl -fsSL https://raw.githubusercontent.com/aryebleich/Tradingapp/main/deploy/vm/setup.sh -o setup.sh   then   sudo bash setup.sh auto
 # What it does:
 #   - security: firewall (only SSH, HTTP, HTTPS), SSH by key only, fail2ban, automatic security
 #     updates (with reboots at 4 AM when needed), a non-root app user
@@ -9,7 +9,18 @@
 #   - auto-deploy: every 2 minutes it checks GitHub; a new commit on main is built and swapped in
 # Settings (keys, DATABASE_URL, HOST_ID=oracle ...) go in /opt/brightfolio/.env (chmod 600).
 set -euo pipefail
-DOMAIN="${1:?Give the domain (or <ip>.sslip.io) as the first argument}"
+DOMAIN="${1:-auto}"
+# "auto": this server's public IPv4 address as a free name, e.g. 129-146-12-34.sslip.io
+if [ "$DOMAIN" = "auto" ]; then
+  IP=""
+  for u in https://api.ipify.org https://ipv4.icanhazip.com https://ifconfig.me/ip https://checkip.amazonaws.com; do
+    IP=$(curl -4fsS --max-time 10 "$u" 2>/dev/null | tr -d '[:space:]' || true)
+    echo "$IP" | grep -Eq '^[0-9]{1,3}(\.[0-9]{1,3}){3}$' && break; IP=""
+  done
+  [ -n "$IP" ] || { echo "Could not find this server's public address. Run again with it, e.g.: sudo bash setup.sh 129-146-12-34.sslip.io" >&2; exit 1; }
+  DOMAIN="$(echo "$IP" | tr . -).sslip.io"
+  echo "Public address: $IP  ->  https://$DOMAIN"
+fi
 case "$DOMAIN" in *:*|.sslip.io|-*) echo "That does not look like a domain: $DOMAIN (use the server's IPv4 address with dashes, e.g. 129-146-12-34.sslip.io)" >&2; exit 1;; esac
 REPO="${2:-aryebleich/Tradingapp}"
 APP=/opt/brightfolio
