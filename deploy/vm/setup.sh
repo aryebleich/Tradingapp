@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Sets up Brightfolio on a fresh Ubuntu 24.04 server (Oracle Cloud Always Free ARM VM, or any VM).
-# Run once as the default user:  curl -fsSL https://raw.githubusercontent.com/<owner>/<repo>/main/deploy/vm/setup.sh | sudo bash -s -- <your-domain-or-ip.sslip.io> <owner/repo>
+# Run once as the default user:  IP=$(curl -4s https://ifconfig.me); curl -fsSL https://raw.githubusercontent.com/<owner>/<repo>/main/deploy/vm/setup.sh | sudo bash -s -- <your-domain-or-ip.sslip.io> <owner/repo>
 # What it does:
 #   - security: firewall (only SSH, HTTP, HTTPS), SSH by key only, fail2ban, automatic security
 #     updates (with reboots at 4 AM when needed), a non-root app user
@@ -10,6 +10,7 @@
 # Settings (keys, DATABASE_URL, HOST_ID=oracle ...) go in /opt/brightfolio/.env (chmod 600).
 set -euo pipefail
 DOMAIN="${1:?Give the domain (or <ip>.sslip.io) as the first argument}"
+case "$DOMAIN" in *:*|.sslip.io|-*) echo "That does not look like a domain: $DOMAIN (use the server's IPv4 address with dashes, e.g. 129-146-12-34.sslip.io)" >&2; exit 1;; esac
 REPO="${2:-aryebleich/Tradingapp}"
 APP=/opt/brightfolio
 
@@ -59,7 +60,10 @@ $DOMAIN {
 	}
 }
 EOF
-systemctl enable --now caddy && systemctl reload caddy
+# Check the settings first, then (re)start; a start that fails shows Caddy's own reason.
+caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+systemctl enable caddy
+if ! systemctl restart caddy; then journalctl -u caddy --no-pager -n 25; echo "Caddy did not start (reason above)." >&2; exit 1; fi
 
 echo "== The app"
 id brightfolio >/dev/null 2>&1 || useradd --system --create-home --shell /usr/sbin/nologin brightfolio

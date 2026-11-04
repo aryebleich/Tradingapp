@@ -45,7 +45,7 @@ IMG=$(oci compute image list --compartment-id "$C" --operating-system "Canonical
 
 cat > ~/brightfolio-init.sh <<EOF
 #!/bin/bash
-IP=\$(curl -s https://ifconfig.me)
+IP=\$(curl -4s https://ifconfig.me)
 curl -fsSL https://raw.githubusercontent.com/$REPO/main/deploy/vm/setup.sh | bash -s -- "\$(echo \$IP | tr . -).sslip.io" $REPO
 EOF
 
