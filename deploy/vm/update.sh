@@ -17,6 +17,7 @@ docker tag brightfolio:new brightfolio:latest
 grep -q '^RENDER_GIT_COMMIT=' .env && sed -i "s/^RENDER_GIT_COMMIT=.*/RENDER_GIT_COMMIT=$NEW/" .env || echo "RENDER_GIT_COMMIT=$NEW" >> .env
 docker compose up -d --force-recreate app
 for i in $(seq 1 30); do curl -fs http://127.0.0.1:3000/healthz >/dev/null && { echo "$NEW" > "$APP/.deployed"; echo "Deployed ${NEW:0:7}"; docker image prune -f >/dev/null; exit 0; }; sleep 2; done
+if ! docker image inspect brightfolio:previous >/dev/null 2>&1; then echo "The app did not start yet: check $APP/.env (DATABASE_URL, DATABASE_AUTH_TOKEN, ENCRYPTION_KEY), then run: sudo FORCE=1 brightfolio-update" >&2; docker compose logs --tail 20 app >&2 || true; exit 1; fi
 echo "The new version did not start; going back to the previous one." >&2
 docker tag brightfolio:previous brightfolio:latest && docker compose up -d --force-recreate app
 exit 1

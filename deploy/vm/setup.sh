@@ -101,7 +101,7 @@ OnUnitActiveSec=2min
 WantedBy=timers.target
 EOF
 systemctl daemon-reload && systemctl enable --now brightfolio-update.timer
-FORCE=1 /usr/local/bin/brightfolio-update
+FORCE=1 /usr/local/bin/brightfolio-update || echo "(The app starts once $APP/.env has your settings; that is the next step.)"
 
 echo
 echo "Done. Open https://$DOMAIN/healthz . Next: fill in $APP/.env (DATABASE_URL, ENCRYPTION_KEY and your keys),"
