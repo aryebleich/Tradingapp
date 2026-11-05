@@ -1,0 +1,49 @@
+name: Sign-in check
+# Starts "Continue with Google" (and GitHub) on each app address, the way a browser does, and shows
+# whether Google accepts the return address. Run by hand: Actions → Sign-in check → Run workflow.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Google and GitHub sign-in on each address
+        run: |
+          bad=0
+          dec() { python3 -c 'import sys,urllib.parse;print(urllib.parse.unquote(sys.argv[1]))' "$1"; }
+          for A in https://quantpocket.onrender.com https://app.brightolio.com https://138-2-233-183.sslip.io; do
+            echo "=================== $A"
+            # Follow our own hops (e.g. to PUBLIC_URL) until the step that leaves for Google.
+            url="$A/auth/google"; to=""
+            for i in 1 2 3 4; do
+              to=$(curl -s -o /dev/null -w '%{redirect_url}' --max-time 60 "$url")
+              case "$to" in https://accounts.google.com/*|"") break;; esac
+              echo "  hop: $url -> $to"; url="$to"
+            done
+            case "$to" in
+              https://accounts.google.com/*) ;;
+              *) echo "::error::$A: Google sign-in did not go to Google (went to: $(dec "${to:-nothing}"))"; bad=1; continue;;
+            esac
+            ru=$(echo "$to" | grep -o 'redirect_uri=[^&]*' | cut -d= -f2-); ru=$(dec "$ru")
+            echo "  return address sent to Google: $ru"
+            # Google answers a wrong return address with its error page; a right one goes on to choosing an account.
+            g=$(curl -s -o /tmp/g.html -w '%{http_code} %{redirect_url}' --max-time 30 "$to")
+            if echo "$g" | grep -qi 'oauth/error\|authError' || grep -qi 'redirect_uri_mismatch\|invalid_client\|deleted_client' /tmp/g.html; then
+              why=$(echo "$g" | grep -o 'authError=[^&]*' | cut -d= -f2 | python3 -c 'import sys,base64,urllib.parse;s=urllib.parse.unquote(sys.stdin.read().strip());s+="="*(-len(s)%4);print(base64.urlsafe_b64decode(s).decode("latin1","ignore"))' 2>/dev/null | tr -cd '[:print:]' | grep -o 'redirect_uri_mismatch\|invalid_client\|deleted_client\|[a-z_]*_error' | head -1)
+              why=${why:-$(grep -o 'redirect_uri_mismatch\|invalid_client\|deleted_client' /tmp/g.html | head -1)}
+              echo "::error::$A: Google refused the sign-in (${why:-error}). Add exactly this to Authorized redirect URIs: $ru"; bad=1
+            else
+              echo "  Google: OK (accepts this return address)"
+            fi
+            # GitHub: show where it starts and which return address it uses.
+            gh=$(curl -s -o /dev/null -w '%{redirect_url}' --max-time 60 "$A/auth/github")
+            case "$gh" in
+              https://github.com/*) gr=$(dec "$(echo "$gh" | grep -o 'redirect_uri=[^&]*' | cut -d= -f2-)"); echo "  GitHub return address: $gr";;
+              https://*/auth/github*) echo "  GitHub: starts on $(echo "$gh" | cut -d/ -f1-3) (one address for GitHub)";;
+              *) echo "  GitHub: $(dec "${gh:-no answer}")";;
+            esac
+          done
+          exit $bad
