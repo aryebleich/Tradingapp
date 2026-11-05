@@ -1602,5 +1602,6 @@ export default {
  "Saved so far ($)": "סך הכל וואס איך האב שוין אנגעזאמלט ביז היינט ($)",
  "Tax rate now %": "די יעצטיגע טעקס ראטע: %",
  "Tax rate in retirement %": "ריטייערמענט טעקס ראטע (%)",
- "Taxable (regular brokerage)": "א טעקסעבל אקאונט (א געווענליכע בראוקערעדזש אקאונט)"
+ "Taxable (regular brokerage)": "א טעקסעבל אקאונט (א געווענליכע בראוקערעדזש אקאונט)",
+ "Linked through Plaid, read-only. Brightolio never sees your bank password and cannot move money.": "עס איז פארבונדן אויף א זיכערן אופן דורך Plaid מיט בלויז \"ריד-אוינלי\" צוטריט. Brightolio זעט קיינמאל נישט דיין באנק פאסווארט און קען נישט אריבערפירן קיין שום געלט."
 };
