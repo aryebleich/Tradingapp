@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 
 const calls = [];
-let onCloudflare = true;
+let onCloudflare = true, sub = null;
 const cf = http.createServer((req, res) => {
   let b = ''; req.on('data', c => (b += c)); req.on('end', () => {
     const u = new URL(req.url, 'http://x'), p = u.pathname.replace('/client/v4', '');
@@ -18,7 +18,9 @@ const cf = http.createServer((req, res) => {
     if (p === '/zones') return ok(onCloudflare && u.searchParams.get('name') === 'example.com' ? [{ id: 'z9', name: 'example.com' }] : []);
     if (p === '/zones/z9/dns_records' && req.method === 'GET') return ok([{ id: 'r1', type: 'A', name: 'app.example.com', proxied: false }]);
     if (p === '/zones/z9/workers/routes' && req.method === 'GET') return ok([]);
-    if (p === '/accounts/acc9/workers/subdomain') return ok({ subdomain: 'mine' });
+    if (p === '/accounts/acc9/workers/subdomain' && req.method === 'PUT') { sub = JSON.parse(b).subdomain; return ok({ subdomain: sub }); }
+    if (p === '/accounts/acc9/workers/subdomain') { if (!sub) { res.statusCode = 404; return res.end(JSON.stringify({ success: false, errors: [{ code: 10007, message: 'This account does not have a workers.dev subdomain' }] })); } return ok({ subdomain: sub }); }
+    if (p.endsWith('/scripts/brightfolio-edge/subdomain') && !sub) { res.statusCode = 400; return res.end(JSON.stringify({ success: false, errors: [{ code: 10063, message: 'You need a workers.dev subdomain in order to proceed.' }] })); }
     return ok({});
   });
 });
@@ -73,10 +75,12 @@ test('Set up the edge: one token, then account, store, Worker, keep-warm, server
   const page = (await api('/admin/hosting')).body;
   assert.equal(page.edge.setup.url, 'https://app.example.com'); assert.equal(page.edge.ready, true);
 
-  // A domain that is not on Cloudflare: the free workers.dev address.
+  // A domain that is not on Cloudflare, on an account without a workers.dev name yet: the name is
+  // made, and the edge gets the free workers.dev address; the steps say how to add the domain.
   onCloudflare = false;
   r = await api('/admin/hosting/edge', { domain: 'app.example.com', password: 'Str0ngPassword1' });
-  assert.equal(r.status, 200); assert.equal(r.body.url, 'https://brightfolio-edge.mine.workers.dev'); assert.equal(r.body.route, false);
+  assert.equal(r.status, 200, JSON.stringify(r.body)); assert.equal(r.body.url, 'https://brightfolio-edge.brightolio.workers.dev'); assert.equal(r.body.route, false);
+  assert.ok(r.body.steps.some(x => /not on this Cloudflare account yet.*Add a domain → example\.com/.test(x)));
   onCloudflare = true;
 });
 

@@ -29,7 +29,7 @@ flood protection, and keep-warm for every server. Set up from the admin page wit
 1. Free account at dash.cloudflare.com. To use your own domain, add it there (Add a domain → Free) and
    put Cloudflare's two name servers at your domain company.
 2. Profile → API Tokens → Create Token → template **Edit Cloudflare Workers**, and add
-   **Zone → DNS → Edit**. Copy the token.
+   **Zone → DNS → Edit** and **Zone → Zone → Read**. Copy the token.
 3. Admin → Keys → `CLOUDFLARE_API_TOKEN`.
 4. Admin → Hosting: add each server with its own address (not the domain), then **Set up the edge**
    with the site's address (e.g. `app.brightolio.com`). It finds the account, creates the settings

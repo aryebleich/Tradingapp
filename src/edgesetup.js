@@ -28,8 +28,9 @@ async function cf(p, opts = {}) {
   const d = await r.json().catch(() => ({}));
   if (!r.ok || d.success === false) {
     const e = d.errors?.[0] || {};
-    const hint = r.status === 403 || e.code === 10000 ? ' (the token is missing a permission: see the steps on this page)' : '';
-    throw bad(`Cloudflare: ${e.message || 'HTTP ' + r.status}${hint}`, 502);
+    const msg = e.message || 'HTTP ' + r.status;
+    const hint = /authenticat|permission|not authorized|unauthorized/i.test(msg) || e.code === 10000 || e.code === 9109 ? ` (the token is missing a permission${opts.need ? ': ' + opts.need : ''}; see the steps on this page)` : '';
+    throw Object.assign(bad(`Cloudflare: ${msg}${hint}`, 502), { cfCode: e.code, cfStatus: r.status });
   }
   return d.result;
 }
@@ -39,10 +40,21 @@ async function zoneFor(host) {
   const parts = host.split('.');
   for (let i = 0; i < parts.length - 1; i++) {
     const name = parts.slice(i).join('.');
-    const z = (await cf(`/zones?name=${encodeURIComponent(name)}`).catch(() => []))?.[0];
+    const z = (await cf(`/zones?name=${encodeURIComponent(name)}`, { need: 'Zone → Zone → Read' }))?.[0];
     if (z) return z;
   }
   return null;
+}
+
+// The account's free workers.dev name; Cloudflare makes one when the Workers page is first opened,
+// so when there is none yet it is made here (brightolio, or brightolio-<n> when that is taken).
+async function workersDevName(account) {
+  const have = (await cf(`/accounts/${account}/workers/subdomain`).catch(() => null))?.subdomain;
+  if (have) return have;
+  for (const name of ['brightolio', 'brightolio-app', 'brightolio-' + Math.random().toString(36).slice(2, 7)]) {
+    try { return (await cf(`/accounts/${account}/workers/subdomain`, { method: 'PUT', body: { subdomain: name } }))?.subdomain || name; } catch {}
+  }
+  throw bad('Cloudflare has no workers.dev name for this account yet: open dash.cloudflare.com → Workers & Pages once (it makes one), then press this button again.');
 }
 
 // The servers the edge forwards to: active first, then the backups. Never the edge's own address.
@@ -105,13 +117,13 @@ export async function setupEdge({ domain, servers = [], active = null } = {}) {
       if (old) await cf(`/zones/${zone.id}/workers/routes/${old.id}`, { method: 'PUT', body: { pattern, script: SCRIPT } });
       else await cf(`/zones/${zone.id}/workers/routes`, { method: 'POST', body: { pattern, script: SCRIPT } });
       url = 'https://' + domain; route = true;
-      steps.push(`${domain} now goes through the edge`);
-    } else steps.push(`${domain} is not on this Cloudflare account, so the edge uses its free workers.dev address. To use ${domain}: Cloudflare → Add a domain, then press this button again.`);
+      steps.push(zone.status === 'active' ? `${domain} now goes through the edge`
+        : `${domain} is ready for the edge, but Cloudflare is still waiting for ${zone.name}'s name servers to change (status: ${zone.status}). Put Cloudflare's two name servers at the company where you bought ${zone.name}; the edge starts by itself when Cloudflare sees them (minutes to a few hours).`);
+    } else steps.push(`${domain} is not on this Cloudflare account yet, so for now the edge uses a free workers.dev address. To use ${domain}: Cloudflare → Add a domain → ${domain.split('.').slice(-2).join('.')}, then press this button again.`);
   }
   if (!url) {
+    const sub = await workersDevName(account);
     await cf(`/accounts/${account}/workers/scripts/${SCRIPT}/subdomain`, { method: 'POST', body: { enabled: true } });
-    const sub = (await cf(`/accounts/${account}/workers/subdomain`).catch(() => null))?.subdomain;
-    if (!sub) throw bad('Open Cloudflare → Workers & Pages once (it picks your free workers.dev name), then press this button again.');
     url = `https://${SCRIPT}.${sub}.workers.dev`;
   }
 
