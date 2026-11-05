@@ -48,6 +48,16 @@ jobs:
             done
           done
           [ -n "$found" ] || { echo "::error::No running instance has the public IP $HOST."; exit 1; }
+      - name: Show what Oracle has now
+        run: |
+          echo "--- subnet"; oci network subnet get --subnet-id "$SUBNET" --query 'data.{name:"display-name",cidr:"cidr-block",public:"prohibit-public-ip-on-vnic",routeTable:"route-table-id",lists:"security-list-ids"}'
+          RT=$(oci network subnet get --subnet-id "$SUBNET" --query 'data."route-table-id"' --raw-output)
+          echo "--- route table"; oci network route-table get --rt-id "$RT" --query 'data."route-rules"[].{dest:destination,target:"network-entity-id"}'
+          for SL in $(oci network subnet get --subnet-id "$SUBNET" --query 'data."security-list-ids"' --raw-output | tr -d '[]",'); do
+            echo "--- security list $(oci network security-list get --security-list-id "$SL" --query 'data."display-name"' --raw-output)"
+            oci network security-list get --security-list-id "$SL" --query 'data."ingress-security-rules"[].{proto:protocol,src:source,stateless:"is-stateless",dst:"tcp-options"."destination-port-range",srcport:"tcp-options"."source-port-range",udp:"udp-options"."destination-port-range"}'
+          done
+          echo "--- network security groups on the server: ${NSGS:-none}"
       - name: Open 80 and 443 in the subnet's security lists
         run: |
           set -e
