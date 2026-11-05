@@ -17,6 +17,7 @@ import { requireUser, requireAdmin, confirmsIdentity } from './auth.js';
 import { audit, now, one } from './db.js';
 import { siteGet, siteSet } from './site.js';
 import { encrypt, tryDecrypt } from './crypto.js';
+import { setupEdge, edgeConfig, edgeCheck, edgeSecret, putOrigins } from './edgesetup.js';
 
 const bad = (m, s = 400) => Object.assign(new Error(m), { status: s });
 export const KINDS = {
@@ -63,14 +64,11 @@ export async function probe(server) {
 const CF = () => (process.env.CLOUDFLARE_API_URL || 'https://api.cloudflare.com').replace(/\/$/, '') + '/client/v4';
 const cf = (path, opts = {}) => fetch(CF() + path, { ...opts, headers: { Authorization: 'Bearer ' + process.env.CLOUDFLARE_API_TOKEN, 'Content-Type': 'application/json', ...(opts.headers || {}) }, signal: AbortSignal.timeout(15000) })
   .then(async r => { const d = await r.json().catch(() => ({})); if (!r.ok || d.success === false) throw new Error('Cloudflare: ' + (d.errors?.[0]?.message || r.status)); return d; });
-const edgeReady = () => !!(process.env.CLOUDFLARE_API_TOKEN && process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_KV_ID);
+const edgeAccount = () => process.env.CLOUDFLARE_ACCOUNT_ID || edgeConfig().account, edgeKv = () => process.env.CLOUDFLARE_KV_ID || edgeConfig().kv;
+const edgeReady = () => !!(process.env.CLOUDFLARE_API_TOKEN && edgeAccount() && edgeKv());
 const dnsReady = () => !!(process.env.CLOUDFLARE_API_TOKEN && process.env.CLOUDFLARE_ZONE_ID && process.env.SITE_DOMAIN);
-async function pointEdge(order) {
-  // The Worker reads this list (first = active, the rest are backups it falls back to).
-  await fetch(`${CF()}/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/storage/kv/namespaces/${process.env.CLOUDFLARE_KV_ID}/values/origins`, {
-    method: 'PUT', headers: { Authorization: 'Bearer ' + process.env.CLOUDFLARE_API_TOKEN, 'Content-Type': 'text/plain' }, body: JSON.stringify(order), signal: AbortSignal.timeout(15000),
-  }).then(async r => { if (!r.ok) throw new Error('Cloudflare KV: ' + r.status + ' ' + (await r.text()).slice(0, 120)); });
-}
+// The Worker reads this list (first = active, the rest are backups it falls back to).
+const pointEdge = order => putOrigins(edgeAccount(), edgeKv(), order);
 async function pointDns(target) {
   const zone = process.env.CLOUDFLARE_ZONE_ID, name = process.env.SITE_DOMAIN, host = new URL(target).hostname;
   const found = (await cf(`/zones/${zone}/dns_records?name=${encodeURIComponent(name)}`)).result || [];
@@ -94,7 +92,8 @@ export async function switchTo(id) {
   const steps = [];
   const order = [s.url, ...c.servers.filter(x => x.id !== id).map(x => x.url)];
   if (edgeReady()) { await pointEdge(order); steps.push('The edge now sends visitors to ' + s.name + ' (backups: ' + (order.length - 1) + ')'); }
-  if (dnsReady()) { await pointDns(s.url); steps.push(`${process.env.SITE_DOMAIN} now points at ${new URL(s.url).hostname}`); }
+  // With the edge on the domain, the domain stays on the edge; only the edge's list changes.
+  if (dnsReady() && !edgeConfig().route) { await pointDns(s.url); steps.push(`${process.env.SITE_DOMAIN} now points at ${new URL(s.url).hostname}`); }
   const front = edgeReady() || dnsReady();
   if (process.env.GITHUB_TOKEN) { await setAppUrl(front ? (process.env.PUBLIC_URL || s.url) : s.url).then(() => steps.push('APP_URL (scheduler and deploy check) updated'), e => steps.push('APP_URL not updated: ' + e.message)); }
   await save( { ...c, active: id, switchedAt: now() });
@@ -125,7 +124,7 @@ export const hostingRouter = (() => {
     res.json({
       thisHost: thisHost(), active: c.active, keepWarm: c.keepWarm !== false, switchedAt: c.switchedAt || null,
       servers: c.servers.map(s => ({ ...pub(s), health: health.find(h => h.id === s.id) })), kinds: KINDS,
-      edge: { ready: edgeReady(), dns: dnsReady(), domain: process.env.SITE_DOMAIN || null, publicUrl: process.env.PUBLIC_URL || null, secret: !!process.env.EDGE_SECRET },
+      edge: { ready: edgeReady(), dns: dnsReady(), domain: process.env.SITE_DOMAIN || null, publicUrl: process.env.PUBLIC_URL || null, secret: !!edgeSecret(), token: !!process.env.CLOUDFLARE_API_TOKEN, setup: edgeConfig().url ? { url: edgeConfig().url, route: !!edgeConfig().route, origins: edgeConfig().origins || [], at: edgeConfig().at } : null, check: await edgeCheck() },
       database: process.env.DATABASE_URL ? 'shared (DATABASE_URL)' : 'local file: every server would have its own data, set DATABASE_URL first',
     });
   });
@@ -167,6 +166,15 @@ export const hostingRouter = (() => {
     if (!confirmsIdentity(req.user, req.body || {})) throw bad(req.user.password_set === 0 ? 'Type your email address to confirm' : 'Wrong password', 401);
     const out = await switchTo(String(req.body?.id || ''));
     await audit(req.user.id, 'hosting_switch', { to: out.active }, req.ip);
+    res.json(out);
+  });
+  // Puts the Cloudflare edge in front (or updates it): changes where visitors go, so the password is asked.
+  r.post('/edge', async (req, res) => {
+    if (!confirmsIdentity(req.user, req.body || {})) throw bad(req.user.password_set === 0 ? 'Type your email address to confirm' : 'Wrong password', 401);
+    const c = cfg();
+    const fallback = (() => { try { return new URL(process.env.PUBLIC_URL || '').hostname; } catch { return ''; } })();
+    const out = await setupEdge({ domain: req.body?.domain || fallback, servers: c.servers, active: c.active });
+    await audit(req.user.id, 'hosting_edge_setup', { url: out.url }, req.ip);
     res.json(out);
   });
   r.put('/settings', async (req, res) => {

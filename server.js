@@ -78,6 +78,7 @@ import { brokerEnabled } from './src/alpaca/broker.js';
 import { dataEnabled } from './src/alpaca/data.js';
 import { router as googleRouter, googleEnabled } from './src/google.js';
 import { ownHosts, publicUrl } from './src/origin.js';
+import { edgeSecret } from './src/edgesetup.js';
 import { router as githubRouter, githubEnabled } from './src/github.js';
 import { adminSiteRouter } from './src/admin-site.js';
 import { tokensRouter, mcpHandler } from './src/mcp.js';
@@ -124,9 +125,15 @@ app.set('trust proxy', 1);
 // Behind the Cloudflare edge (edge/worker.js) every request comes from Cloudflare: the edge passes
 // the visitor's own address, signed with EDGE_SECRET, so rate limits and the security log see the
 // real visitor. Without the secret the header is ignored (nobody can fake their address).
+// The edge also passes the public address the visitor used (e.g. app.brightolio.com), so sign-in
+// return addresses and redirects use it rather than the server's own name.
 app.use((req, res, next) => {
-  const sec = process.env.EDGE_SECRET, ip = req.headers['x-edge-client-ip'];
-  if (sec && ip && safeEqual(String(req.headers['x-edge-secret'] || ''), sec) && /^[0-9a-f:.]{3,45}$/i.test(String(ip))) Object.defineProperty(req, 'ip', { value: String(ip), configurable: true });
+  const sec = edgeSecret(), ip = req.headers['x-edge-client-ip'];
+  if (sec && req.headers['x-edge-secret'] && safeEqual(String(req.headers['x-edge-secret']), sec)) {
+    if (ip && /^[0-9a-f:.]{3,45}$/i.test(String(ip))) Object.defineProperty(req, 'ip', { value: String(ip), configurable: true });
+    const fh = String(req.headers['x-forwarded-host'] || '').toLowerCase();
+    if (/^[a-z0-9.-]+(:\d+)?$/.test(fh)) req.headers.host = fh;
+  }
   next();
 });
 app.disable('x-powered-by');

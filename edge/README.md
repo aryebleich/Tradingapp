@@ -25,20 +25,22 @@ it has one). Render can stay as the backup (`HOST_ID` unset counts as `render`).
 ## 2. The edge (free Cloudflare Worker in front)
 
 Fast static files from the nearest Cloudflare location, failover to the backup server, attack and
-flood protection, and keep-warm for every server.
-1. Free Cloudflare account → **Workers & Pages** (note the Account ID) → **KV** → create a namespace
-   `brightfolio-config` (note its id).
-2. My Profile → API Tokens → Create token with **Workers Scripts: Edit** and **Workers KV Storage: Edit**
-   (and **Zone DNS: Edit** if you use your own domain on Cloudflare).
-3. GitHub repository → Settings → Secrets and variables → Actions:
-   secrets `CLOUDFLARE_API_TOKEN`, `EDGE_SECRET` (any long random text);
-   variables `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_KV_ID`, `EDGE_ORIGINS` (e.g. `https://oracle.example.com,https://quantpocket.onrender.com`).
-4. Run the **Edge (Cloudflare Worker)** workflow. The site is then at `https://brightfolio-edge.<you>.workers.dev`
-   (or add your own domain to the Worker in Cloudflare).
-5. On every server set `PUBLIC_URL` to that address, `EDGE_SECRET` to the same secret, and in Admin → Keys
-   add `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_KV_ID` so Admin → Hosting can switch.
-   Update the APP_URL repository variable and Twilio's / Stripe's webhook addresses to the new address
-   (Admin → Money & fees → Stripe → Finish setup re-creates the Stripe webhook).
+flood protection, and keep-warm for every server. Set up from the admin page with one press:
+1. Free account at dash.cloudflare.com. To use your own domain, add it there (Add a domain → Free) and
+   put Cloudflare's two name servers at your domain company.
+2. Profile → API Tokens → Create Token → template **Edit Cloudflare Workers**, and add
+   **Zone → DNS → Edit**. Copy the token.
+3. Admin → Keys → `CLOUDFLARE_API_TOKEN`.
+4. Admin → Hosting: add each server with its own address (not the domain), then **Set up the edge**
+   with the site's address (e.g. `app.brightolio.com`). It finds the account, creates the settings
+   store, uploads `edge/worker.js` with its 5-minute keep-warm, gives it the servers (active first),
+   turns on Cloudflare for that name and routes it to the Worker. Without the domain on Cloudflare it
+   uses the free `brightfolio-edge.<name>.workers.dev` address.
+5. The edge proves itself to the servers with a secret derived from ENCRYPTION_KEY, which every server
+   already shares; `EDGE_SECRET` overrides it. Requests signed this way also pass the address the
+   visitor used, so sign-in and redirects use the public name.
+
+The "Edge (Cloudflare Worker)" workflow is the alternative for deploying from GitHub instead.
 
 ## 3. Switching
 

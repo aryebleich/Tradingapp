@@ -33,8 +33,11 @@ function toOrigin(request, origin, env) {
   h.delete('host');
   h.set('x-forwarded-host', u.host);
   h.set('x-forwarded-proto', 'https');
+  // The secret proves to the server that this came through the edge, so it trusts the visitor's
+  // address and the public name above. A visitor's own copies of these headers are dropped.
+  h.delete('x-edge-client-ip'); h.delete('x-edge-secret');
   const ip = request.headers.get('cf-connecting-ip');
-  if (ip && env.EDGE_SECRET) { h.set('x-edge-client-ip', ip); h.set('x-edge-secret', env.EDGE_SECRET); }
+  if (env.EDGE_SECRET) { h.set('x-edge-secret', env.EDGE_SECRET); if (ip) h.set('x-edge-client-ip', ip); }
   const body = SAFE.has(request.method) ? undefined : request.body;
   return new Request(target, { method: request.method, headers: h, body, redirect: 'manual', ...(body ? { duplex: 'half' } : {}) });
 }

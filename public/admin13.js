@@ -257,14 +257,22 @@ async function hostingPage(view) {
     <label class="chk"><input type="checkbox" id="warm" ${d.keepWarm ? 'checked' : ''}> Keep the active server awake (it calls itself every 9 minutes, so a free host never makes the next visitor wait while it wakes up)</label></div>
   <form class="card" id="srv"><h2>Add or edit a server</h2>
     <div class="row"><label>Id <span class="mu">(= HOST_ID on that server)</span><input name="id" placeholder="oracle" required data-no-tr></label><label>Kind<select name="kind">${kindOpts('oracle-vm')}</select></label><label>Name<input name="name" placeholder="Oracle Cloud"></label></div>
-    <div class="row"><label style="flex:2">Address<input name="url" placeholder="https://app.brightolio.com" required data-no-tr></label><label style="flex:2">Deploy hook <span class="mu">(optional, kept encrypted)</span><input name="hook" type="password" placeholder="https://..." autocomplete="off" data-no-tr></label></div>
+    <div class="row"><label style="flex:2">Address<input name="url" placeholder="https://138-2-233-183.sslip.io" required data-no-tr></label><label style="flex:2">Deploy hook <span class="mu">(optional, kept encrypted)</span><input name="hook" type="password" placeholder="https://..." autocomplete="off" data-no-tr></label></div>
     <p class="mu small-print" id="kindNote"></p><button>Save server</button><div class="err"></div></form>
-  <div class="card"><h2>The edge: fast pages and automatic failover</h2>
-    <p>A small free server on Cloudflare's network (edge/worker.js) sits in front: it serves the app's files from the nearest Cloudflare location, sends everything else to the active server, falls back to the next server if the active one is down (reads only; an order is never sent twice), passes the visitor's real address, and calls every server every 5 minutes so none falls asleep. Cloudflare also blocks attacks and floods before they reach a server.</p>
-    <ul class="plain"><li>${d.edge.ready ? '<span class="pill pos">Connected</span> Switching updates the edge at once' : '<span class="pill warn">Not set up</span> Add CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_KV_ID in Admin → Keys (steps in edge/README.md)'}</li>
-      <li>${d.edge.dns ? `<span class="pill pos">DNS</span> ${H.esc(d.edge.domain)} is switched too` : '<span class="mu">Own domain on Cloudflare (optional): CLOUDFLARE_ZONE_ID and SITE_DOMAIN</span>'}</li>
-      <li>${d.edge.secret ? '<span class="pill pos">EDGE_SECRET set</span> visitors\' real addresses are trusted' : '<span class="mu">Set the same EDGE_SECRET here and in the edge so rate limits see real visitors</span>'}</li>
-      <li>Public address: <b data-no-tr>${H.esc(d.edge.publicUrl || '(PUBLIC_URL not set)')}</b>. With the edge, set PUBLIC_URL on every server to the edge's address.</li></ul></div>
+  <div class="card" id="edgeCard"><h2>The edge: a free mini server on Cloudflare</h2>
+    <p class="mu" style="margin-top:0">A small server on Cloudflare's network sits in front of your servers. The app's files come from the Cloudflare location nearest each visitor, so pages open fast. Everything else goes to the active server. If that server is down, pages are read from the backup (an order is never sent twice). Cloudflare blocks attacks and floods, and the edge wakes every server every 5 minutes. Free: 100,000 visits a day.</p>
+    ${d.edge.setup ? `<ul class="plain"><li><span class="pill pos">On</span> <a href="${H.esc(d.edge.setup.url)}" target="_blank" rel="noopener" data-no-tr>${H.esc(d.edge.setup.url.replace('https://', ''))}</a> ${d.edge.check ? (d.edge.check.up ? `<span class="pill pos">Answering</span> <b>${d.edge.check.ms} ms</b>` : `<span class="pill neg">Not answering</span> <span class="mu">${H.esc(d.edge.check.error || String(d.edge.check.status || ''))}</span>`) : ''}</li>
+      <li>Sends visitors to: <span data-no-tr>${d.edge.setup.origins.map(H.esc).join(' → ')}</span></li></ul>` : '<p><span class="pill warn">Not set up yet</span></p>'}
+    <details ${d.edge.token ? '' : 'open'}><summary><b>${d.edge.token ? 'How it was set up' : 'Set it up (about 5 minutes, free)'}</b></summary><ol>
+      <li>Make a free account at <b>dash.cloudflare.com</b> (email and password).</li>
+      <li>If your domain is not on Cloudflare yet: <b>Add a domain</b> → <span data-no-tr>brightolio.com</span> → Free plan. Cloudflare shows two name servers: put them at the company where you bought the domain (it can take up to a few hours). Without this, the edge gets a free <span data-no-tr>workers.dev</span> address instead.</li>
+      <li>Profile (top right) → <b>API Tokens</b> → Create Token → template <b>Edit Cloudflare Workers</b> → Use template. Under Permissions, also add <b>Zone → DNS → Edit</b>. Account Resources: your account; Zone Resources: All zones. → Continue → Create Token, and copy it.</li>
+      <li>Here: <a href="#/admin-keys">Admin → Keys</a> → add <code>CLOUDFLARE_API_TOKEN</code> with the token.</li>
+      <li>Add your servers above, each with <b>its own</b> address (Oracle: <span data-no-tr>https://138-2-233-183.sslip.io</span>, Render: <span data-no-tr>https://quantpocket.onrender.com</span>), then press the button below.</li></ol></details>
+    <form id="edgeForm" class="row" style="align-items:flex-end"><label style="flex:2">Address of the site <span class="mu">(on Cloudflare)</span><input name="domain" value="${H.esc(d.edge.setup?.route ? d.edge.setup.url.replace('https://', '') : (d.edge.publicUrl || '').replace(/^https?:\/\//, ''))}" placeholder="app.brightolio.com" data-no-tr></label>
+      <button ${d.edge.token ? '' : 'disabled'}>${d.edge.setup ? 'Update the edge' : 'Set up the edge'}</button></form>
+    ${d.edge.token ? '' : '<p class="mu small-print">The button works once CLOUDFLARE_API_TOKEN is in Admin → Keys.</p>'}
+    <div class="err" id="eErr"></div><div id="eOut"></div></div>
   <details class="card"><summary><b>Free servers that do not sleep</b></summary>
     <ul><li><b>Oracle Cloud Always Free</b>: an ARM virtual machine that is yours and always on (in 2026 the free allowance is 2 CPUs and 12 GB of memory). Run <code>deploy/vm/setup.sh</code> on it: firewall, keys-only SSH, automatic security updates, HTTPS and auto-deploy from GitHub. Idle free machines can be reclaimed; keep-warm and a pay-as-you-go account (still free within the limits) help.</li>
       <li><b>Northflank</b> free sandbox: 2 always-on services. Connect the GitHub repository; it builds the Dockerfile.</li>
@@ -285,5 +293,14 @@ async function hostingPage(view) {
     try { const r = await H.api('/admin/hosting/switch', { body: { id: s.id, password: c.password, confirm: c.confirm } }); err.textContent = ''; out.innerHTML = `<ul class="plain">${r.steps.map(x => `<li>✓ ${H.esc(x)}</li>`).join('')}</ul>`; setTimeout(H.render, 2500); }
     catch (x) { err.textContent = x.message; }
   }));
+  H.$('#edgeForm', view).onsubmit = async e => {
+    e.preventDefault();
+    const eo = H.$('#eOut', view), ee = H.$('#eErr', view), domain = e.target.domain.value.trim();
+    const c = await H.secureConfirm({ title: 'Put the edge in front of your servers?', html: `<p>Visitors to ${H.esc(domain || 'the workers.dev address')} will go through the Cloudflare edge to the active server. You can update it again at any time.</p>`, okText: 'Set up' });
+    if (!c) return;
+    ee.textContent = ''; eo.innerHTML = '<p class="mu">Setting up… (up to a minute)</p>';
+    try { const r = await H.api('/admin/hosting/edge', { body: { domain, password: c.password, confirm: c.confirm } }); eo.innerHTML = `<ul class="plain">${r.steps.map(x => `<li>✓ ${H.esc(x)}</li>`).join('')}</ul>`; setTimeout(H.render, 4000); }
+    catch (x) { eo.innerHTML = ''; ee.textContent = x.message; }
+  };
   H.$('#warm', view).onchange = e => H.api('/admin/hosting/settings', { method: 'PUT', body: { keepWarm: e.target.checked } }).catch(x => (err.textContent = x.message));
 }
