@@ -1029,10 +1029,10 @@ const htmlCache = new Map();
 // Public pages: the owner's SEO settings (titles, descriptions, canonical, structured data) applied.
 const page = file => async (req, res) => {
   if (!htmlCache.has(file) || process.env.NODE_ENV !== 'production') {
-    const raw = (await fs.readFile(path.join(pub, file), 'utf8')).replace('content="og.png"', `content="${PUBLIC_URL}/og.png"`);
+    const raw = (await fs.readFile(path.join(pub, file), 'utf8')).replace('content="og-brightolio.png"', `content="${PUBLIC_URL}/og-brightolio.png"`);
     htmlCache.set(file, SEO.transform(raw, file.replace(/\.html$/, ''), SEO.settings(), PUBLIC_URL));
   }
-  res.type('html').send(htmlCache.get(file));
+  res.type('html').set('X-QP-Build', BUILD).send(htmlCache.get(file));
 };
 // The app page lists every module it imports (modulepreload), so the browser downloads them all at
 // once instead of one import level after another.

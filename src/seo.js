@@ -90,7 +90,7 @@ export function transform(html, key, s = settings(), b = base()) {
     `<link rel="canonical" href="${esc(url)}">`,
     ...(page.alt || page.key === 'index' ? [`<link rel="alternate" hreflang="en" href="${esc(b)}/">`, `<link rel="alternate" hreflang="yi" href="${esc(b)}/yi">`, `<link rel="alternate" hreflang="x-default" href="${esc(b)}/">`] : []),
     `<meta property="og:url" content="${esc(url)}">`, `<meta property="og:site_name" content="${esc(s.orgName)}">`, `<meta property="og:locale" content="${page.lang === 'yi' ? 'yi_US' : 'en_US'}">`,
-    `<meta name="twitter:title" content="${esc(title)}">`, `<meta name="twitter:description" content="${esc(desc)}">`, `<meta name="twitter:image" content="${esc(b)}/og.png">`,
+    `<meta name="twitter:title" content="${esc(title)}">`, `<meta name="twitter:description" content="${esc(desc)}">`, `<meta name="twitter:image" content="${esc(b)}/og-brightolio.png">`,
     ...(s.twitter ? [`<meta name="twitter:site" content="${esc(s.twitter)}">`] : []),
     ...(s.google ? [`<meta name="google-site-verification" content="${esc(s.google)}">`] : []),
     ...(s.bing ? [`<meta name="msvalidate.01" content="${esc(s.bing)}">`] : []),
