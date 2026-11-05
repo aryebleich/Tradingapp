@@ -203,3 +203,6 @@ body.noscroll { overflow: hidden; }
 @media (max-width: 900px) { #nav { z-index: 30; } #scrim { z-index: 29; } }
 .grid { grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); }
 .movers { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); }
+
+/* The page area fills the screen, so the footer always sits at the bottom (also while loading). */
+#view { min-height: calc(100vh - 140px); min-height: calc(100dvh - 140px); }

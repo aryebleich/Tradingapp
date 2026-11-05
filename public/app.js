@@ -392,6 +392,8 @@ const cleanups = [];
 const onLeave = fn => cleanups.push(fn);
 // quiet: the same page drawn again in the background with fresh data (live refresh); the page on
 // screen stays until the new one is ready, then they swap at the same scroll position.
+// The page's outline shown while a new page loads (it keeps the footer at the bottom too).
+const SKELETON = '<div class="skel"><div class="h1"></div><div class="box"></div><div class="w60"></div><div></div><div class="box"></div></div>';
 async function render(opts) {
   const quiet = opts?.quiet === true;
   while (cleanups.length) { try { cleanups.pop()(); } catch {} }
@@ -400,11 +402,18 @@ async function render(opts) {
   // write into a detached element instead of overwriting the page the user moved to.
   if (!render.ver) render.ver = (CFG ? Promise.resolve(CFG) : api('/config').catch(() => null)).then(c => { const v = c?.version; if (v && $('#siteVer')) $('#siteVer').textContent = 'Brightolio ' + v; });
   const view = document.createElement('div');
-  // Moving to another page fades its cards in; re-drawing the same page does not.
+  // Re-drawing the same page (after pressing a button, saving, switching a tab) keeps the page on
+  // screen until the new one is ready, at the same scroll position: nothing flashes empty and the
+  // footer never jumps up. Moving to another page shows the loading outline at once and fades in.
+  const samePage = route === render.last && !!$('#view').firstElementChild;
+  // Only the newest redraw is ever shown: an older one that finishes later is dropped.
+  const mine = render.seq = (render.seq || 0) + 1;
+  const swap = quiet || samePage;
   if (route !== render.last) { view.className = 'enter'; render.last = route; }
   const keepY = scrollY;
-  if (quiet) { $('#view').style.position = 'relative'; view.style.cssText = 'visibility:hidden;position:absolute;left:0;right:0;top:0'; $('#view').append(view); }
+  if (swap) { $('#view').style.position = 'relative'; view.style.cssText = 'visibility:hidden;position:absolute;left:0;right:0;top:0'; $('#view').append(view); }
   else {
+    view.innerHTML = SKELETON;
     $('#view').replaceChildren(view);
     // A new page starts at the top instead of keeping the previous page's scroll position.
     scrollTo(0, 0);
@@ -457,17 +466,22 @@ async function render(opts) {
     $('#navLogout').onclick = e => { e.preventDefault(); $('#logout').click(); };
     updateBadge();
   }
-  if (!quiet) view.innerHTML = '<div class="skel"><div class="h1"></div><div class="box"></div><div class="w60"></div><div></div><div class="box"></div></div>';
+  const show = () => { for (const c of [...$('#view').children]) if (c !== view) c.remove(); view.style.cssText = ''; scrollTo(0, keepY); };
   try {
     await loadPrefs();
     await (routes[route] || routes.dashboard)(view, new URLSearchParams(q));
-    if (quiet) {
+    if (swap) {
       if (!view.isConnected) return; // the user moved to another page meanwhile
-      for (const c of [...$('#view').children]) if (c !== view) c.remove();
-      view.style.cssText = ''; scrollTo(0, keepY);
+      if (render.seq !== mine) { view.remove(); return; } // a newer redraw is on its way
+      show();
     }
   }
-  catch (e) { if (quiet) { view.remove(); return; } view.innerHTML = `<div class="card err">${esc(e.message)}</div>`; }
+  catch (e) {
+    if (quiet) { view.remove(); return; }
+    if (swap && (!view.isConnected || render.seq !== mine)) { view.remove(); return; }
+    view.innerHTML = `<div class="card err">${esc(e.message)}</div>`;
+    if (swap) show();
+  }
 }
 window.addEventListener('hashchange', () => render());
 
