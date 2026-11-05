@@ -42,9 +42,12 @@ echo "== Firewall: SSH, HTTP, HTTPS only"
 ufw default deny incoming && ufw default allow outgoing
 ufw allow OpenSSH && ufw allow 80/tcp && ufw allow 443/tcp && ufw allow 443/udp
 ufw --force enable
-# Oracle images also filter with iptables (a REJECT rule): allow 80/443 ahead of it.
-for p in 80 443; do iptables -C INPUT -p tcp --dport $p -j ACCEPT 2>/dev/null || iptables -I INPUT 1 -p tcp --dport $p -j ACCEPT; done
-iptables -C INPUT -p udp --dport 443 -j ACCEPT 2>/dev/null || iptables -I INPUT 1 -p udp --dport 443 -j ACCEPT
+# Oracle images also filter with iptables, ending in a REJECT rule: the web ports must come first.
+# Any older copies of these rules (possibly placed after the REJECT) are removed, then put on top.
+for spec in "tcp 80" "tcp 443" "udp 443"; do set -- $spec
+  while iptables -D INPUT -p $1 --dport $2 -j ACCEPT 2>/dev/null; do :; done
+  iptables -I INPUT 1 -p $1 --dport $2 -j ACCEPT
+done
 (command -v netfilter-persistent >/dev/null && netfilter-persistent save >/dev/null 2>&1) || true
 
 echo "== SSH: keys only, no root login"
