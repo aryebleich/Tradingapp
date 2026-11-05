@@ -30,15 +30,15 @@ const home = JSON.parse(execFileSync('python3', ['-c', 'import json,sys; sys.pat
 const labsApp = (await import(pathToFileURL(path.join(root, 'public/i18n/yi-labs.js')))).default;
 const homeFile = path.join(root, 'scripts/yi_labs.json'), labsHome = fs.existsSync(homeFile) ? JSON.parse(fs.readFileSync(homeFile, 'utf8')) : {};
 function adminStrings() {
-  const src = fs.readFileSync(path.join(root, 'public/app.js'), 'utf8'), prot = fs.readFileSync(path.join(root, 'public/protect.js'), 'utf8');
-  const sections = [src.slice(src.indexOf('async function adminPage'), src.indexOf('\nfor (const [k] of ADMIN_TABS')), prot.slice(prot.indexOf('async function system')), fs.readFileSync(path.join(root, 'public/owner.js'), 'utf8')];
+  const src = fs.readFileSync(path.join(root, 'public/app.js'), 'utf8'), prot = fs.readFileSync(path.join(root, 'public/pages/protect.js'), 'utf8');
+  const sections = [src.slice(src.indexOf('async function adminPage'), src.indexOf('\nfor (const [k] of ADMIN_TABS')), prot.slice(prot.indexOf('async function system')), fs.readFileSync(path.join(root, 'public/pages/owner.js'), 'utf8')];
   const out = new Set();
   for (const s of sections) for (const m of s.matchAll(/(['"`])((?:(?!\1)[^\\]|\\.)*?)\1/g)) for (const piece of m[2].split(/<[^>]+>|\$\{[^}]*\}/)) { const t = piece.trim().replace(/\s+/g, ' '); if (/[A-Za-z]{2}/.test(t)) out.add(t); }
   return out;
 }
 const adminOnly = adminStrings();
 // Any text that appears inside the admin pages' code stays English too.
-const adminSrc = (() => { const a = fs.readFileSync(path.join(root, 'public/app.js'), 'utf8'), b = fs.readFileSync(path.join(root, 'public/protect.js'), 'utf8'); return a.slice(a.indexOf('async function adminPage'), a.indexOf('\nfor (const [k] of ADMIN_TABS')) + b.slice(b.indexOf('async function system')) + fs.readFileSync(path.join(root, 'public/owner.js'), 'utf8'); })();
+const adminSrc = (() => { const a = fs.readFileSync(path.join(root, 'public/app.js'), 'utf8'), b = fs.readFileSync(path.join(root, 'public/pages/protect.js'), 'utf8'); return a.slice(a.indexOf('async function adminPage'), a.indexOf('\nfor (const [k] of ADMIN_TABS')) + b.slice(b.indexOf('async function system')) + fs.readFileSync(path.join(root, 'public/pages/owner.js'), 'utf8'); })();
 // The app's Yiddish strings as they were at REF (the i18n files from that commit, loaded from a temp copy).
 async function appStringsAt(ref) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'yl-since-'));

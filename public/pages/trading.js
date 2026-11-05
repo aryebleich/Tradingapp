@@ -1,6 +1,6 @@
 // Alpaca trading pages: brokerage account & KYC, portfolio, trade ticket, orders, positions,
 // markets & news, option chains, watchlists, calendar & corporate actions.
-import { canvasNote } from './i18n.js';
+import { canvasNote } from '../i18n.js';
 import * as OD from './orderdesk.js';
 import { profileCard } from './profile.js';
 let H; // helpers from app.js

@@ -1046,10 +1046,17 @@ const page = file => async (req, res) => {
 let appHtml = null;
 const BUILD = process.env.RENDER_GIT_COMMIT || String(Date.now());
 async function appPage() {
-  const html = await fs.readFile(path.join(pub, 'app.html'), 'utf8'), main = await fs.readFile(path.join(pub, 'app.js'), 'utf8');
-  const mods = new Set(['app.js']);
-  for (const m of main.matchAll(/from '\.\/([\w.-]+\.js)'/g)) mods.add(m[1]);
-  for (const f of [...mods]) for (const m of (await fs.readFile(path.join(pub, f), 'utf8').catch(() => '')).matchAll(/from '\.\/([\w.-]+\.js)'/g)) mods.add(m[1]);
+  const html = await fs.readFile(path.join(pub, 'app.html'), 'utf8');
+  // Every module the app imports, followed through public/pages/ and back (static imports only).
+  const mods = new Set(), todo = ['app.js'];
+  while (todo.length) {
+    const f = todo.shift(); if (mods.has(f)) continue; mods.add(f);
+    const src = await fs.readFile(path.join(pub, f), 'utf8').catch(() => '');
+    for (const m of src.matchAll(/from '(\.\.?\/[\w./-]+\.js)'/g)) {
+      const dep = path.posix.normalize(path.posix.join(path.posix.dirname(f), m[1]));
+      if (!dep.startsWith('..') && !dep.startsWith('i18n/')) todo.push(dep);
+    }
+  }
   return html.replace('</head>', [...mods].map(m => `  <link rel="modulepreload" href="/${m}">`).join('\n') + '\n</head>');
 }
 app.get('/app', async (req, res) => {

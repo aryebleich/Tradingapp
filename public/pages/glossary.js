@@ -1,6 +1,6 @@
 // Contextual learning: a small "?" next to financial terms in labels, table headers and stat tiles
 // opens a one-line explanation, right where the number is.
-import { t } from './i18n.js';
+import { t } from '../i18n.js';
 
 export const TERMS = {
   'sharpe': 'Return per unit of risk: average excess return divided by volatility. Above 1 is good, above 2 is excellent.',

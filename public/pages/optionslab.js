@@ -2,7 +2,7 @@
 // see the payoff at expiry and on any date with implied-volatility what-if sliders, send all legs
 // as one order, scan for income trades, and run income bots (covered calls, cash-secured puts, the
 // wheel) with built-in risk controls.
-import { canvasNote } from './i18n.js';
+import { canvasNote } from '../i18n.js';
 let H;
 // Re-render after a short delay, unless the user has moved to another page by then.
 const later = ms => { const h = location.hash; setTimeout(() => location.hash === h && H.render(), ms); };

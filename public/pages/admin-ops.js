@@ -1,7 +1,7 @@
 // Admin → Market data (which free sources, in what order, fastest first; trading fees; savings
 // offers) and Admin → Calls, texts & email (the business inbox with AI drafts). English only.
 let H;
-export function registerAdmin13(routes, helpers) {
+export function registerAdminOps(routes, helpers) {
   H = helpers;
   const guard = fn => (view, q) => (H.me()?.role === 'admin' ? fn(view, q) : (location.hash = '#/dashboard'));
   Object.assign(routes, { 'admin-data': guard(dataPage), 'admin-comms': guard(commsPage), 'admin-strategies': guard(originalsPage), 'admin-seo': guard(seoPage), 'admin-agents': guard(agentsPage), 'admin-hosting': guard(hostingPage) });

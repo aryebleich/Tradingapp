@@ -2,7 +2,7 @@
 // trade journal, live-vs-expected execution, what-if), risk guardrails and the kill switch, values
 // investing (screens, maaser, Shabbos and Yom Tov), institutional 13F portfolios, spend-based
 // investing and news sentiment.
-import { canvasNote } from './i18n.js';
+import { canvasNote } from '../i18n.js';
 let H;
 // Re-render after a short delay, unless the user has moved to another page by then.
 const later = ms => { const h = location.hash; setTimeout(() => location.hash === h && H.render(), ms); };

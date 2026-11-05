@@ -1,35 +1,42 @@
+// Where things are (public/):
+//   app.html, app.js   the app's page and its core: sign-in, menu, page switching, shared helpers
+//   pages/             one file per area of the app (trading, strategies, AI studio, admin, ...)
+//   chart.js, i18n.js  the price chart and languages, used everywhere
+//   i18n/              translations
+//   index.html, yi.html, terms.html ...   the public website; site.js, site.css, chartstates.js
+//   sw.js              keeps files on the device so repeat visits open at once
 // Brightolio single-page client. Hash routes, no framework.
-import { registerTrading } from './trading.js';
+import { registerTrading } from './pages/trading.js';
 import { CHART_STATES, chartStates, RICH_STATES, richStates, blendedColors } from './chartstates.js';
-import { registerSignals } from './signals.js';
-import { registerStrategies } from './strategies.js';
-import { registerPairs } from './pairs.js';
-import { registerSp500 } from './sp500.js';
-import { registerBrokers } from './brokers.js';
-import { registerStudio } from './studio.js';
-import { registerBuild } from './build.js';
-import { registerAnalytics } from './analytics.js';
+import { registerSignals } from './pages/signals.js';
+import { registerStrategies } from './pages/strategies.js';
+import { registerPairs } from './pages/pairs.js';
+import { registerSp500 } from './pages/sp500.js';
+import { registerBrokers } from './pages/brokers.js';
+import { registerStudio } from './pages/studio.js';
+import { registerBuild } from './pages/build.js';
+import { registerAnalytics } from './pages/analytics.js';
 import { registerChart } from './chart.js';
-import { registerOptionsLab } from './optionslab.js';
-import { registerProtect, getPasskey } from './protect.js';
-import { registerOwner } from './owner.js';
-import { registerWealth } from './wealth.js';
-import { registerTools } from './tools.js';
-import { registerAlts } from './alts.js';
-import { registerMoney } from './money.js';
-import { registerRules } from './rules.js';
-import { registerTrustAdmin } from './trust-admin.js';
-import { registerLuach } from './luach.js';
-import { registerAddons } from './addons.js';
-import * as OD from './orderdesk.js';
-import { startBell } from './bell.js';
-import { registerInstruments } from './instruments.js';
-import { registerAdmin13 } from './admin13.js';
-import { registerStart } from './start.js';
-import { initSearch } from './search.js';
-import { registerRiskPages } from './riskpages.js';
-import { registerRetirement } from './retirement.js';
-import { attachGlossary } from './glossary.js';
+import { registerOptionsLab } from './pages/optionslab.js';
+import { registerProtect, getPasskey } from './pages/protect.js';
+import { registerOwner } from './pages/owner.js';
+import { registerWealth } from './pages/wealth.js';
+import { registerTools } from './pages/tools.js';
+import { registerAlts } from './pages/alts.js';
+import { registerMoney } from './pages/money.js';
+import { registerRules } from './pages/rules.js';
+import { registerTrustAdmin } from './pages/trust-admin.js';
+import { registerLuach } from './pages/luach.js';
+import { registerAddons } from './pages/addons.js';
+import * as OD from './pages/orderdesk.js';
+import { startBell } from './pages/bell.js';
+import { registerInstruments } from './pages/instruments.js';
+import { registerAdminOps } from './pages/admin-ops.js';
+import { registerStart } from './pages/start.js';
+import { initSearch } from './pages/search.js';
+import { registerRiskPages } from './pages/riskpages.js';
+import { registerRetirement } from './pages/retirement.js';
+import { attachGlossary } from './pages/glossary.js';
 import { startI18n, setLang, canvasNote, LANGS, current as currentLang } from './i18n.js';
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -450,7 +457,7 @@ async function render(opts) {
     await accounts();
     // Groups start folded; their arrow opens them (remembered). The group holding the current page opens.
     const opened = (() => { try { return JSON.parse(localStorage.getItem('qp_nav_open') || '[]'); } catch { return []; } })();
-    const START = await import('./start.js').then(m => m.startDone()).catch(() => true);
+    const START = await import('./pages/start.js').then(m => m.startDone()).catch(() => true);
     const link = ([k, t]) => `<a href="#/${k}" class="${k === route ? 'on' : ''}">${icon(k)}${t}</a>`;
     const core = CORE.filter(([k]) => k !== 'start' || !START || route === 'start');
     $('#nav').innerHTML = modeSwitch() + `<div class="navcore">${core.map(link).join('')}</div>` + groups.map(([g, items]) => { const list = items.filter(([k]) => !(ADDON_PAGES[k] && ME.addons?.[ADDON_PAGES[k]] === false)), open = opened.includes(g) || list.some(([k]) => k === route);
@@ -781,7 +788,7 @@ routes.dashboard = async (view, q) => {
   const dayChg = prev ? a.equity - prev : null;
   const steps = [[!!localStorage.getItem('qp_seen_strategies'), 'Try a ready-made strategy', '#/strategies'], [ME.totpEnabled, 'Turn on two-factor login', '#/settings'], [a.positions.length > 0 || state.account !== 'paper', 'Place your first paper trade', '#/dashboard'],
     [ME.phoneVerified && ME.hasPin, 'Add your phone and PIN for SMS', '#/settings'], [!!sessionStorage.getItem('qp_strategy'), 'Backtest a strategy', '#/backtest']];
-  const START = await import('./start.js').then(m => m.startDone()).catch(() => true);
+  const START = await import('./pages/start.js').then(m => m.startDone()).catch(() => true);
   const fresh = !START && state.account === 'paper' && a.positions.length === 0;
   const todo = !fresh && steps.filter(x => !x[0]).length > 1 && !localStorage.getItem('qp_onboard_done');
   const approvals = await approvalsBanner(), P = PREFS.portfolio;
@@ -1581,7 +1588,7 @@ registerLuach(routes, shared);
 registerAddons(routes, shared);
 registerInstruments(routes, shared);
 registerStart(routes, shared);
-registerAdmin13(routes, shared);
+registerAdminOps(routes, shared);
 initSearch(shared, [['Main', CORE], ...NAV]);
 startBell(shared);
 registerWealth(routes, shared);

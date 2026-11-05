@@ -1,6 +1,6 @@
 // AI studio: the AI assistant (chat or voice, live market tools, strategy drafts you can backtest,
 // save and deploy), forecasts and trainable AI agents, and the Python code lab.
-import { canvasNote } from './i18n.js';
+import { canvasNote } from '../i18n.js';
 import { statArbPython } from './pairs.js';
 let H;
 export function registerStudio(routes, helpers) {

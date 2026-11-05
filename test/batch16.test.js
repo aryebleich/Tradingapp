@@ -154,7 +154,7 @@ test('the private README starts with a full, generated product overview', async 
 });
 
 test('public text never claims guaranteed or risk-free returns', () => {
-  const files = [...fs.readdirSync('public').filter(f => /\.(html|js)$/.test(f)).map(f => 'public/' + f), 'scripts/pages.py', 'scripts/home.py'];
+  const files = [...fs.readdirSync('public').filter(f => /\.(html|js)$/.test(f)).map(f => 'public/' + f), ...fs.readdirSync('public/pages').map(f => 'public/pages/' + f), 'scripts/pages.py', 'scripts/home.py'];
   // Quoted phrases are warnings about such claims ("Guaranteed" returns are a red flag), not claims.
   const strip = t => t.replace(/“[^”]{0,60}”/g, '').replace(/"[^"\n]{0,40}"/g, '');
   const bad = [/\bguaranteed? (returns?|profits?|income|gains?|winners?)\b/i, /\brisk[- ]free (returns?|profits?|trading|income|gains?)\b/i, /\b(can(no|')?t|never|won'?t) lose\b/i, /\b(we|brightfolio|our (ai|bots?|strategies)) (guarantees?|promises?) /i, /\bget rich quick\b/i];

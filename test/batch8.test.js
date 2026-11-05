@@ -165,7 +165,7 @@ test('a long PDF starts with contents that give the right page for each section'
 
 test('the portfolio chart refreshes quietly instead of rebuilding the page', async () => {
   const fs = await import('node:fs');
-  const tr = fs.readFileSync('public/trading.js', 'utf8'), app = fs.readFileSync('public/app.js', 'utf8');
+  const tr = fs.readFileSync('public/pages/trading.js', 'utf8'), app = fs.readFileSync('public/app.js', 'utf8');
   const portfolio = tr.slice(tr.indexOf('async function portfolio('), tr.indexOf('\n}\n', tr.indexOf('async function portfolio(')));
   assert.doesNotMatch(portfolio, /every\(\d+, \(\) => H\.render\(\)\)/);
   assert.match(portfolio, /if \(holding \|\| P\.mode === 'since'\) return/);
