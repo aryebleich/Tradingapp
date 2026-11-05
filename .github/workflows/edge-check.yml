@@ -1,0 +1,48 @@
+name: Edge check
+# Checks the Cloudflare edge from the internet: the domain goes through Cloudflare, pages, files,
+# health and the paper/live check answer through it, sign-in keeps the public address, a change
+# (POST) reaches the server once, and the servers behind it answer. Run by hand.
+on:
+  workflow_dispatch:
+    inputs:
+      domain: { description: 'Site address', default: 'app.brightolio.com' }
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      D: ${{ inputs.domain || 'app.brightolio.com' }}
+    steps:
+      - name: Edge
+        run: |
+          bad=0; ok() { echo "  OK   $*"; }; no() { echo "::error::$*"; bad=1; }
+          echo "== Address"
+          ips=$(dig +short "$D" A | tr '\n' ' '); echo "  $D -> $ips"
+          echo "$ips" | grep -q '138.2.233.183' && no "$D still points straight at the Oracle server (orange cloud off): the edge is skipped" || ok "not pointing straight at a server"
+          h=$(curl -sS -D - -o /dev/null --max-time 30 "https://$D/healthz")
+          echo "$h" | grep -qi '^server: cloudflare' && ok "answers through Cloudflare ($(echo "$h" | grep -i '^cf-ray' | tr -d '\r'))" || no "not served by Cloudflare"
+          echo "$h" | grep -qi '^x-brightfolio-origin: backup' && echo "::warning::served by the BACKUP server (the active one did not answer)" || ok "served by the active server"
+          echo "== Health and paper/live check through the edge"
+          curl -fsS --max-time 30 "https://$D/healthz" && echo || no "/healthz failed"
+          r=$(curl -sS --max-time 30 "https://$D/healthz/routing"); echo "  $r" | cut -c1-300
+          echo "$r" | grep -q '"problems":\[\]' && ok "paper/live routing check" || no "routing check has problems"
+          echo "== Pages and files"
+          for p in / /app /app.js /hero-brightolio.webp /og-brightolio.png; do
+            for n in 1 2; do o=$(curl -sS -o /dev/null -w '%{http_code} %{time_total}s' --max-time 30 "https://$D$p"); echo "  $p try $n: $o"; done
+            case "$o" in 200*) ;; *) no "$p did not load";; esac
+          done
+          curl -s "https://$D/" | grep -q 'Brightolio' && ok "homepage says Brightolio" || no "homepage text"
+          echo "== Sign-in keeps the public address"
+          ru=$(curl -s -o /dev/null -w '%{redirect_url}' "https://$D/auth/google" | grep -o 'redirect_uri=[^&]*' | cut -d= -f2- | python3 -c 'import sys,urllib.parse;print(urllib.parse.unquote(sys.stdin.read().strip()))')
+          echo "  Google return address: $ru"
+          [ "$ru" = "https://$D/auth/google/callback" ] && ok "Google sign-in uses $D" || no "Google sign-in return address is $ru (should be https://$D/auth/google/callback)"
+          echo "== A change goes to the server (wrong password = 401, not an edge error)"
+          s=$(curl -s -o /tmp/l.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' -H 'X-Requested-With: qp' --data '{"email":"nobody@example.com","password":"wrong-password-1"}' "https://$D/api/auth/login"); echo "  POST /api/auth/login -> $s $(head -c 120 /tmp/l.json)"
+          case "$s" in 400|401|403|429) ok "sign-in requests reach the server";; *) no "sign-in request answered $s";; esac
+          echo "== Servers behind the edge (direct)"
+          for o in https://138-2-233-183.sslip.io https://quantpocket.onrender.com; do echo "  $o: $(curl -sS -o /dev/null -w '%{http_code} %{time_total}s' --max-time 60 "$o/healthz")"; done
+          echo "== Free workers.dev address"
+          for w in https://brightfolio-edge.brightolio.workers.dev; do echo "  $w: $(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 "$w/healthz" 2>&1)"; done
+          exit $bad
