@@ -44,6 +44,4 @@ jobs:
           case "$s" in 400|401|403|429) ok "sign-in requests reach the server";; *) no "sign-in request answered $s";; esac
           echo "== Servers behind the edge (direct)"
           for o in https://138-2-233-183.sslip.io https://quantpocket.onrender.com; do echo "  $o: $(curl -sS -o /dev/null -w '%{http_code} %{time_total}s' --max-time 60 "$o/healthz")"; done
-          echo "== Free workers.dev address"
-          for w in https://brightfolio-edge.brightolio.workers.dev; do echo "  $w: $(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 "$w/healthz" 2>&1)"; done
           exit $bad
