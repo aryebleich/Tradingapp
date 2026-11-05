@@ -81,8 +81,20 @@ async function forward(request, env, ctx) {
 const page = msg => `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Brightolio</title><style>body{font:16px/1.5 system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;padding:16px;background:#0b1324;color:#e7ecf5;text-align:center}</style><div><h1>Brightolio</h1><p>${msg}</p><p><a style="color:#8fb2ff" href="/">Try again</a></p></div>`;
 
 export const _test = { origins, reset: () => (originsCache = { at: 0, list: null }) };
+// Every answer carries this mark, so a check can tell the edge answered (and not Cloudflare's
+// plain proxy straight to a server). Live price streams (101) pass through untouched.
+const MARK = 'x-brightolio-edge';
+const marked = res => { if (res.status === 101 || res.webSocket) return res; const r = new Response(res.body, res); r.headers.set(MARK, 'on'); return r; };
+
 export default {
-  async fetch(request, env, ctx) {
+  async fetch(request, env, ctx) { return marked(await handle(request, env, ctx)); },
+  // Every 5 minutes: wake every server so none is asleep when a visitor arrives.
+  async scheduled(event, env, ctx) {
+    for (const o of await origins(env)) ctx.waitUntil(fetch(o + '/healthz', { headers: { 'user-agent': 'Brightolio-edge-keep-warm' } }).catch(() => {}));
+  },
+};
+
+async function handle(request, env, ctx) {
     const u = new URL(request.url);
     const cacheable = request.method === 'GET' && !NEVER_CACHE.test(u.pathname) && STATIC.test(u.pathname) && !request.headers.get('authorization');
     if (!cacheable) return forward(request, env, ctx);
@@ -101,12 +113,7 @@ export default {
     const res = await forward(request, env, ctx);
     if (res.ok) ctx.waitUntil(store(cache, key, res.clone()));
     return res;
-  },
-  // Every 5 minutes: wake every server so none is asleep when a visitor arrives.
-  async scheduled(event, env, ctx) {
-    for (const o of await origins(env)) ctx.waitUntil(fetch(o + '/healthz', { headers: { 'user-agent': 'Brightolio-edge-keep-warm' } }).catch(() => {}));
-  },
-};
+}
 
 async function store(cache, key, res) {
   const r = new Response(res.body, res);

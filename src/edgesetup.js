@@ -154,6 +154,7 @@ export async function edgeCheck() {
   const t0 = Date.now();
   try {
     const r = await fetch(c.url + '/healthz', { signal: AbortSignal.timeout(15000), headers: { 'user-agent': 'Brightolio-edge-check' } });
-    return { url: c.url, up: r.ok, ms: Date.now() - t0, status: r.status };
+    // The edge stamps every answer; without the stamp Cloudflare sent the visit straight to a server.
+    return { url: c.url, up: r.ok, ms: Date.now() - t0, status: r.status, edge: r.headers.get('x-brightolio-edge') === 'on' };
   } catch (e) { return { url: c.url, up: false, ms: Date.now() - t0, error: String(e.message).slice(0, 80) }; }
 }

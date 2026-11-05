@@ -103,12 +103,12 @@ test('the edge Worker: backup on a failed read, never repeats a change, passes t
     const env = { ORIGINS: `${addr(down)},${addr(up)}`, EDGE_SECRET: 's3cret' };
     const ctx = { waitUntil() {} };
     const get = await W.fetch(new Request('https://edge.example/api/positions', { headers: { 'cf-connecting-ip': '192.0.2.5' } }), env, ctx);
-    assert.equal(get.status, 200); assert.equal(await get.text(), 'backup'); assert.equal(get.headers.get('x-brightfolio-origin'), 'backup');
+    assert.equal(get.status, 200); assert.equal(await get.text(), 'backup'); assert.equal(get.headers.get('x-brightfolio-origin'), 'backup'); assert.equal(get.headers.get('x-brightolio-edge'), 'on', 'every answer carries the edge mark');
     assert.deepEqual(seen.map(x => x.name), ['primary', 'backup']);
     assert.equal(seen[0].ip, '192.0.2.5'); assert.equal(seen[0].secret, 's3cret'); assert.equal(seen[0].host, 'edge.example');
     seen.length = 0;
     const post = await W.fetch(new Request('https://edge.example/api/orders', { method: 'POST', body: '{"symbol":"AAPL"}', headers: { 'content-type': 'application/json' } }), env, ctx);
-    assert.equal(post.status, 503);
+    assert.equal(post.status, 503); assert.equal(post.headers.get('x-brightolio-edge'), 'on');
     assert.deepEqual(seen.map(x => x.name), ['primary'], 'an order is never sent to a second server');
     // KV wins over ORIGINS once Admin → Hosting has written it.
     _test.reset();

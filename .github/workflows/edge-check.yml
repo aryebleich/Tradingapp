@@ -23,6 +23,7 @@ jobs:
           echo "$ips" | grep -q '138.2.233.183' && no "$D still points straight at the Oracle server (orange cloud off): the edge is skipped" || ok "not pointing straight at a server"
           h=$(curl -sS -D - -o /dev/null --max-time 30 "https://$D/healthz")
           echo "$h" | grep -qi '^server: cloudflare' && ok "answers through Cloudflare ($(echo "$h" | grep -i '^cf-ray' | tr -d '\r'))" || no "not served by Cloudflare"
+          echo "$h" | grep -qi '^x-brightolio-edge: on' && ok "answered by the Brightolio mini server (edge mark present)" || no "no edge mark: Cloudflare sent the visit straight to a server (press Update the edge in Admin → Hosting)"
           echo "$h" | grep -qi '^x-brightfolio-origin: backup' && echo "::warning::served by the BACKUP server (the active one did not answer)" || ok "served by the active server"
           echo "== Health and paper/live check through the edge"
           curl -fsS --max-time 30 "https://$D/healthz" && echo || no "/healthz failed"
