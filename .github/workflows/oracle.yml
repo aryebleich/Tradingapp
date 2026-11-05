@@ -10,10 +10,10 @@ on:
   workflow_dispatch:
     inputs:
       step:
-        description: 'full = install + settings + start; settings = settings + restart only; check = report only'
+        description: 'full = install + settings + start; settings = settings + restart only; check = report only; diagnose = firewall details'
         default: full
         type: choice
-        options: [full, settings, check]
+        options: [full, settings, check, diagnose]
 permissions:
   contents: read
 concurrency:
@@ -54,6 +54,18 @@ jobs:
       - name: Open ports 80 and 443 in the server's own firewall
         run: |
           ssh -i ~/.ssh/oracle ubuntu@"$HOST" 'for p in 80 443; do sudo iptables -C INPUT -p tcp --dport $p -j ACCEPT 2>/dev/null || sudo iptables -I INPUT 1 -p tcp --dport $p -j ACCEPT; done; sudo iptables -C INPUT -p udp --dport 443 -j ACCEPT 2>/dev/null || sudo iptables -I INPUT 1 -p udp --dport 443 -j ACCEPT; (command -v netfilter-persistent >/dev/null && sudo netfilter-persistent save >/dev/null 2>&1) || true; sudo ufw allow 80/tcp >/dev/null; sudo ufw allow 443/tcp >/dev/null; echo "Server firewall: 80 and 443 allowed"; sudo ss -ltn "( sport = :80 or sport = :443 )" | tail -n +2'
+      - name: Diagnose the firewall
+        if: inputs.step == 'diagnose'
+        run: |
+          ssh -i ~/.ssh/oracle ubuntu@"$HOST" 'echo "--- listening"; sudo ss -ltnp | grep -E ":(80|443|3000) " ; echo "--- iptables INPUT"; sudo iptables -L INPUT -n -v --line-numbers | head -30; echo "--- ufw"; sudo ufw status verbose | head -20; echo "--- nftables (first lines)"; sudo nft list ruleset 2>/dev/null | grep -nE "chain|policy|dport|reject|drop" | head -40'
+          # Watch on the server while connecting from here: do the packets arrive at all?
+          ssh -i ~/.ssh/oracle ubuntu@"$HOST" 'sudo timeout 25 tcpdump -ni any -c 20 "tcp port 443 or tcp port 80" > /tmp/td.txt 2>&1 &' 
+          sleep 4
+          for i in 1 2 3; do timeout 5 bash -c "</dev/tcp/$HOST/443" 2>/dev/null && echo "connect 443: open" || echo "connect 443: no answer"; timeout 5 bash -c "</dev/tcp/$HOST/80" 2>/dev/null && echo "connect 80: open" || echo "connect 80: no answer"; done
+          sleep 22
+          echo "--- packets seen on the server (none = blocked before the server)"
+          ssh -i ~/.ssh/oracle ubuntu@"$HOST" 'cat /tmp/td.txt; rm -f /tmp/td.txt'
+          echo "--- my address: $(curl -s https://api.ipify.org)"
       - name: Install Brightfolio
         if: inputs.step == 'full'
         run: |
