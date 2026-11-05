@@ -38,10 +38,12 @@ const cfg = () => ({ active: null, keepWarm: true, servers: [], ...((synced ?? s
 const save = async v => { await siteSet('hosting', v); synced = v; return v; };
 export const saveHosting = save;
 export const hostingConfig = () => cfg();
-// Only the active server runs jobs. With no servers set up, whichever server runs is active.
+// Only the active server runs jobs.
 export function isActiveHost() {
   const c = cfg();
-  if (!c.active || !c.servers.length) return true;
+  // Nothing chosen yet in Admin → Hosting: only the original server (Render, or one without a
+  // HOST_ID) runs jobs. A newly added server waits on standby, so no order is ever sent twice.
+  if (!c.active || !c.servers.length) return !process.env.HOST_ID || process.env.HOST_ID === 'render';
   return c.active === thisHost();
 }
 const url = u => { const s = String(u || '').trim().replace(/\/$/, ''); if (!/^https:\/\/[a-z0-9.-]+(:\d+)?$/i.test(s)) throw bad('Use the server\'s https address, e.g. https://my-app.onrender.com'); return s; };
