@@ -77,6 +77,7 @@ import { oauthCallback, oauthEnabled, tradingFor } from './src/alpaca/connection
 import { brokerEnabled } from './src/alpaca/broker.js';
 import { dataEnabled } from './src/alpaca/data.js';
 import { router as googleRouter, googleEnabled } from './src/google.js';
+import { ownHosts, publicUrl } from './src/origin.js';
 import { router as githubRouter, githubEnabled } from './src/github.js';
 import { adminSiteRouter } from './src/admin-site.js';
 import { tokensRouter, mcpHandler } from './src/mcp.js';
@@ -961,7 +962,7 @@ api.post('/admin/assess-fees', U, auth.requireAdmin, wrap(async (req, res) => re
 // Which services are set up in the environment (names only, never the values).
 api.get('/admin/setup', U, auth.requireAdmin, async (req, res) => {
   const has = (...k) => k.every(x => !!process.env[x]);
-  res.json({ admins: auth.allAdminEmails(), emailError: siteGet('emailError'), items: [
+  res.json({ admins: auth.allAdminEmails(), emailError: siteGet('emailError'), googleRedirects: ownHosts().filter(h => !/^(localhost|127\.)/.test(h)).map(h => `https://${h}/auth/google/callback`), githubRedirect: publicUrl() + '/auth/github/callback', items: [
     ['Admin email', 'ADMIN_EMAIL', auth.allAdminEmails().length > 0],
     [`Node.js ${runtime.version} (patched: ${runtime.min} or later)`, 'NODE_VERSION / .node-version', runtime.ok],
     ['Database (Turso)', 'DATABASE_URL', has('DATABASE_URL')],

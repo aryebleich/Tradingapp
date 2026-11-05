@@ -1,5 +1,5 @@
 // "Continue with Google": OpenID Connect authorization-code flow for sign-in and sign-up.
-// Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET; the redirect URI is PUBLIC_URL/auth/google/callback.
+// Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET; the redirect URI is <each app address>/auth/google/callback.
 import express from 'express';
 import crypto from 'node:crypto';
 import { one, run, now, audit } from './db.js';
@@ -9,8 +9,10 @@ import { createSession, createUser, rateLimit } from './auth.js';
 export const googleEnabled = () => !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 const AUTH_URL = () => process.env.GOOGLE_AUTH_URL || 'https://accounts.google.com/o/oauth2/v2/auth';
 const TOKEN_URL = () => process.env.GOOGLE_TOKEN_URL || 'https://oauth2.googleapis.com/token';
-const appUrl = () => (process.env.PUBLIC_URL || 'http://localhost:3000').replace(/\/$/, '');
-const redirectUri = () => appUrl() + '/auth/google/callback';
+import { ownBase, publicUrl as appUrl } from './origin.js';
+// Finishes on the address the user is on when it is one of ours (each one is listed in Google's
+// "Authorized redirect URIs"), otherwise on PUBLIC_URL.
+const redirectUri = req => (ownBase(req) || appUrl()) + '/auth/google/callback';
 const STATE_COOKIE = 'qp_gstate';
 // A sign-in may take up to an hour at Google (choosing an account, 2-step verification).
 const STATE_MS = 60 * 60e3;
@@ -76,13 +78,12 @@ export const router = express.Router();
 router.get('/', (req, res) => {
   if (!googleEnabled()) return fail(res, 'Google sign-in is not set up yet. Use your email instead.');
   if (!rateLimit('google:' + req.ip, 30, 15 * 60e3)) return fail(res, 'Too many attempts, try again in a few minutes.');
-  // Always start on the app's own address, where Google sends the user back, so the cookie is there.
-  const host = new URL(appUrl()).host;
-  if (process.env.PUBLIC_URL && req.get('host') && req.get('host') !== host) return res.redirect(appUrl() + req.originalUrl);
+  // An address that is not ours starts again on PUBLIC_URL, where Google sends the user back.
+  if (!ownBase(req) && process.env.PUBLIC_URL && req.get('host') !== new URL(appUrl()).host) return res.redirect(appUrl() + req.originalUrl);
   const ref = /^[a-z0-9]{6,12}$/.test(String(req.query.ref || '')) ? String(req.query.ref) : null;
   const state = makeState(ref), nonce = readState(state).nonce;
   stateCookie(res, state, STATE_MS);
-  const p = new URLSearchParams({ response_type: 'code', client_id: process.env.GOOGLE_CLIENT_ID, redirect_uri: redirectUri(), scope: 'openid email profile', state, nonce, prompt: 'select_account' });
+  const p = new URLSearchParams({ response_type: 'code', client_id: process.env.GOOGLE_CLIENT_ID, redirect_uri: redirectUri(req), scope: 'openid email profile', state, nonce, prompt: 'select_account' });
   res.redirect(`${AUTH_URL()}?${p}`);
 });
 
@@ -100,7 +101,7 @@ router.get('/callback', async (req, res) => {
     const r = await fetch(TOKEN_URL(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ grant_type: 'authorization_code', code: String(req.query.code || ''), client_id: process.env.GOOGLE_CLIENT_ID, client_secret: process.env.GOOGLE_CLIENT_SECRET, redirect_uri: redirectUri() }),
+      body: new URLSearchParams({ grant_type: 'authorization_code', code: String(req.query.code || ''), client_id: process.env.GOOGLE_CLIENT_ID, client_secret: process.env.GOOGLE_CLIENT_SECRET, redirect_uri: redirectUri(req) }),
       signal: AbortSignal.timeout(15000),
     });
     const d = await r.json().catch(() => ({}));

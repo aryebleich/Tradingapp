@@ -63,6 +63,9 @@ export const router = express.Router();
 router.get('/', (req, res) => {
   if (!githubEnabled()) return fail(res, 'GitHub sign-in is not set up yet. Use your email instead.');
   if (!rateLimit('github:' + req.ip, 30, 15 * 60e3)) return fail(res, 'Too many attempts, try again in a few minutes.');
+  // GitHub allows one callback address (PUBLIC_URL), so the sign-in starts there and the cookie
+  // that proves it is on that same address when GitHub sends the user back.
+  if (process.env.PUBLIC_URL && req.get('host') && req.get('host') !== new URL(appUrl()).host) return res.redirect(appUrl() + req.originalUrl);
   const ref = /^[a-z0-9]{6,12}$/.test(String(req.query.ref || '')) ? String(req.query.ref) : null;
   const state = makeState(ref);
   stateCookie(res, state, STATE_MS);
