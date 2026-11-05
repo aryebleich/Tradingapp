@@ -1,0 +1,83 @@
+name: Oracle network (open web ports)
+# Opens TCP 80/443 (and UDP 443) to the internet for the Brightfolio server on Oracle Cloud, in the
+# subnet's security lists and any network security group on the server, through Oracle's API.
+# Run by hand. Needs (Settings → Secrets and variables → Actions):
+#   secret   OCI_CONFIG   the "Configuration file preview" Oracle shows when you add an API key
+#                         (Profile → My profile → API keys → Add API key), whole text
+#   secret   OCI_API_KEY  the private key file downloaded in that same step, whole file
+#   variable ORACLE_HOST  the server's public IP
+# Only these rules are added; nothing else in the account is changed. Delete the API key in Oracle
+# afterwards if you like.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ports:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      HOST: ${{ vars.ORACLE_HOST }}
+    steps:
+      - name: Oracle API access
+        env:
+          CFG: ${{ secrets.OCI_CONFIG }}
+          KEY: ${{ secrets.OCI_API_KEY }}
+        run: |
+          [ -n "$CFG" ] && [ -n "$KEY" ] || { echo "::error::Add the OCI_CONFIG and OCI_API_KEY secrets (Oracle: Profile → My profile → API keys → Add API key)."; exit 1; }
+          mkdir -p ~/.oci && chmod 700 ~/.oci
+          printf '%s\n' "$KEY" | tr -d '\r' > ~/.oci/key.pem && chmod 600 ~/.oci/key.pem
+          printf '%s\n' "$CFG" | tr -d '\r' | grep -v '^key_file' > ~/.oci/config
+          grep -q '^\[DEFAULT\]' ~/.oci/config || sed -i '1i [DEFAULT]' ~/.oci/config
+          echo "key_file=$HOME/.oci/key.pem" >> ~/.oci/config && chmod 600 ~/.oci/config
+          for k in user fingerprint tenancy region; do grep -q "^$k=" ~/.oci/config || { echo "::error::OCI_CONFIG has no '$k=' line. Paste the whole Configuration file preview."; exit 1; }; done
+          pip install -q oci-cli >/dev/null 2>&1 && oci --version
+          echo "TENANCY=$(grep '^tenancy=' ~/.oci/config | cut -d= -f2)" >> "$GITHUB_ENV"
+      - name: Find the server
+        run: |
+          set -e
+          found=""
+          for C in $(oci iam compartment list --compartment-id "$TENANCY" --compartment-id-in-subtree true --all --query 'data[?"lifecycle-state"==`ACTIVE`].id' --raw-output 2>/dev/null | tr -d '[]",') "$TENANCY"; do
+            for I in $(oci compute instance list --compartment-id "$C" --lifecycle-state RUNNING --all --query 'data[].id' --raw-output 2>/dev/null | tr -d '[]",'); do
+              V=$(oci compute instance list-vnics --instance-id "$I" --query "data[?\"public-ip\"=='$HOST'] | [0]" 2>/dev/null)
+              if [ -n "$V" ] && [ "$V" != "null" ]; then found=1
+                echo "SUBNET=$(echo "$V" | jq -r '."subnet-id"')" >> "$GITHUB_ENV"
+                echo "NSGS=$(echo "$V" | jq -r '."nsg-ids" // [] | join(" ")')" >> "$GITHUB_ENV"
+                echo "Found the server: $(oci compute instance get --instance-id "$I" --query 'data."display-name"' --raw-output)"; break 2
+              fi
+            done
+          done
+          [ -n "$found" ] || { echo "::error::No running instance has the public IP $HOST."; exit 1; }
+      - name: Open 80 and 443 in the subnet's security lists
+        run: |
+          set -e
+          for SL in $(oci network subnet get --subnet-id "$SUBNET" --query 'data."security-list-ids"' --raw-output | tr -d '[]",'); do
+            cur=$(oci network security-list get --security-list-id "$SL" --query 'data."ingress-security-rules"')
+            new=$(echo "$cur" | jq -c '
+              def has(p; port): any(.[]; .protocol == p and .source == "0.0.0.0/0" and ((.["tcp-options"] // .["udp-options"])["destination-port-range"] // {}) as $r | ($r.min // 0) <= port and ($r.max // 0) >= port);
+              . as $r
+              | (if ($r | has("6"; 80)) then [] else [{"protocol":"6","source":"0.0.0.0/0","isStateless":false,"tcpOptions":{"destinationPortRange":{"min":80,"max":80}}}] end)
+              + (if ($r | has("6"; 443)) then [] else [{"protocol":"6","source":"0.0.0.0/0","isStateless":false,"tcpOptions":{"destinationPortRange":{"min":443,"max":443}}}] end)
+              + (if ($r | has("17"; 443)) then [] else [{"protocol":"17","source":"0.0.0.0/0","isStateless":false,"udpOptions":{"destinationPortRange":{"min":443,"max":443}}}] end)')
+            if [ "$new" = "[]" ]; then echo "Security list already allows 80 and 443"; continue; fi
+            # Keep every existing rule, in the API's own format, and add the missing ones.
+            merged=$(echo "$cur" | jq -c --argjson add "$new" '[.[] | {protocol, source, isStateless: .["is-stateless"], sourceType: .["source-type"], description, tcpOptions: (.["tcp-options"] | if . then {destinationPortRange: .["destination-port-range"], sourcePortRange: .["source-port-range"]} else null end), udpOptions: (.["udp-options"] | if . then {destinationPortRange: .["destination-port-range"], sourcePortRange: .["source-port-range"]} else null end), icmpOptions: .["icmp-options"]} | with_entries(select(.value != null))] + $add | del(.. | nulls)')
+            oci network security-list update --security-list-id "$SL" --ingress-security-rules "$merged" --force >/dev/null
+            echo "Security list: added $(echo "$new" | jq length) rule(s) for ports 80/443"
+          done
+      - name: Open 80 and 443 in network security groups (if any)
+        if: env.NSGS != ''
+        run: |
+          for N in $NSGS; do
+            oci network nsg rules add --nsg-id "$N" --security-rules '[{"direction":"INGRESS","protocol":"6","source":"0.0.0.0/0","sourceType":"CIDR_BLOCK","tcpOptions":{"destinationPortRange":{"min":80,"max":80}}},{"direction":"INGRESS","protocol":"6","source":"0.0.0.0/0","sourceType":"CIDR_BLOCK","tcpOptions":{"destinationPortRange":{"min":443,"max":443}}}]' >/dev/null && echo "Network security group: 80/443 allowed"
+          done
+      - name: Check from the internet
+        run: |
+          sleep 15
+          for p in 80 443; do timeout 8 bash -c "</dev/tcp/$HOST/$p" 2>/dev/null && echo "Port $p: open" || echo "::warning::Port $p still not reachable"; done
+          D=$(echo "$HOST" | tr . -).sslip.io
+          for i in 1 2 3 4 5 6; do curl -fsS --max-time 20 "https://$D/healthz" && { echo; echo "OK: https://$D is up"; exit 0; } || sleep 20; done
+          echo "::warning::https://$D did not answer yet (the HTTPS certificate can take a minute after the ports open)."
+      - name: Clean up
+        if: always()
+        run: rm -rf ~/.oci
