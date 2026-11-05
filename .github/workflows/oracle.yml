@@ -91,7 +91,10 @@ jobs:
           umask 077
           printf '%s\n' "$ENVF" | tr -d '\r' | grep -Ev '^(NODE_ENV|PORT|HOST_ID|RENDER_[A-Z_]*|HOSTNAME)=' > /tmp/app.env
           { echo "NODE_ENV=production"; echo "PORT=3000"; echo "HOST_ID=oracle"; } >> /tmp/app.env
+          # With an own domain, the site's public address is that domain.
+          if [ -n "${{ inputs.domain }}" ]; then sed -i '/^PUBLIC_URL=/d' /tmp/app.env; fi
           grep -q '^PUBLIC_URL=' /tmp/app.env || echo "PUBLIC_URL=https://$DOMAIN" >> /tmp/app.env
+          echo "Public address: $(grep '^PUBLIC_URL=' /tmp/app.env | cut -d= -f2)"
           for k in DATABASE_URL DATABASE_AUTH_TOKEN ENCRYPTION_KEY; do grep -q "^$k=." /tmp/app.env && echo "$k: present" || echo "::warning::$k is missing from ORACLE_ENV"; done
           scp -q -i ~/.ssh/oracle /tmp/app.env ubuntu@"$HOST":/tmp/app.env
           ssh -i ~/.ssh/oracle ubuntu@"$HOST" 'sudo install -m 600 -o brightfolio -g brightfolio /tmp/app.env /opt/brightfolio/.env && rm -f /tmp/app.env && echo "Settings saved (/opt/brightfolio/.env, readable by the app only)"'
