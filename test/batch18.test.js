@@ -116,3 +116,20 @@ test('the edge Worker: backup on a failed read, never repeats a change, passes t
     assert.deepEqual(await _test.origins(kvEnv), [addr(up)]);
   } finally { down.close(); up.close(); }
 });
+
+test('Bug fixes: an empty "close before expiry" field takes the default, 0 stays 0', async () => {
+  const { botConfig, BOT_DEFAULTS } = await import('../src/options.js');
+  assert.equal(botConfig({}).closeDte, BOT_DEFAULTS.closeDte);
+  assert.equal(botConfig({ closeDte: '' }).closeDte, BOT_DEFAULTS.closeDte);
+  assert.equal(botConfig({ closeDte: '0' }).closeDte, 0);
+  assert.equal(botConfig({ closeDte: '99' }).closeDte, 30);
+  assert.ok(Object.values(botConfig({ closeDte: 'abc', targetDelta: 'x' })).every(Number.isFinite));
+});
+
+test('Bug fixes: the tax settings Save can reload the user from any page', async () => {
+  const fs = await import('node:fs');
+  const app = fs.readFileSync('public/app.js', 'utf8');
+  // Defined once at the top level of the app, not inside one page.
+  assert.match(app, /^const refreshMe = async \(\) =>/m);
+  assert.equal((app.match(/const refreshMe =/g) || []).length, 1);
+});

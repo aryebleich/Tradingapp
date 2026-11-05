@@ -399,6 +399,8 @@ const cleanups = [];
 const onLeave = fn => cleanups.push(fn);
 // quiet: the same page drawn again in the background with fresh data (live refresh); the page on
 // screen stays until the new one is ready, then they swap at the same scroll position.
+// Reloads the signed-in user (plan, settings) after a change saved on any page.
+const refreshMe = async () => { ME = (await api('/auth/me')).user; };
 // The page's outline shown while a new page loads (it keeps the footer at the bottom too).
 const SKELETON = '<div class="skel"><div class="h1"></div><div class="box"></div><div class="w60"></div><div></div><div class="box"></div></div>';
 async function render(opts) {
@@ -1431,7 +1433,6 @@ routes.settings = async view => {
   <div class="card tablewrap"><h2>Active sessions</h2><table><tr><th>IP address</th><th>Device</th><th>Signed in</th><th></th></tr>${sessions.map(s => `<tr><td>${esc(s.ip)}</td><td data-no-tr>${esc(s.ua.slice(0, 60))}</td><td>${date(s.createdAt)}</td><td>${s.current ? '<span class="pill">this device</span>' : `<button class="small ghost" data-s="${s.id}">Sign out</button>`}</td></tr>`).join('')}</table></div>
   <div class="card tablewrap"><h2>Security log</h2><table><tr><th>When</th><th>Event</th><th>IP address</th></tr>${log.map(l => `<tr><td>${date(l.at)}</td><td>${esc(EVENT_LABELS[l.event] || l.event.replace(/_/g, ' '))}</td><td>${esc(l.ip || '')}</td></tr>`).join('')}</table></div>`;
   $('#langSel', view).onchange = e => { if (e.target.value !== currentLang()) setLang(e.target.value); };
-  const refreshMe = async () => { ME = (await api('/auth/me')).user; };
   act($('button', $('#qcf', view)), async () => { await api('/integrations/quantconnect', { body: form($('#qcf', view)) }); setTimeout(render, 800); return 'Connected'; });
   $$('[data-dis]', view).forEach(b => (b.onclick = async () => { await api('/integrations/' + b.dataset.dis, { method: 'DELETE' }); render(); }));
   if ($('#mfaset', view)) act($('#mfaset', view), async () => {

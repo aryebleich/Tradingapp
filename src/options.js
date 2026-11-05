@@ -116,6 +116,14 @@ export function incomeCandidates(chain, spot, { strategy = 'cash_secured_put', d
 }
 
 // ---------- income bots ----------
+// A number from a form field; an empty or missing field takes the default (0 is a real value here).
+const num = (v, dflt) => (v === undefined || v === null || v === '' || !Number.isFinite(+v) ? dflt : +v);
+// The bot's settings from the form, each kept within its safe range.
+export const botConfig = b => ({
+      targetDelta: Math.max(0.05, Math.min(0.5, +b.targetDelta || BOT_DEFAULTS.targetDelta)), dteMin: Math.max(1, +b.dteMin || BOT_DEFAULTS.dteMin), dteMax: Math.max(2, +b.dteMax || BOT_DEFAULTS.dteMax),
+      takeProfitPct: Math.max(10, Math.min(95, +b.takeProfitPct || BOT_DEFAULTS.takeProfitPct)), stopMultiple: Math.max(0.5, Math.min(5, +b.stopMultiple || BOT_DEFAULTS.stopMultiple)),
+      closeDte: Math.max(0, Math.min(30, num(b.closeDte, BOT_DEFAULTS.closeDte))), contracts: Math.max(1, Math.min(10, Math.round(+b.contracts || 1))),
+});
 export const BOT_DEFAULTS = { targetDelta: 0.25, dteMin: 25, dteMax: 45, takeProfitPct: 50, stopMultiple: 2, closeDte: 7, contracts: 1 };
 const occMid = async (symbol, underlying, expiration) => { const ch = await D.optionChain(underlying, { expiration }); const c = ch.contracts.find(x => x.symbol === symbol); return c ? { mid: mid(c), ask: c.ask, bid: c.bid } : null; };
 
@@ -200,11 +208,7 @@ export const optionsRouter = (() => {
     if (!isPaid(req.user)) throw Object.assign(bad('Option income bots are part of Pro'), { status: 402, upgrade: true, feature: 'Automated option income' });
     if (!(await tradingFor(req.user.id))) throw bad('Connect your Alpaca account first (options trade on Alpaca)');
     const kind = ['covered_call', 'cash_secured_put', 'wheel'].includes(req.body.kind) ? req.body.kind : 'cash_secured_put';
-    const cfg = {
-      targetDelta: Math.max(0.05, Math.min(0.5, +req.body.targetDelta || BOT_DEFAULTS.targetDelta)), dteMin: Math.max(1, +req.body.dteMin || BOT_DEFAULTS.dteMin), dteMax: Math.max(2, +req.body.dteMax || BOT_DEFAULTS.dteMax),
-      takeProfitPct: Math.max(10, Math.min(95, +req.body.takeProfitPct || BOT_DEFAULTS.takeProfitPct)), stopMultiple: Math.max(0.5, Math.min(5, +req.body.stopMultiple || BOT_DEFAULTS.stopMultiple)),
-      closeDte: Math.max(0, Math.min(30, +req.body.closeDte ?? BOT_DEFAULTS.closeDte)), contracts: Math.max(1, Math.min(10, Math.round(+req.body.contracts || 1))),
-    };
+    const cfg = botConfig(req.body || {});
     if (cfg.dteMax <= cfg.dteMin) throw bad('Maximum days must be above the minimum');
     const id = (await run('INSERT INTO income_bots (user_id, underlying, kind, config, created_at) VALUES (?,?,?,?,?)', req.user.id, String(req.body.underlying || 'SPY').toUpperCase(), kind, JSON.stringify(cfg), now())).lastInsertRowid;
     await audit(req.user.id, 'income_bot_created', { id, kind }, req.ip);

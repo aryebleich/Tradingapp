@@ -449,6 +449,12 @@ console.log('Settings → Language');
     if (!(await p.$('#legs tr[data-i]'))) { await p.fill('#spot', '100'); await p.dispatchEvent('#spot', 'change'); await p.click('#addLeg'); }
     await p.waitForSelector('#pstats .stat', { timeout: 15000 });
   });
+  await step('tax settings save (state, automatic rates)', async () => {
+    await go('#/settings', '#taxs select[name=state]');
+    await p.selectOption('#taxs select[name=state]', { index: 5 });
+    await p.click('#taxs button:has-text("Save")');
+    await okText('#taxs');
+  });
   await step('tax page shows Schedule D', async () => { await go('#/tax', '.card'); await p.waitForFunction(() => /Schedule D/.test(document.body.textContent)); });
   await step('bots page offers frequency', async () => { await go('#/bots', 'h1'); });
   await step('lesson, long-term view, workspace, execution log', async () => {
