@@ -167,6 +167,8 @@ app.get('/.well-known/assetlinks.json', async (req, res) => {
 export const androidApkUrl = () => process.env.ANDROID_APK_URL || `https://github.com/${process.env.GITHUB_REPO || 'aryebleich/Tradingapp'}/releases/download/android-latest/brightfolio.apk`;
 app.get('/download/android', (req, res) => res.redirect(302, androidApkUrl()));
 
+// A short address for the server setup script (typed by hand on a new server): curl -L <site>/vm.sh
+app.get('/vm.sh', (req, res) => res.redirect(302, 'https://raw.githubusercontent.com/aryebleich/Tradingapp/main/deploy/vm/setup.sh'));
 // Paper stays paper and live stays live: checked by the deploy workflow after every push.
 app.get('/healthz/routing', async (req, res) => { const { routingReport } = await import('./src/routingcheck.js'); const r = routingReport(); res.status(r.ok ? 200 : 500).json(r); });
 app.get('/healthz', async (req, res) => {
