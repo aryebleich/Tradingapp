@@ -51,6 +51,9 @@ jobs:
           for p in 80 443; do
             if timeout 8 bash -c "</dev/tcp/$HOST/$p" 2>/dev/null; then echo "Port $p: open"; else echo "::warning::Port $p is not reachable yet. Oracle console → the instance's subnet → Default Security List → Add Ingress Rules: source 0.0.0.0/0, TCP, ports 80,443 (HTTPS certificates need port 80)."; fi
           done
+      - name: Open ports 80 and 443 in the server's own firewall
+        run: |
+          ssh -i ~/.ssh/oracle ubuntu@"$HOST" 'for p in 80 443; do sudo iptables -C INPUT -p tcp --dport $p -j ACCEPT 2>/dev/null || sudo iptables -I INPUT 1 -p tcp --dport $p -j ACCEPT; done; sudo iptables -C INPUT -p udp --dport 443 -j ACCEPT 2>/dev/null || sudo iptables -I INPUT 1 -p udp --dport 443 -j ACCEPT; (command -v netfilter-persistent >/dev/null && sudo netfilter-persistent save >/dev/null 2>&1) || true; sudo ufw allow 80/tcp >/dev/null; sudo ufw allow 443/tcp >/dev/null; echo "Server firewall: 80 and 443 allowed"; sudo ss -ltn "( sport = :80 or sport = :443 )" | tail -n +2'
       - name: Install Brightfolio
         if: inputs.step == 'full'
         run: |
@@ -77,6 +80,7 @@ jobs:
         run: |
           ssh -i ~/.ssh/oracle -o ConnectTimeout=20 ubuntu@"$HOST" 'echo "--- containers"; sudo docker ps --format "{{.Names}} {{.Status}}" 2>/dev/null; echo "--- caddy"; systemctl is-active caddy; echo "--- app log (last lines)"; cd /opt/brightfolio 2>/dev/null && sudo docker compose logs --tail 15 app 2>/dev/null | grep -viE "key|secret|token|password" ; echo "--- health on the server"; curl -fsS http://127.0.0.1:3000/healthz || echo "app not answering"' || true
           echo "--- from the internet"
+          if ! timeout 8 bash -c "</dev/tcp/$HOST/443" 2>/dev/null; then echo "::error::Port 443 is still blocked before it reaches the server: Oracle's network firewall. Oracle console → Networking → Virtual cloud networks → your network → Subnets → the subnet → Security → the security list → Add Ingress Rules: Source CIDR 0.0.0.0/0, IP Protocol TCP, Destination Port Range 80,443. (If the instance uses a Network Security Group, add the same rule there.)"; exit 1; fi
           for i in 1 2 3 4 5 6; do curl -fsS --max-time 20 "https://$DOMAIN/healthz" && { echo; echo "OK: https://$DOMAIN is up"; break; } || sleep 20; done
           curl -sS --max-time 20 "https://$DOMAIN/healthz/routing" || true
       - name: Clean up the key

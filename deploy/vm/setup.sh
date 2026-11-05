@@ -42,11 +42,10 @@ echo "== Firewall: SSH, HTTP, HTTPS only"
 ufw default deny incoming && ufw default allow outgoing
 ufw allow OpenSSH && ufw allow 80/tcp && ufw allow 443/tcp && ufw allow 443/udp
 ufw --force enable
-# Oracle images also filter with iptables: open 80/443 there too.
-if iptables -L INPUT -n 2>/dev/null | grep -q REJECT; then
-  iptables -I INPUT 6 -p tcp --dport 80 -j ACCEPT; iptables -I INPUT 6 -p tcp --dport 443 -j ACCEPT; iptables -I INPUT 6 -p udp --dport 443 -j ACCEPT
-  command -v netfilter-persistent >/dev/null && netfilter-persistent save || true
-fi
+# Oracle images also filter with iptables (a REJECT rule): allow 80/443 ahead of it.
+for p in 80 443; do iptables -C INPUT -p tcp --dport $p -j ACCEPT 2>/dev/null || iptables -I INPUT 1 -p tcp --dport $p -j ACCEPT; done
+iptables -C INPUT -p udp --dport 443 -j ACCEPT 2>/dev/null || iptables -I INPUT 1 -p udp --dport 443 -j ACCEPT
+(command -v netfilter-persistent >/dev/null && netfilter-persistent save >/dev/null 2>&1) || true
 
 echo "== SSH: keys only, no root login"
 sed -i -E 's/^#?PasswordAuthentication .*/PasswordAuthentication no/; s/^#?PermitRootLogin .*/PermitRootLogin no/; s/^#?KbdInteractiveAuthentication .*/KbdInteractiveAuthentication no/' /etc/ssh/sshd_config
