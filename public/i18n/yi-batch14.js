@@ -5,7 +5,7 @@ export const strings = {
   'Automation': 'אויטאמאציע', 'Quant lab': 'קוואנט לאבאראטאריע', 'Planning': 'פלאנירן', 'Accounts': 'קאנטעס', 'Help & settings': 'הילף און איינשטעלונגען',
   'Open or connect an account': 'עפנט אדער פארבינדט א קאנטע',
   // Get started
-  'Welcome to Brightfolio 👋': 'ברוך הבא צו Brightfolio 👋',
+  'Welcome to Brightolio 👋': 'ברוך הבא צו Brightolio 👋',
   "Let's set you up. It takes about two minutes, and nothing here uses real money.": 'לאמיר אייך איינשטעלן. עס נעמט בערך צוויי מינוט, און גארנישט דא באנוצט עכטע געלט.',
   'What brings you here?': 'וואס ברענגט אייך אהער?',
   'Learn and practice': 'לערנען און פרואוון', 'I am new to investing and want to try it safely first.': 'איך בין נייע אין אינוועסטירן און וויל עס קודם פרואוון אויף א זיכערן אופן.',
@@ -43,6 +43,6 @@ export const strings = {
   'Real-money order': 'ארדער מיט עכטע געלט', 'Place real order': 'שיקט דעם עכטן ארדער', 'Real-money orders by chat': 'ארדערס מיט עכטע געלט דורכן טשאט',
   'Let the assistant prepare real-money orders': 'לאזט דעם אסיסטענט צוגרייטן ארדערס מיט עכטע געלט', 'Limit per order ($)': 'מאקסימום פאר יעדן ארדער ($)',
   // Android page
-  'Brightfolio for Android': 'Brightfolio פאר אנדרויד',
+  'Brightolio for Android': 'Brightolio פאר אנדרויד',
 };
 export const patterns = [];

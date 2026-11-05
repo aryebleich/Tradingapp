@@ -21,7 +21,7 @@ import javax.crypto.spec.GCMParameterSpec
 
 class ApiException(message: String, val status: Int) : Exception(message)
 
-/** The Brightfolio API over HTTPS. The session token is kept encrypted with a key in the Android Keystore. */
+/** The Brightolio API over HTTPS. The session token is kept encrypted with a key in the Android Keystore. */
 object Api {
     val base: String = BuildConfig.BASE_URL
     private const val COOKIE = "qp_sid"
@@ -57,7 +57,7 @@ object Api {
             c.instanceFollowRedirects = false
             c.setRequestProperty("Accept", "application/json")
             c.setRequestProperty("X-Requested-With", "qp")
-            c.setRequestProperty("User-Agent", "BrightfolioAndroid/" + BuildConfig.VERSION_NAME)
+            c.setRequestProperty("User-Agent", "BrightolioAndroid/" + BuildConfig.VERSION_NAME)
             token?.let { c.setRequestProperty("Cookie", "$COOKIE=$it") }
             if (body != null) {
                 c.doOutput = true
@@ -88,7 +88,7 @@ object Api {
             }
             parsed
         } catch (e: IOException) {
-            throw ApiException("Could not reach Brightfolio. Check your internet connection.", 0)
+            throw ApiException("Could not reach Brightolio. Check your internet connection.", 0)
         } finally {
             c.disconnect()
         }

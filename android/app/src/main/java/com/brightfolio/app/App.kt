@@ -132,7 +132,7 @@ private fun SignIn(initialError: String?, onSignedIn: () -> Unit) {
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.Center,
     ) {
-        Text("Brightfolio", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        Text("Brightolio", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
         Text("Invest and trade from your phone. Start with $100,000 of practice money.", color = MaterialTheme.colorScheme.secondary)
         Spacer(Modifier.height(28.dp))
         OutlinedTextField(email, { email = it.trim() }, label = { Text("Email") }, singleLine = true, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
@@ -554,7 +554,7 @@ private fun MoreScreen(user: JSONObject, onSignedOut: () -> Unit) {
             Spacer(Modifier.height(16.dp))
             OutlinedButton(onClick = { scope.launch { try { Api.post("/auth/logout") } catch (_: ApiException) {}; onSignedOut() } }, modifier = Modifier.fillMaxWidth()) { Text("Sign out") }
             Spacer(Modifier.height(8.dp))
-            Text("Brightfolio ${BuildConfig.VERSION_NAME}. Brightfolio is software, not a broker; brokerage accounts are held at Alpaca Securities LLC, member FINRA/SIPC.", fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary)
+            Text("Brightolio ${BuildConfig.VERSION_NAME}. Brightolio is software, not a broker; brokerage accounts are held at Alpaca Securities LLC, member FINRA/SIPC.", fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary)
         }
     }
 }

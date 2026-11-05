@@ -105,7 +105,7 @@ export const moneyRouter = (() => {
   r.get('/', async (req, res) => res.json(await overview(req.user)));
   r.post('/link-token', async (req, res) => {
     if (!plaidEnabled()) throw bad('Bank linking is not set up on this server yet (PLAID_CLIENT_ID / PLAID_SECRET)', 503);
-    const d = await plaid('/link/token/create', { user: { client_user_id: String(req.user.id) }, client_name: 'Brightfolio', products: ['transactions'], country_codes: ['US'], language: 'en' });
+    const d = await plaid('/link/token/create', { user: { client_user_id: String(req.user.id) }, client_name: 'Brightolio', products: ['transactions'], country_codes: ['US'], language: 'en' });
     res.json({ linkToken: d.link_token });
   });
   r.post('/exchange', async (req, res) => {

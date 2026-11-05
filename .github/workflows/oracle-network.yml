@@ -1,5 +1,5 @@
 name: Oracle network (open web ports)
-# Opens TCP 80/443 (and UDP 443) to the internet for the Brightfolio server on Oracle Cloud, in the
+# Opens TCP 80/443 (and UDP 443) to the internet for the Brightolio server on Oracle Cloud, in the
 # subnet's security lists and any network security group on the server, through Oracle's API.
 # Run by hand. Needs (Settings → Secrets and variables → Actions):
 #   secret   OCI_CONFIG   the "Configuration file preview" Oracle shows when you add an API key

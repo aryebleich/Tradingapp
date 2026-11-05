@@ -52,7 +52,7 @@ const BLANK = { id: 'bp_blank', name: 'My strategy', tagline: 'Start from one ru
   sleeves: [{ name: 'Main', weight: 1, steps: [{ id: '1', t: 'cmp', label: 'Trend', a: ['close', '$E1', 0], op: '>', b: ['sma', '$E1', 200], yes: '@$L1', no: '@$E2' }] }] };
 const bpById = id => (id === 'bp_blank' ? BLANK : blueprint(id));
 const bad = (msg, status = 400) => Object.assign(new Error(msg), { status });
-// Letting Brightfolio's own ready-made strategies trade real money by themselves is managing money,
+// Letting Brightolio's own ready-made strategies trade real money by themselves is managing money,
 // which needs a registered investment adviser. In software-only mode they run automatically on
 // paper only; on a real account the user follows them by hand (the same rules for everyone).
 export const ADVISER_ONLY = 'Automatic trading of the ready-made strategies on a real account is available once the business is a registered investment adviser. Run it automatically on paper, or follow it by hand on your real account.';

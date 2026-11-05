@@ -43,7 +43,7 @@ test('built-in practice account: quote, history, prepare then send, status and b
   assert.ok(h.startPrice > 0 && h.endPrice > 0 && h.points.length <= 41 && typeof h.changePercent === 'number');
   // Prepared, not sent.
   const p = await T.prepare_paper_order.run({ symbol: 'AAPL', side: 'buy', dollars: 500 });
-  assert.equal(p.shownToUser, true); assert.match(ctx.order.summary, /Buy \$500 of AAPL, at the current price \(market order\)\. Practice money, in your Brightfolio practice account\./);
+  assert.equal(p.shownToUser, true); assert.match(ctx.order.summary, /Buy \$500 of AAPL, at the current price \(market order\)\. Practice money, in your Brightolio practice account\./);
   assert.equal((await one("SELECT COUNT(*) n FROM fills WHERE user_id = ?", user.id)).n, 0);
   // The button sends it.
   const r = await c('/ai/paper-order', ctx.order);

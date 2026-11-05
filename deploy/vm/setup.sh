@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sets up Brightfolio on a fresh Ubuntu 24.04 server (Oracle Cloud Always Free ARM VM, or any VM).
+# Sets up Brightolio on a fresh Ubuntu 24.04 server (Oracle Cloud Always Free ARM VM, or any VM).
 # Run once:  curl -fsSL https://raw.githubusercontent.com/aryebleich/Tradingapp/main/deploy/vm/setup.sh -o setup.sh   then   sudo bash setup.sh auto
 # What it does:
 #   - security: firewall (only SSH, HTTP, HTTPS), SSH by key only, fail2ban, automatic security
@@ -85,7 +85,7 @@ mkdir -p "$APP" && chown brightfolio:brightfolio "$APP"
 [ -d "$APP/src/.git" ] || sudo -u brightfolio git clone --depth 1 "https://github.com/$REPO.git" "$APP/src"
 if [ ! -f "$APP/.env" ]; then
   cat >"$APP/.env" <<EOF
-# Brightfolio settings for this server. Copy your keys here (Admin → Keys → Download .env helps).
+# Brightolio settings for this server. Copy your keys here (Admin → Keys → Download .env helps).
 NODE_ENV=production
 PORT=3000
 HOST_ID=oracle
@@ -103,14 +103,14 @@ cp "$APP/src/deploy/vm/update.sh" /usr/local/bin/brightfolio-update && chmod 755
 echo "== Auto-deploy every 2 minutes"
 cat >/etc/systemd/system/brightfolio-update.service <<'EOF'
 [Unit]
-Description=Brightfolio: deploy the newest commit on main
+Description=Brightolio: deploy the newest commit on main
 [Service]
 Type=oneshot
 ExecStart=/usr/local/bin/brightfolio-update
 EOF
 cat >/etc/systemd/system/brightfolio-update.timer <<'EOF'
 [Unit]
-Description=Brightfolio: check GitHub for a new version every 2 minutes
+Description=Brightolio: check GitHub for a new version every 2 minutes
 [Timer]
 OnBootSec=30s
 OnUnitActiveSec=2min

@@ -2,7 +2,7 @@
 // next to their brokerage accounts. Private: stakes in private companies, startups, funds and
 // loans, with every cash flow, the latest value, MOIC and IRR. Real estate: properties with value,
 // mortgage, rent and costs, giving equity, cash flow, cap rate and cash-on-cash return. A net-worth
-// view adds them to the brokerage accounts. Brightfolio records and calculates; it does not offer,
+// view adds them to the brokerage accounts. Brightolio records and calculates; it does not offer,
 // sell or arrange private securities or property deals (the platforms listed are links only).
 import express from 'express';
 import { one, all, run, now, audit } from './db.js';
@@ -17,7 +17,7 @@ const day = v => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : new 
 
 export const PRIVATE_TYPES = { equity: 'Shares in a private company', safe: 'SAFE or convertible note', fund: 'Private fund (LP)', loan: 'Private loan', business: 'My own business' };
 export const PROPERTY_TYPES = { rental: 'Rental property', home: 'My home', commercial: 'Commercial property', land: 'Land', fund: 'Real estate fund or platform' };
-// Links only: Brightfolio has no relationship with these platforms and earns nothing from them.
+// Links only: Brightolio has no relationship with these platforms and earns nothing from them.
 export const PLATFORMS = {
   private: [
     ['Wefunder', 'https://wefunder.com', 'Startup investing for everyone (Regulation Crowdfunding)'],

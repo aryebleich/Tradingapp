@@ -22,12 +22,12 @@ export const DEFAULTS = {
   allow: Object.fromEntries(Object.keys(CRAWLERS).map(k => [k, false])),
   search: true, // Google Search, Bing and others may list the public pages
   aiSearch: true, // AI search assistants may read and cite the public pages (Admin → SEO)
-  llms: 'Brightfolio is software for testing, paper trading and automating stock strategies on your own brokerage account. It is not a broker or an investment adviser. Website: the homepage, Terms, Privacy and Risk Disclosure pages.',
+  llms: 'Brightolio is software for testing, paper trading and automating stock strategies on your own brokerage account. It is not a broker or an investment adviser. Website: the homepage, Terms, Privacy and Risk Disclosure pages.',
   llmsOn: false,
   accountData: 'private', // 'private': only to providers that do not train on it · 'always' · 'never'
 };
 export function robotsTxt(s = DEFAULTS) {
-  const lines = ['# Set in Brightfolio Admin → AI & privacy.', ''];
+  const lines = ['# Set in Brightolio Admin → AI & privacy.', ''];
   const aiSearch = s.aiSearch !== false ? SEARCH_AGENTS : [];
   const blockedAgents = Object.entries(CRAWLERS).filter(([k]) => !s.allow[k]).flatMap(([, c]) => c.agents).filter(a => !aiSearch.includes(a));
   const allowedAgents = Object.entries(CRAWLERS).filter(([k]) => s.allow[k]).flatMap(([, c]) => c.agents).filter(a => !aiSearch.includes(a));

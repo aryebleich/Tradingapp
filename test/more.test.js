@@ -93,7 +93,7 @@ test('13F holdings, changes and ticker mapping', async () => {
   assert.equal(h.holdings.find(x => x.cusip === '166764100').change, 'new');
   assert.equal(h.holdings.find(x => x.cusip === '166764100').ticker, 'CVX');
   assert.equal(h.soldOut[0].issuer, 'PARAMOUNT GLOBAL');
-  assert.match(calls.find(x => x.url.includes('submissions')).headers['user-agent'], /^Brightfolio /);
+  assert.match(calls.find(x => x.url.includes('submissions')).headers['user-agent'], /^Brightolio /);
 });
 
 test('spend-based investing: CSV, Plaid link and weekly buys', async () => {

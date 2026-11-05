@@ -15,7 +15,7 @@ import { siteGet, siteSet, normalizePhone } from './site.js';
 import * as N from './notify.js';
 
 const bad = (msg, status = 400) => Object.assign(new Error(msg), { status });
-const DEFAULTS = { forwardTo: '', forwardAll: false, ringSeconds: 20, voicemailGreeting: 'Thank you for calling Brightfolio. Please leave a message after the tone and we will call you back.', aiSms: false, aiEmail: false, notes: '', emailToken: '' };
+const DEFAULTS = { forwardTo: '', forwardAll: false, ringSeconds: 20, voicemailGreeting: 'Thank you for calling Brightolio. Please leave a message after the tone and we will call you back.', aiSms: false, aiEmail: false, notes: '', emailToken: '' };
 export const settings = () => ({ ...DEFAULTS, ...(siteGet('comms', {}) || {}) });
 export async function saveSettings(b = {}) {
   const cur = settings(), out = { ...cur };
@@ -42,7 +42,7 @@ export async function draft(msg, history = []) {
   if (!llmEnabled()) throw bad('Set up an AI provider in Admin → AI & privacy to get drafts', 503);
   const s = settings();
   const r = await jsonCall({
-    system: `You answer customer ${msg.channel === 'email' ? 'emails' : 'text messages'} for Brightfolio, a software app for investing and trading on the customer's own brokerage account (it is not a broker and gives no investment advice). Be brief, warm and accurate. Use only the facts below and in the message; if you do not know, say the team will follow up. Never promise returns, never give investment, tax or legal advice, never ask for passwords or full account numbers.${msg.channel === 'sms' ? ' Keep it under 300 characters.' : ''}\n\nFacts from the owner:\n${s.notes || '(none yet)'}`,
+    system: `You answer customer ${msg.channel === 'email' ? 'emails' : 'text messages'} for Brightolio, a software app for investing and trading on the customer's own brokerage account (it is not a broker and gives no investment advice). Be brief, warm and accurate. Use only the facts below and in the message; if you do not know, say the team will follow up. Never promise returns, never give investment, tax or legal advice, never ask for passwords or full account numbers.${msg.channel === 'sms' ? ' Keep it under 300 characters.' : ''}\n\nFacts from the owner:\n${s.notes || '(none yet)'}`,
     user: `${history.length ? `Earlier in this conversation:\n${history.map(h => `${h.direction === 'in' ? 'Customer' : 'Us'}: ${h.body}`).join('\n')}\n\n` : ''}New message${msg.subject ? ` (subject: ${msg.subject})` : ''} from ${msg.name || msg.party}:\n${msg.body}`,
     schema: { type: 'object', additionalProperties: false, required: ['reply', 'needsHuman'], properties: { reply: { type: 'string' }, needsHuman: { type: 'boolean', description: 'true when a person should look at it (complaint, account problem, anything you could not answer)' } } },
     maxTokens: 700,
@@ -63,7 +63,7 @@ export async function inboundSms(from, body) {
       return d.reply;
     } catch (e) { console.warn('comms ai sms', e.message); }
   }
-  return 'Thanks for your message to Brightfolio. We will get back to you soon. Customers: add this number in the app under Settings > Phone to trade and ask by text.';
+  return 'Thanks for your message to Brightolio. We will get back to you soon. Customers: add this number in the app under Settings > Phone to trade and ask by text.';
 }
 export async function inboundEmail({ from, name, subject, text }) {
   const party = String(from || '').toLowerCase().match(/[^<\s]+@[^>\s]+/)?.[0];
@@ -97,7 +97,7 @@ export function registerCalls(app, { twilioOk, twiml }) {
   app.post('/twilio/voice/comms/recorded', async (req, res) => {
     if (!twilioOk(req)) return res.status(403).send('forbidden');
     await record({ channel: 'voicemail', party: normalizePhone(req.body.From || ''), body: '(transcribing…)', media: req.body.RecordingUrl ? String(req.body.RecordingUrl) : null, duration: +req.body.RecordingDuration || null });
-    if (process.env.ADMIN_EMAIL) N.sendEmail(process.env.ADMIN_EMAIL, 'New voicemail on the Brightfolio line', `From ${req.body.From}. Listen in Admin → Calls, texts & email.`).catch(() => {});
+    if (process.env.ADMIN_EMAIL) N.sendEmail(process.env.ADMIN_EMAIL, 'New voicemail on the Brightolio line', `From ${req.body.From}. Listen in Admin → Calls, texts & email.`).catch(() => {});
     twiml(res, '<Say>Thank you. Goodbye.</Say><Hangup/>');
   });
   app.post('/twilio/voice/comms/transcript', async (req, res) => {
@@ -143,7 +143,7 @@ export const commsAdminRouter = (() => {
     const m = await item(req.params.id), body = String(req.body?.body || '').trim(), via = ['sms', 'email'].includes(req.body?.via) ? req.body.via : /@/.test(m.party) ? 'email' : 'sms';
     if (!body) throw bad('Write the reply');
     if (via === 'sms') { if (!/^\+\d{10,15}$/.test(m.party)) throw bad('This contact has no phone number'); await N.sendSms(m.party, body.slice(0, 1500)); }
-    else { if (!/@/.test(m.party)) throw bad('This contact has no email address'); await N.sendEmail(m.party, `Re: ${m.subject || 'your message to Brightfolio'}`, body); }
+    else { if (!/@/.test(m.party)) throw bad('This contact has no email address'); await N.sendEmail(m.party, `Re: ${m.subject || 'your message to Brightolio'}`, body); }
     await record({ channel: via, direction: 'out', party: m.party, subject: via === 'email' ? `Re: ${m.subject || ''}` : null, body });
     if (m.form) await run("UPDATE messages SET status = 'done' WHERE id = ?", m.form); else await run("UPDATE comms SET status = 'done' WHERE id = ?", m.id);
     await audit(req.user.id, 'comms_reply', { via, to: m.party.replace(/.(?=.{4})/g, '•') }, req.ip);
@@ -153,7 +153,7 @@ export const commsAdminRouter = (() => {
   r.post('/send', async (req, res) => {
     const to = String(req.body?.to || '').trim(), body = String(req.body?.body || '').trim();
     if (!to || !body) throw bad('Who to, and what to say?');
-    if (/@/.test(to)) { await N.sendEmail(to, String(req.body.subject || 'A message from Brightfolio'), body); await record({ channel: 'email', direction: 'out', party: to.toLowerCase(), subject: req.body.subject, body }); }
+    if (/@/.test(to)) { await N.sendEmail(to, String(req.body.subject || 'A message from Brightolio'), body); await record({ channel: 'email', direction: 'out', party: to.toLowerCase(), subject: req.body.subject, body }); }
     else { const p = normalizePhone(to); if (!/^\+\d{10,15}$/.test(p)) throw bad('Enter a phone with country code or an email'); await N.sendSms(p, body.slice(0, 1500)); await record({ channel: 'sms', direction: 'out', party: p, body }); }
     res.json({ ok: true });
   });

@@ -30,9 +30,9 @@ before(async () => {
 after(() => { server.close(); ix.close(); });
 
 test('public pages carry canonical, hreflang, Open Graph, verification and valid structured data', async () => {
-  assert.equal((await owner('/admin/seo', { google: '<meta name="google-site-verification" content="abc123XYZ" />', bing: 'BING42', sameAs: 'https://www.linkedin.com/company/brightfolio', pages: { index: { title: 'Brightfolio: paper trading, backtests and automation', description: 'Practice with $100,000 of paper money, backtest strategies and automate them on the brokerage you choose.' } } }, 'PUT')).status, 200);
+  assert.equal((await owner('/admin/seo', { google: '<meta name="google-site-verification" content="abc123XYZ" />', bing: 'BING42', sameAs: 'https://www.linkedin.com/company/brightfolio', pages: { index: { title: 'Brightolio: paper trading, backtests and automation', description: 'Practice with $100,000 of paper money, backtest strategies and automate them on the brokerage you choose.' } } }, 'PUT')).status, 200);
   const html = await (await fetch(base + '/')).text();
-  assert.match(html, /<title>Brightfolio: paper trading, backtests and automation<\/title>/);
+  assert.match(html, /<title>Brightolio: paper trading, backtests and automation<\/title>/);
   assert.match(html, /<link rel="canonical" href="https:\/\/brightfolio\.example\/">/);
   assert.match(html, /hreflang="yi" href="https:\/\/brightfolio\.example\/yi"/); assert.match(html, /hreflang="x-default"/);
   assert.match(html, /<meta name="google-site-verification" content="abc123XYZ">/); assert.match(html, /<meta name="msvalidate\.01" content="BING42">/);
@@ -55,7 +55,7 @@ test('sitemap, robots for AI search, llms.txt and noindex', async () => {
   let sm = await (await fetch(base + '/sitemap.xml')).text();
   assert.match(sm, /<loc>https:\/\/brightfolio\.example\/<\/loc><lastmod>\d{4}-\d\d-\d\d<\/lastmod>/);
   assert.match(sm, /xhtml:link rel="alternate" hreflang="yi"/);
-  await owner('/admin/seo', { pages: { status: { noindex: true } }, llmsOn: true, llms: 'Brightfolio is software for paper trading and automation on your own brokerage account.' }, 'PUT');
+  await owner('/admin/seo', { pages: { status: { noindex: true } }, llmsOn: true, llms: 'Brightolio is software for paper trading and automation on your own brokerage account.' }, 'PUT');
   sm = await (await fetch(base + '/sitemap.xml')).text();
   assert.doesNotMatch(sm, /\/status</);
   assert.match(await (await fetch(base + '/status')).text(), /<meta name="robots" content="noindex, follow">/);
@@ -63,7 +63,7 @@ test('sitemap, robots for AI search, llms.txt and noindex', async () => {
   assert.match(robots, /AI search assistants[\s\S]*User-agent: OAI-SearchBot[\s\S]*?Allow: \//);
   assert.match(robots, /User-agent: GPTBot[\s\S]*?Disallow: \/\n/);
   const llms = await (await fetch(base + '/llms.txt')).text();
-  assert.match(llms, /^# Brightfolio/); assert.match(llms, /\(https:\/\/brightfolio\.example\/terms\)/); assert.doesNotMatch(llms, /\/status\)/);
+  assert.match(llms, /^# Brightolio/); assert.match(llms, /\(https:\/\/brightfolio\.example\/terms\)/); assert.doesNotMatch(llms, /\/status\)/);
 });
 
 test('the audit scores the site and says what to fix; IndexNow announces the pages', async () => {

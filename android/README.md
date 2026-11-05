@@ -1,4 +1,4 @@
-# Brightfolio for Android
+# Brightolio for Android
 
 A native Android app (Kotlin, Jetpack Compose), built and published by
 `.github/workflows/android.yml`; the download button points to the latest build.

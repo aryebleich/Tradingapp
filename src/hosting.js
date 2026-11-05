@@ -53,7 +53,7 @@ const pub = s => ({ id: s.id, name: s.name, kind: s.kind, url: s.url, hook: !!s.
 export async function probe(server) {
   const t0 = Date.now();
   try {
-    const r = await fetch(server.url + '/healthz/routing', { signal: AbortSignal.timeout(15000), headers: { 'user-agent': 'Brightfolio-hosting-check' } });
+    const r = await fetch(server.url + '/healthz/routing', { signal: AbortSignal.timeout(15000), headers: { 'user-agent': 'Brightolio-hosting-check' } });
     const ms = Date.now() - t0, d = await r.json().catch(() => ({}));
     return { id: server.id, up: r.ok || r.status === 500, ms, cold: ms > 3000, routingOk: !!d.ok, commit: d.commit ? d.commit.slice(0, 7) : null, status: r.status };
   } catch (e) { return { id: server.id, up: false, ms: Date.now() - t0, error: String(e.message).slice(0, 80) }; }
@@ -75,7 +75,7 @@ async function pointDns(target) {
   const zone = process.env.CLOUDFLARE_ZONE_ID, name = process.env.SITE_DOMAIN, host = new URL(target).hostname;
   const found = (await cf(`/zones/${zone}/dns_records?name=${encodeURIComponent(name)}`)).result || [];
   const rec = found.find(x => ['CNAME', 'A', 'AAAA'].includes(x.type));
-  const body = { type: 'CNAME', name, content: host, proxied: true, ttl: 1, comment: 'Brightfolio: active server (Admin → Hosting)' };
+  const body = { type: 'CNAME', name, content: host, proxied: true, ttl: 1, comment: 'Brightolio: active server (Admin → Hosting)' };
   if (rec) await cf(`/zones/${zone}/dns_records/${rec.id}`, { method: rec.type === 'CNAME' ? 'PATCH' : 'PUT', body: JSON.stringify(body) });
   else await cf(`/zones/${zone}/dns_records`, { method: 'POST', body: JSON.stringify(body) });
 }
@@ -110,7 +110,7 @@ export function startKeepWarm() {
   warmTimer = setInterval(() => {
     const c = cfg(), target = (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || '').replace(/\/$/, '');
     if (!c.keepWarm || !/^https:/.test(target) || !isActiveHost()) return;
-    fetch(target + '/healthz', { signal: AbortSignal.timeout(20000), headers: { 'user-agent': 'Brightfolio-keep-warm' } }).catch(() => {});
+    fetch(target + '/healthz', { signal: AbortSignal.timeout(20000), headers: { 'user-agent': 'Brightolio-keep-warm' } }).catch(() => {});
   }, 9 * 60e3);
   warmTimer.unref?.();
   return warmTimer;

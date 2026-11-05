@@ -1,4 +1,4 @@
-// Brightfolio edge: a small server on Cloudflare's network in front of the real servers (free:
+// Brightolio edge: a small server on Cloudflare's network in front of the real servers (free:
 // 100,000 requests a day). It
 //   - answers from the nearest Cloudflare location: the app's scripts, styles and images are kept
 //     there (refreshed in the background), so pages open fast even when the server is far away
@@ -52,7 +52,7 @@ function fixResponse(res, origin, publicHost) {
 
 async function forward(request, env, ctx) {
   const list = await origins(env), host = new URL(request.url).host;
-  if (!list.length) return new Response('Brightfolio edge: no server is set up yet (ORIGINS).', { status: 503 });
+  if (!list.length) return new Response('Brightolio edge: no server is set up yet (ORIGINS).', { status: 503 });
   const safe = SAFE.has(request.method) && request.headers.get('upgrade') !== 'websocket';
   let last = null;
   for (const [i, origin] of list.entries()) {
@@ -72,10 +72,10 @@ async function forward(request, env, ctx) {
     }
   }
   if (last instanceof Response) return last;
-  return new Response(page('We could not reach Brightfolio just now. Please try again in a moment.'), { status: 503, headers: { 'content-type': 'text/html; charset=utf-8', 'retry-after': '15' } });
+  return new Response(page('We could not reach Brightolio just now. Please try again in a moment.'), { status: 503, headers: { 'content-type': 'text/html; charset=utf-8', 'retry-after': '15' } });
 }
 
-const page = msg => `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Brightfolio</title><style>body{font:16px/1.5 system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;padding:16px;background:#0b1324;color:#e7ecf5;text-align:center}</style><div><h1>Brightfolio</h1><p>${msg}</p><p><a style="color:#8fb2ff" href="/">Try again</a></p></div>`;
+const page = msg => `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Brightolio</title><style>body{font:16px/1.5 system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;padding:16px;background:#0b1324;color:#e7ecf5;text-align:center}</style><div><h1>Brightolio</h1><p>${msg}</p><p><a style="color:#8fb2ff" href="/">Try again</a></p></div>`;
 
 export const _test = { origins, reset: () => (originsCache = { at: 0, list: null }) };
 export default {
@@ -101,7 +101,7 @@ export default {
   },
   // Every 5 minutes: wake every server so none is asleep when a visitor arrives.
   async scheduled(event, env, ctx) {
-    for (const o of await origins(env)) ctx.waitUntil(fetch(o + '/healthz', { headers: { 'user-agent': 'Brightfolio-edge-keep-warm' } }).catch(() => {}));
+    for (const o of await origins(env)) ctx.waitUntil(fetch(o + '/healthz', { headers: { 'user-agent': 'Brightolio-edge-keep-warm' } }).catch(() => {}));
   },
 };
 

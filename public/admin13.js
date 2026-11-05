@@ -142,7 +142,7 @@ async function seoPage(view) {
     <div class="grid2"><label>Google Search Console code<input name="google" value="${H.esc(s.google)}" placeholder="the content=&quot;…&quot; part of the HTML tag" dir="ltr"></label>
       <label>Bing Webmaster Tools code<input name="bing" value="${H.esc(s.bing)}" placeholder="msvalidate.01 code" dir="ltr"></label>
       <label>Yandex code (optional)<input name="yandex" value="${H.esc(s.yandex)}" dir="ltr"></label>
-      <label>X / Twitter handle (optional)<input name="twitter" value="${H.esc(s.twitter)}" placeholder="@brightfolio" dir="ltr"></label></div>
+      <label>X / Twitter handle (optional)<input name="twitter" value="${H.esc(s.twitter)}" placeholder="@brightolio" dir="ltr"></label></div>
     <label>Business name in search<input name="orgName" value="${H.esc(s.orgName)}"></label>
     <label>Social and business profiles (one per line: LinkedIn, X, YouTube, Crunchbase…)<textarea name="sameAs" rows="2" dir="ltr">${H.esc((s.sameAs || []).join('\n'))}</textarea></label>
     <label class="chk2"><input type="checkbox" name="faq" ${s.faq ? 'checked' : ''}> Show the homepage questions as an FAQ in search (structured data)</label>
@@ -257,7 +257,7 @@ async function hostingPage(view) {
     <label class="chk"><input type="checkbox" id="warm" ${d.keepWarm ? 'checked' : ''}> Keep the active server awake (it calls itself every 9 minutes, so a free host never makes the next visitor wait while it wakes up)</label></div>
   <form class="card" id="srv"><h2>Add or edit a server</h2>
     <div class="row"><label>Id <span class="mu">(= HOST_ID on that server)</span><input name="id" placeholder="oracle" required data-no-tr></label><label>Kind<select name="kind">${kindOpts('oracle-vm')}</select></label><label>Name<input name="name" placeholder="Oracle Cloud"></label></div>
-    <div class="row"><label style="flex:2">Address<input name="url" placeholder="https://brightfolio.example.com" required data-no-tr></label><label style="flex:2">Deploy hook <span class="mu">(optional, kept encrypted)</span><input name="hook" type="password" placeholder="https://..." autocomplete="off" data-no-tr></label></div>
+    <div class="row"><label style="flex:2">Address<input name="url" placeholder="https://app.brightolio.com" required data-no-tr></label><label style="flex:2">Deploy hook <span class="mu">(optional, kept encrypted)</span><input name="hook" type="password" placeholder="https://..." autocomplete="off" data-no-tr></label></div>
     <p class="mu small-print" id="kindNote"></p><button>Save server</button><div class="err"></div></form>
   <div class="card"><h2>The edge: fast pages and automatic failover</h2>
     <p>A small free server on Cloudflare's network (edge/worker.js) sits in front: it serves the app's files from the nearest Cloudflare location, sends everything else to the active server, falls back to the next server if the active one is down (reads only; an order is never sent twice), passes the visitor's real address, and calls every server every 5 minutes so none falls asleep. Cloudflare also blocks attacks and floods before they reach a server.</p>

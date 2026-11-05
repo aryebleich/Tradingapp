@@ -7,7 +7,7 @@ export const strings = {
   'How spread out is it?': 'ווי צעשפרייט איז עס?', 'What could happen if the market fell?': 'וואס קען פאסירן אויב דער מארק פאלט?', 'By kind': 'לויט סארט', 'By sector': 'לויט סעקטאר', 'How has it done?': 'ווי איז עס געגאנגען?', 'Holdings': 'האלטונגען', 'Practice': 'פראקטיצירן', 'Why it matters': 'פארוואס עס איז וויכטיק', 'pretend': 'פאַרשטעלט',
   'Plain-language research': 'פארשונג אין פשוטע ווערטער', 'Look up a company': 'זוכט א פירמע', 'Summarize': 'פאסט צוזאמען', 'Find stocks by the numbers': 'געפינט סטאקס לויט די נומערן', 'News in short': 'נייעס אין קורצן', 'Sector': 'סעקטאר', 'Any': 'יעדער',
   'Tokenized securities': 'טאקעניזירטע ווערטפאפירן', 'What it is': 'וואס עס איז', 'The main kinds': 'די הויפט סארטן', 'The extra risks': 'די עקסטערע ריזיקעס', 'Before you buy: a checklist': 'איידער איר קויפט: א טשעק־ליסטע', 'Compare': 'פארגלייכט',
-  'Investor protection': 'שוץ פאר אינוועסטארן', 'What Brightfolio is': 'וואס Brightfolio איז', 'Spot the warning signs': 'דערקענט די ווארנונג־צייכנס', 'Check before you send money': 'קאנטראלירט איידער איר שיקט געלט', 'Your data': 'אייערע דאטן', 'The risks in plain words': 'די ריזיקעס אין פשוטע ווערטער',
+  'Investor protection': 'שוץ פאר אינוועסטארן', 'What Brightolio is': 'וואס Brightolio איז', 'Spot the warning signs': 'דערקענט די ווארנונג־צייכנס', 'Check before you send money': 'קאנטראלירט איידער איר שיקט געלט', 'Your data': 'אייערע דאטן', 'The risks in plain words': 'די ריזיקעס אין פשוטע ווערטער',
   'AI coding agents': 'AI קאדירונג־אגענטן', 'Android app': 'Android אפ', 'Download the Android app': 'לאדט אראפ די Android אפ',
 };
 export const patterns = [];

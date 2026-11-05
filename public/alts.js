@@ -1,5 +1,5 @@
 // Private markets and real estate: the user's investments outside the stock market, with a net
-// worth across everything. Brightfolio records and calculates; it does not offer or arrange deals.
+// worth across everything. Brightolio records and calculates; it does not offer or arrange deals.
 import { propertyExtras, privateExtras, k1Overview } from './altlive.js';
 let H;
 export function registerAlts(routes, helpers) {
@@ -24,7 +24,7 @@ async function page(view, kind) {
   <form class="card" id="add"><h2>Add ${priv ? 'a private investment' : 'a property'}</h2>${fields(kind, {}, types)}
     ${priv ? '<div class="row"><label>Amount put in ($)<input name="invested" type="number" min="0" step="any"></label><label>On<input name="investedOn" type="date"></label></div>' : ''}
     <button>Add</button><div class="err"></div></form>
-  <div class="card"><h2>Where to invest</h2><p class="mu" style="margin-top:0">${priv ? 'Platforms where people invest in private companies. Some are open to everyone (Regulation Crowdfunding); others need an accredited investor.' : 'Ways to invest in real estate without buying a whole building.'} Brightfolio is not connected with them and earns nothing from them; check each one yourself. Private investments are hard to sell and can lose everything.</p>
+  <div class="card"><h2>Where to invest</h2><p class="mu" style="margin-top:0">${priv ? 'Platforms where people invest in private companies. Some are open to everyone (Regulation Crowdfunding); others need an accredited investor.' : 'Ways to invest in real estate without buying a whole building.'} Brightolio is not connected with them and earns nothing from them; check each one yourself. Private investments are hard to sell and can lose everything.</p>
     <div class="grid">${meta[priv ? 'private' : 'realestate'].map(([n, url, about]) => `<a class="card platform" href="${url}" ${url.startsWith('http') ? 'target="_blank" rel="noopener"' : ''}><b>${H.esc(n)}${url.startsWith('http') ? ' ↗' : ''}</b><span class="mu">${H.esc(about)}</span></a>`).join('')}</div></div>`;
 
   const f = H.$('#add', view);

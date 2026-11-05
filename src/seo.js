@@ -29,7 +29,7 @@ export const PAGES = [
   { key: 'privacy', path: '/privacy', file: 'privacy.html', lang: 'en', name: 'Privacy', priority: 0.3 },
   { key: 'risk', path: '/risk', file: 'risk.html', lang: 'en', name: 'Risk Disclosure', priority: 0.3 },
 ];
-export const DEFAULTS = { pages: {}, google: '', bing: '', yandex: '', twitter: '', sameAs: [], orgName: 'Brightfolio', faq: true, indexnowKey: '', lastPing: null };
+export const DEFAULTS = { pages: {}, google: '', bing: '', yandex: '', twitter: '', sameAs: [], orgName: 'Brightolio', faq: true, indexnowKey: '', lastPing: null };
 export const settings = () => ({ ...DEFAULTS, ...(siteGet('seo', {}) || {}) });
 export const base = () => (process.env.PUBLIC_URL || '').replace(/\/$/, '');
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -44,7 +44,7 @@ export async function saveSettings(b = {}) {
   const code = v => String(v || '').trim().replace(/^.*content="([^"]+)".*$/s, '$1').replace(/[^\w\-.=]/g, '').slice(0, 120);
   for (const k of ['google', 'bing', 'yandex']) if (k in b) out[k] = code(b[k]);
   if ('twitter' in b) out.twitter = String(b.twitter || '').trim().replace(/^@?/, b.twitter ? '@' : '').replace(/[^@\w]/g, '').slice(0, 30);
-  if ('orgName' in b) out.orgName = String(b.orgName || 'Brightfolio').trim().slice(0, 60) || 'Brightfolio';
+  if ('orgName' in b) out.orgName = String(b.orgName || 'Brightolio').trim().slice(0, 60) || 'Brightolio';
   if ('faq' in b) out.faq = !!b.faq;
   if ('sameAs' in b) {
     const list = (Array.isArray(b.sameAs) ? b.sameAs : String(b.sameAs || '').split(/[\s,]+/)).map(x => String(x).trim()).filter(Boolean).slice(0, 12);

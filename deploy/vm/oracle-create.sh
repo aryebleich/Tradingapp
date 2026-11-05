@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Creates the free Brightfolio server on Oracle Cloud from Cloud Shell (the >_ button at the top of
+# Creates the free Brightolio server on Oracle Cloud from Cloud Shell (the >_ button at the top of
 # the Oracle console), and keeps retrying while Oracle says "Out of capacity" — free ARM machines
 # free up through the day. Run:
 #   curl -fsSL https://raw.githubusercontent.com/aryebleich/Tradingapp/main/deploy/vm/oracle-create.sh -o create.sh && bash create.sh
 # It sets up the network (if there is none): a public subnet with SSH, HTTP and HTTPS open, then
 # tries every availability domain, first 2 CPUs / 12 GB, then 1 CPU / 6 GB (both Always Free),
-# every 60 seconds until one works. The server then installs Brightfolio by itself (setup.sh).
+# every 60 seconds until one works. The server then installs Brightolio by itself (setup.sh).
 # The SSH key stays in this Cloud Shell (~/.ssh/brightfolio); nothing here costs money.
 set -uo pipefail
 C="${OCI_TENANCY:?Run this in Oracle Cloud Shell}"

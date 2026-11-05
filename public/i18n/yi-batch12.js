@@ -15,7 +15,7 @@ export const strings = {
   'Where the money went (6 months)': 'וואו דאס געלט איז אוועק (6 חדשים)',
   'Link a bank or card to see money in and out by month.': 'בינדט צו א באנק אדער קארטל צו זען געלט אריין און ארויס יעדן חודש.',
   'Transfers between your own accounts and card payments are left out, so nothing counts twice.': 'איבערפירונגען צווישן אייערע אייגענע קאנטעס און קארטל-צאלונגען ווערן אויסגעלאזט, כדי גארנישט זאל נישט ווערן גערעכנט צוויי מאל.',
-  'Linked through Plaid, read-only. Brightfolio never sees your bank password and cannot move money.': 'צוגעבונדן דורך Plaid, נאר צו לייענען. Brightfolio זעט קיינמאל נישט אייער באנק-פאסווארט און קען נישט באוועגן געלט.',
+  'Linked through Plaid, read-only. Brightolio never sees your bank password and cannot move money.': 'צוגעבונדן דורך Plaid, נאר צו לייענען. Brightolio זעט קיינמאל נישט אייער באנק-פאסווארט און קען נישט באוועגן געלט.',
   'Only the public address: no keys or seed words, ever. The balance is read from the blockchain.': 'נאר די עפנטלעכע אדרעס: קיינמאל נישט קיין שליסלען אדער "סיד" ווערטער. דער באלאנס ווערט געלייענט פון דער בלאקטשעין.',
   // Rules across accounts
   'New rule': 'נייער כלל', 'The mix': 'די מישונג', 'Add a holding': 'צולייגן א האלדינג', 'Accounts': 'קאנטעס', 'When': 'ווען',

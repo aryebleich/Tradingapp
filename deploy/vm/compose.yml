@@ -1,4 +1,4 @@
-# Brightfolio on a VM: the app container, locked down. Caddy (on the host) serves HTTPS and passes
+# Brightolio on a VM: the app container, locked down. Caddy (on the host) serves HTTPS and passes
 # requests to 127.0.0.1:3000 only, so the container is never reachable from outside directly.
 services:
   app:

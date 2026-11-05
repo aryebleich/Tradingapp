@@ -41,7 +41,7 @@ export function session(t = Date.now()) {
   return { open, status, nextOpen, nextClose, earlyClose: EARLY_CLOSE.has(today), holiday: HOLIDAYS.has(today), now: t };
 }
 
-// Trading fees. Brightfolio does not charge per trade; brokers like Alpaca charge no commission on
+// Trading fees. Brightolio does not charge per trade; brokers like Alpaca charge no commission on
 // US stocks and ETFs. Regulators charge small fees on SALES only (SEC Section 31 and FINRA TAF).
 export const FEE_DEFAULTS = { commissionPerShare: 0, commissionMin: 0, secPerMillion: 27.8, finraTafPerShare: 0.000166, finraTafMax: 8.3, slippageBps: 2, updated: '2026-11-01' };
 export const fees = () => ({ ...FEE_DEFAULTS, ...(siteGet('tradingFees', {}) || {}) });

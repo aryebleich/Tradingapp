@@ -20,7 +20,7 @@ async function gh(method, p, body, { raw = false } = {}) {
   if (!process.env.GITHUB_TOKEN) throw bad('Add GITHUB_TOKEN in Admin → Keys first', 400);
   const r = await fetch(`${API()}/repos/${repo()}${p}`, {
     method, redirect: 'follow', signal: AbortSignal.timeout(20000),
-    headers: { authorization: `Bearer ${process.env.GITHUB_TOKEN}`, accept: 'application/vnd.github+json', 'x-github-api-version': '2022-11-28', 'user-agent': 'Brightfolio', ...(body ? { 'content-type': 'application/json' } : {}) },
+    headers: { authorization: `Bearer ${process.env.GITHUB_TOKEN}`, accept: 'application/vnd.github+json', 'x-github-api-version': '2022-11-28', 'user-agent': 'Brightolio', ...(body ? { 'content-type': 'application/json' } : {}) },
     body: body ? JSON.stringify(body) : undefined,
   });
   if (r.status === 204) return null;

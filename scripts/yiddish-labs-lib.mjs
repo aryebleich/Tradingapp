@@ -4,7 +4,7 @@
 // placeholders first so they come back unchanged, and every result is checked before use.
 
 // Names that must stay in Latin letters, plus anything with two or more capitals (tickers, ETFs, QuantConnect).
-const KEEP = ['Brightfolio', 'Charles Schwab', 'S&P 500', 'S&amp;P 500', 'S&P', 'S&amp;P', 'Alpaca Securities LLC', 'FINRA/SIPC', 'Alpaca', 'Schwab', 'tastytrade', 'Tradier', 'Stripe', 'Helcim', 'Twilio', 'Google', 'Zapier', 'Apple', 'Nasdaq', 'Bollinger', 'Sharpe', 'Authy', 'Starter', 'Pro', 'Elite', 'bitcoin'];
+const KEEP = ['Brightolio', 'Charles Schwab', 'S&P 500', 'S&amp;P 500', 'S&P', 'S&amp;P', 'Alpaca Securities LLC', 'FINRA/SIPC', 'Alpaca', 'Schwab', 'tastytrade', 'Tradier', 'Stripe', 'Helcim', 'Twilio', 'Google', 'Zapier', 'Apple', 'Nasdaq', 'Bollinger', 'Sharpe', 'Authy', 'Starter', 'Pro', 'Elite', 'bitcoin'];
 const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const PROTECT = new RegExp([
   '<[^>]+>', '&[a-z#0-9]+;', '\\{[^}]*\\}', 'https?://\\S+', '[\\w.-]+\\.(?:com|ai|markets)\\b[\\w/.-]*', '[\\w.+-]+@[\\w-]+\\.[\\w.]+',

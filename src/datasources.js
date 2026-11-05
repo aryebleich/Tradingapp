@@ -9,7 +9,7 @@
 import { siteGet, siteSet } from './site.js';
 
 const T = (ms = 6000) => AbortSignal.timeout(ms);
-const UA = { 'User-Agent': 'Mozilla/5.0 Brightfolio' };
+const UA = { 'User-Agent': 'Mozilla/5.0 Brightolio' };
 // Tests turn real network data off (FREE_DATA=off); DATA_SOURCES_TEST lets them use fake servers.
 const offline = () => process.env.FREE_DATA === 'off' && !process.env.DATA_SOURCES_TEST;
 const url = (name, dflt) => (process.env[name] || dflt).replace(/\/$/, '');

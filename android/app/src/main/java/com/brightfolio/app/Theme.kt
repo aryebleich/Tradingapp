@@ -21,6 +21,6 @@ private val Dark = darkColorScheme(
 )
 
 @Composable
-fun BrightfolioTheme(content: @Composable () -> Unit) {
+fun BrightolioTheme(content: @Composable () -> Unit) {
     MaterialTheme(colorScheme = if (isSystemInDarkTheme()) Dark else Light, content = content)
 }

@@ -17,7 +17,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         Api.init(this)
         readCode(intent)
-        setContent { BrightfolioTheme { App(handoff) } }
+        setContent { BrightolioTheme { App(handoff) } }
     }
 
     override fun onNewIntent(intent: Intent) {

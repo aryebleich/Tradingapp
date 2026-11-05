@@ -8,7 +8,7 @@
         android:allowBackup="false"
         android:supportsRtl="true"
         android:networkSecurityConfig="@xml/network_security"
-        android:theme="@style/Theme.Brightfolio">
+        android:theme="@style/Theme.Brightolio">
         <activity
             android:name=".MainActivity"
             android:exported="true"

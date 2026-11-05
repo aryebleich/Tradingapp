@@ -24,7 +24,7 @@ async function trust() {
   if (soc) {
     const s = d.soc2;
     soc.innerHTML = `<div class="st-banner ${s.stage === 'none' ? 'none' : s.requestable ? 'ok' : 'warn'}"><b>${esc(s.label)}</b></div>
-    ${s.stage === 'none' ? '<p>Brightfolio has not had a SOC 2 audit yet. We will show the auditor and the report date here once one is done, and never before.</p>' : ''}
+    ${s.stage === 'none' ? '<p>Brightolio has not had a SOC 2 audit yet. We will show the auditor and the report date here once one is done, and never before.</p>' : ''}
     ${s.auditor ? `<p>Auditor: <b>${esc(s.auditor)}</b></p>` : ''}${s.period ? `<p>Period covered: ${esc(s.period)}</p>` : ''}${s.reportDate ? `<p>Report date: ${esc(s.reportDate)}</p>` : ''}
     ${s.note ? `<p>${esc(s.note)}</p>` : ''}${s.requestable ? '<p>Customers and partners can ask for the report (under a confidentiality agreement) on the <a href="contact.html">contact page</a>.</p>' : ''}`;
   }
@@ -34,8 +34,8 @@ async function trust() {
   if (c && d.securityContact) c.innerHTML = `, or write to <a href="mailto:${esc(d.securityContact)}">${esc(d.securityContact)}</a>`;
   const ins = document.querySelector('[data-trust=insurance]');
   if (ins) ins.innerHTML = d.insurance.length
-    ? `<table class="st-table"><tr><th>Cover</th><th>Insurer</th><th>Limit</th></tr>${d.insurance.map(i => `<tr><td>${esc(i.kind)}${i.note ? `<br><span class="mu">${esc(i.note)}</span>` : ''}</td><td>${esc(i.carrier || '-')}</td><td>${esc(i.limit)}</td></tr>`).join('')}</table><p class="mu">These policies protect Brightfolio as a company (for example against a cyber incident). They do not insure your investments against market losses.</p>`
-    : '<p>Brightfolio does not list any company insurance policies yet. Your protection comes from your broker and bank, above.</p>';
+    ? `<table class="st-table"><tr><th>Cover</th><th>Insurer</th><th>Limit</th></tr>${d.insurance.map(i => `<tr><td>${esc(i.kind)}${i.note ? `<br><span class="mu">${esc(i.note)}</span>` : ''}</td><td>${esc(i.carrier || '-')}</td><td>${esc(i.limit)}</td></tr>`).join('')}</table><p class="mu">These policies protect Brightolio as a company (for example against a cyber incident). They do not insure your investments against market losses.</p>`
+    : '<p>Brightolio does not list any company insurance policies yet. Your protection comes from your broker and bank, above.</p>';
 }
 
 const st = document.querySelector('[data-trust=status]');

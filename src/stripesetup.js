@@ -42,8 +42,8 @@ async function ensurePrices() {
   for (const plan of PAID) {
     const p = PLANS[plan];
     let prod = products.find(x => x.metadata?.brightfolio_plan === plan);
-    if (!prod) { prod = await stripeApi('POST', '/products', { name: `Brightfolio ${p.name}`, description: p.tagline, metadata: { brightfolio_plan: plan } }); report.push(`Created the product "Brightfolio ${p.name}"`); }
-    else if (prod.name !== `Brightfolio ${p.name}`) await stripeApi('POST', `/products/${prod.id}`, { name: `Brightfolio ${p.name}` });
+    if (!prod) { prod = await stripeApi('POST', '/products', { name: `Brightolio ${p.name}`, description: p.tagline, metadata: { brightfolio_plan: plan } }); report.push(`Created the product "Brightolio ${p.name}"`); }
+    else if (prod.name !== `Brightolio ${p.name}`) await stripeApi('POST', `/products/${prod.id}`, { name: `Brightolio ${p.name}` });
     for (const [interval, amount] of [['month', p.monthly], ['year', p.yearly]]) {
       const lk = lookupKey(plan, interval), cents = Math.round(amount * 100);
       const found = ((await stripeApi('GET', '/prices', { lookup_keys: [lk], active: true, limit: 1 })).data || [])[0];
@@ -74,7 +74,7 @@ async function ensureWebhook(siteUrl, savedId) {
   // remove any older endpoints for this same address (their secrets are unknown here).
   // Pinned API version: events arrive in the shape the webhook handler reads (e.g. a subscription's
   // current_period_end, which later versions moved onto its items).
-  const w = await stripeApi('POST', '/webhook_endpoints', { url, enabled_events: WEBHOOK_EVENTS, api_version: STRIPE_VERSION, description: 'Brightfolio: plans, credits and deposits' });
+  const w = await stripeApi('POST', '/webhook_endpoints', { url, enabled_events: WEBHOOK_EVENTS, api_version: STRIPE_VERSION, description: 'Brightolio: plans, credits and deposits' });
   for (const old of all) await stripeApi('DELETE', `/webhook_endpoints/${old.id}`).catch(() => {});
   return { changes: { STRIPE_WEBHOOK_SECRET: w.secret }, id: w.id, report: [`Created the webhook ${url}${all.length ? ` (replaced ${all.length} older one${all.length > 1 ? 's' : ''} for the same address)` : ''}`] };
 }
@@ -86,7 +86,7 @@ async function ensurePortal(priceIds, siteUrl) {
   for (const [k, id] of Object.entries(priceIds)) { const plan = k.replace('STRIPE_PRICE_', '').replace('_YEARLY', '').toLowerCase(); (products[plan] ||= []).push(id); }
   const prodIds = await Promise.all(Object.entries(products).map(async ([, prices]) => ({ product: (await stripeApi('GET', `/prices/${prices[0]}`)).product, prices })));
   const body = {
-    business_profile: { headline: 'Manage your Brightfolio plan', privacy_policy_url: `${siteUrl}/privacy.html`, terms_of_service_url: `${siteUrl}/terms.html` },
+    business_profile: { headline: 'Manage your Brightolio plan', privacy_policy_url: `${siteUrl}/privacy.html`, terms_of_service_url: `${siteUrl}/terms.html` },
     features: {
       customer_update: { enabled: true, allowed_updates: ['email', 'address'] }, invoice_history: { enabled: true }, payment_method_update: { enabled: true },
       subscription_cancel: { enabled: true, mode: 'at_period_end', cancellation_reason: { enabled: true, options: ['too_expensive', 'missing_features', 'switched_service', 'unused', 'other'] } },

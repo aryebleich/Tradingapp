@@ -15,7 +15,7 @@ const stripe = http.createServer((req, res) => {
     const send = (o, s = 200) => { res.statusCode = s; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(o)); };
     if (req.headers.authorization !== 'Bearer sk_test_fake') return send({ error: { message: 'Invalid API Key' } }, 401);
     const p = u.pathname;
-    if (p === '/v1/account') return send({ id: 'acct_1', charges_enabled: true, details_submitted: true, settings: { dashboard: { display_name: 'Brightfolio' } } });
+    if (p === '/v1/account') return send({ id: 'acct_1', charges_enabled: true, details_submitted: true, settings: { dashboard: { display_name: 'Brightolio' } } });
     if (p === '/v1/products' && req.method === 'GET') return send({ data: db.products });
     if (p === '/v1/products') { const x = { id: id('prod'), name: q.name, metadata: { brightfolio_plan: q['metadata[brightfolio_plan]'] } }; db.products.push(x); return send(x); }
     if (p.startsWith('/v1/products/')) return send(db.products.find(x => x.id === p.split('/')[3]));

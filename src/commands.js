@@ -6,7 +6,7 @@ import { nextRunAfter } from './scheduler.js';
 import { isPaid } from './fees.js';
 import { performance, earnings, chartText, earningsText } from './events.js';
 
-export const HELP = `Brightfolio by text (every plan):
+export const HELP = `Brightolio by text (every plan):
 AAPL - price   AAPL CHART - 1 week, month, year
 AAPL EARNINGS - next date   AAPL NEWS - headlines
 AAPL INFO - what the company does, size, P/E

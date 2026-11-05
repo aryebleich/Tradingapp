@@ -10,7 +10,7 @@ async function brokers(view, q) {
   const [list, accounts] = await Promise.all([H.api('/brokerages'), H.api('/accounts')]);
   const alpaca = accounts.find(a => a.id === 'alpaca');
   view.innerHTML = `
-  <div class="pagehead"><div><h1>Choose your brokerage</h1><p class="mu" style="margin:4px 0 0">Brightfolio works with the brokerage you prefer. Connect the account you already have, or open a new one: we suggest Alpaca (commission-free, opens in minutes inside the app). Connect as many as you like; each shows up in the account pickers, so alerts, strategies, pairs and the S&amp;P 500 plan can send orders to any of them.</p></div></div>
+  <div class="pagehead"><div><h1>Choose your brokerage</h1><p class="mu" style="margin:4px 0 0">Brightolio works with the brokerage you prefer. Connect the account you already have, or open a new one: we suggest Alpaca (commission-free, opens in minutes inside the app). Connect as many as you like; each shows up in the account pickers, so alerts, strategies, pairs and the S&amp;P 500 plan can send orders to any of them.</p></div></div>
   ${q.get('connected') ? `<div class="banner">Connected. Your ${H.esc(list.find(b => b.id === q.get('connected'))?.name || 'brokerage')} account is ready.</div>` : ''}
   ${q.get('error') ? `<div class="banner err">${H.esc(q.get('error'))}</div>` : ''}
   <div class="libgrid">

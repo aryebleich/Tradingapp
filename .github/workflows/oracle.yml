@@ -1,5 +1,5 @@
 name: Oracle server setup
-# Sets up (or updates the settings of) the Brightfolio server on Oracle Cloud over SSH, so nothing
+# Sets up (or updates the settings of) the Brightolio server on Oracle Cloud over SSH, so nothing
 # has to be typed on the server. Run by hand (Actions → Oracle server setup → Run workflow).
 # Needs, in Settings → Secrets and variables → Actions:
 #   secret   ORACLE_SSH_KEY  the server's private key file, whole (-----BEGIN ... END ... KEY-----)
@@ -79,7 +79,7 @@ jobs:
           echo "--- packets seen on the server (none = blocked before the server)"
           ssh -i ~/.ssh/oracle ubuntu@"$HOST" 'cat /tmp/td.txt; rm -f /tmp/td.txt'
           echo "--- my address: $(curl -s https://api.ipify.org)"
-      - name: Install Brightfolio
+      - name: Install Brightolio
         if: inputs.step == 'full'
         run: |
           ssh -i ~/.ssh/oracle ubuntu@"$HOST" "curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/deploy/vm/setup.sh -o setup.sh && sudo bash setup.sh $DOMAIN ${{ github.repository }}" 2>&1 | tail -40

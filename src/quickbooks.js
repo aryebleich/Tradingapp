@@ -79,7 +79,7 @@ export function journalFor(books, period, map, account) {
   line(net, false, 'cash', `Net result in the brokerage account (${account})`);
   const y = +period.slice(0, 4), m = period.length === 7 ? +period.slice(5, 7) : 12;
   const last = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10), today = new Date().toISOString().slice(0, 10);
-  return { lines, totals: { shortTerm: st, longTerm: lt, dividends: div, interest: int, fees, net }, entry: { DocNumber: `BF${period.replace('-', '')}${account.replace(/[^a-z0-9]/gi, '').slice(0, 8)}`.slice(0, 21), TxnDate: last < today ? last : today, PrivateNote: `Brightfolio ${period.length === 7 ? 'bookkeeping' : 'tax year'} ${period}, ${account} account`, Line: lines } };
+  return { lines, totals: { shortTerm: st, longTerm: lt, dividends: div, interest: int, fees, net }, entry: { DocNumber: `BF${period.replace('-', '')}${account.replace(/[^a-z0-9]/gi, '').slice(0, 8)}`.slice(0, 21), TxnDate: last < today ? last : today, PrivateNote: `Brightolio ${period.length === 7 ? 'bookkeeping' : 'tax year'} ${period}, ${account} account`, Line: lines } };
 }
 
 export const quickbooksRouter = (() => {

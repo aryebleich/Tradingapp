@@ -5,7 +5,7 @@
 //   prepare_paper_order an order for PRACTICE money, shown to the user as a card; it is sent only
 //                       when the user presses "Place paper order". Goes to the user's Alpaca paper
 //                       account through Alpaca's Trading API when one is connected (stocks, ETFs,
-//                       crypto and options), otherwise to the Brightfolio practice account
+//                       crypto and options), otherwise to the Brightolio practice account
 //   paper_orders        recent practice orders: status, how much filled and at what price
 //   paper_buying_power  cash and buying power in the practice account
 //   live_balances       read only: balances and positions of the user's real-money accounts
@@ -36,7 +36,7 @@ const PERIODS = { '1M': 31, '3M': 92, '6M': 183, '1Y': 366, '5Y': 1827 };
 export async function paperDestination(userId) {
   const t = await tradingFor(userId).catch(() => null);
   if (t && !t.live) return { kind: 'alpaca', t, name: 'your Alpaca paper account' };
-  return { kind: 'builtin', name: 'your Brightfolio practice account' };
+  return { kind: 'builtin', name: 'your Brightolio practice account' };
 }
 
 // Checks an order for practice money and fills in the defaults. Returns a clean order.

@@ -57,7 +57,7 @@ jobs:
           github_token: ${{ github.token }}
           claude_args: --allowedTools "Bash,Read,Edit,Write,Glob,Grep" --max-turns 80
           prompt: |
-            You are working on the Brightfolio repository, on the branch ${{ env.BRANCH }}. Kind of task: ${{ inputs.kind }}.
+            You are working on the Brightolio repository, on the branch ${{ env.BRANCH }}. Kind of task: ${{ inputs.kind }}.
             Task from the owner:
             ${{ inputs.task }}
 

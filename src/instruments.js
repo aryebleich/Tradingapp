@@ -97,7 +97,7 @@ export async function rates() {
   if (!offline()) {
     const base = (process.env.FRED_URL || 'https://fred.stlouisfed.org').replace(/\/$/, '');
     const start = new Date(now() - 400 * 864e5).toISOString().slice(0, 10);
-    const txt = await fetch(`${base}/graph/fredgraph.csv?id=${Object.keys(FRED_SERIES).join(',')}&cosd=${start}`, { headers: { 'User-Agent': 'Mozilla/5.0 Brightfolio' }, signal: AbortSignal.timeout(15000) }).then(r => (r.ok ? r.text() : '')).catch(() => '');
+    const txt = await fetch(`${base}/graph/fredgraph.csv?id=${Object.keys(FRED_SERIES).join(',')}&cosd=${start}`, { headers: { 'User-Agent': 'Mozilla/5.0 Brightolio' }, signal: AbortSignal.timeout(15000) }).then(r => (r.ok ? r.text() : '')).catch(() => '');
     const lines = txt.trim().split('\n'), head = (lines[0] || '').split(',');
     for (let c = 1; c < head.length; c++) {
       const id = head[c].trim(), pts = [];
@@ -118,7 +118,7 @@ export async function rateNews() {
   if (newsCache && now() - newsCache.at < 3600e3) return newsCache.v;
   if (offline()) return [];
   const base = (process.env.FED_URL || 'https://www.federalreserve.gov').replace(/\/$/, '');
-  const xml = await fetch(`${base}/feeds/press_monetary.xml`, { headers: { 'User-Agent': 'Mozilla/5.0 Brightfolio' }, signal: AbortSignal.timeout(10000) }).then(r => (r.ok ? r.text() : '')).catch(() => '');
+  const xml = await fetch(`${base}/feeds/press_monetary.xml`, { headers: { 'User-Agent': 'Mozilla/5.0 Brightolio' }, signal: AbortSignal.timeout(10000) }).then(r => (r.ok ? r.text() : '')).catch(() => '');
   const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].slice(0, 10).map(m => {
     const tag = t => (m[1].match(new RegExp(`<${t}>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?</${t}>`)) || [])[1]?.trim() || '';
     return { title: tag('title'), url: tag('link'), date: tag('pubDate'), source: 'Federal Reserve' };

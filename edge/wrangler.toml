@@ -1,4 +1,4 @@
-# Cloudflare Worker for the Brightfolio edge (edge/worker.js). Deployed by .github/workflows/edge.yml;
+# Cloudflare Worker for the Brightolio edge (edge/worker.js). Deployed by .github/workflows/edge.yml;
 # the KV namespace id comes from the CLOUDFLARE_KV_ID repository variable at deploy time.
 name = "brightfolio-edge"
 main = "worker.js"

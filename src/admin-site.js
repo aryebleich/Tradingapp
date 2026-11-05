@@ -131,7 +131,7 @@ adminSiteRouter.post('/env/export', wrap(async (req, res) => {
   if (!confirmsIdentity(req.user, req.body || {})) throw Object.assign(new Error(req.user.password_set === 0 ? 'Type your email address to confirm' : 'Wrong password'), { status: 401 });
   const keys = [...new Set([...S.ENV_GROUPS.flatMap(([, k]) => k), ...S.siteGet('envKeys', [])])].filter(k => process.env[k]);
   await audit(req.user.id, 'env_exported', { n: keys.length }, req.ip);
-  res.type('text/plain').attachment('quantpocket.env').send(`# Brightfolio settings, exported ${new Date().toISOString()}\n# Keep this file private: it holds your secret keys.\n` + S.toDotenv(Object.fromEntries(keys.map(k => [k, process.env[k]]))));
+  res.type('text/plain').attachment('quantpocket.env').send(`# Brightolio settings, exported ${new Date().toISOString()}\n# Keep this file private: it holds your secret keys.\n` + S.toDotenv(Object.fromEntries(keys.map(k => [k, process.env[k]]))));
 }));
 // Render → here: loads every value set on Render into this server (until its next restart, when
 // Render's own values apply anyway).
@@ -234,7 +234,7 @@ const GH = () => (process.env.GITHUB_API_URL || 'https://api.github.com').replac
 const repo = () => process.env.GITHUB_REPO || 'aryebleich/Tradingapp';
 async function gh(method, p, body) {
   if (!process.env.GITHUB_TOKEN) throw Object.assign(new Error('Add GITHUB_TOKEN in Keys first'), { status: 400 });
-  const r = await fetch(`${GH()}/repos/${repo()}${p}`, { method, headers: { authorization: `Bearer ${process.env.GITHUB_TOKEN}`, accept: 'application/vnd.github+json', 'x-github-api-version': '2022-11-28', 'user-agent': 'Brightfolio', ...(body ? { 'content-type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(15000) });
+  const r = await fetch(`${GH()}/repos/${repo()}${p}`, { method, headers: { authorization: `Bearer ${process.env.GITHUB_TOKEN}`, accept: 'application/vnd.github+json', 'x-github-api-version': '2022-11-28', 'user-agent': 'Brightolio', ...(body ? { 'content-type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(15000) });
   const text = await r.text();
   if (!r.ok) throw Object.assign(new Error(`GitHub answered ${r.status}: ${text.slice(0, 160)}`), { status: r.status === 404 ? 404 : 502 });
   return text ? JSON.parse(text) : {};
@@ -409,7 +409,7 @@ adminSiteRouter.post('/credits/grant', wrap(async (req, res) => {
   const n = Math.round(+req.body?.credits);
   if (!u) throw bad('No user with that email');
   if (!(n >= 1 && n <= 1e6)) throw bad('Give 1 to 1,000,000 credits');
-  await C.grant(u.id, n, 'gift', String(req.body?.memo || 'From Brightfolio').slice(0, 80));
+  await C.grant(u.id, n, 'gift', String(req.body?.memo || 'From Brightolio').slice(0, 80));
   await audit(req.user.id, 'credits_grant', { user: u.id, credits: n }, req.ip);
   res.json({ ok: true });
 }));
@@ -422,8 +422,8 @@ adminSiteRouter.post('/readme/drive', wrap(async (req, res) => {
   const r = await readme();
   if (!r?.text) throw bad('Save the README first');
   const date = new Date().toISOString().slice(0, 10);
-  const { pdf, pages } = markdownPdf(r.text, { title: `Brightfolio private README · ${date}`, coverTitle: 'Private README', subtitle: `${date} · For admins only` });
-  const f = await D.savePdf(pdf, 'Brightfolio private README.pdf');
+  const { pdf, pages } = markdownPdf(r.text, { title: `Brightolio private README · ${date}`, coverTitle: 'Private README', subtitle: `${date} · For admins only` });
+  const f = await D.savePdf(pdf, 'Brightolio private README.pdf');
   await audit(req.user.id, 'readme_drive', { pages, file: f.id }, req.ip);
   res.json({ ...f, pages });
 }));
@@ -434,8 +434,8 @@ const readmePdf = async (req, res) => {
   if (!text) throw bad('Write the README first');
   if (text.length > 600e3) throw bad('The README is limited to 600 KB');
   const date = new Date().toISOString().slice(0, 10);
-  const { pdf } = markdownPdf(text, { title: `Brightfolio private README · ${date}`, coverTitle: 'Private README', subtitle: `${date} · For admins only` });
-  res.type('application/pdf').attachment('Brightfolio private README.pdf').send(pdf);
+  const { pdf } = markdownPdf(text, { title: `Brightolio private README · ${date}`, coverTitle: 'Private README', subtitle: `${date} · For admins only` });
+  res.type('application/pdf').attachment('Brightolio private README.pdf').send(pdf);
 };
 adminSiteRouter.get('/readme/pdf', wrap(readmePdf));
 adminSiteRouter.post('/readme/pdf', wrap(readmePdf));

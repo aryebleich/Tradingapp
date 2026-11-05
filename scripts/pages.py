@@ -8,12 +8,12 @@ UPDATED = 'November 3, 2026'
 from home import layout, index
 
 def doc(title, desc, content, dated=True):
-    return layout(f'{title} | Brightfolio', desc, f'<article class="doc"><h1>{title}</h1>' + (f'<p class="mu">Last updated {UPDATED}</p>' if dated else '') + f'{content}</article>')
+    return layout(f'{title} | Brightolio', desc, f'<article class="doc"><h1>{title}</h1>' + (f'<p class="mu">Last updated {UPDATED}</p>' if dated else '') + f'{content}</article>')
 
 TERMS = '''
-<p>These Terms of Service ("Terms") govern your use of the Brightfolio website, apps, SMS and voice services (together, the "Service"). By creating an account you agree to these Terms.</p>
-<h2>1. What Brightfolio is</h2>
-<p>Brightfolio is software for researching, testing and automating trading strategies. We are not a broker-dealer, bank or custodian, and we do not hold customer securities. Live trading happens in your own brokerage account with the brokerage you choose (such as Alpaca Securities LLC, Charles Schwab, tastytrade, Tradier or TradeStation) under your separate agreement with that broker.</p>
+<p>These Terms of Service ("Terms") govern your use of the Brightolio website, apps, SMS and voice services (together, the "Service"). By creating an account you agree to these Terms.</p>
+<h2>1. What Brightolio is</h2>
+<p>Brightolio is software for researching, testing and automating trading strategies. We are not a broker-dealer, bank or custodian, and we do not hold customer securities. Live trading happens in your own brokerage account with the brokerage you choose (such as Alpaca Securities LLC, Charles Schwab, tastytrade, Tradier or TradeStation) under your separate agreement with that broker.</p>
 <h2>2. No investment advice</h2>
 <p>Content, backtests, projections, templates and AI-generated rules are for information and education. They are not a recommendation to buy or sell any security. You decide which strategies to run and are responsible for every order placed from your account, including orders placed by bots, schedules, SMS or voice commands you set up.</p>
 <h2>3. Eligibility and accounts</h2>
@@ -34,7 +34,7 @@ TERMS = '''
 <h2>8. Disclaimers</h2>
 <p>The Service is provided "as is" without warranties of any kind. Past performance and hypothetical results do not guarantee future results.</p>
 <h2>9. Limitation of liability</h2>
-<p>To the maximum extent permitted by law, Brightfolio is not liable for trading losses, lost profits, or indirect or consequential damages. Our total liability for any claim is limited to the fees you paid us in the three months before the claim.</p>
+<p>To the maximum extent permitted by law, Brightolio is not liable for trading losses, lost profits, or indirect or consequential damages. Our total liability for any claim is limited to the fees you paid us in the three months before the claim.</p>
 <h2>10. Termination</h2>
 <p>You may close your account at any time from Settings. We may suspend or end access for violations or legal reasons. Sections that by their nature should survive termination will survive.</p>
 <h2>11. Changes</h2>
@@ -43,13 +43,13 @@ TERMS = '''
 <p>Questions? Use the <a href="contact.html">contact page</a>.</p>
 '''
 PRIVACY = '''
-<p>This policy explains what personal information Brightfolio collects, why, and the choices you have.</p>
+<p>This policy explains what personal information Brightolio collects, why, and the choices you have.</p>
 <div class="callout"><b>At a glance:</b> we do not sell your personal information; we use no advertising or tracking cookies; your Social Security number and bank numbers go straight to the broker and are not stored by us; you can download or delete everything from Settings at any time.</div>
 <h2>What we collect</h2>
 <ul>
 <li><b>Account data:</b> email address, a hashed password, optional phone number, a hashed PIN, two-factor settings, and tax-rate preferences. If you sign in with Google, Google shares your email address and an account identifier with us; we do not receive your Google password.</li>
 <li><b>Webhooks:</b> the alerts you send to your webhook URLs and the resulting orders, kept in your signal log.</li>
-<li><b>Brokerage application data:</b> when you open a brokerage account we collect your legal name, date of birth, Social Security number, citizenship, address, phone, employment and regulatory disclosures. This is sent directly to Alpaca Securities LLC for identity verification (KYC) and account opening. Brightfolio does not store your Social Security number; we keep only your Alpaca account ID, account number and status.</li>
+<li><b>Brokerage application data:</b> when you open a brokerage account we collect your legal name, date of birth, Social Security number, citizenship, address, phone, employment and regulatory disclosures. This is sent directly to Alpaca Securities LLC for identity verification (KYC) and account opening. Brightolio does not store your Social Security number; we keep only your Alpaca account ID, account number and status.</li>
 <li><b>Bank details:</b> bank routing and account numbers you link for transfers are sent to Alpaca; we do not store them.</li>
 <li><b>Trading data:</b> strategies, paper and synced live orders, positions, scheduled trades, alerts and the ledger of fees and deposits.</li>
 <li><b>Connected services:</b> brokerage and QuantConnect keys and access tokens, encrypted with AES-256-GCM.</li>
@@ -87,9 +87,9 @@ RISK = '''
 <h2>AI-generated strategies</h2>
 <p>The AI builder turns descriptions into rules automatically and can misunderstand you. Always review and backtest rules before using them.</p>
 <h2>No one can guarantee returns, including AI</h2>
-<p>No person, tool, bot or AI can promise profits or "guaranteed" returns. Brightfolio's AI assistant, forecasts, agents and strategy builder can be wrong, and past results do not predict future results. The SEC, FINRA and state securities regulators (NASAA) have warned investors together about <a href="https://www.investor.gov/introduction-investing/general-resources/news-alerts/alerts-bulletins/investor-alerts/artificial-intelligence-fraud" rel="noopener">AI and investment fraud</a>, and FINRA explains the warning signs in <a href="https://www.finra.org/investors/insights/artificial-intelligence-and-investment-fraud" rel="noopener">Artificial Intelligence (AI) and Investment Fraud</a>. Promises of high returns with little or no risk, or claims that AI can guarantee results, are classic signs of fraud, here or anywhere else. You can report possible fraud to the SEC at <a href="https://www.sec.gov/tcr" rel="noopener">sec.gov/tcr</a>.</p>
+<p>No person, tool, bot or AI can promise profits or "guaranteed" returns. Brightolio's AI assistant, forecasts, agents and strategy builder can be wrong, and past results do not predict future results. The SEC, FINRA and state securities regulators (NASAA) have warned investors together about <a href="https://www.investor.gov/introduction-investing/general-resources/news-alerts/alerts-bulletins/investor-alerts/artificial-intelligence-fraud" rel="noopener">AI and investment fraud</a>, and FINRA explains the warning signs in <a href="https://www.finra.org/investors/insights/artificial-intelligence-and-investment-fraud" rel="noopener">Artificial Intelligence (AI) and Investment Fraud</a>. Promises of high returns with little or no risk, or claims that AI can guarantee results, are classic signs of fraud, here or anywhere else. You can report possible fraud to the SEC at <a href="https://www.sec.gov/tcr" rel="noopener">sec.gov/tcr</a>.</p>
 <h2>Check who you are dealing with</h2>
-<p>Before you send money anywhere, check that the firm is registered: brokers on <a href="https://brokercheck.finra.org/" rel="noopener">FINRA BrokerCheck</a>, investment advisers on the <a href="https://adviserinfo.sec.gov/" rel="noopener">SEC's Investment Adviser Public Disclosure</a> site, and futures firms on <a href="https://www.nfa.futures.org/basicnet/" rel="noopener">NFA BASIC</a>. Unregistered investment platforms are a common source of fraud. Brightfolio is software: it is not a broker-dealer, and your money and securities are held by the broker you choose. Learn more at <a href="https://www.investor.gov/" rel="noopener">Investor.gov</a>.</p>
+<p>Before you send money anywhere, check that the firm is registered: brokers on <a href="https://brokercheck.finra.org/" rel="noopener">FINRA BrokerCheck</a>, investment advisers on the <a href="https://adviserinfo.sec.gov/" rel="noopener">SEC's Investment Adviser Public Disclosure</a> site, and futures firms on <a href="https://www.nfa.futures.org/basicnet/" rel="noopener">NFA BASIC</a>. Unregistered investment platforms are a common source of fraud. Brightolio is software: it is not a broker-dealer, and your money and securities are held by the broker you choose. Learn more at <a href="https://www.investor.gov/" rel="noopener">Investor.gov</a>.</p>
 <h2>Price data</h2>
 <p>Prices are labeled real-time, delayed (up to about 15 minutes late) or previous close. Free real-time stock data may come from a single exchange (IEX) and can differ from the price you get. Your broker's confirmation is the price that counts.</p>
 <h2>Crypto and tokenized securities</h2>
@@ -99,9 +99,9 @@ RISK = '''
 <h2>Estimates and scenarios</h2>
 <p>Portfolio risk numbers, "what if the market fell" scenarios, stress tests and practice (paper) results are estimates from past prices. Real losses can be larger, and paper trading does not include the emotions, slippage or partial fills of real trading.</p>
 <h2>Brokerage</h2>
-<p>Brokerage services are provided by the broker you choose (for example Alpaca, Charles Schwab, tastytrade, Tradier or TradeStation), each a FINRA member broker-dealer with SIPC coverage. Brightfolio is not a broker-dealer and is not affiliated with any of these brokers, QuantConnect, Twilio or Stripe. SIPC protection does not cover market losses.</p>
+<p>Brokerage services are provided by the broker you choose (for example Alpaca, Charles Schwab, tastytrade, Tradier or TradeStation), each a FINRA member broker-dealer with SIPC coverage. Brightolio is not a broker-dealer and is not affiliated with any of these brokers, QuantConnect, Twilio or Stripe. SIPC protection does not cover market losses.</p>
 <h2>Margin and short selling</h2>
-<p>Brightfolio strategies are long-only by default. If your brokerage account has margin enabled, losses can exceed your deposits.</p>
+<p>Brightolio strategies are long-only by default. If your brokerage account has margin enabled, losses can exceed your deposits.</p>
 <h2>No advice</h2>
 <p>Nothing in the Service is investment, legal or tax advice. Tax estimates are approximate. Your broker's Form 1099-B is the official record. Consult qualified professionals.</p>
 '''
@@ -117,23 +117,23 @@ CONTACT = '''
 </form>
 <p class="mu" style="margin-top:30px">Urgent account security issue? Sign in and use Settings &gt; Active sessions to sign out other devices, change your password, and text <b>PAUSE &lt;PIN&gt;</b> to stop all automation.</p>
 '''
-NOTFOUND = '''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Page not found | Brightfolio</title>
+NOTFOUND = '''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Page not found | Brightolio</title>
 <style>body{margin:0;min-height:100vh;display:grid;place-items:center;font:16px/1.5 system-ui,sans-serif;background:#0b1324;color:#e7ecf5;text-align:center;padding:16px}a{color:#8fb2ff}h1{font-size:64px;margin:0}</style></head>
 <body><div><h1>404</h1><p>We could not find that page.</p><p><a href="/">Go to the home page</a></p></div></body></html>
 '''
 
 STATUS = '''
-<p>Is Brightfolio working right now? This page checks the website, the database, the trading connection, bots and messages every 5 minutes, and shows any problem we are working on.</p>
+<p>Is Brightolio working right now? This page checks the website, the database, the trading connection, bots and messages every 5 minutes, and shows any problem we are working on.</p>
 <div id="trustStatus" data-trust="status"><p class="mu">Loading the latest checks…</p></div>
 <script type="module" src="trust-page.js"></script>
 '''
 SECURITY = '''
-<p>Your money stays at your own broker and bank. Brightfolio is software: it cannot withdraw money, and every protection below is on by default or one tap away.</p>
+<p>Your money stays at your own broker and bank. Brightolio is software: it cannot withdraw money, and every protection below is on by default or one tap away.</p>
 <h2>Independent audit (SOC 2)</h2>
 <div id="trustSoc2" data-trust="soc2"><p class="mu">Loading…</p></div>
 <h2>How your account is protected</h2>
 <ul>
-<li><b>Passwords</b> are stored only as a scrypt hash; nobody at Brightfolio can read them.</li>
+<li><b>Passwords</b> are stored only as a scrypt hash; nobody at Brightolio can read them.</li>
 <li><b>Two-step sign-in</b> with an authenticator app, or a <b>passkey</b> (Face ID, fingerprint or a security key) instead of a password.</li>
 <li><b>Broker keys and bank links</b> are encrypted with AES-256-GCM before they are saved.</li>
 <li><b>Bank and card links are read-only</b> (through Plaid): we see balances and transactions, never your bank password, and cannot move money. Crypto wallets are added by public address only: never keys or seed words.</li>
@@ -154,15 +154,15 @@ SECURITY = '''
 <script type="module" src="trust-page.js"></script>
 '''
 INSURANCE = '''
-<p>Brightfolio never holds your money or your investments. They stay in accounts in your own name, at firms with their own protection.</p>
+<p>Brightolio never holds your money or your investments. They stay in accounts in your own name, at firms with their own protection.</p>
 <h2>Your brokerage account</h2>
 <p>Stocks and cash are held by your broker, for example Alpaca Securities LLC, a member of FINRA and <a href="https://www.sipc.org" rel="noopener">SIPC</a>. If a SIPC-member brokerage fails, SIPC protects the securities and cash in your account up to $500,000, of which up to $250,000 can be cash.</p>
 <p class="mu">SIPC does not protect against investment losses when prices fall, and it does not cover crypto. Ask your broker whether it carries extra ("excess SIPC") coverage.</p>
 <h2>Your bank accounts</h2>
-<p>Banks you link stay at your bank. Deposits at an FDIC-insured bank are insured up to $250,000 per depositor, per bank, for each account ownership category. Linking a bank to Brightfolio is read-only and does not change that.</p>
+<p>Banks you link stay at your bank. Deposits at an FDIC-insured bank are insured up to $250,000 per depositor, per bank, for each account ownership category. Linking a bank to Brightolio is read-only and does not change that.</p>
 <h2>Crypto</h2>
-<p>Crypto is not covered by SIPC or FDIC. Wallets you add to Brightfolio are watched by public address only; Brightfolio never holds crypto or keys.</p>
-<h2>Brightfolio's own insurance</h2>
+<p>Crypto is not covered by SIPC or FDIC. Wallets you add to Brightolio are watched by public address only; Brightolio never holds crypto or keys.</p>
+<h2>Brightolio's own insurance</h2>
 <div id="trustIns" data-trust="insurance"><p class="mu">Loading…</p></div>
 <p class="mu" style="margin-top:24px">This page explains general protections and is not legal advice. See the official <a href="https://www.sipc.org/for-investors/what-sipc-protects" rel="noopener">SIPC</a> and <a href="https://www.fdic.gov/resources/deposit-insurance" rel="noopener">FDIC</a> pages for the full rules.</p>
 <script type="module" src="trust-page.js"></script>
@@ -171,12 +171,12 @@ INSURANCE = '''
 files = {
  'index.html': index('en'),
  'yi.html': index('yi').replace('&rarr;', '&larr;'),
- 'terms.html': doc('Terms of Service', 'The terms that govern your use of Brightfolio.', TERMS),
- 'privacy.html': doc('Privacy Policy', 'What Brightfolio collects, why, and your choices.', PRIVACY),
+ 'terms.html': doc('Terms of Service', 'The terms that govern your use of Brightolio.', TERMS),
+ 'privacy.html': doc('Privacy Policy', 'What Brightolio collects, why, and your choices.', PRIVACY),
  'risk.html': doc('Risk Disclosure', 'Important information about trading risk, backtests and automation.', RISK),
- 'contact.html': doc('Contact & support', 'Get in touch with Brightfolio support.', CONTACT),
- 'status.html': doc('System status', 'Live status of the Brightfolio website, trading connection, bots and messages.', STATUS, dated=False),
- 'security.html': doc('Security', 'How Brightfolio protects your account and data, and its audit status.', SECURITY),
+ 'contact.html': doc('Contact & support', 'Get in touch with Brightolio support.', CONTACT),
+ 'status.html': doc('System status', 'Live status of the Brightolio website, trading connection, bots and messages.', STATUS, dated=False),
+ 'security.html': doc('Security', 'How Brightolio protects your account and data, and its audit status.', SECURITY),
  'insurance.html': doc('Insurance and protection', 'How your money and investments are protected: SIPC, FDIC and more.', INSURANCE),
  '404.html': NOTFOUND,
 }

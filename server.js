@@ -1,4 +1,4 @@
-// Brightfolio web server: JSON API + static single-page app.
+// Brightolio web server: JSON API + static single-page app.
 import * as SEO from './src/seo.js';
 import { agentsRouter } from './src/agents.js';
 import { overviewRouter } from './src/overview.js';
@@ -323,7 +323,7 @@ app.post('/twilio/sms', async (req, res) => {
   const user = await userByPhone(req.body.From);
   let reply;
   // Opening a brokerage account by text: whoever texts APPLY (customers without a brokerage
-  // account, and people without a Brightfolio account), and anyone with an application in progress.
+  // account, and people without a Brightolio account), and anyone with an application in progress.
   // Everyone else without an account gets the sign-up by text (src/smssignup.js).
   const TA = await import('./src/textapply.js'), text = String(req.body.Body || '').trim();
   const media = [...Array(Math.min(4, +req.body.NumMedia || 0))].map((_, i) => ({ url: req.body['MediaUrl' + i], type: req.body['MediaContentType' + i] })).filter(m => m.url);
@@ -343,13 +343,13 @@ app.post('/twilio/sms', async (req, res) => {
     else {
       const SU = await import('./src/smssignup.js');
       reply = /^talk\b/i.test(text) ? null : await SU.handleSignup(req.body.From, text).catch(e => { console.warn('sms signup', e.message); return 'Sorry, something went wrong. Please reply with your email address again.'; });
-      if (reply == null) reply = await inboundSms(req.body.From, String(req.body.Body || '')).catch(() => 'Thanks for your message to Brightfolio. We will get back to you soon.');
+      if (reply == null) reply = await inboundSms(req.body.From, String(req.body.Body || '')).catch(() => 'Thanks for your message to Brightolio. We will get back to you soon.');
       else if (!/@/.test(text) && !/^(help|start|stop)$/i.test(text) && text.length > 3) await import('./src/comms.js').then(C => C.record({ channel: 'sms', party: normalizePhone(req.body.From), body: text + '  [sent the sign-up welcome]' })).catch(() => {});
     }
   }
   // Starter (free): look-ups, watchlist, alerts, plan and their own trades by text; questions in
   // their own words, recurring buys and bots are Pro and up.
-  else if (!isPaid(user) && !FREE_COMMANDS.includes(normalize(String(req.body.Body || '')).split(' ')[0]) && !isLookup(String(req.body.Body || ''))) reply = 'Questions in your own words, recurring buys and bots by text are part of Brightfolio Pro. On your plan: any ticker (AAPL), AAPL CHART, AAPL INFO, WATCH AAPL, ALERT AAPL 250, BAL, PLAN. Text HELP for all.';
+  else if (!isPaid(user) && !FREE_COMMANDS.includes(normalize(String(req.body.Body || '')).split(' ')[0]) && !isLookup(String(req.body.Body || ''))) reply = 'Questions in your own words, recurring buys and bots by text are part of Brightolio Pro. On your plan: any ticker (AAPL), AAPL CHART, AAPL INFO, WATCH AAPL, ALERT AAPL 250, BAL, PLAN. Text HELP for all.';
   else if (!auth.rateLimit('sms:' + user.id, 30, 3600e3)) reply = 'Too many messages, try again later.';
   else if (!(await CR.trySpend(user, 'sms', { memo: 'reply' }))) reply = 'You are out of credits for text replies. Buy a credit pack in the app under Plans & billing.';
   else {
@@ -615,7 +615,7 @@ api.post('/public/contact', async (req, res) => {
   if (!auth.rateLimit('contact:' + req.ip, 5, 3600e3)) return res.status(429).json({ error: 'Too many messages, try later' });
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(email)) || !String(body || '').trim()) return res.status(400).json({ error: 'Email and message are required' });
   await run('INSERT INTO messages (user_id, name, email, subject, body, at) VALUES (?,?,?,?,?,?)', req.user?.id ?? null, String(name || '').slice(0, 100), String(email).slice(0, 200), String(subject || '').slice(0, 200), String(body).slice(0, 5000), now());
-  if (process.env.ADMIN_EMAIL) N.sendEmail(process.env.ADMIN_EMAIL, `[Brightfolio] ${subject || 'New message'}`, `From: ${name} <${email}>\n\n${body}`).catch(() => {});
+  if (process.env.ADMIN_EMAIL) N.sendEmail(process.env.ADMIN_EMAIL, `[Brightolio] ${subject || 'New message'}`, `From: ${name} <${email}>\n\n${body}`).catch(() => {});
   res.json({ ok: true });
 });
 
@@ -806,7 +806,7 @@ api.post('/phone', U, wrap(async (req, res) => {
   if (!auth.rateLimit('phone:' + req.user.id, 5, 3600e3)) throw new Error('Too many codes requested');
   const code = String(crypto.randomInt(100000, 1000000));
   await run('UPDATE users SET phone = ?, phone_verified = 0, phone_code = ?, phone_code_expires = ? WHERE id = ?', phone, hashSecret(code), now() + 10 * 60e3, req.user.id);
-  const sent = await N.sendSms(phone, `Brightfolio code: ${code}`);
+  const sent = await N.sendSms(phone, `Brightolio code: ${code}`);
   res.json({ ok: true, devCode: sent.simulated && process.env.NODE_ENV !== 'production' ? code : undefined });
 }));
 api.post('/phone/verify', U, wrap(async (req, res) => {
@@ -986,7 +986,7 @@ api.get('/admin/setup', U, auth.requireAdmin, async (req, res) => {
 // Sends a test email to the signed-in owner and reports exactly what the email service answered.
 api.post('/admin/test-email', U, auth.requireAdmin, wrap(async (req, res) => {
   if (!N.emailEnabled()) throw new Error('RESEND_API_KEY is not set (Admin → Keys).');
-  try { await N.sendEmail(req.user.email, 'Brightfolio test email', 'Emails from Brightfolio work. Password resets will arrive.'); }
+  try { await N.sendEmail(req.user.email, 'Brightolio test email', 'Emails from Brightolio work. Password resets will arrive.'); }
   catch (e) { await siteSet('emailError', { msg: e.message.slice(0, 300), at: now() }); throw new Error(`The email service refused it: ${e.message}`); }
   await siteSet('emailError', null);
   res.json({ ok: true, to: req.user.email });
@@ -1064,7 +1064,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   // counted, instead of stopping the whole server as Node.js does by default.
   process.on('unhandledRejection', e => { countUnhandled(); console.error('Unhandled promise rejection (server keeps running):', e?.stack || e); });
   const port = +process.env.PORT || 3000;
-  const server = app.listen(port, () => console.log(`Brightfolio on http://localhost:${port}`));
+  const server = app.listen(port, () => console.log(`Brightolio on http://localhost:${port}`));
   startHostingSync();
   const timer = startScheduler(isActiveHost);
   startKeepWarm();

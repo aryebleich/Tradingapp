@@ -133,7 +133,7 @@ test('phone line: open an account by phone, then trade on paper with the PIN', a
     r = await call(r.next, '1');
     // No texted code: without the carrier's caller-ID check, we hang up and call the number back.
     assert.match(r.say, /we will call you right back/); assert.match(r.text, /<Hangup\/>/);
-    assert.ok(!/Brightfolio code/.test(logs.join('\n')), 'no code is texted');
+    assert.ok(!/Brightolio code/.test(logs.join('\n')), 'no code is texted');
     let cb; for (let i = 0; i < 50 && !cb; i++) { await new Promise(z => setTimeout(z, 20)); cb = /\[call disabled\] to \+18455550123: (\S+)/.exec(logs.join('\n'))?.[1]; }
     assert.ok(cb, 'the call-back was placed');
     const path = new URL(cb).pathname + new URL(cb).search;

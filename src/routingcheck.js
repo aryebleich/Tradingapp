@@ -1,9 +1,9 @@
 // "Paper is paper, live is live": a self-check the deploy workflow runs against the live site after
 // every push (GET /healthz/routing). It reports only server names, never keys or accounts.
-//   paper          the built-in practice account: filled inside Brightfolio, never sent anywhere
+//   paper          the built-in practice account: filled inside Brightolio, never sent anywhere
 //   alpaca paper   keys/OAuth saved as paper → paper-api.alpaca.markets
 //   alpaca live    keys/OAuth saved as live  → api.alpaca.markets
-//   broker         accounts Brightfolio opened → live only on broker-api.alpaca.markets
+//   broker         accounts Brightolio opened → live only on broker-api.alpaca.markets
 // On every order the account's own number is checked too (Alpaca paper numbers start with "PA").
 import { URLS } from './alpaca/http.js';
 import { assertVenue } from './alpaca/trading.js';
@@ -21,7 +21,7 @@ export function routingReport() {
   if (production && liveHost !== 'api.alpaca.markets') problems.push(`Real-money orders go to ${liveHost}, not api.alpaca.markets.`);
   return {
     ok: !problems.length, commit: (process.env.RENDER_GIT_COMMIT || '').slice(0, 40) || null, checkedAt: new Date().toISOString(),
-    paper: { practiceAccount: 'filled inside Brightfolio (never sent to a broker)', alpacaPaper: paperHost },
+    paper: { practiceAccount: 'filled inside Brightolio (never sent to a broker)', alpacaPaper: paperHost },
     live: { alpacaLive: liveHost, brokerApi: brokerHost, brokerAccountsLive: brokerHost === 'broker-api.alpaca.markets' },
     perOrder: 'Each Alpaca order first checks the account number: paper (PA…) only with paper keys, real money only with live keys.',
     problems,

@@ -35,7 +35,7 @@ const AGREEMENT = 'https://files.alpaca.markets/disclosures/library/AcctAppMargi
 const US = ['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'DC', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'PR'];
 
 export const TEXT = {
-  welcome: 'Welcome to Brightfolio - apply by text.\nTo apply, have ready: (1) a clear photo of your ID (driver\'s license, state ID, US passport or passport card), and (2) a clear photo of your Social Security card. If you are married, we will also ask for a photo of your spouse\'s Social Security card later.\nPlease text the photos now (they can be in one message or separate). No ID? Reply NO ID. No Social Security card? Reply NO CARD.\nAlready started an application? Reply CONTINUE to pick up where you left off.\nReply RESTART at any time to start over.',
+  welcome: 'Welcome to Brightolio - apply by text.\nTo apply, have ready: (1) a clear photo of your ID (driver\'s license, state ID, US passport or passport card), and (2) a clear photo of your Social Security card. If you are married, we will also ask for a photo of your spouse\'s Social Security card later.\nPlease text the photos now (they can be in one message or separate). No ID? Reply NO ID. No Social Security card? Reply NO CARD.\nAlready started an application? Reply CONTINUE to pick up where you left off.\nReply RESTART at any time to start over.',
   both: 'Got your Social Security card and ID.',
   gotId: 'Got your ID. Now please text a clear photo of your Social Security card. No card? Reply NO CARD.',
   gotCard: 'Got your Social Security card. Now please text a clear photo of your ID. No ID? Reply NO ID.',
@@ -67,8 +67,8 @@ export const TEXT = {
   restart: 'Your application was cleared. Let\'s start over.',
   cancelled: 'Your application was cancelled and everything you sent was deleted. Text us any time to start again.',
   none: 'We could not find an application in progress for this number, so let\'s start.',
-  closed: 'Opening an account by text is not available right now. Please apply in the Brightfolio app.',
-  inApp: 'Thank you. Because one of those is true, the brokerage needs a few more details that we cannot take by text. Please finish your application in the Brightfolio app under Open an account. Your answers here are deleted.',
+  closed: 'Opening an account by text is not available right now. Please apply in the Brightolio app.',
+  inApp: 'Thank you. Because one of those is true, the brokerage needs a few more details that we cannot take by text. Please finish your application in the Brightolio app under Open an account. Your answers here are deleted.',
 };
 
 // ---------- the stored application ----------
@@ -356,14 +356,14 @@ async function step(a, phone, body, word, media, meta) {
   return prompt(a);
 }
 
-// Sends the application to Alpaca and links it to the Brightfolio account for this phone number
+// Sends the application to Alpaca and links it to the Brightolio account for this phone number
 // (made now when the number has none). Everything stored for the application is then deleted.
 async function submit(a, phone, meta) {
   const { userByPhone } = await import('./commands.js');
   const { createUser } = await import('./auth.js');
   const { applyStatus, adoptAccount } = await import('./alpaca/kyc.js');
   let u = await userByPhone(phone);
-  if (u && await one('SELECT 1 FROM broker_accounts WHERE user_id = ?', u.id)) { a.done = true; return 'This phone number already has a brokerage account. Sign in to the Brightfolio app to see it.'; }
+  if (u && await one('SELECT 1 FROM broker_accounts WHERE user_id = ?', u.id)) { a.done = true; return 'This phone number already has a brokerage account. Sign in to the Brightolio app to see it.'; }
   const f = a.f;
   const form = {
     givenName: f.givenName, middleName: f.middleName, familyName: f.familyName, dateOfBirth: f.dateOfBirth, ssn: f.ssn, email: f.email, phone,
@@ -381,7 +381,7 @@ async function submit(a, phone, meta) {
   let acct;
   try { acct = await B.createAccount(body); } catch (e) {
     console.warn('text apply submit', e.message);
-    return 'Sorry, the brokerage could not take the application right now. Reply AGREE in a few minutes to try again, or apply in the Brightfolio app.';
+    return 'Sorry, the brokerage could not take the application right now. Reply AGREE in a few minutes to try again, or apply in the Brightolio app.';
   }
   if (!u) {
     const id = await createUser({ email: `p${phone.replace(/\D/g, '')}.${randomToken(4).toLowerCase().replace(/[^a-z0-9]/g, '')}@phone.invalid` });

@@ -183,7 +183,7 @@ export const taxPilotRouter = (() => {
     const account = ACCOUNT_IDS.includes(req.query.account) ? req.query.account : 'paper', symbol = String(req.query.symbol || '').toUpperCase();
     const fills = await all('SELECT account, symbol, side, qty, price, at FROM fills WHERE user_id = ? AND account = ? AND symbol = ?', req.user.id, account, symbol);
     const lots = openLots(fills);
-    if (!lots.length) throw bad(`No purchases of ${symbol || 'that stock'} recorded in this account. Lots are known only for shares bought through Brightfolio.`, 404);
+    if (!lots.length) throw bad(`No purchases of ${symbol || 'that stock'} recorded in this account. Lots are known only for shares bought through Brightolio.`, 404);
     const have = lots.reduce((s, l) => s + l.qty, 0), qty = Math.min(+req.query.qty || have, have);
     const price = +req.query.price || await lastPrice(symbol, req.user.id);
     res.json({ symbol, account, have: +have.toFixed(6), ...bestLots(lots, qty, price, { bracket: req.user.tax_bracket ?? 0.24, stateRate: req.user.state_tax ?? 0.05 }) });

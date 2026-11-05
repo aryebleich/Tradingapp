@@ -37,7 +37,7 @@ const lang = () => call.getStore()?.lang || 'en';
 
 export const DEFAULTS = {
   enabled: true,
-  greeting: 'Welcome to Brightfolio.',
+  greeting: 'Welcome to Brightolio.',
   tickers: ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL', 'META', 'TSLA', 'SPY', 'QQQ'],
   maxQty: 10000,
   allowSignup: true,
@@ -90,7 +90,7 @@ export function registerHotline(app, { twilioOk, twiml }) {
   const step = handler => async (req, res) => {
     if (!twilioOk(req)) return res.status(403).send('forbidden');
     const o = settings();
-    if (!o.enabled) return twiml(res, bye('The Brightfolio phone line is closed right now. Please use the app. Goodbye.'));
+    if (!o.enabled) return twiml(res, bye('The Brightolio phone line is closed right now. Please use the app. Goodbye.'));
     // Yiddish when the caller chose it (kept in the signed URLs, and saved for their next call).
     let l = 'en';
     if (o.yiddish) {
@@ -167,7 +167,7 @@ export function registerHotline(app, { twilioOk, twiml }) {
       if (to === 'live' && (access(u) !== 'full' || !(await liveTrading(u)))) return twiml(res, menu(e, access(u) !== 'full' ? 'Live trading by phone is part of the Pro plan.' : 'You do not have a live brokerage account connected yet.'));
       return twiml(res, menu(to, `Switched to ${ENVS[to]}.`));
     }
-    if (d === '0') return twiml(res, bye('Thank you for calling Brightfolio. Goodbye.'));
+    if (d === '0') return twiml(res, bye('Thank you for calling Brightolio. Goodbye.'));
     twiml(res, menu(e, 'Sorry, that is not an option.'));
   }));
 
@@ -234,7 +234,7 @@ export function registerHotline(app, { twilioOk, twiml }) {
     if (!ok) {
       const tries = (+p.t || 0) + 1;
       await audit(u.id, 'hotline_pin_failed', { do: p.do, tries }, req.body.From);
-      if (tries >= 3) { N.sendSms(u.phone, 'Brightfolio: 3 wrong PINs were entered on the phone line for your account. If this was not you, change your PIN in Settings.').catch(() => {}); return twiml(res, bye('Too many wrong PINs. Goodbye.')); }
+      if (tries >= 3) { N.sendSms(u.phone, 'Brightolio: 3 wrong PINs were entered on the phone line for your account. If this was not you, change your PIN in Settings.').catch(() => {}); return twiml(res, bye('Too many wrong PINs. Goodbye.')); }
       return twiml(res, gather(`/twilio/voice/pin${q({ ...p, t: tries })}`, 'Wrong PIN. Try again.', { digits: 4, timeout: 10 }) + menu(e));
     }
     if (p.do === 'trade') {
@@ -316,7 +316,7 @@ export function registerHotline(app, { twilioOk, twiml }) {
     const phone = party(req);
     if (!okToken(req, phone)) return twiml(res, bye('This call has expired. Please call us again. Goodbye.'));
     const t = q({ v: req.query.v, x: req.query.x });
-    twiml(res, gather(`/twilio/voice/signup/verified${t}`, 'Hello, this is Brightfolio calling back to finish opening your free account. Press 1 to continue.', { timeout: 10 })
+    twiml(res, gather(`/twilio/voice/signup/verified${t}`, 'Hello, this is Brightolio calling back to finish opening your free account. Press 1 to continue.', { timeout: 10 })
       + gather(`/twilio/voice/signup/verified${t}`, 'Press 1 to continue opening your account.', { timeout: 10 }) + bye('Goodbye.'));
   }));
   app.post('/twilio/voice/signup/verified', step(async (req, res) => {
@@ -345,11 +345,11 @@ export function registerHotline(app, { twilioOk, twiml }) {
   app.post('/twilio/voice/signup/next', step(async (req, res) => {
     const phone = party(req), u = await userByPhone(phone);
     if (!u || !okToken(req, phone)) return twiml(res, bye('Goodbye.'));
-    if (req.body.Digits === '0') return twiml(res, bye('Thank you for joining Brightfolio. Goodbye.'));
+    if (req.body.Digits === '0') return twiml(res, bye('Thank you for joining Brightolio. Goodbye.'));
     let lead = '';
     if (req.body.Digits === '2') {
       const base = call.getStore().base;
-      N.sendSms(phone, `Welcome to Brightfolio! Sign in to the app with this phone number: ${base}/app#/login-phone . To open a real brokerage account, reply APPLY.`).catch(() => {});
+      N.sendSms(phone, `Welcome to Brightolio! Sign in to the app with this phone number: ${base}/app#/login-phone . To open a real brokerage account, reply APPLY.`).catch(() => {});
       lead = 'We sent the link.';
     }
     if (!access(u)) return twiml(res, bye(`${lead} Trading by phone is part of the Pro plan, and you can start a free trial in the app. Goodbye.`));

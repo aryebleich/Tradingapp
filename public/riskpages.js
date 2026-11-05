@@ -126,7 +126,7 @@ async function tokenized(view) {
     <div class="card"><h2>What it is</h2><p>Instead of your broker's records saying you own a share, a token on a blockchain does. Some tokens <b>are</b> the security itself (the issuer keeps its shareholder list on the blockchain). Others are a <b>promise</b>: a company holds the real shares and issues a token that tracks them. With the second kind you may not have shareholder rights such as voting, and you depend on that company.</p>
       <h3>Why people use them</h3><ul><li>Trading at any hour, on some platforms</li><li>Buying small fractions</li><li>Moving them between crypto wallets and apps</li><li>Faster settlement</li></ul></div>
     <div class="card"><h2>The main kinds</h2><table class="slim"><tr><th>Kind</th><th>What it is</th><th>Who can buy</th></tr>${TOKEN_EXAMPLES.map(([a, b, c]) => `<tr><td><b>${a}</b></td><td>${b}</td><td class="mu">${c}</td></tr>`).join('')}</table>
-      <p class="mu small-print">What is offered changes often and depends on where you live. Brightfolio does not sell tokens.</p></div>
+      <p class="mu small-print">What is offered changes often and depends on where you live. Brightolio does not sell tokens.</p></div>
   </div>
   <div class="grid" style="margin-top:12px">
     <div class="card"><h2>The extra risks</h2><ul class="warnlist">
@@ -156,10 +156,10 @@ async function tokenized(view) {
 
 // ---------------------------------------------------------------- Investor protection
 async function protection(view) {
-  view.innerHTML = `<div class="pagehead"><h1>Investor protection</h1><p class="mu">What Brightfolio is and is not, the risks to know, how to spot investment fraud, and what we do with your data.</p></div>
+  view.innerHTML = `<div class="pagehead"><h1>Investor protection</h1><p class="mu">What Brightolio is and is not, the risks to know, how to spot investment fraud, and what we do with your data.</p></div>
   <div class="callout"><b>No one can guarantee returns, and neither can AI.</b> Our AI assistant, forecasts and bots can be wrong. Anyone who promises high returns with little or no risk is showing a classic sign of fraud.</div>
   <div class="grid">
-    <div class="card"><h2>What Brightfolio is</h2><ul><li>Software that connects to the broker <b>you</b> choose.</li><li><b>Not</b> a broker-dealer: your money and securities stay with your broker, which is a FINRA member with SIPC coverage (SIPC does not cover market losses or crypto).</li><li><b>Not</b> personal investment advice. Strategies, screens and summaries are tools; the decisions are yours.</li></ul></div>
+    <div class="card"><h2>What Brightolio is</h2><ul><li>Software that connects to the broker <b>you</b> choose.</li><li><b>Not</b> a broker-dealer: your money and securities stay with your broker, which is a FINRA member with SIPC coverage (SIPC does not cover market losses or crypto).</li><li><b>Not</b> personal investment advice. Strategies, screens and summaries are tools; the decisions are yours.</li></ul></div>
     <div class="card"><h2>Spot the warning signs</h2><ul class="warnlist"><li>“Guaranteed” or “risk-free” returns</li><li>Pressure to act now or keep it secret</li><li>Claims that AI or a secret system “can't lose”</li><li>A platform you can't find on a regulator's list</li><li>Requests to pay in crypto, gift cards or wire to a person</li><li>A video or voice of someone you know asking for money (AI can fake these)</li></ul></div>
   </div>
   <div class="grid" style="margin-top:12px">

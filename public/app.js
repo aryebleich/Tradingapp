@@ -1,4 +1,4 @@
-// Brightfolio single-page client. Hash routes, no framework.
+// Brightolio single-page client. Hash routes, no framework.
 import { registerTrading } from './trading.js';
 import { CHART_STATES, chartStates, RICH_STATES, richStates, blendedColors } from './chartstates.js';
 import { registerSignals } from './signals.js';
@@ -398,7 +398,7 @@ async function render(opts) {
   const [route, q] = (location.hash.slice(2) || 'dashboard').split('?');
   // Each render gets a fresh container: requests still in flight from the previous page then
   // write into a detached element instead of overwriting the page the user moved to.
-  if (!render.ver) render.ver = (CFG ? Promise.resolve(CFG) : api('/config').catch(() => null)).then(c => { const v = c?.version; if (v && $('#siteVer')) $('#siteVer').textContent = 'Brightfolio ' + v; });
+  if (!render.ver) render.ver = (CFG ? Promise.resolve(CFG) : api('/config').catch(() => null)).then(c => { const v = c?.version; if (v && $('#siteVer')) $('#siteVer').textContent = 'Brightolio ' + v; });
   const view = document.createElement('div');
   // Moving to another page fades its cards in; re-drawing the same page does not.
   if (route !== render.last) { view.className = 'enter'; render.last = route; }
@@ -611,7 +611,7 @@ async function oauthButtons(verb) {
 routes.login = async (view, q) => {
   const g = await oauthButtons('Continue');
   view.innerHTML = `
-  <div class="hero"><h1 data-no-tr>Bright<span style="color:var(--ac)">folio</span></h1><p class="mu">Backtest, paper trade and automate stock strategies. Connect your brokerage, trade by text or phone.</p></div>
+  <div class="hero"><h1 data-no-tr>Bright<span style="color:var(--ac)">olio</span></h1><p class="mu">Backtest, paper trade and automate stock strategies. Connect your brokerage, trade by text or phone.</p></div>
   <form class="card auth"><h2>Sign in</h2>${g}
     <label>Email<input name="email" type="email" autocomplete="username" required></label>
     <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
@@ -1131,10 +1131,10 @@ routes.text = async view => {
   CFG ||= await api('/config');
   const { help } = await api('/command/help');
   view.innerHTML = `<h1>Text & Hotline</h1>
-  ${isPaid(ME) ? '' : '<div class="banner">Texting and calling Brightfolio is part of Pro. You can try the commands below here in the app; <a href="#/funding">start a free trial</a> to use them from your phone and get alerts by text.</div>'}
+  ${isPaid(ME) ? '' : '<div class="banner">Texting and calling Brightolio is part of Pro. You can try the commands below here in the app; <a href="#/funding">start a free trial</a> to use them from your phone and get alerts by text.</div>'}
   <div class="grid">
     <div class="card"><h2>Manage your account by SMS or phone</h2>
-      ${CFG.hotline ? `<div class="hotline"><span class="mu">Brightfolio's number</span><b dir="ltr">${esc(CFG.hotline)}</b><div class="row" style="gap:8px"><a href="sms:${esc(CFG.hotline)}"><button type="button">Text us</button></a><a href="tel:${esc(CFG.hotline)}"><button type="button" class="ghost">Call</button></a></div></div>
+      ${CFG.hotline ? `<div class="hotline"><span class="mu">Brightolio's number</span><b dir="ltr">${esc(CFG.hotline)}</b><div class="row" style="gap:8px"><a href="sms:${esc(CFG.hotline)}"><button type="button">Text us</button></a><a href="tel:${esc(CFG.hotline)}"><button type="button" class="ghost">Call</button></a></div></div>
         <p>Text or call from your verified phone.</p>${CFG.assistant ? '<p>The AI assistant understands plain language: "how am I doing this month?", "put $200 into the S&amp;P every week", "what does RSI mean?". Trades always need your PIN.</p>' : ''}` : '<p class="warn">The SMS/voice number is not configured on this server yet (Twilio).</p>'}
       <p class="mu"><span>Phone:</span> ${ME.phone ? `<span dir="ltr">${esc(ME.phone)}</span>` : '<span>not set</span>'} ${ME.phoneVerified ? '<span class="pill">verified</span>' : ''} · <span>PIN:</span> <span>${ME.hasPin ? 'set' : 'not set'}</span> · <a href="#/settings">change in Settings</a></p>
       <pre>${esc(help)}</pre>
@@ -1188,19 +1188,19 @@ routes.android = async view => {
   CFG ||= await api('/config').catch(() => null);
   const play = CFG?.androidPlay;
   view.innerHTML = `<h1>Android app</h1><div class="card androidcard"><div class="row" style="gap:18px;align-items:center;flex-wrap:wrap">
-    <img src="/icon-512.png" width="72" height="72" alt="" style="border-radius:18px"><div style="flex:1;min-width:220px"><h2 style="margin:0">Brightfolio for Android</h2>
+    <img src="/icon-512.png" width="72" height="72" alt="" style="border-radius:18px"><div style="flex:1;min-width:220px"><h2 style="margin:0">Brightolio for Android</h2>
     <p class="mu" style="margin:4px 0 0">A real Android app: your portfolio, quotes, buying and selling, orders and a watchlist on native screens, with everything else a tap away. Sign in with your email, or with Google, GitHub or a phone code.</p></div>
     ${play ? `<a href="${esc(play)}" target="_blank" rel="noopener" class="playbadge" aria-label="Get it on Google Play"><span>GET IT ON</span><b>Google Play</b></a>` : '<a href="/download/android"><button>Download the Android app</button></a>'}</div>
-    ${play ? `<h3>Install</h3><ol class="installsteps"><li>${isAndroid ? 'Tap' : 'On your Android phone, open this page and tap'} <b>Get it on Google Play</b> (or search “Brightfolio” in the Play Store).</li><li>Tap <b>Install</b>. The app appears with your other apps and updates itself from the Play Store.</li><li>Open Brightfolio and sign in.</li></ol>
+    ${play ? `<h3>Install</h3><ol class="installsteps"><li>${isAndroid ? 'Tap' : 'On your Android phone, open this page and tap'} <b>Get it on Google Play</b> (or search “Brightolio” in the Play Store).</li><li>Tap <b>Install</b>. The app appears with your other apps and updates itself from the Play Store.</li><li>Open Brightolio and sign in.</li></ol>
       <p class="mu small-print">Can't use Google Play? <a href="/download/android">Download the app file</a> instead.</p>`
     : `<h3>Install (about a minute)</h3><ol class="installsteps">
-      <li>${isAndroid ? 'Tap' : 'On your Android phone, open this page and tap'} <b>Download the Android app</b>. If Chrome says the file might be harmful, tap <b>Download anyway</b>: it is the app signed by Brightfolio.</li>
+      <li>${isAndroid ? 'Tap' : 'On your Android phone, open this page and tap'} <b>Download the Android app</b>. If Chrome says the file might be harmful, tap <b>Download anyway</b>: it is the app signed by Brightolio.</li>
       <li>Tap <b>Open</b> when the download finishes (or find <b>brightfolio.apk</b> in Downloads).</li>
       <li>The first time, Android asks to allow your browser to install apps: tap <b>Settings</b>, switch on <b>Allow from this source</b>, then go back.</li>
       <li>Tap <b>Install</b>. If Google Play Protect asks, tap <b>More details → Install anyway</b> (it asks about any app that is not from the Play Store yet).</li>
-      <li>Tap <b>Open</b>. Brightfolio is now with your other apps; new versions install over it and keep you signed in.</li></ol>
-      <p class="mu small-print">Brightfolio is on its way to Google Play; once it is listed there this page shows the Play Store button, and installing works like any other app.</p>`}
-    <p class="mu small-print">On iPhone: open Brightfolio in Safari, tap Share, then Add to Home Screen.</p></div>`;
+      <li>Tap <b>Open</b>. Brightolio is now with your other apps; new versions install over it and keep you signed in.</li></ol>
+      <p class="mu small-print">Brightolio is on its way to Google Play; once it is listed there this page shows the Play Store button, and installing works like any other app.</p>`}
+    <p class="mu small-print">On iPhone: open Brightolio in Safari, tap Share, then Add to Home Screen.</p></div>`;
 };
 routes.tax = async (view, q) => {
   const year = +(q.get('year') || new Date().getFullYear());
@@ -1356,7 +1356,7 @@ routes.referrals = async view => {
   ${r.milestones?.length ? `<div class="card"><h2>Bonus milestones</h2>${r.next ? `<p class="mu">${r.next.at - r.paying} more subscribed ${r.next.at - r.paying === 1 ? 'friend' : 'friends'} to your next bonus of <b>$${r.next.bonus}</b>.</p><div class="ob-bar"><i style="width:${Math.round(r.paying / r.next.at * 100)}%"></i></div>` : '<p class="mu">You reached every bonus. Thank you!</p>'}
     <div class="milestones">${r.milestones.map(m => `<div class="milestone ${r.paying >= m.at ? 'done' : ''}"><b>${m.at}</b><span>friends</span><em>+$${m.bonus}</em></div>`).join('')}</div></div>` : ''}`;
   act($('#copy', view), async () => { await navigator.clipboard.writeText(r.link).catch(() => { $('#reflink', view).select(); document.execCommand('copy'); }); return 'Link copied'; });
-  if ($('#share', view)) $('#share', view).onclick = () => navigator.share({ title: 'Brightfolio', text: 'Backtest and automate your trading ideas with Brightfolio:', url: r.link }).catch(() => {});
+  if ($('#share', view)) $('#share', view).onclick = () => navigator.share({ title: 'Brightolio', text: 'Backtest and automate your trading ideas with Brightolio:', url: r.link }).catch(() => {});
 };
 
 // ---------- settings ----------
@@ -1496,7 +1496,7 @@ async function adminPage(view, tab) {
     <div class="setup">${setup.items.map(x => `<div class="setup-row"><span class="dot ${x.on ? 'on' : ''}"></span><span class="setup-name">${esc(x.name)}</span><code data-no-tr>${esc(x.env)}</code><span class="pill ${x.on ? '' : 'warn'}">${x.on ? 'On' : 'Not set'}</span></div>`).join('')}</div>
     ${setup.emailError?.msg ? `<p class="banner err">Last email failed: ${esc(setup.emailError.msg)}</p>` : ''}
     <p><button class="ghost" id="testEmail">Send me a test email</button><span class="err"></span></p>
-    <p class="mu small-print">Password-reset emails need RESEND_API_KEY and EMAIL_FROM on a domain you verified at resend.com (e.g. <span data-no-tr>Brightfolio &lt;no-reply@yourdomain.com&gt;</span>). Without EMAIL_FROM, Resend's test sender only delivers to your own Resend address.</p>
+    <p class="mu small-print">Password-reset emails need RESEND_API_KEY and EMAIL_FROM on a domain you verified at resend.com (e.g. <span data-no-tr>Brightolio &lt;no-reply@yourdomain.com&gt;</span>). Without EMAIL_FROM, Resend's test sender only delivers to your own Resend address.</p>
     <p class="mu" style="font-size:12.5px">To change one: open <a href="#/admin-keys">Keys</a> (saves here and on Render), or Render → your service → Environment → add or edit the variable → Save.</p></div>`,
   };
   view.innerHTML = `<h1>Admin</h1>${tabs}${sections[tab]()}`;
@@ -1588,7 +1588,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.se
   let me = null;
   for (let i = 0; i < 8 && !me; i++) {
     me = await fetch('/api/auth/me', { headers: { 'X-Requested-With': 'qp' } }).then(r => (r.ok ? r.json() : null)).catch(() => null);
-    if (!me) { $('#view').innerHTML = '<div class="card auth"><p class="mu">Connecting to Brightfolio…</p></div>'; await new Promise(r => setTimeout(r, 1500 * (i + 1))); }
+    if (!me) { $('#view').innerHTML = '<div class="card auth"><p class="mu">Connecting to Brightolio…</p></div>'; await new Promise(r => setTimeout(r, 1500 * (i + 1))); }
   }
   me ||= {};
   ME = me.user;

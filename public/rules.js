@@ -7,7 +7,7 @@ const SCHED = { monthly: 'Every month', quarterly: 'Every 3 months', yearly: 'On
 async function page(view, q) {
   const [d, accts] = await Promise.all([H.api('/rules'), H.accounts()]);
   const edit = q.get('edit') ? d.rules.find(r => r.id === +q.get('edit')) : null;
-  view.innerHTML = `<div class="pagehead"><div><h1>Rules across accounts</h1><p class="mu" style="margin:4px 0 0">One mix for several accounts, for example 60% stocks and 40% bonds. When it drifts, Brightfolio works out the trades across your accounts and they wait for your one-tap approval.</p></div></div>
+  view.innerHTML = `<div class="pagehead"><div><h1>Rules across accounts</h1><p class="mu" style="margin:4px 0 0">One mix for several accounts, for example 60% stocks and 40% bonds. When it drifts, Brightolio works out the trades across your accounts and they wait for your one-tap approval.</p></div></div>
   ${d.rules.map(r => `<div class="card rulecard" data-id="${r.id}"><div class="row" style="justify-content:space-between;align-items:center"><div><h2 style="margin:0">${H.esc(r.name)}</h2>
       <p class="mu" style="margin:4px 0 0">${r.targets.map(t => `${H.esc(t.symbol)} ${t.pct}%`).join(' · ')} · ${r.accounts.map(a => H.esc(H.acctLabel(accts.find(x => x.id === a) || { id: a, name: a }))).join(', ')} · ${SCHED[r.schedule]}${r.active ? '' : ' · paused'}</p></div>
       <div class="row" style="gap:6px"><button class="small ghost" data-preview="${r.id}">Check now</button><a href="#/rules?edit=${r.id}"><button class="small ghost">Edit</button></a></div></div>

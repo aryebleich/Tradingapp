@@ -1,6 +1,6 @@
 {
-  "name": "Brightfolio",
-  "short_name": "Brightfolio",
+  "name": "Brightolio",
+  "short_name": "Brightolio",
   "description": "Backtest, paper trade and automate stock strategies.",
   "start_url": "/app",
   "display": "standalone",

@@ -94,7 +94,7 @@ function contents(heads) {
   return out;
 }
 
-// The Brightfolio symbol in PDF drawing commands: a blue tile, three bars, a rising line and a
+// The Brightolio symbol in PDF drawing commands: a blue tile, three bars, a rising line and a
 // yellow spark (the same shapes as favicon.svg, drawn on a 64-unit grid).
 function logoOps(x, y, size) {
   const k = size / 64, X = v => (x + v * k).toFixed(2), Y = v => (y + size - v * k).toFixed(2);
@@ -110,7 +110,7 @@ function logoOps(x, y, size) {
 // A cover page: the symbol, the name, the document title and the date.
 function coverOps(title, subtitle) {
   const ops = [logoOps(W / 2 - 48, H - 300, 96)];
-  const word = 'Brightfolio', ws = 30, ww = width(word, ws) * 1.04;
+  const word = 'Brightolio', ws = 30, ww = width(word, ws) * 1.04;
   ops.push(`BT /F2 ${ws} Tf 0.043 0.129 0.251 rg ${(W / 2 - ww / 2).toFixed(1)} ${H - 352} Td (Bright) Tj 0.114 0.306 0.847 rg (folio) Tj ET 0 g`);
   const lines = wrap(latin(title), 17, BODY - 60);
   lines.forEach((l, i) => ops.push(`BT /F2 17 Tf ${(W / 2 - width(l, 17) / 2).toFixed(1)} ${(H - 410 - i * 24).toFixed(1)} Td (${esc(l)}) Tj ET`));
@@ -162,7 +162,7 @@ export function markdownPdf(md, { title = 'Document', toc = true, cover = null, 
   });
   objs[catalog - 1] = `<< /Type /Catalog /Pages ${pagesId} 0 R >>`;
   objs[pagesId - 1] = `<< /Type /Pages /Kids [${kids.map(k => `${k} 0 R`).join(' ')}] /Count ${kids.length} >>`;
-  const info = obj(`<< /Title (${esc(T)}) /Producer (Brightfolio) >>`);
+  const info = obj(`<< /Title (${esc(T)}) /Producer (Brightolio) >>`);
   let out = '%PDF-1.4\n%\xe2\xe3\xcf\xd3\n';
   const offsets = objs.map((body, i) => { const at = Buffer.byteLength(out, 'latin1'); out += `${i + 1} 0 obj\n${body}\nendobj\n`; return at; });
   const xref = Buffer.byteLength(out, 'latin1');

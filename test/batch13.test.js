@@ -207,7 +207,7 @@ test('business inbox: texts from strangers, inbound email, replies; keypad ticke
   try {
     const sms = await fetch(s.base + '/twilio/sms', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ From: '+18455550777', Body: 'Hi, do you have an app for iPhone?' }) });
     // Strangers get the sign-up by text; the message still reaches the business inbox.
-    assert.match(await sms.text(), /Welcome to Brightfolio[\s\S]*reply with your email/);
+    assert.match(await sms.text(), /Welcome to Brightolio[\s\S]*reply with your email/);
     const owner = s.client(); await owner('/auth/register', { email: 'site-owner2@example.com', password: 'Str0ngPassword' });
     const st = (await owner('/admin/comms/settings', { forwardTo: '+18455551234', notes: 'We have an Android app.' }, 'PUT')).body;
     assert.ok(st.emailToken.length > 10);

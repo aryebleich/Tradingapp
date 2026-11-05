@@ -61,7 +61,7 @@ export function numberAsKeys(s) {
 
 // Suggested Yiddish for the sentences the line says most (the owner can read their own wording).
 export const SCRIPT = {
-  'welcome to brightfolio': 'ברוכים הבאים צו ברייטפֿאָליאָ.',
+  'welcome to brightolio': 'ברוכים הבאים צו ברייטאָליאָ.',
   'main menu paper trading': 'הויפּט־מעניו, פּראָבע־האַנדל.', 'main menu live trading': 'הויפּט־מעניו, עכטער האַנדל.',
   'press': 'דריקט', 'for account info': 'פֿאַר אייער חשבון', 'for positions': 'פֿאַר די פּאָזיציעס', 'for the market clock': 'פֿאַר דעם מאַרק־זייגער',
   'to place a trade': 'צו מאַכן אַ האַנדל', 'to cancel open orders': 'צו אָפּשטעלן אָפֿענע אָרדערס', 'to close all positions': 'צו פֿאַרמאַכן אַלע פּאָזיציעס',
@@ -76,7 +76,7 @@ export const SCRIPT = {
   'wrong pin try again': 'אומריכטיקער פּין. פּרובירט נאָכאַמאָל.', 'too many wrong pins goodbye': 'צו פֿיל אומריכטיקע פּינס. זייט געזונט.',
   'the market is open': 'דער מאַרק איז אָפֿן.', 'the market is closed': 'דער מאַרק איז פֿאַרמאַכט.',
   'switched to paper trading': 'איבערגעביטן צום פּראָבע־האַנדל.', 'switched to live trading': 'איבערגעביטן צום עכטן האַנדל.',
-  'thank you for calling brightfolio goodbye': 'אַ דאַנק פֿאַרן רופֿן ברייטפֿאָליאָ. זייט געזונט.',
+  'thank you for calling brightolio goodbye': 'אַ דאַנק פֿאַרן רופֿן ברייטאָליאָ. זייט געזונט.',
   'sorry something went wrong': 'אַנטשולדיקט, עפּעס איז נישט געגאַנגען.', 'switched to yiddish': 'איבערגעביטן אויף אידיש.',
 };
 

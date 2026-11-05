@@ -218,7 +218,7 @@ export async function prepare(s, day) {
   const summary = orders.length ? orders.map(o => `${o.side.toUpperCase()} ${o.qty} ${o.ticker}`).join(', ') : 'No change: holdings already match the targets';
   await run('UPDATE user_strategies SET state = ? WHERE id = ?', JSON.stringify({ ...s.state, pending: orders.length ? { day, orders, at: now() } : undefined }), s.id);
   await run('INSERT INTO strategy_runs (strategy_id, user_id, kind, summary, at) VALUES (?,?,?,?,?)', s.id, s.userId, orders.length ? 'ready' : 'no change', orders.length ? `Ready for your approval: ${summary}` : summary, now());
-  if (orders.length) await notifyAccount(s.userId, `Brightfolio: "${s.name}" is ready to rebalance: ${summary}. Approve or skip it in the app before the close today (Strategies).`).catch(() => {});
+  if (orders.length) await notifyAccount(s.userId, `Brightolio: "${s.name}" is ready to rebalance: ${summary}. Approve or skip it in the app before the close today (Strategies).`).catch(() => {});
   return { orders, summary };
 }
 export async function decidePending(s, userId, approve, today) {
@@ -295,7 +295,7 @@ export async function recordDaily(t = now()) {
 async function notifyUser(userId, msg) {
   const u = await one('SELECT email, phone, phone_verified FROM users WHERE id = ?', userId);
   if (u?.phone && u.phone_verified) await sendSms(u.phone, msg).catch(e => console.warn('sms', e.message));
-  else if (u?.email) await sendEmail(u.email, 'Brightfolio Reality Check', msg).catch(e => console.warn('email', e.message));
+  else if (u?.email) await sendEmail(u.email, 'Brightolio Reality Check', msg).catch(e => console.warn('email', e.message));
 }
 
 export const templatesList = () => TEMPLATES.map(t => ({ id: t.id, name: t.name, tagline: t.tagline, kind: t.kind, rebalance: t.rebalance, risk: t.risk, qc: t.qc, about: t.about, note: t.note || null }));

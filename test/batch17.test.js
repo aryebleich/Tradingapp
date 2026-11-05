@@ -41,7 +41,7 @@ test('paper is paper, live is live: the server guard, the account-number check a
   assert.equal(rr.ok, true, JSON.stringify(rr.problems));
 
   const u = client(); await u('/auth/register', { email: 'route@example.com', password: 'Str0ngPassword1', agree: true });
-  // The practice account fills inside Brightfolio: nothing reaches the broker.
+  // The practice account fills inside Brightolio: nothing reaches the broker.
   const before = mock.log.filter(x => /\/orders$/.test(x.path) && x.method === 'POST').length;
   const p = await u('/orders', { account: 'paper', symbol: 'AAPL', side: 'buy', qty: 1 });
   assert.equal(p.status, 200, JSON.stringify(p.body));
@@ -118,7 +118,7 @@ test('Admin → Users: details, live P&L, sign out everywhere, delete with all d
 
 test('sign up by text: welcome, email with a 5-digit referral code, commands for every plan', async () => {
   const w = await text('+18455550601', 'hello');
-  assert.match(w, /Welcome to Brightfolio!/); assert.match(w, /reply with your email address/); assert.match(w, /name@example\.com 12345/);
+  assert.match(w, /Welcome to Brightolio!/); assert.match(w, /reply with your email address/); assert.match(w, /name@example\.com 12345/);
   // A referrer's 5-digit code.
   const ref = client(); const rr = await ref('/auth/register', { email: 'referrer@example.com', password: 'Str0ngPassword1', agree: true });
   const { refNumFor } = await import('../src/smssignup.js');
@@ -130,7 +130,7 @@ test('sign up by text: welcome, email with a 5-digit referral code, commands for
   const u = await one('SELECT * FROM users WHERE email = ?', 'sam@example.com');
   assert.equal(u.phone, '+18455550601'); assert.equal(u.phone_verified, 1); assert.equal(u.referred_by, rr.body.user.id);
   assert.ok(u.reset_hash, 'a set-password link was emailed');
-  assert.match(await text('+18455550602', 'sam@example.com'), /already has a Brightfolio account/);
+  assert.match(await text('+18455550602', 'sam@example.com'), /already has a Brightolio account/);
   // Starter (free) by text: look-ups, watchlist, alerts, plan, referral code.
   assert.match(await text('+18455550601', 'AAPL'), /AAPL \$/);
   assert.match(await text('+18455550601', 'WATCH TSLA'), /Added TSLA[\s\S]*TSLA \$/);
@@ -139,7 +139,7 @@ test('sign up by text: welcome, email with a 5-digit referral code, commands for
   assert.match(await text('+18455550601', 'ALERTS'), /AAPL above \$500\.00/);
   assert.match(await text('+18455550601', 'PLAN'), /Your plan: Starter/);
   assert.match(await text('+18455550601', 'MY CODE'), /Your referral code: \d{5}/);
-  assert.match(await text('+18455550601', 'how is the market doing today?'), /part of Brightfolio Pro/);
+  assert.match(await text('+18455550601', 'how is the market doing today?'), /part of Brightolio Pro/);
   assert.match(await text('+18455550601', 'HELP'), /every plan/);
   // TALK still reaches a person; APPLY still opens the brokerage application flow when it is on.
   assert.match(await text('+18455550603', 'TALK please'), /Thanks for your message/);

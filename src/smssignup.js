@@ -8,10 +8,10 @@ import { randomToken, sha256 } from './crypto.js';
 import { normalizePhone, siteGet } from './site.js';
 import { sendEmail } from './notify.js';
 
-const site = () => (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || 'https://brightfolio.app').replace(/\/$/, '');
+const site = () => (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || 'https://app.brightolio.com').replace(/\/$/, '');
 const EMAIL = /([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/i;
 
-export const welcome = () => `📊 Welcome to Brightfolio!
+export const welcome = () => `📊 Welcome to Brightolio!
 Get stock prices, charts, earnings dates and company info by text, free.
 
 To sign up, reply with your email address.
@@ -20,7 +20,7 @@ Example: name@example.com 12345
 
 Reply HELP for help, TALK to reach a person, APPLY to open a brokerage account. Msg & data rates may apply. Reply STOP to opt out.`;
 
-export const ready = (email, plan = 'free') => `✅ You're in! Your free Brightfolio account (${email}) is ready, with $100,000 of practice money.
+export const ready = (email, plan = 'free') => `✅ You're in! Your free Brightolio account (${email}) is ready, with $100,000 of practice money.
 
 Text any ticker, for example AAPL.
 More: AAPL CHART · AAPL EARNINGS · AAPL NEWS · AAPL INFO
@@ -57,8 +57,8 @@ export function parseSignup(text) {
 async function setPasswordEmail(userId, email) {
   const token = randomToken();
   await run('UPDATE users SET reset_hash = ?, reset_expires = ? WHERE id = ?', sha256(token), now() + 7 * 864e5, userId);
-  await sendEmail(email, 'Welcome to Brightfolio: set your password',
-    `Your Brightfolio account was opened by text from your phone.\n\nTo use the website and the app too, choose a password (link valid for 7 days):\n${site()}/app#/reset?token=${token}\n\nBy text, just send a ticker like AAPL. If you did not sign up, reply to this email and we will remove the account.`).catch(e => console.warn('sms signup email', e.message));
+  await sendEmail(email, 'Welcome to Brightolio: set your password',
+    `Your Brightolio account was opened by text from your phone.\n\nTo use the website and the app too, choose a password (link valid for 7 days):\n${site()}/app#/reset?token=${token}\n\nBy text, just send a ticker like AAPL. If you did not sign up, reply to this email and we will remove the account.`).catch(e => console.warn('sms signup email', e.message));
 }
 
 // The reply for a number that has no account. Returns null when the message is for someone else
@@ -70,7 +70,7 @@ export async function handleSignup(from, text) {
   const p = parseSignup(t);
   if (!p) return welcome();
   if (p.email.length > 120 || /\.invalid$/i.test(p.email)) return 'That email does not look right. Reply with your email address, for example: name@example.com';
-  if (await one('SELECT 1 FROM users WHERE email = ?', p.email)) return `${p.email} already has a Brightfolio account. To use it by text, sign in at ${site()}/app and add this phone in Settings → Phone. Or reply with a different email.`;
+  if (await one('SELECT 1 FROM users WHERE email = ?', p.email)) return `${p.email} already has a Brightolio account. To use it by text, sign in at ${site()}/app and add this phone in Settings → Phone. Or reply with a different email.`;
   const referrer = p.code ? await userByRefNum(p.code) : null;
   if (p.code && !referrer) return `We could not find referral code ${p.code}. Check it and send your email again, or send just your email to sign up without a code.`;
   const id = await createUser({ email: p.email, ref: referrer?.ref_code || null });

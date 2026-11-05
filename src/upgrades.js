@@ -42,7 +42,7 @@ export const GITHUB_PLANS = [
 const GH = () => (process.env.GITHUB_API_URL || 'https://api.github.com').replace(/\/$/, '');
 async function githubPlan() {
   if (!process.env.GITHUB_TOKEN) return { configured: false };
-  const r = await fetch(`${GH()}/user`, { headers: { authorization: `Bearer ${process.env.GITHUB_TOKEN}`, accept: 'application/vnd.github+json', 'user-agent': 'Brightfolio' }, signal: AbortSignal.timeout(10000) }).catch(() => null);
+  const r = await fetch(`${GH()}/user`, { headers: { authorization: `Bearer ${process.env.GITHUB_TOKEN}`, accept: 'application/vnd.github+json', 'user-agent': 'Brightolio' }, signal: AbortSignal.timeout(10000) }).catch(() => null);
   const u = r?.ok ? await r.json() : null;
   return { configured: true, login: u?.login || null, plan: u?.plan?.name || null };
 }

@@ -37,7 +37,7 @@ export async function statementMarkdown(user, account, ym) {
   const lines = [
     `# Account statement: ${monthName(ym)}`,
     '',
-    `Brightfolio · ${account === 'paper' ? 'Paper account (pretend money)' : `Brokerage account (${account})`} · ${user.email}`,
+    `Brightolio · ${account === 'paper' ? 'Paper account (pretend money)' : `Brokerage account (${account})`} · ${user.email}`,
     '',
     '## Summary',
     '',
@@ -61,7 +61,7 @@ export async function statementMarkdown(user, account, ym) {
     '',
     '---',
     '',
-    'This statement reports your own account activity as recorded by Brightfolio. Your broker\'s statements are the official record. Past results do not predict future results, and nothing here is investment advice.',
+    'This statement reports your own account activity as recorded by Brightolio. Your broker\'s statements are the official record. Past results do not predict future results, and nothing here is investment advice.',
   ];
   return lines.join('\n');
 }
@@ -74,6 +74,6 @@ statementRouter.get('/', async (req, res) => {
   const ym = /^\d{4}-(0[1-9]|1[0-2])$/.test(req.query.month || '') ? req.query.month : new Date().toISOString().slice(0, 7);
   if (ym > new Date().toISOString().slice(0, 7)) throw Object.assign(new Error('Pick this month or an earlier one'), { status: 400 });
   const md = await statementMarkdown(req.user, account, ym);
-  const { pdf } = markdownPdf(md, { title: `Brightfolio statement · ${monthName(ym)}`, toc: false });
-  res.type('application/pdf').attachment(`Brightfolio statement ${ym}.pdf`).send(pdf);
+  const { pdf } = markdownPdf(md, { title: `Brightolio statement · ${monthName(ym)}`, toc: false });
+  res.type('application/pdf').attachment(`Brightolio statement ${ym}.pdf`).send(pdf);
 });
