@@ -14,6 +14,10 @@ on:
         default: full
         type: choice
         options: [full, settings, check, diagnose]
+      domain:
+        description: 'Your own domain for this server (e.g. app.brightfolio.com); empty = <ip>.sslip.io'
+        required: false
+        default: ''
 permissions:
   contents: read
 concurrency:
@@ -35,7 +39,9 @@ jobs:
           echo "$HOST" | grep -Eq '^[0-9]{1,3}(\.[0-9]{1,3}){3}$' || { echo "::error::ORACLE_HOST must be the IPv4 address, e.g. 129.146.12.34"; exit 1; }
           [ -n "$KEY" ] || { echo "::error::Add the ORACLE_SSH_KEY secret (the private key file)."; exit 1; }
           if [ "${{ inputs.step }}" != "check" ]; then [ -n "$ENVF" ] || { echo "::error::Add the ORACLE_ENV secret (Admin → Keys → Download .env)."; exit 1; }; fi
-          echo "DOMAIN=$(echo "$HOST" | tr . -).sslip.io" >> "$GITHUB_ENV"
+          D="${{ inputs.domain }}"; D="${D#https://}"; D="${D%%/*}"
+          if [ -n "$D" ]; then echo "$D" | grep -Eq '^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$' || { echo "::error::'$D' is not a domain name"; exit 1; }; else D="$(echo "$HOST" | tr . -).sslip.io"; fi
+          echo "DOMAIN=$D" >> "$GITHUB_ENV"; echo "Domain: $D"
       - name: Connect
         env:
           KEY: ${{ secrets.ORACLE_SSH_KEY }}
@@ -54,6 +60,10 @@ jobs:
       - name: Open ports 80 and 443 in the server's own firewall
         run: |
           ssh -i ~/.ssh/oracle ubuntu@"$HOST" 'for spec in "tcp 80" "tcp 443" "udp 443"; do set -- $spec; while sudo iptables -D INPUT -p $1 --dport $2 -j ACCEPT 2>/dev/null; do :; done; sudo iptables -I INPUT 1 -p $1 --dport $2 -j ACCEPT; done; (command -v netfilter-persistent >/dev/null && sudo netfilter-persistent save >/dev/null 2>&1) || true; echo "Server firewall: 80 and 443 allowed, ahead of the reject rule"; sudo iptables -L INPUT -n --line-numbers | head -8'
+      - name: Use the domain for HTTPS
+        if: inputs.domain != '' && inputs.step != 'check'
+        run: |
+          ssh -i ~/.ssh/oracle ubuntu@"$HOST" "S=\$(echo $HOST | tr . -).sslip.io; sudo sed -i \"1s/^.*{\$/$DOMAIN, \$S {/\" /etc/caddy/Caddyfile && sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null && sudo systemctl reload caddy && head -1 /etc/caddy/Caddyfile"
       - name: HTTPS certificate (retry now if missing)
         run: |
           ssh -i ~/.ssh/oracle ubuntu@"$HOST" 'if ! curl -fsS --max-time 10 --resolve '"$DOMAIN"':443:127.0.0.1 https://'"$DOMAIN"'/healthz >/dev/null 2>&1; then echo "No working certificate yet: asking again now"; sudo systemctl restart caddy; sleep 45; fi; echo "--- caddy certificate log"; sudo journalctl -u caddy --since "-10 min" --no-pager | grep -iE "obtain|certificate|acme|error|challenge" | tail -15'
