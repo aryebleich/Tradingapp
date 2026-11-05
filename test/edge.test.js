@@ -20,7 +20,7 @@ const cf = http.createServer((req, res) => {
     if (p === '/zones/z9/workers/routes' && req.method === 'GET') return ok([]);
     if (p === '/accounts/acc9/workers/subdomain' && req.method === 'PUT') { sub = JSON.parse(b).subdomain; return ok({ subdomain: sub }); }
     if (p === '/accounts/acc9/workers/subdomain') { if (!sub) { res.statusCode = 404; return res.end(JSON.stringify({ success: false, errors: [{ code: 10007, message: 'This account does not have a workers.dev subdomain' }] })); } return ok({ subdomain: sub }); }
-    if (p.endsWith('/scripts/brightfolio-edge/subdomain') && !sub) { res.statusCode = 400; return res.end(JSON.stringify({ success: false, errors: [{ code: 10063, message: 'You need a workers.dev subdomain in order to proceed.' }] })); }
+    if (/\/scripts\/brightfolio-edge(\/subdomain|\/schedules)?$/.test(p) && req.method !== 'GET' && !sub) { res.statusCode = 400; return res.end(JSON.stringify({ success: false, errors: [{ code: 10063, message: 'You need a workers.dev subdomain in order to proceed.' }] })); }
     return ok({});
   });
 });

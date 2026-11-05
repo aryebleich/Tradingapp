@@ -51,10 +51,11 @@ async function zoneFor(host) {
 async function workersDevName(account) {
   const have = (await cf(`/accounts/${account}/workers/subdomain`).catch(() => null))?.subdomain;
   if (have) return have;
+  let last = '';
   for (const name of ['brightolio', 'brightolio-app', 'brightolio-' + Math.random().toString(36).slice(2, 7)]) {
-    try { return (await cf(`/accounts/${account}/workers/subdomain`, { method: 'PUT', body: { subdomain: name } }))?.subdomain || name; } catch {}
+    try { return (await cf(`/accounts/${account}/workers/subdomain`, { method: 'PUT', body: { subdomain: name } }))?.subdomain || name; } catch (e) { last = e.message; }
   }
-  throw bad('Cloudflare has no workers.dev name for this account yet: open dash.cloudflare.com → Workers & Pages once (it makes one), then press this button again.');
+  throw bad(`Cloudflare has no workers.dev name for this account yet, and it could not be made from here (${last.replace(/^Cloudflare: /, '')}). Open dash.cloudflare.com → Compute (Workers) → Workers & Pages once: Cloudflare then makes it. Then press this button again.`);
 }
 
 // The servers the edge forwards to: active first, then the backups. Never the edge's own address.
@@ -89,7 +90,10 @@ export async function setupEdge({ domain, servers = [], active = null } = {}) {
     steps.push('Settings store ready');
   }
 
-  // 4. The Worker itself, with its settings and the keep-warm schedule
+  // 4. Cloudflare wants the account's workers.dev name before any Worker or schedule is saved.
+  const sub = await workersDevName(account);
+
+  // 5. The Worker itself, with its settings and the keep-warm schedule
   const code = await fs.readFile(WORKER_FILE, 'utf8');
   const form = new FormData();
   form.append('metadata', new Blob([JSON.stringify({
@@ -102,7 +106,7 @@ export async function setupEdge({ domain, servers = [], active = null } = {}) {
   await putOrigins(account, kv, origins);
   steps.push(`Edge uploaded; it sends visitors to ${origins[0]}${origins.length > 1 ? ` (backup: ${origins.slice(1).join(', ')})` : ''} and wakes every server every 5 minutes`);
 
-  // 5. The address: the domain when it is on Cloudflare, else the free workers.dev one
+  // 6. The address: the domain when it is on Cloudflare, else the free workers.dev one
   let url = null, zone = null, route = false;
   if (domain) {
     zone = await zoneFor(domain);
@@ -122,12 +126,11 @@ export async function setupEdge({ domain, servers = [], active = null } = {}) {
     } else steps.push(`${domain} is not on this Cloudflare account yet, so for now the edge uses a free workers.dev address. To use ${domain}: Cloudflare → Add a domain → ${domain.split('.').slice(-2).join('.')}, then press this button again.`);
   }
   if (!url) {
-    const sub = await workersDevName(account);
     await cf(`/accounts/${account}/workers/scripts/${SCRIPT}/subdomain`, { method: 'POST', body: { enabled: true } });
     url = `https://${SCRIPT}.${sub}.workers.dev`;
   }
 
-  // 6. Remember it, so every server can switch the edge (the token stays in Admin → Keys)
+  // 7. Remember it, so every server can switch the edge (the token stays in Admin → Keys)
   const conf = { account, kv, zone: zone?.id || null, domain: route ? domain : null, url, route, origins, at: Date.now() };
   await siteSet('edge', conf);
   const keep = { CLOUDFLARE_ACCOUNT_ID: account, CLOUDFLARE_KV_ID: kv };
