@@ -54,6 +54,9 @@ jobs:
       - name: Open ports 80 and 443 in the server's own firewall
         run: |
           ssh -i ~/.ssh/oracle ubuntu@"$HOST" 'for spec in "tcp 80" "tcp 443" "udp 443"; do set -- $spec; while sudo iptables -D INPUT -p $1 --dport $2 -j ACCEPT 2>/dev/null; do :; done; sudo iptables -I INPUT 1 -p $1 --dport $2 -j ACCEPT; done; (command -v netfilter-persistent >/dev/null && sudo netfilter-persistent save >/dev/null 2>&1) || true; echo "Server firewall: 80 and 443 allowed, ahead of the reject rule"; sudo iptables -L INPUT -n --line-numbers | head -8'
+      - name: HTTPS certificate (retry now if missing)
+        run: |
+          ssh -i ~/.ssh/oracle ubuntu@"$HOST" 'if ! curl -fsS --max-time 10 --resolve '"$DOMAIN"':443:127.0.0.1 https://'"$DOMAIN"'/healthz >/dev/null 2>&1; then echo "No working certificate yet: asking again now"; sudo systemctl restart caddy; sleep 45; fi; echo "--- caddy certificate log"; sudo journalctl -u caddy --since "-10 min" --no-pager | grep -iE "obtain|certificate|acme|error|challenge" | tail -15'
       - name: Diagnose the firewall
         if: inputs.step == 'diagnose'
         run: |
