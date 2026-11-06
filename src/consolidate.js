@@ -34,16 +34,17 @@ export function dedupe(rows) {
       const others = group.filter(r => r !== m && r.counted);
       const typed = /omni/i.test(m.type || '') && !/sub/i.test(m.type || '');
       if (!typed && (!others.length || !(m.equity > 0))) continue;
-      const subs = typed ? others.filter(r => /sub/i.test(r.type || '') || r.role === 'sub') : others;
+      const marked = others.filter(r => /sub/i.test(r.type || '') || r.role === 'sub'), subs = typed || marked.length ? marked : others;
       const eq = subs.reduce((s, r) => s + (+r.equity || 0), 0);
       const qty = {}; for (const r of subs) for (const p of r.positions || []) qty[p.symbol] = (qty[p.symbol] || 0) + (+p.qty || 0);
       const mine = Object.fromEntries((m.positions || []).map(p => [p.symbol, +p.qty || 0]));
       const symbols = new Set([...Object.keys(qty), ...Object.keys(mine)]);
       const samePositions = [...symbols].every(s => near(mine[s] || 0, qty[s] || 0, 0.001, 0.0001));
-      const enough = subs.length >= 2 || (m.role === 'main' && subs.length >= 1 && subs.every(r => r.role === 'sub'));
-      if (typed || (enough && near(m.equity, eq) && samePositions && symbols.size > 0)) {
-        m.counted = false; m.why = 'master'; m.subs = subs.map(r => r.id);
-      }
+      const matches = near(m.equity, eq) && samePositions && symbols.size > 0;
+      // Left out only when Alpaca says it is a master, or the user marked it Master and it matches
+      // its sub accounts. Accounts that merely look alike (for example after Equalize) stay counted.
+      if (typed || (m.role === 'main' && subs.length >= 1 && matches)) { m.counted = false; m.why = 'master'; m.subs = subs.map(r => r.id); }
+      else if (subs.length >= 2 && matches) m.suspect = subs.map(r => r.id);
     }
   }
   return out;
@@ -53,6 +54,7 @@ export const WHY = {
   duplicate: 'The same Alpaca account is connected twice; it is counted once.',
   master: 'Master (omnibus) account: its value is the sum of its sub accounts, so the sub accounts are counted instead.',
 };
+export const SUSPECT = 'This account holds exactly what the others hold together. If it is their master account, set its type to Master so it is not added twice.';
 
 // Adds the counted accounts: value, cash, today, open profit, and positions merged by symbol.
 export function totals(rows) {
@@ -90,7 +92,7 @@ export function combineHistories(list) {
 async function connectionsFor(userId) {
   const list = [];
   const primary = await tradingFor(userId).catch(() => null);
-  if (primary) list.push({ id: 'alpaca', label: 'Primary Alpaca connection', role: 'main', t: primary });
+  if (primary) list.push({ id: 'alpaca', label: 'Primary Alpaca connection', role: (await one("SELECT v FROM user_settings WHERE user_id = ? AND k = 'primaryRole'", userId).catch(() => null))?.v?.replace(/"/g, '') || 'separate', t: primary });
   for (const x of await extraAlpaca(userId)) list.push({ id: x.id, label: x.label, role: x.role, t: await tradingForAccount(userId, x.id) });
   return list;
 }
@@ -152,11 +154,22 @@ export const combinedRouter = (() => {
     const history = req.query.history === '0' ? null : await historyFor(req.user.id, counted.map(x => x.id), String(req.query.period || '1M'));
     res.json({
       view, group: g, live, groups: gs, totals: t, history,
-      accounts: inView.map(x => ({ id: x.id, label: x.label, role: x.role, live: x.live, number: x.number ? '…' + String(x.number).slice(-4) : null, counted: x.counted && !!x.live === live, why: x.error || (x.why ? WHY[x.why] : !!x.live !== live ? (x.live ? 'Live account (shown with live money)' : 'Paper account (not added to real money)') : null),
+      accounts: inView.map(x => ({ id: x.id, label: x.label, role: x.role, live: x.live, number: x.number ? '…' + String(x.number).slice(-4) : null, counted: x.counted && !!x.live === live, note: x.suspect ? SUSPECT : null, why: x.error || (x.why ? WHY[x.why] : !!x.live !== live ? (x.live ? 'Live account (shown with live money)' : 'Paper account (not added to real money)') : null),
         equity: x.equity ?? null, cash: x.cash ?? null, dayPl: x.lastEquity ? r2(x.equity - x.lastEquity) : null, dayPlPct: x.lastEquity ? +((x.equity - x.lastEquity) / x.lastEquity * 100).toFixed(2) : null, positions: (x.positions || []).length, unrealized: r2((x.positions || []).reduce((s, p) => s + (p.pnl || 0), 0)), share: t.equity && x.counted ? +((x.equity || 0) / t.equity * 100).toFixed(1) : null })),
     });
   });
   r.get('/groups', async (req, res) => res.json(await groups(req.user.id)));
+  // An account's type: separate (counted on its own), main (master of sub accounts) or sub.
+  r.put('/role', async (req, res) => {
+    const id = String(req.body?.id || ''), role = ['separate', 'main', 'sub'].includes(req.body?.role) ? req.body.role : null;
+    if (!role) throw Object.assign(new Error('Pick Separate, Master or Sub'), { status: 400 });
+    if (id === 'alpaca') await run("INSERT INTO user_settings (user_id, k, v, updated_at) VALUES (?, 'primaryRole', ?, ?) ON CONFLICT(user_id, k) DO UPDATE SET v = excluded.v, updated_at = excluded.updated_at", req.user.id, JSON.stringify(role), now());
+    else if (/^alpaca:\d{1,3}$/.test(id)) {
+      const { setExtraRole } = await import('./alpaca/connections.js');
+      if (!(await setExtraRole(req.user.id, id, role))) throw Object.assign(new Error('That account is not connected'), { status: 404 });
+    } else throw Object.assign(new Error('Unknown account'), { status: 400 });
+    res.json({ ok: true });
+  });
   r.post('/groups', async (req, res) => res.json({ id: await saveGroup(req.user.id, req.body || {}) }));
   r.put('/groups/:id', async (req, res) => { await saveGroup(req.user.id, req.body || {}, +req.params.id); res.json({ ok: true }); });
   r.delete('/groups/:id', async (req, res) => { await run('DELETE FROM account_groups WHERE id = ? AND user_id = ?', +req.params.id, req.user.id); res.json({ ok: true }); });

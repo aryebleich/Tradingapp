@@ -405,6 +405,7 @@ async function portfolio(view, q) {
     ${H.statementRow('alpaca')}
     <p class="mu" id="eqUpdated" style="font-size:12px;margin:6px 0 0;text-align:end" aria-live="off" ${P.mode === 'since' ? 'hidden' : ''}>Updated ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</p>
   </div>
+  <div id="acctBoxes"></div>
   <div class="grid">
     <div class="card"><h2>Balances & margin</h2><div class="kv">
       <span>Long market value</span><span>${usd(a.longMarketValue)}</span><span>Short market value</span><span>${usd(a.shortMarketValue)}</span>
@@ -419,7 +420,7 @@ async function portfolio(view, q) {
   </div>`;
   let pts = h.points, hist = h;
   const drawEq = () => H.drawChart(H.$('#eq', view), pts.map(p => p.equity), { base: hist.baseValue || pts[0]?.equity, dates: pts.map(p => p.t), time: ['1D', '1W'].includes(period), legend: false });
-  drawEq(); onResize(drawEq); H.wireStatement(view, 'alpaca');
+  drawEq(); onResize(drawEq); H.wireStatement(view, 'alpaca'); H.accountBoxes(H.$('#acctBoxes', view)).catch(() => {});
   H.$$('#periods button', view).forEach(b => (b.onclick = () => { try { localStorage.setItem('qp_period', b.dataset.p); } catch {} location.hash = '#/dashboard?period=' + b.dataset.p; }));
   // Quiet refresh: numbers change in place and the chart redraws only when its data changed. Nothing
   // updates while a finger or the mouse is on the chart, so it never shifts while you read it.
@@ -453,7 +454,8 @@ async function trade(view, q) {
   const kind = isOption(symbol) ? 'option' : isCrypto(symbol) ? 'crypto' : 'stock';
   view.innerHTML = `<h1>Trade</h1>
     <form id="search" class="tsearch" role="search" autocomplete="off"><div class="tsbox"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/></svg>
-      <input name="q" placeholder="Search a stock, ETF or crypto: AAPL, Apple, BTC/USD…" aria-label="Symbol or company" role="combobox" aria-expanded="false" aria-controls="symList" aria-autocomplete="list" spellcheck="false" dir="ltr">
+      <input name="q" placeholder="Search stocks, ETFs and crypto: AAPL, Apple, BTC…" aria-label="Symbol or company" role="combobox" aria-expanded="false" aria-controls="symList" aria-autocomplete="list" spellcheck="false" dir="ltr" autocomplete="off">
+      <button type="button" class="ghost tsclear" id="tsClear" aria-label="Clear" hidden>×</button><kbd class="tskey" aria-hidden="true">/</kbd>
       <button type="submit">Go</button></div><ul id="symList" class="tslist" role="listbox" hidden></ul></form>
   <div class="cols tradegrid">
       <div class="card" id="chartCard"><div class="quote"><h2 style="margin:0">${H.esc(symbol)}</h2><span class="px" id="px">-</span><span id="chg"></span><span class="mu" id="ba"></span><span class="mu" id="assetName"></span></div>
@@ -465,7 +467,7 @@ async function trade(view, q) {
       <div class="card" id="ordersCard"><div class="row" style="justify-content:space-between"><h2>Open orders for ${H.esc(symbol)}</h2><a href="#/orders">All orders →</a></div><div id="symOrders" class="tablewrap"></div></div>
       ${kind === 'option' ? '' : '<div class="card news" id="newsCard"><h2>News</h2><div id="news"><p class="mu">Loading…</p></div></div>'}
   </div>
-  <div class="actionbar" id="tradeBar" hidden><button class="buy" data-s="buy">Buy</button><button class="sell danger" data-s="sell">Sell</button></div>`;
+  <div class="actionbar" id="tradeBar" hidden><button type="button" id="toTicket">Trade ${H.esc(symbol)} ↓</button></div>`;
 
   // Symbol search: tickers and company names (stocks, ETFs, crypto), arrow keys and Enter, recent picks.
   const sf = H.$('#search', view), list = H.$('#symList', view), inp = sf.q;
@@ -473,32 +475,53 @@ async function trade(view, q) {
   const remember = s => { try { localStorage.setItem(RKEY, JSON.stringify([s, ...recent().filter(x => x !== s)].slice(0, 6))); } catch {} };
   let items = [], sel = -1, tmr, seq = 0;
   const go = s => { s = String(s || '').trim().toUpperCase(); if (!s) return; remember(s); location.hash = '#/trade?symbol=' + encodeURIComponent(s); };
-  const show = (rows, head = '') => {
-    items = rows; sel = rows.length ? 0 : -1;
-    list.innerHTML = (head ? `<li class="tshead" role="presentation">${head}</li>` : '') + rows.map((r, i) => `<li role="option" id="ts${i}" data-i="${i}" class="${i === sel ? 'on' : ''}" aria-selected="${i === sel}"><b data-no-tr>${H.esc(r.symbol)}</b><span>${H.esc(r.name || '')}</span><em>${H.esc(r.kind || '')}</em></li>`).join('')
-      || '<li class="tshead" role="presentation">No match. Press Go to open this symbol anyway.</li>';
+  const POPULAR = [['AAPL', 'Apple', 'Stock'], ['NVDA', 'NVIDIA', 'Stock'], ['MSFT', 'Microsoft', 'Stock'], ['TSLA', 'Tesla', 'Stock'], ['AMZN', 'Amazon', 'Stock'], ['SPY', 'S&P 500 ETF', 'ETF'], ['QQQ', 'Nasdaq-100 ETF', 'ETF'], ['BTC/USD', 'Bitcoin', 'Crypto']];
+  const ETFS = /^(SPY|QQQ|VOO|VTI|IVV|DIA|IWM|VEA|VWO|BND|AGG|TLT|IEF|GLD|SLV|XL[A-Z]|ARK[A-Z]|SCHD|VIG|VYM|JEPI|SOXL|TQQQ|SQQQ|SMH|SOXX|VXUS|VNQ|HYG|LQD|EEM|EFA|SPLG|RSP)$/;
+  const typeOf = r => r.kind === 'Crypto' || String(r.symbol).includes('/') ? 'Crypto' : ETFS.test(r.symbol) || /\bETF\b|Fund|Trust/i.test(r.name || '') ? 'ETF' : r.kind === 'Recent' ? 'Recent' : 'Stock';
+  const hl = (text, q) => { const t = H.esc(text || ''); if (!q) return t; const i = String(text || '').toLowerCase().indexOf(q.toLowerCase()); return i < 0 ? t : H.esc(text.slice(0, i)) + '<mark>' + H.esc(text.slice(i, i + q.length)) + '</mark>' + H.esc(text.slice(i + q.length)); };
+  const initials = r => H.esc(String(r.symbol).replace('/USD', '').slice(0, 2));
+  const row = (r, i, q) => `<li role="option" id="ts${i}" data-i="${i}" class="${i === sel ? 'on' : ''}" aria-selected="${i === sel}"><i class="tsav t-${typeOf(r).toLowerCase()}" aria-hidden="true">${initials(r)}</i><b data-no-tr>${hl(r.symbol, q)}</b><span>${hl(r.name || '', q)}</span><em>${typeOf(r)}${r.exchange ? ' · ' + H.esc(r.exchange) : ''}</em></li>`;
+  const show = (groups, q = '') => {
+    // groups: [[heading, rows], ...]
+    items = groups.flatMap(([, rows]) => rows); sel = items.length ? 0 : -1;
+    let i = 0;
+    list.innerHTML = groups.filter(([, rows]) => rows.length).map(([h, rows]) => (h ? `<li class="tshead" role="presentation">${h}</li>` : '') + rows.map(r => row(r, i++, q)).join('')).join('')
+      || `<li class="tshead" role="presentation">No match for "${H.esc(q)}". Press Enter to open it anyway.</li>`;
     list.hidden = false; inp.setAttribute('aria-expanded', 'true');
     H.$$('li[data-i]', list).forEach(li => (li.onmousedown = e => { e.preventDefault(); go(items[+li.dataset.i].symbol); }));
   };
   const hide = () => { list.hidden = true; inp.setAttribute('aria-expanded', 'false'); };
   const mark = () => H.$$('li[data-i]', list).forEach((li, i) => { li.classList.toggle('on', i === sel); li.setAttribute('aria-selected', i === sel); if (i === sel) { li.scrollIntoView({ block: 'nearest' }); inp.setAttribute('aria-activedescendant', li.id); } });
-  inp.onfocus = () => { if (!inp.value.trim() && recent().length) show(recent().map(s => ({ symbol: s, kind: 'Recent' })), 'Recent'); };
+  const start = () => show([['Recent', recent().map(x => ({ symbol: x, kind: 'Recent' }))], ['Popular', POPULAR.filter(([x]) => !recent().includes(x)).map(([symbol, name, kind]) => ({ symbol, name, kind }))]]);
+  inp.onfocus = () => { if (!inp.value.trim()) start(); };
   inp.onblur = () => setTimeout(hide, 120);
+  const clear = H.$('#tsClear', sf);
+  if (clear) clear.onclick = () => { inp.value = ''; clear.hidden = true; inp.focus(); start(); };
+  // "/" anywhere on the page jumps to the search box.
+  const slash = e => { if (e.key === '/' && !/input|textarea|select/i.test(document.activeElement?.tagName || '')) { e.preventDefault(); inp.focus(); } };
+  addEventListener('keydown', slash); H.onLeave(() => removeEventListener('keydown', slash));
+  const cache = new Map();
+  // Exact ticker, then tickers that start with it, then names that start with it, then the rest.
+  const rank = (r, v) => { const s = r.symbol.toUpperCase(), n = String(r.name || '').toUpperCase(), q = v.toUpperCase(); return s === q || s === q + '/USD' ? 0 : s.startsWith(q) ? 1 : n.startsWith(q) ? 2 : n.split(/\s+/).some(w => w.startsWith(q)) ? 3 : 4; };
   inp.oninput = () => {
     // Typing drops the old list at once, so Enter never picks a stale suggestion.
-    clearTimeout(tmr); items = []; sel = -1; hide(); const v = inp.value.trim(); if (!v) return;
+    clearTimeout(tmr); items = []; sel = -1; const v = inp.value.trim();
+    if (clear) clear.hidden = !v;
+    if (!v) { start(); return; }
+    list.innerHTML = '<li class="tshead" role="presentation">Searching…</li>'; list.hidden = false;
     tmr = setTimeout(async () => {
       const my = ++seq;
-      const [g, a] = await Promise.all([H.api('/search?q=' + encodeURIComponent(v)).catch(() => ({ symbols: [] })), A('/assets/search?q=' + encodeURIComponent(v) + (v.includes('/') ? '&class=crypto' : '')).catch(() => [])]);
+      const key = v.toUpperCase();
+      const got = cache.get(key) || await Promise.all([H.api('/search?q=' + encodeURIComponent(v)).catch(() => ({ symbols: [] })), A('/assets/search?q=' + encodeURIComponent(v) + (v.includes('/') ? '&class=crypto' : '')).catch(() => [])]);
+      cache.set(key, got);
       if (my !== seq) return;
-      const seen = new Set(), rows = [];
-      for (const r of [...(g.symbols || []).filter(x => /trade/.test(x.url || '')), ...a.map(x => ({ symbol: x.symbol, name: x.name, kind: x.class === 'crypto' ? 'Crypto' : x.exchange || 'Stock' }))]) {
+      const [g, a] = got, seen = new Set(), rows = [];
+      for (const r of [...(g.symbols || []).filter(x => /trade/.test(x.url || '')), ...a.map(x => ({ symbol: x.symbol, name: x.name, kind: x.class === 'crypto' ? 'Crypto' : 'Stock', exchange: x.class === 'crypto' ? '' : x.exchange || '' }))]) {
         if (!r.symbol || seen.has(r.symbol)) continue; seen.add(r.symbol); rows.push(r);
       }
-      // The exact ticker first.
-      rows.sort((x, y) => (y.symbol === v.toUpperCase()) - (x.symbol === v.toUpperCase()));
-      show(rows.slice(0, 10));
-    }, 180);
+      rows.sort((x, y) => rank(x, v) - rank(y, v));
+      show([['', rows.slice(0, 10)]], v);
+    }, 150);
   };
   inp.onkeydown = e => {
     const open = !list.hidden && items.length;
@@ -566,14 +589,15 @@ async function trade(view, q) {
     wireOrderActions(el, loadOrders);
   };
   renderTicket(H.$('#ticket', view), symbol, kind, acct, () => last, q, () => setTimeout(loadOrders, 800));
-  // Phones: a Buy/Sell bar stays on screen until the order form itself is visible.
+  // Phones: a "Trade" button stays on screen until the order form itself is visible.
   const bar = H.$('#tradeBar', view), tk = H.$('#ticket', view);
   if ('IntersectionObserver' in window) {
     // Hidden once at least half of the order form is on screen (its Review button is then reachable).
     const io = new IntersectionObserver(([e]) => (bar.hidden = e.intersectionRatio >= 0.5 || innerWidth > 900), { threshold: [0, 0.25, 0.5, 0.75, 1] });
     io.observe(tk); H.onLeave(() => io.disconnect());
   }
-  H.$$('button', bar).forEach(b => (b.onclick = () => { H.$(`#sideSeg [data-s=${b.dataset.s}]`, tk)?.click(); tk.scrollIntoView({ behavior: 'smooth', block: 'start' }); }));
+  // One button on phones: it brings the order form into view; buy or sell is chosen there only.
+  H.$('#toTicket', bar).onclick = () => tk.scrollIntoView({ behavior: 'smooth', block: 'start' });
   loadOrders();
   every(5000, loadOrders);
 }
@@ -609,7 +633,7 @@ function renderTicket(box, symbol, kind, acct, lastPx, q, onPlaced) {
         <div id="tkCost"></div><div id="tkBear"></div>
         <div class="kv" style="margin-top:12px"><span>Estimated ${st.side === 'buy' ? 'cost' : 'proceeds'}</span><span id="est">-</span>
           ${acct ? `<span>Buying power</span><span>${usd(kind === 'option' ? acct.optionsBuyingPower ?? acct.buyingPower : kind === 'crypto' ? acct.nonMarginableBuyingPower ?? acct.cash : acct.buyingPower)}</span>` : ''}</div>
-        <button style="width:100%;margin-top:12px" class="${st.side === 'sell' ? 'danger' : ''}" id="review">Review order</button><div class="err" id="tkErr"></div>
+        <button style="width:100%;margin-top:12px" class="${st.side === 'sell' ? 'danger' : 'buyact'}" id="review">${st.side === 'sell' ? 'Review sell order' : 'Review buy order'}</button><div class="err" id="tkErr"></div>
       </form>`;
     const f = H.$('#tk', box);
     H.$$('#sideSeg button', box).forEach(b => (b.onclick = () => { st.side = b.dataset.s; draw(); }));

@@ -35,6 +35,8 @@ export const JOBS = [
   ['status', 5, async t => (await import('./trust.js')).checkAll(t)],
   // Rules across accounts: check due rules on weekdays after 10:30 New York (approval needed).
   ['rules', 30, async t => (await import('./rules.js')).runRules(t)],
+  // Business: recurring invoices go out, once a day.
+  ['business', 1440, async t => (await import('./business/routes.js')).runBusiness(t)],
   // Equalize accounts at the market open (9:30 to 10:00 New York), for users who turned it on.
   ['equalize', 5, async t => (await import('./equalize.js')).runEqualize(t)],
   // One app for all your money: bank balances, transactions and crypto wallets, every 6 hours.

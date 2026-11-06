@@ -73,6 +73,27 @@ export async function jsonCall({ system, user, schema, maxTokens = 3000 }) {
   } catch (e) { throw failed(e, p); }
 }
 
+// Reads an image (a receipt, a document) and answers in JSON. Claude, Gemini and OpenRouter models
+// can see images; for a provider that cannot, the call fails and the caller falls back to typing.
+export async function visionJson({ image, prompt, schema, maxTokens = 800 }) {
+  const p = provider(); if (!p) throw Object.assign(new Error('No AI provider is set up'), { status: 503 });
+  const m = /^data:(image\/[a-z+]+);base64,(.+)$/.exec(String(image || ''));
+  if (!m) throw Object.assign(new Error('Not an image'), { status: 400 });
+  try {
+    if (p.id === 'anthropic') {
+      const res = await anthropic().beta.messages.create({
+        model: 'claude-opus-5-5', max_tokens: maxTokens, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
+        output_config: { effort: 'low', format: { type: 'json_schema', schema } },
+        messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: m[1], data: m[2] } }, { type: 'text', text: prompt }] }],
+      });
+      return JSON.parse(res.content.find(b => b.type === 'text').text);
+    }
+    const d = await completions(p, { max_tokens: maxTokens, temperature: 0, response_format: { type: 'json_object' },
+      messages: [{ role: 'system', content: `Answer with one JSON object only, matching this JSON schema:\n${JSON.stringify(schema)}` }, { role: 'user', content: [{ type: 'text', text: prompt }, { type: 'image_url', image_url: { url: image } }] }] });
+    return parseJson(d.choices?.[0]?.message?.content);
+  } catch (e) { throw failed(e, p); }
+}
+
 // A conversation with tools. defs: { name: { description, schema, required, run } }.
 // Returns { text, sources, used }. Web search is available with Claude only.
 export async function toolChat({ system, messages: history, defs, webSearch = true, maxRounds = 8 }) {

@@ -159,7 +159,7 @@ console.log('Desktop (1360x900)');
   // Selling must match the account: "Sell all" sells exactly what Alpaca holds, and nothing more.
   await step('trade: symbol search lists matches and opens one with the keyboard', async () => {
     await p.goto(B + '/app#/trade?symbol=AAPL'); await p.waitForSelector('#search input[name=q]', { timeout: 15000 });
-    await p.fill('#search input[name=q]', 'SPY'); await p.waitForSelector('#symList:not([hidden]) li[data-i] b:text-is("SPY")', { timeout: 15000 });
+    await p.fill('#search input[name=q]', 'SPY'); await p.waitForFunction(() => [...document.querySelectorAll('#symList:not([hidden]) li[data-i] b')].some(b => b.textContent === 'SPY'), null, { timeout: 15000 });
     await p.screenshot({ path: path.join(OUT, 'trade-search.png') });
     await p.keyboard.press('ArrowDown'); await p.keyboard.press('ArrowUp'); await p.keyboard.press('Enter');
     await p.waitForFunction(() => /symbol=SPY/.test(location.hash), null, { timeout: 10000 });
@@ -267,7 +267,7 @@ console.log('Phone (iPhone 13)');
     await p.fill('#keysForm [name=keyId]', 'PHONEKEY'); await p.fill('#keysForm [name=secret]', 'S'); await p.tap('#keysForm button'); await p.waitForSelector('#keysForm .ok');
   });
   await step('sticky Buy bar places an order', async () => {
-    await p.tap('#tabs a[data-r=trade]'); await p.waitForSelector('#tradeBar:not([hidden])'); await p.tap('#tradeBar .buy'); await p.waitForTimeout(700);
+    await p.tap('#tabs a[data-r=trade]'); await p.waitForSelector('#tradeBar:not([hidden])'); await p.tap('#tradeBar #toTicket'); await p.waitForTimeout(700);
     // The ticket can re-render when the live quote arrives (slower CI machines): fill, then retry once.
     for (let i = 0; i < 2; i++) {
       await p.waitForSelector('#tk [name=qty]'); await p.fill('#tk [name=qty]', '2'); await p.tap('#review');

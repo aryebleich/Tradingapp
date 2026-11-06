@@ -147,7 +147,14 @@ async function accounts(force) {
 const acctLabel = a => (a.id === 'paper' ? 'Paper account' : `${a.name}${a.live ? ' (live)' : a.id === 'alpaca' ? '' : ' (test)'}`);
 const accountOptions = (list, selected, paid = true) => list.filter(a => a.connected || a.id === selected || a.id === 'alpaca')
   .map(a => `<option value="${a.id}" ${a.id === selected ? 'selected' : ''}>${esc(acctLabel(a))}${a.id !== 'paper' && !paid ? ' · Pro' : ''}${!a.connected ? ' · not connected' : ''}</option>`).join('');
-const state = { account: localStorage.getItem('qp_account') || 'paper' };
+// Real money (the live account) is the default; the choice is remembered per browser.
+const state = { account: (() => { try { return localStorage.getItem('qp_account') || ''; } catch { return ''; } })() };
+// No choice made yet in this browser: the live account when one is connected, otherwise practice money.
+async function defaultAccount() {
+  if (state.account) return;
+  const list = await accounts().catch(() => []);
+  state.account = list.some(a => a.id === 'alpaca' && a.connected) ? 'alpaca' : 'paper';
+}
 
 // ---------- chart: the equity line, colored by gain/loss state (chartstates.js), drawing itself in ----------
 const calmMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -457,16 +464,16 @@ async function render(opts) {
     // Signing in for the Android app: back to the app once signed in here.
     if (sessionStorage.getItem('qp_next') === 'handoff') { sessionStorage.removeItem('qp_next'); location.href = '/api/auth/app-handoff'; return; }
     const groups = ME.role === 'admin' ? [['Owner', ADMIN_TABS], ...NAV] : NAV;
-    await accounts();
+    await accounts(); await defaultAccount();
     // Groups start folded; their arrow opens them (remembered). The group holding the current page opens.
     const opened = (() => { try { return JSON.parse(localStorage.getItem('qp_nav_open') || '[]'); } catch { return []; } })();
     const START = await import('./pages/start.js').then(m => m.startDone()).catch(() => true);
     const link = ([k, t]) => `<a href="#/${k}" class="${k === route ? 'on' : ''}">${icon(k)}${t}</a>`;
     const core = CORE.filter(([k]) => k !== 'start' || !START || route === 'start');
-    $('#nav').innerHTML = modeSwitch() + `<div class="navcore">${core.map(link).join('')}</div>` + groups.map(([g, items]) => { const list = items.filter(([k]) => !(ADDON_PAGES[k] && ME.addons?.[ADDON_PAGES[k]] === false)), open = opened.includes(g) || list.some(([k]) => k === route);
+    $('#nav').innerHTML = `<div class="navcore">${core.map(link).join('')}</div>` + groups.map(([g, items]) => { const list = items.filter(([k]) => !(ADDON_PAGES[k] && ME.addons?.[ADDON_PAGES[k]] === false)), open = opened.includes(g) || list.some(([k]) => k === route);
       return `<button type="button" class="grp sec" data-g="${esc(g)}" aria-expanded="${open}"><span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span><span class="gname">${g}</span><span class="gcount" aria-hidden="true">${list.length}</span></button><div class="grpbody" ${open ? '' : 'hidden'}>${list.map(link).join('')}</div>`; }).join('')
       + (isPaid(ME) ? '' : `<a href="#/funding" class="upsell">${icon('star')}${ME.trialUsed ? 'Upgrade to Pro' : 'Try Pro free for 14 days'}</a>`)
-      + `<div class="grp">${esc(ME.email)}</div><a href="#" id="navLogout">${icon('account')}Sign out</a>`;
+      + `<div class="navsec"><div class="grp">Trading mode</div>${modeSwitch()}</div><div class="grp">${esc(ME.email)}</div><a href="#" id="navLogout">${icon('account')}Sign out</a>`;
     wireModeSwitch();
     $$('#nav .grp.sec').forEach(b => (b.onclick = () => {
       const open = b.getAttribute('aria-expanded') !== 'true'; b.setAttribute('aria-expanded', open); b.nextElementSibling.hidden = !open;
@@ -775,6 +782,26 @@ async function approvalsBanner() {
   const p = await api('/library/pending').catch(() => []);
   return p.length ? `<div class="banner approvals">${p.map(x => `<span><b>${esc(x.name)}</b> is ready: ${x.orders.slice(0, 3).map(o => `${o.side.toUpperCase()} ${o.qty} <span data-no-tr>${esc(o.ticker)}</span>`).join(', ')}${x.orders.length > 3 ? '…' : ''} <a href="#/strategy?id=${x.id}">Review and approve</a></span>`).join('')}</div>` : '';
 }
+// Home: one row of boxes (value, today, total P/L, cash) for every Alpaca account and every group
+// of accounts the user made, and the total of all of them. Filled in after the page shows.
+async function accountBoxes(box) {
+  if (!box) return;
+  const list = (await accounts()).filter(x => /^alpaca/.test(x.id) && x.connected);
+  const groups = list.length ? await api('/combined/groups').catch(() => []) : [];
+  if (list.length < 2 && !groups.length) return;
+  const d = await api('/combined?view=all&history=0').catch(() => null);
+  if (!d || !box.isConnected) return;
+  const sum = ids => { const rs = d.accounts.filter(a => a.counted && ids.includes(a.id)); return { equity: rs.reduce((t, a) => t + (a.equity || 0), 0), dayPl: rs.reduce((t, a) => t + (a.dayPl || 0), 0), unrealized: rs.reduce((t, a) => t + (a.unrealized || 0), 0), cash: rs.reduce((t, a) => t + (a.cash || 0), 0), n: rs.length }; };
+  const tile = (title, sub, v, href, dim = '') => `<a class="acctbox ${dim}" href="${href}"><div class="ab-head"><b>${esc(title)}</b><span class="mu small-print">${esc(sub)}</span></div>
+    <div class="ab-stats"><div><span>Value</span><b>${money(v.equity)}</b></div><div><span>Today</span><b class="${cls(v.dayPl)}">${v.dayPl == null ? '-' : money(v.dayPl)}</b></div><div><span>Total P/L</span><b class="${cls(v.unrealized)}">${money(v.unrealized)}</b></div><div><span>Cash</span><b>${money(v.cash)}</b></div></div></a>`;
+  const t = d.totals;
+  box.innerHTML = `<div class="card"><div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">Your accounts</h2><a href="#/accounts">All accounts →</a></div>
+    <div class="acctboxes">
+      ${tile('All accounts', `${t.count} counted · ${d.live ? 'real money' : 'test money'}`, { equity: t.equity, dayPl: t.dayPl, unrealized: t.unrealized, cash: t.cash }, '#/accounts', 'total')}
+      ${groups.map(g => { const v = sum(g.accounts); return tile(g.name, `group · ${v.n} account${v.n === 1 ? '' : 's'}`, v, `#/accounts?view=g:${g.id}`); }).join('')}
+      ${d.accounts.map(a => tile(a.label, a.counted ? (a.number || a.id) : (a.why || 'not added'), { equity: a.equity, dayPl: a.dayPl, unrealized: a.unrealized, cash: a.cash }, `#/accounts`, a.counted ? '' : 'dim')).join('')}
+    </div></div>`;
+}
 routes.dashboard = async (view, q) => {
   await accounts();
   if (state.account === 'alpaca') return routes.portfolio(view, q);
@@ -814,6 +841,7 @@ routes.dashboard = async (view, q) => {
     <canvas id="eqc"></canvas>
     ${statementRow(state.account)}
   </div>
+  <div id="acctBoxes"></div>
   <div class="grid">
     <div class="card"><h2>Positions</h2><div class="tablewrap"><table><tr><th>Symbol</th><th>Qty</th><th>Avg</th><th>Price</th><th>Value</th><th>P/L</th></tr>
       ${a.positions.map(p => `<tr><td>${esc(p.symbol)}</td><td>${num(p.qty, 4)}</td><td>${money(p.avgPrice)}</td><td>${money(p.price)}</td><td>${money(p.value)}</td><td class="${cls(p.pnl)}">${money(p.pnl)}</td></tr>`).join('') || '<tr><td colspan="6" class="mu">No positions</td></tr>'}
@@ -836,7 +864,7 @@ routes.dashboard = async (view, q) => {
     ${state.account === 'paper' ? '<button class="ghost small" id="reset">Reset paper account</button>' : ''}</div>`;
   if ($('#hideOnboard', view)) $('#hideOnboard', view).onclick = () => { try { localStorage.setItem('qp_onboard_done', '1'); } catch {} render(); };
   drawChart($('#eqc', view), a.history.map(x => x.equity), { base, dates: a.history.map(x => x.day), legend: false });
-  wireStatement(view, state.account);
+  wireStatement(view, state.account); accountBoxes($('#acctBoxes', view)).catch(() => {});
   // Live mode: the numbers update quietly every minute (never the whole page).
   if (P.mode !== 'since') {
     const acct = state.account, t = setInterval(async () => {
@@ -1573,7 +1601,7 @@ registerBrokers(routes, { $, $$, esc, money, api, form, act, render, accounts })
 registerSp500(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, cls, api, form, act, render, drawChart, me: () => ME });
 registerPairs(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, cls, api, form, act, render, drawChart, me: () => ME });
 registerSignals(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, date, api, form, act, render, me: () => ME });
-registerTrading(routes, { $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, approvalsBanner, statementRow, wireStatement, prefs: () => PREFS.portfolio, sinceLastLook, sinceStat, onLeave, render, updateBadge, me: () => ME, state });
+registerTrading(routes, { accountBoxes, $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, approvalsBanner, statementRow, wireStatement, prefs: () => PREFS.portfolio, sinceLastLook, sinceStat, onLeave, render, updateBadge, me: () => ME, state });
 const shared = { $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, accounts, accountOptions, acctLabel, state, adminTabs, adminPage, secureConfirm, me: () => ME, paid: () => isPaid(ME) };
 registerStudio(routes, shared);
 registerBuild(routes, shared);

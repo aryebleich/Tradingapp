@@ -68,6 +68,7 @@ import { taxPilotRouter } from './src/taxpilot.js';
 import { rulesRouter } from './src/rules.js';
 import { combinedRouter } from './src/consolidate.js';
 import { equalizeRouter } from './src/equalize.js';
+import { bizRouter, publicInvoiceRouter } from './src/business/routes.js';
 import { quickbooksRouter, finish as qboFinish } from './src/quickbooks.js';
 import { institutionsRouter } from './src/institutions.js';
 import { roundupRouter } from './src/roundup.js';
@@ -321,6 +322,8 @@ app.use(['/api/alpaca/broker/accounts', '/api/alpaca/broker/documents'], express
 app.use('/api/admin/site/readme', express.json({ limit: '700kb' })); // the private README editor
 app.use('/api/admin/site/phone/clips', express.json({ limit: '2200kb' })); // Yiddish voice recordings
 app.use('/api/altlive/k1', express.json({ limit: '6mb' })); // K-1 PDFs
+app.use('/api/biz/receipts', express.json({ limit: '4mb' })); // receipt photos
+app.use('/api/biz/bank/import', express.json({ limit: '3mb' })); // bank CSV files
 app.use(express.json({ limit: '200kb' }));
 app.use(express.urlencoded({ extended: false, limit: '50kb' }));
 
@@ -403,6 +406,8 @@ app.post('/hook/:token', express.text({ type: () => true, limit: '20kb' }), asyn
   try { await receiveSignal(req, res); } catch (e) { console.error('webhook', e); res.status(500).json({ error: 'Could not process the signal' }); }
 });
 app.use('/auth/google', googleRouter);
+// Invoices the businesses on Brightolio send to their customers (no sign-in needed to view and pay).
+app.use('/i', publicInvoiceRouter);
 app.use('/auth/github', githubRouter);
 app.get(['/oauth/schwab/callback', '/oauth/tradestation/callback'], auth.sessionMiddleware, extOauthCallback);
 
@@ -545,6 +550,7 @@ api.use('/taxpilot', taxPilotRouter);
 api.use('/rules', rulesRouter);
 api.use('/combined', combinedRouter);
 api.use('/equalize', equalizeRouter);
+api.use('/biz', bizRouter);
 api.use('/quickbooks', quickbooksRouter);
 api.use('/institutions', institutionsRouter);
 api.use('/roundups', roundupRouter);
@@ -1048,7 +1054,31 @@ const page = file => async (req, res) => {
 // The app page lists every module it imports (modulepreload), so the browser downloads them all at
 // once instead of one import level after another.
 let appHtml = null;
-const BUILD = process.env.RENDER_GIT_COMMIT || String(Date.now());
+// The version of the app's files: a hash of their contents, so every server running the same code
+// (Render, Oracle) gives the same version, and a change gives a new one at once.
+const ASSET_V = await (async () => {
+  const h = crypto.createHash('sha1');
+  const walk = async d => { for (const e of (await fs.readdir(d, { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name))) { const f = path.join(d, e.name); if (e.isDirectory()) await walk(f); else if (/\.(js|css)$/.test(e.name)) h.update(e.name).update(await fs.readFile(f)); } };
+  await walk(pub).catch(() => {}); return h.digest('hex').slice(0, 10);
+})();
+const BUILD = process.env.RENDER_GIT_COMMIT || ASSET_V;
+// Every import inside the app's code carries the version (app.js?v=…, ./pages/x.js?v=…). Those
+// addresses never change their content, so the browser, the offline cache and the Cloudflare edge
+// keep them without asking again: repeat visits open at once, and a new version is never mixed with
+// an old one (the cause of pages looking like the previous version after an update).
+const versioned = new Map();
+const withVersion = src => src
+  .replace(/(\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)(['"])(\.{1,2}\/[^'"?]+\.js)\2/g, (m, pre, q, spec) => `${pre}${q}${spec}?v=${ASSET_V}${q}`);
+app.get(/\.(js|css)$/, async (req, res, next) => {
+  if (req.path === '/sw.js' || req.path === '/config.js' || req.path === '/engine.js') return next();
+  const file = path.join(pub, path.posix.normalize(req.path));
+  if (!file.startsWith(pub + path.sep)) return next();
+  let body = process.env.NODE_ENV === 'production' ? versioned.get(file) : null;
+  if (!body) { try { body = await fs.readFile(file, 'utf8'); } catch { return next(); } if (file.endsWith('.js')) body = withVersion(body); versioned.set(file, body); }
+  res.type(file.endsWith('.css') ? 'css' : 'application/javascript');
+  res.set('Cache-Control', req.query.v === ASSET_V ? 'public, max-age=31536000, immutable' : 'no-cache');
+  res.send(body);
+});
 async function appPage() {
   const html = await fs.readFile(path.join(pub, 'app.html'), 'utf8');
   // Every module the app imports, followed through public/pages/ and back (static imports only).
@@ -1061,7 +1091,8 @@ async function appPage() {
       if (!dep.startsWith('..') && !dep.startsWith('i18n/')) todo.push(dep);
     }
   }
-  return html.replace('</head>', [...mods].map(m => `  <link rel="modulepreload" href="/${m}">`).join('\n') + '\n</head>');
+  return html.replace('src="/app.js"', `src="/app.js?v=${ASSET_V}"`).replace(/href="\/(styles|theme)\.css"/g, `href="/$1.css?v=${ASSET_V}"`)
+    .replace('</head>', [...mods].map(m => `  <link rel="modulepreload" href="/${m}?v=${ASSET_V}">`).join('\n') + '\n</head>');
 }
 app.get('/app', async (req, res) => {
   if (!appHtml || process.env.NODE_ENV !== 'production') appHtml = await appPage();

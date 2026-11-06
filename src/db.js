@@ -486,6 +486,17 @@ CREATE TABLE IF NOT EXISTS rules (
   active INTEGER NOT NULL DEFAULT 1,
   created_at INTEGER NOT NULL
 );
+-- Business tools (src/business): every record is one JSON document of a kind (account, entry,
+-- contact, invoice, item, employee, payrun, bank, receipt, settings).
+CREATE TABLE IF NOT EXISTS biz_docs (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,
+  data TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS biz_docs_user_kind ON biz_docs(user_id, kind);
 -- Groups of the user's Alpaca accounts with their own portfolio view (src/consolidate.js).
 CREATE TABLE IF NOT EXISTS account_groups (
   id INTEGER PRIMARY KEY,

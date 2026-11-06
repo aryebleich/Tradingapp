@@ -245,7 +245,8 @@ router.get('/positions', async (req, res) => {
     symbol: p.symbol, assetClass: p.asset_class, side: p.side, qty: +p.qty, qtyAvailable: +(p.qty_available ?? p.qty), avgEntry: +p.avg_entry_price, price: +p.current_price,
     marketValue: +p.market_value, costBasis: +p.cost_basis, unrealizedPl: +p.unrealized_pl, unrealizedPlPct: +p.unrealized_plpc * 100,
     todayPl: +p.unrealized_intraday_pl, todayPlPct: +p.unrealized_intraday_plpc * 100, changeToday: +p.change_today * 100,
-  })));
+  // Today's biggest gain first, down to today's biggest loss.
+  })).sort((a, b) => (b.todayPl || 0) - (a.todayPl || 0)));
 });
 router.delete('/positions/:symbol', async (req, res) => {
   const t = await T(req);
@@ -351,7 +352,7 @@ router.post('/accounts', async (req, res) => {
   if (same) throw bad(`This is the same Alpaca account as "${same.label}" (account …${String(a.account_number).slice(-4)}); it is already connected`);
   const used = new Set(list.map(x => +x.id.split(':')[1])); let n = 2; while (used.has(n)) n++;
   const id = 'alpaca:' + n;
-  await saveCred(req.user.id, id, { ...c, label: String(label || (role === 'main' ? 'Main account' : 'Sub account ' + (n - 1))).slice(0, 40), role: role === 'main' ? 'main' : 'sub' });
+  await saveCred(req.user.id, id, { ...c, label: String(label || (role === 'main' ? 'Master account' : role === 'sub' ? 'Sub account ' + (n - 1) : 'Account ' + n)).slice(0, 40), role: ['main', 'sub'].includes(role) ? role : 'separate' });
   await audit(req.user.id, 'alpaca_account_added', { id, live: c.live, role }, req.ip);
   res.json({ id, accountNumber: a.account_number, equity: +a.equity });
 });

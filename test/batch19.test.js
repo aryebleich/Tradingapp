@@ -67,3 +67,12 @@ test('the private README is tidied once: old change lists and finished setup ste
   assert.doesNotMatch(t, /Changes: November|Run locally|npm start|Connecting Stripe|auto:batch14/);
   assert.match(mergeSections(t), /## Recent changes/);
 });
+
+test('accounts that only look alike (for example after Equalize) are never left out', () => {
+  const twins = dedupe([acct('alpaca', '1', 1000, [P('SPY', 2, 500)], { role: 'separate' }), acct('alpaca:2', '2', 1000, [P('SPY', 2, 500)], { role: 'sub' })]);
+  assert.ok(twins.every(x => x.counted));
+  // Holds exactly what two others hold together, but nobody marked it Master: counted, with a note.
+  const s1 = acct('b', '2', 500, [P('SPY', 1, 500)]), s2 = acct('c', '3', 500, [P('SPY', 1, 500)]), big = acct('a', '1', 1000, [P('SPY', 2, 500)], { role: 'separate' });
+  const r = dedupe([big, s1, s2]);
+  assert.ok(r.every(x => x.counted)); assert.deepEqual(r[0].suspect, ['b', 'c']);
+});

@@ -36,7 +36,8 @@ async function combined(view, q) {
       <p class="mu small-print" style="margin:6px 0 0">One line for the accounts in this view, added together at each moment.</p>
     </div>
     <div class="card"><h2>Accounts</h2><div class="tablewrap"><table class="accts"><tr><th>Account</th><th class="num">Value</th><th>Share</th><th class="num">Today</th><th class="num">Open P/L</th><th class="num">Holdings</th><th></th></tr>
-      ${d.accounts.map(a => `<tr class="${a.counted ? '' : 'dim'}"><td><b>${H.esc(a.label)}</b> <span class="mu small-print" data-no-tr>${H.esc(a.number || a.id)}</span><div>${status(a)} ${a.live ? '<span class="pill warn">live</span>' : '<span class="pill">paper</span>'}</div>${a.why && !a.counted ? `<div class="mu small-print">${H.esc(a.why)}</div>` : ''}</td>
+      ${d.accounts.map(a => `<tr class="${a.counted ? '' : 'dim'}"><td><b>${H.esc(a.label)}</b> <span class="mu small-print" data-no-tr>${H.esc(a.number || a.id)}</span><div>${status(a)} ${a.live ? '<span class="pill warn">live</span>' : '<span class="pill">paper</span>'}</div>${a.why && !a.counted ? `<div class="mu small-print">${H.esc(a.why)}</div>` : ''}${a.note ? `<div class="warn small-print">${H.esc(a.note)}</div>` : ''}
+          <label class="small-print roleset">Type <select data-role="${H.esc(a.id)}"><option value="separate" ${a.role !== 'main' && a.role !== 'sub' ? 'selected' : ''}>Separate account</option><option value="main" ${a.role === 'main' ? 'selected' : ''}>Master of sub accounts</option><option value="sub" ${a.role === 'sub' ? 'selected' : ''}>Sub account</option></select></label></td>
         <td class="num">${usd(a.equity)}</td><td>${a.share == null ? '' : `${bar(a.share)} <span class="small-print">${a.share}%</span>`}</td>
         <td class="num ${H.cls(a.dayPl)}">${a.dayPl == null ? '-' : usd(a.dayPl)} <span class="small-print">${pc(a.dayPlPct)}</span></td><td class="num ${H.cls(a.unrealized)}">${usd(a.unrealized)}</td><td class="num">${a.positions ?? '-'}</td>
         <td class="nowrap"><button class="small ghost" data-open="${H.esc(a.id)}">Open</button>${/^alpaca:/.test(a.id) ? ` <button class="small ghost" data-rm="${H.esc(a.id)}">Remove</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="7" class="mu">No Alpaca account connected yet. Add one below.</td></tr>'}
@@ -50,7 +51,7 @@ async function combined(view, q) {
       <div class="checks" id="grpAccts">${(eq?.available || d.accounts).map(a => `<label class="chk"><input type="checkbox" name="acc" value="${H.esc(a.id)}"> ${H.esc(a.label)}</label>`).join('')}</div>
       <button>Save group</button><div class="err"></div></form>
     <form class="card" id="addAcc"><h2>Add an Alpaca account</h2><p class="mu" style="margin-top:0">Create API keys for the account in Alpaca (each sub account has its own keys), then add them here. Keys are encrypted and never shown again. The same account cannot be added twice.</p>
-      <div class="row"><label>Name<input name="label" placeholder="e.g. Sub account 2"></label><label>Type<select name="role"><option value="sub">Sub account</option><option value="main">Main (master) account</option></select></label></div>
+      <div class="row"><label>Name<input name="label" placeholder="e.g. Sub account 2"></label><label>Type<select name="role"><option value="separate">Separate account</option><option value="sub">Sub account</option><option value="main">Master of sub accounts</option></select></label></div>
       <div class="row"><label>API key id<input name="keyId" autocomplete="off" data-no-tr></label><label>Secret key<input name="secret" type="password" autocomplete="off"></label></div>
       <label class="chk"><input type="checkbox" name="live"> Live account (real money). Leave unticked for an Alpaca paper account.</label>
       <button>Add account</button><div class="err"></div></form>`;
@@ -62,6 +63,8 @@ async function combined(view, q) {
   // Accounts
   H.$$('[data-open]', view).forEach(b => (b.onclick = () => { H.state.account = b.dataset.open; try { localStorage.setItem('qp_account', b.dataset.open); } catch {} location.hash = '#/dashboard'; }));
   H.$$('[data-rm]', view).forEach(b => (b.onclick = async () => { if (!confirm('Remove this account from Brightolio? Nothing changes at Alpaca.')) return; try { await H.api('/alpaca/accounts/' + encodeURIComponent(b.dataset.rm), { method: 'DELETE' }); H.render(); } catch (e) { H.$('#accErr', view).textContent = e.message; } }));
+  // An account's type decides how it is added up: a master is never added together with its sub accounts.
+  H.$$('[data-role]', view).forEach(sel => (sel.onchange = async () => { try { await H.api('/combined/role', { method: 'PUT', body: { id: sel.dataset.role, role: sel.value } }); H.render(); } catch (e) { H.$('#accErr', view).textContent = e.message; } }));
   const add = H.$('#addAcc', view);
   H.act(H.$('button', add), async () => { const r = await H.api('/alpaca/accounts', { body: H.form(add) }); setTimeout(H.render, 800); return `Added ${r.accountNumber ? '…' + String(r.accountNumber).slice(-4) : r.id}`; });
   // Groups

@@ -921,3 +921,14 @@ header#top .closeall:hover:not(:disabled) { background: color-mix(in srgb, var(-
 .playbadge::before{content:"";position:absolute;left:14px;top:50%;transform:translateY(-50%);border-left:20px solid #34a853;border-top:12px solid transparent;border-bottom:12px solid transparent}
 .playbadge span{font-size:10px;letter-spacing:.06em}.playbadge b{font-size:19px;font-weight:600}
 .installsteps{padding-inline-start:22px;margin:8px 0}.installsteps li{margin:8px 0;overflow-wrap:anywhere}
+
+/* Ticker search: avatar, highlighted match, type label, clear button and "/" hint */
+.tslist li { grid-template-columns: 30px 6em 1fr auto; }
+.tslist li .tsav { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 11px; font-weight: 700; color: #fff; background: #5b6bff; }
+.tslist li .tsav.t-etf { background: #0f9d8a; } .tslist li .tsav.t-crypto { background: #e8860c; } .tslist li .tsav.t-recent { background: #8a94a6; }
+.tslist li mark { background: color-mix(in srgb, var(--accent, #4f7cff) 22%, transparent); color: inherit; border-radius: 3px; padding: 0 1px; }
+.tslist li.on { background: color-mix(in srgb, var(--accent, #4f7cff) 12%, transparent); }
+.tslist .tshead { display: block; padding: 8px 10px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--mu); cursor: default; }
+.tsbox .tsclear { min-height: 32px; padding: 0 10px; font-size: 18px; border: 0; }
+.tsbox .tskey { font: 600 12px ui-monospace, monospace; color: var(--mu); border: 1px solid var(--bd); border-radius: 6px; padding: 1px 6px; }
+@media (max-width: 700px) { .tsbox .tskey { display: none; } .tslist li { padding: 12px 10px; grid-template-columns: 30px 5.5em 1fr; } .tslist li em { display: none; } }

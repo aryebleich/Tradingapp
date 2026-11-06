@@ -83,7 +83,13 @@ export async function oauthCallback(state, code, sessionUserId) {
 export const isExtraAlpaca = a => /^alpaca:\d{1,3}$/.test(String(a));
 export async function extraAlpaca(userId) {
   const rows = await all("SELECT provider, blob FROM credentials WHERE user_id = ? AND provider LIKE 'alpaca:%' ORDER BY provider", userId);
-  return rows.map(r => { try { const c = decrypt(r.blob); return { id: r.provider, label: c.label || r.provider, role: c.role || 'sub', live: !!c.live, k: c.k, s: c.s }; } catch { return null; } }).filter(Boolean);
+  return rows.map(r => { try { const c = decrypt(r.blob); return { id: r.provider, label: c.label || r.provider, role: c.role || 'separate', live: !!c.live, k: c.k, s: c.s }; } catch { return null; } }).filter(Boolean);
+}
+export async function setExtraRole(userId, id, role) {
+  const c = await cred(userId, id);
+  if (!c) return false;
+  await saveCred(userId, id, { ...c, role });
+  return true;
 }
 export async function tradingForAccount(userId, account) {
   if (!account || account === 'alpaca') return tradingFor(userId);
