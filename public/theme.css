@@ -932,3 +932,15 @@ header#top .closeall:hover:not(:disabled) { background: color-mix(in srgb, var(-
 .tsbox .tsclear { min-height: 32px; padding: 0 10px; font-size: 18px; border: 0; }
 .tsbox .tskey { font: 600 12px ui-monospace, monospace; color: var(--mu); border: 1px solid var(--bd); border-radius: 6px; padding: 1px 6px; }
 @media (max-width: 700px) { .tsbox .tskey { display: none; } .tslist li { padding: 12px 10px; grid-template-columns: 30px 5.5em 1fr; } .tslist li em { display: none; } }
+
+/* Chart: indicator library, added indicators and the replay bar */
+.studies { margin: 6px 0; flex-wrap: wrap; gap: 6px; }
+.chip.study { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--bd); border-radius: 999px; padding: 2px 4px 2px 10px; font-size: 13px; }
+.chip.study button { min-height: 26px; padding: 0 6px; }
+dialog.indlib form { width: min(720px, 92vw); }
+dialog.indlib .indlist { max-height: 60vh; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; }
+dialog.indlib .indlist h3 { width: 100%; margin: 12px 0 2px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--mu); }
+dialog.indlib .indadd.on { border-color: var(--ac); }
+.replaybar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; border: 1px solid var(--bd); border-radius: 12px; padding: 6px 10px; margin: 6px 0; background: var(--card); }
+.replaybar input[type=range] { width: 160px; }
+.scriptcard textarea { width: 100%; font: 13px/1.5 ui-monospace, Menlo, Consolas, monospace; min-height: 220px; } @media (max-width: 900px) { .scriptcard textarea { font-size: 16px; } }

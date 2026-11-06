@@ -4,6 +4,8 @@
 // and a live order-book ladder (depth for crypto, top of book for stocks).
 import { detect, PATTERNS } from './patterns.js';
 import { canvasNote } from './i18n.js';
+import { INDICATORS, GROUPS, byId, compute } from './indicators.js';
+import { run as runScript, backtest as scriptBacktest, EXAMPLE as SCRIPT_EXAMPLE } from './script.js';
 let H;
 // Round price levels (1, 2, 2.5 or 5 × a power of ten) and their labels with just enough decimals.
 function niceTicks(lo, hi, count = 6) {
@@ -91,10 +93,10 @@ async function loadBars(symbol, tf) {
 // ---------- settings (remembered on this device) ----------
 const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
 const keep = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
-const DEF = { tf: '1Day', layout: 1, symbols: ['SPY', 'QQQ', 'AAPL', 'BTC/USD'], ind: { sma20: true, sma50: true, ema20: false, bb: false, vol: true, rsi: true, macd: false, pat: true, regime: true } };
+const DEF = { tf: '1Day', layout: 1, studies: [], symbols: ['SPY', 'QQQ', 'AAPL', 'BTC/USD'], ind: { sma20: true, sma50: true, ema20: false, bb: false, vol: true, rsi: true, macd: false, pat: true, regime: true } };
 
 async function chartPage(view, q) {
-  const cfg = { ...DEF, ...load('qp_chart', {}) }; cfg.ind = { ...DEF.ind, ...cfg.ind };
+  const cfg = { ...DEF, ...load('qp_chart', {}) }; cfg.ind = { ...DEF.ind, ...cfg.ind }; cfg.studies = (cfg.studies || []).filter(x => byId(x.id));
   if (q.get('symbol')) cfg.symbols[0] = q.get('symbol').toUpperCase();
   if (q.get('layout')) cfg.layout = +q.get('layout');
   // Charts per layout by plan: 1 on Starter, 2 on Pro, 4 on Elite and Ultimate.
@@ -110,14 +112,25 @@ async function chartPage(view, q) {
       <div class="seg" id="tf">${Object.keys(TFS).map(t => `<button type="button" data-tf="${t}" class="${t === cfg.tf ? 'on' : ''}">${{ '5Min': '5m', '15Min': '15m', '1Hour': '1h', '1Day': '1D', '1Week': '1W' }[t]}</button>`).join('')}</div>
       <div class="seg" id="tools" title="Drawing tools">${[['none', '↖', 'Pointer'], ['trend', '╱', 'Trend line'], ['hline', '―', 'Horizontal line'], ['rect', '▭', 'Box'], ['fib', 'Fib', 'Fibonacci retracement'], ['trade', '$', 'Click to trade'], ['erase', '⌫', 'Erase drawing']].map(([k, s, t]) => `<button type="button" data-tool="${k}" title="${t}" aria-label="${t}" class="${k === 'none' ? 'on' : ''}">${s}</button>`).join('')}</div>
       <div class="seg" id="lay" title="Layout">${[1, 2, 4].map(n => `<button type="button" data-l="${n}" class="${n === cfg.layout ? 'on' : ''}" ${n > maxLayout ? 'data-locked="1" title="More charts per layout come with a higher plan"' : ''}>${n === 1 ? '▢' : n === 2 ? '▥' : '▦'}</button>`).join('')}</div>
+      <button type="button" class="ghost small" id="indBtn" title="Add any of ${INDICATORS.length} indicators">ƒ Indicators (${INDICATORS.length})</button>
+      <button type="button" class="ghost small" id="rpBtn" title="Replay the price history bar by bar">⏵ Replay</button>
+      <button type="button" class="ghost small" id="scBtn" title="Write your own indicator, strategy or alert">{ } Script</button>
       ${popout ? '' : '<button type="button" class="ghost small" id="pop" title="Open in a new window (drag it to another monitor)">⧉ Pop out</button>'}
     </div>
+    <div class="replaybar" id="rpBar" hidden><b>Replay</b> <input type="range" id="rpPos" min="20" max="100" value="60" aria-label="Start point"> <button type="button" class="small ghost" id="rpBack" title="One bar back">⏮</button><button type="button" class="small" id="rpPlay">⏵ Play</button><button type="button" class="small ghost" id="rpStep" title="One bar forward">⏭</button>
+      <select id="rpSpeed" aria-label="Speed"><option value="1000">1×</option><option value="500">2×</option><option value="200" selected>5×</option><option value="100">10×</option></select><span class="mu small-print" id="rpAt"></span><button type="button" class="small ghost" id="rpExit">Exit replay</button></div>
+    <div class="chips studies" id="studies"></div>
     <div class="chips inds">${Object.entries(IND).map(([k, t]) => `<label class="chk"><input type="checkbox" data-ind="${k}" ${cfg.ind[k] ? 'checked' : ''}>${t}</label>`).join('')}</div>
     <div class="chartgrid l${cfg.layout}" id="grid"></div>
+    <div class="card scriptcard" id="scCard" hidden><div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">Brightolio Script <span class="mu small-print">Pine-style syntax</span></h2><select id="scSaved" aria-label="Saved scripts"><option value="">Saved scripts…</option></select></div>
+      <textarea id="scSrc" spellcheck="false" rows="14" data-no-tr></textarea>
+      <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><button type="button" id="scRun">Run on the chart</button><input id="scName" placeholder="Name" style="max-width:180px"><label class="chk"><input type="checkbox" id="scAlert"> Alert me after each close when an alertcondition() is true</label><button type="button" class="ghost" id="scSave">Save</button><button type="button" class="ghost small" id="scEx">Example</button><button type="button" class="ghost small" id="scClear">Remove from chart</button></div>
+      <div class="err" id="scErr"></div><div id="scOut"></div>
+      <details class="mu small-print"><summary>What you can write</summary><p>indicator("Name", overlay=false) or strategy("Name") · len = input(14, "Length") · ta.sma / ema / wma / rma / rsi / macd / bb / stoch / atr / tr / stdev / highest / lowest / change / roc / mom / sum / crossover / crossunder / cci / mfi / obv / vwap / adx / dmi / supertrend / psar · ind("keltner", "Upper", length=20) for any of the ${INDICATORS.length} indicators · open high low close volume hl2 hlc3 ohlc4 bar_index · close[1] = the bar before · a ? b : c · and or not · plot(series, "Title", color=color.blue) · hline(70) · strategy.entry("Long", strategy.long, when=cond) · strategy.close("Long", when=cond) · alertcondition(cond, "Message"). Backtests enter and exit at the next bar's open, all money in, no fees. Brightolio Script is its own language with a familiar style; it is not TradingView's Pine Script.</p></details></div>
     <div class="chartside" id="side"></div>`;
   let tool = 'none', active = 0;
   const panels = [];
-  const save = () => keep('qp_chart', { tf: cfg.tf, layout: cfg.layout, symbols: cfg.symbols, ind: cfg.ind });
+  const save = () => keep('qp_chart', { tf: cfg.tf, layout: cfg.layout, symbols: cfg.symbols, ind: cfg.ind, studies: cfg.studies });
   const grid = H.$('#grid', view);
   for (let i = 0; i < cfg.layout; i++) {
     const el = document.createElement('div'); el.className = 'card cpanel'; el.innerHTML = `<div class="chead"><input class="csym" value="${H.esc(cfg.symbols[i] || 'SPY')}" aria-label="Symbol" data-no-tr><span class="ohlc mu" data-no-tr></span><span class="capbadge"></span><span class="regbadge"></span></div><div class="cwrap"><canvas></canvas></div><div class="cnote mu small-print"></div>`;
@@ -133,6 +146,64 @@ async function chartPage(view, q) {
   H.$$('[data-tool]', view).forEach(b => (b.onclick = () => { tool = b.dataset.tool; H.$$('[data-tool]', view).forEach(x => x.classList.toggle('on', x === b)); panels.forEach(p => p.cursor()); }));
   H.$$('[data-l]', view).forEach(b => (b.onclick = () => { if (b.dataset.locked) { location.hash = '#/funding'; return; } cfg.layout = +b.dataset.l; save(); H.render(); }));
   H.$$('[data-ind]', view).forEach(c => (c.onchange = () => { cfg.ind[c.dataset.ind] = c.checked; save(); panels.forEach(p => p.draw()); }));
+  // Added indicators: a chip each, with its settings and a remove button.
+  const studiesEl = H.$('#studies', view);
+  const drawStudies = () => {
+    studiesEl.innerHTML = cfg.studies.map((st, k) => { const d = byId(st.id); return `<span class="chip study"><b>${H.esc(d.name)}</b>${Object.keys(d.params).length ? ` <span class="mu">${Object.values({ ...d.params, ...st.params }).join(', ')}</span> <button type="button" class="small ghost" data-edit="${k}" aria-label="Settings">⚙</button>` : ''}<button type="button" class="small ghost" data-rm="${k}" aria-label="Remove">×</button></span>`; }).join('');
+    H.$$('[data-rm]', studiesEl).forEach(b => (b.onclick = () => { cfg.studies.splice(+b.dataset.rm, 1); save(); drawStudies(); panels.forEach(p => p.draw()); }));
+    H.$$('[data-edit]', studiesEl).forEach(b => (b.onclick = () => editStudy(+b.dataset.edit)));
+  };
+  const editStudy = k => {
+    const st = cfg.studies[k], d = byId(st.id), cur = { ...d.params, ...st.params };
+    const dlg = document.createElement('dialog'); dlg.className = 'secure';
+    dlg.innerHTML = `<form method="dialog"><h2>${H.esc(d.name)}</h2>${Object.entries(cur).map(([n, v]) => `<label>${H.esc(n)}<input name="${H.esc(n)}" type="number" step="any" value="${v}"></label>`).join('')}<div class="row"><button value="ok">Apply</button><button value="cancel" class="ghost">Cancel</button></div></form>`;
+    document.body.append(dlg); dlg.showModal();
+    dlg.onclose = () => { if (dlg.returnValue === 'ok') { st.params = Object.fromEntries(Object.keys(cur).map(n => [n, +dlg.querySelector(`[name="${n}"]`).value])); save(); drawStudies(); panels.forEach(p => p.draw()); } dlg.remove(); };
+  };
+  drawStudies();
+  H.$('#indBtn', view).onclick = () => {
+    const dlg = document.createElement('dialog'); dlg.className = 'secure indlib';
+    dlg.innerHTML = `<form method="dialog"><h2>Indicators <span class="mu">${INDICATORS.length}</span></h2><input name="q" placeholder="Search: RSI, bands, volume…" autocomplete="off"><div class="indlist">${GROUPS.map(g => `<h3>${H.esc(g)}</h3>${INDICATORS.filter(x => x.group === g).map(x => `<button type="button" class="ghost small indadd" data-id="${x.id}" data-n="${H.esc(x.name.toLowerCase())} ${x.id}">${H.esc(x.name)} <span class="mu">${x.pane === 'price' ? 'on price' : 'own pane'}</span></button>`).join('')}`).join('')}</div><div class="row"><button value="close" class="ghost">Done</button></div></form>`;
+    document.body.append(dlg); dlg.showModal();
+    dlg.querySelector('[name=q]').oninput = e => { const q = e.target.value.trim().toLowerCase(); dlg.querySelectorAll('.indadd').forEach(b => (b.hidden = !!q && !b.dataset.n.includes(q))); dlg.querySelectorAll('.indlist h3').forEach(h => { let n = h.nextElementSibling, any = false; while (n && n.tagName !== 'H3') { if (!n.hidden) any = true; n = n.nextElementSibling; } h.hidden = !any; }); };
+    dlg.querySelectorAll('.indadd').forEach(b => (b.onclick = () => { if (cfg.studies.length >= 12) { alert('Up to 12 indicators at a time'); return; } cfg.studies.push({ id: b.dataset.id, params: {} }); save(); drawStudies(); panels.forEach(p => p.draw()); b.classList.add('on'); }));
+    dlg.onclose = () => dlg.remove();
+  };
+  // Replay: the active chart is cut back to a point in its history, then plays forward bar by bar.
+  const rpBar = H.$('#rpBar', view); let rpTimer = null;
+  const rpPanel = () => panels[active];
+  const rpShow = () => { const p = rpPanel(); H.$('#rpAt', view).textContent = p.full ? `${tlabel(p.bars.at(-1).t, cfg.tf, true)} · ${p.bars.length} of ${p.full.length}` : ''; };
+  const rpStop = () => { clearInterval(rpTimer); rpTimer = null; H.$('#rpPlay', view).textContent = '⏵ Play'; };
+  H.$('#rpBtn', view).onclick = () => { rpBar.hidden = false; rpPanel().replay(+H.$('#rpPos', view).value / 100); rpShow(); };
+  H.$('#rpPos', view).oninput = e => { rpStop(); rpPanel().replay(+e.target.value / 100); rpShow(); };
+  H.$('#rpStep', view).onclick = () => { rpStop(); rpPanel().stepReplay(1); rpShow(); };
+  H.$('#rpBack', view).onclick = () => { rpStop(); rpPanel().stepReplay(-1); rpShow(); };
+  H.$('#rpPlay', view).onclick = () => { if (rpTimer) return rpStop(); if (!rpPanel().full) rpPanel().replay(+H.$('#rpPos', view).value / 100); H.$('#rpPlay', view).textContent = '⏸ Pause'; rpTimer = setInterval(() => { if (!rpPanel().stepReplay(1)) rpStop(); rpShow(); }, +H.$('#rpSpeed', view).value); };
+  H.$('#rpSpeed', view).onchange = () => { if (rpTimer) { rpStop(); H.$('#rpPlay', view).click(); } };
+  H.$('#rpExit', view).onclick = () => { rpStop(); rpPanel().endReplay(); rpBar.hidden = true; };
+  H.onLeave(() => clearInterval(rpTimer));
+  // Script: runs on the active chart's bars; plots and buy/sell points are drawn on it.
+  const scCard = H.$('#scCard', view), src = H.$('#scSrc', view), scOut = H.$('#scOut', view), scErr = H.$('#scErr', view);
+  src.value = load('qp_script', SCRIPT_EXAMPLE);
+  let saved = [], savedId = null;
+  const loadSaved = async () => { saved = await H.api('/scripts').catch(() => []); H.$('#scSaved', view).innerHTML = '<option value="">Saved scripts…</option>' + saved.map(x => `<option value="${x.id}">${H.esc(x.name)} · ${H.esc(x.symbol)}${x.alert ? ' · alert' : ''}</option>`).join(''); };
+  H.$('#scBtn', view).onclick = () => { scCard.hidden = !scCard.hidden; if (!scCard.hidden) { loadSaved(); src.focus(); } };
+  const runIt = () => {
+    scErr.textContent = ''; keep('qp_script', src.value);
+    const p = panels[active]; if (!p.bars.length) { scErr.textContent = 'The chart has no prices yet'; return; }
+    try {
+      const r = runScript(src.value, p.bars), bt = r.entries.length ? scriptBacktest(r, p.bars) : null;
+      p.script = { r, bt, src: src.value, len: p.bars.length }; p.draw();
+      scOut.innerHTML = `<p class="mu">${H.esc(r.title)} on ${H.esc(p.sym)}: ${r.plots.length} line${r.plots.length === 1 ? '' : 's'}${r.alerts.length ? `, ${r.alerts.length} alert${r.alerts.length === 1 ? '' : 's'}` : ''}${r.inputs.length ? ' · inputs: ' + r.inputs.map(x => `${H.esc(x.title)} ${x.value}`).join(', ') : ''}</p>` + (bt ? `<div class="stats">${[['Return', bt.totalReturn + '%', bt.totalReturn >= 0 ? 'pos' : 'neg'], ['Buy and hold', bt.buyHold + '%'], ['Trades', bt.trades.length], ['Win rate', bt.winRate == null ? '-' : bt.winRate + '%'], ['Profit factor', bt.profitFactor ?? (bt.trades.length ? '∞' : '-')], ['Largest drop', bt.maxDrawdown + '%', 'neg']].map(([k, v, c]) => `<div class="stat"><span>${k}</span><b class="${c || ''}">${v}</b></div>`).join('')}</div>
+        <div class="tablewrap"><table class="slim"><tr><th>Side</th><th>In</th><th class="num">Price</th><th>Out</th><th class="num">Price</th><th class="num">Result</th></tr>${bt.trades.slice(-30).reverse().map(t => `<tr><td>${t.dir}</td><td>${tlabel(t.entryT, cfg.tf, true)}</td><td class="num">${fmt(t.entry)}</td><td>${tlabel(t.exitT, cfg.tf, true)}</td><td class="num">${fmt(t.exit)}</td><td class="num ${t.ret >= 0 ? 'pos' : 'neg'}">${t.ret}%</td></tr>`).join('') || '<tr><td colspan="6" class="mu">No trades in this period</td></tr>'}</table></div><p class="mu small-print">Past results on these prices, not a promise of future results.</p>` : '');
+    } catch (e) { scErr.textContent = e.message; }
+  };
+  H.$('#scRun', view).onclick = runIt;
+  src.onkeydown = e => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); runIt(); } };
+  H.$('#scEx', view).onclick = () => { src.value = SCRIPT_EXAMPLE; runIt(); };
+  H.$('#scClear', view).onclick = () => { panels[active].script = null; panels[active].draw(); scOut.innerHTML = ''; };
+  H.$('#scSaved', view).onchange = e => { const x = saved.find(y => String(y.id) === e.target.value); if (!x) return; savedId = x.id; src.value = x.source; H.$('#scName', view).value = x.name; H.$('#scAlert', view).checked = x.alert; };
+  H.$('#scSave', view).onclick = async () => { scErr.textContent = ''; try { const r = await H.api('/scripts', { body: { id: savedId, name: H.$('#scName', view).value, symbol: panels[active].sym, source: src.value, alert: H.$('#scAlert', view).checked } }); savedId = r.id; await loadSaved(); scOut.insertAdjacentHTML('afterbegin', '<p class="ok">Saved</p>'); } catch (e) { scErr.textContent = e.message; } };
   if (H.$('#pop', view)) H.$('#pop', view).onclick = () => window.open(`${location.pathname}#/chart?symbol=${encodeURIComponent(cfg.symbols[active])}&layout=${cfg.layout}&popout=1`, '_blank', 'width=1200,height=760');
   const ro = new ResizeObserver(() => panels.forEach(p => p.draw())); ro.observe(grid); H.onLeave(() => ro.disconnect());
 
@@ -195,6 +266,28 @@ class Panel {
     this.cursor();
   }
   get sym() { return this.cfg.symbols[this.i] || 'SPY'; }
+  replay(frac) {
+    if (!this.full) this.full = this.bars;
+    if (!this.full?.length) return;
+    const k = Math.max(20, Math.min(this.full.length, Math.round(this.full.length * frac)));
+    this.bars = this.full.slice(0, k); this.view = { end: k, n: Math.min(k, this.view.n || 120) }; this.memo = null; this.draw();
+  }
+  stepReplay(d) {
+    if (!this.full) return false;
+    const k = Math.max(20, Math.min(this.full.length, this.bars.length + d));
+    if (k === this.bars.length) return false;
+    const atEnd = this.view.end >= this.bars.length;
+    this.bars = this.full.slice(0, k); if (atEnd) this.view.end = k; this.memo = null; this.draw();
+    return k < this.full.length;
+  }
+  endReplay() { if (this.full) { this.bars = this.full; this.full = null; this.view = { end: this.bars.length, n: Math.min(this.bars.length, this.view.n || 120) }; this.memo = null; this.draw(); } }
+  // Indicator results are kept until the bars or the settings change.
+  studies() {
+    const key = this.bars.length + ':' + (this.bars.at(-1)?.t || 0) + ':' + JSON.stringify(this.cfg.studies);
+    if (this.memo?.key === key) return this.memo.out;
+    const out = this.cfg.studies.map(st => { try { return compute(st.id, this.bars, st.params); } catch { return null; } }).filter(Boolean);
+    this.memo = { key, out }; return out;
+  }
   get dkey() { return `qp_draw:${this.sym}:${this.cfg.tf}`; }
   cursor() { this.cv.style.cursor = this.tool() === 'none' ? 'grab' : this.tool() === 'erase' ? 'not-allowed' : 'crosshair'; }
   async load() {
@@ -202,7 +295,7 @@ class Panel {
     this.draw();
     try {
       const d = await loadBars(this.sym, this.cfg.tf);
-      this.bars = d.bars; this.ohlc = d.ohlc; this.view = { end: this.bars.length, n: Math.min(this.bars.length, this.cfg.layout > 1 ? 90 : 140) };
+      this.full = null; this.memo = null; this.script = null; this.bars = d.bars; this.ohlc = d.ohlc; this.view = { end: this.bars.length, n: Math.min(this.bars.length, this.cfg.layout > 1 ? 90 : 140) };
       this.pats = d.ohlc ? detect(this.bars, Math.max(0, this.bars.length - 400)) : [];
       this.reg = regimes(this.bars.map(x => x.c));
       const rb = H.$('.regbadge', this.el), rn = this.reg.now;
@@ -215,7 +308,7 @@ class Panel {
   }
   // Layout: price pane on top, optional RSI and MACD panes below.
   geom() {
-    const w = this.cv.clientWidth, h = this.cv.clientHeight, ind = this.cfg.ind, subs = (ind.rsi ? 1 : 0) + (ind.macd ? 1 : 0), sub = subs ? Math.min(90, h * 0.2) : 0;
+    const w = this.cv.clientWidth, h = this.cv.clientHeight, ind = this.cfg.ind, subs = (ind.rsi ? 1 : 0) + (ind.macd ? 1 : 0) + Math.min(4, this.cfg.studies.filter(x => byId(x.id)?.pane === 'sub').length) + (this.script && !this.script.r.overlay && this.script.r.plots.length ? 1 : 0), sub = subs ? Math.min(90, h * (subs > 2 ? 0.5 : 0.4) / subs) : 0;
     // Price scale on both sides (left one dropped on narrow screens to keep room for the candles).
     const axis = 58, axisL = w >= 520 ? 58 : 0, top = 6, priceH = h - subs * sub - 22;
     const from = Math.max(0, this.view.end - this.view.n), to = this.view.end, n = to - from, bw = (w - axis - axisL) / Math.max(n, 1);
@@ -232,6 +325,8 @@ class Panel {
     const g = cv.getContext('2d'); g.scale(dpr, dpr);
     const css = getComputedStyle(document.documentElement), C = k => css.getPropertyValue(k).trim();
     if (!this.bars.length) { g.fillStyle = C('--mu'); canvasNote(g, 'Loading chart...'); return; }
+    // A script follows the bars (replay): it is run again when their number changes.
+    if (this.script && this.script.len !== this.bars.length) { try { const r = runScript(this.script.src, this.bars); this.script = { ...this.script, r, bt: r.entries.length ? scriptBacktest(r, this.bars) : null, len: this.bars.length }; } catch { this.script = null; } }
     const G = this.geom(), b = this.bars, c = b.map(x => x.c), ind = this.cfg.ind;
     g.font = '11px Inter, system-ui, sans-serif';
     // grid + price axis
@@ -284,6 +379,15 @@ class Panel {
     if (ind.sma20) line(g, G, sma(c, 20), '#f59e0b');
     if (ind.sma50) line(g, G, sma(c, 50), '#3b82f6');
     if (ind.ema20) line(g, G, ema(c, 20), '#ec4899');
+    const ST = this.studies(), PAL = ['#8b5cf6', '#0ea5e9', '#f97316', '#14b8a6', '#e11d48', '#84cc16', '#a855f7', '#06b6d4'];
+    ST.filter(r => r.def.pane === 'price').forEach((r, k) => {
+      const col = PAL[k % PAL.length];
+      if (r.def.fill && r.lines.length >= 2) { const a = r.lines[0].values, z = r.lines.at(-1).values; g.fillStyle = col; g.globalAlpha = 0.07; g.beginPath(); let st = false; for (let i = G.from; i < G.to; i++) if (a[i] != null) { st ? g.lineTo(G.X(i), G.Y(a[i])) : g.moveTo(G.X(i), G.Y(a[i])); st = true; } for (let i = G.to - 1; i >= G.from; i--) if (z[i] != null) g.lineTo(G.X(i), G.Y(z[i])); g.fill(); g.globalAlpha = 1; }
+      r.lines.forEach((l, j) => {
+        if (r.def.dots) { g.fillStyle = col; for (let i = G.from; i < G.to; i++) if (l.values[i] != null) { g.beginPath(); g.arc(G.X(i), G.Y(l.values[i]), 1.8, 0, 7); g.fill(); } return; }
+        g.globalAlpha = j && r.lines.length > 2 && j === 1 && r.def.fill ? 0.6 : 1; line(g, G, l.values, col, 1.3); g.globalAlpha = 1;
+      });
+    });
     // pattern markers
     if (ind.pat && this.pats) {
       const seen = new Set();
@@ -291,6 +395,15 @@ class Panel {
         if (p.i < G.from || p.i >= G.to || seen.has(p.i) || p.bias === 'neutral') continue; seen.add(p.i);
         const X = G.X(p.i), bull = p.bias === 'bull', y = bull ? G.Y(b[p.i].l) + 10 : G.Y(b[p.i].h) - 10;
         g.fillStyle = bull ? C('--gr') : C('--rd'); g.beginPath(); g.moveTo(X, y + (bull ? -5 : 5)); g.lineTo(X - 4, y + (bull ? 3 : -3)); g.lineTo(X + 4, y + (bull ? 3 : -3)); g.fill();
+      }
+    }
+    // script lines on the price, and its backtest's buys and sells
+    if (this.script && this.script.r.overlay) this.script.r.plots.forEach((pl, k) => line(g, G, pl.values, pl.color || ['#7c3aed', '#0891b2', '#ea580c', '#16a34a'][k % 4], 1.6));
+    if (this.script?.bt) {
+      for (const t of this.script.bt.trades.concat(this.script.bt.open ? [] : [])) for (const [tt, kind] of [[t.entryT, 'in'], [t.exitT, 'out']]) {
+        const i = idx(b, tt); if (i < G.from || i >= G.to) continue;
+        const X = G.X(i), up = (kind === 'in') === (t.dir === 'long'), y = up ? G.Y(b[i].l) + 14 : G.Y(b[i].h) - 14;
+        g.fillStyle = up ? '#16a34a' : '#dc2626'; g.beginPath(); g.moveTo(X, y + (up ? -7 : 7)); g.lineTo(X - 5, y + (up ? 3 : -3)); g.lineTo(X + 5, y + (up ? 3 : -3)); g.fill();
       }
     }
     // drawings
@@ -302,7 +415,9 @@ class Panel {
     // sub panes
     let y0 = G.priceH;
     if (ind.rsi) { sub(g, G, y0, rsi(c), 0, 100, [30, 70], C, 'RSI 14'); y0 += G.sub; }
-    if (ind.macd) { const m = macd(c), vals = m.slice(G.from, G.to).flatMap(x => [x.m, x.s]).filter(v => v != null), a = Math.max(...vals.map(Math.abs), 1e-9); sub(g, G, y0, m, -a, a, [0], C, 'MACD 12/26/9'); }
+    if (ind.macd) { const m = macd(c), vals = m.slice(G.from, G.to).flatMap(x => [x.m, x.s]).filter(v => v != null), a = Math.max(...vals.map(Math.abs), 1e-9); sub(g, G, y0, m, -a, a, [0], C, 'MACD 12/26/9'); y0 += G.sub; }
+    ST.filter(r => r.def.pane === 'sub').slice(0, 4).forEach(r => { studyPane(g, G, y0, r, C); y0 += G.sub; });
+    if (this.script && !this.script.r.overlay && this.script.r.plots.length) { const R = this.script.r; studyPane(g, G, y0, { def: { levels: R.hlines.map(h => h.price) }, lines: R.plots.map(pl => ({ name: pl.title, values: pl.values })) }, C); y0 += G.sub; }
     // crosshair + readout
     const ro = H.$('.ohlc', this.el);
     if (this.mouse) {
@@ -374,6 +489,21 @@ function sub(g, G, y0, s, lo, hi, levels, C, label) {
     g.globalAlpha = 1;
     const GG = { ...G, Y }; line(g, GG, s.map(x => x.m), C('--ac')); line(g, GG, s.map(x => x.s), '#f59e0b');
   } else line(g, { ...G, Y }, s, C('--ac2'));
+}
+function studyPane(g, G, y0, r, C) {
+  const vis = r.lines.flatMap(l => l.values.slice(G.from, G.to)).filter(v => v != null && isFinite(v));
+  let [lo, hi] = r.def.range || [Math.min(...vis), Math.max(...vis)];
+  if (!(hi > lo)) { hi = (hi || 1) + 1; lo = (lo || 0) - 1; }
+  if (r.lines.some(l => l.hist) && !r.def.range) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
+  const Y = v => y0 + 6 + (1 - (v - lo) / (hi - lo)) * (G.sub - 12), GG = { ...G, Y }, PAL = [C('--ac'), '#f59e0b', '#0ea5e9', '#e11d48'];
+  g.strokeStyle = C('--bd'); g.beginPath(); g.moveTo(0, y0); g.lineTo(G.w, y0); g.stroke();
+  g.setLineDash([3, 3]); for (const l of r.def.levels || []) if (l >= lo && l <= hi) { g.beginPath(); g.moveTo(G.axisL, Y(l)); g.lineTo(G.w - G.axis, Y(l)); g.stroke(); } g.setLineDash([]);
+  r.lines.forEach((l, k) => {
+    if (l.hist) { for (let i = G.from; i < G.to; i++) { const v = l.values[i]; if (v == null) continue; g.fillStyle = v >= 0 ? C('--gr') : C('--rd'); g.globalAlpha = 0.45; g.fillRect(G.X(i) - G.bw * 0.3, Math.min(Y(Math.max(lo, 0)), Y(v)), G.bw * 0.6, Math.abs(Y(v) - Y(Math.max(lo, 0)))); } g.globalAlpha = 1; }
+    else line(g, GG, l.values, PAL[k % PAL.length]);
+  });
+  const lastV = r.lines[0].values[G.to - 1];
+  g.fillStyle = C('--mu'); g.textAlign = 'left'; g.fillText(`${r.lines.map(l => l.name).join(' · ')}${lastV != null ? '  ' + fmt(lastV) : ''}`, G.axisL + 4, y0 + 13);
 }
 const fmt = p => (Math.abs(p) >= 1000 ? p.toFixed(0) : Math.abs(p) >= 10 ? p.toFixed(2) : p.toFixed(4));
 const compact = v => (v >= 1e9 ? (v / 1e9).toFixed(2) + 'B' : v >= 1e6 ? (v / 1e6).toFixed(2) + 'M' : v >= 1e3 ? (v / 1e3).toFixed(1) + 'K' : (+v).toFixed(2));

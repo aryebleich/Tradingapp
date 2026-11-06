@@ -486,6 +486,19 @@ CREATE TABLE IF NOT EXISTS rules (
   active INTEGER NOT NULL DEFAULT 1,
   created_at INTEGER NOT NULL
 );
+-- Saved Brightolio Scripts and their daily alerts (src/scripts.js).
+CREATE TABLE IF NOT EXISTS scripts (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  symbol TEXT NOT NULL,
+  source TEXT NOT NULL,
+  alert INTEGER NOT NULL DEFAULT 0,
+  last_fired TEXT,
+  last_checked TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
 -- Business tools (src/business): every record is one JSON document of a kind (account, entry,
 -- contact, invoice, item, employee, payrun, bank, receipt, settings).
 CREATE TABLE IF NOT EXISTS biz_docs (
