@@ -7,7 +7,7 @@
 //   sw.js              keeps files on the device so repeat visits open at once
 // Brightolio single-page client. Hash routes, no framework.
 import { registerTrading } from './pages/trading.js';
-import { CHART_STATES, chartStates, RICH_STATES, richStates, blendedColors } from './chartstates.js';
+import { chartStates, RICH_STATES, richStates, blendedColors } from './chartstates.js';
 import { registerSignals } from './pages/signals.js';
 import { registerStrategies } from './pages/strategies.js';
 import { registerPairs } from './pages/pairs.js';
@@ -750,7 +750,7 @@ function secureConfirm({ title, html = '', word = null, okText = 'Confirm' }) {
     const d = document.createElement('dialog'); d.className = 'secure';
     const pw = ME?.hasPassword !== false;
     d.innerHTML = `<form method="dialog"><h2>${esc(title)}</h2>${html}
-      ${pw ? '<label>Your password<input type="password" name="password" autocomplete="current-password" required></label>' : `<label>Type your email address<input type="email" name="confirm" autocomplete="email" required placeholder="${esc(ME?.email || '')}" dir="ltr"></label>`}
+      ${pw ? '<label>Your password<input type="password" name="password" autocomplete="current-password" required></label>' : `<label>Type your email address<input type="email" name="confirm" autocomplete="off" required dir="ltr"></label>`}
       ${word ? `<label>Type <b>${esc(word)}</b> to confirm<input name="typed" autocomplete="off" required pattern="${esc(word)}|${esc(word.toLowerCase())}"></label>` : ''}
       <label class="check"><input type="checkbox" name="ok" required> I understand what this changes</label>
       <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="ghost" value="no" formnovalidate>Cancel</button><button value="yes">${esc(okText)}</button></div></form>`;

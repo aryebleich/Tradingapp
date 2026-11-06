@@ -40,7 +40,6 @@ flood protection, and keep-warm for every server. Set up from the admin page wit
    already shares; `EDGE_SECRET` overrides it. Requests signed this way also pass the address the
    visitor used, so sign-in and redirects use the public name.
 
-The "Edge (Cloudflare Worker)" workflow is the alternative for deploying from GitHub instead.
 
 ## 3. Switching
 

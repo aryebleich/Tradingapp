@@ -3,7 +3,7 @@ import { one, all, run, now } from './db.js';
 import { nyTime, nextNyRun, extendedSession } from './time.js';
 import { runExtraJobs } from './jobs.js';
 import { shabbosBlock } from './values.js';
-import { placeOrder, getBars, lastPrice, snapshotEquity, accountSummary, getCred, syncAlpacaFills } from './brokers.js';
+import { placeOrder, getBars, lastPrice, snapshotEquity, accountSummary, syncAlpacaFills } from './brokers.js';
 import { latestSignal } from './engine.js';
 import { sendSms, sendEmail } from './notify.js';
 import { assessFee, isPaid } from './fees.js';

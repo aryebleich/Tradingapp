@@ -10,7 +10,7 @@ import { mayShareAccount } from './aiaccess.js';
 import { provider } from './llm.js';
 import { llmEnabled, llmInfo, toolChat } from './llm.js';
 import { requireUser, rateLimit } from './auth.js';
-import { getBars, lastPrice, accountSummary } from './brokers.js';
+import { getBars, accountSummary } from './brokers.js';
 import { backtest, warmupFor, compile } from './engine.js';
 import { heuristic } from './ai.js';
 import { snapshot } from './ta.js';

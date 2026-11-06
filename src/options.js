@@ -3,7 +3,7 @@
 // spreads, iron condors), and income bots that open and manage those trades on an Alpaca account
 // with built-in risk controls (target delta, days to expiry, profit take, stop, size limits).
 import express from 'express';
-import { one, all, run, now, audit } from './db.js';
+import { all, run, now, audit } from './db.js';
 import { requireUser, rateLimit } from './auth.js';
 import { lastPrice, accountSummary } from './brokers.js';
 import { tradingFor } from './alpaca/connections.js';

@@ -5,7 +5,7 @@ import { one, all, run, now, tx } from './db.js';
 import { nyTime } from './time.js';
 import { decrypt } from './crypto.js';
 import { rng } from './engine.js';
-import { tradingFor, requireTrading, tradingForAccount, requireTradingFor, isExtraAlpaca } from './alpaca/connections.js';
+import { tradingForAccount, requireTradingFor, isExtraAlpaca } from './alpaca/connections.js';
 import { EXT_IDS, withExt } from './ext/brokers.js';
 import { checkOrder, logOrder } from './risk.js';
 import { breaker, chaos, isOutage, shedding } from './reliability.js';

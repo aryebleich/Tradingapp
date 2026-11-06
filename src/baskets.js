@@ -7,7 +7,7 @@ import express from 'express';
 import { publicName } from './crypto.js';
 import { one, all, run, now, audit } from './db.js';
 import { requireUser, rateLimit } from './auth.js';
-import { getBars, accountSummary, placeOrder, lastPrice } from './brokers.js';
+import { getBars, placeOrder, lastPrice } from './brokers.js';
 import { compile } from './engine.js';
 import { roc, rsi, vol } from './ta.js';
 import { symbolsOf, UNIVERSES } from './scanner.js';

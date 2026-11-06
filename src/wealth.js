@@ -5,7 +5,7 @@
 // tax-advantaged account limits (client) · core-satellite plans (built as a rule-based portfolio)
 // · sector and region diversification · twice-yearly rebalance reminders.
 import express from 'express';
-import { one, all, run, now, audit } from './db.js';
+import { all, run, now, audit } from './db.js';
 import { requireUser } from './auth.js';
 import { getBars, accountSummary, placeOrder, ACCOUNT_IDS } from './brokers.js';
 import { isPaid } from './fees.js';

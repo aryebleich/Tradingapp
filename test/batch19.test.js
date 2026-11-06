@@ -58,3 +58,12 @@ test('Equalize gives every account the same mix, sized to its own value; sells c
   // Option contracts are never equalized.
   assert.ok(!planEqualize([acct('x', '1', 1000, [P('AAPL250117C00200000', 1, 500)]), acct('y', '2', 1000, [])]).orders.some(o => o.symbol.length > 10));
 });
+
+test('the private README is tidied once: old change lists and finished setup steps out, the rest kept', async () => {
+  const { tidy, mergeSections } = await import('../src/readme-auto.js');
+  const text = '# QuantPocket\n\nMy notes.\n\n<!-- auto:batch14 -->\n## Changes: November 2026 (2)\n- old\n<!-- /auto:batch14 -->\n\n## Run locally\nnpm start\n\n## Where secret keys go\nIn Render.\n\n## Connecting Stripe (payments and subscriptions)\nsteps\n';
+  const t = tidy(text);
+  assert.match(t, /# Brightolio/); assert.match(t, /My notes/); assert.match(t, /## Where secret keys go\nIn Render/);
+  assert.doesNotMatch(t, /Changes: November|Run locally|npm start|Connecting Stripe|auto:batch14/);
+  assert.match(mergeSections(t), /## Recent changes/);
+});

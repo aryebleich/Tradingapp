@@ -233,7 +233,7 @@ async function keys(view) {
       <label class="check"><input type="checkbox" name="render" ${d.render.enabled ? 'checked' : 'disabled'}> Also save on Render</label>
       <button>Import</button><div class="err"></div></form>
     <form class="card" id="exp"><h2>Export as .env</h2><p class="mu">Downloads every key with its real value. Keep the file private.</p>
-      ${pw ? '<label>Your password<input name="password" type="password" autocomplete="current-password" required></label>' : '<label>Type your email to confirm<input name="confirm" type="email" required></label>'}
+      ${pw ? '<label>Your password<input name="password" type="password" autocomplete="current-password" required></label>' : '<label>Type your email to confirm<input name="confirm" type="email" autocomplete="off" required></label>'}
       <button>Download .env</button><div class="err"></div></form>
   </div>
   ${d.groups.map(g => `<div class="card tablewrap"><h2>${H.esc(g.name)}</h2><table class="keys">${g.rows.map(r => `<tr><td><code data-no-tr>${r.key}</code>${r.restart ? ' <span class="pill">restart</span>' : ''}</td>

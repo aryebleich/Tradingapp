@@ -2,8 +2,7 @@
 // Set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET (github.com → Settings → Developer settings →
 // OAuth Apps); the callback URL is PUBLIC_URL/auth/github/callback.
 import express from 'express';
-import crypto from 'node:crypto';
-import { one, run, now, audit } from './db.js';
+import { one, run, audit } from './db.js';
 import { hashSecret, randomToken, safeEqual } from './crypto.js';
 import { createSession, createUser, rateLimit } from './auth.js';
 import { makeState, readState } from './google.js';

@@ -4,7 +4,7 @@
 // call. An optional MARGIN_FEED_URL (JSON {"SYMBOL": requirementPct}) from a data vendor adds
 // per-symbol requirements, e.g. raised requirements on volatile names announced in advance.
 import express from 'express';
-import { one, all, run, now } from './db.js';
+import { all, run, now } from './db.js';
 import { requireUser } from './auth.js';
 import { tradingFor } from './alpaca/connections.js';
 import { nyTime } from './time.js';

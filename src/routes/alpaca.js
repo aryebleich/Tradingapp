@@ -7,7 +7,7 @@ import * as D from '../alpaca/data.js';
 import { buildOrder, buildReplace, sellCheck } from '../alpaca/trading.js';
 import { connections, tradingFor, requireTrading, saveCred, oauthEnabled, oauthStartUrl, extraAlpaca, requireTradingFor } from '../alpaca/connections.js';
 import { sseHandler, streamEnabled } from '../alpaca/stream.js';
-import { syncAlpacaFills, accountSummary, lastPrice, riskDeps } from '../brokers.js';
+import { syncAlpacaFills, accountSummary, riskDeps } from '../brokers.js';
 import { breaker, chaos } from '../reliability.js';
 import { quoteAt, auditAppend } from '../execution.js';
 import { getSetting } from '../settings.js';

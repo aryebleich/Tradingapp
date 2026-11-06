@@ -330,7 +330,9 @@ const readme = async () => {
   const r = S.siteGet('privateReadme', null);
   if (!r) return null;
   const { tryDecrypt } = await import('./crypto.js');
-  const text = tryDecrypt(r.enc, 'private README') ?? '';
+  let text = tryDecrypt(r.enc, 'private README') ?? '';
+  // Once: shorter (finished setup steps and old change lists out), then kept short by the code.
+  if (text && r.tidied !== 2) { const { tidy } = await import('./readme-auto.js'); text = tidy(text); await saveReadme(text, { tidied: 2 }).catch(() => {}); }
   // Sections that come with the code (src/readme-auto.js) are kept current with every change.
   const { mergeSections } = await import('./readme-auto.js'), { overviewMd } = await import('./readme-overview.js');
   const top = await overviewMd().catch(() => null), merged = text ? mergeSections(text, top) : text;

@@ -16,7 +16,7 @@
 // cannot alter them, and any server instance can answer any step (no per-call memory).
 // Admin → Phone line holds the settings: on/off, greeting, the 9 stocks, the share limit,
 // sign-up by phone and whether free-plan callers may use the paper menu.
-import { one, run, now, audit } from './db.js';
+import { run, now, audit } from './db.js';
 import { hashSecret, verifySecret, hmac, randomToken } from './crypto.js';
 import { siteGet, siteSet, normalizePhone } from './site.js';
 import { isPaid } from './fees.js';
