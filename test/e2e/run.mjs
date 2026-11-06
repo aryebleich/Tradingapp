@@ -390,6 +390,24 @@ console.log('Settings → Language');
     await go('#/realestate', '#add'); await p.fill('#add [name=name]', 'Two-family'); await p.fill('#add [name=value]', '500000'); await p.fill('#add [name=rent]', '4000'); await p.click('#add button'); await p.waitForSelector('text=Two-family');
   });
   await step('all my money and a crypto wallet form', async () => { await go('#/money', '#wf'); await p.waitForSelector('text=Cash flow'); });
+  await step('all accounts: add a sub account, group, equalize preview', async () => {
+    await go('#/accounts', '#addAcc');
+    await p.fill('#addAcc [name=label]', 'Sub E2E'); await p.fill('#addAcc [name=keyId]', 'SUBE2EKEY'); await p.fill('#addAcc [name=secret]', 'SUBE2ESECRET');
+    await p.click('#addAcc button'); await okText('#addAcc');
+    await p.waitForFunction(() => /Sub E2E/.test(document.querySelector('table.accts')?.textContent || ''), null, { timeout: 15000 });
+    await p.fill('#addAcc [name=label]', 'Sub E2E two'); await p.fill('#addAcc [name=keyId]', 'SUBE2EKEY2'); await p.fill('#addAcc [name=secret]', 'SUBE2ESECRET2');
+    await p.click('#addAcc button'); await okText('#addAcc');
+    await p.waitForFunction(() => /Sub E2E two/.test(document.querySelector('table.accts')?.textContent || '') && document.querySelectorAll('#grpCard [name=acc]').length >= 2, null, { timeout: 15000 });
+    await p.waitForTimeout(400);
+    await p.waitForSelector('#eqAll'); await p.waitForSelector('.stats .stat');
+    await p.fill('#grpCard [name=name]', 'Family'); await p.check('#grpCard [name=acc] >> nth=0'); await p.check('#grpCard [name=acc] >> nth=1');
+    await p.click('#grpCard button:has-text("Save group")'); await okText('#grpCard');
+    await p.waitForSelector('#views button:has-text("Family")', { timeout: 15000 });
+    await p.click('#eqPreview'); await p.waitForFunction(() => /The mix|No trades needed|trade/.test(document.querySelector('#eqOut')?.textContent || '') || document.querySelector('#eqErr')?.textContent, null, { timeout: 15000 });
+    const eqErr = await p.textContent('#eqErr'); if (eqErr) throw new Error('Equalize preview: ' + eqErr);
+    await p.screenshot({ path: path.join(OUT, 'all-accounts.png'), fullPage: true });
+    await p.click('#views button:has-text("Family")'); await p.waitForFunction(() => /Family/.test(document.querySelector('#views .on')?.textContent || ''));
+  });
   await step('rule across accounts: create, check, prepare', async () => {
     await go('#/rules', '#rf'); await p.click('[data-tpl="sp500"]'); await p.click('#save'); await p.waitForSelector('.rulecard');
     await p.click('[data-preview]'); await p.waitForSelector('[id^=pv] table', { timeout: 20000 });

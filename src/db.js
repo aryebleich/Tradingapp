@@ -486,6 +486,27 @@ CREATE TABLE IF NOT EXISTS rules (
   active INTEGER NOT NULL DEFAULT 1,
   created_at INTEGER NOT NULL
 );
+-- Groups of the user's Alpaca accounts with their own portfolio view (src/consolidate.js).
+CREATE TABLE IF NOT EXISTS account_groups (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  accounts TEXT NOT NULL,
+  color TEXT,
+  created_at INTEGER NOT NULL
+);
+-- Equalize accounts (src/equalize.js): the same mix in every chosen account, by hand or each market open.
+CREATE TABLE IF NOT EXISTS equalize (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  accounts TEXT NOT NULL DEFAULT '[]',
+  model TEXT NOT NULL DEFAULT 'combined',
+  options TEXT NOT NULL DEFAULT '{}',
+  daily INTEGER NOT NULL DEFAULT 0,
+  mode TEXT NOT NULL DEFAULT 'approve',
+  pending TEXT,
+  last_run INTEGER,
+  last_result TEXT
+);
 -- Public status page: the app's own checks every few minutes, and incidents the admin posts.
 CREATE TABLE IF NOT EXISTS status_checks (
   id INTEGER PRIMARY KEY,

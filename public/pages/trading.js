@@ -383,8 +383,13 @@ async function portfolio(view, q) {
   const [a, h, ps, clock] = await Promise.all([A('/account'), A('/portfolio/history?period=' + period).catch(() => ({ points: [] })), A('/positions'), A('/clock').catch(() => null)]);
   const day = a.lastEquity ? a.equity - a.lastEquity : null;
   const approvals = await H.approvalsBanner(), P = H.prefs();
+  // Several Alpaca accounts: switch between this account, all of them together, and the user's groups.
+  const alpacaIds = (await H.api("/accounts").catch(() => [])).filter(x => /^alpaca/.test(x.id) && x.connected);
+  const gs = alpacaIds.length > 1 ? await H.api('/combined/groups').catch(() => []) : [];
+  const viewBar = alpacaIds.length > 1 ? `<div class="chips viewtabs"><button type="button" class="on">This account</button><a href="#/accounts"><button type="button">All accounts</button></a>${gs.map(g => `<a href="#/accounts?view=g:${g.id}"><button type="button">${H.esc(g.name)}</button></a>`).join('')}</div>` : '';
   const since = P.mode !== 'live' ? H.sinceStat(await H.sinceLastLook('alpaca', a.equity)) : '';
   view.innerHTML = `${approvals}<div class="row" style="justify-content:space-between"><h1>Portfolio <span class="pill ${a.connection.live ? 'warn' : ''}">${a.connection.live ? 'LIVE' : a.connection.type === 'broker' ? 'Sandbox' : 'Paper'}</span></h1></div>
+  ${viewBar}
   ${clock ? `<p class="mu">Market is <b class="${clock.is_open ? 'pos' : ''}">${clock.is_open ? 'open' : 'closed'}</b> · ${clock.is_open ? 'closes ' + new Date(clock.next_close).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'opens ' + new Date(clock.next_open).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}</p>` : ''}
   ${a.tradingBlocked ? '<div class="banner err">Trading is blocked on this account. Check your brokerage account status.</div>' : ''}
   <div class="card">

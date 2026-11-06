@@ -206,3 +206,13 @@ body.noscroll { overflow: hidden; }
 
 /* The page area fills the screen, so the footer always sits at the bottom (also while loading). */
 #view { min-height: calc(100vh - 140px); min-height: calc(100dvh - 140px); }
+
+/* All accounts: view tabs, share bars, dimmed rows for accounts not added twice */
+.viewtabs { margin: 4px 0 14px; flex-wrap: wrap; }
+.viewtabs a { text-decoration: none; }
+.sharebar { display: inline-block; width: 70px; height: 6px; border-radius: 3px; background: var(--bd); vertical-align: middle; overflow: hidden; }
+.sharebar i { display: block; height: 100%; background: var(--ac, #4f7cff); border-radius: 3px; }
+tr.dim td, label.dim { opacity: .62; }
+.checks { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 8px 0; }
+.grouplist li { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 4px 0; }
+.stat small { display: block; font-size: 12px; margin-top: 2px; }

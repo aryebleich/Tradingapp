@@ -36,6 +36,7 @@ import { registerStart } from './pages/start.js';
 import { initSearch } from './pages/search.js';
 import { registerRiskPages } from './pages/riskpages.js';
 import { registerRetirement } from './pages/retirement.js';
+import { registerCombined } from './pages/combined.js';
 import { attachGlossary } from './pages/glossary.js';
 import { startI18n, setLang, canvasNote, LANGS, current as currentLang } from './i18n.js';
 const $ = (s, el = document) => el.querySelector(s);
@@ -1596,6 +1597,7 @@ registerWealth(routes, shared);
 registerTools(routes, shared);
 registerRiskPages(routes, shared);
 registerRetirement(routes, shared);
+registerCombined(routes, shared);
 
 // Static files are cached for instant repeat visits (sw.js); pages and data always come fresh.
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});

@@ -20,12 +20,14 @@ export function startMock() {
   const id = p => `${p}-${++seq}`;
   const book = k => books.get(k) || books.set(k, { orders: [], positions: [{ symbol: 'AAPL', asset_class: 'us_equity', side: 'long', qty: '10', qty_available: '10', avg_entry_price: '150', current_price: '180', market_value: '1800', cost_basis: '1500', unrealized_pl: '300', unrealized_plpc: '0.2', unrealized_intraday_pl: '20', unrealized_intraday_plpc: '0.011', change_today: '0.011' }], watchlists: [], config: { dtbp_check: 'entry', fractional_trading: true, max_margin_multiplier: '4', no_shorting: false, pdt_check: 'entry', suspend_trade: false, trade_confirm_email: 'all' } }).get(k);
   // Like Alpaca: paper accounts are numbered PA…, real-money ones are not (requests under /live).
-  const tradeAccount = (live = false) => ({ id: 'acct', account_number: live ? '312345678' : 'PA123', status: 'ACTIVE', currency: 'USD', equity: '101800', last_equity: '100500', cash: '100000', buying_power: '200000', regt_buying_power: '200000', daytrading_buying_power: '400000', non_marginable_buying_power: '100000', options_buying_power: '100000', long_market_value: '1800', short_market_value: '0', initial_margin: '900', maintenance_margin: '540', multiplier: '2', sma: '0', daytrade_count: 0, pattern_day_trader: false, trading_blocked: false, shorting_enabled: true, crypto_status: 'ACTIVE', options_trading_level: 2 });
+  // Each set of API keys is its own account (its own number), like at Alpaca.
+  const numFor = key => String([...String(key || '')].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 900000, 7)).padStart(6, '0');
+  const tradeAccount = (live = false, key = '') => ({ id: 'acct', account_number: live ? '3' + numFor(key) : 'PA' + numFor(key), status: 'ACTIVE', currency: 'USD', equity: '101800', last_equity: '100500', cash: '100000', buying_power: '200000', regt_buying_power: '200000', daytrading_buying_power: '400000', non_marginable_buying_power: '100000', options_buying_power: '100000', long_market_value: '1800', short_market_value: '0', initial_margin: '900', maintenance_margin: '540', multiplier: '2', sma: '0', daytrade_count: 0, pattern_day_trader: false, trading_blocked: false, shorting_enabled: true, crypto_status: 'ACTIVE', options_trading_level: 2 });
 
   function trading(key, path, method, body, query, live = false) {
     const b = book(key);
     let m;
-    if (path === '/account') return tradeAccount(live);
+    if (path === '/account') return tradeAccount(live, key);
     if (path === '/account/configurations') return method === 'PATCH' ? Object.assign(b.config, body) : b.config;
     if (path === '/account/portfolio/history') return { timestamp: [1700000000, 1700086400, 1700172800], equity: [100000, 99000, 101800], profit_loss: [0, -1000, 1800], profit_loss_pct: [0, -0.01, 0.018], base_value: 100000, timeframe: query.timeframe };
     if (path === '/orders' && method === 'POST') {

@@ -345,6 +345,10 @@ router.post('/accounts', async (req, res) => {
   if (list.some(x => x.k === c.k)) throw bad('These keys are already connected');
   const { Trading } = await import('../alpaca/trading.js');
   const a = await new Trading(c).account(); // verifies the keys
+  // The same Alpaca account must not be connected twice (it would be counted twice).
+  const { loadAccounts } = await import('../consolidate.js');
+  const same = (await loadAccounts(req.user.id)).find(x => x.number && x.number === a.account_number && !!x.live === c.live);
+  if (same) throw bad(`This is the same Alpaca account as "${same.label}" (account …${String(a.account_number).slice(-4)}); it is already connected`);
   const used = new Set(list.map(x => +x.id.split(':')[1])); let n = 2; while (used.has(n)) n++;
   const id = 'alpaca:' + n;
   await saveCred(req.user.id, id, { ...c, label: String(label || (role === 'main' ? 'Main account' : 'Sub account ' + (n - 1))).slice(0, 40), role: role === 'main' ? 'main' : 'sub' });
@@ -360,18 +364,17 @@ router.delete('/accounts/:id', async (req, res) => {
 });
 // Every account side by side, with totals for the live ones (and separately for paper/test ones).
 router.get('/accounts/summary', async (req, res) => {
-  const extras = await extraAlpaca(req.user.id), primary = await tradingFor(req.user.id);
-  const list = [{ id: 'paper', label: 'Paper account (simulated)', role: 'paper', live: false }, ...(primary ? [{ id: 'alpaca', label: 'Primary Alpaca connection', role: 'main', live: primary.live }] : []), ...extras.map(({ k, s, ...x }) => x)];
-  const rows = await Promise.all(list.map(async x => {
-    try {
-      const sm = await accountSummary(req.user.id, x.id);
-      const day = sm.lastEquity ? sm.equity - sm.lastEquity : null;
-      return { ...x, live: x.id === 'paper' ? false : sm.live ?? x.live, equity: +sm.equity.toFixed(2), cash: +sm.cash.toFixed(2), buyingPower: sm.buyingPower != null ? +(+sm.buyingPower).toFixed(2) : null, dayPl: day == null ? null : +day.toFixed(2), dayPlPct: day == null || !sm.lastEquity ? null : +(day / sm.lastEquity * 100).toFixed(2), positions: sm.positions.length, unrealized: +sm.positions.reduce((a, p) => a + (p.pnl || 0), 0).toFixed(2) };
-    } catch (e) { return { ...x, error: e.message }; }
-  }));
-  const sum = (arr, k) => +arr.reduce((a, r) => a + (+r[k] || 0), 0).toFixed(2);
-  const live = rows.filter(r => r.live && !r.error), test = rows.filter(r => !r.live && !r.error && r.id !== 'paper');
-  res.json({ accounts: rows, live: { count: live.length, equity: sum(live, 'equity'), cash: sum(live, 'cash'), dayPl: sum(live, 'dayPl'), unrealized: sum(live, 'unrealized'), positions: sum(live, 'positions') }, test: { count: test.length, equity: sum(test, 'equity'), dayPl: sum(test, 'dayPl') } });
+  const { loadAccounts, totals, WHY } = await import('../consolidate.js');
+  const list = await loadAccounts(req.user.id);
+  const paper = await accountSummary(req.user.id, 'paper').catch(e => ({ error: e.message, positions: [] }));
+  const row = x => ({ id: x.id, label: x.label, role: x.role, live: x.live, number: x.number ? '…' + String(x.number).slice(-4) : null, counted: x.counted, why: x.why ? WHY[x.why] : null, error: x.error,
+    equity: x.equity != null ? +(+x.equity).toFixed(2) : null, cash: x.cash != null ? +(+x.cash).toFixed(2) : null, buyingPower: x.buyingPower ?? null,
+    dayPl: x.lastEquity ? +(x.equity - x.lastEquity).toFixed(2) : null, dayPlPct: x.lastEquity ? +((x.equity - x.lastEquity) / x.lastEquity * 100).toFixed(2) : null,
+    positions: (x.positions || []).length, unrealized: +(x.positions || []).reduce((s, p) => s + (p.pnl || 0), 0).toFixed(2) });
+  const rows = [{ id: 'paper', label: 'Paper account (simulated)', role: 'paper', live: false, counted: false, ...(paper.error ? { error: paper.error } : { equity: +paper.equity.toFixed(2), cash: +paper.cash.toFixed(2), positions: paper.positions.length, unrealized: +paper.positions.reduce((s, p) => s + (p.pnl || 0), 0).toFixed(2), dayPl: null }) }, ...list.map(row)];
+  // Totals count each account once: no duplicates and never a master together with its sub accounts.
+  const t = rs => { const x = totals(rs); return { count: rs.length, equity: x.equity, cash: x.cash, dayPl: x.dayPl, unrealized: x.unrealized, positions: x.positions.length }; };
+  res.json({ accounts: rows, live: t(list.filter(x => x.counted && x.live)), test: t(list.filter(x => x.counted && !x.live)), left: list.filter(x => !x.counted && !x.error).length });
 });
 
 router.post('/keys', async (req, res) => {
