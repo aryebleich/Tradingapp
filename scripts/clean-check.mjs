@@ -50,6 +50,8 @@ const allText = [...used].filter(f => /\.(js|mjs|html|css|json|webmanifest)$/.te
 
 const unused = tracked.filter(f => {
   if (KEEP.some(r => r.test(f))) return false;
+  // Python modules are imported by name without the extension (from yi_home import YI).
+  if (/\.py$/.test(f)) { const mod = path.basename(f, '.py'); const any = tracked.filter(x => /\.(mjs|js|py|yml)$/.test(x) && x !== f).map(read).join('\n'); return !(any.includes(path.basename(f)) || new RegExp(`(from|import)\\s+${mod}\\b`).test(any)); }
   if (used.has(f)) {
     // A test or script that is followed only because the starting list includes them must also be run.
     if (/^scripts\//.test(f) && !named(f, runners) && ![...used].some(u => u !== f && !/^scripts\//.test(u) && read(u).includes(path.basename(f)))) return true;
