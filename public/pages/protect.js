@@ -1,6 +1,7 @@
 // Protection & long-term pages: security (passkeys, account lock, support agent), execution and
 // routing (audit log with hashes, routing preferences, order queue), lessons, the long-term view
 // with stress test and margin watch, the drag-and-drop workspace, and the owner's system health.
+import { TERMS } from './glossary.js';
 let H;
 const later = ms => { const h = location.hash; setTimeout(() => location.hash === h && H.render(), ms); };
 export function registerProtect(routes, helpers) {
@@ -76,9 +77,33 @@ async function execution(view) {
 }
 
 // ---------- lessons ----------
-async function learn(view) {
+// Learning center: lessons (with quizzes), a searchable glossary, and calculators.
+const LTABS = [['lessons', 'Lessons'], ['glossary', 'Glossary'], ['calc', 'Calculators']];
+const n$ = v => (+v || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
+export const CALCS = {
+  growth: { t: 'Compound growth', f: [['start', 'Start amount', 10000], ['monthly', 'Added each month', 500], ['rate', 'Yearly return %', 7], ['years', 'Years', 20]], run: v => { let b = +v.start; const r = +v.rate / 100 / 12; for (let i = 0; i < Math.min(1200, +v.years * 12); i++) b = b * (1 + r) + +v.monthly; const put = +v.start + +v.monthly * 12 * +v.years; return [['Ends at', b], ['You put in', put], ['Growth', b - put]]; } },
+  size: { t: 'Position size', f: [['account', 'Account value', 25000], ['risk', 'Risk per trade %', 1], ['entry', 'Entry price', 50], ['stop', 'Stop price', 47]], run: v => { const per = Math.abs(+v.entry - +v.stop), risk = +v.account * +v.risk / 100, sh = per ? Math.floor(risk / per) : 0; return [['Shares', sh], ['Position value', sh * +v.entry], ['Most you lose at the stop', sh * per]]; } },
+  breakeven: { t: 'Option breakeven', f: [['strike', 'Strike', 100], ['premium', 'Premium per share', 3], ['contracts', 'Contracts', 1]], run: v => [['Call breaks even at', +v.strike + +v.premium], ['Put breaks even at', +v.strike - +v.premium], ['Cost (100 shares each)', +v.premium * 100 * +v.contracts]] },
+  margin: { t: 'Margin interest', f: [['borrowed', 'Borrowed', 10000], ['rate', 'Yearly rate %', 8], ['days', 'Days held', 30]], run: v => [['Interest', +v.borrowed * +v.rate / 100 * +v.days / 360], ['Per day', +v.borrowed * +v.rate / 100 / 360]] },
+  dividend: { t: 'Dividend income', f: [['amount', 'Invested', 50000], ['yield', 'Dividend yield %', 3.5], ['growth', 'Dividend growth % a year', 5], ['years', 'Years', 10]], run: v => { const a = +v.amount * +v.yield / 100; return [['Income this year', a], ['Monthly', a / 12], ['Yearly income after the years', a * (1 + +v.growth / 100) ** +v.years]]; } },
+  fees: { t: 'What fees cost', f: [['amount', 'Invested', 100000], ['rate', 'Yearly return %', 7], ['fee', 'Yearly fee %', 1], ['years', 'Years', 30]], run: v => { const g = r => +v.amount * (1 + r / 100) ** +v.years, a = g(+v.rate), b = g(+v.rate - +v.fee); return [['Without the fee', a], ['With the fee', b], ['The fee costs you', a - b]]; } },
+};
+async function learn(view, q) {
+  const tab = LTABS.some(([k]) => k === q?.get('tab')) ? q.get('tab') : 'lessons';
+  const head = `<div class="pagehead"><h1>Learning center</h1><p class="mu">Lessons, a dictionary of market terms and calculators, all in plain words.</p></div><div class="chips viewtabs">${LTABS.map(([k, t]) => `<a href="#/learn?tab=${k}"><button type="button" class="${k === tab ? 'on' : ''}">${t}</button></a>`).join('')}</div>`;
+  if (tab === 'glossary') {
+    const terms = Object.entries(TERMS).sort(([a], [b]) => a.localeCompare(b));
+    view.innerHTML = `${head}<div class="card"><input id="gq" type="search" placeholder="Search ${terms.length} terms" aria-label="Search terms"><dl class="glossary" id="gl">${terms.map(([k, d]) => `<div data-k="${H.esc((k + ' ' + d).toLowerCase())}"><dt>${H.esc(k[0].toUpperCase() + k.slice(1))}</dt><dd class="mu">${H.esc(d)}</dd></div>`).join('')}</dl></div>`;
+    H.$('#gq', view).oninput = e => { const s = e.target.value.trim().toLowerCase(); H.$$('#gl > div', view).forEach(d => (d.hidden = !!s && !d.dataset.k.includes(s))); };
+    return;
+  }
+  if (tab === 'calc') {
+    view.innerHTML = `${head}<div class="cards">${Object.entries(CALCS).map(([id, c]) => `<form class="card calc" data-c="${id}"><h2>${c.t}</h2><div class="row">${c.f.map(([k, l, d]) => `<label>${l}<input name="${k}" type="number" step="any" value="${d}"></label>`).join('')}</div><div class="stats out"></div></form>`).join('')}</div><p class="mu small-print">Estimates for learning; real results depend on prices, taxes and fees.</p>`;
+    H.$$('form.calc', view).forEach(f => { const go = () => { H.$('.out', f).innerHTML = CALCS[f.dataset.c].run(H.form(f)).map(([k, v]) => `<div class="stat"><span>${k}</span><b>${n$(v)}</b></div>`).join(''); }; f.oninput = go; f.onsubmit = e => e.preventDefault(); go(); });
+    return;
+  }
   const d = await H.api('/learn');
-  view.innerHTML = `<div class="pagehead"><h1>Learn</h1><p class="mu">Short lessons. Each high-risk instrument unlocks for real money after its lesson; paper trading is always open.</p></div>
+  view.innerHTML = `${head}<p class="mu">Each high-risk instrument unlocks for real money after its lesson; paper trading is always open.</p>
     <div class="cards">${d.lessons.map(l => `<form class="card lesson" data-id="${l.id}"><h2>${H.esc(l.title)} ${l.done ? '<span class="pill ok">done</span>' : `<span class="pill">${l.minutes} min</span>`}</h2>
       <ul>${l.body.map(b => `<li>${H.esc(b)}</li>`).join('')}</ul>
       ${l.quiz.map((q, i) => `<fieldset><legend>${i + 1}. ${H.esc(q.q)}</legend>${q.a.map((a, j) => `<label class="chk"><input type="radio" name="q${i}" value="${j}"> ${H.esc(a)}</label>`).join('')}</fieldset>`).join('')}

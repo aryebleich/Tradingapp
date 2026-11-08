@@ -4,7 +4,7 @@
 import express from 'express';
 import crypto from 'node:crypto';
 import { one, all, run, now, audit } from '../db.js';
-import { requireUser, confirmsIdentity } from '../auth.js';
+import { requireUser, requireAdmin, confirmsIdentity } from '../auth.js';
 import { encrypt, tryDecrypt } from '../crypto.js';
 import * as E from './engine.js';
 import { sendEmail } from '../notify.js';
@@ -144,6 +144,9 @@ const CATEGORY_CODE = { meals: '6800', travel: '6700', 'office supplies': '6600'
 export const bizRouter = (() => {
   const r = express.Router();
   r.use(requireUser);
+  // The currency converter is for everyone (multi-currency investing); the rest is the owner's own business books.
+  r.get('/fx', async (req, res) => { const rate = await fxRate(req.query.from, req.query.to, /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : 'latest'); res.json({ from: String(req.query.from).toUpperCase(), to: String(req.query.to).toUpperCase(), rate, amount: +req.query.amount || 1, converted: E.r2((+req.query.amount || 1) * rate) }); });
+  r.use(requireAdmin);
   const U = req => req.user.id;
 
   r.get('/overview', async (req, res) => {
@@ -168,7 +171,6 @@ export const bizRouter = (() => {
     await put(U(req), 'settings', next, raw.id);
     res.json(await settings(U(req)));
   });
-  r.get('/fx', async (req, res) => { const rate = await fxRate(req.query.from, req.query.to, /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : 'latest'); res.json({ from: String(req.query.from).toUpperCase(), to: String(req.query.to).toUpperCase(), rate, amount: +req.query.amount || 1, converted: E.r2((+req.query.amount || 1) * rate) }); });
 
   // ---------- ledger ----------
   r.get('/accounts', async (req, res) => res.json(Object.values(E.balances(await list(U(req), 'entry'), await accounts(U(req)))).sort((a, b) => a.code.localeCompare(b.code))));

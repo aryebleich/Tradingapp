@@ -3,6 +3,7 @@
 let H;
 export function registerBusiness(routes, helpers) {
   H = helpers;
+  routes.currencies = view => { view.innerHTML = `<div class="pagehead"><div><h1>Currencies</h1><p class="mu" style="margin:4px 0 0">Convert between currencies at today's or a past date's reference rate, for buying shares on other markets or moving money abroad.</p></div></div>${fxCard()}`; wireFx(view); };
   for (const [k, tab] of [['business', 'overview'], ['invoices', 'invoices'], ['books', 'books'], ['bank', 'bank'], ['inventory', 'inventory'], ['payroll', 'payroll'], ['bizreports', 'reports']]) routes[k] = (view, q) => business(view, q.get('tab') || tab);
 }
 
@@ -15,6 +16,7 @@ let CUR = 'USD';
 const money = v => (v == null || !isFinite(v) ? '-' : (+v).toLocaleString(undefined, { style: 'currency', currency: CUR }));
 
 async function business(view, tab) {
+  if (H.me()?.role !== 'admin') { view.innerHTML = '<div class="card"><h1>Not available</h1><p class="mu">This area is for the site owner. For your investing, see <a href="#/currencies">Currencies</a>, <a href="#/tax">Taxes</a> and <a href="#/insights">Insights & journal</a>.</p></div>'; return; }
   const s = await B('/settings');
   CUR = s.currency || 'USD';
   view.innerHTML = `<div class="pagehead"><div><h1>Business</h1><p class="mu" style="margin:4px 0 0">${H.esc(s.name || 'Your business')} · ${H.esc(CUR)} · invoices, books, payroll and reports in one place.</p></div></div>

@@ -38,6 +38,7 @@ import { registerRiskPages } from './pages/riskpages.js';
 import { registerRetirement } from './pages/retirement.js';
 import { registerCombined } from './pages/combined.js';
 import { registerBusiness } from './pages/business.js';
+import { registerSocial } from './pages/social.js';
 import { attachGlossary } from './pages/glossary.js';
 import { startI18n, setLang, canvasNote, LANGS, current as currentLang } from './i18n.js';
 const $ = (s, el = document) => el.querySelector(s);
@@ -322,22 +323,25 @@ async function showUpgrade(feature) {
 const ADDON_PAGES = { brief: 'brief', taxpilot: 'taxPilot' };
 // The menu: the everyday pages always show; every other group starts folded and opens with its arrow.
 const CORE = [['dashboard', 'Home'], ['start', 'Get started'], ['trade', 'Trade'], ['positions', 'Positions'], ['orders', 'Orders'], ['watchlists', 'Watchlists'], ['markets', 'Market overview']];
+// The owner's own business books (Admin only): payroll, invoices, bookkeeping and the rest.
+const BIZ_NAV = ['My business', [['business', 'Business dashboard'], ['invoices', 'Invoices & payments'], ['books', 'Bookkeeping'], ['bank', 'Bank & receipts'], ['inventory', 'Inventory'], ['payroll', 'Payroll'], ['bizreports', 'Financial reports']]];
 const NAV = [
-  ['Investing', [['sp500', 'S&P 500 plan'], ['wealth', 'Wealth builder'], ['longterm', 'Long-term view'], ['invest', 'Futures, funds & savings'], ['alpaca-tools', 'Bonds, rates & crypto'], ['tokenized', 'Tokenized securities'], ['values', 'Values investing'], ['spend', 'Invest as you spend']]],
+  ['Investing', [['sp500', 'S&P 500 plan'], ['wealth', 'Wealth builder'], ['robo', 'Robo-advisor'], ['longterm', 'Long-term view'], ['invest', 'Futures, funds & savings'], ['alpaca-tools', 'Bonds, rates & crypto'], ['tokenized', 'Tokenized securities'], ['values', 'Values investing'], ['spend', 'Invest as you spend']]],
   ['Trading tools', [['chart', 'Chart'], ['options', 'Options chain'], ['optionslab', 'Options lab'], ['scanner', 'Scanner'], ['calendar', 'Calendar & events'], ['execution', 'Execution & routing'], ['workspace', 'Workspace']]],
   ['Research & AI', [['research', 'Plain-language research'], ['news', 'News & sentiment'], ['ai', 'AI assistant'], ['agents', 'Forecasts & AI agents'], ['institutions', 'Institutional portfolios']]],
-  ['Automation', [['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['schedule', 'Scheduled trades'], ['rules', 'Rules across accounts'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['portfolios', 'Portfolios'], ['marketplace', 'Marketplace']]],
+  ['Automation', [['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['schedule', 'Scheduled trades'], ['rules', 'Rules across accounts'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['portfolios', 'Portfolios'], ['traders', 'Top traders'], ['marketplace', 'Marketplace']]],
   ['Quant lab', [['pairs', 'Pairs trading'], ['statarb', 'Statistical arbitrage'], ['code', 'Code lab'], ['quantconnect', 'Cloud algorithms']]],
-  ['Planning', [['riskview', 'Portfolio & risk'], ['retirement', 'Retirement & IRAs'], ['money', 'All my money'], ['brief', 'Weekly brief'], ['insights', 'Insights & journal'], ['risk', 'Risk controls'], ['tax', 'Taxes'], ['taxpilot', 'Tax autopilot'], ['private', 'Private markets'], ['realestate', 'Real estate'], ['luach', 'Luach & tzedakah']]],
-  ['Business', [['business', 'Business dashboard'], ['invoices', 'Invoices & payments'], ['books', 'Bookkeeping'], ['bank', 'Bank & receipts'], ['inventory', 'Inventory'], ['payroll', 'Payroll'], ['bizreports', 'Financial reports']]],
+  ['Planning', [['riskview', 'Portfolio & risk'], ['retirement', 'Retirement & IRAs'], ['money', 'All my money'], ['currencies', 'Currencies'], ['brief', 'Weekly brief'], ['insights', 'Insights & journal'], ['risk', 'Risk controls'], ['tax', 'Taxes'], ['taxpilot', 'Tax autopilot'], ['private', 'Private markets'], ['realestate', 'Real estate'], ['luach', 'Luach & tzedakah']]],
   ['Accounts', [['brokers', 'Choose your brokerage'], ['account', 'Alpaca account'], ['accounts', 'All accounts'], ['funding', 'Plans & billing'], ['referrals', 'Invite & earn']]],
-  ['Help & settings', [['learn', 'Learn'], ['security', 'Security & help'], ['protection', 'Investor protection'], ['text', 'Text & hotline'], ['android', 'Android app'], ['settings', 'Settings']]],
+  ['Help & settings', [['learn', 'Learning center'], ['security', 'Security & help'], ['protection', 'Investor protection'], ['text', 'Text & hotline'], ['android', 'Android app'], ['settings', 'Settings']]],
 ];
 // Simple line icons (24x24 paths) for the menu.
 const ICONS = {
   business: '<path d="M3 7h18v13H3z"/><path d="M8 7V4h8v3M3 12h18"/>', invoices: '<path d="M6 2h9l4 4v16H6z"/><path d="M9 10h7M9 14h7M9 18h4"/>',
   books: '<path d="M4 4h7a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H4z"/><path d="M20 4h-6v16h6z"/>', bank: '<path d="M3 10h18L12 4z"/><path d="M5 10v8M9 10v8M15 10v8M19 10v8M3 20h18"/>',
   inventory: '<path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/>', payroll: '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/>',
+  traders: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/>', robo: '<rect x="5" y="8" width="14" height="11" rx="2"/><path d="M12 4v4M9 13h.01M15 13h.01M9 16h6"/>',
+  currencies: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>',
   bizreports: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
   riskview: '<path d="M12 3v9l7 4"/><circle cx="12" cy="12" r="9"/>',
   retirement: '<path d="M3 21h18M5 21V10l7-6 7 6v11"/><path d="M10 21v-6h4v6"/>',
@@ -469,7 +473,7 @@ async function render(opts) {
   if (ME) {
     // Signing in for the Android app: back to the app once signed in here.
     if (sessionStorage.getItem('qp_next') === 'handoff') { sessionStorage.removeItem('qp_next'); location.href = '/api/auth/app-handoff'; return; }
-    const groups = ME.role === 'admin' ? [['Owner', ADMIN_TABS], ...NAV] : NAV;
+    const groups = ME.role === 'admin' ? [['Owner', ADMIN_TABS], BIZ_NAV, ...NAV] : NAV;
     await accounts(); await defaultAccount();
     // Groups start folded; their arrow opens them (remembered). The group holding the current page opens.
     const opened = (() => { try { return JSON.parse(localStorage.getItem('qp_nav_open') || '[]'); } catch { return []; } })();
@@ -1633,6 +1637,7 @@ registerRiskPages(routes, shared);
 registerRetirement(routes, shared);
 registerCombined(routes, shared);
 registerBusiness(routes, shared);
+registerSocial(routes, shared);
 
 // Static files are cached for instant repeat visits (sw.js); pages and data always come fresh.
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});
