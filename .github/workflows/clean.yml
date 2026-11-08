@@ -1,0 +1,21 @@
+name: Clean code and README
+# After every push: no file is left that nothing uses (old files are deleted, not kept under the
+# new ones), and the private README names only pages and features that exist now.
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  clean:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          check-latest: true
+          cache: npm
+      - run: npm ci
+      - name: Every file is used
+        run: node scripts/clean-check.mjs
+      - name: The private README lists only current pages and features
+        run: node scripts/readme-check.mjs

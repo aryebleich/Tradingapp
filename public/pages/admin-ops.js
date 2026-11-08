@@ -199,14 +199,51 @@ async function seoPage(view) {
   H.act(H.$('#ping', view), async () => { const r = await H.api('/admin/seo/indexnow', { body: {} }); setTimeout(H.render, 800); return `Announced ${r.sent} pages.`; });
 }
 
-// ---------- Admin → AI coding agents ----------
+// ---------- Admin → AI team (nine agents and their manager), then the coding agent on GitHub ----------
 async function agentsPage(view) {
+  await codingAgentsPage(view);
+  const at = H.$('.admintabs', view); if (!at) return;
+  at.insertAdjacentHTML('afterend', '<div id="aiTeam"></div>');
+  await teamCard(H.$('#aiTeam', view));
+}
+const jobPill = s => `<span class="pill ${s === 'done' ? 'pos' : s === 'failed' ? 'neg' : 'warn'}">${H.esc(s)}</span>`;
+async function teamCard(el, openId) {
+  const d = await H.api('/admin/aiteam');
+  const pname = id => d.providers.find(p => p.id === id)?.name || id;
+  const roleRow = ([k, name]) => {
+    const t = d.team[k];
+    const opts = Object.keys(d.scores).map(p => `<option value="${p}" ${d.pins[k] === p ? 'selected' : ''}>${H.esc(pname(p))} (${Math.round(d.scores[p][k].score * 100)}, ${d.scores[p][k].results} results)</option>`).join('');
+    return `<tr><td><b>${H.esc(name)}</b></td><td>${t ? H.esc(pname(t.provider)) + (t.pinned ? ' <span class="pill">pinned</span>' : '') : '<span class="mu">no key</span>'}</td><td class="num">${t ? Math.round(t.score * 100) : '-'}</td><td><select data-pin="${k}"><option value="">Best by score</option>${opts}</select></td></tr>`;
+  };
+  el.innerHTML = `<div class="card"><h2>AI team</h2><p class="mu" style="margin-top:0">Nine agents: the Manager splits each job into steps and hands them out; the agents see each other's work and can ask each other questions; the Reviewer grades the code. Every AI service with a key in <a href="#/admin-keys">Keys</a> is a candidate for every role, and the Manager learns which is best from the grades and your thumbs up or down.</p>
+    ${d.providers.length ? `<p>AI services with a key: ${d.providers.map(p => `<span class="pill">${H.esc(p.name)} <small class="mu" data-no-tr>${H.esc(p.model || '')}</small></span>`).join(' ')}</p>` : '<p class="banner">No AI keys yet: add Claude (ANTHROPIC_API_KEY), Gemini, Groq or OpenRouter in Keys.</p>'}
+    <div class="tablewrap"><table class="slim"><tr><th>Agent</th><th>Works with</th><th class="num">Score</th><th>Pin a model</th></tr>${Object.entries(d.roles).map(roleRow).join('')}</table></div></div>
+  <form class="card" id="tmJob"><h2>New job for the team</h2><textarea name="job" rows="4" maxlength="8000" placeholder="For example: Add a weekly email that lists each user's best and worst position, with a test. Or: Translate the new Margin center page into Yiddish. Or: Suggest three ways to make the Trade page simpler on phones."></textarea><button>Give it to the Manager</button><div class="err"></div></form>
+  <div class="card"><h2>Jobs</h2><div class="tablewrap"><table class="slim"><tr><th>Job</th><th>Status</th><th>When</th><th></th></tr>${d.jobs.map(j => `<tr><td>${H.esc(j.job.slice(0, 110))}${j.job.length > 110 ? '…' : ''}</td><td>${jobPill(j.status)}</td><td>${new Date(j.created_at).toLocaleString()}</td><td><button type="button" class="small ghost" data-job="${j.id}">Open</button></td></tr>`).join('') || '<tr><td colspan="4" class="mu">No jobs yet</td></tr>'}</table></div><div id="tmOpen"></div></div>`;
+  H.$$('[data-pin]', el).forEach(s => (s.onchange = async () => { const pins = Object.fromEntries(H.$$('[data-pin]', el).map(x => [x.dataset.pin, x.value]).filter(([, v]) => v)); await H.api('/admin/aiteam/pins', { method: 'PUT', body: pins }); teamCard(el); }));
+  const f = H.$('#tmJob', el);
+  H.act(H.$('button', f), async () => { const r = await H.api('/admin/aiteam/jobs', { body: { job: f.job.value } }); f.job.value = ''; await teamCard(el, r.id); return ''; });
+  const open = async id => {
+    const box = H.$('#tmOpen', el), j = await H.api('/admin/aiteam/jobs/' + id);
+    const msg = (m, i) => `<details class="tmmsg" ${i === j.messages.length - 1 ? 'open' : ''}><summary><b>${H.esc(m.name)}</b> · ${H.esc(m.task)} <span class="mu" data-no-tr>${H.esc(m.provider ? pname(m.provider) : '')}${m.ms ? ' · ' + (m.ms / 1000).toFixed(1) + 's' : ''}</span></summary><pre class="tmtext" data-no-tr>${H.esc(m.text)}</pre>${m.provider ? `<div class="row" style="gap:6px"><button type="button" class="small ghost" data-rate="${i}" data-good="1">👍 Good</button><button type="button" class="small ghost" data-rate="${i}" data-good="">👎 Not good</button><span class="ok"></span></div>` : ''}</details>`;
+    box.innerHTML = `<h3>Job ${j.id}: ${jobPill(j.status)}</h3><p class="mu">${H.esc(j.job)}</p>
+      ${j.plan.length ? `<p><b>Plan:</b> ${j.plan.map((s, i) => `${i + 1}. ${H.esc(d.roles[s.role] || s.role)}: ${H.esc(s.task)}`).join(' · ')}</p>` : ''}
+      ${j.messages.map(msg).join('')}${j.status === 'working' ? '<p class="mu">The team is working… this updates by itself.</p>' : ''}`;
+    H.$$('[data-rate]', box).forEach(b => (b.onclick = async () => { await H.api(`/admin/aiteam/jobs/${id}/rate`, { body: { index: +b.dataset.rate, good: !!b.dataset.good } }); b.parentElement.querySelector('.ok').textContent = 'Thanks: the Manager learns from this'; }));
+    if (j.status === 'working') { const h = location.hash; setTimeout(() => location.hash === h && el.isConnected && open(id), 4000); }
+  };
+  H.$$('[data-job]', el).forEach(b => (b.onclick = () => open(+b.dataset.job)));
+  if (openId) open(openId);
+}
+
+// ---------- Admin → AI coding agents (GitHub) ----------
+async function codingAgentsPage(view) {
   const d = await H.api('/admin/agents');
   const pill = r => r.status !== 'completed' ? `<span class="pill">${H.esc(r.status.replace('_', ' '))}</span>` : `<span class="pill ${r.conclusion === 'success' ? 'pos' : r.conclusion === 'failure' ? 'neg' : ''}">${H.esc(r.conclusion || '')}</span>`;
   const row = r => `<tr><td>${pill(r)}</td><td><a href="${H.esc(r.url)}" target="_blank" rel="noopener">${H.esc(r.title || r.name)}</a><div class="mu" style="font-size:12px" data-no-tr>${H.esc(r.sha)} · ${H.date(Date.parse(r.at))}</div></td>
     <td>${r.conclusion === 'failure' ? `<div class="row" style="gap:6px;flex-wrap:wrap"><button class="small ghost" data-log="${r.id}">Log</button><button class="small ghost" data-explain="${r.id}">Explain</button><button class="small" data-fix="${r.id}">Send to agent to fix</button><button class="small ghost" data-rerun="${r.id}">Re-run</button></div>` : ''}</td></tr>`;
   view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-agents')}
-  <div class="card"><h2>AI coding agents</h2><p class="mu" style="margin-top:0">Tools that help write, test and debug the app's code. Give the agent (Claude Code) a task: it works on its own branch in GitHub, runs the tests and the end-to-end run, and opens a pull request for you to review and merge. It never changes the live site by itself.</p>
+  <div class="card"><h2>Coding agent on GitHub</h2><p class="mu" style="margin-top:0">Tools that help write, test and debug the app's code. Give the agent (Claude Code) a task: it works on its own branch in GitHub, runs the tests and the end-to-end run, and opens a pull request for you to review and merge. It never changes the live site by itself.</p>
     ${d.configured ? '' : '<p class="banner">Add <b>GITHUB_TOKEN</b> in Admin → Keys (a fine-grained token for this repository: Actions read and write, Contents read, Pull requests read). The agent also needs the repository secret <b>CLAUDE_CODE_OAUTH_TOKEN</b> (run <code>claude setup-token</code>) or <b>ANTHROPIC_API_KEY</b> in GitHub → Settings → Secrets → Actions.</p>'}
     ${d.agentError ? `<p class="banner err">${H.esc(d.agentError)}</p>` : ''}</div>
   ${d.configured ? `

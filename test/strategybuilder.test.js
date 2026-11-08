@@ -83,7 +83,7 @@ test('build from a design: choose tickers, step a value up, add a step, then it 
 test('plan features: backtest years, publishing, margin and size limits', async () => {
   const s = (await user('/library', { blueprintId: 'bp_blank', fillExamples: true })).body;
   assert.equal(s.ready, true);
-  assert.equal((await user(`/library/${s.id}/backtest`, { years: 8 })).status, 402); // free: 3 years
+  assert.equal((await user(`/library/${s.id}/backtest`, { years: 15 })).status, 402); // free: 10 years
   assert.equal((await user(`/library/${s.id}`, { public: true }, 'PUT')).status, 402); // free: copy only
   assert.equal((await user(`/library/${s.id}`, { leverage: 2 }, 'PUT')).status, 402); // free: no margin
   const plans = (await user('/library/plans')).body;

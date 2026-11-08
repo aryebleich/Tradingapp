@@ -124,11 +124,12 @@ const VB = { avoid: ['Avoid', 'bad'], clear: ['No flags found', 'ok'] };
 const vbadge = s => `<span class="pill ${VB[s][1]}">${VB[s][0]}</span>`;
 const nyTime = (t, tz) => new Date(t).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', ...(tz ? { timeZone: tz, timeZoneName: 'short' } : {}) });
 async function values(view, q) {
+  if (q.get('tab') === 'luach') { location.hash = '#/luach'; return; }
   const tab = q.get('tab') || 'screen', accts = await H.accounts(), admin = H.me()?.role === 'admin', v = await H.api('/values');
   const head = `<div class="pagehead"><h1>Values investing</h1><p class="mu">Invest by your values: screen stocks and your portfolio, work out maaser, and pause trading on Shabbos and Yom Tov.</p></div>
     <p class="mu" style="margin:-6px 0 10px">Your values: <b>${H.esc(v.presets[v.preset].label)}</b> · <a href="#/values?tab=settings">change</a>${v.shabbos ? ` · <span class="pill">Shabbos and Yom Tov pause on</span>` : ''}</p>
     ${v.now ? `<div class="banner">${H.esc(v.now.name)}: trading is paused until ${nyTime(v.now.until, v.tz)}.</div>` : ''}
-    ${tabsHtml([['screen', 'Screen'], ['portfolio', 'My portfolio'], ['maaser', 'Maaser'], ['shabbos', 'Shabbos & Yom Tov'], ['settings', 'My values'], ...(admin ? [['lists', 'Lists']] : [])], tab)}`;
+    ${tabsHtml([['screen', 'Screen'], ['portfolio', 'My portfolio'], ['maaser', 'Maaser'], ['shabbos', 'Shabbos & Yom Tov'], ['settings', 'My values'], ...(v.preset === 'jewish' ? [['luach', 'Luach & tzedakah']] : []), ...(admin ? [['lists', 'Lists']] : [])], tab)}`;
   const note = '<p class="mu small-print">Screens use lists of companies by their main business. "No flags found" means the company is not on a list you avoid; it is not a religious or ethical approval. For questions of halacha, ask your rav.</p>';
   if (tab === 'settings') {
     view.innerHTML = `${head}<form class="card" id="vs"><h2>My values</h2>

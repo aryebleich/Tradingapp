@@ -16,10 +16,10 @@ import { adviserMode, adviserFor } from '../site.js';
 // paper, copy community strategies. Paid plans add automation on real accounts, longer backtests,
 // publishing, margin and (Ultimate) real-money orders from the AI assistant.
 export const STRATEGY_LIMITS = {
-  free: { saved: 3, auto: 1, backtestYears: 3, publish: false, margin: 1, steps: 20, sleeves: 4, label: 'Free' },
-  pro: { saved: 10, auto: 5, backtestYears: 8, publish: true, margin: 1.5, steps: 60, sleeves: 6, label: 'Pro' },
-  elite: { saved: 50, auto: 25, backtestYears: 10, publish: true, margin: 2, steps: 120, sleeves: 8, label: 'Elite' },
-  ultimate: { saved: 200, auto: 100, backtestYears: 10, publish: true, margin: 2, steps: 200, sleeves: 8, aiLiveOrders: true, label: 'Ultimate' },
+  free: { saved: 3, auto: 1, backtestYears: 10, publish: false, margin: 1, steps: 20, sleeves: 4, label: 'Free' },
+  pro: { saved: 10, auto: 5, backtestYears: 20, publish: true, margin: 1.5, steps: 60, sleeves: 6, label: 'Pro' },
+  elite: { saved: 50, auto: 25, backtestYears: 30, publish: true, margin: 2, steps: 120, sleeves: 8, label: 'Elite' },
+  ultimate: { saved: 200, auto: 100, backtestYears: 30, publish: true, margin: 2, steps: 200, sleeves: 8, aiLiveOrders: true, label: 'Ultimate' },
 };
 export const PLAN_FEATURES = [
   ['Saved strategies', p => String(p.saved)], ['Running automatically at once', p => String(p.auto)], ['Automatic on real accounts', p => (p.label === 'Free' ? 'Paper only' : 'Yes')],

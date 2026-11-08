@@ -144,3 +144,27 @@ export async function toolChat({ system, messages: history, defs, webSearch = tr
     return { text: 'That took too many steps. Please ask a narrower question.', sources, used };
   } catch (e) { throw failed(e, p); }
 }
+
+// ---------- several providers at once (Admin → AI team) ----------
+// Every provider that has a key, so different jobs can go to different models.
+export function providers() {
+  const out = [];
+  if (env('ANTHROPIC_API_KEY')) out.push({ id: 'anthropic', name: 'Claude', model: 'claude-opus-5-5' });
+  for (const id of Object.keys(FREE)) if (env(FREE[id].key)) out.push(free(id));
+  if (env('AI_BASE_URL')) out.push({ id: 'custom', name: 'Custom model', base: env('AI_BASE_URL').replace(/\/$/, ''), apiKey: env('AI_API_KEY'), model: env('AI_MODEL') || 'default' });
+  return out;
+}
+// A plain-text answer from one named provider.
+export async function textWith(id, { system, user, maxTokens = 3000 }) {
+  const p = providers().find(x => x.id === id); if (!p) throw Object.assign(new Error(`${id} has no key set`), { status: 503 });
+  system = redact(system); user = redact(user);
+  try {
+    if (p.id === 'anthropic') {
+      const res = await anthropic().beta.messages.create({ model: 'claude-opus-5-5', max_tokens: maxTokens, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default', thinking: { type: 'adaptive' }, system, messages: [{ role: 'user', content: user }] });
+      if (res.stop_reason === 'refusal') throw Object.assign(new Error('The AI declined this request'), { status: 422, refusal: true });
+      return res.content.filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+    }
+    const d = await completions(p, { max_tokens: maxTokens, temperature: 0.3, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] });
+    return String(d.choices?.[0]?.message?.content || '').trim();
+  } catch (e) { throw failed(e, p); }
+}

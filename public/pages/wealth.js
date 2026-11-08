@@ -1,4 +1,4 @@
-// Wealth builder: ten long-term habits, each with a working tool. Index funds, compound growth,
+// Investing toolkit: ten long-term habits, each with a working tool. Index funds, compound growth,
 // automatic investing, buy-and-hold, dividend reinvestment, fundamentals, tax-advantaged accounts,
 // core and satellite, diversification and rebalancing.
 let H;
@@ -22,7 +22,7 @@ const pctf = v => (v == null ? '-' : `${(+v).toFixed(1)}%`);
 
 async function wealth(view, q) {
   const tab = q.get('tab') || 'funds';
-  view.innerHTML = `<h1>Wealth builder</h1><p class="mu">Ten habits that build wealth over the long run, each with a tool to do it. Education only, not advice for your situation.</p>
+  view.innerHTML = `<h1>Investing toolkit</h1><p class="mu">Ten long-term investing habits, each with a tool to do it. Education only, not advice for your situation.</p>
     <div class="chips wtabs">${TABS.map(([k, t]) => `<a href="#/wealth?tab=${k}"><button type="button" class="${k === tab ? 'on' : ''}">${t}</button></a>`).join('')}</div>
     <div class="card lesson"><b>${TABS.find(t => t[0] === tab)?.[1] || ''}</b><p>${LESSON[tab] || ''}</p></div><div id="wbody"></div>`;
   const body = H.$('#wbody', view);
@@ -161,7 +161,7 @@ async function core(el) {
   f.oninput = show; show();
   H.act(H.$('#csGo', f), async () => {
     const w = weights(), syms = Object.keys(w);
-    const r = await H.api('/baskets', { body: { name: 'Core & satellite', description: 'Index-fund core with growth satellites (Wealth builder).', universe: syms.join(','), rankBy: 'none', topN: syms.length, weighting: 'manual', weights: w, rebalance: 'quarterly' } });
+    const r = await H.api('/baskets', { body: { name: 'Core & satellite', description: 'Index-fund core with growth satellites (Investing toolkit).', universe: syms.join(','), rankBy: 'none', topN: syms.length, weighting: 'manual', weights: w, rebalance: 'quarterly' } });
     await H.api(`/baskets/${r.id}/deploy`, { body: { on: true, account: f.account.value, amount: +f.amount.value } });
     return 'Created and deployed. It rebalances every quarter.';
   });

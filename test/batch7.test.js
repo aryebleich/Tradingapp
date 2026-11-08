@@ -38,10 +38,10 @@ test('the public README is short; the private one is edited, imported and publis
     const guest = s.client(); await guest.signup('readme-guest@example.com');
     assert.equal((await guest('/admin/site/readme')).status, 403);
     assert.equal((await owner('/admin/site/readme')).body.text, '');
-    // Import the last full guide (no token: the public raw file), with the pricing notes appended.
+    // Import the last full guide (no token: the public raw file); plan-price comparisons are not part of it.
     const imp = await owner('/admin/site/readme/import', {});
     assert.equal(imp.status, 200, JSON.stringify(imp.body));
-    assert.match(imp.body.text, /The full guide[\s\S]*## Pricing comparison/);
+    assert.match(imp.body.text, /The full guide/); assert.doesNotMatch(imp.body.text, /Pricing comparison/);
     assert.ok(calls.some(c => c.url.includes('/owner/repo/cfdd4ed96a7b9f400821ba15b07d3101a19ff144/README.md')));
     // Saved encrypted: the database never holds the text as plain words.
     const row = await one("SELECT v FROM site_settings WHERE k = 'privateReadme'");

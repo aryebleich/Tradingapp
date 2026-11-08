@@ -18,13 +18,15 @@
     "yiddish:parts": "node scripts/yiddish-labs.mjs parts",
     "yiddish:import-parts": "node scripts/yiddish-labs.mjs import-parts",
     "yiddish:web": "node scripts/yiddish-labs-web.mjs",
-    "security:check": "node scripts/security-check.mjs"
+    "security:check": "node scripts/security-check.mjs",
+    "clean": "node scripts/clean-check.mjs && node scripts/readme-check.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.99.0",
     "@libsql/client": "^0.18.0",
     "@simplewebauthn/server": "^13.3.3",
     "compression": "^1.8.2",
+    "esbuild": "^0.25.12",
     "express": "^5.3.0"
   },
   "devDependencies": {

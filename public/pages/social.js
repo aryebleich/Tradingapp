@@ -1,4 +1,4 @@
-// Top traders (copy trading) and the Robo-advisor.
+// Top traders (copy trading) and Automated portfolios (model portfolios that rebalance themselves).
 //   traders   ranked public profiles (percentages only, trades a day late); a profile shows its mix,
 //             curve and recent trades, with "Copy this portfolio" (a Rules across accounts plan that
 //             keeps your account at the same mix) and "Follow trades" (its signal channel).
@@ -81,7 +81,7 @@ export function riskLevel(a) {
 
 async function robo(view) {
   const accts = await H.accounts();
-  view.innerHTML = `<div class="pagehead"><div><h1>Robo-advisor</h1><p class="mu" style="margin:4px 0 0">Answer five questions and get a low-cost index-fund mix that matches your risk. It keeps itself balanced and harvests tax losses for you.</p></div></div>
+  view.innerHTML = `<div class="pagehead"><div><h1>Automated portfolios</h1><p class="mu" style="margin:4px 0 0">Answer five questions and get a low-cost index-fund mix that matches your risk. It keeps itself balanced and harvests tax losses for you.</p></div></div>
   <form class="card" id="rq">${QS.map(([k, t, opts], i) => `<fieldset class="roboq"><legend><b>${i + 1}. ${t}</b></legend>${opts.map(([v, l]) => `<label class="chk"><input type="radio" name="${k}" value="${v}" required> ${l}</label>`).join('')}</fieldset>`).join('')}<button>See my portfolio</button></form>
   <div id="rOut"></div>`;
   const f = H.$('#rq', view);
@@ -99,7 +99,7 @@ async function robo(view) {
       err.textContent = ''; ok.textContent = '';
       try {
         const a = H.$('#rAcct', out).value;
-        await H.api('/rules', { body: { name: `Robo: ${m.name}`, targets: Object.entries(m.mix).map(([symbol, pct]) => ({ symbol, pct })), accounts: [a], schedule: 'quarterly', options: { driftPct: 5, cashPct: 1 } } });
+        await H.api('/rules', { body: { name: `Automated: ${m.name}`, targets: Object.entries(m.mix).map(([symbol, pct]) => ({ symbol, pct })), accounts: [a], schedule: 'quarterly', options: { driftPct: 5, cashPct: 1 } } });
         if (H.$('#rTlh', out).checked) await H.api('/taxpilot', { method: 'PUT', body: { weekly: true } }).catch(() => {});
         ok.innerHTML = 'Done. <a href="#/rules">Review the first rebalance</a> to invest.';
       } catch (e) { err.textContent = e.message; }

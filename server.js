@@ -68,6 +68,10 @@ import { taxPilotRouter } from './src/taxpilot.js';
 import { rulesRouter } from './src/rules.js';
 import { combinedRouter } from './src/consolidate.js';
 import { profilesRouter } from './src/profiles.js';
+import { sponsoredRouter } from './src/sponsored.js';
+import { investRouter } from './src/invest.js';
+import { aiFundsRouter } from './src/aifunds.js';
+import { aiTeamRouter } from './src/aiteam.js';
 import { equalizeRouter } from './src/equalize.js';
 import { bizRouter, publicInvoiceRouter } from './src/business/routes.js';
 import { scriptsRouter } from './src/scripts.js';
@@ -555,6 +559,10 @@ api.use('/equalize', equalizeRouter);
 api.use('/biz', bizRouter);
 api.use('/scripts', scriptsRouter);
 api.use('/profiles', profilesRouter);
+api.use('/sponsored', sponsoredRouter);
+api.use('/invest', investRouter);
+api.use('/aifunds', aiFundsRouter);
+api.use('/admin/aiteam', aiTeamRouter);
 api.use('/quickbooks', quickbooksRouter);
 api.use('/institutions', institutionsRouter);
 api.use('/roundups', roundupRouter);
@@ -725,8 +733,9 @@ api.post('/positions/close-all', U, wrap(async (req, res) => {
     if (a === 'paper') await run("UPDATE paper_orders SET status = 'cancelled' WHERE user_id = ? AND status = 'open'", req.user.id);
     const s = await accountSummary(req.user.id, a);
     for (const p of s.positions || []) {
-      if (!(p.qty > 0)) continue;
-      try { await placeOrder(req.user.id, a, { symbol: p.symbol, side: 'sell', qty: p.qty }, 'close-all'); results.push({ symbol: p.symbol, ok: true }); }
+      if (!p.qty) continue;
+      // Longs are sold; shorts are bought back.
+      try { await placeOrder(req.user.id, a, { symbol: p.symbol, side: p.qty > 0 ? 'sell' : 'buy', qty: Math.abs(p.qty) }, 'close-all'); results.push({ symbol: p.symbol, ok: true }); }
       catch (e) { results.push({ symbol: p.symbol, ok: false, error: e.message }); }
     }
   }
@@ -1083,8 +1092,27 @@ app.get(/\.(js|css)$/, async (req, res, next) => {
   res.set('Cache-Control', req.query.v === ASSET_V ? 'public, max-age=31536000, immutable' : 'no-cache');
   res.send(body);
 });
+// The app as one file: every page module bundled and minified (esbuild, at start, in memory), with
+// the Yiddish translations and other on-demand parts in their own chunks. One download instead of
+// dozens; the file names carry a content hash, so browsers and the edge keep them forever. If the
+// bundler is missing, the separate files above are used as before.
+const BUNDLE = await (async () => {
+  if (process.env.NO_BUNDLE === '1') return null;
+  try {
+    const esbuild = await import('esbuild');
+    const r = await esbuild.build({ entryPoints: [path.join(pub, 'app.js')], bundle: true, splitting: true, format: 'esm', outdir: '/bundle', write: false, minify: true, target: 'es2022', chunkNames: 'c-[hash]', entryNames: '[name]-[hash]', logLevel: 'silent', legalComments: 'none' });
+    const files = new Map(r.outputFiles.map(f => [path.basename(f.path), f.text]));
+    return { files, entry: [...files.keys()].find(k => k.startsWith('app-')) };
+  } catch (e) { console.warn('bundle: using separate files,', e.message); return null; }
+})();
+app.get('/bundle/:file', (req, res, next) => {
+  const body = BUNDLE?.files.get(req.params.file); if (!body) return next();
+  res.type('application/javascript').set('Cache-Control', 'public, max-age=31536000, immutable').send(body);
+});
 async function appPage() {
   const html = await fs.readFile(path.join(pub, 'app.html'), 'utf8');
+  if (BUNDLE) return html.replace('src="/app.js"', `src="/bundle/${BUNDLE.entry}"`).replace(/href="\/(styles|theme)\.css"/g, `href="/$1.css?v=${ASSET_V}"`)
+    .replace('</head>', `  <link rel="modulepreload" href="/bundle/${BUNDLE.entry}">\n</head>`);
   // Every module the app imports, followed through public/pages/ and back (static imports only).
   const mods = new Set(), todo = ['app.js'];
   while (todo.length) {

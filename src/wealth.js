@@ -1,4 +1,4 @@
-// Wealth builder: the long-term habits that work for most investors, each with a tool.
+// Investing toolkit: the long-term habits that work for most investors, each with a tool.
 // Index funds compared by cost and record · compound growth (client) · automatic monthly or weekly
 // buys of a fund mix (scheduled orders) · buy-and-hold check of the user's own trading ·
 // automatic dividend reinvestment (DRIP) · a fundamentals checklist from SEC filings ·
@@ -215,7 +215,7 @@ export async function rebalanceReminders(t = now()) {
   if (!['01', '07'].includes(n.day.slice(5, 7)) || +n.day.slice(8) !== 15) return 0;
   let sent = 0;
   for (const r of await all("SELECT user_id FROM user_settings WHERE k = 'rebalanceReminder' AND v = 'true'")) {
-    await notifyUser(r.user_id, 'Twice-a-year check: open Wealth builder → Diversify & rebalance to see whether your mix drifted from your target, and bring it back.');
+    await notifyUser(r.user_id, 'Twice-a-year check: open Investing toolkit → Diversify & rebalance to see whether your mix drifted from your target, and bring it back.');
     sent++;
   }
   return sent;

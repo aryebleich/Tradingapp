@@ -39,6 +39,8 @@ import { registerRetirement } from './pages/retirement.js';
 import { registerCombined } from './pages/combined.js';
 import { registerBusiness } from './pages/business.js';
 import { registerSocial } from './pages/social.js';
+import { registerSponsored, treasuryCard } from './pages/sponsored.js';
+import { registerInvest } from './pages/invest.js';
 import { attachGlossary } from './pages/glossary.js';
 import { startI18n, setLang, canvasNote, LANGS, current as currentLang } from './i18n.js';
 const $ = (s, el = document) => el.querySelector(s);
@@ -50,7 +52,35 @@ const num = (x, d = 2) => (isFinite(x) ? (+x).toFixed(d) : '-');
 const cls = x => (x > 0 ? 'pos' : x < 0 ? 'neg' : '');
 const date = t => new Date(t).toLocaleString();
 
+// Pages open at once on a repeat visit: while a page is being drawn, data it read in the last 10
+// minutes is used right away and fetched again in the background; if anything changed, the page is
+// drawn again quietly. Saving anything (any request that is not a read) empties this memory.
+const SWR = new Map(), SWR_SKIP = /^\/(auth|alpaca\/stream|notifications|admin\/agents)/;
+let swrOn = false, swrRedraw = null;
 async function api(path, opts = {}, retried) {
+  const get = !opts.method && !opts.body;
+  if (!get) SWR.clear();
+  else if (!SWR_SKIP.test(path)) {
+    const hit = SWR.get(path), age = hit ? Date.now() - hit.at : Infinity;
+    if (hit && age < 3000) return structuredClone(await hit.p);
+    if (hit && swrOn && age < 600e3 && hit.ok) {
+      const route = location.hash;
+      fetchJson(path).then(async p => { const d = await p; if (JSON.stringify(d) !== hit.json && location.hash === route) { clearTimeout(swrRedraw); swrRedraw = setTimeout(() => location.hash === route && render({ quiet: true }), 150); } }).catch(() => {});
+      return structuredClone(hit.data);
+    }
+    return structuredClone(await fetchJson(path).then(p => p));
+  }
+  return apiCall(path, opts, retried);
+}
+// A read that is remembered (see above); failures are not remembered.
+function fetchJson(path) {
+  const e = { at: Date.now(), ok: false };
+  e.p = apiCall(path, {}).then(d => { Object.assign(e, { data: d, json: JSON.stringify(d), ok: true }); return d; }, err => { SWR.delete(path); throw err; });
+  SWR.set(path, e);
+  if (SWR.size > 300) SWR.delete(SWR.keys().next().value);
+  return Promise.resolve(e.p);
+}
+async function apiCall(path, opts = {}, retried) {
   const r = await fetch('/api' + path, {
     method: opts.method || (opts.body ? 'POST' : 'GET'),
     headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' },
@@ -61,10 +91,10 @@ async function api(path, opts = {}, retried) {
   if (r.status === 401 && ME && !path.startsWith('/auth/')) { ME = null; location.hash = '#/login'; }
   if (r.status === 402 && d.upgrade) showUpgrade(d.feature);
   // Speed bump: read the risk notice (a 10-second wait), then the order is sent again once.
-  if (d.needsAck && !retried && await riskNotice(d.needsAck)) { await api('/learn/ack/' + d.needsAck, { body: {} }); return api(path, opts, true); }
+  if (d.needsAck && !retried && await riskNotice(d.needsAck)) { await api('/learn/ack/' + d.needsAck, { body: {} }); return apiCall(path, opts, true); }
   if (d.needsLesson && confirm(d.error + ' Open the lesson now?')) location.hash = '#/learn';
   // Step-up: the session must confirm it is the account holder before trading or moving money.
-  if (d.stepUp && !retried && await stepUpBox()) return api(path, opts, true);
+  if (d.stepUp && !retried && await stepUpBox()) return apiCall(path, opts, true);
   if (!r.ok) throw Object.assign(new Error(d.error || (r.status >= 500 ? 'The server is busy, please try again.' : r.statusText)), { status: r.status, addonOff: d.addonOff });
   return d;
 }
@@ -326,14 +356,14 @@ const CORE = [['dashboard', 'Home'], ['start', 'Get started'], ['trade', 'Trade'
 // The owner's own business books (Admin only): payroll, invoices, bookkeeping and the rest.
 const BIZ_NAV = ['My business', [['business', 'Business dashboard'], ['invoices', 'Invoices & payments'], ['books', 'Bookkeeping'], ['bank', 'Bank & receipts'], ['inventory', 'Inventory'], ['payroll', 'Payroll'], ['bizreports', 'Financial reports']]];
 const NAV = [
-  ['Investing', [['sp500', 'S&P 500 plan'], ['wealth', 'Wealth builder'], ['robo', 'Robo-advisor'], ['longterm', 'Long-term view'], ['invest', 'Futures, funds & savings'], ['alpaca-tools', 'Bonds, rates & crypto'], ['tokenized', 'Tokenized securities'], ['values', 'Values investing'], ['spend', 'Invest as you spend']]],
-  ['Trading tools', [['chart', 'Chart'], ['options', 'Options chain'], ['optionslab', 'Options lab'], ['scanner', 'Scanner'], ['calendar', 'Calendar & events'], ['execution', 'Execution & routing'], ['workspace', 'Workspace']]],
+  ['Investing', [['analyze', 'Stock & fund analyzer'], ['lowcost', 'Low-cost index & mutual funds'], ['earnings', 'Earnings vs expectations'], ['sp500', 'S&P 500 plan'], ['wealth', 'Investing toolkit'], ['robo', 'Automated portfolios'], ['longterm', 'Long-term view'], ['invest', 'Futures, funds & savings'], ['alpaca-tools', 'Bonds, rates & crypto'], ['tokenized', 'Tokenized securities'], ['values', 'Values investing'], ['spend', 'Invest as you spend']]],
+  ['Trading tools', [['chart', 'Chart'], ['options', 'Options chain'], ['optionslab', 'Options lab'], ['scanner', 'Scanner'], ['leaders', 'New leaders'], ['short', 'Short the market'], ['margin', 'Margin center'], ['calendar', 'Calendar & events'], ['execution', 'Execution & routing'], ['workspace', 'Workspace']]],
   ['Research & AI', [['research', 'Plain-language research'], ['news', 'News & sentiment'], ['ai', 'AI assistant'], ['agents', 'Forecasts & AI agents'], ['institutions', 'Institutional portfolios']]],
-  ['Automation', [['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['schedule', 'Scheduled trades'], ['rules', 'Rules across accounts'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['portfolios', 'Portfolios'], ['traders', 'Top traders'], ['marketplace', 'Marketplace']]],
+  ['Automation', [['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['schedule', 'Scheduled trades'], ['rules', 'Rules across accounts'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['portfolios', 'Portfolios'], ['aifunds', 'AI long/short portfolios'], ['traders', 'Top traders'], ['text', 'Text commands'], ['hotline', 'Phone hotline'], ['marketplace', 'Marketplace']]],
   ['Quant lab', [['pairs', 'Pairs trading'], ['statarb', 'Statistical arbitrage'], ['code', 'Code lab'], ['quantconnect', 'Cloud algorithms']]],
-  ['Planning', [['riskview', 'Portfolio & risk'], ['retirement', 'Retirement & IRAs'], ['money', 'All my money'], ['currencies', 'Currencies'], ['brief', 'Weekly brief'], ['insights', 'Insights & journal'], ['risk', 'Risk controls'], ['tax', 'Taxes'], ['taxpilot', 'Tax autopilot'], ['private', 'Private markets'], ['realestate', 'Real estate'], ['luach', 'Luach & tzedakah']]],
+  ['Planning', [['riskview', 'Portfolio & risk'], ['retirement', 'Retirement & IRAs'], ['money', 'All my money'], ['currencies', 'Currencies'], ['brief', 'Weekly brief'], ['insights', 'Insights & journal'], ['risk', 'Risk controls'], ['tax', 'Taxes'], ['taxpilot', 'Tax autopilot'], ['private', 'Private markets'], ['realestate', 'Real estate']]],
   ['Accounts', [['brokers', 'Choose your brokerage'], ['account', 'Alpaca account'], ['accounts', 'All accounts'], ['funding', 'Plans & billing'], ['referrals', 'Invite & earn']]],
-  ['Help & settings', [['learn', 'Learning center'], ['security', 'Security & help'], ['protection', 'Investor protection'], ['text', 'Text & hotline'], ['android', 'Android app'], ['settings', 'Settings']]],
+  ['Help & settings', [['learn', 'Learning center'], ['security', 'Security & help'], ['protection', 'Investor protection'], ['android', 'Android app'], ['settings', 'Settings']]],
 ];
 // Simple line icons (24x24 paths) for the menu.
 const ICONS = {
@@ -341,6 +371,9 @@ const ICONS = {
   books: '<path d="M4 4h7a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H4z"/><path d="M20 4h-6v16h6z"/>', bank: '<path d="M3 10h18L12 4z"/><path d="M5 10v8M9 10v8M15 10v8M19 10v8M3 20h18"/>',
   inventory: '<path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/>', payroll: '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/>',
   traders: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/>', robo: '<rect x="5" y="8" width="14" height="11" rx="2"/><path d="M12 4v4M9 13h.01M15 13h.01M9 16h6"/>',
+  analyze: '<circle cx="10" cy="10" r="6"/><path d="M21 21l-6.5-6.5M7.5 11l2-2 1.5 1.5 2-2.5"/>', lowcost: '<circle cx="12" cy="12" r="9"/><path d="M15 9.5c-.5-1-1.6-1.5-3-1.5-1.7 0-3 .9-3 2.2 0 3 6 1.6 6 4.6 0 1.3-1.3 2.2-3 2.2-1.4 0-2.6-.6-3-1.6M12 6v2M12 16v2"/>',
+  earnings: '<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/><path d="M14 6l3-3 3 3"/>', leaders: '<path d="M3 20h18M6 20V12M11 20V8M16 20V4"/><path d="M14 4h4v4"/>',
+  short: '<path d="M3 6l6 6 4-4 8 8"/><path d="M21 10v6h-6"/>', margin: '<path d="M3 12h18M12 3v18"/><circle cx="12" cy="12" r="9"/>', aifunds: '<path d="M4 18l5-6 4 3 7-9"/><circle cx="18" cy="17" r="3"/><path d="M18 15.5v3M16.5 17h3"/>',
   currencies: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>',
   bizreports: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
   riskview: '<path d="M12 3v9l7 4"/><circle cx="12" cy="12" r="9"/>',
@@ -363,7 +396,7 @@ const ICONS = {
   account: '<path d="M3 10l9-6 9 6M5 10v9h14v-9M9 19v-5h6v5"/>', funding: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
   referrals: '<path d="M20 12v9H4v-9M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 1 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 1 0 0-5C13 2 12 7 12 7z"/>',
   tax: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 15l6-6M9.5 9.5h.01M14.5 14.5h.01"/>',
-  text: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>', settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 13H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 3V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 21 10h.1a2 2 0 1 1 0 4z"/>',
+  text: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>', hotline: '<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/>', settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 13H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 3V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 21 10h.1a2 2 0 1 1 0 4z"/>',
   'admin-phone': '<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/>',
   'admin-ai': '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/>',
   'admin-readme': '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>',
@@ -373,7 +406,7 @@ const ICONS = {
   'admin-setup': '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
   admin: '<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"/>',
   wealth: '<path d="M3 20h18M5 20V10M10 20V6M15 20v-8M20 20V4"/>', 'alpaca-tools': '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
-  'admin-alpaca': '<path d="M4 19V5l8 7 8-7v14"/>', 'admin-upgrades': '<path d="M12 19V5M5 12l7-7 7 7"/><path d="M5 21h14"/>', 'admin-yiddish': '<path d="M4 5h8M8 3v2M5 5c1 4 4 7 7 8M11 5c-1 4-4 7-7 8M13 21l4-10 4 10M14.5 17h5"/>', 'admin-business': '<path d="M3 7h18v13H3zM8 7V4h8v3"/>', 'admin-admins': '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>', 'admin-keys': '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/>',
+  'admin-alpaca': '<path d="M4 19V5l8 7 8-7v14"/>', 'admin-upgrades': '<path d="M12 19V5M5 12l7-7 7 7"/><path d="M5 21h14"/>', 'admin-sponsored': '<path d="M4 11v2a1 1 0 0 0 1 1h2l5 4V6L7 10H5a1 1 0 0 0-1 1z"/><path d="M16 8a5 5 0 0 1 0 8M19 5a9 9 0 0 1 0 14"/>', 'admin-yiddish': '<path d="M4 5h8M8 3v2M5 5c1 4 4 7 7 8M11 5c-1 4-4 7-7 8M13 21l4-10 4 10M14.5 17h5"/>', 'admin-business': '<path d="M3 7h18v13H3zM8 7V4h8v3"/>', 'admin-admins': '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>', 'admin-keys': '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/>',
   chart: '<path d="M7 4v16M17 6v12M4 8h6v8H4zM14 9h6v6h-6z"/>', ai: '<path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
   agents: '<path d="M3 17l6-6 4 4 8-8"/><circle cx="21" cy="7" r="1"/><path d="M3 21h18"/>', news: '<path d="M4 5h13v14H6a2 2 0 0 1-2-2zM17 9h3v8a2 2 0 0 1-2 2"/><path d="M8 9h5M8 13h5"/>',
   scanner: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5M8 11h6M11 8v6"/>', optionslab: '<path d="M3 18c4 0 5-12 9-12s5 12 9 12"/><path d="M3 21h18"/>',
@@ -446,6 +479,8 @@ async function render(opts) {
     scrollTo(0, 0);
   }
   if (!ME && !['login', 'login-phone', 'register', 'mfa', 'forgot', 'reset', 'verify', 'open-account'].includes(route)) { location.hash = '#/login'; return; }
+  // Signed in, the legal links live at the bottom of the menu: the page has no footer that could move.
+  document.body.classList.toggle('signedin', !!ME);
   $('#top').hidden = !ME; $('#nav').hidden = !ME; $('#tabs').hidden = !ME; $('#closeAllBtn').hidden = !ME;
   // Owner: switch between the full owner view and the view of each plan.
   const va = $('#viewAs'); va.hidden = ME?.role !== 'admin';
@@ -473,8 +508,8 @@ async function render(opts) {
   if (ME) {
     // Signing in for the Android app: back to the app once signed in here.
     if (sessionStorage.getItem('qp_next') === 'handoff') { sessionStorage.removeItem('qp_next'); location.href = '/api/auth/app-handoff'; return; }
-    const groups = ME.role === 'admin' ? [['Owner', ADMIN_TABS], BIZ_NAV, ...NAV] : NAV;
-    await accounts(); await defaultAccount();
+    const groups = ME.role === 'admin' ? [...ADMIN_GROUPS, BIZ_NAV, ...NAV] : NAV;
+    await Promise.all([accounts(), loadPrefs()]); await defaultAccount();
     // Groups start folded; their arrow opens them (remembered). The group holding the current page opens.
     const opened = (() => { try { return JSON.parse(localStorage.getItem('qp_nav_open') || '[]'); } catch { return []; } })();
     const START = await import('./pages/start.js').then(m => m.startDone()).catch(() => true);
@@ -483,7 +518,8 @@ async function render(opts) {
     $('#nav').innerHTML = `<div class="navcore">${core.map(link).join('')}</div>` + groups.map(([g, items]) => { const list = items.filter(([k]) => !(ADDON_PAGES[k] && ME.addons?.[ADDON_PAGES[k]] === false)), open = opened.includes(g) || list.some(([k]) => k === route);
       return `<button type="button" class="grp sec" data-g="${esc(g)}" aria-expanded="${open}"><span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span><span class="gname">${g}</span><span class="gcount" aria-hidden="true">${list.length}</span></button><div class="grpbody" ${open ? '' : 'hidden'}>${list.map(link).join('')}</div>`; }).join('')
       + (isPaid(ME) ? '' : `<a href="#/funding" class="upsell">${icon('star')}${ME.trialUsed ? 'Upgrade to Pro' : 'Try Pro free for 14 days'}</a>`)
-      + `<div class="navsec"><div class="grp">Trading mode</div>${modeSwitch()}</div><div class="grp">${esc(ME.email)}</div><a href="#" id="navLogout">${icon('account')}Sign out</a>`;
+      + `<div class="navsec"><div class="grp">Trading mode</div>${modeSwitch()}</div><div class="grp">${esc(ME.email)}</div><a href="#" id="navLogout">${icon('account')}Sign out</a>`
+      + `<div class="navfoot"><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/risk">Risk</a> · <a href="/contact">Support</a><p>Trading involves risk of loss. Backtests and projections are hypothetical. Brightolio is software, not a broker or investment adviser.</p></div>`;
     wireModeSwitch();
     $$('#nav .grp.sec').forEach(b => (b.onclick = () => {
       const open = b.getAttribute('aria-expanded') !== 'true'; b.setAttribute('aria-expanded', open); b.nextElementSibling.hidden = !open;
@@ -496,7 +532,8 @@ async function render(opts) {
   const show = () => { for (const c of [...$('#view').children]) if (c !== view) c.remove(); view.style.cssText = ''; scrollTo(0, keepY); };
   try {
     await loadPrefs();
-    await (routes[route] || routes.dashboard)(view, new URLSearchParams(q));
+    swrOn = !quiet;
+    try { await (routes[route] || routes.dashboard)(view, new URLSearchParams(q)); } finally { if (render.seq === mine) swrOn = false; }
     if (swap) {
       if (!view.isConnected) return; // the user moved to another page meanwhile
       if (render.seq !== mine) { view.remove(); return; } // a newer redraw is on its way
@@ -558,7 +595,29 @@ async function nextNewsToast() {
   let hide = setTimeout(close, 12000);
   t.onmouseenter = () => clearTimeout(hide); t.onmouseleave = () => (hide = setTimeout(close, 5000));
 }
-setTimeout(() => { nextNewsToast(); newsToasts.timer = setInterval(nextNewsToast, 45000); }, 8000);
+// Sponsored news (free plan only): a paid announcement from a listed company, with its "paid
+// promotion" disclosure and a link to the stock. Only upgrading turns these off.
+async function sponsoredToast() {
+  if (!ME || isPaid(ME) || document.hidden || document.querySelector('.newstoast')) return false;
+  const { ad } = await api('/sponsored/next').catch(() => ({}));
+  if (!ad) return false;
+  const t = document.createElement('div'); t.className = 'newstoast sponsored'; t.setAttribute('role', 'status');
+  t.innerHTML = `<div class="nt-top"><span class="pill">Sponsored</span><span class="nt-syms" data-no-tr>${esc(ad.symbol)}</span><span class="mu" data-no-tr>${esc(ad.company || '')}${ad.exchange ? ' · ' + esc(ad.exchange) : ''}</span><button class="nt-x" aria-label="Close">×</button></div>
+    <b class="nt-head" data-no-tr>${esc(ad.headline)}</b>${ad.body ? `<p class="nt-body" data-no-tr>${esc(ad.body)}</p>` : ''}
+    <div class="nt-foot"><a href="#/trade?symbol=${encodeURIComponent(ad.symbol)}" class="nt-buy"><button type="button" class="small">Buy ${esc(ad.symbol)}</button></a>${ad.url ? `<a href="${esc(ad.url)}" target="_blank" rel="noopener sponsored" class="mu">Read more</a>` : ''}<a href="#/funding" class="mu">Hide sponsored news: upgrade</a></div>
+    <p class="nt-disc mu" data-no-tr>${esc(ad.disclosure)}</p>`;
+  document.body.append(t);
+  requestAnimationFrame(() => t.classList.add('in'));
+  const close = () => { t.classList.remove('in'); setTimeout(() => t.remove(), 400); };
+  t.querySelector('.nt-x').onclick = close;
+  t.querySelectorAll('.nt-buy, a[rel~=sponsored]').forEach(a => a.addEventListener('click', () => { api('/sponsored/' + ad.id + '/click', { body: {} }).catch(() => {}); close(); }));
+  let hide = setTimeout(close, 15000);
+  t.onmouseenter = () => clearTimeout(hide); t.onmouseleave = () => (hide = setTimeout(close, 6000));
+  return true;
+}
+let toastTick = 0;
+const nextToast = async () => { if (++toastTick % 4 === 0 && await sponsoredToast()) return; nextNewsToast(); };
+setTimeout(() => { nextToast(); newsToasts.timer = setInterval(nextToast, 45000); }, 8000);
 // Phone layout: the sidebar becomes a drawer opened from the header or the bottom "Menu" tab.
 function setMenu(open) {
   $('#nav').classList.toggle('open', open); $('#scrim').hidden = !open;
@@ -815,6 +874,7 @@ async function accountBoxes(box) {
 routes.dashboard = async (view, q) => {
   await accounts();
   if (state.account === 'alpaca') return routes.portfolio(view, q);
+  const approvalsP = approvalsBanner().catch(() => '');
   const a = await api('/account?account=' + state.account).catch(e => ({ error: e.message }));
   if (a.error) {
     view.innerHTML = `<h1>Portfolio</h1><div class="card"><p class="err">${esc(a.error)}</p><a href="#/settings">Open Settings</a></div>`;
@@ -831,7 +891,7 @@ routes.dashboard = async (view, q) => {
   const START = await import('./pages/start.js').then(m => m.startDone()).catch(() => true);
   const fresh = !START && state.account === 'paper' && a.positions.length === 0;
   const todo = !fresh && steps.filter(x => !x[0]).length > 1 && !localStorage.getItem('qp_onboard_done');
-  const approvals = await approvalsBanner(), P = PREFS.portfolio;
+  const approvals = await approvalsP, P = PREFS.portfolio;
   const since = P.mode !== 'live' ? sinceStat(await sinceLastLook(state.account, a.equity)) : '';
   view.innerHTML = `${approvals}
   ${fresh ? `<div class="card onboard welcome-hero"><div><h2>Welcome! Let's get you started</h2><p class="mu" style="margin:0">A 2-minute guided setup: what you want to do, how practice money works, and your first practice purchase. Nothing uses real money.</p></div><a href="#/start"><button type="button">Start the guided setup</button></a></div>` : ''}
@@ -864,7 +924,7 @@ routes.dashboard = async (view, q) => {
       <div id="qHold"></div>
       <div class="row"><label>Shares<input name="qty" type="number" step="any" min="0"></label><label class="qnot">or Dollars<input name="notional" type="number" step="any" min="0"></label></div>
       <div class="row qpx"><label class="qlim" hidden>Limit price<input name="limit_price" type="number" step="any" min="0"></label><label class="qstp" hidden>Stop price<input name="stop_price" type="number" step="any" min="0"></label><label class="qtif" hidden>Good for<select name="time_in_force"><option value="day">Today (Day)</option><option value="gtc">Until cancelled (GTC)</option></select></label></div>
-      ${state.account !== 'paper' ? '<label class="check qshort" hidden><input type="checkbox" name="allow_short"> Sell short (I do not own it; margin account with $2,000+ needed)</label>' : ''}
+      <label class="check qshort" hidden><input type="checkbox" name="allow_short"> ${state.account === 'paper' ? 'Sell short (practice money: no minimum balance)' : 'Sell short (I do not own it; margin account with $2,000+ needed)'}</label>
       <div id="qGuide"></div><div id="qCost"></div><div id="qBear"></div>
       <button id="qPlace">Review order</button> <button type="button" class="ghost" id="quote">Quote</button><div class="err"></div>
       ${a.live ? '<p class="warn">This sends a real order with real money.</p>' : ''}
@@ -1189,19 +1249,22 @@ routes.schedule = async view => {
 };
 
 // ---------- text & hotline ----------
-routes.text = async view => {
+// Text commands and the Phone hotline: two pages (Automation menu) built from the same parts.
+routes.hotline = view => routes.text(view, new URLSearchParams('mode=phone'));
+routes.text = async (view, q) => {
   CFG ||= await api('/config');
+  const phone = q?.get('mode') === 'phone';
   const { help } = await api('/command/help');
-  view.innerHTML = `<h1>Text & Hotline</h1>
+  view.innerHTML = `<h1>${phone ? 'Phone hotline' : 'Text commands'}</h1><p class="mu" style="margin-top:-4px">${phone ? 'Call Brightolio from your verified phone: hear your account, positions and the market, and place or cancel trades with your PIN.' : 'Text Brightolio from your verified phone: look up stocks, get your account and positions, and trade with your PIN.'} <a href="#/${phone ? 'text' : 'hotline'}">${phone ? 'Text commands' : 'Phone hotline'} →</a></p>
   ${isPaid(ME) ? '' : '<div class="banner">Texting and calling Brightolio is part of Pro. You can try the commands below here in the app; <a href="#/funding">start a free trial</a> to use them from your phone and get alerts by text.</div>'}
   <div class="grid">
     <div class="card"><h2>Manage your account by SMS or phone</h2>
       ${CFG.hotline ? `<div class="hotline"><span class="mu">Brightolio's number</span><b dir="ltr">${esc(CFG.hotline)}</b><div class="row" style="gap:8px"><a href="sms:${esc(CFG.hotline)}"><button type="button">Text us</button></a><a href="tel:${esc(CFG.hotline)}"><button type="button" class="ghost">Call</button></a></div></div>
         <p>Text or call from your verified phone.</p>${CFG.assistant ? '<p>The AI assistant understands plain language: "how am I doing this month?", "put $200 into the S&amp;P every week", "what does RSI mean?". Trades always need your PIN.</p>' : ''}` : '<p class="warn">The SMS/voice number is not configured on this server yet (Twilio).</p>'}
       <p class="mu"><span>Phone:</span> ${ME.phone ? `<span dir="ltr">${esc(ME.phone)}</span>` : '<span>not set</span>'} ${ME.phoneVerified ? '<span class="pill">verified</span>' : ''} · <span>PIN:</span> <span>${ME.hasPin ? 'set' : 'not set'}</span> · <a href="#/settings">change in Settings</a></p>
-      <pre>${esc(help)}</pre>
-      <p class="mu">On the phone line: press 1 for paper or 2 for live, then 1 account info, 2 positions, 3 market clock, 4 place a trade, 5 cancel orders, 6 close all, 9 switch account. Every change needs your PIN.</p></div>
-    <div class="card"><h2>Look up any stock</h2>
+      ${phone ? '' : `<pre>${esc(help)}</pre>`}
+      <p class="mu" ${phone ? '' : 'hidden'}>On the phone line: press 1 for paper or 2 for live, then 1 account info, 2 positions, 3 market clock, 4 place a trade, 5 cancel orders, 6 close all, 9 switch account. Every change needs your PIN.</p></div>
+    <div class="card" ${phone ? 'hidden' : ''}><h2>Look up any stock</h2>
       <p class="mu" style="margin-top:0">Text a ticker and a word. Try any stock!</p>
       <div class="lookups">${[['AAPL CHART', '1 week, 1 month and 1 year performance'], ['NVDA EARNINGS', 'Next earnings date, estimates and the last results'], ['TSLA NEWS', 'The latest headlines'], ['SPY', 'Price and this week\'s move']].map(([c, d]) => `<button type="button" class="lookup" data-cmd="${c}"><b data-no-tr>${c}</b><span>${d}</span></button>`).join('')}</div>
       <h3 style="margin:18px 0 6px">Try it here</h3>
@@ -1508,15 +1571,23 @@ routes.settings = async view => {
 
 // ---------- admin ----------
 // Owner pages: one route per section so each has its own place in the menu.
-const ADMIN_TABS = [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-money', 'Money & fees'], ['admin-upgrades', 'Upgrades'], ['admin-yiddish', 'Yiddish Labs'], ['admin-phone', 'Phone line'], ['admin-ai', 'AI & privacy'], ['admin-readme', 'README'], ['admin-admins', 'Admins'], ['admin-keys', 'Keys'], ['admin-comms', 'Calls, texts & email'], ['admin-support', 'Support inbox'], ['admin-data', 'Market data'], ['admin-strategies', 'Original strategies'], ['admin-seo', 'SEO'], ['admin-agents', 'AI coding agents'], ['admin-hosting', 'Hosting'], ['admin-trust', 'Trust'], ['admin-system', 'System health'], ['admin-setup', 'Setup']];
+// The owner's pages, in four groups (each its own menu section; the tab row shows its group).
+const ADMIN_GROUPS = [
+  ['Owner: people', [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-admins', 'Admins'], ['admin-support', 'Support inbox'], ['admin-comms', 'Calls, texts & email'], ['admin-phone', 'Phone line']]],
+  ['Owner: money', [['admin-money', 'Money & fees'], ['admin-sponsored', 'Sponsored news'], ['admin-upgrades', 'Upgrades']]],
+  ['Owner: site & content', [['admin-readme', 'README'], ['admin-seo', 'SEO'], ['admin-strategies', 'Original strategies'], ['admin-trust', 'Trust'], ['admin-yiddish', 'Yiddish Labs']]],
+  ['Owner: technical', [['admin-agents', 'AI team'], ['admin-ai', 'AI & privacy'], ['admin-keys', 'Keys'], ['admin-data', 'Market data'], ['admin-hosting', 'Hosting'], ['admin-system', 'System health'], ['admin-setup', 'Setup']]],
+];
+const ADMIN_TABS = ADMIN_GROUPS.flatMap(([, t]) => t);
+const adminGroup = k => (ADMIN_GROUPS.find(([, t]) => t.some(([x]) => x === k)) || ADMIN_GROUPS[0])[1];
 // Pages with their own module (owner.js, protect.js) draw themselves under the same tabs.
-const adminTabs = current => `<div class="chips admintabs">${ADMIN_TABS.map(([k, t]) => `<a href="#/${k}"><button type="button" class="${k === current ? 'on' : ''}">${t}</button></a>`).join('')}</div>`;
+const adminTabs = current => `<div class="chips admintabs">${adminGroup(current).map(([k, t]) => `<a href="#/${k}"><button type="button" class="${k === current ? 'on' : ''}">${t}</button></a>`).join('')}</div>`;
 async function adminPage(view, tab) {
   const [s, msgs, setup] = await Promise.all([api('/admin/summary'), api('/admin/messages'), tab === 'admin-setup' ? api('/admin/setup') : null]);
   const total = (kind, status) => s.byKind.filter(x => x.kind === kind && (!status || x.status === status)).reduce((a, x) => a + x.total, 0);
   const f = s.funnel, steps = [['Signed up', f.signups], ['Connected a brokerage', f.connected], ['Placed a trade', f.traded], ['In free trial', f.trialing], ['Paying', f.paying]];
   const open = msgs.filter(m => m.status === 'open');
-  const tabs = `<div class="chips admintabs">${ADMIN_TABS.map(([k, t]) => `<a href="#/${k}"><button type="button" class="${k === tab ? 'on' : ''}">${t}${k === 'admin-support' && open.length ? ` <span class="pill warn">${open.length}</span>` : ''}</button></a>`).join('')}</div>`;
+  const tabs = `<div class="chips admintabs">${adminGroup(tab).map(([k, t]) => `<a href="#/${k}"><button type="button" class="${k === tab ? 'on' : ''}">${t}${k === 'admin-support' && open.length ? ` <span class="pill warn">${open.length}</span>` : ''}</button></a>`).join('')}</div>`;
   const sections = {
     admin: () => `
   <div class="card"><h2>Revenue</h2><div class="stats">
@@ -1549,7 +1620,7 @@ async function adminPage(view, tab) {
   <div class="card tablewrap"><h2>Card deposits awaiting brokerage transfer</h2><table>${s.pendingTransfers.map(l => `<tr><td data-no-tr>${esc(l.email)}</td><td>${money(l.amount)}</td><td>${date(l.at)}</td><td><button class="small" data-l="${l.id}" data-s="transferred">Mark transferred</button></td></tr>`).join('') || '<tr><td class="mu">None</td></tr>'}</table></div>
   <div class="card tablewrap"><h2>Payment processors</h2><p class="mu" style="margin-top:0">What each way of taking a $500 deposit costs you. Your service fee: <b>${s.depositFee.percent}%${s.depositFee.fixed ? ' + ' + money(s.depositFee.fixed) : ''}</b> (DEPOSIT_FEE_PERCENT / DEPOSIT_FEE_FIXED) · collected so far ${money(s.depositFee.collected)}.</p>
     <table><tr><th>Method</th><th>Processor</th><th>Their price</th><th>Cost on $500</th><th>Status</th></tr>${s.payments.map(p => `<tr><td>${esc(p.name)}</td><td>${esc(p.via)}</td><td>${esc(p.cost)}</td><td>${money(p.on500)}</td><td>${p.enabled ? '<span class="pill pos">On</span>' : '<span class="pill">Not set up</span>'}</td></tr>`).join('')}</table>
-    <p class="mu" style="font-size:12px">Helcim's figure assumes a regulated (big-bank) debit card; cards from small banks and credit cards cost more. Card-network rules and some states limit surcharges on cards, so the service fee is shown up front and charged for the deposit service.</p></div>`,
+    <p class="mu" style="font-size:12px">Helcim's figure assumes a regulated (big-bank) debit card; cards from small banks and credit cards cost more. Card-network rules and some states limit surcharges on cards, so the service fee is shown up front and charged for the deposit service.</p></div><div id="treasuryBox"></div>`,
     'admin-support': () => `
   <div class="card tablewrap"><h2>Support inbox</h2><table>${open.map(m => `<tr><td>${date(m.at)}</td><td data-no-tr>${esc(m.name)} &lt;<a href="mailto:${esc(m.email)}">${esc(m.email)}</a>&gt;</td><td data-no-tr><b>${esc(m.subject)}</b><br><span class="mu" style="white-space:pre-wrap">${esc(m.body)}</span></td><td><button class="small ghost" data-m="${m.id}">Done</button></td></tr>`).join('') || '<tr><td class="mu">Inbox zero</td></tr>'}</table></div>`,
     'admin-setup': () => `
@@ -1562,6 +1633,7 @@ async function adminPage(view, tab) {
     <p class="mu" style="font-size:12.5px">To change one: open <a href="#/admin-keys">Keys</a> (saves here and on Render), or Render → your service → Environment → add or edit the variable → Save.</p></div>`,
   };
   view.innerHTML = `<h1>Admin</h1>${tabs}${sections[tab]()}`;
+  if ($('#treasuryBox', view)) treasuryCard($('#treasuryBox', view), shared).catch(() => {});
   if ($('#testEmail', view)) act($('#testEmail', view), async () => `Sent to ${(await api('/admin/test-email', { body: {} })).to}. Check the inbox (and spam).`, $('#testEmail', view).nextElementSibling);
   if ($('#assess', view)) act($('#assess', view), async () => { const r = await api('/admin/assess-fees', { body: {} }); setTimeout(render, 1200); return `Assessed ${r.length} accounts, ${money(r.reduce((a, x) => a + (x.fee || 0), 0))} in new fees`; });
   $$('[data-l]', view).forEach(b => (b.onclick = async () => { await api('/admin/ledger/' + b.dataset.l, { body: { status: b.dataset.s } }); render(); }));
@@ -1638,6 +1710,8 @@ registerRetirement(routes, shared);
 registerCombined(routes, shared);
 registerBusiness(routes, shared);
 registerSocial(routes, shared);
+registerSponsored(routes, shared);
+registerInvest(routes, shared);
 
 // Static files are cached for instant repeat visits (sw.js); pages and data always come fresh.
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});

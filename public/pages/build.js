@@ -17,6 +17,7 @@ const ago = t => { const m = Math.round((Date.now() - t) / 60e3); return m < 1 ?
 async function scanner(view) {
   const [meta, saved, accts] = await Promise.all([H.api('/scanners/meta'), H.api('/scanners'), H.accounts()]);
   view.innerHTML = `<div class="pagehead"><h1>Scanner</h1><p class="mu">Check a list of stocks or crypto against your rules and candlestick patterns. Saved scanners run around the clock: stocks during market hours, crypto any time, and alert you or buy.</p></div>
+    <div class="banner">New: <a href="#/leaders"><b>New leaders</b></a>: stocks whose relative strength just jumped into the top fifth, at or near a 52-week high.</div>
   <div class="card" id="gv"><div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">Growth and value stocks</h2><div class="seg" id="gvTab"><button type="button" data-g="growth" class="on">Growth</button><button type="button" data-g="value">Value</button></div></div>
     <p class="mu" style="margin:6px 0 10px"><b>Growth</b>: sales and earnings rising fast (the market pays up for them). <b>Value</b>: priced low compared with earnings and assets (P/E and price-to-book). From each company's SEC filings and today's prices, across 130 large US companies.</p>
     <div id="gvOut"><button type="button" id="gvRun">Scan the market</button></div></div>

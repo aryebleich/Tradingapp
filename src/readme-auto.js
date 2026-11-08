@@ -41,19 +41,22 @@ Helcim uses "interchange-plus" pricing: you pay the exact interchange, plus Helc
 Debit cards keep the cost lowest, which is why card deposits here are debit-only.
 ` },
   { id: 'recent', title: 'Recent changes', md: `
-- **All accounts** (menu → Accounts): every Alpaca account in one portfolio, each counted once (the same account connected twice, or a master/omnibus account holding its sub accounts, is never added twice), one chart, totals, merged holdings, your own groups as separate views, and **Equalize accounts** (same mix in every account: by hand with the password, or every market open, waiting for approval or placed by itself).
-- **Hosting:** Oracle Cloud server plus Render as backup, switched in Admin → Hosting; the free Cloudflare edge in front of app.brightolio.com (one button in Admin → Hosting); sign-in with Google keeps the address the user is on.
-- **Paper is paper, live is live:** every order checks it goes to the right Alpaca server; checked after every deploy.
-- **Stripe** set up with one button (Admin → Money & fees); payment methods come from the Stripe dashboard.
-- **Sign up by text**, Admin → Users (delete account, live P&L), Retirement & IRAs, charts with prices on both sides.
+- **Investing:** Stock & fund analyzer (P/E and other fundamentals, technical analysis, earnings vs expectations), Low-cost index & mutual funds, Earnings vs expectations for holdings, Automated portfolios, Investing toolkit (was Wealth builder).
+- **Trading tools:** New leaders scan, Short the market (practice shorts with no minimum, inverse ETFs for small accounts, short futures on practice, puts), Margin center (what the account qualifies for, Reg T and maintenance, margin-call prices, bid/ask and market makers).
+- **Automation:** AI long/short portfolios (weekly book, AI memo; automatic on practice, approval on real accounts), Text commands and Phone hotline as two pages, Top traders.
+- **Free plan:** sponsored news pop-ups from listed companies with the paid-promotion disclosure and a Buy button; upgrading turns them off. Campaigns in Admin → Sponsored news.
+- **Admin:** four groups (people, money, site & content, technical), My business (payroll, invoices, books, bank, inventory, reports), AI team (nine agents, the Manager picks the best model per role and learns from grades), Stripe Treasury setup steps in Admin → Money & fees.
+- **Speed:** the app is one bundled file, pages open from memory on a repeat visit, and the legal links moved into the menu so no footer moves while pages load. A check after every push fails if any file is unused or the README names a page that no longer exists.
 ` },
 ];
 // Sections that were in earlier versions: their blocks are taken out of the stored README.
-export const RETIRED = ['batch13', 'batch14', 'batch15', 'batch16', 'batch17', 'batch18'];
+export const RETIRED = ['batch12', 'batch13', 'batch14', 'batch15', 'batch16', 'batch17', 'batch18'];
 // One-time tidy of the README imported from the old repository guide: setup steps that are done or
 // replaced, and lists the generated Product overview already covers.
 export const OBSOLETE = ['Website features', 'Run it on GitHub', 'Run locally', 'Free hosting (about 15 minutes, $0/month)', 'Automatic checks and fixes after every push', 'Pairs trading, S&P 500 plan, more brokerages', 'Deposits, owner fees, AI phone assistant, Yiddish', 'Professional site extras', 'Wealth builder, bonds & AI assistants', 'Strategy library',
-  'Sign in with Google', 'Sign in with GitHub', 'Connecting Stripe (payments and subscriptions)', 'Alerts to trades (webhooks)', 'More card processors (each under 3.5%)', 'Statistical arbitrage (Strategies → Statistical arbitrage)', 'Monthly bookkeeping for taxes (Taxes → Monthly bookkeeping)', 'What the chart colors mean', 'Password resets and emails', 'Admins and signing in by text message'];
+  'Sign in with Google', 'Sign in with GitHub', 'Connecting Stripe (payments and subscriptions)', 'Alerts to trades (webhooks)', 'More card processors (each under 3.5%)', 'Statistical arbitrage (Strategies → Statistical arbitrage)', 'Monthly bookkeeping for taxes (Taxes → Monthly bookkeeping)', 'What the chart colors mean', 'Password resets and emails', 'Admins and signing in by text message',
+  // Plan prices compared with other platforms and their averages: not kept in the guide.
+  'Pricing comparison', 'Competitor prices (per month)', 'Averages', 'Feature limits, set from the same platforms'];
 export function tidy(text) {
   let out = String(text || '');
   for (const id of RETIRED) { const a = out.indexOf(`<!-- auto:${id} -->`), e = `<!-- /auto:${id} -->`, b = out.indexOf(e); if (a >= 0 && b > a) out = out.slice(0, a) + out.slice(b + e.length); }

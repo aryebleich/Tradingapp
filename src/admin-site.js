@@ -106,6 +106,27 @@ adminSiteRouter.get('/stripe', wrap(async (req, res) => {
   const { stripeStatus } = await import('./stripesetup.js');
   res.json({ ...(await stripeStatus({ siteUrl: siteUrl(), lastEvent: S.siteGet('stripeLastEvent', null), savedWebhookId: S.siteGet('stripeWebhookId', null) })), badSignature: S.siteGet('stripeBadSignature', null), renderConnected: S.renderEnabled() });
 }));
+// Stripe Treasury (financial accounts for the businesses on a Connect platform): where the setup
+// stands. Stripe answers with what is missing (Connect not set up, Treasury not approved yet, ...).
+adminSiteRouter.get('/stripe/treasury', wrap(async (req, res) => {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) return res.json({ step: 'key', ok: false, message: 'Add STRIPE_SECRET_KEY in Keys first.' });
+  const api = (process.env.STRIPE_API_URL || 'https://api.stripe.com').replace(/\/$/, '');
+  const get = async p => { const r = await fetch(api + p, { headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(15000) }); return { status: r.status, body: await r.json().catch(() => ({})) }; };
+  const acct = await get('/v1/account'), mode = key.startsWith('sk_live') ? 'live' : 'test';
+  const conn = await get('/v1/accounts?limit=3');
+  if (conn.status !== 200) return res.json({ step: 'connect', ok: false, mode, account: acct.body?.id || null, message: conn.body?.error?.message || 'Stripe Connect is not set up on this account yet.' });
+  const withTreasury = (conn.body.data || []).filter(a => a.capabilities?.treasury);
+  const fa = withTreasury[0] ? await fetch(`${api}/v1/treasury/financial_accounts?limit=3`, { headers: { Authorization: `Bearer ${key}`, 'Stripe-Account': withTreasury[0].id }, signal: AbortSignal.timeout(15000) }).then(async r => ({ status: r.status, body: await r.json().catch(() => ({})) })) : null;
+  res.json({
+    mode, account: acct.body?.id || null, connectedAccounts: (conn.body.data || []).length,
+    treasuryAccounts: withTreasury.map(a => ({ id: a.id, treasury: a.capabilities.treasury, issuing: a.capabilities.card_issuing || null })),
+    financialAccounts: fa?.status === 200 ? (fa.body.data || []).map(f => ({ id: f.id, status: f.status, features: Object.keys(f.active_features || {}).length ? f.active_features : null })) : [],
+    step: !withTreasury.length ? 'apply' : !fa || fa.status !== 200 || !(fa.body.data || []).length ? 'financial-account' : 'done',
+    ok: !!fa && fa.status === 200 && (fa.body.data || []).length > 0,
+    message: fa && fa.status !== 200 ? fa.body?.error?.message : null,
+  });
+}));
 adminSiteRouter.post('/stripe/setup', wrap(async (req, res) => {
   const { setupStripe } = await import('./stripesetup.js');
   const r = await setupStripe({ siteUrl: siteUrl(), savedWebhookId: S.siteGet('stripeWebhookId', null) });
@@ -332,7 +353,7 @@ const readme = async () => {
   const { tryDecrypt } = await import('./crypto.js');
   let text = tryDecrypt(r.enc, 'private README') ?? '';
   // Once: shorter (finished setup steps and old change lists out), then kept short by the code.
-  if (text && r.tidied !== 2) { const { tidy } = await import('./readme-auto.js'); text = tidy(text); await saveReadme(text, { tidied: 2 }).catch(() => {}); }
+  if (text && r.tidied !== 3) { const { tidy } = await import('./readme-auto.js'); text = tidy(text); await saveReadme(text, { tidied: 3 }).catch(() => {}); }
   // Sections that come with the code (src/readme-auto.js) are kept current with every change.
   const { mergeSections } = await import('./readme-auto.js'), { overviewMd } = await import('./readme-overview.js');
   const top = await overviewMd().catch(() => null), merged = text ? mergeSections(text, top) : text;
@@ -371,9 +392,7 @@ adminSiteRouter.post('/readme/import', wrap(async (req, res) => {
     return r.text();
   };
   let text = await read('README.md');
-  // The plan-pricing notes used to be a separate public file; they join the private guide.
-  const pricing = await read('docs/pricing-comparison.md').catch(() => '');
-  if (pricing) text += `\n\n---\n\n${pricing.replace(/^# /m, '## ')}`;
+  text = (await import('./readme-auto.js')).tidy(text);
   await saveReadme(text);
   await audit(req.user.id, 'readme_imported', { ref, length: text.length }, req.ip);
   res.json({ text });

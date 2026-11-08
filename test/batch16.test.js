@@ -143,7 +143,7 @@ test('the private README starts with a full, generated product overview', async 
   const { overviewMd, literal } = await import('../src/readme-overview.js');
   const { mergeSections } = await import('../src/readme-auto.js');
   const md = await overviewMd();
-  for (const s of ['Portfolio & risk', 'Plain-language research', 'Tokenized securities', 'Investor protection', 'AI coding agents', 'Ultimate', 'Finnhub', 'ai-agent.yml']) assert.ok(md.includes(s), s);
+  for (const s of ['Portfolio & risk', 'Plain-language research', 'Tokenized securities', 'Investor protection', 'AI team', 'Ultimate', 'Finnhub', 'ai-agent.yml']) assert.ok(md.includes(s), s);
   assert.doesNotMatch(md, /sk-|ghp_|BEGIN PRIVATE/); // names of keys only
   const once = mergeSections('# Guide\n\nHello\n', md);
   assert.match(once, /^# Guide\n\n<!-- auto:overview -->\n## Product overview/);

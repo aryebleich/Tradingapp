@@ -487,6 +487,33 @@ CREATE TABLE IF NOT EXISTS rules (
   created_at INTEGER NOT NULL
 );
 -- Saved Brightolio Scripts and their daily alerts (src/scripts.js).
+-- Admin → AI team (src/aiteam.js): jobs worked on by the manager and its agents.
+CREATE TABLE IF NOT EXISTS ai_team_jobs (
+  id INTEGER PRIMARY KEY, job TEXT NOT NULL, status TEXT NOT NULL, plan TEXT, messages TEXT, result TEXT,
+  created_by INTEGER, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
+);
+-- AI long/short portfolios (src/aifunds.js): a book of longs and shorts rebuilt every week.
+CREATE TABLE IF NOT EXISTS ai_funds (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL, style TEXT NOT NULL, risk INTEGER NOT NULL, account TEXT NOT NULL, capital REAL,
+  book TEXT, held TEXT, nav REAL NOT NULL DEFAULT 100, memo TEXT, pending TEXT, last_run INTEGER,
+  active INTEGER NOT NULL DEFAULT 1, created_at INTEGER NOT NULL
+);
+-- Sponsored news (src/sponsored.js): paid announcements of listed companies for free-plan users.
+CREATE TABLE IF NOT EXISTS sponsored_ads (
+  id INTEGER PRIMARY KEY,
+  symbol TEXT NOT NULL, company TEXT, exchange TEXT,
+  headline TEXT NOT NULL, body TEXT, url TEXT,
+  sponsor TEXT NOT NULL, paid REAL NOT NULL, disclosure TEXT,
+  starts TEXT NOT NULL, ends TEXT, weight INTEGER NOT NULL DEFAULT 1, active INTEGER NOT NULL DEFAULT 1,
+  views INTEGER NOT NULL DEFAULT 0, clicks INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS sponsored_views (
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  day TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, last_at INTEGER NOT NULL,
+  PRIMARY KEY (user_id, day)
+);
 CREATE TABLE IF NOT EXISTS scripts (
   id INTEGER PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

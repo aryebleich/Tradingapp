@@ -20,6 +20,16 @@ export async function tickerCiks() {
     return m;
   });
 }
+// Companies listed on a US stock exchange (SEC's ticker file with the exchange): { TICKER: { name, exchange } }.
+// Over-the-counter and unlisted companies are left out.
+export async function listedCompanies() {
+  return secCached('sec:tickerexch', DAY, async () => {
+    const d = await get(`${secWww()}/files/company_tickers_exchange.json`), f = d.fields || [], m = {};
+    const [ti, ni, ei] = ['ticker', 'name', 'exchange'].map(k => f.indexOf(k));
+    for (const r of d.data || []) if (r[ti] && r[ei] && !/otc/i.test(r[ei]) && !m[r[ti]]) m[String(r[ti]).toUpperCase()] = { name: r[ni], exchange: r[ei] };
+    return m;
+  });
+}
 // One concept for every filer: { cik: value }.
 async function frame(tag, unit, period, taxonomy = 'us-gaap') {
   return secCached(`sec:frame:${tag}:${period}`, 7 * DAY, async () => {

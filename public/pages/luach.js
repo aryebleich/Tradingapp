@@ -8,7 +8,7 @@ const KIND = { yomtov: 'Yom Tov', fast: 'Fast', chanukah: 'Chanukah', purim: 'Pu
 
 async function page(view, q) {
   const tab = TABS.some(([k]) => k === q.get('tab')) ? q.get('tab') : 'today';
-  const head = `<div class="pagehead"><div><h1>Luach</h1><p class="mu" style="margin:4px 0 0">The Hebrew date, zmanim for your city, Yom Tov and fasts, reminders before Shabbos and Yom Tov, and your tzedakah.</p></div></div>
+  const head = `<p><a href="#/values">← Values investing</a></p><div class="pagehead"><div><h1>Luach</h1><p class="mu" style="margin:4px 0 0">The Hebrew date, zmanim for your city, Yom Tov and fasts, reminders before Shabbos and Yom Tov, and your tzedakah.</p></div></div>
     <div class="chips" style="margin-bottom:14px">${TABS.map(([k, t]) => `<a href="#/luach?tab=${k}"><button type="button" class="${k === tab ? 'on' : ''}">${t}</button></a>`).join('')}</div>`;
   if (tab === 'month') return month(view, q, head);
   if (tab === 'tzedakah') return tzedakah(view, q, head);

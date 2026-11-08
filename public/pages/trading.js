@@ -629,7 +629,7 @@ function renderTicket(box, symbol, kind, acct, lastPx, q, onPlaced) {
           ${t === 'limit' ? '<label class="check" style="margin-top:8px"><input type="checkbox" name="extended_hours"> Allow pre-market & after-hours (Day orders)</label>' : ''}
         </details>` : ''}
         ${kind === 'option' ? `<label>Position intent<select name="position_intent"><option value="">Automatic</option><option value="${st.side}_to_open">${st.side === 'buy' ? 'Buy' : 'Sell'} to open</option><option value="${st.side}_to_close">${st.side === 'buy' ? 'Buy' : 'Sell'} to close</option></select></label>` : ''}
-        ${kind === 'stock' && st.side === 'sell' ? '<label class="check"><input type="checkbox" name="allow_short"> Sell short (I do not own it; margin account with $2,000+ needed)</label>' : ''}
+        ${kind === 'stock' && st.side === 'sell' ? `<label class="check"><input type="checkbox" name="allow_short"> ${H.state?.account === 'paper' ? 'Sell short (practice money: no minimum balance)' : 'Sell short (I do not own it; margin account with $2,000+ needed)'} · <a href="#/short">Other ways to bet on a fall</a></label>` : ''}
         <div id="tkCost"></div><div id="tkBear"></div>
         <div class="kv" style="margin-top:12px"><span>Estimated ${st.side === 'buy' ? 'cost' : 'proceeds'}</span><span id="est">-</span>
           ${acct ? `<span>Buying power</span><span>${usd(kind === 'option' ? acct.optionsBuyingPower ?? acct.buyingPower : kind === 'crypto' ? acct.nonMarginableBuyingPower ?? acct.cash : acct.buyingPower)}</span>` : ''}</div>

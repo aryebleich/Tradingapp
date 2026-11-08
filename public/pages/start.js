@@ -53,7 +53,7 @@ async function page(view, q) {
   if (n === 5) {
     const NEXT = {
       learn: [['learn', 'Short lessons', 'Five-minute lessons: stocks, funds, risk, and how orders work.'], ['strategies', 'Try a ready-made strategy', 'See how a plan works, with practice money.'], ['dashboard', 'Watch your practice portfolio', 'See how your first purchase moves.']],
-      grow: [['sp500', 'Build an S&P 500 plan', 'How much a monthly amount could grow, and set it to invest automatically.'], ['wealth', 'Wealth builder', 'Compounding, dividends and keeping costs low, in plain words.'], ['learn', 'Short lessons', 'The basics, five minutes each.']],
+      grow: [['sp500', 'Build an S&P 500 plan', 'How much a monthly amount could grow, and set it to invest automatically.'], ['wealth', 'Investing toolkit', 'Compounding, dividends and keeping costs low, in plain words.'], ['learn', 'Short lessons', 'The basics, five minutes each.']],
       trade: [['trade', 'The Trade page', 'Prices, charts and every order type, with a guide for each.'], ['chart', 'Charts', 'Trends, signals and bull/bear markers.'], ['scanner', 'Scanner', 'Find stocks that match what you look for.']],
     }[s.goal || 'learn'];
     body = `<h1>You're all set 🎉</h1><p class="st-lead">Here's where to go next${s.goal ? ', based on what you told us' : ''}:</p>

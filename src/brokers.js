@@ -170,7 +170,11 @@ export async function recordFill(userId, account, symbol, side, qty, price, sour
     const p = await one('SELECT * FROM positions WHERE user_id = ? AND account = ? AND symbol = ?', userId, account, symbol);
     const cur = p?.qty || 0, avg = p?.avg_price || 0;
     const nq = +(side === 'buy' ? cur + qty : cur - qty).toFixed(6);
-    const navg = side === 'buy' ? (cur * avg + qty * price) / nq : avg;
+    // Average price: adding in the same direction (buying more of a long, or selling short more)
+    // averages in; reducing keeps it; crossing zero starts again at this price. Shorts keep a
+    // negative quantity, so their profit is (price - average) x quantity like any other position.
+    const adds = (side === 'buy' && cur >= 0) || (side === 'sell' && cur <= 0);
+    const navg = !nq ? 0 : Math.sign(nq) !== Math.sign(cur) && cur ? price : adds ? (Math.abs(cur) * avg + qty * price) / Math.abs(nq) : avg;
     await run('INSERT INTO positions (user_id, account, symbol, qty, avg_price) VALUES (?,?,?,?,?) ON CONFLICT(user_id, account, symbol) DO UPDATE SET qty = excluded.qty, avg_price = excluded.avg_price',
       userId, account, symbol, nq, nq ? navg : 0);
     await run('INSERT INTO fills (user_id, account, symbol, side, qty, price, source, broker_order_id, at, expected_price, signal_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)', userId, account, symbol, side, qty, price, source, brokerId, at, expected, signalAt);
@@ -288,7 +292,17 @@ async function sendOrder(userId, account, symbol, side, q, n, source, order) {
       if (qty * price > a.cash + 1e-6) throw new Error(`Not enough paper cash ($${a.cash.toFixed(2)})`);
     } else {
       const p = await one("SELECT qty FROM positions WHERE user_id = ? AND account = 'paper' AND symbol = ?", userId, symbol);
-      if (!p || p.qty < qty - 1e-9) throw Object.assign(new Error(`You hold ${p?.qty || 0} ${symbol}`), { status: 409 });
+      const held = p?.qty || 0;
+      if (held < qty - 1e-9) {
+        // Short selling on practice money, with no minimum balance (a real account needs a margin
+        // account with $2,000 or more). The Reg T rule still applies: equity of at least 50% of
+        // everything held short (150% of the short value with the sale's own proceeds).
+        if (!order.allowShort) throw Object.assign(new Error(held > 0 ? `You hold ${held} ${symbol}; tick "Sell short" to sell more than that` : `You hold no ${symbol}; tick "Sell short" to short it`), { status: 409 });
+        if (symbol.includes('/')) throw Object.assign(new Error('Crypto cannot be sold short'), { status: 409 });
+        const s = await accountSummary(userId, 'paper');
+        const shortAfter = s.positions.filter(x => x.qty < 0 && x.symbol !== symbol).reduce((t, x) => t - x.value, 0) + (Math.max(0, qty - Math.max(0, held)) + Math.max(0, -held)) * price;
+        if (s.equity < shortAfter * 0.5) throw Object.assign(new Error(`Not enough equity to short: shorts of $${Math.round(shortAfter).toLocaleString('en-US')} need $${Math.round(shortAfter * 0.5).toLocaleString('en-US')} (50%), the practice account has $${Math.round(s.equity).toLocaleString('en-US')}`), { status: 409 });
+      }
     }
   } });
   return { status: 'filled', symbol, side, qty, price, broker: 'paper' };

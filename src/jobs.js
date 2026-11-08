@@ -38,6 +38,7 @@ export const JOBS = [
   // Script alerts after the close (weekdays from 4:15 pm New York).
   ['scriptalerts', 30, async t => (await import('./scripts.js')).runScriptAlerts(t)],
   // Business: recurring invoices go out, once a day.
+  ['aifunds', 30, async t => (await import('./aifunds.js')).runAiFunds(t)],
   ['business', 1440, async t => (await import('./business/routes.js')).runBusiness(t)],
   // Equalize accounts at the market open (9:30 to 10:00 New York), for users who turned it on.
   ['equalize', 5, async t => (await import('./equalize.js')).runEqualize(t)],
