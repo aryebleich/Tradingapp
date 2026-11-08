@@ -992,3 +992,8 @@ table.wrapcells { width: 100%; table-layout: auto; }
   .newstoast.sponsored .nt-foot { margin-top: 6px; }
   .newstoast .nt-disc { font-size: 10px; margin-top: 6px; }
 }
+
+/* The app page shows its footer only to signed-out visitors (sign-in, sign-up), and only once the
+   app knows that: before, it appeared under the header on phones while the app was starting. */
+body > footer { display: none; }
+body.signedout > footer { display: block; }

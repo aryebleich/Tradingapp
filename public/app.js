@@ -55,17 +55,33 @@ const date = t => new Date(t).toLocaleString();
 // Pages open at once on a repeat visit: while a page is being drawn, data it read in the last 10
 // minutes is used right away and fetched again in the background; if anything changed, the page is
 // drawn again quietly. Saving anything (any request that is not a read) empties this memory.
-const SWR = new Map(), SWR_SKIP = /^\/(auth|alpaca\/stream|notifications|admin\/agents)/;
-let swrOn = false, swrRedraw = null;
+// The memory also survives closing the app (this browser only, for the signed-in user, emptied on
+// sign-out): opening the app shows the last numbers at once while fresh ones load.
+const SWR = new Map(), SWR_SKIP = /^\/(auth|alpaca\/stream|notifications|admin\/agents|sponsored)/;
+const KEEP_KEY = 'qp_keep';
+let swrOn = false, swrRedraw = null, keepTimer = null;
+// Small saves (seen markers, settings of one area) only forget that area; anything else forgets all.
+const LIGHT = /^\/(prefs|learn\/ack|sponsored)\//;
+const keepLoad = uid => { try { const k = JSON.parse(localStorage.getItem(KEEP_KEY) || 'null'); if (!k || k.uid !== uid || Date.now() - k.at > 864e5) return; for (const [p, d] of k.e) SWR.set(p, { at: k.at, data: d, json: JSON.stringify(d), ok: true, p: Promise.resolve(d), kept: true }); } catch {} };
+const keepSave = () => { clearTimeout(keepTimer); keepTimer = setTimeout(() => { if (!ME) return; try { const e = [...SWR].filter(([, v]) => v.ok && !v.kept && v.json.length < 60000).slice(-60).map(([k, v]) => [k, v.data]); localStorage.setItem(KEEP_KEY, JSON.stringify({ uid: ME.email || ME.phone, at: Date.now(), e })); } catch {} }, 1500); };
+const keepClear = () => { SWR.clear(); try { localStorage.removeItem(KEEP_KEY); localStorage.removeItem('qp_me'); } catch {} };
 async function api(path, opts = {}, retried) {
   const get = !opts.method && !opts.body;
-  if (!get) SWR.clear();
+  if (!get) { if (LIGHT.test(path)) { const top = path.split('/')[1]; for (const k of [...SWR.keys()]) if (k.split(/[/?]/)[1] === top) SWR.delete(k); } else SWR.clear(); }
   else if (!SWR_SKIP.test(path)) {
     const hit = SWR.get(path), age = hit ? Date.now() - hit.at : Infinity;
-    if (hit && age < 3000) return structuredClone(await hit.p);
-    if (hit && swrOn && age < 600e3 && hit.ok) {
+    if (hit && age < 3000 && !hit.kept) return structuredClone(await hit.p);
+    if (hit && swrOn && (age < 600e3 || hit.kept) && hit.ok) {
       const route = location.hash;
-      fetchJson(path).then(async p => { const d = await p; if (JSON.stringify(d) !== hit.json && location.hash === route) { clearTimeout(swrRedraw); swrRedraw = setTimeout(() => location.hash === route && render({ quiet: true }), 150); } }).catch(() => {});
+      // Refreshed once in the background; the remembered copy stays until the fresh one arrives.
+      if (!hit.refreshing) {
+        hit.refreshing = true;
+        apiCall(path, {}).then(d => {
+          const json = JSON.stringify(d);
+          SWR.set(path, { at: Date.now(), data: d, json, ok: true, p: Promise.resolve(d) }); keepSave();
+          if (json !== hit.json && location.hash === route) { clearTimeout(swrRedraw); swrRedraw = setTimeout(() => location.hash === route && render({ quiet: true }), 150); }
+        }).catch(() => { hit.refreshing = false; });
+      }
       return structuredClone(hit.data);
     }
     return structuredClone(await fetchJson(path).then(p => p));
@@ -75,7 +91,7 @@ async function api(path, opts = {}, retried) {
 // A read that is remembered (see above); failures are not remembered.
 function fetchJson(path) {
   const e = { at: Date.now(), ok: false };
-  e.p = apiCall(path, {}).then(d => { Object.assign(e, { data: d, json: JSON.stringify(d), ok: true }); return d; }, err => { SWR.delete(path); throw err; });
+  e.p = apiCall(path, {}).then(d => { Object.assign(e, { data: d, json: JSON.stringify(d), ok: true }); keepSave(); return d; }, err => { SWR.delete(path); throw err; });
   SWR.set(path, e);
   if (SWR.size > 300) SWR.delete(SWR.keys().next().value);
   return Promise.resolve(e.p);
@@ -88,7 +104,7 @@ async function apiCall(path, opts = {}, retried) {
   });
   const d = await r.json().catch(() => ({}));
   // Session expired (or signed out in another tab): go back to sign-in instead of showing errors.
-  if (r.status === 401 && ME && !path.startsWith('/auth/')) { ME = null; location.hash = '#/login'; }
+  if (r.status === 401 && ME && !path.startsWith('/auth/')) { keepClear(); ME = null; location.hash = '#/login'; }
   if (r.status === 402 && d.upgrade) showUpgrade(d.feature);
   // Speed bump: read the risk notice (a 10-second wait), then the order is sent again once.
   if (d.needsAck && !retried && await riskNotice(d.needsAck)) { await api('/learn/ack/' + d.needsAck, { body: {} }); return apiCall(path, opts, true); }
@@ -456,6 +472,7 @@ const refreshMe = async () => { ME = (await api('/auth/me')).user; };
 const SKELETON = '<div class="skel"><div class="h1"></div><div class="box"></div><div class="w60"></div><div></div><div class="box"></div></div>';
 async function render(opts) {
   const quiet = opts?.quiet === true;
+  swrOn = !quiet; // a normal draw may use remembered data (see api); a quiet redraw always fetches
   while (cleanups.length) { try { cleanups.pop()(); } catch {} }
   const [route, q] = (location.hash.slice(2) || 'dashboard').split('?');
   // Each render gets a fresh container: requests still in flight from the previous page then
@@ -480,7 +497,7 @@ async function render(opts) {
   }
   if (!ME && !['login', 'login-phone', 'register', 'mfa', 'forgot', 'reset', 'verify', 'open-account'].includes(route)) { location.hash = '#/login'; return; }
   // Signed in, the legal links live at the bottom of the menu: the page has no footer that could move.
-  document.body.classList.toggle('signedin', !!ME);
+  document.body.classList.toggle('signedin', !!ME); document.body.classList.toggle('signedout', !ME);
   $('#top').hidden = !ME; $('#nav').hidden = !ME; $('#tabs').hidden = !ME; $('#closeAllBtn').hidden = !ME;
   // Owner: switch between the full owner view and the view of each plan.
   const va = $('#viewAs'); va.hidden = ME?.role !== 'admin';
@@ -503,7 +520,7 @@ async function render(opts) {
       ME = (await api('/auth/me')).user; CFG = null; render();
     };
   }
-  setMenu(false);
+  if (!quiet) setMenu(false); // a background refresh leaves an open phone menu open
   $$('#tabs a[data-r]').forEach(a => a.classList.toggle('on', a.dataset.r === route || ((route === '' || route === 'start') && a.dataset.r === 'dashboard')));
   if (ME) {
     // Signing in for the Android app: back to the app once signed in here.
@@ -513,6 +530,11 @@ async function render(opts) {
     // Groups start folded; their arrow opens them (remembered). The group holding the current page opens.
     const opened = (() => { try { return JSON.parse(localStorage.getItem('qp_nav_open') || '[]'); } catch { return []; } })();
     const START = await import('./pages/start.js').then(m => m.startDone()).catch(() => true);
+    // The menu is built again only when something in it changes (page, plan, add-ons, trading mode):
+    // a background refresh of the page never rebuilds it, so a tap on the menu is never lost.
+    const navKey = JSON.stringify([route, ME.role, ME.plan, ME.planStatus, ME.previewPlan, ME.previewAdviser, ME.addons, ME.email, ME.trialUsed, START, state.account]);
+    if (render.navKey !== navKey || !$('#nav').firstElementChild) {
+    render.navKey = navKey;
     const link = ([k, t]) => `<a href="#/${k}" class="${k === route ? 'on' : ''}">${icon(k)}${t}</a>`;
     const core = CORE.filter(([k]) => k !== 'start' || !START || route === 'start');
     $('#nav').innerHTML = `<div class="navcore">${core.map(link).join('')}</div>` + groups.map(([g, items]) => { const list = items.filter(([k]) => !(ADDON_PAGES[k] && ME.addons?.[ADDON_PAGES[k]] === false)), open = opened.includes(g) || list.some(([k]) => k === route);
@@ -527,12 +549,12 @@ async function render(opts) {
       try { localStorage.setItem('qp_nav_open', JSON.stringify([...set])); } catch {}
     }));
     $('#navLogout').onclick = e => { e.preventDefault(); $('#logout').click(); };
+    }
     updateBadge();
   }
   const show = () => { for (const c of [...$('#view').children]) if (c !== view) c.remove(); view.style.cssText = ''; scrollTo(0, keepY); };
   try {
     await loadPrefs();
-    swrOn = !quiet;
     try { await (routes[route] || routes.dashboard)(view, new URLSearchParams(q)); } finally { if (render.seq === mine) swrOn = false; }
     if (swap) {
       if (!view.isConnected) return; // the user moved to another page meanwhile
@@ -676,7 +698,7 @@ $('#closeAllBtn').onclick = async () => {
 // Calm mode (default on): no flashing prices or celebratory effects.
 const setCalm = on => { document.body.classList.toggle('calm', on); try { localStorage.setItem('qp_calm', on ? '1' : '0'); } catch {} };
 setCalm((() => { try { return localStorage.getItem('qp_calm') !== '0'; } catch { return true; } })());
-$('#logout').onclick = async () => { await api('/auth/logout', { body: {} }); ME = null; location.href = '/'; };
+$('#logout').onclick = async () => { keepClear(); await api('/auth/logout', { body: {} }); ME = null; location.href = '/'; };
 
 // Paper or live, chosen once in the side panel for every page. "Live" is the brokerage account
 // (Alpaca, or another connected broker picked in the list under it).
@@ -1722,17 +1744,33 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.se
   if (ref && /^[a-z0-9]{6,12}$/.test(ref)) { try { localStorage.setItem('qp_ref', ref); } catch {} }
   // Language: chosen in Settings → Language.
   await startI18n().catch(e => console.warn('i18n', e));
-  // A server that is waking up (free hosting sleeps) answers late or with an error: keep trying
-  // for a while instead of sending a signed-in user back to the sign-in page.
   let me = null;
-  for (let i = 0; i < 8 && !me; i++) {
-    me = await fetch('/api/auth/me', { headers: { 'X-Requested-With': 'qp' } }).then(r => (r.ok ? r.json() : null)).catch(() => null);
-    if (!me) { $('#view').innerHTML = '<div class="card auth"><p class="mu">Connecting to Brightolio…</p></div>'; await new Promise(r => setTimeout(r, 1500 * (i + 1))); }
+  const known = (() => { try { return JSON.parse(localStorage.getItem('qp_me') || 'null'); } catch { return null; } })();
+  const getMe = () => fetch('/api/auth/me', { headers: { 'X-Requested-With': 'qp' } }).then(r => (r.ok ? r.json() : null)).catch(() => null);
+  const knownId = known && (known.email || known.phone);
+  if (knownId) {
+    // Signed in last time: the page draws at once from what this browser remembers, while the
+    // server confirms the sign-in (signed out elsewhere: back to the sign-in page).
+    ME = known; keepLoad(knownId); render();
+    getMe().then(fresh => {
+      if (!fresh) return; // server still waking up: the next request retries
+      if (!fresh.user) { keepClear(); ME = null; if (fresh.mfaPending) location.hash = '#/mfa'; render(); return; }
+      try { localStorage.setItem('qp_me', JSON.stringify(fresh.user)); } catch {}
+      if (JSON.stringify(fresh.user) !== JSON.stringify(known)) { ME = fresh.user; render({ quiet: true }); }
+    });
+  } else {
+    // A server that is waking up (free hosting sleeps) answers late or with an error: keep trying
+    // for a while instead of sending a signed-in user back to the sign-in page.
+    for (let i = 0; i < 8 && !me; i++) {
+      me = await getMe();
+      if (!me) { $('#view').innerHTML = '<div class="card auth"><p class="mu">Connecting to Brightolio…</p></div>'; await new Promise(r => setTimeout(r, 1500 * (i + 1))); }
+    }
+    me ||= {};
+    ME = me.user;
+    try { if (ME) localStorage.setItem('qp_me', JSON.stringify(ME)); } catch {}
+    if (!ME && me.mfaPending) location.hash = '#/mfa';
+    render();
   }
-  me ||= {};
-  ME = me.user;
-  if (!ME && me.mfaPending) location.hash = '#/mfa';
-  render();
   // Redraw the simulator chart only when the width really changes (not on scrollbar or zoom
   // noise), and only if that page is still showing when the debounce fires.
   let lastW = innerWidth;

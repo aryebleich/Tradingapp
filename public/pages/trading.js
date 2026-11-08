@@ -380,12 +380,13 @@ async function portfolio(view, q) {
   const s = await needConnection(view, 'Portfolio');
   if (!s) return;
   const period = q.get('period') || localStorage.getItem('qp_period') || '1M';
-  const [a, h, ps, clock] = await Promise.all([A('/account'), A('/portfolio/history?period=' + period).catch(() => ({ points: [] })), A('/positions'), A('/clock').catch(() => null)]);
+  // Everything at the same time (each is a call to the brokerage; one after another took seconds).
+  const [a, h, ps, clock, approvals, accts, groups] = await Promise.all([A('/account'), A('/portfolio/history?period=' + period).catch(() => ({ points: [] })), A('/positions'), A('/clock').catch(() => null), H.approvalsBanner().catch(() => ''), H.api('/accounts').catch(() => []), H.api('/combined/groups').catch(() => [])]);
   const day = a.lastEquity ? a.equity - a.lastEquity : null;
-  const approvals = await H.approvalsBanner(), P = H.prefs();
+  const P = H.prefs();
   // Several Alpaca accounts: switch between this account, all of them together, and the user's groups.
-  const alpacaIds = (await H.api("/accounts").catch(() => [])).filter(x => /^alpaca/.test(x.id) && x.connected);
-  const gs = alpacaIds.length > 1 ? await H.api('/combined/groups').catch(() => []) : [];
+  const alpacaIds = accts.filter(x => /^alpaca/.test(x.id) && x.connected);
+  const gs = alpacaIds.length > 1 ? groups : [];
   const viewBar = alpacaIds.length > 1 ? `<div class="chips viewtabs"><button type="button" class="on">This account</button><a href="#/accounts"><button type="button">All accounts</button></a>${gs.map(g => `<a href="#/accounts?view=g:${g.id}"><button type="button">${H.esc(g.name)}</button></a>`).join('')}</div>` : '';
   const since = P.mode !== 'live' ? H.sinceStat(await H.sinceLastLook('alpaca', a.equity)) : '';
   view.innerHTML = `${approvals}<div class="row" style="justify-content:space-between"><h1>Portfolio <span class="pill ${a.connection.live ? 'warn' : ''}">${a.connection.live ? 'LIVE' : a.connection.type === 'broker' ? 'Sandbox' : 'Paper'}</span></h1></div>
