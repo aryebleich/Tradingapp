@@ -978,3 +978,5 @@ ol.steps li p { margin: 2px 0 0; font-size: 13px; }
 table.wrapcells td, table.wrapcells th { white-space: normal; min-width: 0; }
 table.wrapcells { width: 100%; table-layout: auto; }
 .grid > .card { min-width: 0; }
+/* Desktop: pop-ups sit at the bottom-right, away from the side menu (they covered its lower links). Right-to-left pages mirror it. */
+@media (min-width: 901px) { .newstoast { left: auto; right: 20px; } html[dir="rtl"] .newstoast { right: auto; left: 20px; } }
