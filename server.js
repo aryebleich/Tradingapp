@@ -1049,7 +1049,8 @@ api.post('/admin/ledger/:id', U, auth.requireAdmin, wrap(async (req, res) => {
 api.use((req, res) => res.status(404).json({ error: 'Not found' }));
 api.use((err, req, res, _next) => {
   if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'Invalid JSON' });
-  if (!err.status || err.status >= 500) console.error(err);
+  if (!err.status || (err.status >= 500 && err.status !== 503)) console.error(err);
+  else if (err.status === 503) console.warn(`503 ${req.method} ${req.path}: ${err.message}`);
   res.status(err.status || 400).json({ error: err.expose === false ? 'Something went wrong' : err.message, ...(err.upgrade ? { upgrade: true, feature: err.feature } : {}), ...(err.needsAck ? { needsAck: err.needsAck } : {}), ...(err.needsLesson ? { needsLesson: err.needsLesson } : {}), ...(err.locked ? { locked: true } : {}), ...(err.shed ? { shed: true } : {}) });
 });
 app.use('/api', api);

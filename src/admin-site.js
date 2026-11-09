@@ -257,7 +257,7 @@ async function gh(method, p, body) {
   if (!process.env.GITHUB_TOKEN) throw Object.assign(new Error('Add GITHUB_TOKEN in Keys first'), { status: 400 });
   const r = await fetch(`${GH()}/repos/${repo()}${p}`, { method, headers: { authorization: `Bearer ${process.env.GITHUB_TOKEN}`, accept: 'application/vnd.github+json', 'x-github-api-version': '2022-11-28', 'user-agent': 'Brightolio', ...(body ? { 'content-type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(15000) });
   const text = await r.text();
-  if (!r.ok) throw Object.assign(new Error(`GitHub answered ${r.status}: ${text.slice(0, 160)}`), { status: r.status === 404 ? 404 : 502 });
+  if (!r.ok) throw Object.assign(new Error((await import('./agents.js')).githubError(r.status, text)), { status: r.status === 404 ? 404 : 502 });
   return text ? JSON.parse(text) : {};
 }
 adminSiteRouter.get('/yiddish', wrap(async (req, res) => {

@@ -163,7 +163,7 @@ router.post('/login', async (req, res) => {
     return res.status(401).json({ error: 'Wrong email or password' });
   }
   await run('UPDATE users SET failed_logins = 0, locked_until = 0 WHERE id = ?', u.id);
-  const sec = await import('./security.js'), { getSetting } = await import('./settings.js');
+  const { getSetting } = await import('./settings.js');
   if (await getSetting(u.id, 'passkeyOnly')) return res.status(403).json({ error: 'This account signs in with a passkey only. Use "Sign in with a passkey".', passkeyRequired: true });
   await createSession(res, req, u.id, !!u.totp_enabled);
   await audit(u.id, u.totp_enabled ? 'login_password_ok' : 'login', null, req.ip);

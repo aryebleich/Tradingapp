@@ -76,7 +76,7 @@ async function issueInvoice(userId, inv) {
   return { rate, entry: entry.id };
 }
 async function recordPayment(userId, inv, amount, date, method = 'manual', ref = null) {
-  const s = await settings(userId), t = E.invoiceTotals(inv);
+  const t = E.invoiceTotals(inv);
   amount = E.r2(Math.min(+amount || t.balance, t.balance));
   if (!(amount > 0)) throw bad('Nothing is left to pay on this invoice');
   await post(userId, E.paymentEntry(inv, amount, date, inv.rate || 1));

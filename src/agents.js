@@ -16,6 +16,15 @@ const repo = () => process.env.GITHUB_REPO || 'aryebleich/Tradingapp';
 export const WORKFLOWS = { agent: 'ai-agent.yml', ci: 'web-ci.yml', e2e: 'e2e.yml' };
 export const KINDS = { write: 'Write or change a feature', test: 'Add or improve tests', debug: 'Debug a failed run', review: 'Review code (findings only)' };
 
+// GitHub's refusals in plain words (instead of its raw JSON answer).
+export function githubError(status, text = '') {
+  let msg = ''; try { msg = JSON.parse(text).message || ''; } catch { msg = String(text).slice(0, 120); }
+  if (status === 401) return 'GitHub refused the key (GITHUB_TOKEN): it is wrong or has expired. Make a new fine-grained token for this repository and save it in Admin → Keys.';
+  if (status === 403) return `GitHub refused the request: the key (GITHUB_TOKEN) lacks a permission for this repository (Actions, Contents or Pull requests)${msg ? ` (${msg})` : ''}.`;
+  if (status === 404) return 'GitHub could not find that on this repository (check GITHUB_REPO and that the key can see the repository).';
+  if (status === 429) return 'GitHub is limiting requests for a while; try again in a few minutes.';
+  return `GitHub answered ${status}${msg ? `: ${msg}` : ''}`;
+}
 async function gh(method, p, body, { raw = false } = {}) {
   if (!process.env.GITHUB_TOKEN) throw bad('Add GITHUB_TOKEN in Admin → Keys first', 400);
   const r = await fetch(`${API()}/repos/${repo()}${p}`, {
@@ -24,7 +33,7 @@ async function gh(method, p, body, { raw = false } = {}) {
     body: body ? JSON.stringify(body) : undefined,
   });
   if (r.status === 204) return null;
-  if (!r.ok) { const t = await r.text().catch(() => ''); throw bad(`GitHub answered ${r.status}${r.status === 403 || r.status === 404 ? ' (check the token can use Actions and Pull requests on this repository)' : ''}: ${t.slice(0, 160)}`, 502); }
+  if (!r.ok) { const t = await r.text().catch(() => ''); throw bad(githubError(r.status, t), 502); }
   return raw ? r.text() : r.json();
 }
 const run = r => ({ id: r.id, name: r.name, title: r.display_title, status: r.status, conclusion: r.conclusion, event: r.event, branch: r.head_branch, sha: (r.head_sha || '').slice(0, 7), url: r.html_url, at: r.created_at, updated: r.updated_at });
