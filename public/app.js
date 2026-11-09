@@ -60,6 +60,7 @@ const date = t => new Date(t).toLocaleString();
 // The background loader (see prefetchAll): a hidden copy of the app that opens every section once,
 // only reads, and hands every answer to the visible app.
 const PREFETCH = window.parent !== window && new URLSearchParams(location.search).has('prefetch');
+if (PREFETCH) Object.assign(window, { alert: () => {}, confirm: () => false, prompt: () => null });
 const SWR = new Map(), SWR_SKIP = /^\/(auth|alpaca\/stream|notifications|admin\/agents|sponsored)/;
 const KEEP_KEY = 'qp_keep';
 let swrOn = false, swrRedraw = null, keepTimer = null;
@@ -533,7 +534,7 @@ async function render(opts) {
     const groups = ME.role === 'admin' ? [...ADMIN_GROUPS, BIZ_NAV, ...NAV] : NAV;
     await Promise.all([accounts(), loadPrefs()]); await defaultAccount();
     // Groups start folded; their arrow opens them (remembered). The group holding the current page opens.
-    const opened = (() => { try { return JSON.parse(localStorage.getItem('qp_nav_open') || '[]'); } catch { return []; } })();
+    const opened = [...(() => { try { return JSON.parse(localStorage.getItem('qp_nav_open') || '[]'); } catch { return []; } })(), ...$$('#nav .grp.sec[aria-expanded="true"]').map(b => b.dataset.g)];
     const START = await import('./pages/start.js').then(m => m.startDone()).catch(() => true);
     // The menu is built again only when something in it changes (page, plan, add-ons, trading mode):
     // a background refresh of the page never rebuilds it, so a tap on the menu is never lost.
@@ -548,11 +549,6 @@ async function render(opts) {
       + `<div class="navsec"><div class="grp">Trading mode</div>${modeSwitch()}</div><div class="grp">${esc(ME.email)}</div><a href="#" id="navLogout">${icon('account')}Sign out</a>`
       + `<div class="navfoot"><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/risk">Risk</a> · <a href="/contact">Support</a><p>Trading involves risk of loss. Backtests and projections are hypothetical. Brightolio is software, not a broker or investment adviser.</p></div>`;
     wireModeSwitch();
-    $$('#nav .grp.sec').forEach(b => (b.onclick = () => {
-      const open = b.getAttribute('aria-expanded') !== 'true'; b.setAttribute('aria-expanded', open); b.nextElementSibling.hidden = !open;
-      const set = new Set((() => { try { return JSON.parse(localStorage.getItem('qp_nav_open') || '[]'); } catch { return []; } })()); open ? set.add(b.dataset.g) : set.delete(b.dataset.g);
-      try { localStorage.setItem('qp_nav_open', JSON.stringify([...set])); } catch {}
-    }));
     $('#navLogout').onclick = e => { e.preventDefault(); $('#logout').click(); };
     }
     updateBadge();
@@ -576,6 +572,13 @@ async function render(opts) {
   finally { if (PREFETCH) parent.postMessage({ qpRendered: route }, location.origin); }
 }
 window.addEventListener('hashchange', () => render());
+// Menu groups open and close from one listener on the menu, so it works even right after a rebuild.
+$('#nav').addEventListener('click', e => {
+  const b = e.target.closest('.grp.sec'); if (!b) return;
+  const open = b.getAttribute('aria-expanded') !== 'true'; b.setAttribute('aria-expanded', open); b.nextElementSibling.hidden = !open;
+  const set = new Set((() => { try { return JSON.parse(localStorage.getItem('qp_nav_open') || '[]'); } catch { return []; } })()); open ? set.add(b.dataset.g) : set.delete(b.dataset.g);
+  try { localStorage.setItem('qp_nav_open', JSON.stringify([...set])); } catch {}
+});
 
 // ---------- loading every section in the background ----------
 // A few seconds after the app opens, a hidden copy of it opens every section of the menu once, one
@@ -589,6 +592,8 @@ addEventListener('message', e => {
   const [path, data] = d, json = JSON.stringify(data);
   SWR.set(path, { at: Date.now(), data, json, ok: true, p: Promise.resolve(data) }); keepSave();
 });
+let pfQuietUntil = 0;
+for (const ev of ['pointerdown', 'keydown', 'touchstart']) addEventListener(ev, () => { pfQuietUntil = Date.now() + 2000; }, { capture: true, passive: true });
 function prefetchAll() {
   if (PREFETCH || !ME || document.hidden || $('#pfFrame')) return;
   try { if (Date.now() - +sessionStorage.getItem('qp_pf') < 180e3) return; sessionStorage.setItem('qp_pf', Date.now()); } catch {}
@@ -607,7 +612,8 @@ function prefetchAll() {
     clearTimeout(timer); timer = setTimeout(next, 10000); // a section that never finishes is skipped
     try { frame.contentWindow.location.hash = '#/' + list[i]; } catch { finish(); }
   };
-  const onMsg = e => { if (e.origin === location.origin && e.source === frame.contentWindow && e.data?.qpRendered === list[i]) setTimeout(next, 120); };
+  const later = () => setTimeout(() => (Date.now() < pfQuietUntil ? later() : next()), Math.max(120, pfQuietUntil - Date.now()));
+  const onMsg = e => { if (e.origin === location.origin && e.source === frame.contentWindow && e.data?.qpRendered === list[i]) later(); };
   addEventListener('message', onMsg);
   timer = setTimeout(next, 15000);
   set();
