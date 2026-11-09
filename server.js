@@ -539,6 +539,10 @@ api.use('/values', valuesRouter);
 api.use('/alts', altsRouter);
 api.use('/money', moneyRouter);
 api.use('/public', trustPublicRouter);
+// Everything under /api/admin is for admins only: one gate in front of it all, so a page or route
+// added later can never be reached by a regular user. (The business books have their own gate:
+// only the currency converter there is for everyone.)
+api.use('/admin', auth.requireUser, auth.requireAdmin);
 api.use('/admin/trust', trustAdminRouter);
 api.use('/luach', luachRouter);
 api.use('/desk', deskRouter);

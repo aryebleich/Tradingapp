@@ -506,7 +506,7 @@ async function render(opts) {
   if (ME) {
     // Signing in for the Android app: back to the app once signed in here.
     if (sessionStorage.getItem('qp_next') === 'handoff') { sessionStorage.removeItem('qp_next'); location.href = '/api/auth/app-handoff'; return; }
-    const groups = ME.role === 'admin' ? [...ADMIN_GROUPS, BIZ_NAV, ...NAV] : NAV;
+    const groups = ME.role === 'admin' ? [adminNav(), ...NAV] : NAV;
     await Promise.all([accounts(), loadPrefs()]); await defaultAccount();
     // Groups start folded; their arrow opens them (remembered). The group holding the current page opens.
     const opened = [...(() => { try { return JSON.parse(localStorage.getItem('qp_nav_open') || '[]'); } catch { return []; } })(), ...$$('#nav .grp.sec[aria-expanded="true"]').map(b => b.dataset.g)];
@@ -516,10 +516,10 @@ async function render(opts) {
     const navKey = JSON.stringify([route, ME.role, ME.plan, ME.planStatus, ME.previewPlan, ME.previewAdviser, ME.addons, ME.email, ME.trialUsed, START, state.account]);
     if (render.navKey !== navKey || !$('#nav').firstElementChild) {
     render.navKey = navKey;
-    const link = ([k, t]) => `<a href="#/${k}" class="${k === route ? 'on' : ''}">${icon(k)}${t}</a>`;
+    const link = ([k, t]) => k == null ? `<div class="navsub">${esc(t)}</div>` : `<a href="#/${k}" class="${k === route ? 'on' : ''}">${icon(k)}${t}</a>`;
     const core = CORE.filter(([k]) => k !== 'start' || !START || route === 'start');
     $('#nav').innerHTML = `<div class="navcore">${core.map(link).join('')}</div>` + groups.map(([g, items]) => { const list = items.filter(([k]) => !(ADDON_PAGES[k] && ME.addons?.[ADDON_PAGES[k]] === false)), open = opened.includes(g) || list.some(([k]) => k === route);
-      return `<button type="button" class="grp sec" data-g="${esc(g)}" aria-expanded="${open}"><span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span><span class="gname">${g}</span><span class="gcount" aria-hidden="true">${list.length}</span></button><div class="grpbody" ${open ? '' : 'hidden'}>${list.map(link).join('')}</div>`; }).join('')
+      return `<button type="button" class="grp sec" data-g="${esc(g)}" aria-expanded="${open}"><span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span><span class="gname">${g}</span><span class="gcount" aria-hidden="true">${list.filter(([k]) => k != null).length}</span></button><div class="grpbody" ${open ? '' : 'hidden'}>${list.map(link).join('')}</div>`; }).join('')
       + (isPaid(ME) ? '' : `<a href="#/funding" class="upsell">${icon('star')}${ME.trialUsed ? 'Upgrade to Pro' : 'Try Pro free for 14 days'}</a>`)
       + `<div class="navsec"><div class="grp">Trading mode</div>${modeSwitch()}</div><div class="grp">${esc(ME.email)}</div><a href="#" id="navLogout">${icon('account')}Sign out</a>`
       + `<div class="navfoot"><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/risk">Risk</a> · <a href="/contact">Support</a><p>Trading involves risk of loss. Backtests and projections are hypothetical. Brightolio is software, not a broker or investment adviser.</p></div>`;
@@ -531,7 +531,8 @@ async function render(opts) {
   const show = () => { for (const c of [...$('#view').children]) if (c !== view) c.remove(); view.style.cssText = ''; scrollTo(0, keepY); };
   try {
     await loadPrefs();
-    try { await (routes[route] || routes.dashboard)(view, new URLSearchParams(q)); } finally { if (render.seq === mine) swrOn = false; }
+    // Owner pages open only for admins (the server refuses their data to anyone else too).
+    try { await (routes[ownerOnly(route) ? 'dashboard' : route] || routes.dashboard)(view, new URLSearchParams(q)); } finally { if (render.seq === mine) swrOn = false; }
     if (swap) {
       if (!view.isConnected) return; // the user moved to another page meanwhile
       if (render.seq !== mine) { view.remove(); return; } // a newer redraw is on its way
@@ -585,7 +586,7 @@ function lightData() {
 function prefetchAll() {
   if (PREFETCH || !ME || document.hidden || $('#pfFrame')) return;
   try { if (Date.now() - +sessionStorage.getItem('qp_pf') < 180e3) return; sessionStorage.setItem('qp_pf', Date.now()); } catch {}
-  const groups = ME.role === 'admin' ? [...ADMIN_GROUPS, BIZ_NAV, ...NAV] : NAV;
+  const groups = ME.role === 'admin' ? [adminNav(), ...NAV] : NAV;
   const light = lightData();
   if (light && navigator.connection?.saveData && !topVisited(1).length) return;
   const all = light ? [...CORE.slice(0, 5).map(([k]) => k), ...topVisited(6)] : [...CORE, ...groups.flatMap(g => g[1])].map(([k]) => k);
@@ -936,9 +937,33 @@ async function accountBoxes(box) {
       ${d.accounts.map(a => tile(a.label, a.counted ? (a.number || a.id) : (a.why || 'not added'), { equity: a.equity, dayPl: a.dayPl, unrealized: a.unrealized, cash: a.cash }, `#/accounts`, a.counted ? '' : 'dim')).join('')}
     </div></div>`;
 }
+// A live clock on Home: the time here to the second, and the time at the New York exchange with
+// whether the market is open (regular hours, weekdays; holidays are not counted).
+function homeClock(view) {
+  if (!view || $('#homeClock', view)) return;
+  const el = document.createElement('div'); el.id = 'homeClock'; el.className = 'homeclock'; el.setAttribute('role', 'timer'); el.setAttribute('aria-label', 'Current time');
+  el.innerHTML = '<b class="hc-time" dir="ltr"></b><span class="hc-date"></span><span class="hc-ny" dir="ltr"></span>';
+  const anchor = $('h1', view)?.closest('.row') || $('h1', view);
+  anchor ? anchor.after(el) : view.prepend(el);
+  const t = el.querySelector('.hc-time'), d = el.querySelector('.hc-date'), ny = el.querySelector('.hc-ny');
+  const tick = () => {
+    if (!el.isConnected) return stop();
+    const n = new Date();
+    t.textContent = n.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+    const day = n.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }); if (d.textContent !== day) d.textContent = day;
+    const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' }).formatToParts(n).map(x => [x.type, x.value]));
+    const m = +p.hour * 60 + +p.minute, open = !['Sat', 'Sun'].includes(p.weekday) && m >= 570 && m < 960;
+    ny.textContent = 'New York ' + n.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', second: '2-digit' }) + (open ? ' · market open' : ' · market closed');
+    ny.classList.toggle('open', open);
+  };
+  // Each tick lands just after the second changes, so the seconds never skip or lag.
+  let timer = null; const loop = () => { tick(); timer = setTimeout(loop, 1000 - Date.now() % 1000 + 5); };
+  const stop = () => clearTimeout(timer);
+  loop(); onLeave(stop);
+}
 routes.dashboard = async (view, q) => {
   await accounts();
-  if (state.account === 'alpaca') return routes.portfolio(view, q);
+  if (state.account === 'alpaca') { await routes.portfolio(view, q); return homeClock(view); }
   const approvalsP = approvalsBanner().catch(() => '');
   const a = await api('/account?account=' + state.account).catch(e => ({ error: e.message }));
   if (a.error) {
@@ -997,6 +1022,7 @@ routes.dashboard = async (view, q) => {
   </div>
   <div class="card"><h2>Recent orders</h2><div class="tablewrap" id="orders"><p class="mu">Loading…</p></div>
     ${state.account === 'paper' ? '<button class="ghost small" id="reset">Reset paper account</button>' : ''}</div>`;
+  homeClock(view);
   if ($('#hideOnboard', view)) $('#hideOnboard', view).onclick = () => { try { localStorage.setItem('qp_onboard_done', '1'); } catch {} render(); };
   drawChart($('#eqc', view), a.history.map(x => x.equity), { base, dates: a.history.map(x => x.day), legend: false });
   wireStatement(view, state.account); accountBoxes($('#acctBoxes', view)).catch(() => {});
@@ -1644,6 +1670,10 @@ const ADMIN_GROUPS = [
   ['Owner: technical', [['admin-agents', 'AI team'], ['admin-ai', 'AI & privacy'], ['admin-keys', 'Keys'], ['admin-data', 'Market data'], ['admin-hosting', 'Hosting'], ['admin-system', 'System health'], ['admin-setup', 'Setup']]],
 ];
 const ADMIN_TABS = ADMIN_GROUPS.flatMap(([, t]) => t);
+// The menu shows all of the owner's pages in one Admin section (only for admins), with a small
+// heading for each group: people, money, site, technical and the business books.
+const ownerOnly = k => ME?.role !== 'admin' && [...ADMIN_GROUPS, BIZ_NAV].some(([, t]) => t.some(([x]) => x === k));
+const adminNav = () => ['Admin', [...ADMIN_GROUPS, BIZ_NAV].flatMap(([g, items]) => [[null, g.replace(/^Owner: /, '')], ...items])];
 const adminGroup = k => (ADMIN_GROUPS.find(([, t]) => t.some(([x]) => x === k)) || ADMIN_GROUPS[0])[1];
 // Pages with their own module (owner.js, protect.js) draw themselves under the same tabs.
 const adminTabs = current => `<div class="chips admintabs">${adminGroup(current).map(([k, t]) => `<a href="#/${k}"><button type="button" class="${k === current ? 'on' : ''}">${t}</button></a>`).join('')}</div>`;

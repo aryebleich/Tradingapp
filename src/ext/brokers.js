@@ -72,7 +72,7 @@ const tradier = {
     return arr(d?.orders?.order).slice(-50).reverse().map(o => ({ id: String(o.id), symbol: o.symbol, side: /buy/.test(o.side) ? 'buy' : 'sell', qty: +o.quantity, status: o.status, price: +o.avg_fill_price || null, at: o.create_date }));
   },
   async place(c, o) {
-    const d = (await http(`${tradierBase(c)}/accounts/${c.account}/orders`, { method: 'POST', headers: this.hdr(c), form: { class: 'equity', symbol: o.symbol, side: o.side, quantity: String(o.qty), type: 'market', duration: 'day' } })).data;
+    const d = (await http(`${tradierBase(c)}/accounts/${c.account}/orders`, { method: 'POST', headers: this.hdr(c), form: { class: 'equity', symbol: o.symbol, side: o.side, quantity: String(o.qty), ...(o.type === 'limit' ? { type: 'limit', price: String(o.limit_price), duration: o.tif === 'gtc' ? 'gtc' : 'day' } : { type: 'market', duration: 'day' }) } })).data;
     return { id: String(d?.order?.id), status: d?.order?.status || 'submitted' };
   },
 };
@@ -113,7 +113,7 @@ const tasty = {
   },
   async place(c, o, save) {
     const action = { buy: 'Buy to Open', sell: 'Sell to Close', sell_short: 'Sell to Open', buy_to_cover: 'Buy to Close' }[o.side];
-    const d = (await http(`${tastyBase(c)}/accounts/${c.account}/orders`, { method: 'POST', headers: await this.hdr(c, save), json: { 'time-in-force': 'Day', 'order-type': 'Market', legs: [{ 'instrument-type': 'Equity', symbol: o.symbol, quantity: o.qty, action }] } })).data;
+    const d = (await http(`${tastyBase(c)}/accounts/${c.account}/orders`, { method: 'POST', headers: await this.hdr(c, save), json: { 'time-in-force': o.type === 'limit' && o.tif === 'gtc' ? 'GTC' : 'Day', ...(o.type === 'limit' ? { 'order-type': 'Limit', price: String(o.limit_price), 'price-effect': /buy/i.test(o.side) ? 'Debit' : 'Credit' } : { 'order-type': 'Market' }), legs: [{ 'instrument-type': 'Equity', symbol: o.symbol, quantity: o.qty, action }] } })).data;
     return { id: String(d?.data?.order?.id ?? ''), status: d?.data?.order?.status || 'Received' };
   },
 };
@@ -168,7 +168,7 @@ const schwab = {
   },
   async place(c, o, save) {
     const instruction = { buy: 'BUY', sell: 'SELL', sell_short: 'SELL_SHORT', buy_to_cover: 'BUY_TO_COVER' }[o.side];
-    const r = await http(`${schwabBase()}/accounts/${c.account}/orders`, { method: 'POST', headers: { Authorization: `Bearer ${await this.token(c, save)}` }, json: { orderType: 'MARKET', session: 'NORMAL', duration: 'DAY', orderStrategyType: 'SINGLE', orderLegCollection: [{ instruction, quantity: o.qty, instrument: { symbol: o.symbol, assetType: 'EQUITY' } }] } });
+    const r = await http(`${schwabBase()}/accounts/${c.account}/orders`, { method: 'POST', headers: { Authorization: `Bearer ${await this.token(c, save)}` }, json: { ...(o.type === 'limit' ? { orderType: 'LIMIT', price: String(o.limit_price), duration: o.tif === 'gtc' ? 'GOOD_TILL_CANCEL' : 'DAY' } : { orderType: 'MARKET', duration: 'DAY' }), session: 'NORMAL', orderStrategyType: 'SINGLE', orderLegCollection: [{ instruction, quantity: o.qty, instrument: { symbol: o.symbol, assetType: 'EQUITY' } }] } });
     return { id: (r.headers.get('location') || '').split('/').pop() || null, status: 'accepted' };
   },
 };
@@ -212,7 +212,7 @@ const tradestation = {
   },
   async place(c, o, save) {
     const TradeAction = { buy: 'BUY', sell: 'SELL', sell_short: 'SELLSHORT', buy_to_cover: 'BUYTOCOVER' }[o.side];
-    const d = (await http(`${tsBase(c)}/orderexecution/orders`, { method: 'POST', headers: { Authorization: `Bearer ${await this.token(c, save)}` }, json: { AccountID: c.account, Symbol: o.symbol, Quantity: String(o.qty), OrderType: 'Market', TradeAction, TimeInForce: { Duration: 'DAY' }, Route: 'Intelligent' } })).data;
+    const d = (await http(`${tsBase(c)}/orderexecution/orders`, { method: 'POST', headers: { Authorization: `Bearer ${await this.token(c, save)}` }, json: { AccountID: c.account, Symbol: o.symbol, Quantity: String(o.qty), ...(o.type === 'limit' ? { OrderType: 'Limit', LimitPrice: String(o.limit_price) } : { OrderType: 'Market' }), TradeAction, TimeInForce: { Duration: o.type === 'limit' && o.tif === 'gtc' ? 'GTC' : 'DAY' }, Route: 'Intelligent' } })).data;
     const r = arr(d?.Orders)[0] || {};
     if (r.Error) throw bad(r.Message || 'TradeStation rejected the order');
     return { id: String(r.OrderID || ''), status: 'submitted' };

@@ -2,25 +2,38 @@
 // Informational only: brokers issue the official 1099-B.
 const DAY = 86400e3;
 
+// A sell beyond the shares held opens a short; a later buy covers it first. A short sale's gain or
+// loss counts in the year it is covered and is short-term (IRS Pub. 550, short sales).
 export function realizedGains(fills) {
-  const lots = {}, out = [];
+  const longs = {}, shorts = {}, out = [], shortOpens = [];
   const sorted = [...fills].sort((a, b) => a.at - b.at);
-  for (const f of sorted) {
-    const book = (lots[f.symbol] ||= []);
-    if (f.side === 'buy') { book.push({ qty: f.qty, price: f.price, at: f.at }); continue; }
-    let left = f.qty;
+  const close = (book, f, row) => {
+    let left = +f.qty;
     while (left > 1e-9 && book.length) {
       const lot = book[0], q = Math.min(left, lot.qty);
-      const gain = (f.price - lot.price) * q;
-      out.push({ symbol: f.symbol, qty: +q.toFixed(6), acquired: lot.at, sold: f.at, proceeds: +(f.price * q).toFixed(2), cost: +(lot.price * q).toFixed(2), gain: +gain.toFixed(2), longTerm: f.at - lot.at > 365 * DAY, washSale: false });
+      out.push(row(lot, q));
       lot.qty -= q; left -= q;
       if (lot.qty <= 1e-9) book.shift();
     }
+    return left;
+  };
+  for (const f of sorted) {
+    const L = (longs[f.symbol] ||= []), S = (shorts[f.symbol] ||= []);
+    if (f.side === 'buy') {
+      // Cover: proceeds are the short sale, cost is the buy back.
+      const left = close(S, f, (lot, q) => ({ symbol: f.symbol, qty: +q.toFixed(6), acquired: lot.at, sold: f.at, proceeds: +(lot.price * q).toFixed(2), cost: +(f.price * q).toFixed(2), gain: +((lot.price - f.price) * q).toFixed(2), longTerm: false, short: true, washSale: false }));
+      if (left > 1e-9) L.push({ qty: left, price: f.price, at: f.at });
+    } else {
+      const left = close(L, f, (lot, q) => ({ symbol: f.symbol, qty: +q.toFixed(6), acquired: lot.at, sold: f.at, proceeds: +(f.price * q).toFixed(2), cost: +(lot.price * q).toFixed(2), gain: +((f.price - lot.price) * q).toFixed(2), longTerm: f.at - lot.at > 365 * DAY, washSale: false }));
+      if (left > 1e-9) { S.push({ qty: left, price: f.price, at: f.at }); shortOpens.push({ symbol: f.symbol, at: f.at }); }
+    }
   }
-  // Wash sale: a loss with a purchase of the same symbol within 30 days before or after.
+  // Wash sale: a loss with the same position re-opened within 30 days before or after (a purchase
+  // for a long sale; a new short sale for a covered short).
   for (const r of out) {
     if (r.gain >= 0) continue;
-    r.washSale = sorted.some(f => f.side === 'buy' && f.symbol === r.symbol && Math.abs(f.at - r.sold) <= 30 * DAY && f.at !== r.acquired);
+    const again = r.short ? shortOpens : sorted.filter(f => f.side === 'buy');
+    r.washSale = again.some(f => f.symbol === r.symbol && Math.abs(f.at - r.sold) <= 30 * DAY && f.at !== r.acquired && f.at !== r.sold);
   }
   return out;
 }

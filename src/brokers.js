@@ -252,7 +252,17 @@ async function smartOrder(userId, order, source) {
 }
 // Automations pass the price they expected (expectedPrice) and when the signal fired (signalAt),
 // so the execution report can measure slippage and delay.
+// A limit order (type 'limit' with a positive limit_price) keeps its price on every venue; it is
+// never turned into a market order. A dollar amount becomes shares at the limit price.
+export function limitOf(order) {
+  if (order?.type && !['market', 'limit'].includes(order.type)) throw Object.assign(new Error(`${String(order.type).replace('_', ' ')} orders go through the order ticket for this account`), { status: 400 });
+  if (order?.type !== 'limit') return null;
+  const price = +order.limit_price;
+  if (!(price > 0)) throw Object.assign(new Error('Enter the limit price'), { status: 400 });
+  return { price, tif: order.time_in_force === 'gtc' ? 'gtc' : 'day', extended: !!order.extended_hours };
+}
 async function sendOrder(userId, account, symbol, side, q, n, source, order) {
+  const lim = limitOf(order);
   const expected = +order.expectedPrice > 0 ? +order.expectedPrice : null, signalAt = +order.signalAt || (expected ? now() : null);
   const intent = (brokerId, acct) => (expected || source !== 'web') && brokerId
     ? run('INSERT INTO order_intents (user_id, account, broker_order_id, symbol, side, expected_price, signal_at, source, at) VALUES (?,?,?,?,?,?,?,?,?)', userId, acct, String(brokerId), symbol, side, expected, signalAt, source, now()).catch(() => {}) : null;
@@ -260,28 +270,40 @@ async function sendOrder(userId, account, symbol, side, q, n, source, order) {
     return withExt(userId, account, async (b, c, save) => {
       // Other brokerages take whole shares. A sell beyond what is held opens a short; a buy
       // against a short position covers it (each broker names these differently).
-      const qty = q > 0 ? Math.floor(q) : Math.floor(n / await lastPrice(symbol, userId));
+      const qty = q > 0 ? Math.floor(q) : Math.floor(n / (lim?.price || await lastPrice(symbol, userId)));
       if (!(qty >= 1)) throw new Error('Amount is less than one share');
       const held = (await b.summary(c, save)).positions.find(p => p.symbol === symbol)?.qty || 0;
       const kind = side === 'buy' ? (held < 0 ? 'buy_to_cover' : 'buy') : held > 0 ? 'sell' : 'sell_short';
       // A sell must match what the account holds; going short only when the user asked for it.
       if (side === 'sell' && !order.allowShort && (held <= 0 || qty > held)) throw Object.assign(new Error(held > 0 ? `You can sell up to ${held} ${symbol} in this account.` : `You do not own any ${symbol} in this account; selling would open a short position.`), { status: 409 });
       if (kind === 'sell_short' && !b.shorts) throw new Error(`${b.name} does not support short selling here`);
-      const r = await b.place(c, { symbol, side: kind, qty }, save);
+      const r = await b.place(c, { symbol, side: kind, qty, ...(lim ? { type: 'limit', limit_price: lim.price, tif: lim.tif } : { type: 'market' }) }, save);
       await intent(r.id, account);
-      return { id: r.id, status: r.status, symbol, side, qty, broker: account, live: !!c.live };
+      return { id: r.id, status: r.status, symbol, side, qty, broker: account, live: !!c.live, ...(lim ? { type: 'limit', limitPrice: lim.price } : {}) };
     });
   }
   if (isAlpaca(account)) {
     const t = await requireTradingFor(userId, account);
-    const body = { symbol, side, type: 'market', time_in_force: 'day', ...(q > 0 ? { qty: String(q) } : { notional: n.toFixed(2) }) };
+    // Alpaca takes dollar amounts only on market orders: a limit order for dollars is sent as shares
+    // (whole shares in extended hours, where fractional orders are not accepted).
+    const limQty = lim && !(q > 0) ? (lim.extended ? Math.floor(n / lim.price) : +(n / lim.price).toFixed(6)) : 0;
+    if (lim && !(q > 0) && !(limQty > 0)) throw new Error('Amount is less than one share at the limit price');
+    const body = lim
+      ? { symbol, side, type: 'limit', limit_price: String(lim.price), time_in_force: lim.extended ? 'day' : lim.tif, qty: String(q > 0 ? q : limQty), ...(lim.extended ? { extended_hours: true } : {}) }
+      : { symbol, side, type: 'market', time_in_force: 'day', ...(q > 0 ? { qty: String(q) } : { notional: n.toFixed(2) }) };
     await (await import('./alpaca/trading.js')).sellCheck(t, body, { allowShort: !!order.allowShort });
     const o = await t.placeOrder(body);
     await intent(o.id, account);
     if (t.type === 'broker') await recordCommission(userId, o, +order.expectedPrice || 0).catch(() => {});
     // Usually fills within seconds; anything still open is picked up later by syncAlpacaFills.
     setTimeout(() => syncAlpacaFills(userId, account).catch(() => {}), 4000);
-    return { id: o.id, status: o.status, symbol, side, broker: account, live: t.live };
+    return { id: o.id, status: o.status, symbol, side, broker: account, live: t.live, ...(lim ? { type: 'limit', limitPrice: lim.price } : {}) };
+  }
+  if (lim) {
+    // Practice account: the limit order stays open until the price reaches it (checked every minute).
+    const qty = q > 0 ? q : +(n / lim.price).toFixed(6);
+    const po = await (await import('./paperorders.js')).place(userId, { symbol, side, qty, type: 'limit', limit_price: lim.price, time_in_force: lim.tif });
+    return { id: 'po' + po.id, status: po.status === 'filled' ? 'filled' : 'open', symbol, side, qty, broker: 'paper', live: false, type: 'limit', limitPrice: lim.price, ...(po.fillPrice ? { price: po.fillPrice } : {}) };
   }
   const price = await lastPrice(symbol, userId);
   const qty = q > 0 ? q : +(n / price).toFixed(6);
