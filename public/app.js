@@ -599,12 +599,12 @@ function prefetchAll() {
   try { if (Date.now() - +sessionStorage.getItem('qp_pf') < 180e3) return; sessionStorage.setItem('qp_pf', Date.now()); } catch {}
   const groups = ME.role === 'admin' ? [...ADMIN_GROUPS, BIZ_NAV, ...NAV] : NAV;
   const list = [...new Set([...CORE, ...groups.flatMap(g => g[1])].map(([k]) => k))].filter(k => routes[k] && !PF_SKIP.has(k) && !(ADDON_PAGES[k] && ME.addons?.[ADDON_PAGES[k]] === false));
-  const bar = document.createElement('div'); bar.id = 'pfbar'; bar.setAttribute('role', 'progressbar'); bar.setAttribute('aria-label', 'Loading sections');
-  bar.innerHTML = '<i></i><span>Loading sections · 0%</span>'; bar.style.setProperty('--pf-top', ($('#top')?.getBoundingClientRect().bottom || 56) + 'px'); document.body.append(bar);
+  const bar = document.createElement('div'); bar.id = 'pfbar'; bar.setAttribute('role', 'progressbar'); bar.setAttribute('aria-label', 'Loading your data');
+  bar.innerHTML = '<i></i><span>Loading your data... 0%</span>'; bar.style.setProperty('--pf-top', ($('#top')?.getBoundingClientRect().bottom || 56) + 'px'); document.body.append(bar);
   const frame = Object.assign(document.createElement('iframe'), { id: 'pfFrame', title: 'Background loading', tabIndex: -1, src: '/app?prefetch=1#/' + list[0] });
   frame.setAttribute('aria-hidden', 'true'); document.body.append(frame);
   let i = 0, timer = null;
-  const set = () => { const pct = Math.round(i / list.length * 100); bar.querySelector('i').style.width = pct + '%'; bar.querySelector('span').textContent = `Loading sections · ${pct}%`; bar.setAttribute('aria-valuenow', pct); };
+  const set = () => { const pct = Math.round(i / list.length * 100); bar.querySelector('i').style.width = pct + '%'; bar.querySelector('span').textContent = `Loading your data... ${pct}%`; bar.setAttribute('aria-valuenow', pct); };
   const finish = () => { clearTimeout(timer); removeEventListener('message', onMsg); frame.remove(); i = list.length; set(); bar.classList.add('done'); setTimeout(() => bar.remove(), 900); };
   const next = () => {
     i++; set();
