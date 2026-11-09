@@ -449,6 +449,15 @@ const onLeave = fn => cleanups.push(fn);
 // Reloads the signed-in user (plan, settings) after a change saved on any page.
 const refreshMe = async () => { ME = (await api('/auth/me')).user; };
 // The page's outline shown while a new page loads (it keeps the footer at the bottom too).
+// Beginner guides ("How this page works") on the more advanced pages: the small text file loads once
+// in the background, then each page adds its guide before it is shown.
+let GUIDES = null;
+const guidesP = import('./pages/guides.js').then(m => (GUIDES = m)).catch(() => null);
+function addGuide(view, route) {
+  const opts = { practice: state.account === 'paper' };
+  if (GUIDES) return GUIDES.pageGuide(view, route, opts);
+  guidesP.then(m => m && view.isConnected && m.pageGuide(view, route, opts));
+}
 const SKELETON = '<div class="skel"><div class="h1"></div><div class="box"></div><div class="w60"></div><div></div><div class="box"></div></div>';
 async function render(opts) {
   const quiet = opts?.quiet === true;
@@ -456,6 +465,7 @@ async function render(opts) {
   if (!quiet) render.startedAt = Date.now();
   while (cleanups.length) { try { cleanups.pop()(); } catch {} }
   const [route, q] = (location.hash.slice(2) || 'dashboard').split('?');
+  if (PREFETCH && route === 'pf-wait') return; // the hidden copy waits until it is told to start
   // Each render gets a fresh container: requests still in flight from the previous page then
   // write into a detached element instead of overwriting the page the user moved to.
   if (!render.ver) render.ver = (CFG ? Promise.resolve(CFG) : api('/config').catch(() => null)).then(c => { const v = c?.version; if (v && $('#siteVer')) $('#siteVer').textContent = 'Brightolio ' + v; });
@@ -533,6 +543,7 @@ async function render(opts) {
     await loadPrefs();
     // Owner pages open only for admins (the server refuses their data to anyone else too).
     try { await (routes[ownerOnly(route) ? 'dashboard' : route] || routes.dashboard)(view, new URLSearchParams(q)); } finally { if (render.seq === mine) swrOn = false; }
+    if (!PREFETCH && ME) addGuide(view, ownerOnly(route) || !routes[route] ? 'dashboard' : route);
     if (swap) {
       if (!view.isConnected) return; // the user moved to another page meanwhile
       if (render.seq !== mine) { view.remove(); return; } // a newer redraw is on its way
@@ -559,8 +570,12 @@ $('#nav').addEventListener('click', e => {
 // ---------- loading every section in the background ----------
 // A few seconds after the app opens, a hidden copy of it opens every section of the menu once, one
 // after another; everything they read lands in this app's memory, so each section then opens at
-// once. A thin line under the header shows the progress. The copy can only read (no orders, no
-// saving); it runs at most once every 3 minutes, and it stops when the tab is hidden.
+// once. A small card of our own (a ring that fills, with the percentage) shows the progress. The
+// copy can only read (no orders, no saving); it runs at most once every 3 minutes, and it stops
+// when the tab is hidden.
+// The hidden copy is opened together with the app itself, while the app is still opening, and then
+// waits: moving it from section to section later never shows the browser's own loading line (it
+// only shows while a page opens, and the copy is already open by then).
 const PF_SKIP = new Set(['start', 'code', 'quantconnect', 'android', 'leaders', 'admin-agents', 'admin-upgrades', 'admin-yiddish', 'admin-seo']);
 addEventListener('message', e => {
   if (e.origin !== location.origin || PREFETCH) return;
@@ -583,32 +598,49 @@ function lightData() {
   const c = navigator.connection; if (!c) return false;
   return !!c.saveData || /^(slow-2g|2g|3g)$/.test(c.effectiveType || '');
 }
+function pfFrameEarly() {
+  if (PREFETCH || location.pathname !== '/app' || $('#pfFrame')) return;
+  let known = false; try { known = !!localStorage.getItem('qp_me'); } catch {}
+  if (!known && lightData()) return; // a first visit on a slow or metered connection skips it
+  const frame = Object.assign(document.createElement('iframe'), { id: 'pfFrame', title: 'Background loading', tabIndex: -1, src: '/app?prefetch=1#/pf-wait' });
+  frame.setAttribute('aria-hidden', 'true'); document.body.append(frame);
+}
+// The waiting copy starts on the first section when told to (and reads who is signed in again, for
+// a sign-in that happened after it opened).
+if (PREFETCH) addEventListener('message', async e => {
+  if (e.origin !== location.origin || e.source !== parent || !e.data?.qpGo) return;
+  if (!ME) await refreshMe().catch(() => {});
+  location.hash = '#/' + e.data.qpGo;
+});
 function prefetchAll() {
-  if (PREFETCH || !ME || document.hidden || $('#pfFrame')) return;
+  const frame = $('#pfFrame');
+  if (PREFETCH || !ME || document.hidden || !frame || frame.dataset.used) { if (!ME || document.hidden) frame?.remove(); return; }
   try { if (Date.now() - +sessionStorage.getItem('qp_pf') < 180e3) return; sessionStorage.setItem('qp_pf', Date.now()); } catch {}
   const groups = ME.role === 'admin' ? [adminNav(), ...NAV] : NAV;
   const light = lightData();
   if (light && navigator.connection?.saveData && !topVisited(1).length) return;
   const all = light ? [...CORE.slice(0, 5).map(([k]) => k), ...topVisited(6)] : [...CORE, ...groups.flatMap(g => g[1])].map(([k]) => k);
   const list = [...new Set(all)].filter(k => routes[k] && !PF_SKIP.has(k) && !(ADDON_PAGES[k] && ME.addons?.[ADDON_PAGES[k]] === false));
-  if (!list.length) return;
-  const bar = document.createElement('div'); bar.id = 'pfbar'; bar.setAttribute('role', 'progressbar'); bar.setAttribute('aria-label', 'Loading your data');
-  bar.innerHTML = '<i></i><span>Loading your data... 0%</span>'; bar.style.setProperty('--pf-top', ($('#top')?.getBoundingClientRect().bottom || 56) + 'px'); document.body.append(bar);
-  const frame = Object.assign(document.createElement('iframe'), { id: 'pfFrame', title: 'Background loading', tabIndex: -1, src: '/app?prefetch=1#/' + list[0] });
-  frame.setAttribute('aria-hidden', 'true'); document.body.append(frame);
+  if (!list.length) { frame.remove(); return; }
+  frame.dataset.used = '1';
+  const bar = document.createElement('div'); bar.id = 'pfbar'; bar.setAttribute('role', 'progressbar'); bar.setAttribute('aria-label', 'Loading your data'); bar.setAttribute('aria-valuemin', '0'); bar.setAttribute('aria-valuemax', '100');
+  // r = 15.9155 makes the ring's length 100, so the filled part is simply the percentage.
+  bar.innerHTML = '<svg viewBox="0 0 36 36" aria-hidden="true"><circle class="pf-track" cx="18" cy="18" r="15.9155"/><circle class="pf-fill" cx="18" cy="18" r="15.9155" pathLength="100"/></svg><span class="pf-t">Loading your data...</span><b class="pf-n">0%</b>';
+  document.body.append(bar);
   let i = 0, timer = null;
-  const set = () => { const pct = Math.round(i / list.length * 100); bar.querySelector('i').style.width = pct + '%'; bar.querySelector('span').textContent = `Loading your data... ${pct}%`; bar.setAttribute('aria-valuenow', pct); };
+  const set = () => { const pct = Math.round(i / list.length * 100); bar.querySelector('.pf-fill').style.strokeDasharray = `${pct} 100`; bar.querySelector('.pf-n').textContent = pct + '%'; bar.setAttribute('aria-valuenow', pct); };
   const finish = () => { clearTimeout(timer); removeEventListener('message', onMsg); frame.remove(); i = list.length; set(); bar.classList.add('done'); setTimeout(() => bar.remove(), 900); };
   const next = () => {
     i++; set();
     if (i >= list.length || document.hidden) return finish();
     clearTimeout(timer); timer = setTimeout(next, 10000); // a section that never finishes is skipped
-    try { frame.contentWindow.location.hash = '#/' + list[i]; } catch { finish(); }
+    try { frame.contentWindow.postMessage({ qpGo: list[i] }, location.origin); } catch { finish(); }
   };
   const later = () => setTimeout(() => (Date.now() < pfQuietUntil ? later() : next()), Math.max(120, pfQuietUntil - Date.now()));
   const onMsg = e => { if (e.origin === location.origin && e.source === frame.contentWindow && e.data?.qpRendered === list[i]) later(); };
   addEventListener('message', onMsg);
   timer = setTimeout(next, 15000);
+  try { frame.contentWindow.postMessage({ qpGo: list[0] }, location.origin); } catch { finish(); }
   set();
 }
 
@@ -1790,8 +1822,8 @@ function lazyRoutes(load, fn, helpers, keys) {
   }).catch(e => { loading = null; throw e; }));
   for (const k of keys) routes[k] = Object.assign(async (view, q) => { await ensure(); return routes[k](view, q); }, { lazyOf: fn });
 }
-registerTrading(routes, { accountBoxes, $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, approvalsBanner, statementRow, wireStatement, prefs: () => PREFS.portfolio, sinceLastLook, sinceStat, onLeave, render, updateBadge, me: () => ME, state });
-const shared = { $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, accounts, accountOptions, acctLabel, state, adminTabs, adminPage, secureConfirm, me: () => ME, paid: () => isPaid(ME) };
+registerTrading(routes, { accountBoxes, $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, approvalsBanner, statementRow, wireStatement, prefs: () => PREFS.portfolio, sinceLastLook, sinceStat, onLeave, render, updateBadge, me: () => ME, refreshMe, state });
+const shared = { $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, refreshMe, accounts, accountOptions, acctLabel, state, adminTabs, adminPage, secureConfirm, me: () => ME, paid: () => isPaid(ME) };
 lazyRoutes(() => import('./pages/studio.js'), 'registerStudio', shared, ["ai", "agents", "code"]);
 lazyRoutes(() => import('./pages/build.js'), 'registerBuild', shared, ["scanner", "portfolios", "fleet", "marketplace"]);
 lazyRoutes(() => import('./pages/analytics.js'), 'registerAnalytics', shared, ["insights", "risk", "values", "halal", "institutions", "spend", "news"]);
@@ -1822,8 +1854,8 @@ lazyRoutes(() => import('./pages/invest.js'), 'registerInvest', shared, ["analyz
 
 // Static files are cached for instant repeat visits (sw.js); pages and data always come fresh.
 if (!PREFETCH && 'serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});
-// Start loading every section in the background a few seconds after the app opens.
-if (!PREFETCH) setTimeout(() => prefetchAll(), 3000);
+// The hidden copy opens with the app; a few seconds later it starts loading every section.
+if (!PREFETCH) { pfFrameEarly(); setTimeout(() => prefetchAll(), 3000); }
 
 (async () => {
   // Remember an invite code from a referral link (/app?ref=CODE) for sign-up.

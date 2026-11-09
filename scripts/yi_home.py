@@ -1,5 +1,20 @@
 # Yiddish for the homepage (scripts/home.py). Keys are the exact English strings.
 YI = {
+    'Investing words, in plain language': 'אינוועסטירונג ווערטער, אין פשוטע שפראך',
+    'Stock': 'אקציע',
+    'A small piece of a company. If the company does well, the piece is usually worth more.': 'א קליין שטיקל פון א פירמע. ווען די פירמע גייט גוט, איז דאס שטיקל געווענליך מער ווערט.',
+    'Index fund': 'אינדעקס פאנד',
+    'One purchase that owns hundreds of companies at once, for a very small yearly fee.': 'איין קויף וואס פארמאגט הונדערטער פירמעס אויף איינמאל, פאר א גאנץ קליינע יערליכע אפצאל.',
+    'Paper trading': 'פרעקטיס טרעידינג',
+    'Practice with pretend money at real prices. Mistakes cost nothing.': "פרעקטיצירט מיט נישט-אמת'ע געלט ביי אמת'ע פרייזן. טעותים קאסטן גארנישט.",
+    'Market and limit orders': 'מארקעט און לימיט ארדערס',
+    'A market order buys right away at the current price; a limit order only at your price or better.': 'א מארקעט ארדער קויפט גלייך ביים יעצטיגן פרייז; א לימיט ארדער נאר ביי אייער פרייז אדער בעסער.',
+    'Diversification': 'פארשפרייטונג',
+    'Spreading your money over many investments, so one bad one hurts less.': 'פארשפרייטן אייער געלט אויף אסאך אינוועסטמענטס, אזוי אז איין שלעכטע טוט ווייניגער וויי.',
+    'Risk': 'ריזיקע',
+    'Prices go up and down. Money you need soon is safer in savings than in stocks.': 'פרייזן גייען ארויף און אראפ. געלט וואס איר דארפט באלד איז זיכערער אין סעיווינגס ווי אין אקציעס.',
+    'Inside the app, every advanced page opens with a short guide, and a ? next to a word explains it. Ask the AI assistant anything, in plain words.': 'אין דער עפּ עפנט זיך יעדע פארגעשריטענע זייט מיט א קורצן וועגווייזער, און א ? לעבן א ווארט ערקלערט עס. פרעגט דעם AI אסיסטענט וואס איר ווילט, אין פשוטע ווערטער.',
+
     'Everything in Elite': 'אלעס פון עליט',
     '1 chart per layout, every indicator': '1 טשארט אין א לעיאוט, אלע אינדיקאטארן',
     'Unlimited backtests': 'באקטעסטס אן א שיעור',
@@ -375,7 +390,7 @@ YI = {
 
 YI.update({
  'Trading and alerts by text and phone, QuantConnect and bank-card linking': 'טרעידן און אלערטס דורך טעקסט און טעלעפאן, QuantConnect און פארבינדן א באנק קארטל',
- 'Wealth builder': 'עשירות בויער',
+ 'Investing toolkit': 'אינוועסטירן מכשירים',
  'Index funds, compound growth, automatic monthly investing, dividend reinvestment and rebalancing, each with a tool.': 'אינדעקס פאנדס, קאמפאונד וואוקס, אויטאמאטיש חודש\'לעכע אינוועסטירן, ווידער-אינוועסטירן דיווידענדן און ווידער באלאנסירן, יעדעס מיט א געצייג.',
  'Bonds &amp; Treasuries': 'באנדס און טרעזשוריס',
  'Latest bond and T-bill prices and yields by ISIN, next to your stocks and crypto.': 'לעצטע באנד און T-bill פרייזן און יעלדס לויט ISIN, לעבן אייערע סטאקס און קריפטא.',

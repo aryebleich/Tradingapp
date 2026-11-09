@@ -319,7 +319,7 @@ async function openAccount(view) {
       if (!f.agree) throw new Error('Please accept the Terms to continue');
       let ref = null; try { ref = localStorage.getItem('qp_ref'); } catch {}
       await H.api('/auth/register', { body: { ...f, ref } });
-      location.reload(); // signed in now; the page reopens on the application
+      await H.refreshMe(); H.render(); // signed in now; the page draws again on the application
     });
     return;
   }

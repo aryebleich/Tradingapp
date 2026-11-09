@@ -22,7 +22,8 @@ async function settingsCard(view) {
   H.act(H.$('button', box), async () => {
     const v = H.form(box);
     await H.api('/addons', { method: 'PUT', body: { addons: Object.fromEntries(Object.keys(d.labels).map(k => [k, v[k]])), phoneLang: v.phoneLang } });
-    setTimeout(() => location.reload(), 700); return 'Saved';
+    // The menu and pages follow at once, without opening the site again.
+    await H.refreshMe(); setTimeout(() => H.render(), 600); return 'Saved';
   });
 }
 

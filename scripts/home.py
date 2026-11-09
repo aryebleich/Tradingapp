@@ -166,7 +166,7 @@ FEATURES = [
  ('shield', 'Risk rules', 'Position limits, trade limits, allowed tickers, trailing stops and brackets.'),
  ('chart', 'Backtesting', 'Years of daily data, costs, drawdowns, walk-forward checks and an optimizer.'),
  ('doc', 'Tax center', 'Gains by lot, wash-sale flags, monthly books, an estimated tax bill and Form 8949 export.'),
- ('up', 'Wealth builder', 'Index funds, compound growth, automatic monthly investing, dividend reinvestment and rebalancing, each with a tool.'),
+ ('up', 'Investing toolkit', 'Index funds, compound growth, automatic monthly investing, dividend reinvestment and rebalancing, each with a tool.'),
  ('bank', 'Bonds &amp; Treasuries', 'Latest bond and T-bill prices and yields by ISIN, next to your stocks and crypto.'),
  ('bolt', 'AI assistants', 'Connect Claude, Cursor or VS Code to your account: ask about your portfolio and practice trades on paper.'),
  ('globe', 'English &amp; Yiddish', 'The whole app and this site in English or Yiddish, right-to-left.'),
@@ -301,7 +301,7 @@ def index(lang='en'):
   </div>
   <figure class="shot"><div class="frame"><i></i><i></i><i></i></div><img src="hero-brightolio.webp" width="1600" height="1000" alt="{T('Brightolio portfolio dashboard with equity chart, positions and order ticket')}" fetchpriority="high"><figcaption>{T('Illustrative paper-trading account')}</figcaption></figure>
 </div>
-<div class="marquee" aria-hidden="true"><div class="track">{''.join(f'<span>{ic(i, 16)}{T(t)}</span>' for i, t, d in FEATURES) * 2}</div></div>
+<div class="marquee" aria-hidden="true"><div class="track">{''.join(f'<span>{ic(i, 16)}{T(t)}</span>' for i, t, d in FEATURES if t != 'English &amp; Yiddish') * 2}</div></div>
 <div class="wrap"><div class="logos"><span>{T('Brokers:')} <b>Alpaca</b> · <b>Schwab</b> · <b>tastytrade</b> · <b>Tradier</b> · <b>TradeStation</b></span><span>{T('Payments by')} <b>Stripe</b> &amp; <b>Helcim</b></span></div></div>
 </section>
 
@@ -322,6 +322,18 @@ def index(lang='en'):
     <li><span class="n">3</span><h3>{T('Go live when you feel ready')}</h3><p>{T('Connect your own brokerage account, or open one in the app. Your money stays at your broker, and your risk rules apply to every order.')}</p></li>
   </ol>
   <p class="center tip">{ic('chart', 16)} {T('Not sure what to pick first? Most beginners start with the')} <a href="#sp500">{T('S&amp;P 500 plan')}</a>: {T('one simple investment in 500 large US companies, a little every month.')}</p>
+  <div class="basics">
+    <h3 class="center">{T('Investing words, in plain language')}</h3>
+    <div class="basics-grid">
+      <div><b>{T('Stock')}</b><p>{T('A small piece of a company. If the company does well, the piece is usually worth more.')}</p></div>
+      <div><b>{T('Index fund')}</b><p>{T('One purchase that owns hundreds of companies at once, for a very small yearly fee.')}</p></div>
+      <div><b>{T('Paper trading')}</b><p>{T('Practice with pretend money at real prices. Mistakes cost nothing.')}</p></div>
+      <div><b>{T('Market and limit orders')}</b><p>{T('A market order buys right away at the current price; a limit order only at your price or better.')}</p></div>
+      <div><b>{T('Diversification')}</b><p>{T('Spreading your money over many investments, so one bad one hurts less.')}</p></div>
+      <div><b>{T('Risk')}</b><p>{T('Prices go up and down. Money you need soon is safer in savings than in stocks.')}</p></div>
+    </div>
+    <p class="center tip">{T('Inside the app, every advanced page opens with a short guide, and a ? next to a word explains it. Ask the AI assistant anything, in plain words.')}</p>
+  </div>
   <details class="moregoals"><summary>{T('Already know what you want? Pick a goal')}</summary>
     <div class="intents" data-tabs><div class="ichips" role="tablist" aria-label="{T('What do you want to do?')}">{chips}</div>{panels}</div>
   </details>

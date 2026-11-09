@@ -6,7 +6,12 @@ import path from 'node:path';
 
 const url = process.env.DATABASE_URL || 'file:' + (process.env.DB_FILE || path.resolve('data/quantpocket.db'));
 if (url.startsWith('file:')) fs.mkdirSync(path.dirname(url.slice(5)), { recursive: true });
-if (url.startsWith('file:') && process.env.RENDER) console.warn('WARNING: using a local SQLite file on Render. Free instances lose files on restart; set DATABASE_URL to a Turso database.');
+// A hosted database keeps accounts and trading data across restarts; a local file on a host
+// without a lasting disk (Render's free plan) is wiped on every restart and deploy.
+export const persistentDb = !url.startsWith('file:');
+export const needsHostedDb = () => !!process.env.RENDER || process.env.REQUIRE_HOSTED_DB === '1';
+if (!persistentDb && needsHostedDb()) console.error('DATABASE ERROR: DATABASE_URL is not set, so this server uses a local SQLite file that is lost on restart. Set DATABASE_URL and DATABASE_AUTH_TOKEN (Render → Environment) before relying on it for accounts or trading data.');
+if (persistentDb && !process.env.DATABASE_AUTH_TOKEN && /^libsql:|^https:/.test(url)) console.error('DATABASE WARNING: DATABASE_URL is set but DATABASE_AUTH_TOKEN is empty; a Turso database refuses connections without it.');
 export const db = createClient({ url, authToken: process.env.DATABASE_AUTH_TOKEN });
 
 const SCHEMA = `
@@ -890,11 +895,33 @@ const MIGRATIONS = [
   "CREATE TRIGGER IF NOT EXISTS exec_audit_no_delete BEFORE DELETE ON exec_audit BEGIN SELECT RAISE(ABORT, 'exec_audit is append-only'); END",
 ];
 
+// Migrations run on every start. Re-running one that is already applied ("duplicate column",
+// "already exists") is expected and ignored; any other failure is logged and kept, and shows in
+// GET /healthz/full, so a half-updated schema never goes unnoticed.
+export const migrationProblems = [];
+const alreadyApplied = e => /duplicate column name|already exists/i.test(String(e?.message || e));
 export const ready = (async () => {
   if (url.startsWith('file:')) { await db.execute('PRAGMA journal_mode = WAL'); await db.execute('PRAGMA foreign_keys = ON'); }
   await db.executeMultiple(SCHEMA);
-  for (const m of MIGRATIONS) await db.execute(m).catch(() => {});
+  for (const m of MIGRATIONS) await db.execute(m).catch(e => {
+    if (alreadyApplied(e)) return;
+    migrationProblems.push({ migration: m.replace(/\s+/g, ' ').slice(0, 120), error: String(e?.message || e).slice(0, 200) });
+    console.error('DATABASE MIGRATION FAILED:', m.replace(/\s+/g, ' ').slice(0, 120), '->', e?.message || e);
+  });
 })();
+
+// Every column the migrations add must exist afterwards (checked against the live database).
+export async function schemaReport() {
+  await ready;
+  const want = {};
+  for (const m of MIGRATIONS) { const x = /^\s*ALTER TABLE (\w+) ADD COLUMN (\w+)/i.exec(m); if (x) (want[x[1]] ||= []).push(x[2]); }
+  const missing = [];
+  for (const [table, cols] of Object.entries(want)) {
+    const have = new Set((await db.execute(`PRAGMA table_info(${table})`)).rows.map(r => r.name ?? r[1]));
+    for (const c of cols) if (!have.has(c)) missing.push(`${table}.${c}`);
+  }
+  return { ok: !missing.length && !migrationProblems.length, missingColumns: missing, failedMigrations: migrationProblems.length, checkedColumns: Object.values(want).flat().length };
+}
 
 const plain = rs => rs.rows.map(r => Object.fromEntries(rs.columns.map((c, i) => [c, r[i]])));
 const exec = async (sql, args) => { await ready; return db.execute({ sql, args: args.map(a => (a === undefined ? null : a)) }); };

@@ -12,7 +12,7 @@ import compression from 'compression';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { one, all, run, now, audit } from './src/db.js';
+import { one, all, run, now, audit, persistentDb, needsHostedDb, schemaReport } from './src/db.js';
 import { encrypt, hashSecret, verifySecret, safeEqual, publicName } from './src/crypto.js';
 import * as auth from './src/auth.js';
 import crypto from 'node:crypto';
@@ -191,6 +191,30 @@ app.get('/healthz/routing', async (req, res) => { const { routingReport } = awai
 app.get('/healthz', async (req, res) => {
   try { await one('SELECT 1 AS ok'); res.json({ ok: true, time: new Date().toISOString() }); }
   catch (e) { res.status(503).json({ ok: false }); }
+});
+// /healthz only says the server answers and reaches its database (Render restarts it otherwise).
+// /healthz/full is the production check: lasting database, complete schema and paper/live
+// routing, all at once (run by the deploy workflow after every push). Names only, never secrets.
+app.get('/healthz/full', async (req, res) => {
+  const { routingReport } = await import('./src/routingcheck.js');
+  const problems = [];
+  let reachable = false, schema = null;
+  try { await one('SELECT 1 AS ok'); reachable = true; } catch { problems.push('The database does not answer.'); }
+  if (!persistentDb && needsHostedDb()) problems.push('DATABASE_URL is not set: accounts and trading data are kept in a local file that is lost on restart.');
+  if (reachable) {
+    schema = await schemaReport().catch(e => ({ ok: false, error: e.message }));
+    if (schema.missingColumns?.length) problems.push(`Database columns missing after migrations: ${schema.missingColumns.join(', ')}.`);
+    if (schema.failedMigrations) problems.push(`${schema.failedMigrations} database migration(s) failed at start (see the server log).`);
+    if (schema.error) problems.push('The schema check could not run: ' + schema.error);
+  }
+  const routing = routingReport();
+  problems.push(...routing.problems);
+  res.status(problems.length ? 500 : 200).json({
+    ok: !problems.length, commit: routing.commit, checkedAt: new Date().toISOString(),
+    database: { reachable, lasting: persistentDb, schemaOk: !!schema?.ok, checkedColumns: schema?.checkedColumns ?? null },
+    routing: { ok: routing.ok, alpacaPaper: routing.paper.alpacaPaper, alpacaLive: routing.live.alpacaLive },
+    problems,
+  });
 });
 
 // Free hosts sleep idle apps, so a GitHub Actions cron calls this to run due jobs.
@@ -1169,6 +1193,18 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   process.on('unhandledRejection', e => { countUnhandled(); console.error('Unhandled promise rejection (server keeps running):', e?.stack || e); });
   const port = +process.env.PORT || 3000;
   const server = app.listen(port, () => console.log(`Brightolio on http://localhost:${port}`));
+  // Startup check: the same as GET /healthz/full, written to the log so a missing hosted database,
+  // a failed migration or wrong paper/live servers are visible right after every deploy.
+  setTimeout(async () => {
+    try {
+      const { routingReport } = await import('./src/routingcheck.js');
+      const r = routingReport(), sch = await schemaReport();
+      for (const p of r.problems) console.error('STARTUP CHECK (routing):', p);
+      if (sch.missingColumns.length) console.error('STARTUP CHECK (database): missing columns', sch.missingColumns.join(', '));
+      if (!persistentDb && needsHostedDb()) console.error('STARTUP CHECK (database): no DATABASE_URL; data is lost on restart.');
+      if (r.ok && sch.ok && (persistentDb || !needsHostedDb())) console.log(`Startup check OK: ${persistentDb ? 'hosted' : 'local'} database, ${sch.checkedColumns} migrated columns present, paper and live routing correct.`);
+    } catch (e) { console.error('STARTUP CHECK could not run:', e.message); }
+  }, 1500).unref();
   startHostingSync();
   const timer = startScheduler(isActiveHost);
   startKeepWarm();

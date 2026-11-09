@@ -530,3 +530,12 @@ section.dark .sub, section.dark .trust .feature p { color: #b6c4da; }
 .tw-grid > .tw { min-width: 0; }
 .tw .btn { white-space: normal; max-width: 100%; }
 @media (max-width: 420px) { .tw { padding: 18px 16px; } .tw h3 { font-size: 19px; } }
+/* Investing words for beginners (homepage, "Start here") */
+.basics { max-width: 1040px; margin: 34px auto 0; }
+.basics h3 { margin: 0 0 14px; }
+.basics-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.basics-grid > div { background: var(--card); border: 1px solid var(--bd); border-radius: 14px; padding: 14px 16px; }
+.basics-grid b { display: block; margin-bottom: 4px; }
+.basics-grid p { margin: 0; color: var(--mu); font-size: 14.5px; line-height: 1.5; }
+@media (max-width: 860px) { .basics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .basics-grid { grid-template-columns: 1fr; } }

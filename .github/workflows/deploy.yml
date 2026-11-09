@@ -67,3 +67,22 @@ jobs:
               sys.exit(1)
           print('OK: paper is paper and live is live.')
           "
+      # The rest of the production check (GET /healthz/full): a lasting hosted database and a
+      # complete schema. Reported as a warning so a setting the owner changes on Render is never
+      # mistaken for a code failure.
+      - name: Check the database on the live site
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          [ -z "$APP_URL" ] && exit 0
+          body=$(curl -sS --max-time 30 "${APP_URL%/}/healthz/full" || true)
+          [ -n "$body" ] || { echo "::warning::/healthz/full did not answer (the server may still be on an older version)."; exit 0; }
+          printf '%s' "$body" | python3 -c "
+          import sys, json
+          try: r = json.load(sys.stdin)
+          except Exception: print('::warning::/healthz/full is not available on the live version yet.'); sys.exit(0)
+          d = r.get('database', {})
+          print('Database answers:', d.get('reachable'), '| lasting (hosted):', d.get('lasting'), '| schema complete:', d.get('schemaOk'), '| columns checked:', d.get('checkedColumns'))
+          for p in r.get('problems', []): print('::warning::' + p)
+          if r.get('ok'): print('OK: hosted database, complete schema, correct routing.')
+          "
