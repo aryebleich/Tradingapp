@@ -57,6 +57,9 @@ const date = t => new Date(t).toLocaleString();
 // drawn again quietly. Saving anything (any request that is not a read) empties this memory.
 // The memory also survives closing the app (this browser only, for the signed-in user, emptied on
 // sign-out): opening the app shows the last numbers at once while fresh ones load.
+// The background loader (see prefetchAll): a hidden copy of the app that opens every section once,
+// only reads, and hands every answer to the visible app.
+const PREFETCH = window.parent !== window && new URLSearchParams(location.search).has('prefetch');
 const SWR = new Map(), SWR_SKIP = /^\/(auth|alpaca\/stream|notifications|admin\/agents|sponsored)/;
 const KEEP_KEY = 'qp_keep';
 let swrOn = false, swrRedraw = null, keepTimer = null;
@@ -67,6 +70,8 @@ const keepSave = () => { clearTimeout(keepTimer); keepTimer = setTimeout(() => {
 const keepClear = () => { SWR.clear(); try { localStorage.removeItem(KEEP_KEY); localStorage.removeItem('qp_me'); } catch {} };
 async function api(path, opts = {}, retried) {
   const get = !opts.method && !opts.body;
+  if (PREFETCH && !get) throw new Error('Read-only while loading in the background');
+  if (PREFETCH && get && SWR.get(path)?.ok && Date.now() - SWR.get(path).at < 60e3) return structuredClone(SWR.get(path).data);
   if (!get) { if (LIGHT.test(path)) { const top = path.split('/')[1]; for (const k of [...SWR.keys()]) if (k.split(/[/?]/)[1] === top) SWR.delete(k); } else SWR.clear(); }
   else if (!SWR_SKIP.test(path)) {
     const hit = SWR.get(path), age = hit ? Date.now() - hit.at : Infinity;
@@ -91,7 +96,7 @@ async function api(path, opts = {}, retried) {
 // A read that is remembered (see above); failures are not remembered.
 function fetchJson(path) {
   const e = { at: Date.now(), ok: false };
-  e.p = apiCall(path, {}).then(d => { Object.assign(e, { data: d, json: JSON.stringify(d), ok: true }); keepSave(); return d; }, err => { SWR.delete(path); throw err; });
+  e.p = apiCall(path, {}).then(d => { Object.assign(e, { data: d, json: JSON.stringify(d), ok: true }); if (PREFETCH) parent.postMessage({ qpData: [path, d] }, location.origin); else keepSave(); return d; }, err => { SWR.delete(path); throw err; });
   SWR.set(path, e);
   if (SWR.size > 300) SWR.delete(SWR.keys().next().value);
   return Promise.resolve(e.p);
@@ -568,8 +573,45 @@ async function render(opts) {
     view.innerHTML = `<div class="card err">${esc(e.message)}</div>`;
     if (swap) show();
   }
+  finally { if (PREFETCH) parent.postMessage({ qpRendered: route }, location.origin); }
 }
 window.addEventListener('hashchange', () => render());
+
+// ---------- loading every section in the background ----------
+// A few seconds after the app opens, a hidden copy of it opens every section of the menu once, one
+// after another; everything they read lands in this app's memory, so each section then opens at
+// once. A thin line under the header shows the progress. The copy can only read (no orders, no
+// saving); it runs at most once every 3 minutes, and it stops when the tab is hidden.
+const PF_SKIP = new Set(['start', 'code', 'quantconnect', 'android', 'leaders', 'admin-agents', 'admin-upgrades', 'admin-yiddish', 'admin-seo']);
+addEventListener('message', e => {
+  if (e.origin !== location.origin || PREFETCH) return;
+  const d = e.data?.qpData; if (!d) return;
+  const [path, data] = d, json = JSON.stringify(data);
+  SWR.set(path, { at: Date.now(), data, json, ok: true, p: Promise.resolve(data) }); keepSave();
+});
+function prefetchAll() {
+  if (PREFETCH || !ME || document.hidden || $('#pfFrame')) return;
+  try { if (Date.now() - +sessionStorage.getItem('qp_pf') < 180e3) return; sessionStorage.setItem('qp_pf', Date.now()); } catch {}
+  const groups = ME.role === 'admin' ? [...ADMIN_GROUPS, BIZ_NAV, ...NAV] : NAV;
+  const list = [...new Set([...CORE, ...groups.flatMap(g => g[1])].map(([k]) => k))].filter(k => routes[k] && !PF_SKIP.has(k) && !(ADDON_PAGES[k] && ME.addons?.[ADDON_PAGES[k]] === false));
+  const bar = document.createElement('div'); bar.id = 'pfbar'; bar.setAttribute('role', 'progressbar'); bar.setAttribute('aria-label', 'Loading sections');
+  bar.innerHTML = '<i></i><span>Loading sections · 0%</span>'; bar.style.setProperty('--pf-top', ($('#top')?.getBoundingClientRect().bottom || 56) + 'px'); document.body.append(bar);
+  const frame = Object.assign(document.createElement('iframe'), { id: 'pfFrame', title: 'Background loading', tabIndex: -1, src: '/app?prefetch=1#/' + list[0] });
+  frame.setAttribute('aria-hidden', 'true'); document.body.append(frame);
+  let i = 0, timer = null;
+  const set = () => { const pct = Math.round(i / list.length * 100); bar.querySelector('i').style.width = pct + '%'; bar.querySelector('span').textContent = `Loading sections · ${pct}%`; bar.setAttribute('aria-valuenow', pct); };
+  const finish = () => { clearTimeout(timer); removeEventListener('message', onMsg); frame.remove(); i = list.length; set(); bar.classList.add('done'); setTimeout(() => bar.remove(), 900); };
+  const next = () => {
+    i++; set();
+    if (i >= list.length || document.hidden) return finish();
+    clearTimeout(timer); timer = setTimeout(next, 10000); // a section that never finishes is skipped
+    try { frame.contentWindow.location.hash = '#/' + list[i]; } catch { finish(); }
+  };
+  const onMsg = e => { if (e.origin === location.origin && e.source === frame.contentWindow && e.data?.qpRendered === list[i]) setTimeout(next, 120); };
+  addEventListener('message', onMsg);
+  timer = setTimeout(next, 15000);
+  set();
+}
 
 // ---------- live pages: account pages refresh themselves while they are open ----------
 // Prices stream live everywhere; balances, positions, orders and similar pages are drawn again
@@ -639,7 +681,7 @@ async function sponsoredToast() {
 }
 let toastTick = 0;
 const nextToast = async () => { if (++toastTick % 4 === 0 && await sponsoredToast()) return; nextNewsToast(); };
-setTimeout(() => { nextToast(); newsToasts.timer = setInterval(nextToast, 45000); }, 8000);
+if (!PREFETCH) setTimeout(() => { nextToast(); newsToasts.timer = setInterval(nextToast, 45000); }, 8000);
 // Phone layout: the sidebar becomes a drawer opened from the header or the bottom "Menu" tab.
 function setMenu(open) {
   $('#nav').classList.toggle('open', open); $('#scrim').hidden = !open;
@@ -1736,7 +1778,9 @@ registerSponsored(routes, shared);
 registerInvest(routes, shared);
 
 // Static files are cached for instant repeat visits (sw.js); pages and data always come fresh.
-if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});
+if (!PREFETCH && 'serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});
+// Start loading every section in the background a few seconds after the app opens.
+if (!PREFETCH) setTimeout(() => prefetchAll(), 3000);
 
 (async () => {
   // Remember an invite code from a referral link (/app?ref=CODE) for sign-up.
