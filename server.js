@@ -1106,9 +1106,23 @@ const BUNDLE = await (async () => {
     return { files, entry: [...files.keys()].find(k => k.startsWith('app-')) };
   } catch (e) { console.warn('bundle: using separate files,', e.message); return null; }
 })();
+// Each app file is also kept compressed at the strongest Brotli level (done once, in the background
+// after start), about a fifth smaller than the on-the-fly compression; browsers that cannot take
+// Brotli get the usual gzip.
+const BUNDLE_BR = new Map();
+if (BUNDLE) setTimeout(async () => {
+  const { brotliCompress, constants } = await import('node:zlib');
+  for (const [name, text] of BUNDLE.files) {
+    const buf = Buffer.from(text);
+    await new Promise(r => brotliCompress(buf, { params: { [constants.BROTLI_PARAM_QUALITY]: 11, [constants.BROTLI_PARAM_SIZE_HINT]: buf.length } }, (e, out) => { if (!e) BUNDLE_BR.set(name, out); r(); }));
+  }
+}, 500).unref?.();
 app.get('/bundle/:file', (req, res, next) => {
   const body = BUNDLE?.files.get(req.params.file); if (!body) return next();
-  res.type('application/javascript').set('Cache-Control', 'public, max-age=31536000, immutable').send(body);
+  res.type('application/javascript').set({ 'Cache-Control': 'public, max-age=31536000, immutable', Vary: 'Accept-Encoding' });
+  const br = BUNDLE_BR.get(req.params.file);
+  if (br && /\bbr\b/.test(String(req.headers['accept-encoding'] || ''))) return res.set('Content-Encoding', 'br').send(br);
+  res.send(body);
 });
 async function appPage() {
   const html = await fs.readFile(path.join(pub, 'app.html'), 'utf8');

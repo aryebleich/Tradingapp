@@ -8,39 +8,13 @@
 // Brightolio single-page client. Hash routes, no framework.
 import { registerTrading } from './pages/trading.js';
 import { chartStates, RICH_STATES, richStates, blendedColors } from './chartstates.js';
-import { registerSignals } from './pages/signals.js';
-import { registerStrategies } from './pages/strategies.js';
-import { registerPairs } from './pages/pairs.js';
-import { registerSp500 } from './pages/sp500.js';
 import { registerBrokers } from './pages/brokers.js';
-import { registerStudio } from './pages/studio.js';
-import { registerBuild } from './pages/build.js';
-import { registerAnalytics } from './pages/analytics.js';
-import { registerChart } from './chart.js';
-import { registerOptionsLab } from './pages/optionslab.js';
 import { registerProtect, getPasskey } from './pages/protect.js';
-import { registerOwner } from './pages/owner.js';
-import { registerWealth } from './pages/wealth.js';
-import { registerTools } from './pages/tools.js';
-import { registerAlts } from './pages/alts.js';
-import { registerMoney } from './pages/money.js';
-import { registerRules } from './pages/rules.js';
-import { registerTrustAdmin } from './pages/trust-admin.js';
-import { registerLuach } from './pages/luach.js';
 import { registerAddons } from './pages/addons.js';
 import * as OD from './pages/orderdesk.js';
 import { startBell } from './pages/bell.js';
-import { registerInstruments } from './pages/instruments.js';
-import { registerAdminOps } from './pages/admin-ops.js';
 import { registerStart } from './pages/start.js';
 import { initSearch } from './pages/search.js';
-import { registerRiskPages } from './pages/riskpages.js';
-import { registerRetirement } from './pages/retirement.js';
-import { registerCombined } from './pages/combined.js';
-import { registerBusiness } from './pages/business.js';
-import { registerSocial } from './pages/social.js';
-import { registerSponsored, treasuryCard } from './pages/sponsored.js';
-import { registerInvest } from './pages/invest.js';
 import { attachGlossary } from './pages/glossary.js';
 import { startI18n, setLang, canvasNote, LANGS, current as currentLang } from './i18n.js';
 const $ = (s, el = document) => el.querySelector(s);
@@ -493,7 +467,7 @@ async function render(opts) {
   // Only the newest redraw is ever shown: an older one that finishes later is dropped.
   const mine = render.seq = (render.seq || 0) + 1;
   const swap = quiet || samePage;
-  if (route !== render.last) { view.className = 'enter'; render.last = route; }
+  if (route !== render.last) { view.className = 'enter'; render.last = route; if (!PREFETCH) countVisit(route); }
   const keepY = scrollY;
   if (swap) { $('#view').style.position = 'relative'; view.style.cssText = 'visibility:hidden;position:absolute;left:0;right:0;top:0'; $('#view').append(view); }
   else {
@@ -595,11 +569,28 @@ addEventListener('message', e => {
 });
 let pfQuietUntil = 0;
 for (const ev of ['pointerdown', 'keydown', 'touchstart']) addEventListener(ev, () => { pfQuietUntil = Date.now() + 2000; }, { capture: true, passive: true });
+// Pages a person opens most are remembered on this device (page names only), so a slow or
+// metered connection loads just those in the background instead of every section.
+function countVisit(route) {
+  try { const v = JSON.parse(localStorage.getItem('qp_visits') || '{}'); v[route] = (v[route] || 0) + 1; localStorage.setItem('qp_visits', JSON.stringify(v)); } catch {}
+}
+function topVisited(n) {
+  try { return Object.entries(JSON.parse(localStorage.getItem('qp_visits') || '{}')).sort((a, b) => b[1] - a[1]).slice(0, n).map(([k]) => k); } catch { return []; }
+}
+// Data Saver on, or a slow mobile connection: background loading stays small.
+function lightData() {
+  const c = navigator.connection; if (!c) return false;
+  return !!c.saveData || /^(slow-2g|2g|3g)$/.test(c.effectiveType || '');
+}
 function prefetchAll() {
   if (PREFETCH || !ME || document.hidden || $('#pfFrame')) return;
   try { if (Date.now() - +sessionStorage.getItem('qp_pf') < 180e3) return; sessionStorage.setItem('qp_pf', Date.now()); } catch {}
   const groups = ME.role === 'admin' ? [...ADMIN_GROUPS, BIZ_NAV, ...NAV] : NAV;
-  const list = [...new Set([...CORE, ...groups.flatMap(g => g[1])].map(([k]) => k))].filter(k => routes[k] && !PF_SKIP.has(k) && !(ADDON_PAGES[k] && ME.addons?.[ADDON_PAGES[k]] === false));
+  const light = lightData();
+  if (light && navigator.connection?.saveData && !topVisited(1).length) return;
+  const all = light ? [...CORE.slice(0, 5).map(([k]) => k), ...topVisited(6)] : [...CORE, ...groups.flatMap(g => g[1])].map(([k]) => k);
+  const list = [...new Set(all)].filter(k => routes[k] && !PF_SKIP.has(k) && !(ADDON_PAGES[k] && ME.addons?.[ADDON_PAGES[k]] === false));
+  if (!list.length) return;
   const bar = document.createElement('div'); bar.id = 'pfbar'; bar.setAttribute('role', 'progressbar'); bar.setAttribute('aria-label', 'Loading your data');
   bar.innerHTML = '<i></i><span>Loading your data... 0%</span>'; bar.style.setProperty('--pf-top', ($('#top')?.getBoundingClientRect().bottom || 56) + 'px'); document.body.append(bar);
   const frame = Object.assign(document.createElement('iframe'), { id: 'pfFrame', title: 'Background loading', tabIndex: -1, src: '/app?prefetch=1#/' + list[0] });
@@ -1707,7 +1698,7 @@ async function adminPage(view, tab) {
     <p class="mu" style="font-size:12.5px">To change one: open <a href="#/admin-keys">Keys</a> (saves here and on Render), or Render → your service → Environment → add or edit the variable → Save.</p></div>`,
   };
   view.innerHTML = `<h1>Admin</h1>${tabs}${sections[tab]()}`;
-  if ($('#treasuryBox', view)) treasuryCard($('#treasuryBox', view), shared).catch(() => {});
+  if ($('#treasuryBox', view)) import('./pages/sponsored.js').then(m => m.treasuryCard($('#treasuryBox', view), shared)).catch(() => {});
   if ($('#testEmail', view)) act($('#testEmail', view), async () => `Sent to ${(await api('/admin/test-email', { body: {} })).to}. Check the inbox (and spam).`, $('#testEmail', view).nextElementSibling);
   if ($('#assess', view)) act($('#assess', view), async () => { const r = await api('/admin/assess-fees', { body: {} }); setTimeout(render, 1200); return `Assessed ${r.length} accounts, ${money(r.reduce((a, x) => a + (x.fee || 0), 0))} in new fees`; });
   $$('[data-l]', view).forEach(b => (b.onclick = async () => { await api('/admin/ledger/' + b.dataset.l, { body: { status: b.dataset.s } }); render(); }));
@@ -1752,40 +1743,52 @@ async function adminPage(view, tab) {
 }
 for (const [k] of ADMIN_TABS.filter(([k]) => !['admin-system', 'admin-trust', 'admin-data', 'admin-comms', 'admin-upgrades', 'admin-yiddish', 'admin-admins', 'admin-keys'].includes(k))) routes[k] = view => (ME?.role === 'admin' ? adminPage(view, k) : routes.dashboard(view, new URLSearchParams()));
 
-registerStrategies(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, cls, date, api, form, act, render, drawChart, onLeave, me: () => ME });
+lazyRoutes(() => import('./pages/strategies.js'), 'registerStrategies', { accounts, accountOptions, acctLabel, $, $$, esc, money, cls, date, api, form, act, render, drawChart, onLeave, me: () => ME }, ["strategies", "strategy"]);
 registerBrokers(routes, { $, $$, esc, money, api, form, act, render, accounts });
-registerSp500(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, cls, api, form, act, render, drawChart, me: () => ME });
-registerPairs(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, cls, api, form, act, render, drawChart, me: () => ME });
-registerSignals(routes, { accounts, accountOptions, acctLabel, $, $$, esc, money, date, api, form, act, render, me: () => ME });
+lazyRoutes(() => import('./pages/sp500.js'), 'registerSp500', { accounts, accountOptions, acctLabel, $, $$, esc, money, cls, api, form, act, render, drawChart, me: () => ME }, ["sp500"]);
+lazyRoutes(() => import('./pages/pairs.js'), 'registerPairs', { accounts, accountOptions, acctLabel, $, $$, esc, money, cls, api, form, act, render, drawChart, me: () => ME }, ["pairs", "statarb"]);
+lazyRoutes(() => import('./pages/signals.js'), 'registerSignals', { accounts, accountOptions, acctLabel, $, $$, esc, money, date, api, form, act, render, me: () => ME }, ["signals"]);
+// Page code loads when a page is first opened (one small file per area), not with the app: the
+// app itself downloads much less, and nobody downloads pages they cannot open (owner pages, the
+// business books). Each area's file is cached by the browser after the first time.
+function lazyRoutes(load, fn, helpers, keys) {
+  let loading = null;
+  const ensure = () => (loading ||= load().then(m => {
+    const own = {}; m[fn](own, helpers);
+    // Only this area's pages are swapped in (a page another area took over stays with it).
+    for (const k of keys) if (routes[k]?.lazyOf === fn) routes[k] = own[k];
+  }).catch(e => { loading = null; throw e; }));
+  for (const k of keys) routes[k] = Object.assign(async (view, q) => { await ensure(); return routes[k](view, q); }, { lazyOf: fn });
+}
 registerTrading(routes, { accountBoxes, $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, approvalsBanner, statementRow, wireStatement, prefs: () => PREFS.portfolio, sinceLastLook, sinceStat, onLeave, render, updateBadge, me: () => ME, state });
 const shared = { $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, accounts, accountOptions, acctLabel, state, adminTabs, adminPage, secureConfirm, me: () => ME, paid: () => isPaid(ME) };
-registerStudio(routes, shared);
-registerBuild(routes, shared);
-registerAnalytics(routes, shared);
-registerChart(routes, shared);
-registerOptionsLab(routes, shared);
+lazyRoutes(() => import('./pages/studio.js'), 'registerStudio', shared, ["ai", "agents", "code"]);
+lazyRoutes(() => import('./pages/build.js'), 'registerBuild', shared, ["scanner", "portfolios", "fleet", "marketplace"]);
+lazyRoutes(() => import('./pages/analytics.js'), 'registerAnalytics', shared, ["insights", "risk", "values", "halal", "institutions", "spend", "news"]);
+lazyRoutes(() => import('./chart.js'), 'registerChart', shared, ["chart"]);
+lazyRoutes(() => import('./pages/optionslab.js'), 'registerOptionsLab', shared, ["optionslab"]);
 registerProtect(routes, shared);
-registerOwner(routes, shared);
-registerAlts(routes, shared);
-registerMoney(routes, shared);
-registerRules(routes, shared);
-registerTrustAdmin(routes, shared);
-registerLuach(routes, shared);
+lazyRoutes(() => import('./pages/owner.js'), 'registerOwner', shared, ["admin-upgrades", "admin-business", "admin-alpaca", "admin-money", "admin-yiddish", "admin-phone", "admin-ai", "admin-readme", "admin-admins", "admin-keys"]);
+lazyRoutes(() => import('./pages/alts.js'), 'registerAlts', shared, ["private", "realestate"]);
+lazyRoutes(() => import('./pages/money.js'), 'registerMoney', shared, ["money"]);
+lazyRoutes(() => import('./pages/rules.js'), 'registerRules', shared, ["rules"]);
+lazyRoutes(() => import('./pages/trust-admin.js'), 'registerTrustAdmin', shared, ["admin-trust"]);
+lazyRoutes(() => import('./pages/luach.js'), 'registerLuach', shared, ["luach"]);
 registerAddons(routes, shared);
-registerInstruments(routes, shared);
+lazyRoutes(() => import('./pages/instruments.js'), 'registerInstruments', shared, ["invest"]);
 registerStart(routes, shared);
-registerAdminOps(routes, shared);
+lazyRoutes(() => import('./pages/admin-ops.js'), 'registerAdminOps', shared, ["admin-data", "admin-comms", "admin-strategies", "admin-seo", "admin-agents", "admin-hosting"]);
 initSearch(shared, [['Main', CORE], ...NAV]);
 startBell(shared);
-registerWealth(routes, shared);
-registerTools(routes, shared);
-registerRiskPages(routes, shared);
-registerRetirement(routes, shared);
-registerCombined(routes, shared);
-registerBusiness(routes, shared);
-registerSocial(routes, shared);
-registerSponsored(routes, shared);
-registerInvest(routes, shared);
+lazyRoutes(() => import('./pages/wealth.js'), 'registerWealth', shared, ["wealth"]);
+lazyRoutes(() => import('./pages/tools.js'), 'registerTools', shared, ["alpaca-tools"]);
+lazyRoutes(() => import('./pages/riskpages.js'), 'registerRiskPages', shared, ["riskview", "research", "tokenized", "protection"]);
+lazyRoutes(() => import('./pages/retirement.js'), 'registerRetirement', shared, ["retirement"]);
+lazyRoutes(() => import('./pages/combined.js'), 'registerCombined', shared, ["accounts"]);
+lazyRoutes(() => import('./pages/business.js'), 'registerBusiness', shared, ["currencies", "business", "invoices", "books", "bank", "inventory", "payroll", "bizreports"]);
+lazyRoutes(() => import('./pages/social.js'), 'registerSocial', shared, ["traders", "robo"]);
+lazyRoutes(() => import('./pages/sponsored.js'), 'registerSponsored', shared, ["admin-sponsored"]);
+lazyRoutes(() => import('./pages/invest.js'), 'registerInvest', shared, ["analyze", "lowcost", "earnings", "leaders", "short", "margin", "aifunds"]);
 
 // Static files are cached for instant repeat visits (sw.js); pages and data always come fresh.
 if (!PREFETCH && 'serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});
