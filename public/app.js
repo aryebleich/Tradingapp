@@ -85,7 +85,7 @@ async function api(path, opts = {}, retried) {
         apiCall(path, {}).then(d => {
           const json = JSON.stringify(d);
           SWR.set(path, { at: Date.now(), data: d, json, ok: true, p: Promise.resolve(d) }); keepSave();
-          if (json !== hit.json && location.hash === route) { clearTimeout(swrRedraw); swrRedraw = setTimeout(() => location.hash === route && render({ quiet: true }), 150); }
+          if (json !== hit.json && location.hash === route) { clearTimeout(swrRedraw); swrRedraw = setTimeout(() => location.hash === route && !userBusySince(render.startedAt) && render({ quiet: true }), 150); }
         }).catch(() => { hit.refreshing = false; });
       }
       return structuredClone(hit.data);
@@ -479,6 +479,7 @@ const SKELETON = '<div class="skel"><div class="h1"></div><div class="box"></div
 async function render(opts) {
   const quiet = opts?.quiet === true;
   swrOn = !quiet; // a normal draw may use remembered data (see api); a quiet redraw always fetches
+  if (!quiet) render.startedAt = Date.now();
   while (cleanups.length) { try { cleanups.pop()(); } catch {} }
   const [route, q] = (location.hash.slice(2) || 'dashboard').split('?');
   // Each render gets a fresh container: requests still in flight from the previous page then
@@ -625,6 +626,9 @@ function prefetchAll() {
 // typing, clicking, have a dialog or a section open, or the tab is hidden.
 const LIVE_PAGES = new Set(['dashboard', 'positions', 'orders', 'accounts', 'account', 'money', 'bots', 'schedule', 'signals', 'fleet', 'riskview', 'insights', 'admin', 'admin-users', 'admin-hosting', 'admin-system']);
 let lastTouch = Date.now(), hiddenAt = 0, liveBusy = false;
+// The user has used the page since it opened (tapped, typed, has a dialog or a field in use): a
+// background refresh then leaves the page alone, so nothing they are doing is wiped.
+const userBusySince = t => lastTouch > (t || 0) || !!document.querySelector('dialog[open]') || !!document.activeElement?.closest?.('#view input, #view textarea, #view select');
 for (const ev of ['pointerdown', 'keydown', 'wheel', 'touchstart', 'input']) addEventListener(ev, () => (lastTouch = Date.now()), { passive: true, capture: true });
 // A page where the user typed or picked something is never redrawn under them (it would lose it).
 addEventListener('input', e => { const v = e.target?.closest?.('#view > div'); if (v) v.dataset.dirty = '1'; }, true);
