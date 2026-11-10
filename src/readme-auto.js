@@ -40,6 +40,40 @@ Helcim uses "interchange-plus" pricing: you pay the exact interchange, plus Helc
 
 Debit cards keep the cost lowest, which is why card deposits here are debit-only.
 ` },
+  { id: 'admin-files', title: 'Admin files (where the owner-only parts live)', md: `
+Only admins can open these pages or reach their data: every /api/admin route sits behind one admin check (server.js), and owner pages redirect anyone else to Home.
+- **Admin pages in the app:** public/pages/owner.js (Upgrades, Money & fees, Yiddish Labs, Phone line, AI & privacy, README, Admins, Keys), public/pages/admin-ops.js (Market data, Calls, texts & email, Original strategies, SEO, AI team, Hosting), public/pages/trust-admin.js (Trust), public/pages/sponsored.js (Sponsored news, Stripe Treasury card); Overview, Users, Support inbox, System health and Setup are drawn in public/app.js (adminPage).
+- **Admin server code:** src/admin-site.js (site settings, this README, keys, Google Drive), src/adminusers.js (users, live P&L, deleting accounts), src/aiteam.js and src/agents.js (AI team), src/hosting.js (which server is active), src/sponsored.js, src/business/ (the My business pages: payroll, invoices, books, bank, inventory, reports).
+- **This README:** stored encrypted in the database (Admin → README); the sections marked auto come from src/readme-auto.js and src/readme-overview.js and are refreshed on every deploy. The public README.md in the repository is separate and written for search engines; a check after every push (npm run clean) fails if it mentions admin, setup, keys, business figures or Yiddish Labs.
+- **Homepage text:** scripts/home.py (English) and scripts/yi_home.py (Yiddish), built with python3 scripts/pages.py.
+` },
+  { id: 'setup', title: 'Setup information', md: `
+- **Servers:** Render (render.yaml, free plan) and an Oracle Cloud VM (deploy/vm/, set up by the "Oracle server setup" workflow). Admin → Hosting picks the active server; only the active one runs scheduled jobs.
+- **Database:** a hosted Turso database through DATABASE_URL and DATABASE_AUTH_TOKEN. Without them the server falls back to a local file that Render loses on restart, and the start-up log shows a DATABASE ERROR. Migrations run on every start; any failure other than "already applied" is logged.
+- **Keys and settings:** in the Render environment or Admin → Keys (names are listed in the Product overview above; values are never in the code, the README or chat). ENCRYPTION_KEY must never change once data exists.
+- **Health checks:** /healthz (the server answers and reaches its database; Render uses it), /healthz/routing (paper orders go to paper and real money to live), /healthz/full (hosted database, complete schema and routing together). The deploy workflow checks routing and the database on the live site after every push.
+- **GitHub:** repository variable APP_URL (the live site) and secret CRON_SECRET for the scheduler; the Render deploy hook, YL_EMAIL and YL_PASSWORD as repository secrets. CI, end-to-end tests and the clean check run on every push.
+- **First steps for a new server:** set the keys, open /healthz/full until it answers ok, then place one small paper order and one small live order and check them in Execution & routing.
+` },
+  { id: 'legal', title: 'Legal information and integrations', md: `
+- **What Brightolio is, legally:** software, not a broker-dealer and not an investment adviser. It does not hold customer money; orders go to the user's own brokerage. Admin → Upgrades (Business mode tab) switches between software-only mode and registered-adviser mode, which changes fees, wording and what strategies may do.
+- **Public legal pages:** Terms (/terms), Privacy (/privacy), Risk disclosure (/risk), Security (/security), Investor protection and insurance (/insurance), Contact (/contact) and Status (/status). The homepage, the app menu and the legal pages carry the "software, not a broker or adviser" notice, and a test checks the public pages for wording that promises returns.
+- **Required disclosures in the app:** backtests and projections are hypothetical; real-money orders need the user's confirmation; sponsored news on the free plan is labeled as paid promotion and only covers companies listed on an exchange; beginner guides and the AI assistant give education, not personal advice.
+- **Integrations (keys in Admin → Keys):** Alpaca (Broker API, OAuth and trading/data keys), Charles Schwab, TradeStation, Tradier and tastytrade; Plaid (bank links and round-ups); Stripe (subscriptions, billing portal, ACH, Treasury), Helcim and Square (card processing); Twilio (texts, phone line) and Resend (email); Google and GitHub sign-in, Google Drive (this README as a PDF); AI providers (Groq, Gemini, OpenRouter, Anthropic); market data (Finnhub, Twelve Data, Tiingo, Alpha Vantage, FMP, Polygon, FRED); QuickBooks; Cloudflare (edge server); Turso (database).
+- **Privacy rules kept in the code:** the owner's real emails and phone appear only as fingerprints in the source; keys are stored encrypted and shown masked.
+` },
+  { id: 'business', title: 'Business information', md: `
+- **Revenue:** monthly or yearly subscriptions (Pro, Elite, Ultimate, each with a free trial; prices in the Product overview above), a performance fee on new profits that falls with the plan (20% Starter, 10% Pro, 5% Elite, 2.5% Ultimate), credit packs, sponsored news on the free plan (Admin → Sponsored news), and the Alpaca partner revenue share once the Broker API is live (see Owner questions above).
+- **Where the numbers are:** Admin → Overview (monthly recurring revenue, run rate, signups to paying), Admin → Money & fees (fees, card processing, deposits), Admin → Upgrades (plans, Business mode).
+- **The owner's own business books:** the My business pages (Business dashboard, Invoices & payments, Bookkeeping, Bank & receipts, Inventory, Payroll, Financial reports), admin only. The currency converter is open to every user.
+- **Referrals:** a user who invites someone earns a credit when the invited person starts paying (Invite & earn in the menu).
+` },
+  { id: 'yiddish-labs', title: 'Yiddish Labs translation', md: `
+- **What it does:** translates new English text in the app into Yiddish with the Yiddish Labs website, through the "Yiddish Labs translation" workflow (.github/workflows/yiddish.yml, scripts/yiddish-labs.mjs). Only text added since the last run is sent (scripts/yl-last-ref.txt); the homepage, Admin and the README are never sent.
+- **How to run it:** Admin → Yiddish Labs ("Translate new text now"), by hand in GitHub Actions, or after every push when the YL_AUTO repository variable is true. The owner's rule: run it after every push to main.
+- **Sign-in:** only the YL_EMAIL and YL_PASSWORD repository secrets; never in the repository, a file or a command line. The browser session is cached between runs.
+- **Results:** public/i18n/yi-labs.js. After each run the new lines are read, and any line that changes the meaning is deleted (the English then shows until a better translation comes). The homepage Yiddish is written by hand in scripts/yi_home.py.
+` },
   { id: 'recent', title: 'Recent changes', md: `
 - **Investing:** Stock & fund analyzer (P/E and other fundamentals, technical analysis, earnings vs expectations), Low-cost index & mutual funds, Earnings vs expectations for holdings, Automated portfolios, Investing toolkit (was Wealth builder).
 - **Trading tools:** New leaders scan, Short the market (practice shorts with no minimum, inverse ETFs for small accounts, short futures on practice, puts), Margin center (what the account qualifies for, Reg T and maintenance, margin-call prices, bid/ask and market makers).

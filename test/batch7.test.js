@@ -27,10 +27,11 @@ before(async () => {
 });
 after(() => fake.close());
 
-test('the public README is short; the private one is edited, imported and published from Admin', async () => {
+test('the public README is for search; the private one is edited and imported in Admin and never published', async () => {
   const readme = fs.readFileSync('README.md', 'utf8');
-  assert.ok(readme.length < 800, 'public README stays short');
-  assert.match(readme, /being built/);
+  assert.match(readme, /^# Brightolio: /);
+  assert.match(readme, /## What is Brightolio\?/); assert.match(readme, /## Frequently asked questions/);
+  assert.doesNotMatch(readme, /being built|admin|yiddish|DATABASE_URL/i); assert.doesNotMatch(readme, /\bRender\b/);
   assert.ok(!fs.existsSync('docs/pricing-comparison.md'));
   const s = await serve();
   try {
@@ -54,18 +55,12 @@ test('the public README is short; the private one is edited, imported and publis
     // A large guide fits.
     assert.equal((await owner('/admin/site/readme', { text: 'x'.repeat(300e3) }, 'PUT')).status, 200);
     await owner('/admin/site/readme', { text: '# Edited\n\nNew text.' }, 'PUT');
-    // Publishing needs GITHUB_TOKEN and the password.
-    assert.equal((await owner('/admin/site/readme')).body.canPublish, false);
-    process.env.GITHUB_TOKEN = 'test-token';
-    try {
-      assert.equal((await owner('/admin/site/readme/publish', { password: 'wrong' })).status, 401);
-      const pub = await owner('/admin/site/readme/publish', { password: 'Str0ngPassword' });
-      assert.equal(pub.status, 200, JSON.stringify(pub.body)); assert.equal(pub.body.commit, 'newsha123');
-      const put = calls.find(c => c.method === 'PUT');
-      const body = JSON.parse(put.body);
-      assert.equal(body.sha, 'oldsha'); assert.ok(Buffer.from(body.content, 'base64').toString().startsWith('# Edited\n\n<!-- auto:overview -->'));
-      assert.ok((await owner('/admin/site/readme')).body.publishedAt);
-    } finally { delete process.env.GITHUB_TOKEN; }
+    // The private README can never be written over the public one.
+    assert.equal((await owner('/admin/site/readme/publish', { password: 'Str0ngPassword' })).status, 404);
+    assert.equal('canPublish' in (await owner('/admin/site/readme')).body, false);
+    // The private README carries the owner's sections.
+    const pt = (await owner('/admin/site/readme')).body.text;
+    for (const t of ['Admin files', 'Setup information', 'Legal information and integrations', 'Business information', 'Yiddish Labs translation']) assert.match(pt, new RegExp('## ' + t));
   } finally { s.close(); }
 });
 

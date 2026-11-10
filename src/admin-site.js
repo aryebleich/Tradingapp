@@ -344,7 +344,7 @@ adminSiteRouter.put('/ai', wrap(async (req, res) => {
 
 // ---------- private README (Admin → README) ----------
 // The full project guide lives here, encrypted in the database, not in the public repository.
-// The public README.md on GitHub is a short description; "Publish" replaces it with this text.
+// The public README.md in the repository is a separate text for GitHub, Google and AI tools.
 // FULL_README_REF: the last commit whose README.md had the whole guide, to import it once.
 export const FULL_README_REF = 'cfdd4ed96a7b9f400821ba15b07d3101a19ff144';
 const readme = async () => {
@@ -369,7 +369,7 @@ const saveReadme = async (text, extra = {}) => {
 };
 adminSiteRouter.get('/readme', wrap(async (req, res) => {
   const r = await readme();
-  res.json({ text: r?.text ?? '', updatedAt: r?.updatedAt || null, publishedAt: r?.publishedAt || null, canPublish: !!process.env.GITHUB_TOKEN, repo: repo(), fullRef: FULL_README_REF });
+  res.json({ text: r?.text ?? '', updatedAt: r?.updatedAt || null, repo: repo(), fullRef: FULL_README_REF });
 }));
 adminSiteRouter.put('/readme', wrap(async (req, res) => {
   const text = String(req.body?.text ?? '');
@@ -397,18 +397,8 @@ adminSiteRouter.post('/readme/import', wrap(async (req, res) => {
   await audit(req.user.id, 'readme_imported', { ref, length: text.length }, req.ip);
   res.json({ text });
 }));
-// Publishes the saved text as README.md on GitHub (a commit to the default branch). Anyone who can
-// see the repository can read it afterwards, so it asks for the password first.
-adminSiteRouter.post('/readme/publish', wrap(async (req, res) => {
-  if (!confirmsIdentity(req.user, req.body || {})) throw Object.assign(new Error(req.user.password_set === 0 ? 'Type your email address to confirm' : 'Wrong password'), { status: 401 });
-  const r = await readme();
-  if (!r?.text) throw bad('Save the README first');
-  const cur = await gh('GET', '/contents/README.md').catch(e => (e.status === 404 ? null : Promise.reject(e)));
-  const out = await gh('PUT', '/contents/README.md', { message: 'README: published from Admin', content: Buffer.from(r.text, 'utf8').toString('base64'), ...(cur?.sha ? { sha: cur.sha } : {}) });
-  await saveReadme(r.text, { publishedAt: Date.now() });
-  await audit(req.user.id, 'readme_published', { commit: out.commit?.sha || null }, req.ip);
-  res.json({ ok: true, commit: out.commit?.sha || null, url: out.content?.html_url || null });
-}));
+// The private README is never published: the public README.md in the repository is a separate,
+// public description (a check after every push keeps admin, setup and business details out of it).
 
 // ---------- credits: monthly allowances, prices, packs, and gifts to a user ----------
 adminSiteRouter.get('/credits', wrap(async (req, res) => {

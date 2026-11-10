@@ -367,7 +367,7 @@ async function aiPrivacy(view) {
 }
 
 // Private README: the full project guide, kept encrypted in the database and shown only here. The
-// public README on GitHub is a short description; "Publish" makes this text the public one.
+// public README.md on GitHub is a separate public description and is never replaced by this text.
 async function privateReadme(view, q) {
   const [d, dr] = await Promise.all([H.api('/admin/site/readme'), H.api('/admin/site/drive').catch(() => null)]);
   const dq = new URLSearchParams(location.hash.split('?')[1] || '').get('drive');
@@ -376,7 +376,7 @@ async function privateReadme(view, q) {
   view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-readme')}
   <div class="card"><div class="row" style="justify-content:space-between;align-items:center"><h2>Private README</h2>
     <div class="seg" id="rmTab"><button type="button" data-t="edit" class="on">Edit</button><button type="button" data-t="view">Preview</button></div></div>
-    <p class="mu" style="margin-top:0">Only admins see this. The public README on GitHub says only what Brightolio is and that the site is being built. Saved ${when(d.updatedAt)} · published ${when(d.publishedAt)}.</p>
+    <p class="mu" style="margin-top:0">Only admins see this: admin files, setup, legal information and integrations, business information and Yiddish Labs. Saved ${when(d.updatedAt)}.</p>
     ${text ? '' : `<p class="banner">Nothing saved yet. <button type="button" class="small" id="rmImport">Load the full guide</button> brings in the last full README (commit <code data-no-tr>${H.esc(d.fullRef.slice(0, 7))}</code>).</p>`}
     <textarea id="rmText" rows="28" spellcheck="false" data-no-tr style="width:100%;font:13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace">${H.esc(text)}</textarea>
     <div id="rmView" class="readme" hidden data-no-tr></div>
@@ -390,9 +390,7 @@ async function privateReadme(view, q) {
       : `<a href="/oauth/google-drive/start"><button type="button">Connect Google Drive</button></a>
         <p class="mu small-print">One-time: in Google Cloud Console → APIs & Services → Credentials → your OAuth client, add <code data-no-tr>${H.esc(dr.redirectUri)}</code> to Authorized redirect URIs, and enable the Google Drive API.</p>`}
     <div class="err"></div></div>
-  <form class="card" id="rmPub"><h2>Publish as the public README</h2>
-    <p class="mu">Replaces README.md on GitHub (<code data-no-tr>${H.esc(d.repo)}</code>) with the saved text. Anyone who can see the repository can read it afterwards, and GitHub keeps every version in its history.</p>
-    ${d.canPublish ? `<label>Your password<input name="password" type="password" autocomplete="current-password"></label><label>Or, for Google/GitHub accounts, your email<input name="confirm" autocomplete="off"></label><button>Publish to GitHub</button>` : '<p class="banner">Add <code>GITHUB_TOKEN</code> in <a href="#/admin-keys">Keys</a> (a fine-grained token with Contents: read and write) to publish from here.</p>'}<div class="err"></div></form>`;
+  <div class="card"><h2>Public README</h2><p class="mu" style="margin-top:0">The README on GitHub (<code data-no-tr>${H.esc(d.repo)}</code>) is a separate, public description written for Google and AI search: what Brightolio does, its features and common questions. It never contains this private README; a check after every push fails if it mentions admin, setup, keys, business figures or Yiddish Labs.</p></div>`;
   const ta = H.$('#rmText', view), pv = H.$('#rmView', view);
   H.$$('#rmTab button', view).forEach(b => (b.onclick = () => {
     tab = b.dataset.t; H.$$('#rmTab button', view).forEach(x => x.classList.toggle('on', x === b));
@@ -413,13 +411,6 @@ async function privateReadme(view, q) {
     setTimeout(H.render, 1500); return `Saved to Drive (${r.pages} pages).`;
   });
   if (H.$('#rmDriveOff', view)) H.$('#rmDriveOff', view).onclick = async () => { if (confirm('Disconnect Google Drive?')) { await H.api('/admin/site/drive/disconnect', { body: {} }); H.render(); } };
-  const pf = H.$('#rmPub', view);
-  if (d.canPublish) H.act(H.$('button', pf), async () => {
-    if (!confirm('Make this README public on GitHub?')) return '';
-    await H.api('/admin/site/readme', { method: 'PUT', body: { text: ta.value } });
-    const r = await H.api('/admin/site/readme/publish', { body: { password: pf.password.value, confirm: pf.confirm.value } });
-    pf.password.value = ''; return `Published (commit ${String(r.commit || '').slice(0, 7)})`;
-  });
 }
 
 // Credits (Admin → Business mode): monthly allowance per plan, what each extra costs, the packs
