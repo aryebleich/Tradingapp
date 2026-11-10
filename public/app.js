@@ -602,6 +602,8 @@ function pfFrameEarly() {
   if (PREFETCH || location.pathname !== '/app' || $('#pfFrame')) return;
   let known = false; try { known = !!localStorage.getItem('qp_me'); } catch {}
   if (!known && lightData()) return; // a first visit on a slow or metered connection skips it
+  // Not when this tab already loaded everything in the last 3 minutes (it would only sit idle).
+  try { if (Date.now() - +sessionStorage.getItem('qp_pf') < 180e3) return; } catch {}
   const frame = Object.assign(document.createElement('iframe'), { id: 'pfFrame', title: 'Background loading', tabIndex: -1, src: '/app?prefetch=1#/pf-wait' });
   frame.setAttribute('aria-hidden', 'true'); document.body.append(frame);
 }
@@ -614,14 +616,17 @@ if (PREFETCH) addEventListener('message', async e => {
 });
 function prefetchAll() {
   const frame = $('#pfFrame');
-  if (PREFETCH || !ME || document.hidden || !frame || frame.dataset.used) { if (!ME || document.hidden) frame?.remove(); return; }
-  try { if (Date.now() - +sessionStorage.getItem('qp_pf') < 180e3) return; sessionStorage.setItem('qp_pf', Date.now()); } catch {}
+  if (PREFETCH || !frame || frame.dataset.used) return;
+  // Every way out without loading removes the hidden copy, so it never runs a second app for nothing.
+  const skip = () => { frame.remove(); };
+  if (!ME || document.hidden) return skip();
+  try { if (Date.now() - +sessionStorage.getItem('qp_pf') < 180e3) return skip(); sessionStorage.setItem('qp_pf', Date.now()); } catch {}
   const groups = ME.role === 'admin' ? [adminNav(), ...NAV] : NAV;
   const light = lightData();
-  if (light && navigator.connection?.saveData && !topVisited(1).length) return;
+  if (light && navigator.connection?.saveData && !topVisited(1).length) return skip();
   const all = light ? [...CORE.slice(0, 5).map(([k]) => k), ...topVisited(6)] : [...CORE, ...groups.flatMap(g => g[1])].map(([k]) => k);
   const list = [...new Set(all)].filter(k => routes[k] && !PF_SKIP.has(k) && !(ADDON_PAGES[k] && ME.addons?.[ADDON_PAGES[k]] === false));
-  if (!list.length) { frame.remove(); return; }
+  if (!list.length) return skip();
   frame.dataset.used = '1';
   const bar = document.createElement('div'); bar.id = 'pfbar'; bar.setAttribute('role', 'progressbar'); bar.setAttribute('aria-label', 'Loading your data'); bar.setAttribute('aria-valuemin', '0'); bar.setAttribute('aria-valuemax', '100');
   // r = 15.9155 makes the ring's length 100, so the filled part is simply the percentage.

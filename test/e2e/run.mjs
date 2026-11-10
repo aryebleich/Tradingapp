@@ -231,6 +231,11 @@ console.log('Desktop (1360x900)');
     await navTo(p, 'admin-users'); await p.fill('#userFind', 'desk'); await p.waitForTimeout(200);
     if ((await p.$$('#userTable tr[data-email]:not([hidden])')).length !== 1) throw new Error('user search');
   });
+  await step('no idle background copy after a reload', async () => {
+    // Background loading already ran in this tab: a reload must not leave a hidden copy running.
+    await p.goto(B + '/app#/dashboard'); await p.waitForSelector('#view h1'); await p.waitForTimeout(3600);
+    if (await p.$('#pfFrame')) throw new Error('a hidden background copy is still open');
+  });
   await step('strategy backtest', async () => { await p.goto(B + '/app#/backtest'); await p.click('button:has-text("Run backtest")'); await p.waitForSelector('#btc'); });
   done(); await p.close();
 }
