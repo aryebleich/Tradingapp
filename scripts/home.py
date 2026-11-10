@@ -173,13 +173,13 @@ FEATURES = [
 ]
 
 PLANS = [
- ('Starter', 'Learn and practice', '$0', None, '/forever', None, '+ 20% of new profits',
+ ('Starter', 'Learn and practice', '$0', None, '/forever', None, None,
   ['$100,000 paper account', 'Live trading on your own brokerage (your own orders)', '1 chart per layout, every indicator', 'Strategy library by hand + 1 automatic strategy on paper', 'Unlimited backtests', '1 alert webhook (paper)', '2 scanners, checked hourly', 'AI assistant: 30 messages a day', '100 credits every month'], 'Start free', False),
- ('Pro', 'Automate your real accounts', '$53', '$530', '/month', '/year', '+ 10% of new profits',
+ ('Pro', 'Automate your real accounts', '$53', '$530', '/month', '/year', None,
   ['Everything in Starter', 'Automated trading on Alpaca, Schwab, tastytrade, Tradier &amp; TradeStation', '2-chart layouts', '5 automatic strategies with Reality Check auto-throttle', '10 alert webhooks', 'Scanners every 5 minutes, portfolios &amp; signal mirroring', 'AI assistant: 300 messages a day', 'Optimizer, walk-forward testing &amp; code lab', 'Trading and alerts by text and phone, QuantConnect and bank-card linking', '1,000 credits every month'], 'Start 14-day free trial', True),
- ('Elite', 'For active traders', '$109', '$1,090', '/month', '/year', '+ 5% of new profits',
+ ('Elite', 'For active traders', '$109', '$1,090', '/month', '/year', None,
   ['Everything in Pro', '4-chart layouts and pop-out windows', '25 automatic strategies &amp; 25 webhooks', 'Option income bots &amp; multi-leg orders', 'Market-neutral pairs (long + short)', 'Tax-loss harvesting &amp; Schedule D', 'AI assistant: 1,000 messages a day', '3,000 credits every month'], 'Start 14-day free trial', False),
- ('Ultimate', 'For serious capital', '$320', '$3,200', '/month', '/year', '+ 2.5% of new profits',
+ ('Ultimate', 'For serious capital', '$320', '$3,200', '/month', '/year', None,
   ['Everything in Elite', '100 automatic strategies &amp; 100 webhooks', 'Unlimited scanners and AI agents', 'AI assistant: 3,000 messages a day', '10,000 credits every month', 'Priority support'], 'Start 14-day free trial', False),
 ]
 
@@ -252,7 +252,6 @@ FAQ_ACCOUNT = [
  ('Can I trade with real money on the free plan?', 'Yes. Connect your own brokerage account and place your own orders on any plan, including Starter. Automatic strategies, bots and webhooks on real accounts are part of the paid plans.'),
  ('What are credits?', 'Every plan includes credits each month (100 on Starter up to 10,000 on Ultimate). An extra AI message or a text alert costs 1 credit, a phone call 3, a filing summary 5 and training an AI agent 10. Monthly credits refill on the 1st of the month; credit packs you buy (from $5) never expire.'),
  ('How does the free trial work?', 'Every paid plan starts with 14 days free. Cancel before the trial ends and you are not charged. The free Starter plan has no time limit.'),
- ('How does the performance fee work?', 'Each month we compare your account to its previous peak, adjusted for deposits and withdrawals. You pay the plan&rsquo;s percentage only on value above that peak. Losses must be recovered before any new fee is charged.'),
  ('Is texting trades secure?', 'Commands only work from the phone number you verified, every order needs your personal PIN, and phone calls read the order back before it is placed.'),
  ('Can I cancel any time?', 'Yes. Cancel from <b>Manage billing</b> in the app; you keep access until the end of the period you paid for. You can also export or delete all your data from Settings.'),
 ]
@@ -282,9 +281,9 @@ def index(lang='en'):
     cell = lambda v: (f'<td class="y" aria-label="{T("Included")}">&#10003;</td>' if v else f'<td class="n" aria-label="{T("Not included")}">&ndash;</td>') if isinstance(v, bool) else f'<td>{v if v.replace(",", "").isdigit() else T(v)}</td>'
     matrix = ''.join(f'<tr><th scope="row">{T(r)}</th>{"".join(cell(v) for v in vs)}</tr>' for r, *vs in MATRIX)
     learn = ''.join(f'<details class="learn"><summary><span class="ic">{ic(i, 18)}</span>{T(t)}</summary><p>{T(d)}</p></details>' for i, t, d in LEARN)
-    faq = lambda items: ''.join(f'<details{" data-adviser hidden" if q.startswith("How does the performance fee") else ""}><summary>{T(q)}</summary><p>{T(a)}</p></details>' for q, a in items)
+    faq = lambda items: ''.join(f'<details><summary>{T(q)}</summary><p>{T(a)}</p></details>' for q, a in items)
     plans = ''.join(f'''<div class="plan{' best' if best else ''}">{'<div class="ribbon">' + T('Most popular') + '</div>' if best else ''}<h3>{T(n)}</h3><p class="tag">{T(tg)}</p>
-      <div class="price"{f' data-m="{pm}" data-y="{py}"' if py else ''}>{pm}<small{f' data-m="{T(sm)}" data-y="{T(sy)}"' if sy else ''}>{T(sm)}</small></div><p class="fee" data-adviser hidden>{T(fee)}</p>
+      <div class="price"{f' data-m="{pm}" data-y="{py}"' if py else ''}>{pm}<small{f' data-m="{T(sm)}" data-y="{T(sy)}"' if sy else ''}>{T(sm)}</small></div>
       <ul>{''.join(f'<li>{T(x)}</li>' for x in feats_)}</ul><a class="btn{'' if best else ' ghost'}" data-app="#/register" href="app">{T(cta)}</a></div>''' for n, tg, pm, py, sm, sy, fee, feats_, cta, best in PLANS)
     body = f'''
 <section class="hero"><div class="wrap hero-grid">

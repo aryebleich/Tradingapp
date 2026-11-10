@@ -98,3 +98,31 @@ test('every owner API refuses regular users; admins get through', async () => {
   await run("UPDATE users SET role = 'admin' WHERE email = 'owner-check@example.com'");
   assert.equal((await a('/admin/summary')).status, 200);
 });
+
+test('performance-fee percentages are private: not on the homepage or in the public plan data', async () => {
+  const fs = await import('node:fs');
+  for (const f of ['public/index.html', 'public/yi.html', 'README.md']) {
+    const h = fs.readFileSync(f, 'utf8');
+    assert.doesNotMatch(h, /%\s*(?:of new profits|פון נייע געווינסן)|performance fee/i, f);
+  }
+  const guest = client();
+  const cfg = (await guest('/config')).body;
+  for (const p of Object.values(cfg.plans)) assert.equal('perfFee' in p, false, 'perfFee sent to a visitor');
+  const owner = client(); await owner('/auth/register', { email: 'fee-owner@example.com', password: 'Str0ngPassword1' });
+  await run("UPDATE users SET role = 'admin' WHERE email = 'fee-owner@example.com'");
+  assert.equal((await owner('/config')).body.plans.pro.perfFee, 0.10); // admins still see the rates
+});
+
+test('every public page names its original at app.brightolio.com; the server replaces it with its own', async () => {
+  const fs = await import('node:fs');
+  for (const [f, path] of [['index.html', '/'], ['yi.html', '/yi'], ['terms.html', '/terms'], ['privacy.html', '/privacy']]) {
+    const h = fs.readFileSync('public/' + f, 'utf8');
+    assert.equal((h.match(/<link rel="canonical"/g) || []).length, 1, f);
+    assert.ok(h.includes(`<link rel="canonical" href="https://app.brightolio.com${path}">`), f);
+  }
+  const { transform } = await import('../src/seo.js');
+  const served = transform(fs.readFileSync('public/index.html', 'utf8'), 'index', undefined, 'https://example.test');
+  assert.equal((served.match(/<link rel="canonical"/g) || []).length, 1);
+  assert.equal((served.match(/property="og:url"/g) || []).length, 1);
+  assert.match(served, /<link rel="canonical" href="https:\/\/example\.test\/">/);
+});

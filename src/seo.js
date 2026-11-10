@@ -98,7 +98,7 @@ export function transform(html, key, s = settings(), b = base()) {
     `<meta name="robots" content="${o.noindex ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1'}">`,
     `<script type="application/ld+json">${JSON.stringify(jsonLd(page, out, s, b)).replace(/</g, '\\u003c')}</script>`,
   ];
-  out = out.replace(/<link rel="canonical"[^>]*>\s*/g, '').replace(/<meta name="robots"[^>]*>\s*/g, '');
+  out = out.replace(/<link rel="canonical"[^>]*>\s*/g, '').replace(/<meta property="og:url"[^>]*>\s*/g, '').replace(/<meta name="robots"[^>]*>\s*/g, '');
   return out.replace('</head>', `  ${tags.join('\n  ')}\n</head>`);
 }
 

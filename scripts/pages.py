@@ -180,6 +180,15 @@ files = {
  'insurance.html': doc('Insurance and protection', 'How your money and investments are protected: SIPC, FDIC and more.', INSURANCE),
  '404.html': NOTFOUND,
 }
+# The site's own address is the original of every page. The copy of these files on GitHub Pages
+# points search engines there, so the two addresses never compete; the app's server replaces this
+# tag with its own (from PUBLIC_URL) when it serves the pages.
+SITE = 'https://app.brightolio.com'
+PATHS = {'index.html': '/', 'yi.html': '/yi'}
+def canonical(name, text):
+    if name == '404.html': return text
+    url = SITE + PATHS.get(name, '/' + name[:-5])
+    return text.replace('<meta name="description"', f'<link rel="canonical" href="{url}">\n<meta property="og:url" content="{url}">\n<meta name="description"', 1)
 for name, text in files.items():
-    with open(os.path.join(OUT, name), 'w') as f: f.write(text)
+    with open(os.path.join(OUT, name), 'w') as f: f.write(canonical(name, text))
 print('wrote', ', '.join(files))

@@ -90,7 +90,7 @@ const HELP = [
   ['withdraw|transfer|ach|deposit', 'Bank transfers are under Alpaca account → Funding. Deposits take 1 to 3 business days to settle.'],
   ['cancel|subscription|plan|billing|refund', 'Manage or cancel your plan under Plans & billing. Paid plans include a 14-day free trial.'],
   ['bot|strategy|automat', 'Bots are on the Bots page. The kill switch on the Risk page stops every automation at once.'],
-  ['fee|performance fee', 'Plans charge a performance fee only on new profits above your high-water mark; deposits never count as profit.'],
+  ['fee|performance fee', 'Plans & billing in the menu shows your plan, its price and everything you are charged.'],
 ];
 const faq = text => HELP.find(([k]) => new RegExp(k, 'i').test(text))?.[1];
 async function openTicket(user, subject, body, priority = 'normal') {

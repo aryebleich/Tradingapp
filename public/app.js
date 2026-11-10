@@ -1526,7 +1526,6 @@ routes.funding = routes.billing = async (view, q) => {
         <h2 style="margin:0">${esc(p.name)} ${cur ? '<span class="pill">Current</span>' : ''}</h2><div class="mu" style="font-size:14px">${esc(p.tagline || '')}</div>
         <div class="price">${price ? '$' + price : '$0'}<small>${price ? (yearly ? '/year' : '/month') : ' forever'}</small></div>
         ${yearly && p.yearly ? `<div class="mu" style="font-size:13px">$${(p.yearly / 12).toFixed(2)}/month billed yearly</div>` : '<div style="height:19px"></div>'}
-        ${CFG.adviser ? `<div class="mu" style="font-size:13px;margin-top:6px">+ ${p.perfFee * 100}% of new profits above your high-water mark</div>` : ''}
         <ul>${p.features.map(f => `<li>${esc(f)}</li>`).join('')}</ul>
         ${p.monthly && !cur ? `<button data-plan="${k}" class="${p.popular ? '' : 'ghost'}">${trial ? `Start ${days}-day free trial` : `Choose ${esc(p.name)}`}</button>` : cur ? '<button class="ghost" disabled>Your plan</button>' : ''}</div>`;
     }).join('')}</div>

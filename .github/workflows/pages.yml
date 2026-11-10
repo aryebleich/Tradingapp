@@ -39,13 +39,8 @@ jobs:
           # Absolute URLs for social previews, and an app start URL for the installable icon.
           if [ -n "$APP" ]; then sed -i "s#\"start_url\": \"/app\"#\"start_url\": \"${APP}/app\"#" manifest.webmanifest; fi
           sed -i "s#content=\"og-brightolio.png\"#content=\"https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/og-brightolio.png\"#" *.html
-          # This copy points search engines to the app's address (one canonical site, no duplicates).
-          if [ -n "$APP" ]; then
-            for f in *.html; do
-              case "$f" in index.html) u="/";; 404.html) continue;; *) u="/${f%.html}";; esac
-              sed -i "s#</head>#  <link rel=\"canonical\" href=\"${APP}${u}\">\n</head>#" "$f"
-            done
-          fi
+          # Each page already names its original at the site's own address (scripts/pages.py), so this
+          # copy never competes with it in search results.
           touch .nojekyll
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5

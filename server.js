@@ -648,8 +648,10 @@ const acct = req => { const a = req.query.account || req.body?.account; return A
 const upgrade = feature => Object.assign(new Error(`${feature} is part of the Pro plan`), { status: 402, upgrade: true, feature });
 const needPlan = feature => (req, res, next) => (isPaid(req.user) ? next() : next(upgrade(feature)));
 
+const publicPlans = () => Object.fromEntries(Object.entries(PLANS).map(([k, { perfFee, ...p }]) => [k, p]));
 api.get('/config', async (req, res) => res.json({
-  plans: PLANS, trialDays: TRIAL_DAYS, presets: PRESETS, twilio: N.twilioEnabled(), stripe: N.stripeEnabled(), ai: llmEnabled(), aiModel: llmInfo(), email: N.emailEnabled(),
+  // Performance-fee rates are private: only admins receive them (Admin → Upgrades, Money & fees).
+  plans: req.user?.role === 'admin' ? PLANS : publicPlans(), trialDays: TRIAL_DAYS, presets: PRESETS, twilio: N.twilioEnabled(), stripe: N.stripeEnabled(), ai: llmEnabled(), aiModel: llmInfo(), email: N.emailEnabled(),
   marketData: dataEnabled(), hotline: process.env.TWILIO_FROM || null, broker: brokerEnabled(), oauth: oauthEnabled(), google: googleEnabled(), github: githubEnabled(), assistant: aiEnabled(), adviser: adviserFor(req.user), version: version(),
   // The Google Play listing, once the app is published there (ANDROID_PLAY_URL, or ANDROID_PLAY=1 for the standard address).
   androidPlay: process.env.ANDROID_PLAY_URL || (process.env.ANDROID_PLAY === '1' ? 'https://play.google.com/store/apps/details?id=com.brightfolio.app' : null),
