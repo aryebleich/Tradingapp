@@ -2,7 +2,7 @@
 
 **Brightolio** is an all-in-one platform for investors and traders. Practice with a free $100,000 paper trading account, backtest trading strategies on years of market data, automate them on your own brokerage account, and build long-term wealth with index funds, an S&P 500 plan, bonds and retirement planning, all in one place.
 
-**[Open Brightolio](https://quantpocket.onrender.com)** · **[Try the live demo](https://quantpocket.onrender.com/#demo)** · **[Download the Android app](https://github.com/aryebleich/Tradingapp/releases/download/android-latest/brightfolio.apk)**
+**[Open Brightolio](https://app.brightolio.com)** · **[Try the live demo](https://app.brightolio.com/#demo)** · **[Download the Android app](https://github.com/aryebleich/Tradingapp/releases/download/android-latest/brightfolio.apk)**
 
 - Free to start: a $100,000 paper (practice) account with real prices, no card needed
 - Works with the brokerage you already have: Alpaca, Charles Schwab, tastytrade, Tradier and TradeStation
@@ -75,7 +75,7 @@ Brightolio is investing and trading software, not a broker. It connects to your 
 
 ## Plans
 
-Start free with the **Starter** plan: the paper account, live trading on your own brokerage, every chart indicator and unlimited backtests. Paid plans (**Pro**, **Elite** and **Ultimate**) add automated trading on real accounts, more strategies, scanners and AI, and start with a 14-day free trial. See the [plans](https://quantpocket.onrender.com/#pricing).
+Start free with the **Starter** plan: the paper account, live trading on your own brokerage, every chart indicator and unlimited backtests. Paid plans (**Pro**, **Elite** and **Ultimate**) add automated trading on real accounts, more strategies, scanners and AI, and start with a 14-day free trial. See the [plans](https://app.brightolio.com/#pricing).
 
 ## Frequently asked questions
 
@@ -102,9 +102,9 @@ Brightolio supports two-factor sign-in and passkeys, encrypts the keys you conne
 
 ## Links
 
-- Website: [quantpocket.onrender.com](https://quantpocket.onrender.com)
+- Website: [app.brightolio.com](https://app.brightolio.com)
 - Android app: [download](https://github.com/aryebleich/Tradingapp/releases/download/android-latest/brightfolio.apk)
-- Terms: [quantpocket.onrender.com/terms](https://quantpocket.onrender.com/terms) · Privacy: [quantpocket.onrender.com/privacy](https://quantpocket.onrender.com/privacy) · Risk disclosure: [quantpocket.onrender.com/risk](https://quantpocket.onrender.com/risk)
+- Terms: [app.brightolio.com/terms](https://app.brightolio.com/terms) · Privacy: [app.brightolio.com/privacy](https://app.brightolio.com/privacy) · Risk disclosure: [app.brightolio.com/risk](https://app.brightolio.com/risk)
 
 ---
 
