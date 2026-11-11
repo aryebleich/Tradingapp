@@ -20,7 +20,7 @@ async function tools(view) {
   <form class="card" id="cv"><h2>Crypto across venues</h2><p class="mu">The same coin can trade at slightly different prices at each liquidity source: Alpaca US, Kraken US and Kraken EU.</p>
     <div class="row"><label>Pairs<input name="syms" value="BTC/USD, ETH/USD" data-no-tr></label><button>Compare</button></div><div class="err"></div><div id="cvOut"></div></form>
 
-  <div class="card"><h2>Connect AI agents to Brightolio</h2><p>Claude, ChatGPT, Cursor, Codex and other AI agents can scan the market, read order books and news, and draft or place orders within the limits you set. Set it up in <a href="#/agenthub">AI trading → Agents &amp; API</a>.</p></div>
+  <div class="card"><h2>Connect AI agents to Brightolio</h2><p>Claude, ChatGPT, Cursor, Codex and other AI agents can scan the market, read order books and news, and draft or place orders within the limits you set. Set it up in <a href="#/agenthub">Intelligence → Agents &amp; API</a>.</p></div>
 
   <div class="card"><h2>Alpaca's own AI and command-line tools</h2>
     <h3>Trading API MCP server</h3><p class="mu">About 65 tools for trading, market data and account management in Claude, Cursor or VS Code. Runs on your computer with your Alpaca keys (never paste keys into a chat).</p>

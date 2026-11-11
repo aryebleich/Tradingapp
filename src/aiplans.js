@@ -1,4 +1,4 @@
-// What each plan unlocks in the AI trading area (agents and API, AI bots, AI signals, market
+// What each plan unlocks in the AI parts of the Intelligence section (agents and API, AI bots, AI signals, market
 // intelligence, the chart co-pilot). One table, read by the server for every check and shown to
 // users on each page and on Plans & billing, so the limits are the same everywhere.
 import { isPaid } from './fees.js';

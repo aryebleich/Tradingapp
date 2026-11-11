@@ -7,7 +7,7 @@
 - Free to start: a $100,000 paper (practice) account with real prices, no card needed
 - Works with the brokerage you already have: Alpaca, Charles Schwab, tastytrade, Tradier and TradeStation
 - Your money stays at your brokerage, and every real-money order needs your confirmation
-- AI trading: connect your own AI agent, run AI bots, follow nightly AI signals and ask the chart in plain English
+- Intelligence: an AI assistant, research in plain words, AI signals and AI bots, your own AI agent, and a chart you can ask in plain English
 - Beginner friendly: every advanced page explains itself in plain words, and an AI assistant answers questions
 
 ---
@@ -29,6 +29,7 @@ Brightolio is investing and trading software, not a broker. It connects to your 
 - **S&P 500 plan**: invest a set amount every week or month, automatically (dollar-cost averaging)
 - **Automated portfolios** (robo-advisor style) matched to your goal, rebalanced for you
 - **Earnings vs expectations**: earnings beats and misses for the companies you follow
+- **Institutional portfolios**: what large funds own and changed each quarter (13F filings)
 - **Retirement planning**: Traditional and Roth IRA projections
 - Bonds, Treasury bills, savings rates, real estate (REITs), private markets and crypto in one view
 
@@ -49,18 +50,15 @@ Brightolio is investing and trading software, not a broker. It connects to your 
 - **Pairs trading and statistical arbitrage** with z-scores, cointegration and half-life
 - **AI long/short portfolios** you approve before anything is traded
 
-### AI trading
-- **Connect your own AI agent** (Claude, ChatGPT, Cursor, Codex or a custom agent) through the Model Context Protocol (MCP): it can scan the market, read order books and news, and draft or submit orders within the limits you set, with an approval switch for each account
-- **AI trading bots**: dollar-cost averaging (DCA), grid and scalping bots, plus bots written in plain English ("Buy when the 14-day RSI crosses below 30 and volume spikes") that are backtested before they run
-- **AI strategy marketplace** to share and copy bots
-- **AI signals**: a nightly quantitative engine tests a dozen setups across years of history and picks high-probability trades with stop-loss and take-profit levels, which can be traded automatically with stops that move up as a trade works
-- **Market intelligence**: AI earnings-call summaries, unusual options flow, dark-pool (off-exchange) volume and whale-wallet alerts, asked in plain words
-- **Chart co-pilot**: ask the chart ("highlight head-and-shoulders patterns from the last quarter") and it draws the patterns, support and resistance zones, trendlines and option open-interest levels
-
-### Research and AI
+### Intelligence: AI research and AI trading
 - **AI assistant**: ask in plain words about any stock, your account or any term on the site
-- **Plain-language research** that summarizes company filings
-- **News and sentiment**, institutional (13F) portfolios and forecasts you can test
+- **Plain-language research** that summarizes company filings, and **news with sentiment**
+- **Market intelligence**: AI earnings-call summaries, unusual options flow, dark-pool (off-exchange) volume and whale-wallet alerts, asked in plain words
+- **AI signals**: a nightly quantitative engine tests a dozen setups across years of history and picks high-probability trades with stop-loss and take-profit levels, which can be traded automatically with stops that move up as a trade works
+- **Forecasts and AI agents** you can train, test and run
+- **AI trading bots**: dollar-cost averaging (DCA), grid and scalping bots, plus bots written in plain English ("Buy when the 14-day RSI crosses below 30 and volume spikes") that are backtested before they run, and an **AI strategy marketplace** to share and copy them
+- **Connect your own AI agent** (Claude, ChatGPT, Cursor, Codex or a custom agent) through the Model Context Protocol (MCP): it can scan the market, read order books and news, and draft or submit orders within the limits you set, with an approval switch for each account
+- **Chart co-pilot**: ask the chart ("highlight head-and-shoulders patterns from the last quarter") and it draws the patterns, support and resistance zones, trendlines and option open-interest levels
 - Your account by **text message or phone call**
 
 ### Planning, risk and taxes

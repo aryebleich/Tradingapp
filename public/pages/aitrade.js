@@ -1,4 +1,4 @@
-// AI trading:
+// The AI pages of the Intelligence section:
 //   agenthub   Agents & API: connect Claude, ChatGPT, Cursor, Codex or your own agent (MCP), set
 //              the boundaries agents trade within, approve or reject their orders
 //   aibots     AI bots: DCA, grid, scalping and plain-English bots, the builder with backtests, and

@@ -1,5 +1,5 @@
 // Brightolio as an MCP server: users connect AI agents (Claude, ChatGPT, Cursor, Codex, VS Code or
-// their own) to their own account with a personal access token (AI trading → Agents & API). Every
+// their own) to their own account with a personal access token (Intelligence → Agents & API). Every
 // plan can connect: read tools, market scans, order books, news and practice orders. Orders on real
 // accounts go through the user's agent boundaries and approvals (src/agentic.js) and need Pro
 // (approval) or Elite (automatic). The plan also sets how many agents and requests a minute.
