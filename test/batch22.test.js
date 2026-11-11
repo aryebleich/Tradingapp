@@ -126,3 +126,18 @@ test('every public page names its original at app.brightolio.com; the server rep
   assert.equal((served.match(/property="og:url"/g) || []).length, 1);
   assert.match(served, /<link rel="canonical" href="https:\/\/example\.test\/">/);
 });
+
+test('market state for the Home clock: evenings, weekends, holidays and early closes are closed', async () => {
+  const { session } = await import('../src/desk.js');
+  const et = (d, h, m = 0) => Date.UTC(2026, 10, d, h + 5, m); // November: New York is UTC-5
+  assert.equal(session(et(11, 10)).open, true);                                // Wed 10:00 AM, Veterans Day: stocks trade
+  assert.deepEqual([session(et(11, 21, 30)).open, session(et(11, 21, 30)).status], [false, 'closed']); // 9:30 PM
+  assert.deepEqual([session(et(11, 16, 30)).open, session(et(11, 16, 30)).status], [false, 'after-hours']);
+  assert.deepEqual([session(et(11, 8)).open, session(et(11, 8)).status], [false, 'pre-market']);
+  assert.equal(session(et(14, 11)).open, false);                               // Saturday
+  const thanks = session(et(26, 11)); assert.equal(thanks.open, false); assert.equal(thanks.holiday, true); // Thanksgiving
+  assert.equal(session(et(27, 12)).open, true); assert.equal(session(et(27, 12)).earlyClose, true);     // day after: open until 1 PM
+  assert.equal(session(et(27, 13, 30)).open, false);
+  // The clock asks again at the next change: the next close while open, the next open while closed.
+  const s = session(et(11, 21, 30)); assert.ok(s.nextOpen > et(11, 21, 30) && s.nextOpen <= et(12, 9, 30));
+});

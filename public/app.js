@@ -975,7 +975,20 @@ async function accountBoxes(box) {
     </div></div>`;
 }
 // A live clock on Home: the time here to the second, and the time at the New York exchange with
-// whether the market is open (regular hours, weekdays; holidays are not counted).
+// the market's state. The state comes from the server's market calendar (/desk/session: NYSE
+// holidays, 1 PM early closes, pre-market and after-hours), checked again whenever an open or a
+// close passes; until it answers, New York's weekday and time are worked out here.
+function nyParts(t) {
+  // The New York wall time as plain numbers (never a 12-hour hour some browsers return).
+  const w = new Date(new Date(t).toLocaleString('en-US', { timeZone: 'America/New_York' }));
+  return { weekday: w.getDay(), minutes: w.getHours() * 60 + w.getMinutes() };
+}
+function marketState(t, s) {
+  if (s && t < s.until) return s;
+  const { weekday, minutes } = nyParts(t), wd = weekday >= 1 && weekday <= 5;
+  return { status: wd && minutes >= 570 && minutes < 960 ? 'open' : wd && minutes >= 240 && minutes < 570 ? 'pre-market' : wd && minutes >= 960 && minutes < 1200 ? 'after-hours' : 'closed' };
+}
+const MKT_LABEL = { open: 'market open', 'pre-market': 'pre-market (regular hours from 9:30)', 'after-hours': 'after hours (market closed)', closed: 'market closed' };
 function homeClock(view) {
   if (!view || $('#homeClock', view)) return;
   const el = document.createElement('div'); el.id = 'homeClock'; el.className = 'homeclock'; el.setAttribute('role', 'timer'); el.setAttribute('aria-label', 'Current time');
@@ -983,14 +996,25 @@ function homeClock(view) {
   const anchor = $('h1', view)?.closest('.row') || $('h1', view);
   anchor ? anchor.after(el) : view.prepend(el);
   const t = el.querySelector('.hc-time'), d = el.querySelector('.hc-date'), ny = el.querySelector('.hc-ny');
+  // The calendar's answer holds until the next open or close; then it is asked again.
+  let sess = null, asking = false;
+  const ask = () => {
+    if (asking) return; asking = true;
+    api('/desk/session').then(r => {
+      const now = Date.now(), until = Math.min(...[r.nextOpen, r.nextClose].filter(x => x > now), now + 600e3);
+      const label = r.open ? 'market open' + (r.earlyClose ? ' (closes early, 1 PM)' : '') : r.holiday ? 'market closed (holiday)' : MKT_LABEL[r.status] || MKT_LABEL.closed;
+      sess = { status: r.open ? 'open' : r.status, label, until };
+    }).catch(() => {}).finally(() => { asking = false; });
+  };
+  ask();
   const tick = () => {
     if (!el.isConnected) return stop();
     const n = new Date();
     t.textContent = n.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit' });
     const day = n.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }); if (d.textContent !== day) d.textContent = day;
-    const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' }).formatToParts(n).map(x => [x.type, x.value]));
-    const m = +p.hour * 60 + +p.minute, open = !['Sat', 'Sun'].includes(p.weekday) && m >= 570 && m < 960;
-    ny.textContent = 'New York ' + n.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', second: '2-digit' }) + (open ? ' · market open' : ' · market closed');
+    if (sess && n.getTime() >= sess.until) { sess = null; ask(); }
+    const m = marketState(n.getTime(), sess), open = m.status === 'open';
+    ny.textContent = 'New York ' + n.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', second: '2-digit' }) + ' · ' + (m.label || MKT_LABEL[m.status]);
     ny.classList.toggle('open', open);
   };
   // Each tick lands just after the second changes, so the seconds never skip or lag.
