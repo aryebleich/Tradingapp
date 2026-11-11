@@ -58,6 +58,13 @@ export const JOBS = [
   }],
   // AI agents: once a day (stocks in the last half hour of the session, crypto at any time).
   ['agents', 5, t => runAgents(t)],
+  // AI bots check every minute whether their own interval has come round; AI signals are worked
+  // out after the close (claimed every 30 minutes until done), signal trades are managed every 5
+  // minutes in the session, and whale wallets are read every 6 hours.
+  ['aibots', 1, async t => (await import('./aibots.js')).runAiBots(t)],
+  ['aisignals', 30, async t => (await import('./aisignals.js')).runSignals(t)],
+  ['signaltrades', 5, async t => (await import('./aisignals.js')).runSignalTrades(t)],
+  ['whales', 360, async t => (await import('./intel.js')).checkWhales(t)],
   // Scanners and intraday bots check every minute whether their own interval has come round.
   ['scanners', 1, t => runScanners(t)],
   ['intraday', 1, t => runIntradayBots(t)],

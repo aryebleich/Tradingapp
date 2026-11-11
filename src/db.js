@@ -840,6 +840,22 @@ CREATE UNIQUE INDEX IF NOT EXISTS credit_ledger_ref ON credit_ledger (ref) WHERE
 
 // Columns added after the first release; ALTER fails harmlessly when they already exist.
 const MIGRATIONS = [
+  // AI trading (batch 22): agents and API, AI bots, AI signals, market intelligence.
+  'CREATE TABLE IF NOT EXISTS ai_usage (user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, kind TEXT NOT NULL, period TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (user_id, kind, period))',
+  'CREATE TABLE IF NOT EXISTS agent_settings (user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, json TEXT NOT NULL)',
+  'CREATE TABLE IF NOT EXISTS agent_orders (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, agent TEXT, account TEXT NOT NULL, symbol TEXT NOT NULL, side TEXT NOT NULL, qty REAL, notional REAL, type TEXT NOT NULL DEFAULT \'market\', limit_price REAL, extended INTEGER NOT NULL DEFAULT 0, est_usd REAL, reason TEXT, status TEXT NOT NULL, result TEXT, day TEXT NOT NULL, created_at INTEGER NOT NULL, decided_at INTEGER)',
+  'CREATE INDEX IF NOT EXISTS agent_orders_user ON agent_orders (user_id, id)',
+  'CREATE TABLE IF NOT EXISTS ai_bots (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, kind TEXT NOT NULL, name TEXT NOT NULL, account TEXT NOT NULL, symbol TEXT NOT NULL, config TEXT NOT NULL, state TEXT NOT NULL DEFAULT \'{}\', active INTEGER NOT NULL DEFAULT 0, every_min INTEGER NOT NULL DEFAULT 1440, last_run INTEGER, last_result TEXT, shared INTEGER NOT NULL DEFAULT 0, description TEXT, copies INTEGER NOT NULL DEFAULT 0, copied_from INTEGER, created_at INTEGER NOT NULL)',
+  'CREATE INDEX IF NOT EXISTS ai_bots_user ON ai_bots (user_id)',
+  'CREATE INDEX IF NOT EXISTS ai_bots_active ON ai_bots (active)',
+  'CREATE TABLE IF NOT EXISTS ai_signals (id INTEGER PRIMARY KEY, day TEXT NOT NULL, symbol TEXT NOT NULL, setup TEXT NOT NULL, side TEXT NOT NULL, entry REAL NOT NULL, stop REAL NOT NULL, target REAL NOT NULL, win_rate REAL NOT NULL, avg_return REAL NOT NULL, samples INTEGER NOT NULL, score REAL NOT NULL, horizon INTEGER NOT NULL, created_at INTEGER NOT NULL, UNIQUE (day, symbol, setup))',
+  'CREATE INDEX IF NOT EXISTS ai_signals_day ON ai_signals (day, score)',
+  'CREATE TABLE IF NOT EXISTS signal_auto (user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, json TEXT NOT NULL)',
+  'CREATE TABLE IF NOT EXISTS signal_trades (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, signal_id INTEGER, account TEXT NOT NULL, symbol TEXT NOT NULL, qty REAL NOT NULL, entry REAL NOT NULL, stop REAL NOT NULL, target REAL NOT NULL, risk REAL NOT NULL, status TEXT NOT NULL, exit_price REAL, note TEXT, opened_at INTEGER NOT NULL, closed_at INTEGER, expires_day TEXT)',
+  'CREATE INDEX IF NOT EXISTS signal_trades_open ON signal_trades (status)',
+  'CREATE TABLE IF NOT EXISTS whale_wallets (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, chain TEXT NOT NULL, address TEXT NOT NULL, label TEXT, balance REAL, prev_balance REAL, threshold REAL NOT NULL DEFAULT 100, checked_at INTEGER, moved_at INTEGER, UNIQUE (user_id, chain, address))',
+  'CREATE TABLE IF NOT EXISTS earnings_summaries (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, symbol TEXT, title TEXT, summary TEXT NOT NULL, created_at INTEGER NOT NULL)',
+
   'ALTER TABLE user_strategies ADD COLUMN leverage REAL NOT NULL DEFAULT 1',
   'ALTER TABLE user_strategies ADD COLUMN public INTEGER NOT NULL DEFAULT 0',
   'ALTER TABLE user_strategies ADD COLUMN published_at INTEGER',

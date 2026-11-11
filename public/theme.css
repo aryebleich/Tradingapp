@@ -1034,3 +1034,17 @@ html[dir="rtl"] #pfbar { left: auto; right: 20px; padding: 7px 8px 7px 14px; }
 .pguide button.link { background: none; border: 0; color: var(--mu); text-decoration: underline; padding: 0; min-height: 0; font-size: 12.5px; box-shadow: none; }
 html[dir="rtl"] .pguide { border-left: 1px solid var(--bd); border-right: 4px solid var(--ac); }
 @media (max-width: 600px) { .pguide .pg-body { padding: 0 14px 12px 14px; font-size: 14.5px; } .pguide > summary { position: relative; padding: 10px 40px 10px 14px; } .pguide > summary::after { position: absolute; right: 16px; top: 16px; } html[dir="rtl"] .pguide > summary { padding: 10px 14px 10px 40px; } html[dir="rtl"] .pguide > summary::after { right: auto; left: 16px; } .pguide .pg-sub { flex-basis: 100%; padding-inline-start: 32px; } }
+
+/* Chart co-pilot */
+.copilot { display: flex; align-items: center; gap: 8px; margin: 8px 0; padding: 6px 6px 6px 12px; border: 1px solid var(--bd); border-radius: 12px; background: var(--card); }
+.copilot .cp-ic { color: var(--ac); font-size: 16px; }
+.copilot input { flex: 1; margin: 0; border: 0; background: transparent; min-width: 0; }
+.copilot input:focus { outline: none; }
+.copilot button { margin: 0; }
+.copilot-out { margin: 0 0 8px; padding: 8px 12px; border-left: 3px solid var(--ac); background: color-mix(in srgb, var(--ac) 6%, transparent); border-radius: 8px; font-size: 14px; color: var(--tx); }
+/* AI trading pages */
+.aiplans summary { cursor: pointer; }
+.aiplans table th[scope=row] { text-align: start; font-weight: 500; }
+.card.tpl { margin: 0; }
+pre.code { white-space: pre-wrap; word-break: break-all; font-size: 12px; background: var(--bg); padding: 10px; border-radius: 8px; }
+@media (max-width: 600px) { .copilot { flex-wrap: wrap; } .copilot input { flex-basis: 100%; } }

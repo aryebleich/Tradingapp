@@ -57,31 +57,32 @@ test('money levers: deposit fee with a cap, referral milestones, longer trial fo
   } finally { s.close(); }
 });
 
-test('MCP server: tokens for paid plans, initialize, tools, paper-only orders', async () => {
+test('MCP server: tokens on every plan (more on higher plans), initialize, tools, practice orders', async () => {
   const s = await serve();
   try {
     const c = s.client();
     const u = await c.signup('mcp@example.com');
-    assert.equal((await c('/tokens', { name: 'Claude' })).status, 402);
-    await run("UPDATE users SET plan = 'pro', plan_status = 'active' WHERE id = ?", u.id);
+    // Starter connects one agent; a second needs a higher plan.
     const { token } = (await c('/tokens', { name: 'Claude' })).body;
+    assert.equal((await c('/tokens', { name: 'Cursor' })).status, 402);
     assert.match(token, /^qpk_/);
     assert.equal((await c('/tokens')).body[0].hint, token.slice(-4));
+    await run("UPDATE users SET plan = 'pro', plan_status = 'active' WHERE id = ?", u.id);
+    assert.equal((await c('/tokens', { name: 'Cursor' })).status, 200);
     const rpc = (body, tok = token) => fetch(s.base + '/mcp', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok }, body: JSON.stringify(body) }).then(async r => ({ status: r.status, body: await r.json().catch(() => null) }));
     assert.equal((await rpc({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} }, 'qpk_wrong')).status, 401);
     const init = (await rpc({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18' } })).body;
     assert.equal(init.result.serverInfo.name, 'brightolio');
     assert.equal((await rpc({ jsonrpc: '2.0', method: 'notifications/initialized' })).status, 202);
     const names = (await rpc({ jsonrpc: '2.0', id: 2, method: 'tools/list' })).body.result.tools.map(t => t.name);
-    assert.ok(names.includes('place_paper_order') && names.includes('get_account'));
+    for (const n of ['place_paper_order', 'get_account', 'submit_order', 'scan_market', 'get_order_book', 'get_boundaries', 'get_signals']) assert.ok(names.includes(n), n);
     const order = (await rpc({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'place_paper_order', arguments: { symbol: 'SPY', side: 'buy', qty: 1 } } })).body.result;
     assert.notEqual(order.isError, true, JSON.stringify(order));
     const acct = JSON.parse((await rpc({ jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'get_account', arguments: {} } })).body.result.content[0].text);
     assert.ok(acct.positions.some(p => p.symbol === 'SPY'));
     assert.equal((await rpc({ jsonrpc: '2.0', id: 5, method: 'tools/call', params: { name: 'place_real_order', arguments: {} } })).body.error.code, -32602);
     assert.equal((await rpc({ jsonrpc: '2.0', id: 6, method: 'nope' })).body.error.code, -32601);
-    const id = (await c('/tokens')).body[0].id;
-    await c('/tokens/' + id, null, 'DELETE');
+    for (const t of (await c('/tokens')).body) await c('/tokens/' + t.id, null, 'DELETE');
     assert.equal((await rpc({ jsonrpc: '2.0', id: 7, method: 'ping' })).status, 401);
   } finally { s.close(); }
 });

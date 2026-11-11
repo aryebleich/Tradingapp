@@ -7,6 +7,7 @@
 - Free to start: a $100,000 paper (practice) account with real prices, no card needed
 - Works with the brokerage you already have: Alpaca, Charles Schwab, tastytrade, Tradier and TradeStation
 - Your money stays at your brokerage, and every real-money order needs your confirmation
+- AI trading: connect your own AI agent, run AI bots, follow nightly AI signals and ask the chart in plain English
 - Beginner friendly: every advanced page explains itself in plain words, and an AI assistant answers questions
 
 ---
@@ -47,6 +48,14 @@ Brightolio is investing and trading software, not a broker. It connects to your 
 - **Reality Check**: tells you when a strategy stops working the way its backtest did
 - **Pairs trading and statistical arbitrage** with z-scores, cointegration and half-life
 - **AI long/short portfolios** you approve before anything is traded
+
+### AI trading
+- **Connect your own AI agent** (Claude, ChatGPT, Cursor, Codex or a custom agent) through the Model Context Protocol (MCP): it can scan the market, read order books and news, and draft or submit orders within the limits you set, with an approval switch for each account
+- **AI trading bots**: dollar-cost averaging (DCA), grid and scalping bots, plus bots written in plain English ("Buy when the 14-day RSI crosses below 30 and volume spikes") that are backtested before they run
+- **AI strategy marketplace** to share and copy bots
+- **AI signals**: a nightly quantitative engine tests a dozen setups across years of history and picks high-probability trades with stop-loss and take-profit levels, which can be traded automatically with stops that move up as a trade works
+- **Market intelligence**: AI earnings-call summaries, unusual options flow, dark-pool (off-exchange) volume and whale-wallet alerts, asked in plain words
+- **Chart co-pilot**: ask the chart ("highlight head-and-shoulders patterns from the last quarter") and it draws the patterns, support and resistance zones, trendlines and option open-interest levels
 
 ### Research and AI
 - **AI assistant**: ask in plain words about any stock, your account or any term on the site

@@ -354,6 +354,7 @@ const BIZ_NAV = ['My business', [['business', 'Business dashboard'], ['invoices'
 const NAV = [
   ['Investing', [['analyze', 'Stock & fund analyzer'], ['lowcost', 'Low-cost index & mutual funds'], ['earnings', 'Earnings vs expectations'], ['sp500', 'S&P 500 plan'], ['wealth', 'Investing toolkit'], ['robo', 'Automated portfolios'], ['longterm', 'Long-term view'], ['invest', 'Futures, funds & savings'], ['alpaca-tools', 'Bonds, rates & crypto'], ['tokenized', 'Tokenized securities'], ['values', 'Values investing'], ['spend', 'Invest as you spend']]],
   ['Trading tools', [['chart', 'Chart'], ['options', 'Options chain'], ['optionslab', 'Options lab'], ['scanner', 'Scanner'], ['leaders', 'New leaders'], ['short', 'Short the market'], ['margin', 'Margin center'], ['calendar', 'Calendar & events'], ['execution', 'Execution & routing'], ['workspace', 'Workspace']]],
+  ['AI trading', [['agenthub', 'Agents & API'], ['aibots', 'AI bots'], ['aisignals', 'AI signals'], ['intel', 'Market intelligence']]],
   ['Research & AI', [['research', 'Plain-language research'], ['news', 'News & sentiment'], ['ai', 'AI assistant'], ['agents', 'Forecasts & AI agents'], ['institutions', 'Institutional portfolios']]],
   ['Automation', [['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['schedule', 'Scheduled trades'], ['rules', 'Rules across accounts'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['portfolios', 'Portfolios'], ['aifunds', 'AI long/short portfolios'], ['traders', 'Top traders'], ['text', 'Text commands'], ['hotline', 'Phone hotline'], ['marketplace', 'Marketplace']]],
   ['Quant lab', [['pairs', 'Pairs trading'], ['statarb', 'Statistical arbitrage'], ['code', 'Code lab'], ['quantconnect', 'Cloud algorithms']]],
@@ -363,6 +364,7 @@ const NAV = [
 ];
 // Simple line icons (24x24 paths) for the menu.
 const ICONS = {
+  agenthub: '<rect x="4" y="7" width="16" height="12" rx="3"/><path d="M12 3v4M9 12h.01M15 12h.01M9 16h6"/>', aibots: '<path d="M4 17l5-5 4 4 7-8"/><circle cx="20" cy="8" r="1.5"/><path d="M4 21h16"/>', aisignals: '<path d="M2 12h4l3-8 4 16 3-8h6"/>', intel: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M8 11h6M11 8v6"/>',
   business: '<path d="M3 7h18v13H3z"/><path d="M8 7V4h8v3M3 12h18"/>', invoices: '<path d="M6 2h9l4 4v16H6z"/><path d="M9 10h7M9 14h7M9 18h4"/>',
   books: '<path d="M4 4h7a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H4z"/><path d="M20 4h-6v16h6z"/>', bank: '<path d="M3 10h18L12 4z"/><path d="M5 10v8M9 10v8M15 10v8M19 10v8M3 20h18"/>',
   inventory: '<path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/>', payroll: '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/>',
@@ -1534,7 +1536,7 @@ routes.tax = async (view, q) => {
 // ---------- funding & plans ----------
 routes.funding = routes.billing = async (view, q) => {
   CFG ||= await api('/config');
-  const [ledger, fees, pay, accts, cr] = await Promise.all([api('/ledger'), api('/fees'), api('/funding/methods').catch(() => ({ methods: [], fee: {} })), accounts(), api('/credits').catch(() => null)]);
+  const [ledger, fees, pay, accts, cr, aip] = await Promise.all([api('/ledger'), api('/fees'), api('/funding/methods').catch(() => ({ methods: [], fee: {} })), accounts(), api('/credits').catch(() => null), api('/aiplans').catch(() => null)]);
   let yearly = q.get('interval') === 'year';
   const days = CFG.trialDays || 14, trial = !ME.trialUsed, paid = isPaid(ME);
   const status = ME.planStatus === 'trialing' ? `Free trial · renews ${ME.planRenews ? new Date(ME.planRenews).toLocaleDateString() : ''}` : ME.planStatus === 'past_due' ? 'Payment failed - update your card' : ME.planRenews ? `Renews ${new Date(ME.planRenews).toLocaleDateString()}` : '';
@@ -1555,6 +1557,7 @@ routes.funding = routes.billing = async (view, q) => {
     }).join('')}</div>
     <div class="err" id="planErr"></div><p class="mu small-print">Payment is on Stripe's secure page. On a phone, if the card numbers you type don't show, turn off your browser's dark theme for websites (Chrome: Settings → Theme; Samsung Internet: dark mode off) or open the page in another browser.</p>
     <p class="mu" style="text-align:center;font-size:13px">Secure checkout by Stripe. Cancel anytime from "Manage billing". Prices in USD.</p>
+    ${aip ? `<details class="card aiplans"><summary><b>AI trading in each plan</b> <span class="mu">agents and API, AI bots, signals, market intelligence, chart co-pilot</span></summary><div class="tablewrap"><table><tr><th></th>${Object.values(aip.plans).map(n => `<th>${esc(n)}</th>`).join('')}</tr>${aip.rows.map(([n, ...v]) => `<tr><th scope="row">${esc(n)}</th>${v.map(x => `<td>${esc(x)}</td>`).join('')}</tr>`).join('')}</table></div></details>` : ''}
     ${cr ? `<div class="card" id="credits"><div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">Credits</h2><b class="credbal">${cr.balance.total.toLocaleString()} <span class="mu" style="font-weight:500;font-size:14px">credits</span></b></div>
       <div class="credbar" title="Monthly credits left"><i style="width:${cr.balance.allowance ? Math.min(100, cr.balance.monthly / cr.balance.allowance * 100) : 0}%"></i></div>
       <p class="mu" style="margin:6px 0 14px;font-size:13px">${cr.balance.monthly.toLocaleString()} of ${cr.balance.allowance.toLocaleString()} monthly credits left (they refill on the 1st)${cr.balance.bought ? ` · ${cr.balance.bought.toLocaleString()} bought credits (never expire)` : ''}.</p>
@@ -1878,6 +1881,7 @@ lazyRoutes(() => import('./pages/combined.js'), 'registerCombined', shared, ["ac
 lazyRoutes(() => import('./pages/business.js'), 'registerBusiness', shared, ["currencies", "business", "invoices", "books", "bank", "inventory", "payroll", "bizreports"]);
 lazyRoutes(() => import('./pages/social.js'), 'registerSocial', shared, ["traders", "robo"]);
 lazyRoutes(() => import('./pages/sponsored.js'), 'registerSponsored', shared, ["admin-sponsored"]);
+lazyRoutes(() => import('./pages/aitrade.js'), 'registerAiTrade', shared, ["agenthub", "aibots", "aisignals", "intel"]);
 lazyRoutes(() => import('./pages/invest.js'), 'registerInvest', shared, ["analyze", "lowcost", "earnings", "leaders", "short", "margin", "aifunds"]);
 
 // Static files are cached for instant repeat visits (sw.js); pages and data always come fresh.

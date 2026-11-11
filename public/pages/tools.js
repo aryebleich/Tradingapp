@@ -11,7 +11,6 @@ const fields = o => (o ? Object.entries(o).map(([k, v]) => `<span class="kvp"><s
 
 async function tools(view) {
   const origin = location.origin, paid = H.paid(), admin = H.me()?.role === 'admin';
-  const tokens = await H.api('/tokens').catch(() => []);
   view.innerHTML = `<h1>Bonds, rates & crypto</h1><p class="mu">Interest rates and the news that moves them, bonds and Treasuries, crypto and AI tools.</p>
   <div id="ratesBox" class="grid"></div>
   <form class="card" id="fi"><h2>Treasuries and bonds</h2><p class="mu">Latest prices and quotes (bid, ask and yield) for bonds and Treasury bills by ISIN. Beta data from Alpaca.</p>
@@ -21,13 +20,7 @@ async function tools(view) {
   <form class="card" id="cv"><h2>Crypto across venues</h2><p class="mu">The same coin can trade at slightly different prices at each liquidity source: Alpaca US, Kraken US and Kraken EU.</p>
     <div class="row"><label>Pairs<input name="syms" value="BTC/USD, ETH/USD" data-no-tr></label><button>Compare</button></div><div class="err"></div><div id="cvOut"></div></form>
 
-  <div class="card"><h2>Connect AI assistants to Brightolio</h2>
-    <p>Ask Claude, Cursor or VS Code about your portfolio, prices and news, and let them place <b>paper</b> trades. Real-money orders always stay with you.</p>
-    ${paid ? `<div class="row"><input id="tokName" placeholder="Name, e.g. Claude Desktop" style="max-width:280px"><button id="newTok">Create a token</button></div><div class="err"></div><div id="tokOut"></div>
-      <div class="tablewrap"><table><tr><th>Name</th><th>Ends with</th><th>Created</th><th>Last used</th><th></th></tr>${tokens.map(t => `<tr><td>${H.esc(t.name)}</td><td data-no-tr>…${H.esc(t.hint || '')}</td><td>${H.date(t.created_at)}</td><td>${t.last_used_at ? H.date(t.last_used_at) : '-'}</td><td><button class="small ghost" data-revoke="${t.id}">Revoke</button></td></tr>`).join('') || '<tr><td colspan="5" class="mu">No tokens yet</td></tr>'}</table></div>
-      <h3>Add it to your assistant</h3>${code(JSON.stringify({ mcpServers: { brightolio: { type: 'http', url: origin + '/mcp', headers: { Authorization: 'Bearer YOUR_BRIGHTOLIO_TOKEN' } } } }, null, 2))}`
-      : '<p class="banner">Part of Pro. <a href="#/funding">Start a free trial</a> to connect your AI assistant.</p>'}
-    <p class="mu small-print">Tools: get_account, list_accounts, get_quote, list_orders, get_news, place_paper_order.</p></div>
+  <div class="card"><h2>Connect AI agents to Brightolio</h2><p>Claude, ChatGPT, Cursor, Codex and other AI agents can scan the market, read order books and news, and draft or place orders within the limits you set. Set it up in <a href="#/agenthub">AI trading → Agents &amp; API</a>.</p></div>
 
   <div class="card"><h2>Alpaca's own AI and command-line tools</h2>
     <h3>Trading API MCP server</h3><p class="mu">About 65 tools for trading, market data and account management in Claude, Cursor or VS Code. Runs on your computer with your Alpaca keys (never paste keys into a chat).</p>
@@ -71,10 +64,4 @@ alpaca order cancel-all`)}
     }).join('');
     return '';
   });
-  if (H.$('#newTok', view)) H.act(H.$('#newTok', view), async () => {
-    const r = await H.api('/tokens', { body: { name: H.$('#tokName', view).value } });
-    H.$('#tokOut', view).innerHTML = `<p class="banner">Copy it now; it is shown only once: <code data-no-tr>${H.esc(r.token)}</code></p>`;
-    return '';
-  });
-  H.$$('[data-revoke]', view).forEach(b => H.act(b, async () => { await H.api('/tokens/' + b.dataset.revoke, { method: 'DELETE' }); H.render(); }));
 }

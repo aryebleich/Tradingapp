@@ -91,6 +91,13 @@ import { edgeSecret } from './src/edgesetup.js';
 import { router as githubRouter, githubEnabled } from './src/github.js';
 import { adminSiteRouter } from './src/admin-site.js';
 import { tokensRouter, mcpHandler } from './src/mcp.js';
+import { agentRouter } from './src/agentic.js';
+import { aiBotsRouter } from './src/aibots.js';
+import { aiSignalsRouter } from './src/aisignals.js';
+import { intelRouter } from './src/intel.js';
+import { chartCopilotRouter } from './src/chartcopilot.js';
+import { aiPlanTable } from './src/aiplans.js';
+import { notifyUser as notifyAgentUser } from './src/notify-user.js';
 import { wealthRouter } from './src/wealth.js';
 import { news as alpacaNews } from './src/alpaca/data.js';
 import { settings as moneySettings, referralReward, nextMilestone, trialDaysFor } from './src/revenue.js';
@@ -426,7 +433,8 @@ registerCalls(app, { twilioOk, twiml });
 // message is valid JSON, so any body type is accepted.
 // Signal channels: a leader's TradingView (or other) alerts broadcast to every follower.
 // AI assistants (Claude, Cursor, VS Code) reach the user's account here with a personal token.
-const mcp = mcpHandler({ accountSummary, accountsFor, lastPrice, listOrders, placeOrder, news: alpacaNews });
+const agentDeps = { accountSummary, accountsFor, lastPrice, listOrders, placeOrder, news: alpacaNews, notify: notifyAgentUser };
+const mcp = mcpHandler(agentDeps);
 app.post('/mcp', (req, res, next) => mcp(req, res).catch(next));
 app.get('/mcp', (req, res) => res.status(405).set('Allow', 'POST').json({ error: 'Use POST with JSON-RPC (MCP Streamable HTTP)' }));
 app.post('/hook/c/:token', express.text({ type: () => true, limit: '20kb' }), async (req, res) => {
@@ -589,6 +597,13 @@ api.use('/scripts', scriptsRouter);
 api.use('/profiles', profilesRouter);
 api.use('/sponsored', sponsoredRouter);
 api.use('/invest', investRouter);
+// AI trading: agents and API, AI bots, AI signals, market intelligence, the chart co-pilot.
+api.use('/agent', agentRouter(agentDeps));
+api.use('/aibots', aiBotsRouter);
+api.use('/aisignals', aiSignalsRouter);
+api.use('/intel', intelRouter);
+api.use('/chartai', chartCopilotRouter);
+api.get('/aiplans', (req, res) => res.json(aiPlanTable()));
 api.use('/aifunds', aiFundsRouter);
 api.use('/admin/aiteam', aiTeamRouter);
 api.use('/quickbooks', quickbooksRouter);

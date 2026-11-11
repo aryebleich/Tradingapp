@@ -1,12 +1,15 @@
-// Brightolio as an MCP server: users connect Claude, Cursor or VS Code to their own account with a
-// personal access token (Settings → AI assistants). Read tools for every account; orders only on the
-// paper account, so an AI assistant can never move real money. Paid plans only.
+// Brightolio as an MCP server: users connect AI agents (Claude, ChatGPT, Cursor, Codex, VS Code or
+// their own) to their own account with a personal access token (AI trading → Agents & API). Every
+// plan can connect: read tools, market scans, order books, news and practice orders. Orders on real
+// accounts go through the user's agent boundaries and approvals (src/agentic.js) and need Pro
+// (approval) or Elite (automatic). The plan also sets how many agents and requests a minute.
 // Transport: MCP "Streamable HTTP" with plain JSON responses (POST /mcp, JSON-RPC 2.0).
 import express from 'express';
 import { one, all, run, now, audit } from './db.js';
 import { randomToken, sha256 } from './crypto.js';
 import { requireUser, rateLimit } from './auth.js';
-import { isPaid } from './fees.js';
+import { aiLimits, upgrade } from './aiplans.js';
+import * as AG from './agentic.js';
 
 const PROTOCOL = '2025-06-18';
 const TOKEN_PREFIX = 'qpk_';
@@ -16,8 +19,8 @@ export const tokensRouter = express.Router();
 tokensRouter.use(requireUser);
 tokensRouter.get('/', async (req, res) => res.json(await all('SELECT id, name, hint, created_at, last_used_at FROM api_tokens WHERE user_id = ? ORDER BY id DESC', req.user.id)));
 tokensRouter.post('/', async (req, res) => {
-  if (!isPaid(req.user)) return res.status(402).json({ error: 'Connecting AI assistants is part of Pro', upgrade: true, feature: 'AI assistants (MCP)' });
-  if ((await one('SELECT COUNT(*) n FROM api_tokens WHERE user_id = ?', req.user.id)).n >= 10) return res.status(400).json({ error: 'Up to 10 tokens' });
+  const lim = aiLimits(req.user);
+  if ((await one('SELECT COUNT(*) n FROM api_tokens WHERE user_id = ?', req.user.id)).n >= lim.agentTokens) { const e = upgrade(`More than ${lim.agentTokens} connected agent${lim.agentTokens === 1 ? '' : 's'}`, p => p.agentTokens > lim.agentTokens); return res.status(402).json({ error: e.message, upgrade: true, feature: e.feature }); }
   const token = TOKEN_PREFIX + randomToken(24), name = String(req.body?.name || 'AI assistant').slice(0, 40);
   await run('INSERT INTO api_tokens (user_id, token_hash, name, hint, created_at) VALUES (?,?,?,?,?)', req.user.id, sha256(token), name, token.slice(-4), now());
   await audit(req.user.id, 'api_token_created', { name }, req.ip);
@@ -48,10 +51,33 @@ const TOOLS = deps => ({
     description: 'Today\'s news headlines for symbols (comma-separated).', inputSchema: S({ symbols: { type: 'string' } }, ['symbols']),
     run: async (u, a) => (await deps.news({ symbols: a.symbols, limit: 10 })).map(n => ({ headline: n.headline, symbols: n.symbols, at: n.created_at, url: n.url })),
   },
+  scan_market: {
+    description: 'Scan a universe of symbols: price, 1/5/20-day change, RSI(14) and whether price is above its 50-day average. universe: dow30, mega, nasdaq, etfs, crypto, or a comma-separated list (up to 60).',
+    inputSchema: S({ universe: { type: 'string' }, sort: { type: 'string', enum: ['change1d', 'change5d', 'change20d', 'rsi14'] }, limit: { type: 'number' } }),
+    run: (u, a) => AG.scan(u.id, a),
+  },
+  get_order_book: { description: 'Order book: bid, ask and spread; full depth for crypto.', inputSchema: S({ symbol: sym }, ['symbol']), run: (u, a) => AG.orderBook(u.id, a.symbol, deps) },
+  get_signals: {
+    description: 'Today\'s AI signals (setups with historical win rate, entry, stop and target), as many as the user\'s plan shows.',
+    inputSchema: S({}), run: async u => (await import('./aisignals.js')).signalsFor(u),
+  },
+  get_boundaries: {
+    description: 'The limits the user set for agents: per account off / approve / auto, largest order, daily limits, allowed and blocked symbols. Read these before submitting orders.',
+    inputSchema: S({}), run: async u => { const b = await AG.boundaries(u.id), lim = aiLimits(u); return { ...b, planAllows: { realAccounts: lim.agentLive, extendedHours: lim.extendedHours } }; },
+  },
+  submit_order: {
+    description: 'Submit an order to one of the user\'s accounts. It is checked against the user\'s boundaries and plan, then placed (automatic), queued for the user\'s approval, or refused with the reason. Give qty (shares) or notional (dollars); type market or limit (limit_price); always give a short reason.',
+    inputSchema: S({ account: acct, symbol: sym, side: { type: 'string', enum: ['buy', 'sell'] }, qty: { type: 'number' }, notional: { type: 'number' }, type: { type: 'string', enum: ['market', 'limit'] }, limit_price: { type: 'number' }, extended_hours: { type: 'boolean' }, reason: { type: 'string' } }, ['symbol', 'side', 'reason']),
+    run: (u, a, agent) => AG.submit(u, agent, a, deps),
+  },
+  list_agent_orders: {
+    description: 'Orders agents submitted, with their status (placed, pending approval, rejected, blocked, failed).',
+    inputSchema: S({}), run: async u => (await all('SELECT id, agent, account, symbol, side, qty, notional, type, limit_price, status, result, reason, created_at FROM agent_orders WHERE user_id = ? ORDER BY id DESC LIMIT 50', u.id)),
+  },
   place_paper_order: {
-    description: 'Place a market order on the PAPER account only (simulated money). Give qty (shares) or notional (dollars).',
+    description: 'Place a market order on the PAPER account (simulated money). Give qty (shares) or notional (dollars).',
     inputSchema: S({ symbol: sym, side: { type: 'string', enum: ['buy', 'sell'] }, qty: { type: 'number' }, notional: { type: 'number' } }, ['symbol', 'side']),
-    run: (u, a) => deps.placeOrder(u.id, 'paper', { symbol: a.symbol, side: a.side, qty: a.qty, notional: a.notional }, 'mcp'),
+    run: (u, a, agent) => AG.submit(u, agent, { ...a, account: 'paper', reason: a.reason || 'practice order' }, deps),
   },
 });
 
@@ -59,24 +85,22 @@ export function mcpHandler(deps) {
   const tools = TOOLS(deps);
   return async (req, res) => {
     const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-    const row = token.startsWith(TOKEN_PREFIX) ? await one('SELECT t.id tid, u.* FROM api_tokens t JOIN users u ON u.id = t.user_id WHERE t.token_hash = ?', sha256(token)) : null;
+    const row = token.startsWith(TOKEN_PREFIX) ? await one('SELECT t.id tid, t.name tname, u.* FROM api_tokens t JOIN users u ON u.id = t.user_id WHERE t.token_hash = ?', sha256(token)) : null;
     if (!row) return res.status(401).set('WWW-Authenticate', 'Bearer').json({ jsonrpc: '2.0', id: null, error: { code: -32001, message: 'Add your Brightolio token as: Authorization: Bearer qpk_…' } });
-    if (!isPaid(row)) return res.status(402).json({ jsonrpc: '2.0', id: null, error: { code: -32002, message: 'Connecting AI assistants is part of Pro' } });
-    if (!rateLimit('mcp:' + row.id, 120, 60e3)) return res.status(429).json({ jsonrpc: '2.0', id: null, error: { code: -32003, message: 'Too many requests' } });
+    if (!rateLimit('mcp:' + row.id, aiLimits(row).apiPerMin, 60e3)) return res.status(429).json({ jsonrpc: '2.0', id: null, error: { code: -32003, message: 'Too many requests' } });
     await run('UPDATE api_tokens SET last_used_at = ? WHERE id = ?', now(), row.tid);
     const handle = async m => {
       const ok = result => ({ jsonrpc: '2.0', id: m.id, result }), err = (code, message) => ({ jsonrpc: '2.0', id: m.id ?? null, error: { code, message } });
       if (m.id === undefined) return null; // notifications (e.g. notifications/initialized) need no answer
       switch (m.method) {
-        case 'initialize': return ok({ protocolVersion: PROTOCOL, capabilities: { tools: {} }, serverInfo: { name: 'brightolio', version: '1.0.0' }, instructions: 'Brightolio trading account tools. Orders go to the paper account only.' });
+        case 'initialize': return ok({ protocolVersion: PROTOCOL, capabilities: { tools: {} }, serverInfo: { name: 'brightolio', version: '1.0.0' }, instructions: 'Brightolio trading account tools. Read get_boundaries before submit_order: every order is checked against the user\'s limits and plan, and may wait for the user\'s approval. Use the paper account to practice.' });
         case 'ping': return ok({});
         case 'tools/list': return ok({ tools: Object.entries(tools).map(([name, t]) => ({ name, description: t.description, inputSchema: t.inputSchema })) });
         case 'tools/call': {
           const t = tools[m.params?.name];
           if (!t) return err(-32602, 'Unknown tool');
           try {
-            const out = await t.run(row, m.params.arguments || {});
-            if (m.params.name === 'place_paper_order') await audit(row.id, 'mcp_order', { symbol: m.params.arguments.symbol, side: m.params.arguments.side }, req.ip);
+            const out = await t.run(row, m.params.arguments || {}, row.tname || 'AI agent');
             return ok({ content: [{ type: 'text', text: JSON.stringify(out) }], structuredContent: Array.isArray(out) ? { items: out } : out });
           } catch (e) { return ok({ content: [{ type: 'text', text: e.message }], isError: true }); }
         }

@@ -3,6 +3,7 @@
 // per symbol on this device, 1/2/4-chart layouts, pop-out windows for more monitors, click-to-trade
 // and a live order-book ladder (depth for crypto, top of book for stocks).
 import { detect, PATTERNS } from './patterns.js';
+import { analyze } from './chartai.js';
 import { canvasNote } from './i18n.js';
 import { INDICATORS, GROUPS, byId, compute } from './indicators.js';
 import { run as runScript, backtest as scriptBacktest, EXAMPLE as SCRIPT_EXAMPLE } from './script.js';
@@ -93,7 +94,7 @@ async function loadBars(symbol, tf) {
 // ---------- settings (remembered on this device) ----------
 const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
 const keep = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
-const DEF = { tf: '1Day', layout: 1, studies: [], symbols: ['SPY', 'QQQ', 'AAPL', 'BTC/USD'], ind: { sma20: true, sma50: true, ema20: false, bb: false, vol: true, rsi: true, macd: false, pat: true, regime: true } };
+const DEF = { tf: '1Day', layout: 1, studies: [], symbols: ['SPY', 'QQQ', 'AAPL', 'BTC/USD'], ind: { sma20: true, sma50: true, ema20: false, bb: false, vol: true, rsi: true, macd: false, pat: true, regime: true, ai: false } };
 
 async function chartPage(view, q) {
   const cfg = { ...DEF, ...load('qp_chart', {}) }; cfg.ind = { ...DEF.ind, ...cfg.ind }; cfg.studies = (cfg.studies || []).filter(x => byId(x.id));
@@ -106,7 +107,7 @@ async function chartPage(view, q) {
   document.body.classList.toggle('popout', popout);
   H.onLeave(() => document.body.classList.remove('popout'));
   const accts = await H.accounts();
-  const IND = { regime: 'Bull / bear', sma20: 'SMA 20', sma50: 'SMA 50', ema20: 'EMA 20', bb: 'Bollinger', vol: 'Volume', rsi: 'RSI', macd: 'MACD', pat: 'Patterns' };
+  const IND = { regime: 'Bull / bear', sma20: 'SMA 20', sma50: 'SMA 50', ema20: 'EMA 20', bb: 'Bollinger', vol: 'Volume', rsi: 'RSI', macd: 'MACD', pat: 'Candle patterns', ai: 'Auto support, resistance & chart patterns' };
   view.innerHTML = `<div class="charttop">
       ${popout ? '' : '<h1 style="margin:0">Chart</h1>'}
       <div class="seg" id="tf">${Object.keys(TFS).map(t => `<button type="button" data-tf="${t}" class="${t === cfg.tf ? 'on' : ''}">${{ '5Min': '5m', '15Min': '15m', '1Hour': '1h', '1Day': '1D', '1Week': '1W' }[t]}</button>`).join('')}</div>
@@ -121,6 +122,8 @@ async function chartPage(view, q) {
       <select id="rpSpeed" aria-label="Speed"><option value="1000">1×</option><option value="500">2×</option><option value="200" selected>5×</option><option value="100">10×</option></select><span class="mu small-print" id="rpAt"></span><button type="button" class="small ghost" id="rpExit">Exit replay</button></div>
     <div class="chips studies" id="studies"></div>
     <div class="chips inds">${Object.entries(IND).map(([k, t]) => `<label class="chk"><input type="checkbox" data-ind="${k}" ${cfg.ind[k] ? 'checked' : ''}>${t}</label>`).join('')}</div>
+    <form class="copilot" id="cpForm"><span class="cp-ic" aria-hidden="true">✦</span><input id="cpQ" maxlength="500" autocomplete="off" placeholder="Ask the chart: &quot;Highlight head-and-shoulders patterns from the last quarter and short volume spikes&quot;" aria-label="Ask the chart co-pilot"><button>Ask</button><button type="button" class="ghost small" id="cpClear" hidden>Clear</button></form>
+    <div class="copilot-out mu" id="cpOut" hidden></div>
     <div class="chartgrid l${cfg.layout}" id="grid"></div>
     <div class="card scriptcard" id="scCard" hidden><div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">Brightolio Script <span class="mu small-print">Pine-style syntax</span></h2><select id="scSaved" aria-label="Saved scripts"><option value="">Saved scripts…</option></select></div>
       <textarea id="scSrc" spellcheck="false" rows="14" data-no-tr></textarea>
@@ -140,6 +143,20 @@ async function chartPage(view, q) {
     H.$('.csym', el).onchange = e => { cfg.symbols[i] = e.target.value.trim().toUpperCase() || 'SPY'; save(); p.load(); if (i === active) side(); };
   }
   const setActive = i => { if (active === i) return; active = i; panels.forEach((p, j) => p.el.classList.toggle('active', j === i)); side(); };
+  // The chart co-pilot: the question about the active chart becomes drawings and a short answer.
+  const cpOut = H.$('#cpOut', view), cpClear = H.$('#cpClear', view);
+  H.$('#cpForm', view).onsubmit = async e => {
+    e.preventDefault();
+    const q = H.$('#cpQ', view).value.trim(), p = panels[active]; if (!q || !p) return;
+    const btn = e.target.querySelector('button'); btn.disabled = true; cpOut.hidden = false; cpOut.textContent = 'Reading the chart...';
+    try {
+      const r = await H.api('/chartai/ask', { body: { symbol: p.sym, prompt: q } });
+      p.copilot = r; p.draw(); cpClear.hidden = false;
+      cpOut.innerHTML = `<b>${H.esc(r.symbol)}:</b> ${H.esc(r.answer)} <span class="small-print">(${r.left} question${r.left === 1 ? '' : 's'} left today)</span>`;
+    } catch (err) { cpOut.innerHTML = `<span class="err">${H.esc(err.message)}</span>${err.upgrade ? ' <a href="#/funding">See plans</a>' : ''}`; }
+    btn.disabled = false;
+  };
+  cpClear.onclick = () => { panels.forEach(p => { p.copilot = null; p.draw(); }); cpOut.hidden = true; cpClear.hidden = true; };
   panels[0].el.classList.add('active');
   panels.forEach(p => p.load());
   H.$$('[data-tf]', view).forEach(b => (b.onclick = () => { cfg.tf = b.dataset.tf; save(); H.$$('[data-tf]', view).forEach(x => x.classList.toggle('on', x === b)); panels.forEach(p => p.load()); }));
@@ -289,9 +306,19 @@ class Panel {
     this.memo = { key, out }; return out;
   }
   get dkey() { return `qp_draw:${this.sym}:${this.cfg.tf}`; }
+  // Support/resistance, trendlines and patterns of the bars shown, worked out here (no request).
+  autoLayer() {
+    const b = this.bars, key = b.length + ':' + (b.at(-1)?.t || 0);
+    if (this.auto?.key === key) return this.auto.layer;
+    const a = analyze(b, { from: Math.max(0, b.length - 260) }), T = i => b[Math.max(0, Math.min(b.length - 1, i))].t;
+    const layer = { zones: a.zones.map(z => ({ ...z, from: T(z.from) })), trendlines: a.trendlines.map(l => ({ ...l, a: { t: T(l.a.i), p: l.a.p }, b: { t: T(l.b.i), p: l.b.p } })), patterns: a.patterns.map(p => ({ ...p, points: p.points.map(q => ({ t: T(q.i), p: q.p })), from: T(p.from), to: T(p.to) })) };
+    this.auto = { key, layer }; return layer;
+  }
   cursor() { this.cv.style.cursor = this.tool() === 'none' ? 'grab' : this.tool() === 'erase' ? 'not-allowed' : 'crosshair'; }
   async load() {
     const note = H.$('.cnote', this.el); note.textContent = 'Loading...'; this.bars = [];
+    // A new symbol or timeframe starts without the last one's co-pilot drawings.
+    if (this.copilot && (this.copilot.symbol !== this.sym)) this.copilot = null; this.auto = null;
     this.draw();
     try {
       const d = await loadBars(this.sym, this.cfg.tf);
@@ -397,6 +424,9 @@ class Panel {
         g.fillStyle = bull ? C('--gr') : C('--rd'); g.beginPath(); g.moveTo(X, y + (bull ? -5 : 5)); g.lineTo(X - 4, y + (bull ? 3 : -3)); g.lineTo(X + 4, y + (bull ? 3 : -3)); g.fill();
       }
     }
+    // automatic structure (support/resistance zones, trendlines, chart patterns) and co-pilot answers
+    if (ind.ai) drawAi(g, G, b, this.autoLayer(), C);
+    if (this.copilot) drawAi(g, G, b, this.copilot, C);
     // script lines on the price, and its backtest's buys and sells
     if (this.script && this.script.r.overlay) this.script.r.plots.forEach((pl, k) => line(g, G, pl.values, pl.color || ['#7c3aed', '#0891b2', '#ea580c', '#16a34a'][k % 4], 1.6));
     if (this.script?.bt) {
@@ -460,6 +490,34 @@ class Panel {
       return m.x >= Math.min(x1, x2) && m.x <= Math.max(x1, x2) && m.y >= Math.min(y1, y2) - 6 && m.y <= Math.max(y1, y2) + 6;
     });
   }
+}
+// Co-pilot and automatic layers: shaded zones, dashed trendlines, pattern outlines with their name
+// and neckline, option open-interest strikes and short-volume spike days. Points are by date.
+function drawAi(g, G, bars, L, C) {
+  if (!L || !bars.length) return;
+  const X = t => G.X(idx(bars, t)), right = G.w - G.axis, tone = bias => (bias === 'bull' ? '#16a34a' : bias === 'bear' ? '#dc2626' : '#7c3aed');
+  g.save(); g.font = '11px system-ui, sans-serif';
+  for (const z of L.zones || []) {
+    const y1 = G.Y(z.hi), y2 = G.Y(z.lo), x = Math.max(G.axisL, X(z.from));
+    g.fillStyle = z.kind === 'support' ? 'rgba(22,163,74,.10)' : 'rgba(220,38,38,.10)'; g.fillRect(x, y1, right - x, Math.max(2, y2 - y1));
+    g.fillStyle = z.kind === 'support' ? '#15803d' : '#b91c1c'; g.textAlign = 'right'; g.fillText(`${z.kind} ×${z.touches}`, right - 4, y1 - 3);
+  }
+  g.setLineDash([6, 4]); g.lineWidth = 1.4;
+  for (const l of L.trendlines || []) { g.strokeStyle = l.kind === 'support' ? '#15803d' : '#b91c1c'; g.beginPath(); g.moveTo(X(l.a.t), G.Y(l.a.p)); g.lineTo(X(l.b.t), G.Y(l.b.p)); g.stroke(); }
+  g.setLineDash([]);
+  for (const p of L.patterns || []) {
+    const col = tone(p.bias); g.strokeStyle = col; g.lineWidth = 2; g.beginPath();
+    p.points.forEach((q, k) => (k ? g.lineTo(X(q.t), G.Y(q.p)) : g.moveTo(X(q.t), G.Y(q.p)))); g.stroke();
+    if (p.neckline) { g.setLineDash([3, 3]); g.lineWidth = 1; g.beginPath(); g.moveTo(X(p.from), G.Y(p.neckline)); g.lineTo(Math.min(right, X(p.to) + 30), G.Y(p.neckline)); g.stroke(); g.setLineDash([]); }
+    const top = p.points.reduce((a, q) => (q.p > a.p ? q : a), p.points[0]);
+    g.fillStyle = col; g.textAlign = 'center'; g.fillText(p.name + (p.shortSpikes?.length ? ' · short spike' : ''), X(top.t), G.Y(top.p) - 8);
+  }
+  const oi = L.options; if (oi) for (const [list, col, name] of [[oi.calls || [], '#0891b2', 'Call OI'], [oi.puts || [], '#ea580c', 'Put OI']]) for (const x of list) {
+    const y = G.Y(x.strike); if (y < G.top || y > G.priceH) continue; g.strokeStyle = col; g.setLineDash([2, 4]); g.beginPath(); g.moveTo(G.axisL, y); g.lineTo(right, y); g.stroke(); g.setLineDash([]);
+    g.fillStyle = col; g.textAlign = 'left'; g.fillText(`${name} ${x.strike} (${x.oi.toLocaleString()})`, G.axisL + 4, y - 3);
+  }
+  for (const s of L.short?.spikes || []) { const x = X(Date.parse(s.day)); g.fillStyle = '#7c3aed'; g.fillRect(x - 2, G.Y(bars[idx(bars, Date.parse(s.day))].l) + 8, 4, 8); }
+  g.restore();
 }
 const idx = (bars, t) => { let lo = 0, hi = bars.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (bars[m].t < t) lo = m + 1; else hi = m; } return lo; };
 function drawShape(g, G, d, bars, C) {
