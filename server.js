@@ -283,10 +283,15 @@ app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (r
         await rewardReferral(u);
       }
     } else if (ev.type === 'customer.subscription.updated' || ev.type === 'customer.subscription.created') {
-      const plan = Object.hasOwn(PLANS, o.metadata?.plan) ? o.metadata.plan : null;
+      // The plan comes from the price the customer pays now (a switch in the customer portal changes
+      // the price, not the metadata saved at checkout); the metadata is the fallback.
+      const { planFromPrice } = await import('./src/stripesetup.js');
+      const byPrice = planFromPrice(o.items?.data?.[0]?.price?.id, Object.keys(PLANS).filter(k => k !== 'free'));
+      const plan = byPrice?.plan || (Object.hasOwn(PLANS, o.metadata?.plan) ? o.metadata.plan : null);
       const ended = ['canceled', 'unpaid', 'incomplete_expired'].includes(o.status);
-      await run('UPDATE users SET plan_status = ?, plan = CASE WHEN ? THEN \'free\' ELSE COALESCE(?, plan) END, plan_renews = ? WHERE stripe_customer = ?',
-        o.status, ended ? 1 : 0, plan, o.current_period_end ? o.current_period_end * 1000 : null, o.customer);
+      // Newer Stripe API versions (a webhook made by hand in the dashboard) keep the period end on the item.
+      await run('UPDATE users SET plan_status = ?, plan = CASE WHEN ? THEN \'free\' ELSE COALESCE(?, plan) END, plan_interval = COALESCE(?, plan_interval), plan_renews = ? WHERE stripe_customer = ?',
+        o.status, ended ? 1 : 0, plan, byPrice?.interval || null, (o.current_period_end ?? o.items?.data?.[0]?.current_period_end) ? (o.current_period_end ?? o.items.data[0].current_period_end) * 1000 : null, o.customer);
     } else if (ev.type === 'checkout.session.completed' && o.metadata?.kind === 'credits') {
       // A credit pack: added once per checkout session, only when the payment went through.
       if (o.payment_status === 'paid') await CR.grant(+o.client_reference_id, +o.metadata.credits, 'purchase', `${(+o.metadata.credits).toLocaleString('en-US')} credits pack`, `stripe:${o.id}`);

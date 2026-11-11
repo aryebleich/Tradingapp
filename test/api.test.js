@@ -210,6 +210,16 @@ test('monetization: trial, paid invoice, referral credit once, cancellation, upg
   const a2 = (await call('/referrals')).body;
   assert.deepEqual([a2.invited, a2.paying, a2.credit], [1, 1, 10]);
 
+  // A plan switched in the customer portal: the new price decides the plan, even with the old metadata.
+  process.env.STRIPE_PRICE_ELITE_YEARLY = 'price_elite_y';
+  await hook({ type: 'customer.subscription.updated', data: { object: { customer: 'cus_b', status: 'active', metadata: { plan: 'pro' }, items: { data: [{ price: { id: 'price_elite_y' } }] }, current_period_end: Math.floor(Date.now() / 1000) + 864e3 } } });
+  assert.deepEqual(Object.values(await one('SELECT plan, plan_interval FROM users WHERE id = ?', b.id)), ['elite', 'year']);
+  delete process.env.STRIPE_PRICE_ELITE_YEARLY;
+  // During a secret roll Stripe sends two v1 signatures; the good one is accepted wherever it is.
+  { const raw = JSON.stringify({ id: 'evt_roll', type: 'ping', data: { object: {} } }), t = Math.floor(Date.now() / 1000);
+    const sig = crypto.createHmac('sha256', 'whsec_test').update(`${t}.${raw}`).digest('hex');
+    assert.equal((await fetch(base + '/webhooks/stripe', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Stripe-Signature': `t=${t},v1=${sig},v1=${'0'.repeat(64)}` }, body: raw })).status, 200); }
+
   // Cancellation returns the user to the free plan.
   await hook({ type: 'customer.subscription.updated', data: { object: { customer: 'cus_b', status: 'canceled', metadata: { plan: 'pro' } } } });
   const after = await one('SELECT plan, plan_status FROM users WHERE id = ?', b.id);

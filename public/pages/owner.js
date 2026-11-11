@@ -49,7 +49,7 @@ async function stripeCard(view) {
       <ul class="plain" style="margin:10px 0">
         <li>${ok(s.keySet)} Secret key · <b>${s.mode === 'live' ? 'live mode (real money)' : s.mode === 'test' ? 'test mode (no real money)' : 'mode unknown'}</b>${s.account ? ` · account ${H.esc(s.account.name || s.account.id)}` : ''}</li>
         ${s.account ? `<li>${ok(s.account.chargesEnabled)} Stripe lets this account take payments${s.account.chargesEnabled ? '' : ': finish the account details in the Stripe dashboard (business, bank account, identity)'}</li>` : ''}
-        <li>${ok(s.webhookSecret && !s.webhook?.missing)} Webhook <code>${H.esc(s.webhookUrl)}</code>${s.webhook?.status && s.webhook.status !== 'enabled' ? ` (${H.esc(s.webhook.status)})` : ''}</li>
+        <li>${ok(s.webhookSecret && !s.webhook?.missing)} Webhook <code>${H.esc(s.webhookUrl)}</code>${s.webhook?.status && s.webhook.status !== 'enabled' ? ` (${H.esc(s.webhook.status)})` : ''}${s.webhook?.wrongUrl ? ` <span class="warn">Stripe sends to <code>${H.esc(s.webhook.url)}</code> instead; press the button to fix it.</span>` : ''}${s.webhook?.missingEvents?.length ? ` <span class="warn">Missing events: ${s.webhook.missingEvents.map(H.esc).join(', ')}; press the button to add them.</span>` : ''}</li>
         <li>${ok(s.portal)} Billing portal (customers change card, switch plan, see invoices, cancel)</li>
         <li>Plan prices<ul class="plain" style="margin:4px 0 0 18px">${priceRows}</ul></li>
         <li class="mu">Last event received: ${ev}${s.badSignature ? ` · last rejected (bad signature): ${new Date(s.badSignature.at).toLocaleString()}` : ''}</li></ul>

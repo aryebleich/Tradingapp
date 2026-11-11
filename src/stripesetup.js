@@ -35,6 +35,13 @@ export async function stripeApi(method, path, params) {
 export const keyMode = (k = process.env.STRIPE_SECRET_KEY || '') => (/^(sk|rk)_live_/.test(k) ? 'live' : /^(sk|rk)_test_/.test(k) ? 'test' : 'unknown');
 const lookupKey = (plan, interval) => `brightfolio_${plan}_${interval}`;
 export const priceEnv = (plan, interval) => `STRIPE_PRICE_${plan.toUpperCase()}${interval === 'year' ? '_YEARLY' : ''}`;
+// The plan and billing period a Stripe price belongs to (STRIPE_PRICE_<PLAN>[_YEARLY]), or null.
+// A plan switched in the customer portal changes the subscription's price, not its metadata.
+export function planFromPrice(priceId, plans) {
+  if (!priceId) return null;
+  for (const plan of plans) for (const interval of ['month', 'year']) if (process.env[priceEnv(plan, interval)] === priceId) return { plan, interval };
+  return null;
+}
 
 async function ensurePrices() {
   const report = [], changes = {};
@@ -121,8 +128,10 @@ export async function stripeStatus({ siteUrl, lastEvent, savedWebhookId }) {
   try {
     const a = await stripeApi('GET', '/account');
     account = { id: a.id, name: a.settings?.dashboard?.display_name || a.business_profile?.name || null, chargesEnabled: a.charges_enabled !== false, detailsSubmitted: a.details_submitted !== false };
-    if (savedWebhookId) { const w = await stripeApi('GET', `/webhook_endpoints/${savedWebhookId}`).catch(() => null); webhook = w ? { status: w.status, url: w.url } : { missing: true }; }
+    if (savedWebhookId) { const w = await stripeApi('GET', `/webhook_endpoints/${savedWebhookId}`).catch(() => null); webhook = w ? { status: w.status, url: w.url, missingEvents: w.enabled_events?.includes('*') ? [] : WEBHOOK_EVENTS.filter(e => !w.enabled_events?.includes(e)) } : { missing: true }; }
+    // Pointing at another address (for example the old Render one) means events never reach this site.
+    if (webhook?.url && webhook.url !== base.webhookUrl) webhook.wrongUrl = true;
   } catch (e) { error = e.message; }
-  const ready = !error && base.webhookSecret && Object.values(base.prices).every(Boolean) && !!account?.chargesEnabled && !webhook?.missing;
+  const ready = !error && base.webhookSecret && Object.values(base.prices).every(Boolean) && !!account?.chargesEnabled && !webhook?.missing && !webhook?.wrongUrl && !webhook?.missingEvents?.length && webhook?.status !== 'disabled';
   return { ...base, account, webhook, error, ready };
 }

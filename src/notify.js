@@ -110,10 +110,11 @@ export const refund = paymentIntent => stripe('/refunds', { payment_intent: paym
 export function verifyStripe(raw, header) {
   const secret = env('STRIPE_WEBHOOK_SECRET');
   if (!secret || !header) return false;
-  const parts = Object.fromEntries(header.split(',').map(p => p.split('=')));
-  if (Math.abs(Date.now() / 1000 - +parts.t) > 300) return false;
-  const want = crypto.createHmac('sha256', secret).update(`${parts.t}.${raw}`).digest('hex');
-  return !!parts.v1 && parts.v1.length === want.length && crypto.timingSafeEqual(Buffer.from(parts.v1), Buffer.from(want));
+  const kv = header.split(',').map(p => p.trim().split('=')), t = kv.find(([k]) => k === 't')?.[1];
+  if (!t || !(Math.abs(Date.now() / 1000 - +t) <= 300)) return false;
+  const want = crypto.createHmac('sha256', secret).update(`${t}.${raw}`).digest('hex');
+  // Stripe sends one v1 signature per active secret (two for a while after the secret is rolled).
+  return kv.some(([k, v]) => k === 'v1' && v?.length === want.length && crypto.timingSafeEqual(Buffer.from(v), Buffer.from(want)));
 }
 
 // Transactional email through Resend (free tier: 3,000/month). Without a key the message is
