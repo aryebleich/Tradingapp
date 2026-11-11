@@ -744,19 +744,19 @@ async function orders(view, q) {
 // =====================================================================
 // Positions: live P/L, close full or partial, close all, exercise
 // =====================================================================
-async function positions(view, q = new URLSearchParams()) {
-  // The account in view: the one picked here, else the one chosen in the side panel, else the main
-  // Alpaca account, else the first other Alpaca account connected.
+async function positions(view) {
+  // The account in view is the one chosen in the side panel (else the main Alpaca account, else the
+  // first other Alpaca account connected).
   const alp = (await H.accounts()).filter(a => /^alpaca/.test(a.id) && a.connected);
-  const want = q.get('acct') || H.state.account;
-  const acct = alp.some(a => a.id === want) ? want : (alp.find(a => a.id === 'alpaca') || alp[0])?.id || 'alpaca';
+  const acct = alp.some(a => a.id === H.state.account) ? H.state.account : (alp.find(a => a.id === 'alpaca') || alp[0])?.id || 'alpaca';
+  const acctName = alp.find(a => a.id === acct)?.name || 'Alpaca';
   if (acct === 'alpaca' && !(await needConnection(view, 'Positions'))) return;
   const qs = acct === 'alpaca' ? '' : `acct=${encodeURIComponent(acct)}`;
   const ps = await A('/positions' + (qs ? '?' + qs : ''));
   const tot = k => ps.reduce((a, p) => a + (p[k] || 0), 0);
   const longs = ps.filter(p => p.assetClass !== 'us_option' && p.side === 'long').length;
   view.innerHTML = `<div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><h1>Positions</h1>
-    <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">${alp.length > 1 ? `<label class="inline">Account <select id="posAcct">${alp.map(a => `<option value="${H.esc(a.id)}" ${a.id === acct ? 'selected' : ''}>${H.esc(a.name || a.id)}${a.live ? ' (live)' : ''}</option>`).join('')}</select></label>` : ''}
+    <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">${alp.length > 1 ? `<span class="pill" id="posAcct">${H.esc(acctName)}</span>` : ''}
     ${longs >= 2 ? '<button class="small" id="eqPos" title="Put the same dollar amount in every holding of this account">Equalize positions</button>' : ''}${ps.length ? '<button class="danger small" id="closeAll">Close all positions</button>' : ''}</div></div>
   <div id="eqPosBox"></div>
   <div class="card"><div class="stats"><div class="stat"><span>Market value</span><b>${usd(tot('marketValue'))}</b></div><div class="stat"><span>Today</span><b class="${H.cls(tot('todayPl'))}">${usd(tot('todayPl'))}</b></div>
@@ -791,12 +791,11 @@ async function positions(view, q = new URLSearchParams()) {
     if (!(await confirmBox('Close ALL positions?', '<p>Market orders will be sent to close every position, and open orders will be cancelled.</p>', 'Close everything', true))) return;
     await A('/positions' + (qs ? '?' + qs : ''), { method: 'DELETE' }); setTimeout(H.render, 1500);
   };
-  if (H.$('#posAcct', view)) H.$('#posAcct', view).onchange = e => { location.hash = '#/positions?acct=' + encodeURIComponent(e.target.value); };
   // Equalize positions: the same dollar amount in every stock and fund this account holds.
   const eb = H.$('#eqPos', view);
   if (eb) eb.onclick = async () => {
     const box = H.$('#eqPosBox', view);
-    box.innerHTML = `<form class="card" id="eqPosF"><h2 style="margin-top:0">Equalize positions</h2>
+    box.innerHTML = `<form class="card" id="eqPosF"><h2 style="margin-top:0">Equalize positions in ${H.esc(acctName)}</h2>
       <p class="mu" style="margin-top:0">Every stock and fund in this account gets the same dollar amount. Options and short positions stay as they are.</p>
       <div class="row"><label>Cash to keep %<input name="cashPct" type="number" min="0" max="90" step="0.5" placeholder="same as now"></label><label>Smallest trade $<input name="minTrade" type="number" min="1" step="1" value="5"></label></div>
       <label class="chk"><input type="checkbox" name="wholeShares"> Whole shares only</label>

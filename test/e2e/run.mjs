@@ -422,7 +422,7 @@ console.log('Settings → Language');
     if (await p.$('dialog[open]')) { await p.keyboard.press('Escape'); await p.waitForTimeout(300); }
     const eqHome = await p.textContent('#eqNowOut'); if (/err/.test(await p.innerHTML('#eqNowOut')) && !/same mix/.test(eqHome)) throw new Error('Equalize now: ' + eqHome);
     await go('#/positions', 'h1'); await p.waitForTimeout(2500);
-    if (!(await p.$('#posAcct'))) throw new Error('no account picker on Positions: ' + (await p.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ').slice(400, 1600));
+    if (!(await p.$('#posAcct'))) throw new Error('no account name on Positions: ' + (await p.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ').slice(400, 1600));
     // The button shows when the account holds two or more stocks or funds (the math: test/batch19.test.js).
     if (await p.$('#eqPos')) {
       await p.click('#eqPos'); await p.waitForSelector('#eqPosF'); await p.screenshot({ path: path.join(OUT, 'positions-equalize.png') }); await p.click('#eqPosF button');
