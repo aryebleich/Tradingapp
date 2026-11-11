@@ -17,6 +17,7 @@ async function traders(view, q) {
   const [top, me] = await Promise.all([H.api('/profiles/top?period=' + period), H.api('/profiles/me')]);
   const accts = await H.accounts();
   view.innerHTML = `<div class="pagehead"><div><h1>Top traders</h1><p class="mu" style="margin:4px 0 0">Ranked by return. Only percentages are public, never amounts, and trades show one day late.</p></div></div>
+  ${H.marketTabs ? H.marketTabs('traders') : ''}
   <div class="chips viewtabs">${Object.entries(P).map(([k, t]) => `<a href="#/traders?p=${k}"><button type="button" class="${k === period ? 'on' : ''}">${t}</button></a>`).join('')}</div>
   <div class="card"><div class="tablewrap"><table><tr><th>#</th><th>Trader</th><th class="num">Return ${P[period]}</th><th class="num">Largest drop</th><th class="num">1 year</th><th class="num">Trades (90 days)</th><th class="num">Followers</th><th></th></tr>
   ${top.traders.map((t, i) => `<tr><td>${i + 1}</td><td><a href="#/traders?h=${t.handle}"><b>${H.esc(t.name)}</b></a><br><small class="mu">${H.esc(t.account)}${t.bio ? ' · ' + H.esc(t.bio.slice(0, 60)) : ''}</small></td><td class="num">${pc(t.perf[period].ret)}</td><td class="num">${pc(t.perf[period].drawdown)}</td><td class="num">${pc(t.perf.y1.ret)}</td><td class="num">${t.trades90}</td><td class="num">${t.followers}</td><td><a href="#/traders?h=${t.handle}"><button type="button" class="small ghost">View</button></a></td></tr>`).join('') || `<tr><td colspan="8" class="mu">No public profiles with at least 20 days of history yet. Be the first: switch yours on below.</td></tr>`}

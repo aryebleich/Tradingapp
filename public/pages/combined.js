@@ -150,3 +150,45 @@ function wireEqualize(view, s) {
   if (H.$('#eqDrop', f)) H.$('#eqDrop', f).onclick = async () => { await H.api('/equalize/pending', { method: 'DELETE' }); H.render(); };
 }
 const results = r => r.message ? `<p class="ok">${H.esc(r.message)}</p>` : `<ul class="plain">${r.results.map(x => `<li>${x.ok ? '✓' : '✗'} ${x.side === 'sell' ? 'Sell' : 'Buy'} ${H.esc(x.symbol)} ${usd(x.dollars)}${x.ok ? '' : ` <span class="err">${H.esc(x.error)}</span>`}</li>`).join('')}</ul>`;
+
+// ---------- Equalize, from other pages ----------
+// Home: "Equalize now" with the settings saved on All accounts (or every live account the first time).
+export async function equalizeNow(helpers, out) {
+  H = H || helpers;
+  out.innerHTML = '<p class="mu">Working it out…</p>';
+  try {
+    const p = await H.api('/equalize/preview', { body: {} });
+    if (!p.orders.length) { out.innerHTML = `<p class="ok">Your accounts already hold the same mix.</p>`; return; }
+    out.innerHTML = '';
+    const c = await H.secureConfirm({ title: `Place ${p.orders.length} trades to equalize your accounts?`, html: planHtml(p) + '<p class="mu small-print">Which accounts and where the mix comes from are set in <a href="#/accounts">All accounts</a>.</p>', okText: 'Place the trades' });
+    if (!c) return;
+    out.innerHTML = '<p class="mu">Placing the trades…</p>';
+    out.innerHTML = results(await H.api('/equalize/run', { body: { password: c.password, confirm: c.confirm } }));
+  } catch (e) { out.innerHTML = `<p class="err">${H.esc(e.message)}</p>`; }
+}
+
+// Positions: the same dollar amount in every holding of one account.
+function positionsHtml(p) {
+  const rows = p.accounts[0]?.rows || [];
+  return `<p>Each holding gets about <b>${usd(p.each)}</b>${p.weights.length ? ` (${p.weights[0].pct}% of the account each)` : ''}.</p>
+    <div class="tablewrap"><table class="slim"><tr><th>Holding</th><th class="num">Now</th><th class="num">Target</th></tr>${rows.map(r => `<tr><td data-no-tr>${H.esc(r.symbol)}</td><td class="num">${usd(r.current)}</td><td class="num">${usd(r.target)}</td></tr>`).join('')}</table></div>
+    ${p.skipped?.length ? `<p class="mu small-print">Left as they are (options and short positions): <span data-no-tr>${p.skipped.map(H.esc).join(', ')}</span></p>` : ''}
+    <h3>${p.orders.length ? `${p.orders.length} trade${p.orders.length === 1 ? '' : 's'}` : 'No trades needed'}</h3>
+    ${p.orders.length ? `<div class="tablewrap"><table class="slim"><tr><th>Side</th><th>Symbol</th><th class="num">Amount</th></tr>${p.orders.map(o => `<tr><td class="${o.side === 'sell' ? 'neg' : 'pos'}">${o.side === 'sell' ? 'Sell' : 'Buy'}${o.all ? ' all' : ''}</td><td data-no-tr>${H.esc(o.symbol)}</td><td class="num">${o.qty ? `${o.qty} sh · ` : ''}${usd(o.dollars)}</td></tr>`).join('')}</table></div>` : ''}
+    <p class="mu small-print">Sells go first so their cash pays for the buys. Amounts use the latest prices; each order fills at the market price. Not investment advice.</p>`;
+}
+export async function equalizePositions(helpers, account, out, opts = {}) {
+  H = H || helpers;
+  out.innerHTML = '<p class="mu">Working it out…</p>';
+  try {
+    const body = { account, ...opts };
+    const p = await H.api('/equalize/positions/preview', { body });
+    if (!p.orders.length) { out.innerHTML = `<p class="ok">Every holding already has about the same amount.</p>`; return false; }
+    out.innerHTML = '';
+    const c = await H.secureConfirm({ title: `Equalize the ${p.accounts[0]?.rows.length || ''} holdings in ${p.label}?`, html: positionsHtml(p), okText: `Place ${p.orders.length} trade${p.orders.length === 1 ? '' : 's'}` });
+    if (!c) return false;
+    out.innerHTML = '<p class="mu">Placing the trades…</p>';
+    out.innerHTML = results(await H.api('/equalize/positions/run', { body: { ...body, password: c.password, confirm: c.confirm } }));
+    return true;
+  } catch (e) { out.innerHTML = `<p class="err">${H.esc(e.message)}</p>`; return false; }
+}

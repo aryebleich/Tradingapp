@@ -744,12 +744,21 @@ async function orders(view, q) {
 // =====================================================================
 // Positions: live P/L, close full or partial, close all, exercise
 // =====================================================================
-async function positions(view) {
-  const s = await needConnection(view, 'Positions');
-  if (!s) return;
-  const ps = await A('/positions');
+async function positions(view, q = new URLSearchParams()) {
+  // The account in view: the one picked here, else the one chosen in the side panel, else the main
+  // Alpaca account, else the first other Alpaca account connected.
+  const alp = (await H.accounts()).filter(a => /^alpaca/.test(a.id) && a.connected);
+  const want = q.get('acct') || H.state.account;
+  const acct = alp.some(a => a.id === want) ? want : (alp.find(a => a.id === 'alpaca') || alp[0])?.id || 'alpaca';
+  if (acct === 'alpaca' && !(await needConnection(view, 'Positions'))) return;
+  const qs = acct === 'alpaca' ? '' : `acct=${encodeURIComponent(acct)}`;
+  const ps = await A('/positions' + (qs ? '?' + qs : ''));
   const tot = k => ps.reduce((a, p) => a + (p[k] || 0), 0);
-  view.innerHTML = `<div class="row" style="justify-content:space-between"><h1>Positions</h1>${ps.length ? '<button class="danger small" id="closeAll">Close all positions</button>' : ''}</div>
+  const longs = ps.filter(p => p.assetClass !== 'us_option' && p.side === 'long').length;
+  view.innerHTML = `<div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><h1>Positions</h1>
+    <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">${alp.length > 1 ? `<label class="inline">Account <select id="posAcct">${alp.map(a => `<option value="${H.esc(a.id)}" ${a.id === acct ? 'selected' : ''}>${H.esc(a.name || a.id)}${a.live ? ' (live)' : ''}</option>`).join('')}</select></label>` : ''}
+    ${longs >= 2 ? '<button class="small" id="eqPos" title="Put the same dollar amount in every holding of this account">Equalize positions</button>' : ''}${ps.length ? '<button class="danger small" id="closeAll">Close all positions</button>' : ''}</div></div>
+  <div id="eqPosBox"></div>
   <div class="card"><div class="stats"><div class="stat"><span>Market value</span><b>${usd(tot('marketValue'))}</b></div><div class="stat"><span>Today</span><b class="${H.cls(tot('todayPl'))}">${usd(tot('todayPl'))}</b></div>
     <div class="stat"><span>Unrealized P/L</span><b class="${H.cls(tot('unrealizedPl'))}">${usd(tot('unrealizedPl'))}</b></div><div class="stat"><span>Positions</span><b>${ps.length}</b></div></div></div>
   <div class="card tablewrap"><table><tr><th>Symbol</th><th>Side</th><th class="num">Qty</th><th class="num">Avg entry</th><th class="num">Price</th><th class="num">Market value</th><th class="num">Today</th><th class="num">Total P/L</th><th></th></tr>
@@ -770,17 +779,38 @@ async function positions(view) {
       <label>How much<select name="mode"><option value="all">Entire position</option><option value="qty">A quantity</option><option value="percentage">A percentage</option></select></label>
       <label>Quantity or percent (for partial)<input name="amount" type="number" step="any" min="0"></label>`, 'Close position');
     if (!f) return;
-    const qs = f.mode === 'qty' ? '?qty=' + f.amount : f.mode === 'percentage' ? '?percentage=' + f.amount : '';
-    try { await A('/positions/' + encodeURIComponent(b.dataset.close) + qs, { method: 'DELETE' }); } catch (e) { return alert(e.message); }
+    const q2 = [f.mode === 'qty' ? 'qty=' + f.amount : f.mode === 'percentage' ? 'percentage=' + f.amount : '', qs].filter(Boolean).join('&');
+    try { await A('/positions/' + encodeURIComponent(b.dataset.close) + (q2 ? '?' + q2 : ''), { method: 'DELETE' }); } catch (e) { return alert(e.message); }
     setTimeout(H.render, 1200);
   }));
   H.$$('[data-ex]', view).forEach(b => (b.onclick = async () => {
     if (!(await confirmBox('Exercise option?', `<p>Exercise <b>${H.esc(b.dataset.ex)}</b> now?</p>`, 'Exercise'))) return;
-    try { await A('/positions/' + encodeURIComponent(b.dataset.ex) + '/exercise', { body: {} }); H.render(); } catch (e) { alert(e.message); }
+    try { await A('/positions/' + encodeURIComponent(b.dataset.ex) + '/exercise' + (qs ? '?' + qs : ''), { body: {} }); H.render(); } catch (e) { alert(e.message); }
   }));
   if (H.$('#closeAll', view)) H.$('#closeAll', view).onclick = async () => {
     if (!(await confirmBox('Close ALL positions?', '<p>Market orders will be sent to close every position, and open orders will be cancelled.</p>', 'Close everything', true))) return;
-    await A('/positions', { method: 'DELETE' }); setTimeout(H.render, 1500);
+    await A('/positions' + (qs ? '?' + qs : ''), { method: 'DELETE' }); setTimeout(H.render, 1500);
+  };
+  if (H.$('#posAcct', view)) H.$('#posAcct', view).onchange = e => { location.hash = '#/positions?acct=' + encodeURIComponent(e.target.value); };
+  // Equalize positions: the same dollar amount in every stock and fund this account holds.
+  const eb = H.$('#eqPos', view);
+  if (eb) eb.onclick = async () => {
+    const box = H.$('#eqPosBox', view);
+    box.innerHTML = `<form class="card" id="eqPosF"><h2 style="margin-top:0">Equalize positions</h2>
+      <p class="mu" style="margin-top:0">Every stock and fund in this account gets the same dollar amount. Options and short positions stay as they are.</p>
+      <div class="row"><label>Cash to keep %<input name="cashPct" type="number" min="0" max="90" step="0.5" placeholder="same as now"></label><label>Smallest trade $<input name="minTrade" type="number" min="1" step="1" value="5"></label></div>
+      <label class="chk"><input type="checkbox" name="wholeShares"> Whole shares only</label>
+      <div class="row" style="gap:8px;margin-top:8px"><button>Preview and confirm</button><button type="button" class="ghost" id="eqPosX">Cancel</button></div><div id="eqPosOut"></div></form>`;
+    const f = H.$('#eqPosF', box);
+    H.$('#eqPosX', box).onclick = () => { box.innerHTML = ''; };
+    f.onsubmit = async e => {
+      e.preventDefault();
+      const v = H.form(f), btn = H.$('button', f); btn.disabled = true;
+      try {
+        const m = await import('./combined.js');
+        if (await m.equalizePositions(H, acct, H.$('#eqPosOut', f), { cashPct: v.cashPct, minTrade: v.minTrade, wholeShares: !!v.wholeShares })) setTimeout(H.render, 4000);
+      } finally { btn.disabled = false; }
+    };
   };
 }
 

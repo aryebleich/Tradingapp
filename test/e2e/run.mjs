@@ -413,6 +413,31 @@ console.log('Settings → Language');
     await p.screenshot({ path: path.join(OUT, 'all-accounts.png'), fullPage: true });
     await p.click('#views button:has-text("Family")'); await p.waitForFunction(() => /Family/.test(document.querySelector('#views .on')?.textContent || ''));
   });
+  await step('equalize from Home and from Positions', async () => {
+    // A full reload: the account list in the page is cached for a minute and the sub accounts were just added.
+    await p.goto(B + '/app#/dashboard'); await p.reload(); await p.waitForSelector('#acctBoxes .acctboxes', { timeout: 15000 });
+    if (!(await p.$('#eqNow'))) throw new Error('no Equalize now button: ' + (await p.innerHTML('#acctBoxes')).slice(0, 1500));
+    await p.waitForTimeout(1500); await p.evaluate(() => document.querySelector('#acctBoxes').scrollIntoView()); await p.screenshot({ path: path.join(OUT, 'home-equalize.png') }); await p.click('#eqNow');
+    await p.waitForFunction(() => document.querySelector('dialog[open]') || /\S/.test(document.querySelector('#eqNowOut')?.textContent || ''), null, { timeout: 15000 });
+    if (await p.$('dialog[open]')) { await p.keyboard.press('Escape'); await p.waitForTimeout(300); }
+    const eqHome = await p.textContent('#eqNowOut'); if (/err/.test(await p.innerHTML('#eqNowOut')) && !/same mix/.test(eqHome)) throw new Error('Equalize now: ' + eqHome);
+    await go('#/positions', 'h1'); await p.waitForTimeout(2500);
+    if (!(await p.$('#posAcct'))) throw new Error('no account picker on Positions: ' + (await p.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ').slice(400, 1600));
+    // The button shows when the account holds two or more stocks or funds (the math: test/batch19.test.js).
+    if (await p.$('#eqPos')) {
+      await p.click('#eqPos'); await p.waitForSelector('#eqPosF'); await p.screenshot({ path: path.join(OUT, 'positions-equalize.png') }); await p.click('#eqPosF button');
+      await p.waitForFunction(() => document.querySelector('dialog[open]') || /\S/.test(document.querySelector('#eqPosOut')?.textContent || ''), null, { timeout: 15000 });
+      if (await p.$('dialog[open]')) await p.keyboard.press('Escape');
+    }
+  });
+  await step('marketplace section: overview, AI bots, top traders tabs', async () => {
+    await go('#/marketplace', '.mk-hub'); await p.waitForTimeout(1500); await p.screenshot({ path: path.join(OUT, 'marketplace.png'), fullPage: true }); await go('#/aimarket', '.viewtabs button.on');
+    await go('#/traders', '.viewtabs'); await p.goto(B + '/app#/aibots?tab=market'); await p.waitForFunction(() => location.hash === '#/aimarket', null, { timeout: 15000 });
+    await go('#/sharedstrategies', '.viewtabs'); await go('#/signalchannels', '.viewtabs');
+  });
+  await step('tokenized securities: sections and checklist', async () => {
+    await go('#/tokenized', '#tkKinds .tk-kind'); await p.waitForTimeout(1500); await p.screenshot({ path: path.join(OUT, 'tokenized.png'), fullPage: true }); await p.click('[data-tkc] >> nth=0'); await p.waitForFunction(() => /^1 of/.test(document.querySelector('#tkCount')?.textContent || ''));
+  });
   await step('rule across accounts: create, check, prepare', async () => {
     await go('#/rules', '#rf'); await p.click('[data-tpl="sp500"]'); await p.click('#save'); await p.waitForSelector('.rulecard');
     await p.click('[data-preview]'); await p.waitForSelector('[id^=pv] table', { timeout: 20000 });
@@ -531,7 +556,7 @@ for (const [device, width, lang] of [['iPhone 13', 390, 'en'], ['iPhone SE', 320
   await p.evaluate(() => fetch('/api/alpaca/keys', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ keyId: 'AUDIT' + innerWidth, secret: 'S' }) }));
   await p.evaluate(() => localStorage.setItem('qp_account', 'alpaca'));
   const lib = await p.evaluate(() => fetch('/api/library', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ blueprintId: 'bp_four_sleeve', fillExamples: true }) }).then(r => r.json()));
-  for (const r of ['/', '/yi', '/terms', '/app#/register', '/app#/login', '#/dashboard', '#/trade?symbol=AAPL', '#/orders', '#/positions', '#/watchlists', '#/markets', '#/options?underlying=AAPL', '#/calendar', '#/account', '#/open-account', '#/brokers', '#/strategies', `#/strategy?id=${lib.id}`, '#/signals', '#/pairs', '#/statarb', '#/sp500', '#/backtest', '#/bots', '#/schedule', '#/text', '#/tax', '#/funding', '#/settings', '#/chart?symbol=AAPL', '#/ai', '#/agents', '#/code', '#/news', '#/scanner', '#/optionslab', '#/institutions', '#/portfolios', '#/portfolios?tab=mine', '#/fleet', '#/marketplace', '#/insights', '#/insights?tab=journal', '#/risk', '#/spend', '#/values', '#/values?tab=maaser', '#/values?tab=shabbos', '#/private', '#/realestate', '#/money', '#/rules', '#/android', '#/luach', '#/luach?tab=month', '#/luach?tab=tzedakah', '#/brief', '#/taxpilot', '#/invest', '#/invest?tab=funds', '#/invest?tab=savings', '#/security', '#/execution', '#/learn', '#/longterm', '#/workspace', '#/accounts', '#/wealth', '#/wealth?tab=compound', '#/wealth?tab=auto', '#/wealth?tab=hold', '#/wealth?tab=drip', '#/wealth?tab=understand', '#/wealth?tab=tax', '#/wealth?tab=core', '#/wealth?tab=diversify', '#/alpaca-tools', '#/referrals', '#/riskview', '#/riskview?add=SPY:1000', '#/research', '#/tokenized', '#/protection', '#/retirement', '#/business', '#/invoices', '#/books', '#/bank', '#/inventory', '#/payroll', '#/bizreports', '#/business?tab=settings', '#/traders', '#/robo', '#/currencies', '#/learn?tab=glossary', '#/learn?tab=calc', '#/analyze?symbol=AAPL', '#/analyze?symbol=VOO', '#/lowcost', '#/earnings', '#/leaders', '#/short', '#/margin', '#/aifunds', '#/hotline', '#/admin-sponsored', '#/admin-agents', '#/agenthub', '#/aibots', '#/aibots?tab=new', '#/aibots?tab=mine', '#/aibots?tab=market', '#/aisignals', '#/intel']) {
+  for (const r of ['/', '/yi', '/terms', '/app#/register', '/app#/login', '#/dashboard', '#/trade?symbol=AAPL', '#/orders', '#/positions', '#/watchlists', '#/markets', '#/options?underlying=AAPL', '#/calendar', '#/account', '#/open-account', '#/brokers', '#/strategies', `#/strategy?id=${lib.id}`, '#/signals', '#/pairs', '#/statarb', '#/sp500', '#/backtest', '#/bots', '#/schedule', '#/text', '#/tax', '#/funding', '#/settings', '#/chart?symbol=AAPL', '#/ai', '#/agents', '#/code', '#/news', '#/scanner', '#/optionslab', '#/institutions', '#/portfolios', '#/portfolios?tab=mine', '#/fleet', '#/marketplace', '#/aimarket', '#/sharedstrategies', '#/sharedportfolios', '#/signalchannels', '#/insights', '#/insights?tab=journal', '#/risk', '#/spend', '#/values', '#/values?tab=maaser', '#/values?tab=shabbos', '#/private', '#/realestate', '#/money', '#/rules', '#/android', '#/luach', '#/luach?tab=month', '#/luach?tab=tzedakah', '#/brief', '#/taxpilot', '#/invest', '#/invest?tab=funds', '#/invest?tab=savings', '#/security', '#/execution', '#/learn', '#/longterm', '#/workspace', '#/accounts', '#/wealth', '#/wealth?tab=compound', '#/wealth?tab=auto', '#/wealth?tab=hold', '#/wealth?tab=drip', '#/wealth?tab=understand', '#/wealth?tab=tax', '#/wealth?tab=core', '#/wealth?tab=diversify', '#/alpaca-tools', '#/referrals', '#/riskview', '#/riskview?add=SPY:1000', '#/research', '#/tokenized', '#/protection', '#/retirement', '#/business', '#/invoices', '#/books', '#/bank', '#/inventory', '#/payroll', '#/bizreports', '#/business?tab=settings', '#/traders', '#/robo', '#/currencies', '#/learn?tab=glossary', '#/learn?tab=calc', '#/analyze?symbol=AAPL', '#/analyze?symbol=VOO', '#/lowcost', '#/earnings', '#/leaders', '#/short', '#/margin', '#/aifunds', '#/hotline', '#/admin-sponsored', '#/admin-agents', '#/agenthub', '#/aibots', '#/aibots?tab=new', '#/aibots?tab=mine', '#/aibots?tab=market', '#/aisignals', '#/intel']) {
     await step(r, async () => {
       await p.goto(r.startsWith('#') ? B + '/app' + r : B + r); if (r === '#/dashboard') await p.reload();
       await p.waitForTimeout(r.includes('strategy') || r.includes('sp500') ? 3000 : 1300);

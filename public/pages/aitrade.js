@@ -79,7 +79,7 @@ const fields = {
 async function aibots(view, q) {
   const [d, accts] = await Promise.all([H.api('/aibots'), H.accounts()]), lim = d.limits;
   const tab = q.get('tab') || 'builder';
-  const tabs = `<div class="chips">${[['builder', 'Plain-English builder'], ['new', 'DCA, grid & scalping'], ['mine', `My bots (${d.bots.length})`], ['market', 'AI strategy marketplace']].map(([k, t]) => `<a href="#/aibots?tab=${k}"><button type="button" class="${k === tab ? 'on' : ''}">${t}</button></a>`).join('')}</div>`;
+  const tabs = `<div class="chips">${[['builder', 'Plain-English builder'], ['new', 'DCA, grid & scalping'], ['mine', `My bots (${d.bots.length})`], ['market', 'AI strategy marketplace →']].map(([k, t]) => `<a href="${k === 'market' ? '#/aimarket' : `#/aibots?tab=${k}`}"><button type="button" class="${k === tab ? 'on' : ''}">${t}</button></a>`).join('')}</div>`;
   const acctSel = `<label>Account<select name="account">${accts.filter(a => a.connected).map(a => `<option value="${a.id}" ${a.id === 'paper' ? 'selected' : ''} ${a.id !== 'paper' && !lim.botsLive ? 'disabled' : ''}>${H.esc(H.acctLabel(a))}${a.id !== 'paper' && !lim.botsLive ? ' · Pro' : ''}</option>`).join('')}</select></label>`;
   view.innerHTML = head('AI bots', 'Automated strategies without code: dollar-cost averaging, grid and scalping bots, or rules you write in plain English, backtested and then run on the account you choose.') + tabs + '<div id="botBody"></div>' +
     planLine(lim, [`${lim.bots} bot${lim.bots === 1 ? '' : 's'} at once (${d.active} running)`, `checks ${lim.botEveryMin >= 1440 ? 'once a day' : `every ${lim.botEveryMin} min`}`, lim.botsLive ? 'real accounts' : 'practice account', `${lim.nlBuilds} plain-English builds a day`, lim.marketplaceCopy ? 'marketplace copy' : 'marketplace browsing']) + NOTE;
@@ -140,10 +140,8 @@ async function aibots(view, q) {
     H.$$('[data-share]', body).forEach(b => H.act(b, async () => { const on = b.dataset.v === '1', desc = on ? prompt('A sentence about this bot for the marketplace:') ?? '' : ''; await H.api(`/aibots/${b.dataset.share}/publish`, { body: { shared: on, description: desc } }); H.render(); }));
     H.$$('[data-del]', body).forEach(b => H.act(b, async () => { if (!confirm('Delete this bot? Positions it bought stay in the account.')) return ''; await H.api('/aibots/' + b.dataset.del, { method: 'DELETE' }); H.render(); }));
   } else {
-    const m = await H.api('/aibots/market');
-    body.innerHTML = `<div class="card"><h2>AI strategy marketplace</h2><p class="mu" style="margin-top:0">Bots other traders shared: their rules and settings, never their accounts or money. A copy starts paused on your practice account, so you can backtest it first.</p>
-      <div class="tablewrap"><table><tr><th>Bot</th><th>By</th><th>Copies</th><th></th></tr>${m.items.map(x => `<tr><td><b>${H.esc(x.name)}</b><div class="mu">${H.esc(d.kinds[x.kind])} · <span data-no-tr>${H.esc(x.symbol)}</span>${x.config.summary ? ' · ' + H.esc(x.config.summary) : ''}</div>${x.description ? `<div>${H.esc(x.description)}</div>` : ''}</td><td>${H.esc(x.author)}</td><td>${x.copies}</td><td><button class="small" data-copy="${x.id}" ${m.canCopy ? '' : 'disabled title="Pro"'}>Copy</button></td></tr>`).join('') || '<tr><td colspan="4" class="mu">Nothing shared yet. Share one of your bots from My bots.</td></tr>'}</table></div>${m.canCopy ? '' : '<p class="banner">Copying bots from the marketplace is part of Pro. <a href="#/funding">See plans</a></p>'}</div>`;
-    H.$$('[data-copy]', body).forEach(b => H.act(b, async () => { await H.api(`/aibots/market/${b.dataset.copy}/copy`, { body: {} }); location.hash = '#/aibots?tab=mine'; return 'Copied'; }));
+    // The AI strategy marketplace lives in the Marketplace section now.
+    location.replace('#/aimarket');
   }
 }
 

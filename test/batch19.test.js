@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { dedupe, totals, combineHistories } from '../src/consolidate.js';
-import { planEqualize } from '../src/equalize.js';
+import { planEqualize, planPositions } from '../src/equalize.js';
 
 const acct = (id, number, equity, positions, extra = {}) => ({ id, label: id, role: 'sub', live: true, number, equity, cash: equity - positions.reduce((s, p) => s + p.value, 0), lastEquity: equity, positions, ...extra });
 const P = (symbol, qty, price) => ({ symbol, qty, value: qty * price, price, pnl: 0 });
@@ -75,4 +75,22 @@ test('accounts that only look alike (for example after Equalize) are never left 
   const s1 = acct('b', '2', 500, [P('SPY', 1, 500)]), s2 = acct('c', '3', 500, [P('SPY', 1, 500)]), big = acct('a', '1', 1000, [P('SPY', 2, 500)], { role: 'separate' });
   const r = dedupe([big, s1, s2]);
   assert.ok(r.every(x => x.counted)); assert.deepEqual(r[0].suspect, ['b', 'c']);
+});
+
+test('equalize positions: the same dollars in every stock, options and shorts left alone', () => {
+  const row = { id: 'alpaca', label: 'Main', equity: 10000, cash: 1000, positions: [
+    { symbol: 'AAPL', qty: 20, value: 6000, price: 300 }, { symbol: 'MSFT', qty: 5, value: 2000, price: 400 },
+    { symbol: 'SPY', qty: 1, value: 1000, price: 500 }, { symbol: 'AAPL261218C00300000', qty: 1, value: 500, price: 5 },
+    { symbol: 'TSLA', qty: -2, value: -500, price: 250 }] };
+  const p = planPositions(row, { minTrade: 5 });
+  assert.equal(p.each, 3000); // $9,000 in the three stocks, split three ways
+  assert.deepEqual(p.skipped.sort(), ['AAPL261218C00300000', 'TSLA']);
+  const by = Object.fromEntries(p.orders.map(o => [o.symbol, o]));
+  assert.equal(by.AAPL.side, 'sell'); assert.equal(by.AAPL.dollars, 3000);
+  assert.equal(by.MSFT.side, 'buy'); assert.equal(by.SPY.side, 'buy');
+  assert.ok(!by.TSLA && !by.AAPL261218C00300000);
+  // Keep 20% cash: $8,000 in the stocks, $2,666.67 each.
+  const c = planPositions(row, { cashPct: 20, minTrade: 5 });
+  assert.equal(c.each, 2666.67);
+  assert.throws(() => planPositions({ ...row, positions: [row.positions[0]] }), /only one holding/);
 });

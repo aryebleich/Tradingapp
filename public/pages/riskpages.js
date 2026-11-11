@@ -119,38 +119,70 @@ const TOKEN_EXAMPLES = [
   ['Tokenized Treasury and money-market funds', 'Shares of a fund that holds US government debt, recorded on a blockchain. Some pay interest daily.', 'Some are open to US investors; others need high minimums or "qualified purchaser" status.'],
   ['Tokenized private funds and credit', 'Pieces of private loans, real estate or private funds.', 'Usually for accredited investors only, and hard to sell.'],
 ];
+// Laid out top to bottom in the order a beginner needs it: what a token is (the two kinds side by
+// side), why people use them, the main kinds, the extra risks with the checklist next to them, and
+// the price check, with a row of links to jump to each part.
+const TOKEN_WHY = [['🕒', 'Any hour', 'Trading at any hour, on some platforms'], ['🧩', 'Small pieces', 'Buying small fractions of a share'], ['🔁', 'Portable', 'Moving them between crypto wallets and apps'], ['⚡', 'Fast', 'Faster settlement than the usual one business day']];
+const TOKEN_RISKS = [
+  ['The issuer', 'If the company that holds the real shares fails or misbehaves, the token can lose value even when the share does not.'],
+  ['Custody', 'Who holds the real shares, and is it checked by an independent auditor?'],
+  ['Redemption', 'Can you swap the token for the real share or cash, and who is allowed to?'],
+  ['Price gaps', 'A token can trade above or below the value of what it tracks, especially when the stock market is closed.'],
+  ['Your wallet', 'Lose the keys, or send to the wrong address, and the tokens are usually gone for good.'],
+  ['Protection', 'SIPC covers securities held at a SIPC member broker; tokens in your own wallet or on a crypto exchange usually are not covered.'],
+  ['Rules', 'Many tokens may not be sold to US residents, and the rules are still changing.'],
+];
+const TOKEN_CHECKS = ['Who issues the token, and in which country is it regulated?', 'Is it the security itself, or a promise that tracks it?', 'Who holds the real assets, and is there an independent audit you can read?', 'Can you redeem it for the real thing or cash, how, and for what fee?', 'Is it offered to people where you live? (Many are not for US residents.)', 'Is the platform registered? Check FINRA BrokerCheck or the SEC.', 'What happens to the token in a stock split, dividend or merger?', 'How will you store it, and what happens if you lose access?', 'How is it taxed where you live?'];
 async function tokenized(view) {
   view.innerHTML = `<div class="pagehead"><h1>Tokenized securities</h1><p class="mu">Shares, funds and bonds recorded on a blockchain, explained simply: what they are, who can buy them, the extra risks, and how to check a token's price against the real thing.</p></div>
-  <div class="callout">A tokenized security is still a security. The token is a record of ownership (or a promise from an issuer); the rules that protect investors still apply, and so do the risks of what it represents.</div>
-  <div class="grid">
-    <div class="card"><h2>What it is</h2><p>Instead of your broker's records saying you own a share, a token on a blockchain does. Some tokens <b>are</b> the security itself (the issuer keeps its shareholder list on the blockchain). Others are a <b>promise</b>: a company holds the real shares and issues a token that tracks them. With the second kind you may not have shareholder rights such as voting, and you depend on that company.</p>
-      <h3>Why people use them</h3><ul><li>Trading at any hour, on some platforms</li><li>Buying small fractions</li><li>Moving them between crypto wallets and apps</li><li>Faster settlement</li></ul></div>
-    <div class="card"><h2>The main kinds</h2><table class="slim"><tr><th>Kind</th><th>What it is</th><th>Who can buy</th></tr>${TOKEN_EXAMPLES.map(([a, b, c]) => `<tr><td><b>${a}</b></td><td>${b}</td><td class="mu">${c}</td></tr>`).join('')}</table>
-      <p class="mu small-print">What is offered changes often and depends on where you live. Brightolio does not sell tokens.</p></div>
-  </div>
-  <div class="grid" style="margin-top:12px">
-    <div class="card"><h2>The extra risks</h2><ul class="warnlist">
-      <li><b>The issuer:</b> if the company that holds the real shares fails or misbehaves, the token can lose value even when the share does not.</li>
-      <li><b>Custody:</b> who holds the real shares, and is it checked by an independent auditor?</li>
-      <li><b>Redemption:</b> can you swap the token for the real share or cash, and who is allowed to?</li>
-      <li><b>Price gaps:</b> a token can trade above or below the value of what it tracks, especially when the stock market is closed.</li>
-      <li><b>Your wallet:</b> lose the keys, or send to the wrong address, and the tokens are usually gone for good.</li>
-      <li><b>Protection:</b> SIPC covers securities held at a SIPC member broker; tokens held in your own wallet or on a crypto exchange usually are not covered.</li>
-      <li><b>Rules:</b> many tokens may not be sold to US residents, and the rules are still changing.</li></ul></div>
-    <div class="card"><h2>Before you buy: a checklist</h2><ol class="checklist">${['Who issues the token, and in which country is it regulated?', 'Is it the security itself, or a promise that tracks it?', 'Who holds the real assets, and is there an independent audit you can read?', 'Can you redeem it for the real thing or cash, how, and for what fee?', 'Is it offered to people where you live? (Many are not for US residents.)', 'Is the platform registered? Check FINRA BrokerCheck or the SEC.', 'What happens to the token in a stock split, dividend or merger?', 'How will you store it, and what happens if you lose access?', 'How is it taxed where you live?'].map(t => `<li><label class="chk"><input type="checkbox"> ${t}</label></li>`).join('')}</ol></div>
-  </div>
-  <div class="card"><h2>Check a token's price against the real thing</h2><p class="mu">Type the real stock or fund and the token's price on the platform you are looking at. You'll see how far above or below it trades.</p>
-    <form id="tk" class="row" style="gap:8px;align-items:end;flex-wrap:wrap"><label>Real stock or fund<input name="s" placeholder="AAPL" dir="ltr" style="max-width:120px" data-no-tr></label><label>Token price ($)<input name="p" type="number" step="any" min="0" style="max-width:140px"></label><label>Shares per token<input name="r" type="number" step="any" min="0" value="1" style="max-width:110px"></label><button>Compare</button></form><p id="tkOut"></p></div>
+  <nav class="chips tk-nav" aria-label="On this page">${[['tkWhat', '1. What it is'], ['tkKinds', '2. The main kinds'], ['tkRisks', '3. Risks & checklist'], ['tkPrice', '4. Check a price']].map(([id, t]) => `<button type="button" data-jump="${id}">${t}</button>`).join('')}</nav>
+  <div class="banner">A tokenized security is still a security. The token is a record of ownership (or a promise from an issuer); the rules that protect investors still apply, and so do the risks of what it represents.</div>
+
+  <section class="card" id="tkWhat"><h2>What it is</h2>
+    <p>Instead of your broker's records saying you own a share, a token on a blockchain does. There are two very different kinds:</p>
+    <div class="tk-vs">
+      <div class="tk-side"><span class="pill pos">The safer kind</span><h3>The security itself</h3><p>The issuer keeps its list of shareholders on the blockchain. You are a shareholder, with the usual rights.</p></div>
+      <div class="tk-side"><span class="pill warn">Check carefully</span><h3>A promise that tracks it</h3><p>A company holds the real shares and issues a token that follows their price. You may have no voting or other shareholder rights, and you depend on that company.</p></div>
+    </div>
+    <h3>Why people use them</h3>
+    <div class="tk-tiles">${TOKEN_WHY.map(([i, t, d]) => `<div class="tk-tile"><span class="tk-ico" aria-hidden="true">${i}</span><b>${t}</b><span class="mu">${d}</span></div>`).join('')}</div>
+  </section>
+
+  <section id="tkKinds"><h2 class="tk-h">The main kinds</h2>
+    <div class="tk-kinds">${TOKEN_EXAMPLES.map(([a, b, c], i) => `<div class="card tk-kind"><span class="tk-num">${i + 1}</span><h3>${a}</h3><p>${b}</p><div class="tk-who"><b>Who can buy</b><span>${c}</span></div></div>`).join('')}</div>
+    <p class="mu small-print">What is offered changes often and depends on where you live. Brightolio does not sell tokens.</p>
+  </section>
+
+  <section class="tk-two" id="tkRisks">
+    <div class="card"><h2>The extra risks</h2><ul class="warnlist">${TOKEN_RISKS.map(([t, d]) => `<li><b>${t}:</b> ${d}</li>`).join('')}</ul></div>
+    <div class="card"><div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">Before you buy: a checklist</h2><span class="pill" id="tkCount">0 of ${TOKEN_CHECKS.length}</span></div>
+      <div class="ob-bar" style="margin:10px 0"><i id="tkBar" style="width:0%"></i></div>
+      <ol class="checklist">${TOKEN_CHECKS.map(t => `<li><label class="chk"><input type="checkbox" data-tkc> ${t}</label></li>`).join('')}</ol>
+      <p class="mu small-print" id="tkDone" hidden>All checked. If any answer worried you, it is fine to walk away.</p></div>
+  </section>
+
+  <section class="card" id="tkPrice"><h2>Check a token's price against the real thing</h2><p class="mu">Type the real stock or fund and the token's price on the platform you are looking at. You'll see how far above or below it trades.</p>
+    <form id="tk" class="row" style="gap:8px;align-items:end;flex-wrap:wrap"><label>Real stock or fund<input name="s" placeholder="AAPL" dir="ltr" style="max-width:120px" data-no-tr></label><label>Token price ($)<input name="p" type="number" step="any" min="0" style="max-width:140px"></label><label>Shares per token<input name="r" type="number" step="any" min="0" value="1" style="max-width:110px"></label><button>Compare</button></form>
+    <div id="tkOut"></div></section>
   <p class="mu small-print">Education only, not advice or an offer to buy or sell any token. See the <a href="/risk.html" target="_blank">risk disclosure</a>.</p>`;
+  H.$$('[data-jump]', view).forEach(b => (b.onclick = () => H.$('#' + b.dataset.jump, view)?.scrollIntoView({ behavior: 'smooth', block: 'start' })));
+  const boxes = H.$$('[data-tkc]', view), tick = () => {
+    const n = boxes.filter(c => c.checked).length;
+    H.$('#tkCount', view).textContent = `${n} of ${boxes.length}`; H.$('#tkBar', view).style.width = `${Math.round(n / boxes.length * 100)}%`; H.$('#tkDone', view).hidden = n < boxes.length;
+  };
+  boxes.forEach(c => (c.onchange = tick));
   H.$('#tk', view).onsubmit = async e => {
     e.preventDefault(); const f = H.form(e.target), s = f.s.trim().toUpperCase(), tp = +f.p, ratio = +f.r || 1, o = H.$('#tkOut', view);
-    if (!s || !(tp > 0)) { o.innerHTML = '<span class="err">Type a symbol and the token price.</span>'; return; }
+    if (!s || !(tp > 0)) { o.innerHTML = '<p class="err">Type a symbol and the token price.</p>'; return; }
     try {
       const qd = await H.api('/market/overview/quotes?symbols=' + encodeURIComponent(s)), row = qd[0];
       if (!row || row.price == null) throw new Error('No price for ' + s);
       const fair = row.price * ratio, gap = (tp / fair - 1) * 100;
-      o.innerHTML = `${H.esc(s)} is ${H.money(row.price)} <span class="fresh ${H.esc(row.freshness?.level || '')}">${H.esc(row.freshness?.label || '')}</span>, so the token should be worth about ${H.money(fair)}. It trades <b class="${Math.abs(gap) < 0.5 ? '' : 'neg'}">${Math.abs(gap).toFixed(2)}% ${gap >= 0 ? 'above' : 'below'}</b> that.${Math.abs(gap) > 2 ? ' A gap this big can mean low trading, a closed stock market, or doubts about the issuer.' : ''}`;
-    } catch (err) { o.innerHTML = `<span class="err">${H.esc(err.message)}</span>`; }
+      o.innerHTML = `<div class="stats" style="margin-top:12px"><div class="stat"><span>${H.esc(s)} now</span><b>${H.money(row.price)}</b><small class="mu"><span class="fresh ${H.esc(row.freshness?.level || '')}">${H.esc(row.freshness?.label || '')}</span></small></div>
+        <div class="stat"><span>The token should be worth</span><b>${H.money(fair)}</b></div>
+        <div class="stat"><span>The token trades</span><b class="${Math.abs(gap) < 0.5 ? '' : 'neg'}">${Math.abs(gap).toFixed(2)}% ${gap >= 0 ? 'above' : 'below'}</b></div></div>
+        ${Math.abs(gap) > 2 ? '<p class="mu">A gap this big can mean low trading, a closed stock market, or doubts about the issuer.</p>' : ''}`;
+    } catch (err) { o.innerHTML = `<p class="err">${H.esc(err.message)}</p>`; }
   };
 }
 

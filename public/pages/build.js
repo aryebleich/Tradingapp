@@ -6,7 +6,8 @@ let H;
 const later = ms => { const h = location.hash; setTimeout(() => location.hash === h && H.render(), ms); };
 export function registerBuild(routes, helpers) {
   H = helpers;
-  Object.assign(routes, { scanner, portfolios, fleet, marketplace });
+  Object.assign(routes, { scanner, portfolios, fleet, marketplace: (v, q) => marketplace(v, q),
+    aimarket: (v, q) => marketplace(v, q, 'ai'), sharedstrategies: (v, q) => marketplace(v, q, 'strategies'), sharedportfolios: (v, q) => marketplace(v, q, 'portfolios'), signalchannels: (v, q) => marketplace(v, q, 'channels') });
 }
 const pc = (v, d = 1) => (v == null || !Number.isFinite(+v) ? '-' : `${v > 0 ? '+' : ''}${(+v).toFixed(d)}%`);
 const tabsHtml = (list, on) => `<div class="seg pagetabs">${list.map(([k, t]) => `<button type="button" data-tab="${k}" class="${k === on ? 'on' : ''}">${t}</button>`).join('')}</div>`;
@@ -238,21 +239,50 @@ const hookBox = url => `<div class="banner"><b>Webhook link (shown once, keep it
   <p class="mu small-print">POST JSON like <code>{"symbol":"AAPL","side":"buy"}</code> to this link, e.g. from a TradingView alert, to send a signal to every follower.</p></div>`;
 
 // ---------- marketplace ----------
-async function marketplace(view, q) {
-  const tab = q.get('tab') || 'strategies';
-  const d = await H.api('/market');
+// One section for everything members share: an overview, Top traders (copy trading, its own page
+// in social.js), AI bots (from the AI bots page), strategies, portfolios and signal channels.
+// Each part has its own menu entry; the tabs on top (H.marketTabs) move between them.
+const MK_KINDS = { dca: 'Dollar-cost averaging', grid: 'Grid', scalp: 'Scalping', rule: 'Plain-English rules' };
+async function marketplace(view, q, fixed) {
+  const tab = fixed || ({ strategies: 'strategies', portfolios: 'portfolios', channels: 'channels', ai: 'ai' })[q.get('tab')] || 'home';
+  const key = { home: 'marketplace', ai: 'aimarket', strategies: 'sharedstrategies', portfolios: 'sharedportfolios', channels: 'signalchannels' }[tab];
+  const [d, ai, top] = await Promise.all([
+    H.api('/market'),
+    tab === 'home' || tab === 'ai' ? H.api('/aibots/market').catch(() => ({ items: [], canCopy: false })) : null,
+    tab === 'home' ? H.api('/profiles/top?period=m3').catch(() => ({ traders: [] })) : null,
+  ]);
   const stat = (k, v, c) => `<div class="stat"><span>${k}</span><b class="${c || ''}">${v}</b></div>`;
+  const by = (name, email) => `By ${H.esc(name)}${email ? ` <span data-no-tr dir="ltr">· ${H.esc(email)}</span>` : ''}`;
+  const empty = t => `<div class="card mu">${t}</div>`;
   const body = {
-    strategies: () => d.strategies.map(s => `<div class="card" data-s="${s.id}"><h2>${H.esc(s.name)} <span class="pill">${H.esc(s.symbol)}</span></h2><p class="mu">${H.esc(s.description || '')}</p>
+    home: () => {
+      const hub = (href, title, count, unit, desc, list, cta) => `<div class="card"><div class="row" style="justify-content:space-between;align-items:baseline"><h2 style="margin:0">${title}</h2><span class="mk-count">${count}</span></div>
+        <p class="mu" style="margin:4px 0 0">${desc}</p>
+        <ul class="mk-top">${list.length ? list.slice(0, 3).map(([n, v]) => `<li><span>${n}</span><span class="mu">${v}</span></li>`).join('') : `<li class="mu">No ${unit} shared yet</li>`}</ul>
+        <a href="${href}"><button type="button" class="ghost small">${cta} →</button></a></div>`;
+      return `<div class="mk-hub">
+        ${hub('#/traders', 'Top traders', top.traders.length, 'traders', 'Members ranked by return (percentages only). Copy a portfolio or follow its trades.', top.traders.map(t => [`<a href="#/traders?h=${encodeURIComponent(t.handle)}">${H.esc(t.name)}</a>`, `${pc(t.perf?.m3?.ret)} (3 months)`]), 'See the ranking')}
+        ${hub('#/aimarket', 'AI bots', ai.items.length, 'bots', 'DCA, grid, scalping and plain-English bots members shared. A copy starts paused on practice money.', ai.items.map(x => [H.esc(x.name), `${x.copies} cop${x.copies === 1 ? 'y' : 'ies'}`]), 'Browse AI bots')}
+        ${hub('#/sharedstrategies', 'Strategies', d.strategies.length, 'strategies', 'Entry and exit rules with their backtest. Copy one to your strategies and run it as a bot.', d.strategies.map(s => [H.esc(s.name), s.stats ? `${pc(s.stats.ret)} backtest` : `${s.copies} copies`]), 'Browse strategies')}
+        ${hub('#/sharedportfolios', 'Portfolios', d.baskets.length, 'portfolios', 'Ready-made baskets of stocks and funds, with their backtest. Follow one to get its changes.', d.baskets.map(b => [H.esc(b.name), `${b.followers} follower${b.followers === 1 ? '' : 's'}`]), 'Browse portfolios')}
+        ${hub('#/signalchannels', 'Signal channels', d.channels.length, 'channels', 'Trade alerts from other members, mirrored to your accounts automatically or after your review.', d.channels.map(c => [H.esc(c.name), `${c.followers} follower${c.followers === 1 ? '' : 's'}`]), 'Browse channels')}
+        <div class="card"><h2 style="margin:0">Share your own</h2><p class="mu" style="margin:4px 0 0">Only percentages and rules are shared, never your name, email, amounts or account.</p>
+          <ul class="mk-top"><li><a href="#/traders">Show my profile in Top traders</a></li><li><a href="#/aibots?tab=mine">Share an AI bot</a></li><li><a href="#/portfolios?tab=mine">Publish a portfolio</a></li><li><a href="#/fleet">Open a signal channel</a></li></ul></div>
+      </div>`;
+    },
+    ai: () => `<div class="card"><h2>AI strategy marketplace</h2><p class="mu" style="margin-top:0">Bots other traders shared: their rules and settings, never their accounts or money. A copy starts paused on your practice account, so you can backtest it first. To share yours, open <a href="#/aibots?tab=mine">AI bots → My bots</a>.</p>
+      <div class="tablewrap"><table><tr><th>Bot</th><th>By</th><th class="num">Copies</th><th></th></tr>${ai.items.map(x => `<tr><td><b>${H.esc(x.name)}</b><div class="mu">${H.esc(MK_KINDS[x.kind] || x.kind)} · <span data-no-tr>${H.esc(x.symbol)}</span>${x.config?.summary ? ' · ' + H.esc(x.config.summary) : ''}</div>${x.description ? `<div>${H.esc(x.description)}</div>` : ''}</td><td>${H.esc(x.author)}</td><td class="num">${x.copies}</td><td><button class="small" data-copy="${x.id}" ${ai.canCopy && !x.mine ? '' : 'disabled'} ${ai.canCopy ? '' : 'title="Pro"'}>${x.mine ? 'Yours' : 'Copy'}</button></td></tr>`).join('') || '<tr><td colspan="4" class="mu">Nothing shared yet. Share one of your bots from AI bots → My bots.</td></tr>'}</table></div>${ai.canCopy ? '' : '<p class="banner">Copying bots from the marketplace is part of Pro. <a href="#/funding">See plans</a></p>'}</div>`,
+    strategies: () => `<div class="cards">${d.strategies.map(s => `<div class="card" data-s="${s.id}"><h2>${H.esc(s.name)} <span class="pill">${H.esc(s.symbol)}</span></h2><p class="mu">${H.esc(s.description || '')}</p>
       <div class="kv"><span>Enter when</span><span><code>${H.esc(s.entry)}</code></span><span>Exit when</span><span><code>${H.esc(s.exit)}</code></span></div>
-      ${s.stats ? `<div class="stats">${stat('Backtest return', pc(s.stats.ret), H.cls(s.stats.ret))}${stat('Buy & hold', pc(s.stats.bh))}${stat('Max drawdown', '-' + (+s.stats.dd).toFixed(1) + '%')}${stat('Sharpe', (+s.stats.sharpe).toFixed(2))}</div><p class="mu small-print">Backtest ${H.esc(s.stats.from)} to ${H.esc(s.stats.to)}${s.stats.dataSource === 'synthetic' ? ' on simulated prices' : ''}.</p>` : ''}
-      <p class="mu small-print">By ${H.esc(s.creator)}${s.creatorEmail ? ` <span data-no-tr dir="ltr">· ${H.esc(s.creatorEmail)}</span>` : ''} · copied ${s.copies} times</p><button class="small">Copy to my strategies</button><div class="err"></div></div>`).join('') || '<div class="card mu">No published strategies yet. Publish one from the Bots page.</div>',
-    portfolios: () => d.baskets.map(b => `<div class="card"><h2>${H.esc(b.name)}</h2><p class="mu">${H.esc(b.description || '')}</p><div class="stats">${stat('Backtest per year', pc(b.stats?.cagr), H.cls(b.stats?.cagr))}${stat('Followers', b.followers)}</div><p class="mu small-print">By ${H.esc(b.creator)}${b.creatorEmail ? ` <span data-no-tr dir="ltr">· ${H.esc(b.creatorEmail)}</span>` : ''}</p><a href="#/portfolios?tab=community">Follow on the Portfolios page</a></div>`).join('') || '<div class="card mu">No shared portfolios yet.</div>',
-    channels: () => d.channels.map(c => `<div class="card"><h2>${H.esc(c.name)}</h2><p class="mu">${H.esc(c.description || '')}</p><div class="stats">${stat('Followers', c.followers)}${stat('Signals sent', c.signals)}</div><p class="mu small-print">By ${H.esc(c.creator)}${c.creatorEmail ? ` <span data-no-tr dir="ltr">· ${H.esc(c.creatorEmail)}</span>` : ''}</p><a href="#/fleet">Follow on the Signal fleet page</a></div>`).join('') || '<div class="card mu">No public signal channels yet.</div>',
+      ${s.stats ? `<div class="stats">${stat('Backtest return', pc(s.stats.ret), H.cls(s.stats.ret))}${stat('Buy & hold', pc(s.stats.bh))}${stat('Max drawdown', '-' + (+s.stats.dd).toFixed(1) + '%')}${stat('Sharpe', (+s.stats.sharpe).toFixed(2))}</div><p class="mu small-print">Backtest ${H.esc(s.stats.from)} to ${H.esc(s.stats.to)}${s.stats.dataSource === 'synthetic' ? ' on simulated prices' : ''}. Past results do not promise future results.</p>` : ''}
+      <p class="mu small-print">${by(s.creator, s.creatorEmail)} · copied ${s.copies} times</p><button class="small">Copy to my strategies</button><div class="err"></div></div>`).join('') || empty('No shared strategies yet.')}</div>`,
+    portfolios: () => `<div class="cards">${d.baskets.map(b => `<div class="card"><h2>${H.esc(b.name)}</h2><p class="mu">${H.esc(b.description || '')}</p><div class="stats">${stat('Backtest per year', pc(b.stats?.cagr), H.cls(b.stats?.cagr))}${stat('Followers', b.followers)}</div><p class="mu small-print">${by(b.creator, b.creatorEmail)}</p><a href="#/portfolios?tab=community"><button type="button" class="small ghost">Follow in Portfolios</button></a></div>`).join('') || empty('No shared portfolios yet.')}</div>`,
+    channels: () => `<div class="cards">${d.channels.map(c => `<div class="card"><h2>${H.esc(c.name)}</h2><p class="mu">${H.esc(c.description || '')}</p><div class="stats">${stat('Followers', c.followers)}${stat('Signals sent', c.signals)}</div><p class="mu small-print">${by(c.creator, c.creatorEmail)}</p><a href="#/fleet"><button type="button" class="small ghost">Subscribe in Signal fleet</button></a></div>`).join('') || empty('No public signal channels yet.')}</div>`,
   };
-  view.innerHTML = `<div class="pagehead"><h1>Marketplace</h1><p class="mu">Strategies, portfolios and signal channels shared by other members. Copy one, test it on paper, and decide for yourself. Nothing here is a recommendation.</p></div>
-    ${tabsHtml([['strategies', `Strategies (${d.strategies.length})`], ['portfolios', `Portfolios (${d.baskets.length})`], ['channels', `Signal channels (${d.channels.length})`]], tab)}<div class="cards">${body[tab] ? body[tab]() : ''}</div>`;
-  wireTabs(view, 'marketplace');
+  const intro = { home: 'Everything members share in one place: top traders to copy, AI bots, strategies, portfolios and signal channels. Copy one, test it on practice money, and decide for yourself.', ai: 'AI bots other members built and shared.', strategies: 'Trading strategies other members shared, with their backtest.', portfolios: 'Baskets of stocks and funds other members shared.', channels: 'Trade alerts other members send, mirrored to your accounts.' }[tab];
+  view.innerHTML = `<div class="pagehead"><h1>Marketplace</h1><p class="mu">${intro} Nothing here is a recommendation.</p></div>
+    ${H.marketTabs(key)}${body[tab]()}`;
   H.$$('[data-s] button', view).forEach(b => H.act(b, async () => { await H.api(`/market/strategies/${b.closest('[data-s]').dataset.s}/copy`, { body: {} }); return 'Copied. Find it on the Bots page.'; }));
+  H.$$('[data-copy]', view).forEach(b => H.act(b, async () => { await H.api(`/aibots/market/${b.dataset.copy}/copy`, { body: {} }); location.hash = '#/aibots?tab=mine'; return 'Copied'; }));
 }
 export { wireTabs };

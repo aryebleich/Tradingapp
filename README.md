@@ -40,6 +40,7 @@ Brightolio is investing and trading software, not a broker. It connects to your 
 - **Stock scanner** and **new leaders** detection for stocks starting to outperform
 - **Short selling** on practice money with no minimum, inverse ETFs for small accounts, and a **margin center** that shows margin requirements and margin-call prices
 - **Execution quality**: expected price against fill price (slippage) for every order
+- **Equalize**: give every account the same mix in one tap, or put the same dollar amount in every position of an account
 
 ### Automation and algorithmic trading
 - **Strategy library** of ready-made trading strategies with their rules in plain words
@@ -60,6 +61,11 @@ Brightolio is investing and trading software, not a broker. It connects to your 
 - **Connect your own AI agent** (Claude, ChatGPT, Cursor, Codex or a custom agent) through the Model Context Protocol (MCP): it can scan the market, read order books and news, and draft or submit orders within the limits you set, with an approval switch for each account
 - **Chart co-pilot**: ask the chart ("highlight head-and-shoulders patterns from the last quarter") and it draws the patterns, support and resistance zones, trendlines and option open-interest levels
 - Your account by **text message or phone call**
+
+### Marketplace
+- **Top traders**: members ranked by return (percentages only); copy a portfolio or follow its trades
+- **AI strategy marketplace**: AI bots members shared, copied to practice money first
+- **Shared strategies, portfolios and signal channels** to copy, follow or mirror to your accounts
 
 ### Planning, risk and taxes
 - **Portfolio risk** view with stress tests, diversification and beta

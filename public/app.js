@@ -356,7 +356,9 @@ const NAV = [
   ['Trading tools', [['chart', 'Chart'], ['options', 'Options chain'], ['optionslab', 'Options lab'], ['scanner', 'Scanner'], ['leaders', 'New leaders'], ['short', 'Short the market'], ['margin', 'Margin center'], ['calendar', 'Calendar & events'], ['execution', 'Execution & routing'], ['workspace', 'Workspace']]],
   // Intelligence: research first (ask, read, follow the news), then AI predictions, then AI that trades.
   ['Intelligence', [['ai', 'AI assistant'], ['research', 'Plain-language research'], ['news', 'News & sentiment'], ['intel', 'Market intelligence'], ['aisignals', 'AI signals'], ['agents', 'Forecasts & AI agents'], ['aibots', 'AI bots'], ['agenthub', 'Agents & API']]],
-  ['Automation', [['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['schedule', 'Scheduled trades'], ['rules', 'Rules across accounts'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['portfolios', 'Portfolios'], ['aifunds', 'AI long/short portfolios'], ['traders', 'Top traders'], ['text', 'Text commands'], ['hotline', 'Phone hotline'], ['marketplace', 'Marketplace']]],
+  ['Automation', [['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['schedule', 'Scheduled trades'], ['rules', 'Rules across accounts'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['portfolios', 'Portfolios'], ['aifunds', 'AI long/short portfolios'], ['text', 'Text commands'], ['hotline', 'Phone hotline']]],
+  // Marketplace: everything members share, to copy or follow.
+  ['Marketplace', [['marketplace', 'Marketplace overview'], ['traders', 'Top traders'], ['aimarket', 'AI strategy marketplace'], ['sharedstrategies', 'Shared strategies'], ['sharedportfolios', 'Shared portfolios'], ['signalchannels', 'Signal channels']]],
   ['Quant lab', [['pairs', 'Pairs trading'], ['statarb', 'Statistical arbitrage'], ['code', 'Code lab'], ['quantconnect', 'Cloud algorithms']]],
   ['Planning', [['riskview', 'Portfolio & risk'], ['retirement', 'Retirement & IRAs'], ['money', 'All my money'], ['currencies', 'Currencies'], ['brief', 'Weekly brief'], ['insights', 'Insights & journal'], ['risk', 'Risk controls'], ['tax', 'Taxes'], ['taxpilot', 'Tax autopilot'], ['private', 'Private markets'], ['realestate', 'Real estate']]],
   ['Accounts', [['brokers', 'Choose your brokerage'], ['account', 'Alpaca account'], ['accounts', 'All accounts'], ['funding', 'Plans & billing'], ['referrals', 'Invite & earn']]],
@@ -364,6 +366,7 @@ const NAV = [
 ];
 // Simple line icons (24x24 paths) for the menu.
 const ICONS = {
+  aimarket: '<path d="M3 9l2-5h14l2 5M3 9v11h18V9"/><circle cx="12" cy="15" r="2.5"/>', sharedstrategies: '<path d="M4 18l5-6 4 3 7-9"/><path d="M3 21h18"/>', sharedportfolios: '<circle cx="12" cy="12" r="9"/><path d="M12 3v9l7 4"/>', signalchannels: '<path d="M5 12a7 7 0 0 1 14 0M8 12a4 4 0 0 1 8 0"/><circle cx="12" cy="14" r="1.5"/><path d="M12 16v5"/>',
   agenthub: '<rect x="4" y="7" width="16" height="12" rx="3"/><path d="M12 3v4M9 12h.01M15 12h.01M9 16h6"/>', aibots: '<path d="M4 17l5-5 4 4 7-8"/><circle cx="20" cy="8" r="1.5"/><path d="M4 21h16"/>', aisignals: '<path d="M2 12h4l3-8 4 16 3-8h6"/>', intel: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M8 11h6M11 8v6"/>',
   business: '<path d="M3 7h18v13H3z"/><path d="M8 7V4h8v3M3 12h18"/>', invoices: '<path d="M6 2h9l4 4v16H6z"/><path d="M9 10h7M9 14h7M9 18h4"/>',
   books: '<path d="M4 4h7a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H4z"/><path d="M20 4h-6v16h6z"/>', bank: '<path d="M3 10h18L12 4z"/><path d="M5 10v8M9 10v8M15 10v8M19 10v8M3 20h18"/>',
@@ -968,13 +971,17 @@ async function accountBoxes(box) {
   const sum = ids => { const rs = d.accounts.filter(a => a.counted && ids.includes(a.id)); return { equity: rs.reduce((t, a) => t + (a.equity || 0), 0), dayPl: rs.reduce((t, a) => t + (a.dayPl || 0), 0), unrealized: rs.reduce((t, a) => t + (a.unrealized || 0), 0), cash: rs.reduce((t, a) => t + (a.cash || 0), 0), n: rs.length }; };
   const tile = (title, sub, v, href, dim = '') => `<a class="acctbox ${dim}" href="${href}"><div class="ab-head"><b>${esc(title)}</b><span class="mu small-print">${esc(sub)}</span></div>
     <div class="ab-stats"><div><span>Value</span><b>${money(v.equity)}</b></div><div><span>Today</span><b class="${cls(v.dayPl)}">${v.dayPl == null ? '-' : money(v.dayPl)}</b></div><div><span>Total P/L</span><b class="${cls(v.unrealized)}">${money(v.unrealized)}</b></div><div><span>Cash</span><b>${money(v.cash)}</b></div></div></a>`;
-  const t = d.totals;
-  box.innerHTML = `<div class="card"><div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">Your accounts</h2><a href="#/accounts">All accounts →</a></div>
+  const t = d.totals, canEq = d.accounts.filter(a => a.counted).length >= 2;
+  // Equalize now: the same mix in every chosen account (settings on All accounts).
+  box.innerHTML = `<div class="card"><div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">Your accounts</h2><div class="row" style="gap:10px;align-items:center">${canEq ? '<button type="button" class="small" id="eqNow" title="Give every chosen account the same mix of holdings and cash">Equalize now</button>' : ''}<a href="#/accounts">All accounts →</a></div></div>
+    <div id="eqNowOut"></div>
     <div class="acctboxes">
       ${tile('All accounts', `${t.count} counted · ${d.live ? 'real money' : 'test money'}`, { equity: t.equity, dayPl: t.dayPl, unrealized: t.unrealized, cash: t.cash }, '#/accounts', 'total')}
       ${groups.map(g => { const v = sum(g.accounts); return tile(g.name, `group · ${v.n} account${v.n === 1 ? '' : 's'}`, v, `#/accounts?view=g:${g.id}`); }).join('')}
       ${d.accounts.map(a => tile(a.label, a.counted ? (a.number || a.id) : (a.why || 'not added'), { equity: a.equity, dayPl: a.dayPl, unrealized: a.unrealized, cash: a.cash }, `#/accounts`, a.counted ? '' : 'dim')).join('')}
     </div></div>`;
+  const eb = $('#eqNow', box);
+  if (eb) eb.onclick = async () => { eb.disabled = true; try { await (await import('./pages/combined.js')).equalizeNow(shared, $('#eqNowOut', box)); } finally { eb.disabled = false; } };
 }
 // A live clock on Home: the time here to the second, and the time at the New York exchange with
 // the market's state. The state comes from the server's market calendar (/desk/session: NYSE
@@ -1853,10 +1860,12 @@ function lazyRoutes(load, fn, helpers, keys) {
   }).catch(e => { loading = null; throw e; }));
   for (const k of keys) routes[k] = Object.assign(async (view, q) => { await ensure(); return routes[k](view, q); }, { lazyOf: fn });
 }
-registerTrading(routes, { accountBoxes, $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, approvalsBanner, statementRow, wireStatement, prefs: () => PREFS.portfolio, sinceLastLook, sinceStat, onLeave, render, updateBadge, me: () => ME, refreshMe, state });
-const shared = { $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, refreshMe, accounts, accountOptions, acctLabel, state, adminTabs, adminPage, secureConfirm, me: () => ME, paid: () => isPaid(ME) };
+registerTrading(routes, { accountBoxes, secureConfirm, accounts, $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, approvalsBanner, statementRow, wireStatement, prefs: () => PREFS.portfolio, sinceLastLook, sinceStat, onLeave, render, updateBadge, me: () => ME, refreshMe, state });
+// The tabs on top of every Marketplace page.
+const marketTabs = on => `<div class="chips viewtabs">${NAV.find(([g]) => g === 'Marketplace')[1].map(([k, t]) => `<a href="#/${k}"><button type="button" class="${k === on ? 'on' : ''}">${esc({ marketplace: 'Overview', sharedstrategies: 'Strategies', sharedportfolios: 'Portfolios' }[k] || t)}</button></a>`).join('')}</div>`;
+const shared = { marketTabs, $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, refreshMe, accounts, accountOptions, acctLabel, state, adminTabs, adminPage, secureConfirm, me: () => ME, paid: () => isPaid(ME) };
 lazyRoutes(() => import('./pages/studio.js'), 'registerStudio', shared, ["ai", "agents", "code"]);
-lazyRoutes(() => import('./pages/build.js'), 'registerBuild', shared, ["scanner", "portfolios", "fleet", "marketplace"]);
+lazyRoutes(() => import('./pages/build.js'), 'registerBuild', shared, ["scanner", "portfolios", "fleet", "marketplace", "aimarket", "sharedstrategies", "sharedportfolios", "signalchannels"]);
 lazyRoutes(() => import('./pages/analytics.js'), 'registerAnalytics', shared, ["insights", "risk", "values", "halal", "institutions", "spend", "news"]);
 lazyRoutes(() => import('./chart.js'), 'registerChart', shared, ["chart"]);
 lazyRoutes(() => import('./pages/optionslab.js'), 'registerOptionsLab', shared, ["optionslab"]);

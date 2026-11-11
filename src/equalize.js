@@ -20,7 +20,8 @@ const OPTION = /^[A-Z]{1,6}\d{6}[CP]\d{8}$/; // option contracts are never equal
 export const DEFAULTS = { driftPct: 1, cashPct: null, minTrade: 25, wholeShares: false };
 
 // rows: counted accounts { id, equity, cash, positions:[{symbol, value, price}] }; model: 'combined' or an account id.
-export function planEqualize(rows, { model = 'combined', options = {} } = {}) {
+// fixed: target weights given by the caller ({ SYMBOL: share of the account }) instead of the model's mix.
+export function planEqualize(rows, { model = 'combined', options = {}, fixed = null } = {}) {
   const o = { ...DEFAULTS, ...options };
   const accts = rows.map(r => ({ id: r.id, label: r.label, equity: +r.equity || 0, cash: +r.cash || 0, pos: Object.fromEntries((r.positions || []).filter(p => !OPTION.test(p.symbol)).map(p => [p.symbol, { value: +p.value || 0, price: +p.price || 0, qty: +p.qty || 0 }])) }));
   const price = {}; for (const a of accts) for (const [k, p] of Object.entries(a.pos)) if (p.price > 0) price[k] = p.price;
@@ -32,7 +33,7 @@ export function planEqualize(rows, { model = 'combined', options = {} } = {}) {
   const invested = Object.values(held).reduce((s, v) => s + v, 0);
   // Shares of each holding; "keep X% cash" scales the stock part to leave that much in cash.
   const stockShare = o.cashPct == null ? invested / total : Math.max(0, 1 - o.cashPct / 100);
-  const weights = Object.entries(held).map(([k, v]) => ({ symbol: k, pct: invested ? +(v / invested * stockShare * 100).toFixed(3) : 0 })).sort((a, b) => b.pct - a.pct);
+  const weights = fixed ? Object.entries(fixed).map(([k, v]) => ({ symbol: k, pct: +(v * 100).toFixed(3) })).sort((a, b) => b.pct - a.pct) : Object.entries(held).map(([k, v]) => ({ symbol: k, pct: invested ? +(v / invested * stockShare * 100).toFixed(3) : 0 })).sort((a, b) => b.pct - a.pct);
   const w = Object.fromEntries(weights.map(x => [x.symbol, x.pct / 100]));
   const orders = [], view = [];
   let drift = 0;
@@ -58,6 +59,32 @@ export function planEqualize(rows, { model = 'combined', options = {} } = {}) {
     }
   }
   return { model, weights, accounts: view, orders, drift: +drift.toFixed(2), needed: orders.length > 0 && drift >= o.driftPct };
+}
+
+// Equalize positions: inside one account, every holding gets the same dollar amount. The money
+// for the holdings stays what it is now (or the account's value less the cash to keep), and is
+// split evenly among the stocks and funds held. Option contracts and short positions are left alone.
+export function planPositions(row, options = {}) {
+  const o = { ...DEFAULTS, ...options };
+  const longs = (row.positions || []).filter(p => !OPTION.test(p.symbol) && +p.value > 0 && +p.qty > 0);
+  const equity = +row.equity || 0;
+  if (longs.length < 2) throw bad(longs.length ? 'There is only one holding to equalize' : 'This account has no stock or fund holdings to equalize');
+  if (!(equity > 0)) throw bad('This account has no value to work with');
+  const invested = longs.reduce((s, p) => s + +p.value, 0);
+  const share = (o.cashPct == null ? invested / equity : Math.max(0, 1 - o.cashPct / 100)) / longs.length;
+  const fixed = Object.fromEntries(longs.map(p => [p.symbol, share]));
+  const p = planEqualize([{ ...row, positions: longs }], { model: 'combined', options: o, fixed });
+  const skipped = (row.positions || []).filter(x => !longs.includes(x)).map(x => x.symbol);
+  return { ...p, account: row.id, label: row.label, each: +(equity * share).toFixed(2), skipped };
+}
+async function positionsPlan(userId, b = {}) {
+  const id = String(b.account || 'alpaca');
+  if (!(id === 'alpaca' || /^alpaca:\d{1,3}$/.test(id))) throw bad('Pick an Alpaca account');
+  const list = await loadAccounts(userId), row = list.find(r => r.id === id);
+  if (!row) throw bad('That account is not connected', 404);
+  if (row.error) throw bad(row.error, 409);
+  const n = (v, d, lo, hi) => (v === undefined || v === '' || v === null ? d : Math.min(hi, Math.max(lo, +v)));
+  return planPositions(row, { cashPct: b.cashPct === '' || b.cashPct == null ? null : n(b.cashPct, 0, 0, 90), minTrade: n(b.minTrade, 5, 1, 100000), wholeShares: !!b.wholeShares });
 }
 
 // ---------- settings ----------
@@ -165,6 +192,16 @@ export const equalizeRouter = (() => {
     const results = await place(req.user.id, s.pending.orders, 'equalize');
     await run('UPDATE equalize SET pending = NULL, last_result = ? WHERE user_id = ?', JSON.stringify(summary(results)), req.user.id);
     await audit(req.user.id, 'equalize_approved', { orders: results.length }, req.ip);
+    res.json({ results });
+  });
+  // Equalize positions in one account.
+  r.post('/positions/preview', async (req, res) => res.json(await positionsPlan(req.user.id, req.body || {})));
+  r.post('/positions/run', async (req, res) => {
+    pw(req);
+    const p = await positionsPlan(req.user.id, req.body || {});
+    if (!p.orders.length) return res.json({ results: [], message: 'Every holding already has about the same amount.' });
+    const results = await place(req.user.id, p.orders, 'equalize');
+    await audit(req.user.id, 'equalize_positions', { account: p.account, orders: results.length, failed: results.filter(x => !x.ok).length }, req.ip);
     res.json({ results });
   });
   r.delete('/pending', async (req, res) => { await run('UPDATE equalize SET pending = NULL WHERE user_id = ?', req.user.id); res.json({ ok: true }); });
