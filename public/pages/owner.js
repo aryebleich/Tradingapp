@@ -12,7 +12,7 @@ export function registerOwner(routes, helpers) {
     'admin-upgrades': guard(upgrades),
     // Older links: business mode and Alpaca plans are now under Upgrades; the money levers under Money & fees.
     'admin-business': guard(() => (location.hash = '#/admin-upgrades?tab=mode')), 'admin-alpaca': guard(() => (location.hash = '#/admin-upgrades?tab=alpaca')),
-    'admin-money': guard(async view => { await H.adminPage(view, 'admin-money'); await moneyExtras(view); }), 'admin-yiddish': guard(yiddish), 'admin-phone': guard(phoneLine), 'admin-ai': guard(aiPrivacy), 'admin-readme': guard(privateReadme), 'admin-admins': guard(admins), 'admin-keys': guard(keys) });
+    'admin-money': guard(async view => { await H.adminPage(view, 'admin-money'); await moneyExtras(view); }), 'admin-yiddish': guard(yiddish), 'admin-phone': guard(phoneLine), 'admin-phoneaccts': guard(phoneAccounts), 'admin-ai': guard(aiPrivacy), 'admin-readme': guard(privateReadme), 'admin-admins': guard(admins), 'admin-keys': guard(keys) });
 }
 
 const modeHtml = (mode, ria, doneSteps) => `<div class="card"><h2>Business mode</h2>
@@ -371,16 +371,15 @@ async function aiPrivacy(view) {
 async function privateReadme(view, q) {
   const [d, dr] = await Promise.all([H.api('/admin/site/readme'), H.api('/admin/site/drive').catch(() => null)]);
   const dq = new URLSearchParams(location.hash.split('?')[1] || '').get('drive');
-  let text = d.text, tab = 'edit';
+  const text = d.text;
   const when = t => (t ? new Date(t).toLocaleString() : 'never');
   view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-readme')}
   <div class="card"><div class="row" style="justify-content:space-between;align-items:center"><h2>Private README</h2>
-    <div class="seg" id="rmTab"><button type="button" data-t="edit" class="on">Edit</button><button type="button" data-t="view">Preview</button></div></div>
-    <p class="mu" style="margin-top:0">Only admins see this: admin files, setup, legal information and integrations, business information and Yiddish Labs. Saved ${when(d.updatedAt)}.</p>
+    <span class="pill">Preview · kept up to date by the code</span></div>
+    <p class="mu" style="margin-top:0">Only admins see this: admin files, setup, legal information and integrations, business information and Yiddish Labs. It is put in order again at every push (repeated lines and sections taken out, the parts that come with the code refreshed), so it is shown to read, not to edit. Last put in order ${when(d.updatedAt)}.</p>
     ${text ? '' : `<p class="banner">Nothing saved yet. <button type="button" class="small" id="rmImport">Load the full guide</button> brings in the last full README (commit <code data-no-tr>${H.esc(d.fullRef.slice(0, 7))}</code>).</p>`}
-    <textarea id="rmText" rows="28" spellcheck="false" data-no-tr style="width:100%;font:13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace">${H.esc(text)}</textarea>
-    <div id="rmView" class="readme" hidden data-no-tr></div>
-    <div class="row" style="margin-top:10px"><button id="rmSave">Save</button> <button type="button" class="ghost" id="rmDown">Download PDF</button></div><div class="err"></div></div>
+    <div id="rmView" class="readme" data-no-tr data-keep-setup></div>
+    <div class="row" style="margin-top:10px"><button type="button" class="ghost" id="rmDown">Download PDF</button></div><div class="err"></div></div>
   <div class="card" id="rmDrive"><h2>Google Drive</h2>
     ${dq ? `<p class="${dq === 'connected' ? 'banner' : 'banner err'}">${dq === 'connected' ? 'Google Drive is connected.' : H.esc(dq)}</p>` : ''}
     <p class="mu" style="margin-top:0">Saves the private README to your Google Drive as a PDF with page numbers at the bottom of every page. Later saves update the same file (Drive keeps the earlier versions). Brightolio can only see the files it saved itself.</p>
@@ -391,22 +390,17 @@ async function privateReadme(view, q) {
         <p class="mu small-print">One-time: in Google Cloud Console → APIs & Services → Credentials → your OAuth client, add <code data-no-tr>${H.esc(dr.redirectUri)}</code> to Authorized redirect URIs, and enable the Google Drive API.</p>`}
     <div class="err"></div></div>
   <div class="card"><h2>Public README</h2><p class="mu" style="margin-top:0">The README on GitHub (<code data-no-tr>${H.esc(d.repo)}</code>) is a separate, public description written for Google and AI search: what Brightolio does, its features and common questions. It never contains this private README; a check after every push fails if it mentions admin, setup, keys, business figures or Yiddish Labs.</p></div>`;
-  const ta = H.$('#rmText', view), pv = H.$('#rmView', view);
-  H.$$('#rmTab button', view).forEach(b => (b.onclick = () => {
-    tab = b.dataset.t; H.$$('#rmTab button', view).forEach(x => x.classList.toggle('on', x === b));
-    ta.hidden = tab !== 'edit'; pv.hidden = tab !== 'view'; if (tab === 'view') pv.innerHTML = md(ta.value);
-  }));
-  H.act(H.$('#rmSave', view), async () => { await H.api('/admin/site/readme', { method: 'PUT', body: { text: ta.value } }); return 'Saved'; });
-  // A PDF of the text in the editor (saved or not), with page numbers at the bottom.
+  const ta = { value: text };
+  H.$('#rmView', view).innerHTML = md(text);
+  // A PDF of the README, with page numbers at the bottom.
   H.$('#rmDown', view).onclick = async e => {
     const err = H.$('.err', e.target.closest('.card')); err.textContent = '';
-    const r = await fetch('/api/admin/site/readme/pdf', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ text: ta.value }) });
+    const r = await fetch('/api/admin/site/readme/pdf', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: '{}' });
     if (!r.ok) { err.textContent = (await r.json().catch(() => ({}))).error || 'Could not make the PDF'; return; }
     const a = document.createElement('a'); a.href = URL.createObjectURL(await r.blob()); a.download = 'Brightolio private README.pdf'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
-  if (H.$('#rmImport', view)) H.act(H.$('#rmImport', view), async () => { const r = await H.api('/admin/site/readme/import', { body: {} }); ta.value = r.text; return 'Loaded and saved'; });
+  if (H.$('#rmImport', view)) H.act(H.$('#rmImport', view), async () => { await H.api('/admin/site/readme/import', { body: {} }); setTimeout(H.render, 600); return 'Loaded'; });
   if (H.$('#rmDriveSave', view)) H.act(H.$('#rmDriveSave', view), async () => {
-    await H.api('/admin/site/readme', { method: 'PUT', body: { text: ta.value } });
     const r = await H.api('/admin/site/readme/drive', { body: {} });
     setTimeout(H.render, 1500); return `Saved to Drive (${r.pages} pages).`;
   });
@@ -434,4 +428,34 @@ async function creditsCard(view) {
     return 'Saved';
   });
   H.act(H.$('button', g), async () => { await H.api('/admin/site/credits/grant', { body: H.form(g) }); return 'Credits given'; });
+}
+
+// Phone & text accounts: everyone who opened an account by calling the hotline or by text, where
+// each one stands, and the switches for new sign-ups by phone and by text.
+async function phoneAccounts(view) {
+  const d = await H.api('/admin/phone-accounts');
+  const when = t => (t ? new Date(t).toLocaleDateString() : '-'), yes = (ok, t) => `<span class="pill ${ok ? 'pos' : 'warn'}">${t}</span>`;
+  view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-phoneaccts')}
+  <div class="card"><h2 style="margin-top:0">Accounts opened by phone and by text</h2>
+    <div class="stats"><div class="stat"><span>All</span><b>${d.totals.all}</b></div><div class="stat"><span>By text</span><b>${d.totals.text}</b></div><div class="stat"><span>By phone call</span><b>${d.totals.phone}</b></div><div class="stat"><span>No email yet</span><b>${d.totals.noEmail}</b></div><div class="stat"><span>No password yet</span><b>${d.totals.noPassword}</b></div></div>
+    <form id="paSet" style="margin-top:12px"><label class="chk"><input type="checkbox" name="text" ${d.settings.text ? 'checked' : ''}> New people can open an account by text message</label>
+      <label class="chk"><input type="checkbox" name="phone" ${d.settings.phone ? 'checked' : ''}> New callers can open an account on the phone line</label>
+      <button class="small">Save</button><span class="ok"></span><div class="err"></div></form></div>
+  <div class="card tablewrap"><table><tr><th>Opened</th><th>How</th><th>Phone</th><th>Email</th><th>Sign-in</th><th>Plan</th><th>Brokerage</th><th>Last activity</th><th></th></tr>
+  ${d.accounts.map(a => `<tr data-id="${a.id}"><td>${when(a.openedAt)}</td><td>${a.how === 'text' ? 'Text' : 'Phone call'}</td><td data-no-tr dir="ltr">${H.esc(a.phone || '-')}${a.phone && !a.phoneVerified ? ' <span class="pill warn">not verified</span>' : ''}</td>
+    <td data-no-tr dir="ltr">${a.email ? H.esc(a.email) : '<span class="mu">none</span>'}</td><td>${yes(a.hasPassword, a.hasPassword ? 'Password set' : 'No password')} ${a.hasPin ? yes(true, 'PIN') : ''}</td>
+    <td>${H.esc(a.plan)}${a.planStatus ? ` <span class="mu">${H.esc(a.planStatus)}</span>` : ''}</td><td>${a.brokerage ? H.esc(a.brokerage) : '<span class="mu">-</span>'}</td><td>${when(a.lastActivity)}</td>
+    <td class="nowrap">${a.email ? `${a.hasPassword ? '' : '<button class="small ghost" data-act="password-email">Send password link</button> '}<button class="small ghost" data-act="unlink">Remove phone</button>` : '<button class="small ghost" data-act="email">Add email</button>'}</td></tr>`).join('') || '<tr><td colspan="9" class="mu">No accounts opened by phone or text yet.</td></tr>'}
+  </table></div><div class="err" id="paErr"></div>
+  <p class="mu small-print">To delete an account or see its money, open <a href="#/admin-users">Users</a>. Phone line settings (greeting, voice, tickers) are in <a href="#/admin-phone">Phone line</a>; the conversations are in <a href="#/admin-comms">Calls, texts &amp; email</a>.</p>`;
+  const f = H.$('#paSet', view);
+  H.act(H.$('button', f), async () => { await H.api('/admin/phone-accounts/settings', { method: 'PUT', body: { text: f.text.checked, phone: f.phone.checked } }); return 'Saved'; }, H.$('.ok', f));
+  H.$$('[data-act]', view).forEach(b => (b.onclick = async () => {
+    const id = b.closest('tr').dataset.id, act = b.dataset.act, err = H.$('#paErr', view); err.textContent = '';
+    let body = {};
+    if (act === 'email') { const email = prompt('The customer\'s email address (a link to choose a password is sent to it):'); if (!email) return; body = { email }; }
+    if (act === 'unlink' && !confirm('Remove the phone from this account? Texts and calls from that number will no longer reach it.')) return;
+    b.disabled = true;
+    try { await H.api(`/admin/phone-accounts/${id}/${act}`, { body }); H.render(); } catch (e) { b.disabled = false; err.textContent = e.message; }
+  }));
 }

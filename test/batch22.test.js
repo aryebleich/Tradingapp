@@ -141,3 +141,44 @@ test('market state for the Home clock: evenings, weekends, holidays and early cl
   // The clock asks again at the next change: the next close while open, the next open while closed.
   const s = session(et(11, 21, 30)); assert.ok(s.nextOpen > et(11, 21, 30) && s.nextOpen <= et(12, 9, 30));
 });
+
+test('customers read only errors about their input; setup errors go to the owner', async () => {
+  const { isSetupError, GENERIC, filterErrors, listIssues, clearIssues } = await import('../src/usererrors.js');
+  for (const m of ['Enter the limit price', 'Invalid symbol', 'Not enough buying power', 'Wrong password', 'Pick at least two accounts to equalize']) assert.equal(isSetupError(m), false, m);
+  for (const m of ['Set STRIPE_SECRET_KEY first', 'QuickBooks is not set up on this server yet', 'Add GITHUB_TOKEN in Admin → Keys', 'SQLITE_ERROR: no such table: x', 'Cannot read properties of undefined (reading id)', 'OAuth is not configured']) assert.equal(isSetupError(m), true, m);
+  await clearIssues();
+  const send = (user, status, error) => { let out; const res = { statusCode: status, json: b => (out = b) }; filterErrors({ method: 'POST', path: '/x', baseUrl: '/api', user }, res, () => {}); res.json({ error }); return out.error; };
+  assert.equal(send({ id: 5, role: 'user' }, 400, 'Set PLAID_SECRET in Admin → Keys'), GENERIC);
+  assert.equal(send({ id: 1, role: 'admin' }, 400, 'Set PLAID_SECRET in Admin → Keys'), 'Set PLAID_SECRET in Admin → Keys');
+  assert.equal(send({ id: 5, role: 'user' }, 400, 'Enter the limit price'), 'Enter the limit price');
+  assert.equal(send(undefined, 500, 'SQLITE_BUSY: database is locked'), GENERIC);
+  const list = listIssues();
+  assert.equal(list.find(i => /PLAID_SECRET/.test(i.message)).count, 2);
+  assert.ok(list.some(i => /SQLITE_BUSY/.test(i.message)) && !list.some(i => /limit price/.test(i.message)));
+  await clearIssues();
+});
+
+test('the private README says nothing twice', async () => {
+  const { organize } = await import('../src/readme-auto.js');
+  const a = '<!-- auto:x -->\n## From the code\n- The app is one bundled file and pages open from memory.\n<!-- /auto:x -->';
+  const text = `# Guide\n\n## Setup\n- Add the Stripe key in the admin page, then press the button.\n- Add the Stripe key in the admin page, then press the button.\n\n${a}\n\n## Notes\n- The app is one bundled file and pages open from memory.\n- A line that is only here, long enough to count.\n\n## Setup\n- Add the Stripe key in the admin page, then press the button.\n- Another setup step that appears only in the second copy.\n\n## Empty\n- The app is one bundled file and pages open from memory.\n`;
+  const out = organize(text);
+  assert.equal(out.match(/Add the Stripe key/g).length, 1);
+  assert.equal(out.match(/one bundled file/g).length, 1);
+  assert.equal(out.match(/^## Setup$/gm).length, 1);
+  assert.ok(/Another setup step/.test(out) && /only here/.test(out) && !/## Empty/.test(out) && out.includes(a));
+  assert.equal(organize(out), out); // already in order: unchanged
+});
+
+test('admin: accounts opened by phone and by text', async () => {
+  const { phoneAccounts, signupSettings } = await import('../src/phoneaccounts.js');
+  const { run, audit } = await import('../src/db.js');
+  const { createUser } = await import('../src/auth.js');
+  const a = await createUser({ email: `bytext${Date.now()}@t.co` }), b = await createUser({ email: `p15550001111.x${Date.now()}@phone.invalid` });
+  await run('UPDATE users SET phone = ?, phone_verified = 1 WHERE id = ?', '+15550002222', a); await audit(a, 'sms_signup', {}, '+15550002222');
+  await run('UPDATE users SET phone = ?, phone_verified = 1 WHERE id = ?', '+15550001111', b); await audit(b, 'hotline_signup', {}, '+15550001111');
+  const list = await phoneAccounts(), A = list.find(x => x.id === a), B = list.find(x => x.id === b);
+  assert.deepEqual([A.how, B.how, B.email, B.hasPassword], ['text', 'phone', null, false]);
+  assert.match(A.email, /^bytext/);
+  assert.equal(typeof signupSettings().text, 'boolean');
+});

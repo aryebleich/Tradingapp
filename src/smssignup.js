@@ -54,7 +54,7 @@ export function parseSignup(text) {
   return { email: m[1].toLowerCase(), code };
 }
 
-async function setPasswordEmail(userId, email) {
+export async function setPasswordEmail(userId, email) {
   const token = randomToken();
   await run('UPDATE users SET reset_hash = ?, reset_expires = ? WHERE id = ?', sha256(token), now() + 7 * 864e5, userId);
   await sendEmail(email, 'Welcome to Brightolio: set your password',

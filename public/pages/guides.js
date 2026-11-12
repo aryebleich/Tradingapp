@@ -156,10 +156,18 @@ const shown = {};
 export const GUIDE_PAGES = Object.keys(G);
 export const hasGuide = route => !!G[route];
 export const guidesOff = () => get('qp_guides') === 'off';
+export const setGuides = on => put('qp_guides', on ? null : 'off');
+// A short message at the bottom of the screen that leaves by itself.
+function note(text) {
+  const n = document.createElement('div'); n.className = 'pg-note'; n.setAttribute('role', 'status'); n.textContent = text;
+  document.body.append(n); setTimeout(() => n.remove(), 5000);
+}
 
 // Adds the guide under the page's title. `practice` says whether the practice account is in use.
 export function pageGuide(view, route, { practice = true } = {}) {
   const g = G[route]; if (!g || !view || view.querySelector('.pguide')) return;
+  // Switched off (in a guide, or in Settings): no guide is drawn on any page.
+  if (guidesOff()) return;
   const [title, what, steps, caution] = g;
   // A page that redraws itself (every 20 seconds on live pages) keeps the guide as the user left it.
   const open = shown[route] ?? (!guidesOff() && get(key(route)) !== 'seen');
@@ -172,12 +180,12 @@ export function pageGuide(view, route, { practice = true } = {}) {
       <div class="pg-act"><button type="button" class="small" data-pg="seen">Got it</button>
         ${practice ? '' : '<span class="pg-tip">Tip: switch the Trading mode in the menu to Practice to try this with pretend money.</span>'}
         <a class="pg-link" href="#/learn">Learning center</a><a class="pg-link" href="#/ai">Ask the AI assistant</a>
-        <button type="button" class="link small" data-pg="off">${guidesOff() ? 'Show guides on every page' : 'Hide guides on every page'}</button></div></div>`;
+        <button type="button" class="link small" data-pg="off">Hide guides on every page</button></div></div>`;
   box.addEventListener('toggle', () => { shown[route] = box.open; });
   box.addEventListener('click', e => {
     const b = e.target.closest('[data-pg]'); if (!b) return;
     if (b.dataset.pg === 'seen') { put(key(route), 'seen'); box.open = false; box.querySelector('.pg-h').textContent = 'How this page works'; }
-    else { const off = !guidesOff(); put('qp_guides', off ? 'off' : null); b.textContent = off ? 'Show guides on every page' : 'Hide guides on every page'; if (off) box.open = false; }
+    else { put('qp_guides', 'off'); box.remove(); note('Guides are hidden on every page. Turn them back on in Settings.'); }
   });
   // Right under the page title (and the Home clock); before the first card when the title sits
   // inside one, and at the top when the page has no title. Always a direct part of the page.

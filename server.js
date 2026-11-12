@@ -73,6 +73,7 @@ import { investRouter } from './src/invest.js';
 import { aiFundsRouter } from './src/aifunds.js';
 import { aiTeamRouter } from './src/aiteam.js';
 import { equalizeRouter } from './src/equalize.js';
+import { filterErrors, listIssues, clearIssues } from './src/usererrors.js';
 import { bizRouter, publicInvoiceRouter } from './src/business/routes.js';
 import { scriptsRouter } from './src/scripts.js';
 import { quickbooksRouter, finish as qboFinish } from './src/quickbooks.js';
@@ -531,6 +532,8 @@ async function funnel() {
 
 // ---------- JSON API ----------
 const api = express.Router();
+// Customers read only errors about what they typed; set-up and server faults go to the owner (src/usererrors.js).
+api.use(filterErrors);
 // The landing page copy on GitHub Pages calls the public demo endpoints cross-origin (no cookies).
 const PUBLIC_ORIGINS = (process.env.PUBLIC_ORIGINS || 'https://aryebleich.github.io').split(',').map(o => o.trim());
 api.use('/public', (req, res, next) => {
@@ -632,6 +635,9 @@ api.get('/admin/streams', auth.requireUser, auth.requireAdmin, async (req, res) 
 api.put('/admin/streams', auth.requireUser, auth.requireAdmin, async (req, res) => { const S = await import('./src/streams.js'); await S.saveSettings(req.body || {}); await audit(req.user.id, 'stream_settings', { provider: req.body?.provider }, req.ip); res.json(S.hub.status()); });
 api.use('/admin/seo', SEO.seoAdminRouter({ onChange: () => htmlCache.clear() }));
 api.use('/admin/site', adminSiteRouter);
+api.get('/admin/issues', (req, res) => res.json({ issues: listIssues() }));
+api.delete('/admin/issues', async (req, res) => { await clearIssues(); res.json({ ok: true }); });
+api.use('/admin/phone-accounts', (req, res, next) => import('./src/phoneaccounts.js').then(m => m.phoneAccountsRouter(req, res, next), next));
 api.use('/tokens', tokensRouter);
 api.use('/wealth', wealthRouter);
 api.use('/security', securityRouter({ cancelAlpaca }));

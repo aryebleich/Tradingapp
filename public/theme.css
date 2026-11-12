@@ -1098,3 +1098,10 @@ pre.code { white-space: pre-wrap; word-break: break-all; font-size: 12px; backgr
 /* Tables: numbers line up, rows are easier to follow. */
 td.num, th.num, .stat b, .mk-count { font-variant-numeric: tabular-nums; }
 .tablewrap table tr:hover > td { background: color-mix(in srgb, var(--ac) 4%, transparent); }
+
+/* Alpaca: black on yellow, with the alpaca mark */
+button.alpbtn, .alpbtn { display: inline-flex; align-items: center; gap: 10px; background: #fcd72b !important; color: #111 !important; border: 1px solid #e6c21f !important; box-shadow: none; font-weight: 700; }
+button.alpbtn:hover, .alpbtn:hover { background: #ffe14d !important; color: #000 !important; }
+.alp-mark { width: 20px; height: 20px; flex: none; }
+/* a short message after hiding the guides */
+.pg-note { position: fixed; z-index: 60; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--tx); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 14px; box-shadow: var(--shadow); max-width: calc(100vw - 32px); }

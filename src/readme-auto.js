@@ -83,6 +83,11 @@ Only admins can open these pages or reach their data: every /api/admin route sit
 - **Automation:** AI long/short portfolios (weekly book, AI memo; automatic on practice, approval on real accounts), Text commands and Phone hotline as two pages.
 - **Trade, Positions and Orders follow the account in the side panel:** the full screens for an Alpaca account; simple pages (public/pages/simple.js: ticket, holdings with Close, order list with Cancel) for practice money and the other brokerages. Limit orders from the ticket go to every brokerage.
 - **Fonts are served from the site** (public/fonts, rules at the top of theme.css and site.css): no requests to Google, and the content-security policy allows fonts and styles from this site only.
+- **Errors customers read (src/usererrors.js):** only errors about what they typed. Anything about keys, setup or a server fault is shown to them as "This is not available right now" and listed for the owner in Admin → System health → Setup problems customers ran into. On pages, lines that mention key names, "on this server" or the admin area are shown to admins only (public/app.js hideSetupNotes).
+- **Admin → Phone & text accounts (src/phoneaccounts.js):** every account opened by a hotline call or by text, how it was opened, email, password, PIN, plan and brokerage application; add an email, send the password link again, remove the phone, and switch sign-up by text or by phone on and off.
+- **Page guides:** one switch hides them on every page (in any guide, or Settings → Page guides).
+- **This README** is shown to read only (Admin → README), and is put in order at every start: nothing said twice (organize in src/readme-auto.js), code sections refreshed.
+- **Yiddish:** public/i18n/yi-heimish.js is written by hand in heimish usage and is applied last, after yi-labs.js, so the automatic translation never replaces it.
 - **Marketplace (menu → Marketplace):** its own section for everything members share: an overview (counts and the top 3 of each part), Top traders (moved from Automation), AI strategy marketplace (moved out of AI bots; the old tab sends you there), Shared strategies, Shared portfolios and Signal channels, with tabs on top of each.
 - **Equalize:** "Equalize now" on Home (Your accounts card; uses the All accounts settings) and "Equalize positions" on Positions (the same dollar amount in every stock and fund of the account chosen in the side panel; options and shorts stay; preview, then password). Routes: POST /api/equalize/positions/preview and /run (src/equalize.js, planPositions).
 - **Tokenized securities:** laid out as steps: what it is (the security itself vs a promise that tracks it), why people use them, the main kinds, risks with a checklist that counts, and the price check.
@@ -109,6 +114,41 @@ export function tidy(text) {
     if (!skip) keep.push(l);
   }
   return keep.join('\n').replace(/QuantPocket/g, 'Brightolio').replace(/\n{3,}/g, '\n\n');
+}
+// Nothing twice: a "## heading" that appears again is folded into the first one (its new lines
+// only), and a bullet or paragraph that already appeared anywhere earlier is dropped. The parts
+// that come with the code (auto blocks) are left as they are; hand-written text that repeats
+// them goes. Run on every start, so the README is put in order again at every push.
+export function organize(text) {
+  const src = String(text || ''), norm = l => l.trim().toLowerCase().replace(/\s+/g, ' ').replace(/[*_`]/g, '');
+  // What the auto blocks already say.
+  const seen = new Set();
+  for (const m of src.matchAll(/<!-- auto:[\w-]+ -->[\s\S]*?<!-- \/auto:[\w-]+ -->/g)) for (const l of m[0].split('\n')) if (l.trim().length > 24) seen.add(norm(l));
+  const parts = src.split(/(<!-- auto:[\w-]+ -->[\s\S]*?<!-- \/auto:[\w-]+ -->)/);
+  const heads = new Map(); // heading → index in out[]
+  const out = [];
+  for (const part of parts) {
+    if (/^<!-- auto:/.test(part)) { out.push({ auto: part }); continue; }
+    // Hand-written text: sections by "## heading".
+    for (const sec of part.split(/\n(?=## )/)) {
+      const lines = sec.split('\n'), head = /^## /.test(lines[0]) ? norm(lines[0]) : null, keep = [];
+      let fence = false;
+      for (const [i, l] of lines.entries()) {
+        if (/^```/.test(l.trim())) fence = !fence;
+        const k = norm(l), countable = !fence && k.length > 24 && !/^#/.test(l) && !/^\|?[-| :]+\|?$/.test(l.trim());
+        if (i === 0 && head) { keep.push(l); continue; }
+        if (countable && seen.has(k)) continue;
+        if (countable) seen.add(k);
+        keep.push(l);
+      }
+      if (head && heads.has(head)) { const first = out[heads.get(head)], extra = keep.slice(1).join('\n').trim(); if (extra) first.text = `${first.text.trimEnd()}\n${extra}\n`; continue; }
+      // A heading left with nothing under it goes too.
+      if (head && !keep.slice(1).join('').trim()) continue;
+      if (head) heads.set(head, out.length);
+      out.push({ text: keep.join('\n') });
+    }
+  }
+  return out.map(o => o.auto ?? o.text).join('\n').replace(/\n{3,}/g, '\n\n').replace(/^\n+/, '');
 }
 const START = id => `<!-- auto:${id} -->`, END = id => `<!-- /auto:${id} -->`;
 // The stored README with every code section in place (replaced, or added at the end). `top` is

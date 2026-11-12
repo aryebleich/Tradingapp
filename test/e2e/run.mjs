@@ -222,6 +222,10 @@ console.log('Desktop (1360x900)');
     await p.click('[data-delinc]').catch(() => {});
     await p.goto(B + '/app#/admin-data'); await p.waitForSelector('.datasrc'); await p.goto(B + '/app#/admin-comms'); await p.waitForSelector('#cs');
     await p.goto(B + '/app#/admin-phone'); await p.waitForSelector('text=Yiddish voice'); await p.waitForSelector('tr[data-k="press"]');
+    // Accounts opened by phone and by text; the private README is shown to read, with no editor.
+    await p.goto(B + '/app#/admin-phoneaccts'); await p.waitForSelector('#paSet'); await p.click('#paSet button'); await p.waitForFunction(() => /Saved/.test(document.querySelector('#paSet .ok')?.textContent || ''));
+    await p.goto(B + '/app#/admin-readme'); await p.waitForSelector('#rmView', { state: 'attached' }); if (await p.$('#rmText, #rmSave')) throw new Error('the private README still has an editor');
+    await p.goto(B + '/app#/admin-system'); await p.waitForSelector('text=Setup problems customers ran into');
     // View as each plan from the header, then back to the owner view.
     // A preview asks for the password and a tick first.
     await p.selectOption('#viewAs', 'plan:free'); await p.waitForSelector('dialog.secure');
@@ -439,6 +443,17 @@ console.log('Settings → Language');
     await go('#/marketplace', '.mk-hub'); await p.waitForTimeout(1500); await p.screenshot({ path: path.join(OUT, 'marketplace.png'), fullPage: true }); await go('#/aimarket', '.viewtabs button.on');
     await go('#/traders', '.viewtabs'); await p.goto(B + '/app#/aibots?tab=market'); await p.waitForFunction(() => location.hash === '#/aimarket', null, { timeout: 15000 });
     await go('#/sharedstrategies', '.viewtabs'); await go('#/signalchannels', '.viewtabs');
+  });
+  await step('guides: one switch hides them on every page; setup notes are not shown to customers', async () => {
+    await go('#/tax', '.pguide'); await p.click('.pguide [data-pg=off]'); await p.waitForFunction(() => !document.querySelector('.pguide'));
+    await go('#/positions', 'h1'); await p.waitForTimeout(900); if (await p.$('.pguide')) throw new Error('a guide still shows after hiding all guides');
+    await go('#/settings', '#guidesT'); if (await p.isChecked('#guidesT')) throw new Error('Settings does not show guides as off'); await p.check('#guidesT');
+    await go('#/tax', '.pguide');
+    // A customer never reads "not set up on this server" or key names.
+    await p.waitForTimeout(600);
+    const leak = await p.evaluate(() => /on this server|Admin →|[A-Z]{3,}_[A-Z_]*KEY/.test(document.querySelector('#view').innerText));
+    if (leak) throw new Error('a setup note is shown to a customer: ' + (await p.evaluate(() => document.querySelector('#view').innerText.match(/.{60}(on this server|Admin →|_KEY).{40}/)?.[0])));
+    await go('#/account', '.alpbtn, #oauthOff, h1');
   });
   await step('tokenized securities: sections and checklist', async () => {
     await go('#/tokenized', '#tkKinds .tk-kind'); await p.waitForTimeout(1500); await p.screenshot({ path: path.join(OUT, 'tokenized.png'), fullPage: true }); await p.click('[data-tkc] >> nth=0'); await p.waitForFunction(() => /^1 of/.test(document.querySelector('#tkCount')?.textContent || ''));

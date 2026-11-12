@@ -355,8 +355,9 @@ const readme = async () => {
   // Once: shorter (finished setup steps and old change lists out), then kept short by the code.
   if (text && r.tidied !== 3) { const { tidy } = await import('./readme-auto.js'); text = tidy(text); await saveReadme(text, { tidied: 3 }).catch(() => {}); }
   // Sections that come with the code (src/readme-auto.js) are kept current with every change.
-  const { mergeSections } = await import('./readme-auto.js'), { overviewMd } = await import('./readme-overview.js');
-  const top = await overviewMd().catch(() => null), merged = text ? mergeSections(text, top) : text;
+  const { mergeSections, organize } = await import('./readme-auto.js'), { overviewMd } = await import('./readme-overview.js');
+  // Then put in order: nothing said twice (organize), every time it is read and at every start.
+  const top = await overviewMd().catch(() => null), merged = text ? organize(mergeSections(text, top)) : text;
   if (merged !== text) await saveReadme(merged).catch(() => {});
   return { ...r, text: merged };
 };

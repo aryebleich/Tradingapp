@@ -16,7 +16,7 @@ async function brokers(view, q) {
   <div class="libgrid">
     <div class="card lib suggested"><div class="libhead"><h3>Alpaca <span class="pill">Suggested</span></h3>${alpaca?.connected ? `<span class="pill pos">Connected${alpaca.live ? ' · live' : ''}</span>` : '<span class="pill">Not connected</span>'}</div>
       <p class="about">The easiest start: open a new commission-free account right here, sign in to an Alpaca account you have, or use API keys. Stocks, ETFs, options and crypto, with fractional shares.</p>
-      <a href="#/account"><button type="button">${alpaca?.connected ? 'Manage' : 'Open or connect Alpaca'}</button></a></div>
+      <a href="#/account"><button type="button" class="alpbtn"><svg class="alp-mark" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M8 2h2v3h3V2h2v4.500c1.200.900 2 2.300 2 3.900V13h-3.500v9h-4v-7.200C7.400 14.300 6 12.400 6 10.200c0-1.600.800-2.900 2-3.700V2zm2 7.200a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/></svg><span>${alpaca?.connected ? 'Manage' : 'Open or connect Alpaca'}</span></button></a></div>
     ${list.map(b => `
     <div class="card lib" data-b="${b.id}"><div class="libhead"><h3>${H.esc(b.name)}</h3>${b.connected ? `<span class="pill pos">Connected${b.live ? ' · live' : ' · test'}${b.account ? ' · …' + H.esc(b.account) : ''}</span>` : '<span class="pill">Not connected</span>'}</div>
       <p class="about">${H.esc(b.about)}</p>

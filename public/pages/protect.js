@@ -182,5 +182,14 @@ async function system(view) {
   <div class="card"><h2>Brokerage circuit breakers</h2><div class="tablewrap"><table><tr><th>Brokerage</th><th>State</th><th>Recent failures</th><th>Times tripped</th></tr>${d.breakers.map(b => `<tr><td>${H.esc(b.name)}</td><td>${b.state === 'open' ? '<span class="pill warn">open</span>' : H.esc(b.state)}</td><td>${b.recentFailures}</td><td>${b.trips}</td></tr>`).join('') || '<tr><td colspan="4" class="mu">No broker calls yet</td></tr>'}</table></div></div>
   <div class="card"><h2>Order queue</h2><div class="stats">${stat('Pending', d.queue.pending)}${stat('Sent', d.queue.sent)}${stat('Expired', d.queue.expired)}${stat('Failed', d.queue.failed)}${stat('Oldest pending', d.queue.oldestPendingSec == null ? '-' : d.queue.oldestPendingSec + ' s')}</div></div>
   <p class="mu small-print">Uptime ${Math.round(d.uptimeSec / 60)} minutes${d.replicaId ? ' · replica ' + H.esc(d.replicaId) : ''}. Prometheus metrics at /metrics. Run a chaos drill from GitHub Actions ("Chaos drill").</p>`;
+  // Problems customers ran into that only the owner can fix (a missing key, a service that is not
+  // set up, a server fault). Customers saw one plain sentence instead (src/usererrors.js).
+  const iss = (await H.api('/admin/issues').catch(() => ({ issues: [] }))).issues;
+  const box = document.createElement('div'); box.className = 'card'; box.setAttribute('data-keep-setup', '');
+  box.innerHTML = `<div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">Setup problems customers ran into</h2>${iss.length ? '<button type="button" class="ghost small" id="issClear">Clear the list</button>' : ''}</div>
+    <p class="mu" style="margin:6px 0 10px">Customers only read errors about what they typed. Anything about keys, setup or a server fault is shown to them as "This is not available right now" and listed here for you.</p>
+    ${iss.length ? `<div class="tablewrap"><table class="slim"><tr><th>Last seen</th><th>What went wrong</th><th>Where</th><th class="num">Times</th></tr>${iss.map(i => `<tr><td class="nowrap">${new Date(i.at).toLocaleString()}</td><td data-no-tr>${H.esc(i.message)}</td><td class="mono" data-no-tr>${H.esc(i.path || '')}</td><td class="num">${i.count}</td></tr>`).join('')}</table></div>` : '<p class="ok" style="margin:0">Nothing to fix: no customer ran into a setup problem.</p>'}`;
+  view.append(box);
+  if (H.$('#issClear', box)) H.$('#issClear', box).onclick = async () => { await H.api('/admin/issues', { method: 'DELETE' }); H.render(); };
   const t = setInterval(() => location.hash === '#/admin-system' && H.render(), 15000); H.onLeave(() => clearInterval(t));
 }

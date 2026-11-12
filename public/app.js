@@ -402,6 +402,7 @@ const ICONS = {
   referrals: '<path d="M20 12v9H4v-9M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 1 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 1 0 0-5C13 2 12 7 12 7z"/>',
   tax: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 15l6-6M9.5 9.5h.01M14.5 14.5h.01"/>',
   text: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>', hotline: '<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/>', settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 13H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 3V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 21 10h.1a2 2 0 1 1 0 4z"/>',
+  'admin-phoneaccts': '<rect x="7" y="2" width="10" height="20" rx="2"/><circle cx="12" cy="10" r="2.200"/><path d="M8.500 16c.700-1.600 2-2.400 3.500-2.400s2.800.800 3.500 2.400M11 19h2"/>',
   'admin-phone': '<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/>',
   'admin-ai': '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/>',
   'admin-readme': '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>',
@@ -460,6 +461,20 @@ const refreshMe = async () => { ME = (await api('/auth/me')).user; };
 // The page's outline shown while a new page loads (it keeps the footer at the bottom too).
 // Beginner guides ("How this page works") on the more advanced pages: the small text file loads once
 // in the background, then each page adds its guide before it is shown.
+// Notes about how the site is set up (a missing key, "not set up on this server", "Admin → Keys")
+// are for the owner. For everyone else such a line becomes one plain sentence, wherever it appears.
+const SETUP_NOTE = /\b[A-Z][A-Z0-9]{2,}_(?:[A-Z0-9]+_)*(?:KEY|SECRET|TOKEN|ID|URL|FROM)\b|Admin\s*→|\bon (?:this|the) server\b|\bthe owner (?:adds|needs|sets)\b/;
+let setupTimer = null;
+function hideSetupNotes() {
+  if (!ME || ME.role === 'admin') return;
+  for (const el of $$('#view p, #view li, #view small, #view .banner, #view .mu, #view .err')) {
+    if (el.dataset.setup || el.closest('pre, code, [data-keep-setup]')) continue;
+    const t = el.textContent; if (t.length < 12 || t.length > 700 || !SETUP_NOTE.test(t)) continue;
+    if (el.querySelector('input, select, textarea, button, form, p, li, table')) continue;
+    el.dataset.setup = '1'; el.textContent = 'This is not available yet.';
+  }
+}
+new MutationObserver(() => { clearTimeout(setupTimer); setupTimer = setTimeout(hideSetupNotes, 60); }).observe(document.body, { childList: true, subtree: true });
 let GUIDES = null;
 const guidesP = import('./pages/guides.js').then(m => (GUIDES = m)).catch(() => null);
 function addGuide(view, route) {
@@ -1659,6 +1674,7 @@ routes.settings = async view => {
   const pw = ME.hasPassword, confirmLabel = what => pw ? `Password to ${what}` : `Type your email to ${what}`, confirmType = pw ? 'password' : 'email';
   view.innerHTML = `<h1>Settings</h1>
   <div class="grid masonry">
+    <div class="card"><h2>Page guides</h2><label class="chk"><input type="checkbox" id="guidesT" ${(() => { try { return localStorage.getItem('qp_guides') !== 'off'; } catch { return true; } })() ? 'checked' : ''}> Show the "How this page works" guide on each page</label><p class="mu small-print">Switch it off to hide every guide on every page.</p></div>
     <div class="card"><h2>News pop-ups</h2><label class="chk"><input type="checkbox" id="newsT" ${toastsOn() ? 'checked' : ''}> Show today's headlines about the stocks I own</label></div>
     <div class="card" id="pnlPrefs"><h2>Portfolio numbers</h2>
       <p class="mu" style="margin-top:0">How your account value changes on the screen.</p>
@@ -1734,6 +1750,7 @@ routes.settings = async view => {
   };
   $$('[name=chartMode]', view).forEach(r => (r.onchange = saveChart)); if ($('#chartColor', view)) $('#chartColor', view).onchange = saveChart;
   $$('[data-color]', view).forEach(b => (b.onclick = () => { $('#chartColor', view).value = b.dataset.color; $$('[data-color]', view).forEach(x => x.classList.toggle('on', x === b)); saveChart(); })); if ($('#hideToday', view)) $('#hideToday', view).onchange = savePnl;
+  if ($('#guidesT', view)) $('#guidesT', view).onchange = e => { try { e.target.checked ? localStorage.removeItem('qp_guides') : localStorage.setItem('qp_guides', 'off'); } catch {} };
   if ($('#newsT', view)) $('#newsT', view).onchange = e => { try { localStorage.setItem('qp_news_toasts', e.target.checked ? '1' : '0'); } catch {} };
 };
 
@@ -1741,7 +1758,7 @@ routes.settings = async view => {
 // Owner pages: one route per section so each has its own place in the menu.
 // The owner's pages, in four groups (each its own menu section; the tab row shows its group).
 const ADMIN_GROUPS = [
-  ['Owner: people', [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-admins', 'Admins'], ['admin-support', 'Support inbox'], ['admin-comms', 'Calls, texts & email'], ['admin-phone', 'Phone line']]],
+  ['Owner: people', [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-admins', 'Admins'], ['admin-support', 'Support inbox'], ['admin-comms', 'Calls, texts & email'], ['admin-phone', 'Phone line'], ['admin-phoneaccts', 'Phone & text accounts']]],
   ['Owner: money', [['admin-money', 'Money & fees'], ['admin-sponsored', 'Sponsored news'], ['admin-upgrades', 'Upgrades']]],
   ['Owner: site & content', [['admin-readme', 'README'], ['admin-seo', 'SEO'], ['admin-strategies', 'Original strategies'], ['admin-trust', 'Trust'], ['admin-yiddish', 'Yiddish Labs']]],
   ['Owner: technical', [['admin-agents', 'AI team'], ['admin-ai', 'AI & privacy'], ['admin-keys', 'Keys'], ['admin-data', 'Market data'], ['admin-hosting', 'Hosting'], ['admin-system', 'System health'], ['admin-setup', 'Setup']]],
@@ -1883,7 +1900,7 @@ lazyRoutes(() => import('./pages/analytics.js'), 'registerAnalytics', shared, ["
 lazyRoutes(() => import('./chart.js'), 'registerChart', shared, ["chart"]);
 lazyRoutes(() => import('./pages/optionslab.js'), 'registerOptionsLab', shared, ["optionslab"]);
 registerProtect(routes, shared);
-lazyRoutes(() => import('./pages/owner.js'), 'registerOwner', shared, ["admin-upgrades", "admin-business", "admin-alpaca", "admin-money", "admin-yiddish", "admin-phone", "admin-ai", "admin-readme", "admin-admins", "admin-keys"]);
+lazyRoutes(() => import('./pages/owner.js'), 'registerOwner', shared, ["admin-upgrades", "admin-business", "admin-alpaca", "admin-money", "admin-yiddish", "admin-phone", "admin-phoneaccts", "admin-ai", "admin-readme", "admin-admins", "admin-keys"]);
 lazyRoutes(() => import('./pages/alts.js'), 'registerAlts', shared, ["private", "realestate"]);
 lazyRoutes(() => import('./pages/money.js'), 'registerMoney', shared, ["money"]);
 lazyRoutes(() => import('./pages/rules.js'), 'registerRules', shared, ["rules"]);

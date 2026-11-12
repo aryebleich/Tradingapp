@@ -61,7 +61,7 @@ after(() => { server.close(); stripe.close(); });
 
 test('before setup: checkout says the owner must finish Stripe, status lists what is missing', async () => {
   const c = await user('/billing/checkout', { plan: 'pro' });
-  assert.equal(c.status, 503); assert.match(c.body.error, /finish the Stripe setup/);
+  assert.equal(c.status, 503); assert.match(c.body.error, /not available right now/); // customers do not read setup details (src/usererrors.js)
   const s = (await owner('/admin/site/stripe')).body;
   assert.equal(s.keySet, true); assert.equal(s.mode, 'test'); assert.equal(s.ready, false);
   assert.equal(s.webhookUrl, 'https://pay.example/webhooks/stripe');
