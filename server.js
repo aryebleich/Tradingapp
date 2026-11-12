@@ -253,7 +253,7 @@ app.use((req, res, next) => {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'same-origin');
   // Pyodide (the code lab's Python) loads only from its own jsdelivr folder; Plaid Link from cdn.plaid.com.
-  res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'wasm-unsafe-eval' https://secure.helcim.app https://cdn.jsdelivr.net/pyodide/ https://cdn.plaid.com; frame-src 'self' https://secure.helcim.app https://cdn.plaid.com; connect-src 'self' https://cdn.jsdelivr.net/pyodide/; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://checkout.stripe.com https://accept.authorize.net https://test.authorize.net");
+  res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://secure.helcim.app https://cdn.jsdelivr.net/pyodide/ https://cdn.plaid.com; frame-src 'self' https://secure.helcim.app https://cdn.plaid.com; connect-src 'self' https://cdn.jsdelivr.net/pyodide/; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://checkout.stripe.com https://accept.authorize.net https://test.authorize.net");
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   if (process.env.NODE_ENV === 'production') res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   next();
@@ -1205,7 +1205,8 @@ for (const p of ['terms', 'privacy', 'risk', 'contact', 'status', 'security', 'i
 // images rarely change and are cached for a week.
 app.use(express.static(pub, {
   index: 'index.html', extensions: ['html'],
-  setHeaders: (res, file) => res.setHeader('Cache-Control', /\.(png|svg|webmanifest)$/.test(file) ? 'public, max-age=604800' : 'no-cache'),
+  // Font files never change under the same name: kept for a year.
+  setHeaders: (res, file) => res.setHeader('Cache-Control', /\.woff2$/.test(file) ? 'public, max-age=31536000, immutable' : /\.(png|svg|webmanifest)$/.test(file) ? 'public, max-age=604800' : 'no-cache'),
 }));
 app.use(async (req, res) => res.status(404).sendFile(path.join(pub, '404.html')));
 

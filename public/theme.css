@@ -1,3 +1,12 @@
+/* Fonts served from this site (no third-party requests): Inter, and Rubik and Noto Sans Hebrew for Yiddish. */
+@font-face{font-family:'Inter';font-style:normal;font-weight:400 800;font-display:swap;src:url(fonts/inter-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF}
+@font-face{font-family:'Inter';font-style:normal;font-weight:400 800;font-display:swap;src:url(fonts/inter-latin.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:'Noto Sans Hebrew';font-style:normal;font-weight:400 700;font-display:swap;src:url(fonts/noto-sans-hebrew-hebrew.woff2) format('woff2');unicode-range:U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F}
+@font-face{font-family:'Noto Sans Hebrew';font-style:normal;font-weight:400 700;font-display:swap;src:url(fonts/noto-sans-hebrew-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF}
+@font-face{font-family:'Noto Sans Hebrew';font-style:normal;font-weight:400 700;font-display:swap;src:url(fonts/noto-sans-hebrew-latin.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:'Rubik';font-style:normal;font-weight:400 800;font-display:swap;src:url(fonts/rubik-hebrew.woff2) format('woff2');unicode-range:U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-style:normal;font-weight:400 800;font-display:swap;src:url(fonts/rubik-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF}
+@font-face{font-family:'Rubik';font-style:normal;font-weight:400 800;font-display:swap;src:url(fonts/rubik-latin.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
 /* Brightolio design system v2. Loaded after styles.css; restyles without changing layout.
    Theme: follows the device, or html[data-theme="light" | "dark"] when the user picks one. */
 :root {
@@ -1073,3 +1082,19 @@ pre.code { white-space: pre-wrap; word-break: break-all; font-size: 12px; backgr
 .mk-count{font-size:26px;font-weight:700;line-height:1.1}
 .mk-top{list-style:none;padding:0;margin:6px 0 10px}.mk-top li{padding:4px 0;border-top:1px solid var(--line,rgba(127,127,127,.15));display:flex;justify-content:space-between;gap:8px}
 .tk-side h3,.tk-kind h3{text-transform:none;letter-spacing:0;font-size:17px;color:var(--tx)}
+
+/* ---- polish pass ---- */
+/* Cards of very different heights (Settings): packed in columns instead of stretched rows. */
+.grid.masonry { display: block; columns: 3 320px; column-gap: 16px; }
+.grid.masonry > .card { break-inside: avoid; margin: 0 0 16px; display: block; }
+/* The background-loading pill sits clear of the menu's last links. */
+@media (min-width: 901px) { #pfbar { left: auto; right: 20px; } html[dir="rtl"] #pfbar { right: auto; left: 20px; } }
+/* Page titles: the title on its own line, the description under it. */
+.pagehead > h1 { flex: 1 0 100%; margin-bottom: 0; }
+.pagehead > h1 + p { flex: 1 1 100%; margin-top: 0; }
+.viewas { max-width: 240px; }
+/* Market tiles in even rows. */
+@media (min-width: 1100px) { .mtiles { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+/* Tables: numbers line up, rows are easier to follow. */
+td.num, th.num, .stat b, .mk-count { font-variant-numeric: tabular-nums; }
+.tablewrap table tr:hover > td { background: color-mix(in srgb, var(--ac) 4%, transparent); }

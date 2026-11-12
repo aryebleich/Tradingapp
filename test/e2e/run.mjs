@@ -421,7 +421,11 @@ console.log('Settings → Language');
     await p.waitForFunction(() => document.querySelector('dialog[open]') || /\S/.test(document.querySelector('#eqNowOut')?.textContent || ''), null, { timeout: 15000 });
     if (await p.$('dialog[open]')) { await p.keyboard.press('Escape'); await p.waitForTimeout(300); }
     const eqHome = await p.textContent('#eqNowOut'); if (/err/.test(await p.innerHTML('#eqNowOut')) && !/same mix/.test(eqHome)) throw new Error('Equalize now: ' + eqHome);
-    await go('#/positions', 'h1'); await p.waitForTimeout(2500);
+    // Positions follows the account chosen in the side panel: practice money first, then an Alpaca sub account.
+    await go('#/positions', 'h1'); await p.waitForFunction(() => /Practice money/.test(document.querySelector('#view h1')?.textContent || ''), null, { timeout: 15000 });
+    await go('#/orders', 'h1'); await p.waitForSelector('#view table'); await go('#/trade?symbol=AAPL', '#ticket');
+    await p.evaluate(() => localStorage.setItem('qp_account', 'alpaca:2'));
+    await p.goto(B + '/app#/positions'); await p.reload(); await p.waitForSelector('#view h1'); await p.waitForTimeout(2500);
     if (!(await p.$('#posAcct'))) throw new Error('no account name on Positions: ' + (await p.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ').slice(400, 1600));
     // The button shows when the account holds two or more stocks or funds (the math: test/batch19.test.js).
     if (await p.$('#eqPos')) {
@@ -429,6 +433,7 @@ console.log('Settings → Language');
       await p.waitForFunction(() => document.querySelector('dialog[open]') || /\S/.test(document.querySelector('#eqPosOut')?.textContent || ''), null, { timeout: 15000 });
       if (await p.$('dialog[open]')) await p.keyboard.press('Escape');
     }
+    await p.evaluate(() => localStorage.setItem('qp_account', 'paper')); await p.reload();
   });
   await step('marketplace section: overview, AI bots, top traders tabs', async () => {
     await go('#/marketplace', '.mk-hub'); await p.waitForTimeout(1500); await p.screenshot({ path: path.join(OUT, 'marketplace.png'), fullPage: true }); await go('#/aimarket', '.viewtabs button.on');

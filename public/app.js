@@ -47,6 +47,7 @@ async function api(path, opts = {}, retried) {
   const get = !opts.method && !opts.body;
   if (PREFETCH && !get) throw new Error('Read-only while loading in the background');
   if (PREFETCH && get && SWR.get(path)?.ok && Date.now() - SWR.get(path).at < 60e3) return structuredClone(SWR.get(path).data);
+  if (!get && ACCTS) ACCTS.at = 0; // a change may have connected or removed an account: the list is read again
   if (!get) { if (LIGHT.test(path)) { const top = path.split('/')[1]; for (const k of [...SWR.keys()]) if (k.split(/[/?]/)[1] === top) SWR.delete(k); } else SWR.clear(); }
   else if (!SWR_SKIP.test(path)) {
     const hit = SWR.get(path), age = hit ? Date.now() - hit.at : Infinity;
@@ -178,8 +179,11 @@ const accountOptions = (list, selected, paid = true) => list.filter(a => a.conne
 // Real money (the live account) is the default; the choice is remembered per browser.
 const state = { account: (() => { try { return localStorage.getItem('qp_account') || ''; } catch { return ''; } })() };
 // No choice made yet in this browser: the live account when one is connected, otherwise practice money.
+// Until the user picks Paper or Live themselves, this follows the connection: connecting a brokerage
+// moves a new user from practice money to that account without another step.
 async function defaultAccount() {
-  if (state.account) return;
+  let chosen = ''; try { chosen = localStorage.getItem('qp_account') || ''; } catch { chosen = state.account; }
+  if (chosen) { if (!state.account) state.account = chosen; return; }
   const list = await accounts().catch(() => []);
   state.account = list.some(a => a.id === 'alpaca' && a.connected) ? 'alpaca' : 'paper';
 }
@@ -1076,19 +1080,7 @@ routes.dashboard = async (view, q) => {
     <div class="card"><h2>Positions</h2><div class="tablewrap"><table><tr><th>Symbol</th><th>Qty</th><th>Avg</th><th>Price</th><th>Value</th><th>P/L</th></tr>
       ${a.positions.map(p => `<tr><td>${esc(p.symbol)}</td><td>${num(p.qty, 4)}</td><td>${money(p.avgPrice)}</td><td>${money(p.price)}</td><td>${money(p.value)}</td><td class="${cls(p.pnl)}">${money(p.pnl)}</td></tr>`).join('') || '<tr><td colspan="6" class="mu">No positions</td></tr>'}
     </table></div></div>
-    <form class="card ticket" id="ticket"><h2>Trade</h2>
-      <div id="deskStrip"></div>
-      <div class="row"><label>Symbol<input name="symbol" value="SPY" required autocomplete="off" dir="ltr"></label>
-        <label>Order type<select name="type">${['market', 'limit', 'stop', 'stop_limit'].map(t => `<option value="${t}">${{ market: 'Market', limit: 'Limit', stop: 'Stop', stop_limit: 'Stop limit' }[t]}</option>`).join('')}</select></label></div>
-      <div class="seg" id="qSide"><button type="button" class="buy on" data-s="buy">Buy</button><button type="button" class="sell" data-s="sell">Sell</button></div><input type="hidden" name="side" value="buy">
-      <div id="qHold"></div>
-      <div class="row"><label>Shares<input name="qty" type="number" step="any" min="0"></label><label class="qnot">or Dollars<input name="notional" type="number" step="any" min="0"></label></div>
-      <div class="row qpx"><label class="qlim" hidden>Limit price<input name="limit_price" type="number" step="any" min="0"></label><label class="qstp" hidden>Stop price<input name="stop_price" type="number" step="any" min="0"></label><label class="qtif" hidden>Good for<select name="time_in_force"><option value="day">Today (Day)</option><option value="gtc">Until cancelled (GTC)</option></select></label></div>
-      <label class="check qshort" hidden><input type="checkbox" name="allow_short"> ${state.account === 'paper' ? 'Sell short (practice money: no minimum balance)' : 'Sell short (I do not own it; margin account with $2,000+ needed)'}</label>
-      <div id="qGuide"></div><div id="qCost"></div><div id="qBear"></div>
-      <button id="qPlace">Review order</button> <button type="button" class="ghost" id="quote">Quote</button><div class="err"></div>
-      ${a.live ? '<p class="warn">This sends a real order with real money.</p>' : ''}
-    </form>
+    ${ticketHtml(a)}
   </div>
   <div class="card"><h2>Recent orders</h2><div class="tablewrap" id="orders"><p class="mu">Loading…</p></div>
     ${state.account === 'paper' ? '<button class="ghost small" id="reset">Reset paper account</button>' : ''}</div>`;
@@ -1116,6 +1108,20 @@ routes.dashboard = async (view, q) => {
   $$('[data-pcancel]', view).forEach(b => act(b, async () => { await api('/paper/orders/' + b.dataset.pcancel, { method: 'DELETE' }); render(); return ''; }));
 };
 
+// The order ticket used on Home and on the simple Trade page (paper and the other brokerages).
+const ticketHtml = (a, symbol = 'SPY') => `<form class="card ticket" id="ticket"><h2>Trade</h2>
+      <div id="deskStrip"></div>
+      <div class="row"><label>Symbol<input name="symbol" value="${esc(symbol)}" required autocomplete="off" dir="ltr"></label>
+        <label>Order type<select name="type">${['market', 'limit', 'stop', 'stop_limit'].map(t => `<option value="${t}">${{ market: 'Market', limit: 'Limit', stop: 'Stop', stop_limit: 'Stop limit' }[t]}</option>`).join('')}</select></label></div>
+      <div class="seg" id="qSide"><button type="button" class="buy on" data-s="buy">Buy</button><button type="button" class="sell" data-s="sell">Sell</button></div><input type="hidden" name="side" value="buy">
+      <div id="qHold"></div>
+      <div class="row"><label>Shares<input name="qty" type="number" step="any" min="0"></label><label class="qnot">or Dollars<input name="notional" type="number" step="any" min="0"></label></div>
+      <div class="row qpx"><label class="qlim" hidden>Limit price<input name="limit_price" type="number" step="any" min="0"></label><label class="qstp" hidden>Stop price<input name="stop_price" type="number" step="any" min="0"></label><label class="qtif" hidden>Good for<select name="time_in_force"><option value="day">Today (Day)</option><option value="gtc">Until cancelled (GTC)</option></select></label></div>
+      <label class="check qshort" hidden><input type="checkbox" name="allow_short"> ${state.account === 'paper' ? 'Sell short (practice money: no minimum balance)' : 'Sell short (I do not own it; margin account with $2,000+ needed)'}</label>
+      <div id="qGuide"></div><div id="qCost"></div><div id="qBear"></div>
+      <button id="qPlace">Review order</button> <button type="button" class="ghost" id="quote">Quote</button><div class="err"></div>
+      ${a.live ? '<p class="warn">This sends a real order with real money.</p>' : ''}
+    </form>`;
 // The quick ticket: order types, the desk strip, a guide to the chosen type, costs, what the
 // account holds (with "Sell all") and, for sells of something not held, the alternatives.
 function wireQuickTicket(t, view, a) {
@@ -1157,7 +1163,8 @@ function wireQuickTicket(t, view, a) {
     if (f.allow_short) { f.allowShort = true; f.allow_short = true; }
     let r;
     if (st.type !== 'market' && state.account === 'alpaca') r = await api('/alpaca/orders', { body: { ...f, time_in_force: f.time_in_force || 'day' } });
-    else if (st.type !== 'market' && state.account !== 'paper') throw new Error('Limit and stop orders on this brokerage: use its own app for now; market orders work here.');
+    // Limit orders go to every brokerage; stop orders only where they are supported here.
+    else if (!['market', 'limit'].includes(st.type) && state.account !== 'paper') throw new Error('Stop orders on this account: use the brokerage\'s own app for now. Market and limit orders work here.');
     else r = await api('/orders', { body: { ...f, account: state.account } });
     setTimeout(render, 900);
     return `${r.side || f.side} ${r.symbol || f.symbol}: ${r.status}${r.price ? ' @ ' + money(r.price) : r.fillPrice ? ' @ ' + money(r.fillPrice) : ''}`;
@@ -1651,7 +1658,7 @@ routes.settings = async view => {
   // Accounts created with Google have no password until they add one; they confirm with their email.
   const pw = ME.hasPassword, confirmLabel = what => pw ? `Password to ${what}` : `Type your email to ${what}`, confirmType = pw ? 'password' : 'email';
   view.innerHTML = `<h1>Settings</h1>
-  <div class="grid">
+  <div class="grid masonry">
     <div class="card"><h2>News pop-ups</h2><label class="chk"><input type="checkbox" id="newsT" ${toastsOn() ? 'checked' : ''}> Show today's headlines about the stocks I own</label></div>
     <div class="card" id="pnlPrefs"><h2>Portfolio numbers</h2>
       <p class="mu" style="margin-top:0">How your account value changes on the screen.</p>
@@ -1861,6 +1868,12 @@ function lazyRoutes(load, fn, helpers, keys) {
   for (const k of keys) routes[k] = Object.assign(async (view, q) => { await ensure(); return routes[k](view, q); }, { lazyOf: fn });
 }
 registerTrading(routes, { accountBoxes, secureConfirm, accounts, $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, approvalsBanner, statementRow, wireStatement, prefs: () => PREFS.portfolio, sinceLastLook, sinceStat, onLeave, render, updateBadge, me: () => ME, refreshMe, state });
+// Trade, Positions and Orders follow the account chosen in the side panel: the full screens for an
+// Alpaca account, simple pages (pages/simple.js) for practice money and the other brokerages.
+for (const k of ['trade', 'positions', 'orders']) {
+  const full = routes[k];
+  routes[k] = async (view, q) => { await accounts(); return /^alpaca/.test(state.account) ? full(view, q) : (await import('./pages/simple.js'))[k](view, q, { ...shared, ticketHtml, wireQuickTicket }); };
+}
 // The tabs on top of every Marketplace page.
 const marketTabs = on => `<div class="chips viewtabs">${NAV.find(([g]) => g === 'Marketplace')[1].map(([k, t]) => `<a href="#/${k}"><button type="button" class="${k === on ? 'on' : ''}">${esc({ marketplace: 'Overview', sharedstrategies: 'Strategies', sharedportfolios: 'Portfolios' }[k] || t)}</button></a>`).join('')}</div>`;
 const shared = { marketTabs, $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, refreshMe, accounts, accountOptions, acctLabel, state, adminTabs, adminPage, secureConfirm, me: () => ME, paid: () => isPaid(ME) };

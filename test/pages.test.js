@@ -13,7 +13,9 @@ test('every local link on the published pages is copied by the Pages build', () 
     for (const [, ref] of html.matchAll(/(?:href|src)="(?![a-z]+:)([^"#?]+)/g)) {
       if (ref.startsWith('//') || /^\/?app\/?$/.test(ref)) continue;
       const p = ref.replace(/^\//, '') || 'index.html';
-      const ok = made.has(p) || (!/\.\w+$/.test(p) && made.has(p + '.html'));
+      // Folders copied whole (cp -r fonts ../_site/fonts): the file must exist in public/.
+      const dir = p.includes('/') && new RegExp(`cp -r ${p.split('/')[0]} \\.\\./_site/`).test(wf) && fs.existsSync(new URL(`../public/${p}`, import.meta.url));
+      const ok = dir || made.has(p) || (!/\.\w+$/.test(p) && made.has(p + '.html'));
       if (!ok) missing.push(`${page} → ${ref}`);
     }
   }

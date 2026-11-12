@@ -183,7 +183,7 @@ export function pageGuide(view, route, { practice = true } = {}) {
   // inside one, and at the top when the page has no title. Always a direct part of the page.
   const h1 = view.querySelector('h1'), top = h1 && [...view.children].find(c => c === h1 || c.contains(h1));
   if (!top) return view.prepend(box);
-  if (top !== h1 && !top.classList.contains('row')) return top.before(box);
+  if (top !== h1 && !top.classList.contains('row') && !top.classList.contains('pagehead')) return top.before(box);
   const clock = top.nextElementSibling?.id === 'homeClock' ? top.nextElementSibling : null;
   (clock || top).after(box);
 }
