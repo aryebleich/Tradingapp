@@ -600,6 +600,8 @@ api.use('/taxpilot', taxPilotRouter);
 api.use('/rules', rulesRouter);
 api.use('/combined', combinedRouter);
 api.use('/equalize', equalizeRouter);
+// Optional features each user switches on in Settings (src/extras.js).
+api.use('/extras', (req, res, next) => import('./src/extras.js').then(m => m.extrasRouter(req, res, next), next));
 api.use('/biz', bizRouter);
 api.use('/scripts', scriptsRouter);
 api.use('/profiles', profilesRouter);

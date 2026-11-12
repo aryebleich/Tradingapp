@@ -853,6 +853,10 @@ const MIGRATIONS = [
   'CREATE TABLE IF NOT EXISTS signal_auto (user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, json TEXT NOT NULL)',
   'CREATE TABLE IF NOT EXISTS signal_trades (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, signal_id INTEGER, account TEXT NOT NULL, symbol TEXT NOT NULL, qty REAL NOT NULL, entry REAL NOT NULL, stop REAL NOT NULL, target REAL NOT NULL, risk REAL NOT NULL, status TEXT NOT NULL, exit_price REAL, note TEXT, opened_at INTEGER NOT NULL, closed_at INTEGER, expires_day TEXT)',
   'CREATE INDEX IF NOT EXISTS signal_trades_open ON signal_trades (status)',
+  'CREATE TABLE IF NOT EXISTS family_members (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, name TEXT NOT NULL, born INTEGER, goal TEXT, symbol TEXT NOT NULL, amount REAL NOT NULL, every_days INTEGER NOT NULL DEFAULT 7, account TEXT NOT NULL DEFAULT \'paper\', active INTEGER NOT NULL DEFAULT 1, next_at INTEGER NOT NULL, created_at INTEGER NOT NULL)',
+  'CREATE INDEX IF NOT EXISTS family_members_due ON family_members (active, next_at)',
+  'CREATE TABLE IF NOT EXISTS family_ledger (id INTEGER PRIMARY KEY, member_id INTEGER NOT NULL, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, symbol TEXT NOT NULL, qty REAL NOT NULL, price REAL NOT NULL, at INTEGER NOT NULL)',
+  'CREATE INDEX IF NOT EXISTS family_ledger_member ON family_ledger (member_id)',
   'CREATE TABLE IF NOT EXISTS whale_wallets (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, chain TEXT NOT NULL, address TEXT NOT NULL, label TEXT, balance REAL, prev_balance REAL, threshold REAL NOT NULL DEFAULT 100, checked_at INTEGER, moved_at INTEGER, UNIQUE (user_id, chain, address))',
   'CREATE TABLE IF NOT EXISTS earnings_summaries (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, symbol TEXT, title TEXT, summary TEXT NOT NULL, created_at INTEGER NOT NULL)',
 

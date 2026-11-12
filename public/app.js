@@ -47,6 +47,10 @@ async function api(path, opts = {}, retried) {
   const get = !opts.method && !opts.body;
   if (PREFETCH && !get) throw new Error('Read-only while loading in the background');
   if (PREFETCH && get && SWR.get(path)?.ok && Date.now() - SWR.get(path).at < 60e3) return structuredClone(SWR.get(path).data);
+  // Before an order: the second opinion, the user's own habits and the tax, when switched on.
+  if (!get && !retried && !opts.checked && opts.body && /^\/(orders|alpaca\/orders)$/.test(path) && (EXTRAS.devil || EXTRAS.coach || EXTRAS.taxticket)) {
+    if (!(await (await import('./pages/extras.js')).beforeOrder(shared, opts.body))) throw new Error('The order was not sent.');
+  }
   if (!get && ACCTS) ACCTS.at = 0; // a change may have connected or removed an account: the list is read again
   if (!get) { if (LIGHT.test(path)) { const top = path.split('/')[1]; for (const k of [...SWR.keys()]) if (k.split(/[/?]/)[1] === top) SWR.delete(k); } else SWR.clear(); }
   else if (!SWR_SKIP.test(path)) {
@@ -169,6 +173,10 @@ async function sinceLastLook(account, equity) {
 const sinceStat = s => (s ? `<div class="stat since"><span>Since you last looked</span><b class="${cls(s.change)}">${money(s.change)}</b><small class="mu"><span dir="ltr">${pct(s.pct, 2)}</span> · ${new Date(s.at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</small></div>` : '');
 // Accounts the user can trade (paper, Alpaca, other brokerages), cached for a minute.
 let ACCTS = null;
+// Optional features the user switched on (Settings → Optional features; pages/extras.js).
+let EXTRAS = {};
+const TOOL_KEYS = ['goals', 'family', 'replay', 'coach', 'explain', 'autopsy', 'promises', 'crowd', 'shailos', 'statement'];
+const loadExtras = async () => { EXTRAS = (await api('/extras').catch(() => null))?.on || EXTRAS; };
 async function accounts(force) {
   if (force || !ACCTS || Date.now() - ACCTS.at > 60e3) ACCTS = { at: Date.now(), list: await api('/accounts').catch(() => [{ id: 'paper', name: 'Paper account', connected: true }]) };
   return ACCTS.list;
@@ -402,6 +410,7 @@ const ICONS = {
   referrals: '<path d="M20 12v9H4v-9M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 1 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 1 0 0-5C13 2 12 7 12 7z"/>',
   tax: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 15l6-6M9.5 9.5h.01M14.5 14.5h.01"/>',
   text: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>', hotline: '<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/>', settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 13H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 3V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 21 10h.1a2 2 0 1 1 0 4z"/>',
+  extras: '<path d="M12 3l2.200 5.400 5.800.500-4.400 3.800 1.400 5.700L12 15.300 6.999 18.400l1.400-5.700L4 8.900l5.800-.500z"/>',
   'admin-phoneaccts': '<rect x="7" y="2" width="10" height="20" rx="2"/><circle cx="12" cy="10" r="2.200"/><path d="M8.500 16c.700-1.600 2-2.400 3.500-2.400s2.800.800 3.500 2.400M11 19h2"/>',
   'admin-phone': '<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/>',
   'admin-ai': '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/>',
@@ -541,17 +550,18 @@ async function render(opts) {
     // Signing in for the Android app: back to the app once signed in here.
     if (sessionStorage.getItem('qp_next') === 'handoff') { sessionStorage.removeItem('qp_next'); location.href = '/api/auth/app-handoff'; return; }
     const groups = ME.role === 'admin' ? [adminNav(), ...NAV] : NAV;
-    await Promise.all([accounts(), loadPrefs()]); await defaultAccount();
+    await Promise.all([accounts(), loadPrefs(), loadExtras()]); await defaultAccount();
+    if (EXTRAS.voice || $('#voiceBtn')) import('./pages/extras.js').then(m => m.voiceButton(shared)).catch(() => {});
     // Groups start folded; their arrow opens them (remembered). The group holding the current page opens.
     const opened = [...(() => { try { return JSON.parse(localStorage.getItem('qp_nav_open') || '[]'); } catch { return []; } })(), ...$$('#nav .grp.sec[aria-expanded="true"]').map(b => b.dataset.g)];
     const START = await import('./pages/start.js').then(m => m.startDone()).catch(() => true);
     // The menu is built again only when something in it changes (page, plan, add-ons, trading mode):
     // a background refresh of the page never rebuilds it, so a tap on the menu is never lost.
-    const navKey = JSON.stringify([route, ME.role, ME.plan, ME.planStatus, ME.previewPlan, ME.previewAdviser, ME.addons, ME.email, ME.trialUsed, START, state.account]);
+    const navKey = JSON.stringify([route, ME.role, ME.plan, ME.planStatus, ME.previewPlan, ME.previewAdviser, ME.addons, ME.email, ME.trialUsed, START, state.account, TOOL_KEYS.some(k => EXTRAS[k])]);
     if (render.navKey !== navKey || !$('#nav').firstElementChild) {
     render.navKey = navKey;
     const link = ([k, t]) => k == null ? `<div class="navsub">${esc(t)}</div>` : `<a href="#/${k}" class="${k === route ? 'on' : ''}">${icon(k)}${t}</a>`;
-    const core = CORE.filter(([k]) => k !== 'start' || !START || route === 'start');
+    const core = [...CORE.filter(([k]) => k !== 'start' || !START || route === 'start'), ...(TOOL_KEYS.some(k => EXTRAS[k]) ? [['extras', 'My tools']] : [])];
     $('#nav').innerHTML = `<div class="navcore">${core.map(link).join('')}</div>` + groups.map(([g, items]) => { const list = items.filter(([k]) => !(ADDON_PAGES[k] && ME.addons?.[ADDON_PAGES[k]] === false)), open = opened.includes(g) || list.some(([k]) => k === route);
       return `<button type="button" class="grp sec" data-g="${esc(g)}" aria-expanded="${open}"><span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span><span class="gname">${g}</span><span class="gcount" aria-hidden="true">${list.filter(([k]) => k != null).length}</span></button><div class="grpbody" ${open ? '' : 'hidden'}>${list.map(link).join('')}</div>`; }).join('')
       + (isPaid(ME) ? '' : `<a href="#/funding" class="upsell">${icon('star')}${ME.trialUsed ? 'Upgrade to Pro' : 'Try Pro free for 14 days'}</a>`)
@@ -1893,7 +1903,7 @@ for (const k of ['trade', 'positions', 'orders']) {
 }
 // The tabs on top of every Marketplace page.
 const marketTabs = on => `<div class="chips viewtabs">${NAV.find(([g]) => g === 'Marketplace')[1].map(([k, t]) => `<a href="#/${k}"><button type="button" class="${k === on ? 'on' : ''}">${esc({ marketplace: 'Overview', sharedstrategies: 'Strategies', sharedportfolios: 'Portfolios' }[k] || t)}</button></a>`).join('')}</div>`;
-const shared = { marketTabs, $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, refreshMe, accounts, accountOptions, acctLabel, state, adminTabs, adminPage, secureConfirm, me: () => ME, paid: () => isPaid(ME) };
+const shared = { extras: () => EXTRAS, setExtras: on => { EXTRAS = on; render.navKey = null; }, marketTabs, $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, refreshMe, accounts, accountOptions, acctLabel, state, adminTabs, adminPage, secureConfirm, me: () => ME, paid: () => isPaid(ME) };
 lazyRoutes(() => import('./pages/studio.js'), 'registerStudio', shared, ["ai", "agents", "code"]);
 lazyRoutes(() => import('./pages/build.js'), 'registerBuild', shared, ["scanner", "portfolios", "fleet", "marketplace", "aimarket", "sharedstrategies", "sharedportfolios", "signalchannels"]);
 lazyRoutes(() => import('./pages/analytics.js'), 'registerAnalytics', shared, ["insights", "risk", "values", "halal", "institutions", "spend", "news"]);
@@ -1910,7 +1920,44 @@ registerAddons(routes, shared);
 lazyRoutes(() => import('./pages/instruments.js'), 'registerInstruments', shared, ["invest"]);
 registerStart(routes, shared);
 lazyRoutes(() => import('./pages/admin-ops.js'), 'registerAdminOps', shared, ["admin-data", "admin-comms", "admin-strategies", "admin-seo", "admin-agents", "admin-hosting"]);
-initSearch(shared, [['Main', CORE], ...NAV]);
+initSearch(shared, [['Main', [...CORE, ['extras', 'My tools']]], ...NAV]);
+// My tools: the optional features that have a page.
+routes.extras = async (view, q) => (await import('./pages/extras.js')).page(view, q, shared);
+// Home: the My day card, when switched on.
+{ const home = routes.dashboard; routes.dashboard = async (view, q) => { await home(view, q); if (EXTRAS.myday && view.isConnected) (await import('./pages/extras.js')).myDayCard(shared, view).catch(() => {}); }; }
+// Settings in sections: optional features first, then how it looks, trading and taxes, sign-in
+// and security, connections, your data. Each card keeps its form and its buttons; only its place changes.
+const SET_SECTIONS = [
+  ['look', 'Display and language', ['Page guides', 'News pop-ups', 'Portfolio numbers', 'Chart colors', 'Calm mode', 'Language']],
+  ['trade', 'Trading and taxes', ['Taxes', 'Add-ons']],
+  ['signin', 'Sign-in and security', ['Password', 'Add a password', 'Two-factor authentication', 'Passkeys', 'Phone for SMS & hotline', 'Active sessions', 'Security log']],
+  ['links', 'Connections', ['Your brokerage', 'QuantConnect']],
+  ['data', 'Your data', ['Your data']],
+];
+{ const base = routes.settings; routes.settings = async (view, q) => {
+  await base(view, q);
+  if (!view.isConnected || $('.set-sec', view)) return;
+  const cards = $$('.card', view).filter(c => !c.classList.contains('pguide') && (c.parentElement === view || (c.parentElement.classList.contains('grid') && c.parentElement.parentElement === view)));
+  const title = c => (c.querySelector('h2')?.textContent || '').trim();
+  const secs = [['extras', 'Optional features', []], ...SET_SECTIONS.map(([id, t, names]) => [id, t, cards.filter(c => names.includes(title(c)))])];
+  const placed = new Set(secs.flatMap(x => x[2])), rest = cards.filter(c => !placed.has(c));
+  if (rest.length) secs.push(['more', 'More', rest]);
+  const frag = document.createDocumentFragment(), nav = document.createElement('nav');
+  nav.className = 'chips set-nav'; nav.setAttribute('aria-label', 'Sections');
+  nav.innerHTML = secs.filter(x => x[0] === 'extras' || x[2].length).map(([id, t]) => `<button type="button" data-sec="set-${id}">${t}</button>`).join('');
+  frag.append(nav);
+  for (const [id, t, list] of secs) {
+    if (id !== 'extras' && !list.length) continue;
+    const sec = document.createElement('section'); sec.className = 'set-sec'; sec.id = 'set-' + id;
+    sec.innerHTML = `<h2 class="set-h">${t}</h2><div class="${id === 'extras' ? 'set-extras' : list.length > 1 ? 'grid masonry' : 'set-one'}"></div>`;
+    for (const c of list) sec.lastElementChild.append(c);
+    frag.append(sec);
+  }
+  $$(':scope > .grid', view).forEach(g => { if (!g.children.length) g.remove(); });
+  view.append(frag);
+  $$('[data-sec]', nav).forEach(b => (b.onclick = () => $('#' + b.dataset.sec, view)?.scrollIntoView({ behavior: 'smooth', block: 'start' })));
+  await (await import('./pages/extras.js')).settingsCard(shared, $('#set-extras .set-extras', view)).catch(e => console.warn('extras', e));
+}; }
 startBell(shared);
 lazyRoutes(() => import('./pages/wealth.js'), 'registerWealth', shared, ["wealth"]);
 lazyRoutes(() => import('./pages/tools.js'), 'registerTools', shared, ["alpaca-tools"]);

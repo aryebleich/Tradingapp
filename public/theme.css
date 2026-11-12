@@ -1105,3 +1105,22 @@ button.alpbtn:hover, .alpbtn:hover { background: #ffe14d !important; color: #000
 .alp-mark { width: 20px; height: 20px; flex: none; }
 /* a short message after hiding the guides */
 .pg-note { position: fixed; z-index: 60; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--tx); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 14px; box-shadow: var(--shadow); max-width: calc(100vw - 32px); }
+
+/* Settings in sections */
+.set-nav { margin: 4px 0 14px; position: sticky; top: 58px; z-index: 5; background: var(--bg); padding: 6px 0; }
+.set-sec { margin: 0 0 22px; scroll-margin-top: 110px; }
+.set-h { font-size: 13px; text-transform: uppercase; letter-spacing: .07em; color: var(--mu); margin: 0 0 10px; }
+.set-one > .card { margin: 0; }
+/* Optional features */
+.ex-g { margin: 14px 0 6px; }
+.ex-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(310px, 100%), 1fr)); gap: 8px; }
+.ex-item { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--bd); border-radius: var(--r-sm, 10px); cursor: pointer; margin: 0; }
+.ex-item:has(input:checked) { border-color: var(--ac); background: var(--acs); }
+.ex-item input { margin-top: 3px; flex: none; width: auto; }
+.ex-item span { display: flex; flex-direction: column; gap: 2px; }
+.ex-item small { font-size: 13px; line-height: 1.4; }
+.myday p { margin: 4px 0; } .myday-next { margin-top: 10px !important; padding-top: 10px; border-top: 1px solid var(--bd); }
+dialog.beforeorder { max-width: 560px; } dialog.beforeorder h3 { margin: 14px 0 6px; }
+pre.stmt { white-space: pre-wrap; background: var(--bg2); border-radius: var(--r-sm, 10px); padding: 14px; font: 14px/1.5 ui-monospace, Menlo, monospace; }
+#voiceBtn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+#voiceBtn.listening { color: var(--neg, #dc2626); border-color: currentColor; }

@@ -42,6 +42,9 @@ export const JOBS = [
   ['business', 1440, async t => (await import('./business/routes.js')).runBusiness(t)],
   // Equalize accounts at the market open (9:30 to 10:00 New York), for users who turned it on.
   ['equalize', 5, async t => (await import('./equalize.js')).runEqualize(t)],
+  // Optional features: family allowances on their schedule, and the monthly statement on the 1st.
+  ['family', 15, async t => (await import('./extras.js')).runFamily(t)],
+  ['statements', 60, async t => (await import('./extras.js')).runStatements(t)],
   // One app for all your money: bank balances, transactions and crypto wallets, every 6 hours.
   ['money', 360, async () => {
     const { all, run, now } = await import('./db.js'); const M = await import('./money.js');
