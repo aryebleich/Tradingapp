@@ -12,7 +12,7 @@ export function registerOwner(routes, helpers) {
     'admin-upgrades': guard(upgrades),
     // Older links: business mode and Alpaca plans are now under Upgrades; the money levers under Money & fees.
     'admin-business': guard(() => (location.hash = '#/admin-upgrades?tab=mode')), 'admin-alpaca': guard(() => (location.hash = '#/admin-upgrades?tab=alpaca')),
-    'admin-money': guard(async view => { await H.adminPage(view, 'admin-money'); await moneyExtras(view); }), 'admin-yiddish': guard(yiddish), 'admin-phone': guard(phoneLine), 'admin-phoneaccts': guard(phoneAccounts), 'admin-ai': guard(aiPrivacy), 'admin-readme': guard(privateReadme), 'admin-admins': guard(admins), 'admin-keys': guard(keys) });
+    'admin-money': guard(async view => { await H.adminPage(view, 'admin-money'); await moneyExtras(view); }), 'admin-phone': guard(phoneLine), 'admin-phoneaccts': guard(phoneAccounts), 'admin-ai': guard(aiPrivacy), 'admin-readme': guard(privateReadme), 'admin-admins': guard(admins), 'admin-keys': guard(keys) });
 }
 
 const modeHtml = (mode, ria, doneSteps) => `<div class="card"><h2>Business mode</h2>
@@ -261,31 +261,6 @@ async function keys(view) {
   }
 }
 
-// Yiddish Labs runs on its own GitHub workflow; this page starts it, switches it on for every push
-// and shows how the last runs went.
-async function yiddish(view) {
-  const d = await H.api('/admin/site/yiddish');
-  const st = d.status, when = t => (t ? new Date(t).toLocaleString() : '-');
-  view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-yiddish')}
-  <div class="card"><h2>Yiddish Labs translation</h2>
-    <p class="mu">Runs on GitHub, apart from everything else. Only app text added since the last run is sent; the homepage, Admin and the README are not. Whole sentences go several at a time.</p>
-    ${st ? `<div class="stats"><div class="stat"><span>Last run</span><b>${when(st.at)}</b></div><div class="stat"><span>Translated</span><b>${st.translated ?? 0}</b></div>
-      <div class="stat"><span>Kept hand-written</span><b>${st.kept ?? 0}</b></div><div class="stat"><span>Credits left</span><b>${st.credits == null ? '-' : Number(st.credits).toLocaleString()}</b></div></div>
-      ${st.stopped ? `<p class="banner err">Stopped: ${H.esc(st.stopped)}</p>` : ''}` : '<p class="mu">No run yet.</p>'}
-    <p class="mu small-print">Next run translates text added since commit <code data-no-tr>${H.esc((d.lastRef || '').slice(0, 10) || 'the previous commit')}</code>.</p>
-    ${d.configured ? `
-      <div class="row"><label>Since commit (optional)<input id="ylSince" placeholder="e.g. 67a78dc" data-no-tr></label><label>At most (optional)<input id="ylLimit" type="number" min="1" placeholder="all"></label><button id="ylRun">Translate new text now</button></div><div class="err"></div>
-      <label class="check"><input type="checkbox" id="ylAuto" ${d.auto ? 'checked' : ''}> Run automatically after every push to main</label>
-      ${d.error ? `<p class="err">${H.esc(d.error)}</p>` : ''}`
-    : `<p class="banner">To run it from here, add <code>GITHUB_TOKEN</code> in <a href="#/admin-keys">Keys</a>: a fine-grained token for <b data-no-tr>${H.esc(d.repo)}</b> with Actions and Variables (read and write). Until then, start it on GitHub: Actions → Yiddish Labs translation → Run workflow.</p>`}
-    <p class="mu small-print">One-time setup on GitHub: Settings → Secrets and variables → Actions → add <code>YL_EMAIL</code> and <code>YL_PASSWORD</code> (your Yiddish Labs sign-in).</p></div>
-  ${d.runs.length ? `<div class="card tablewrap"><h2>Recent runs</h2><table><tr><th>Started</th><th>How</th><th>Result</th><th></th></tr>${d.runs.map(r => `<tr><td>${when(r.at)}</td><td>${r.event === 'push' ? 'after a push' : 'started by hand'}</td>
-    <td>${r.status !== 'completed' ? '<span class="pill">running</span>' : r.conclusion === 'success' ? '<span class="pill pos">done</span>' : r.conclusion === 'skipped' ? '<span class="pill">skipped</span>' : `<span class="pill warn">${H.esc(r.conclusion || '')}</span>`}</td>
-    <td><a href="${r.url}" target="_blank" rel="noopener">Open log ↗</a></td></tr>`).join('')}</table></div>` : ''}`;
-  if (H.$('#ylRun', view)) H.act(H.$('#ylRun', view), async () => { await H.api('/admin/site/yiddish/run', { body: { since: H.$('#ylSince', view).value, limit: H.$('#ylLimit', view).value } }); setTimeout(H.render, 4000); return 'Started on GitHub. It shows up below in a few seconds.'; });
-  if (H.$('#ylAuto', view)) H.$('#ylAuto', view).onchange = async e => { try { await H.api('/admin/site/yiddish/auto', { method: 'PUT', body: { on: e.target.checked } }); } catch (x) { e.target.checked = !e.target.checked; alert(x.message); } };
-}
-
 // Phone line (IVR): settings, what callers hear, the Twilio links and the call log.
 const LOGNAMES = { hotline_call: 'Call', hotline_order: 'Order', hotline_cancel_all: 'Cancel all orders', hotline_close_all: 'Close all positions', hotline_pin_failed: 'Wrong PIN', hotline_signup: 'Account opened by phone', hotline_ai: 'Asked the assistant', hotline_settings: 'Settings changed' };
 async function phoneLine(view) {
@@ -376,7 +351,7 @@ async function privateReadme(view, q) {
   view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-readme')}
   <div class="card"><div class="row" style="justify-content:space-between;align-items:center"><h2>Private README</h2>
     <span class="pill">Preview · kept up to date by the code</span></div>
-    <p class="mu" style="margin-top:0">Only admins see this: admin files, setup, legal information and integrations, business information and Yiddish Labs. It is put in order again at every push (repeated lines and sections taken out, the parts that come with the code refreshed), so it is shown to read, not to edit. Last put in order ${when(d.updatedAt)}.</p>
+    <p class="mu" style="margin-top:0">Only admins see this: admin files, setup, legal information and integrations, and business information. It is put in order again at every push (repeated lines and sections taken out, the parts that come with the code refreshed), so it is shown to read, not to edit. Last put in order ${when(d.updatedAt)}.</p>
     ${text ? '' : `<p class="banner">Nothing saved yet. <button type="button" class="small" id="rmImport">Load the full guide</button> brings in the last full README (commit <code data-no-tr>${H.esc(d.fullRef.slice(0, 7))}</code>).</p>`}
     <div id="rmView" class="readme" data-no-tr data-keep-setup></div>
     <div class="row" style="margin-top:10px"><button type="button" class="ghost" id="rmDown">Download PDF</button></div><div class="err"></div></div>

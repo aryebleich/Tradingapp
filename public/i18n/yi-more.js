@@ -1,5 +1,4 @@
-// Translations made with Yiddish Labs (https://app.yiddishlabs.com), written by
-// scripts/yiddish-labs.mjs. They take precedence over the hand-written strings in yi.js.
+// More Yiddish for the app's screens. Applied after the strings in yi.js; yi-heimish.js comes last.
 export default {
  "Trading": "טרעדינג",
  "Markets": "מארקעטס",
@@ -752,7 +751,6 @@ export default {
  "Sign in with Google": "סיינט זיך אריין מיט גוגל",
  "Plans and card payments (Stripe)": "סובסקריפשן פלענער און קרעדיט קארד צאלונגען (Stripe)",
  "Text messages and hotline (Twilio)": "טעקסט מעסעדזשעס און די האטליין (טוויליאו)",
- "Yiddish Labs credit line": "די קרעדיט ליין פאר אידיש לאבס",
  "Deposits: Bank account (ACH) (Stripe)": "איינצאלן געלט: באנק אקאונט (ACH דורך Stripe)",
  "Deposits: Debit card (Helcim)": "דעפאזיטס: דעביט קארד (העלסים)",
  "Deposits: Debit card (Stripe)": "איינצאלונגען: דעביט קארד (דורך סטרייפ)",

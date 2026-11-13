@@ -173,6 +173,9 @@ async function sinceLastLook(account, equity) {
 const sinceStat = s => (s ? `<div class="stat since"><span>Since you last looked</span><b class="${cls(s.change)}">${money(s.change)}</b><small class="mu"><span dir="ltr">${pct(s.pct, 2)}</span> · ${new Date(s.at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</small></div>` : '');
 // Accounts the user can trade (paper, Alpaca, other brokerages), cached for a minute.
 let ACCTS = null;
+// Beginner help on or off (Settings → Display and language). Off hides every guide and tip at once.
+const helpOn = () => { try { return localStorage.getItem('qp_help') !== 'off'; } catch { return true; } };
+document.body.classList.toggle('nohelp', !helpOn());
 // Optional features the user switched on (Settings → Optional features; pages/extras.js).
 let EXTRAS = {};
 const TOOL_KEYS = ['goals', 'family', 'replay', 'coach', 'explain', 'autopsy', 'promises', 'crowd', 'shailos', 'statement'];
@@ -421,7 +424,7 @@ const ICONS = {
   'admin-setup': '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
   admin: '<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"/>',
   wealth: '<path d="M3 20h18M5 20V10M10 20V6M15 20v-8M20 20V4"/>', 'alpaca-tools': '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
-  'admin-alpaca': '<path d="M4 19V5l8 7 8-7v14"/>', 'admin-upgrades': '<path d="M12 19V5M5 12l7-7 7 7"/><path d="M5 21h14"/>', 'admin-sponsored': '<path d="M4 11v2a1 1 0 0 0 1 1h2l5 4V6L7 10H5a1 1 0 0 0-1 1z"/><path d="M16 8a5 5 0 0 1 0 8M19 5a9 9 0 0 1 0 14"/>', 'admin-yiddish': '<path d="M4 5h8M8 3v2M5 5c1 4 4 7 7 8M11 5c-1 4-4 7-7 8M13 21l4-10 4 10M14.5 17h5"/>', 'admin-business': '<path d="M3 7h18v13H3zM8 7V4h8v3"/>', 'admin-admins': '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>', 'admin-keys': '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/>',
+  'admin-alpaca': '<path d="M4 19V5l8 7 8-7v14"/>', 'admin-upgrades': '<path d="M12 19V5M5 12l7-7 7 7"/><path d="M5 21h14"/>', 'admin-sponsored': '<path d="M4 11v2a1 1 0 0 0 1 1h2l5 4V6L7 10H5a1 1 0 0 0-1 1z"/><path d="M16 8a5 5 0 0 1 0 8M19 5a9 9 0 0 1 0 14"/>', 'admin-business': '<path d="M3 7h18v13H3zM8 7V4h8v3"/>', 'admin-admins': '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>', 'admin-keys': '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/>',
   chart: '<path d="M7 4v16M17 6v12M4 8h6v8H4zM14 9h6v6h-6z"/>', ai: '<path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
   agents: '<path d="M3 17l6-6 4 4 8-8"/><circle cx="21" cy="7" r="1"/><path d="M3 21h18"/>', news: '<path d="M4 5h13v14H6a2 2 0 0 1-2-2zM17 9h3v8a2 2 0 0 1-2 2"/><path d="M8 9h5M8 13h5"/>',
   scanner: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5M8 11h6M11 8v6"/>', optionslab: '<path d="M3 18c4 0 5-12 9-12s5 12 9 12"/><path d="M3 21h18"/>',
@@ -561,7 +564,7 @@ async function render(opts) {
     if (render.navKey !== navKey || !$('#nav').firstElementChild) {
     render.navKey = navKey;
     const link = ([k, t]) => k == null ? `<div class="navsub">${esc(t)}</div>` : `<a href="#/${k}" class="${k === route ? 'on' : ''}">${icon(k)}${t}</a>`;
-    const core = [...CORE.filter(([k]) => k !== 'start' || !START || route === 'start'), ...(TOOL_KEYS.some(k => EXTRAS[k]) ? [['extras', 'My tools']] : [])];
+    const core = [...CORE.filter(([k]) => k !== 'start' || ((!START || route === 'start') && helpOn())), ...(TOOL_KEYS.some(k => EXTRAS[k]) ? [['extras', 'My tools']] : [])];
     $('#nav').innerHTML = `<div class="navcore">${core.map(link).join('')}</div>` + groups.map(([g, items]) => { const list = items.filter(([k]) => !(ADDON_PAGES[k] && ME.addons?.[ADDON_PAGES[k]] === false)), open = opened.includes(g) || list.some(([k]) => k === route);
       return `<button type="button" class="grp sec" data-g="${esc(g)}" aria-expanded="${open}"><span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span><span class="gname">${g}</span><span class="gcount" aria-hidden="true">${list.filter(([k]) => k != null).length}</span></button><div class="grpbody" ${open ? '' : 'hidden'}>${list.map(link).join('')}</div>`; }).join('')
       + (isPaid(ME) ? '' : `<a href="#/funding" class="upsell">${icon('star')}${ME.trialUsed ? 'Upgrade to Pro' : 'Try Pro free for 14 days'}</a>`)
@@ -610,7 +613,7 @@ $('#nav').addEventListener('click', e => {
 // The hidden copy is opened together with the app itself, while the app is still opening, and then
 // waits: moving it from section to section later never shows the browser's own loading line (it
 // only shows while a page opens, and the copy is already open by then).
-const PF_SKIP = new Set(['start', 'code', 'quantconnect', 'android', 'leaders', 'admin-agents', 'admin-upgrades', 'admin-yiddish', 'admin-seo']);
+const PF_SKIP = new Set(['start', 'code', 'quantconnect', 'android', 'leaders', 'admin-agents', 'admin-upgrades', 'admin-seo']);
 addEventListener('message', e => {
   if (e.origin !== location.origin || PREFETCH) return;
   const d = e.data?.qpData; if (!d) return;
@@ -781,7 +784,7 @@ function labelTables(root) {
     t.classList.add('stack'); t.dataset.labeled = '1';
   }
 }
-new MutationObserver(() => { labelTables($('#view')); attachGlossary($('#view')); }).observe($('#view'), { childList: true, subtree: true });
+new MutationObserver(() => { labelTables($('#view')); if (helpOn()) attachGlossary($('#view')); }).observe($('#view'), { childList: true, subtree: true });
 // Shows which Alpaca account trading goes to (sandbox, paper or live).
 let badgeAt = 0;
 async function updateBadge(force) {
@@ -1684,6 +1687,7 @@ routes.settings = async view => {
   const pw = ME.hasPassword, confirmLabel = what => pw ? `Password to ${what}` : `Type your email to ${what}`, confirmType = pw ? 'password' : 'email';
   view.innerHTML = `<h1>Settings</h1>
   <div class="grid masonry">
+    <div class="card" id="helpCard"><h2>Help for beginners</h2><label class="chk"><input type="checkbox" id="helpT" ${helpOn() ? 'checked' : ''}> Show help for beginners</label><p class="mu small-print">Switch it off to hide every explanation at once: the page guides, the "?" next to words, the Get started page and the welcome cards on Home.</p></div>
     <div class="card"><h2>Page guides</h2><label class="chk"><input type="checkbox" id="guidesT" ${(() => { try { return localStorage.getItem('qp_guides') !== 'off'; } catch { return true; } })() ? 'checked' : ''}> Show the "How this page works" guide on each page</label><p class="mu small-print">Switch it off to hide every guide on every page.</p></div>
     <div class="card"><h2>News pop-ups</h2><label class="chk"><input type="checkbox" id="newsT" ${toastsOn() ? 'checked' : ''}> Show today's headlines about the stocks I own</label></div>
     <div class="card" id="pnlPrefs"><h2>Portfolio numbers</h2>
@@ -1760,6 +1764,10 @@ routes.settings = async view => {
   };
   $$('[name=chartMode]', view).forEach(r => (r.onchange = saveChart)); if ($('#chartColor', view)) $('#chartColor', view).onchange = saveChart;
   $$('[data-color]', view).forEach(b => (b.onclick = () => { $('#chartColor', view).value = b.dataset.color; $$('[data-color]', view).forEach(x => x.classList.toggle('on', x === b)); saveChart(); })); if ($('#hideToday', view)) $('#hideToday', view).onchange = savePnl;
+  if ($('#helpT', view)) $('#helpT', view).onchange = e => {
+    try { e.target.checked ? localStorage.removeItem('qp_help') : localStorage.setItem('qp_help', 'off'); if (!e.target.checked) localStorage.setItem('qp_guides', 'off'); else localStorage.removeItem('qp_guides'); } catch {}
+    document.body.classList.toggle('nohelp', !e.target.checked); render.navKey = null; render();
+  };
   if ($('#guidesT', view)) $('#guidesT', view).onchange = e => { try { e.target.checked ? localStorage.removeItem('qp_guides') : localStorage.setItem('qp_guides', 'off'); } catch {} };
   if ($('#newsT', view)) $('#newsT', view).onchange = e => { try { localStorage.setItem('qp_news_toasts', e.target.checked ? '1' : '0'); } catch {} };
 };
@@ -1770,7 +1778,7 @@ routes.settings = async view => {
 const ADMIN_GROUPS = [
   ['Owner: people', [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-admins', 'Admins'], ['admin-support', 'Support inbox'], ['admin-comms', 'Calls, texts & email'], ['admin-phone', 'Phone line'], ['admin-phoneaccts', 'Phone & text accounts']]],
   ['Owner: money', [['admin-money', 'Money & fees'], ['admin-sponsored', 'Sponsored news'], ['admin-upgrades', 'Upgrades']]],
-  ['Owner: site & content', [['admin-readme', 'README'], ['admin-seo', 'SEO'], ['admin-strategies', 'Original strategies'], ['admin-trust', 'Trust'], ['admin-yiddish', 'Yiddish Labs']]],
+  ['Owner: site & content', [['admin-readme', 'README'], ['admin-seo', 'SEO'], ['admin-strategies', 'Original strategies'], ['admin-trust', 'Trust']]],
   ['Owner: technical', [['admin-agents', 'AI team'], ['admin-ai', 'AI & privacy'], ['admin-keys', 'Keys'], ['admin-data', 'Market data'], ['admin-hosting', 'Hosting'], ['admin-system', 'System health'], ['admin-setup', 'Setup']]],
 ];
 const ADMIN_TABS = ADMIN_GROUPS.flatMap(([, t]) => t);
@@ -1875,7 +1883,7 @@ async function adminPage(view, tab) {
   }));
   if ($('#userFind', view)) $('#userFind', view).oninput = e => { const q = e.target.value.trim().toLowerCase(); $$('#userTable tr[data-email]', view).forEach(tr => (tr.hidden = !!q && !tr.dataset.email.toLowerCase().includes(q))); };
 }
-for (const [k] of ADMIN_TABS.filter(([k]) => !['admin-system', 'admin-trust', 'admin-data', 'admin-comms', 'admin-upgrades', 'admin-yiddish', 'admin-admins', 'admin-keys'].includes(k))) routes[k] = view => (ME?.role === 'admin' ? adminPage(view, k) : routes.dashboard(view, new URLSearchParams()));
+for (const [k] of ADMIN_TABS.filter(([k]) => !['admin-system', 'admin-trust', 'admin-data', 'admin-comms', 'admin-upgrades', 'admin-admins', 'admin-keys'].includes(k))) routes[k] = view => (ME?.role === 'admin' ? adminPage(view, k) : routes.dashboard(view, new URLSearchParams()));
 
 lazyRoutes(() => import('./pages/strategies.js'), 'registerStrategies', { accounts, accountOptions, acctLabel, $, $$, esc, money, cls, date, api, form, act, render, drawChart, onLeave, me: () => ME }, ["strategies", "strategy"]);
 registerBrokers(routes, { $, $$, esc, money, api, form, act, render, accounts });
@@ -1910,7 +1918,7 @@ lazyRoutes(() => import('./pages/analytics.js'), 'registerAnalytics', shared, ["
 lazyRoutes(() => import('./chart.js'), 'registerChart', shared, ["chart"]);
 lazyRoutes(() => import('./pages/optionslab.js'), 'registerOptionsLab', shared, ["optionslab"]);
 registerProtect(routes, shared);
-lazyRoutes(() => import('./pages/owner.js'), 'registerOwner', shared, ["admin-upgrades", "admin-business", "admin-alpaca", "admin-money", "admin-yiddish", "admin-phone", "admin-phoneaccts", "admin-ai", "admin-readme", "admin-admins", "admin-keys"]);
+lazyRoutes(() => import('./pages/owner.js'), 'registerOwner', shared, ["admin-upgrades", "admin-business", "admin-alpaca", "admin-money", "admin-phone", "admin-phoneaccts", "admin-ai", "admin-readme", "admin-admins", "admin-keys"]);
 lazyRoutes(() => import('./pages/alts.js'), 'registerAlts', shared, ["private", "realestate"]);
 lazyRoutes(() => import('./pages/money.js'), 'registerMoney', shared, ["money"]);
 lazyRoutes(() => import('./pages/rules.js'), 'registerRules', shared, ["rules"]);
@@ -1928,9 +1936,10 @@ routes.extras = async (view, q) => (await import('./pages/extras.js')).page(view
 // Settings in sections: optional features first, then how it looks, trading and taxes, sign-in
 // and security, connections, your data. Each card keeps its form and its buttons; only its place changes.
 const SET_SECTIONS = [
-  ['look', 'Display and language', ['Page guides', 'News pop-ups', 'Portfolio numbers', 'Chart colors', 'Calm mode', 'Language']],
+  ['look', 'Display and language', ['Help for beginners', 'Page guides', 'News pop-ups', 'Portfolio numbers', 'Chart colors', 'Calm mode', 'Language']],
   ['trade', 'Trading and taxes', ['Taxes', 'Add-ons']],
-  ['signin', 'Sign-in and security', ['Password', 'Add a password', 'Two-factor authentication', 'Passkeys', 'Phone for SMS & hotline', 'Active sessions', 'Security log']],
+  ['signin', 'Sign-in and security', ['Password', 'Add a password', 'Two-factor authentication', 'Passkeys', 'Phone for SMS & hotline']],
+  ['history', 'Sessions and security log', ['Active sessions', 'Security log']],
   ['links', 'Connections', ['Your brokerage', 'QuantConnect']],
   ['data', 'Your data', ['Your data']],
 ];
@@ -1949,7 +1958,7 @@ const SET_SECTIONS = [
   for (const [id, t, list] of secs) {
     if (id !== 'extras' && !list.length) continue;
     const sec = document.createElement('section'); sec.className = 'set-sec'; sec.id = 'set-' + id;
-    sec.innerHTML = `<h2 class="set-h">${t}</h2><div class="${id === 'extras' ? 'set-extras' : list.length > 1 ? 'grid masonry' : 'set-one'}"></div>`;
+    sec.innerHTML = `<h2 class="set-h">${t}</h2><div class="${id === 'extras' ? 'set-extras' : id === 'history' ? 'set-stack' : list.length > 1 ? 'grid masonry' : 'set-one'}"></div>`;
     for (const c of list) sec.lastElementChild.append(c);
     frag.append(sec);
   }

@@ -248,9 +248,8 @@ adminSiteRouter.get('/alpaca-plans', wrap(async (req, res) => {
   });
 }));
 
-// ---------- Yiddish Labs: its own GitHub workflow, run and watched from here ----------
-// GITHUB_TOKEN: a fine-grained token for this repository with Actions (read and write) and
-// Variables (read and write). GITHUB_REPO defaults to aryebleich/Tradingapp.
+// ---------- GitHub (the repository's README and visibility) ----------
+// GITHUB_TOKEN: an optional fine-grained token for this repository. GITHUB_REPO defaults to aryebleich/Tradingapp.
 const GH = () => (process.env.GITHUB_API_URL || 'https://api.github.com').replace(/\/$/, '');
 const repo = () => process.env.GITHUB_REPO || 'aryebleich/Tradingapp';
 async function gh(method, p, body) {
@@ -260,33 +259,6 @@ async function gh(method, p, body) {
   if (!r.ok) throw Object.assign(new Error((await import('./agents.js')).githubError(r.status, text)), { status: r.status === 404 ? 404 : 502 });
   return text ? JSON.parse(text) : {};
 }
-adminSiteRouter.get('/yiddish', wrap(async (req, res) => {
-  const fs = await import('node:fs/promises');
-  const read = f => fs.readFile(new URL('../scripts/' + f, import.meta.url), 'utf8').catch(() => null);
-  const status = JSON.parse((await read('yl-status.json')) || 'null'), lastRef = ((await read('yl-last-ref.txt')) || '').trim() || null;
-  const out = { status, lastRef, configured: !!process.env.GITHUB_TOKEN, repo: repo(), auto: null, runs: [] };
-  if (out.configured) {
-    try {
-      out.runs = (await gh('GET', '/actions/workflows/yiddish.yml/runs?per_page=10')).workflow_runs.map(r => ({ id: r.id, status: r.status, conclusion: r.conclusion, event: r.event, at: r.created_at, url: r.html_url }));
-      out.auto = (await gh('GET', '/actions/variables/YL_AUTO').catch(e => (e.status === 404 ? { value: 'false' } : Promise.reject(e)))).value === 'true';
-    } catch (e) { out.error = e.message; }
-  }
-  res.json(out);
-}));
-adminSiteRouter.post('/yiddish/run', wrap(async (req, res) => {
-  const since = String(req.body?.since || '').trim(), limit = String(req.body?.limit || '').trim();
-  if (since && !/^[0-9a-f]{7,40}$|^HEAD(~\d+)?$/i.test(since)) throw bad('Since must be a commit id');
-  if (limit && !/^\d{1,4}$/.test(limit)) throw bad('Limit must be a number');
-  await gh('POST', '/actions/workflows/yiddish.yml/dispatches', { ref: 'main', inputs: { since, limit } });
-  await audit(req.user.id, 'yiddish_run', { since, limit }, req.ip);
-  res.json({ ok: true });
-}));
-adminSiteRouter.put('/yiddish/auto', wrap(async (req, res) => {
-  const value = req.body?.on ? 'true' : 'false';
-  await gh('PATCH', '/actions/variables/YL_AUTO', { name: 'YL_AUTO', value }).catch(e => (e.status === 404 ? gh('POST', '/actions/variables', { name: 'YL_AUTO', value }) : Promise.reject(e)));
-  await audit(req.user.id, 'yiddish_auto', { on: value === 'true' }, req.ip);
-  res.json({ auto: value === 'true' });
-}));
 
 // ---------- phone line (IVR) ----------
 adminSiteRouter.get('/phone', wrap(async (req, res) => {

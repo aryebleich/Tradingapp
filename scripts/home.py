@@ -1,7 +1,13 @@
 # Shared layout and the homepage, in English (index.html) and Yiddish (yi.html).
 # Every visible string goes through T(); scripts/yi_home.py holds the Yiddish for each one.
-import html
+import html, hashlib, os
 from yi_home import YI
+
+# Each page asks for the stylesheet and script of its own version (?v=<content hash>), so a cache
+# (the edge, GitHub Pages, the browser) can never pair a new page with an old stylesheet.
+_PUB = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'public')
+def ver(name):
+    with open(os.path.join(_PUB, name), 'rb') as f: return hashlib.sha256(f.read()).hexdigest()[:10]
 
 LANG = {'cur': 'en'}
 MISSING = set()
@@ -32,9 +38,9 @@ def layout(title, desc, body, lang='en', home='index.html', banner=''):
 <meta property="og:image" content="og-brightolio.png">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preload" as="font" type="font/woff2" href="fonts/inter-latin.woff2" crossorigin>
-<link rel="stylesheet" href="site.css">
+<link rel="stylesheet" href="site.css?v={ver('site.css')}">
 <script src="config.js"></script>
-<script type="module" src="site.js"></script>
+<script type="module" src="site.js?v={ver('site.js')}"></script>
 </head>
 <body>
 {f'<div class="topmsg" role="note">{banner}</div>' if banner else ''}<header class="top"><div class="wrap">
@@ -55,7 +61,7 @@ def layout(title, desc, body, lang='en', home='index.html', banner=''):
     <div><b>{T('Trust')}</b><a href="status.html">{T('System status')}</a><a href="security.html">{T('Security')}</a><a href="insurance.html">{T('Insurance and protection')}</a></div>
   </div>
   <p class="disc">{T('Investing involves risk, including possible loss of principal. Backtests and projections are hypothetical, are built with the benefit of hindsight and do not guarantee future results. Brightolio is a software provider and is not a broker-dealer. Brokerage services are provided by the broker you choose, under your own account agreement. Nothing on this site is an offer, solicitation or recommendation to buy or sell any security.')}</p>
-  <p class="disc">© 2026 Brightolio. {T('All rights reserved.')}<span data-credit></span></p>
+  <p class="disc">© 2026 Brightolio. {T('All rights reserved.')}</p>
 </div></footer>
 </body>
 </html>
@@ -305,7 +311,8 @@ def index(lang='en'):
 </section>
 
 <section class="adreel"><div class="wrap">
-  <figure class="adbox"><video muted playsinline loop preload="none" poster="media/brightolio-ad.jpg" aria-label="{T('Brightolio in 20 seconds')}" data-adreel>
+  <h2 class="sec center">{T('See it in 20 seconds')}</h2>
+  <figure class="adbox"><video width="1280" height="720" style="max-width:100%;height:auto" muted playsinline loop preload="none" poster="media/brightolio-ad.jpg" aria-label="{T('Brightolio in 20 seconds')}" data-adreel>
     <source src="media/brightolio-ad.webm" type="video/webm"><source src="media/brightolio-ad.mp4" type="video/mp4"></video>
     <figcaption><b>{T('Brightolio in 20 seconds')}</b> <span>{T('Trade like the professionals, practice with $100,000, automate, and use tools for long-term investing.')}</span></figcaption></figure>
 </div></section>

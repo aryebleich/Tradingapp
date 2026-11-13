@@ -1,6 +1,6 @@
 // Yiddish for the Brightolio app (exact English phrase → Yiddish). Written in everyday
 // American-Hasidic usage: common trading terms stay in their English form, in Yiddish letters.
-import labs from './yi-labs.js';
+import more from './yi-more.js';
 import * as features from './yi-features.js';
 import * as protect from './yi-protect.js';
 import * as wealth from './yi-wealth.js';
@@ -346,13 +346,13 @@ export const strings = {
   'On': 'אן', 'Not set': 'נישט איינגעשטעלט', 'To change one: Render → your service → Environment → add or edit the variable → Save. The server restarts by itself.': 'צו טוישן: Render ← אייער סערוויס ← Environment ← לייגט צו אדער טוישט דעם variable ← Save. דער סערווער שטעלט זיך אליין איבער.',
   'Admin email': 'אדמין אימעיל', 'Database (Turso)': 'דאטאבאזע (Turso)', 'Encryption key': 'פארשליסונג שליסל', 'Alpaca Broker API (account opening)': 'Alpaca Broker API (קאנטע עפענען)', 'Alpaca market data': 'Alpaca מארקעט דאטן',
   'Connect existing Alpaca accounts (OAuth)': 'פארבינדן עקזיסטירנדע Alpaca קאנטעס (OAuth)', 'Sign in with Google': 'אריינלאגירן מיט Google', 'Plans and card payments (Stripe)': 'פלענער און קארטל באצאלונגען (Stripe)', 'Stripe webhook': 'Stripe וועבהוק',
-  'Text messages and hotline (Twilio)': 'טעקסט מעסעדזשעס און האטליין (Twilio)', 'Emails (Resend)': 'אימעילס (Resend)', 'AI assistant (Claude)': 'AI אסיסטענט (Claude)', 'Yiddish Labs credit line': 'Yiddish Labs קרעדיט שורה',
+  'Text messages and hotline (Twilio)': 'טעקסט מעסעדזשעס און האטליין (Twilio)', 'Emails (Resend)': 'אימעילס (Resend)', 'AI assistant (Claude)': 'AI אסיסטענט (Claude)',
   'Deposits: Bank account (ACH) (Stripe)': 'אריינלייגן: באנק קאנטע (ACH) (Stripe)', 'Deposits: Debit card (Helcim)': 'אריינלייגן: דעביט קארטל (Helcim)', 'Deposits: Debit card (Stripe)': 'אריינלייגן: דעביט קארטל (Stripe)',
   'You cannot remove your own admin access': 'איר קענט נישט אראפנעמען אייער אייגענעם אדמין צוטריט', 'This address is in ADMIN_EMAIL; remove it there first': 'די אדרעס איז אין ADMIN_EMAIL; נעמט עס קודם ארויס פון דארט',
   'Admin user update': 'אדמין האט געטוישט א באניצער',
 };
 
-Object.assign(strings, features.strings, protect.strings, wealth.strings, batch5.strings, batch6.strings, { ...batch17.strings, ...batch16.strings, ...batch15.strings, ...batch14.strings, ...batch13.strings, ...batch12.strings, ...batch11.strings, ...batch9.strings, ...batch8.strings, ...strings }, labs, heimish.strings);
+Object.assign(strings, features.strings, protect.strings, wealth.strings, batch5.strings, batch6.strings, { ...batch17.strings, ...batch16.strings, ...batch15.strings, ...batch14.strings, ...batch13.strings, ...batch12.strings, ...batch11.strings, ...batch9.strings, ...batch8.strings, ...strings }, more, heimish.strings);
 
 // Sentences that contain numbers or names.
 export const patterns = [

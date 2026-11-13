@@ -1,5 +1,5 @@
 // Yiddish for the market overview, Portfolio & risk, plain-language research, tokenized securities,
-// investor protection and the admin's AI coding agents (the longer texts come from Yiddish Labs).
+// investor protection and the admin's AI coding agents.
 export const strings = {
   'Market overview': 'מארק איבערבליק', 'Indexes': 'אינדעקסן', 'Sectors today': 'סעקטארן היינט', 'My watchlist': 'מיין אויפפאס־ליסטע', 'Top movers': 'די גרעסטע באוועגונגען', 'Most active': 'מערסט אקטיוו',
   'Real-time': 'גלייכצייטיק', 'Delayed up to 15 min': 'פארשפעטיקט ביז 15 מינוט', 'Previous close': 'פריערדיקער שלוס', 'Live': 'לייוו', 'What the price labels mean': 'וואס די פרייז־צייכנס מיינען',

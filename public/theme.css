@@ -1124,3 +1124,23 @@ dialog.beforeorder { max-width: 560px; } dialog.beforeorder h3 { margin: 14px 0 
 pre.stmt { white-space: pre-wrap; background: var(--bg2); border-radius: var(--r-sm, 10px); padding: 14px; font: 14px/1.5 ui-monospace, Menlo, monospace; }
 #voiceBtn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 #voiceBtn.listening { color: var(--neg, #dc2626); border-color: currentColor; }
+
+/* ---- Settings: on/off settings as switches ---- */
+.set-sec input[type=checkbox] { appearance: none; -webkit-appearance: none; flex: none; width: 40px; height: 22px; margin: 0; border-radius: 999px; background: var(--bd); position: relative; cursor: pointer; transition: background .15s; vertical-align: middle; border: 0; }
+.set-sec input[type=checkbox]::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); transition: transform .15s; }
+.set-sec input[type=checkbox]:checked { background: var(--ac); }
+.set-sec input[type=checkbox]:checked::after { transform: translateX(18px); }
+html[dir="rtl"] .set-sec input[type=checkbox]:checked::after { transform: translateX(-18px); }
+html[dir="rtl"] .set-sec input[type=checkbox]::after { left: auto; right: 3px; }
+.set-sec input[type=checkbox]:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
+.set-sec label.chk, .set-sec label.chk2, .set-sec label.check { display: flex; align-items: center; gap: 12px; padding: 6px 0; font-size: 14.5px; line-height: 1.4; cursor: pointer; }
+.set-sec .ex-item { align-items: flex-start; }
+.set-sec .ex-item input[type=checkbox] { margin-top: 2px; }
+/* Settings: cleaner cards */
+.set-sec .card h2 { font-size: 16px; margin: 0 0 10px; }
+.set-sec .card > p.mu:first-of-type { margin-top: 0; }
+.set-sec .card { padding: 18px 20px; }
+.set-nav button { border-radius: 999px; }
+/* ---- No help for beginners ---- */
+body.nohelp .pguide, body.nohelp .gl, body.nohelp .onboard, body.nohelp .glpop, body.nohelp #nav a[href="#/start"], body.nohelp #tabs a[data-r="start"] { display: none !important; }
+.set-stack { display: grid; gap: 16px; } .set-stack > .card { margin: 0; overflow-x: auto; }

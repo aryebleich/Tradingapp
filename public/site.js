@@ -156,8 +156,6 @@ if (!standalone) {
       const a = el.querySelector('[data-phone-link]');
       if (a) { a.textContent = f.phone; a.href = 'sms:' + f.phone; }
     });
-    const credit = document.querySelector('[data-credit]');
-    if (credit && f.yiddishCredit && document.documentElement.lang === 'yi') credit.textContent = ` · איבערגעזעצט אויף אידיש דורך ${f.yiddishCredit}`;
   }).catch(() => {});
 }
 
@@ -195,6 +193,9 @@ if ('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: re
     el.style.setProperty('--d', `${Math.max(0, Math.min(sibs.indexOf(el), 6)) * 0.07}s`);
     el.classList.add('reveal'); io.observe(el);
   });
+  const showAll = () => document.querySelectorAll('.reveal:not(.in)').forEach(el => { const r = el.getBoundingClientRect(); if (r.top < innerHeight * 1.5) el.classList.add('in'); });
+  addEventListener('scroll', () => { clearTimeout(showAll.t); showAll.t = setTimeout(showAll, 1500); }, { passive: true });
+  setTimeout(showAll, 1500);
 }
 
 // The homepage ad: plays silently while it is on screen, pauses when it is not.

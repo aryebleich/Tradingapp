@@ -1,6 +1,6 @@
 // Yiddish written by hand in heimish, everyday Hasidic usage (the way it is spoken in
 // Williamsburg and Kiryas Joel): trading terms keep their English form in Yiddish letters.
-// These entries are applied last (after yi-labs.js), so the automatic translation never replaces them.
+// These entries are applied last (after yi-more.js), so nothing else replaces them.
 export const strings = {
   "AI bots": "AI באטס",
   "AI long/short portfolios": "AI לאנג/שארט פארטפאליאס",

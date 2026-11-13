@@ -75,9 +75,9 @@ export const ENV_GROUPS = [
   ['All my money and property values', ['RENTCAST_API_KEY', 'BTC_API_URL', 'ETH_RPC_URL']],
   ['Hosting and the edge', ['HOST_ID', 'EDGE_SECRET', 'CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_KV_ID', 'CLOUDFLARE_ZONE_ID', 'SITE_DOMAIN']],
   ['Android app', ['ANDROID_CERT_SHA256', 'ANDROID_APK_URL', 'ANDROID_PLAY', 'ANDROID_PLAY_URL']],
-  ['Extras', ['YIDDISH_CREDIT', 'MARGIN_FEED_URL', 'METRICS_TOKEN', 'SEC_CONTACT']],
+  ['Extras', ['MARGIN_FEED_URL', 'METRICS_TOKEN', 'SEC_CONTACT']],
   ['Render', ['RENDER_API_KEY', 'RENDER_SERVICE_ID']],
-  ['GitHub (Yiddish Labs runs)', ['GITHUB_TOKEN', 'GITHUB_REPO']],
+  ['GitHub (README and repository)', ['GITHUB_TOKEN', 'GITHUB_REPO']],
 ];
 export const validEnvName = k => /^[A-Z][A-Z0-9_]{1,63}$/.test(k);
 // Never changed from the app: the host sets these, or changing them would lock out the data.

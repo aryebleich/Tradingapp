@@ -1,4 +1,4 @@
-// Yiddish for Retirement & IRAs (the longer texts come from Yiddish Labs).
+// Yiddish for Retirement & IRAs.
 export const strings = {
   'Retirement & IRAs': 'פענסיע און IRA קאנטעס', 'Traditional or Roth?': 'טראדיציאנעל אדער ראט?', 'Traditional IRA': 'טראדיציאנעלע IRA', 'Roth IRA': 'ראט IRA',
   'How much can I put in?': 'וויפיל קען איך אריינלייגן?', 'Retirement planner': 'פענסיע פלאנירער', 'Which of my accounts are IRAs?': 'וועלכע פון מיינע קאנטעס זענען IRA?',

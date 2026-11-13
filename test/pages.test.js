@@ -21,3 +21,12 @@ test('every local link on the published pages is copied by the Pages build', () 
   }
   assert.deepEqual(missing, []);
 });
+
+test('every page asks for the stylesheet and script of the current version', async () => {
+  const { createHash } = await import('node:crypto');
+  const v = f => createHash('sha256').update(fs.readFileSync(new URL(`../public/${f}`, import.meta.url))).digest('hex').slice(0, 10);
+  for (const page of ['index.html', 'yi.html', 'terms.html']) {
+    const html = fs.readFileSync(new URL(`../public/${page}`, import.meta.url), 'utf8');
+    assert.ok(html.includes(`site.css?v=${v('site.css')}`) && html.includes(`site.js?v=${v('site.js')}`), `${page}: run python3 scripts/pages.py after changing site.css or site.js`);
+  }
+});

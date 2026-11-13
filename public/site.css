@@ -550,7 +550,8 @@ section.dark .sub, section.dark .trust .feature p { color: #b6c4da; }
 @media (max-width: 520px) { .basics-grid { grid-template-columns: 1fr; } }
 
 /* homepage ad */
-.adreel { padding: 8px 0 40px; }
+.adreel { padding: 64px 0 24px; }
+.adreel h2.sec { margin-bottom: 22px; }
 .adbox { margin: 0 auto; max-width: 1080px; border-radius: 20px; overflow: hidden; background: #0b1020; box-shadow: 0 30px 80px -30px rgba(15, 23, 42, .55); }
 .adbox video { display: block; width: 100%; aspect-ratio: 16 / 9; height: auto; object-fit: cover; background: #0b1020; cursor: pointer; }
 .adbox figcaption { padding: 14px 20px; color: #cbd5e1; font-size: 15px; display: flex; gap: 10px; flex-wrap: wrap; }

@@ -16,7 +16,7 @@ const exists = f => tracked.includes(f);
 
 // Files that are entry points or configuration on their own.
 const KEEP = [/^\.github\//, /^android\//, /^deploy\//, /^\.devcontainer\//, /^security\//, /^edge\//, /^i18n\//, /^README\.md$/, /^[^/]+$/, /^test\/(setup|mock-[\w-]+)\.js$/, /^test\/[\w-]+\.test\.js$/, /^test\/e2e\/run\.mjs$/,
-  /^scripts\/yl-last-ref\.txt$/, /^scripts\/yl-status\.json$/, /^scripts\/yi_labs\.json$/];
+  /^scripts\/yi_more\.json$/];
 
 // Follow imports (static, dynamic, and import('./x' + ...) prefixes) from a set of starting files.
 function follow(starts) {

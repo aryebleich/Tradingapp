@@ -60,7 +60,7 @@ test('the public README is for search; the private one is edited and imported in
     assert.equal('canPublish' in (await owner('/admin/site/readme')).body, false);
     // The private README carries the owner's sections.
     const pt = (await owner('/admin/site/readme')).body.text;
-    for (const t of ['Admin files', 'Setup information', 'Legal information and integrations', 'Business information', 'Yiddish Labs translation']) assert.match(pt, new RegExp('## ' + t));
+    for (const t of ['Admin files', 'Setup information', 'Legal information and integrations', 'Business information']) assert.match(pt, new RegExp('## ' + t));
   } finally { s.close(); }
 });
 

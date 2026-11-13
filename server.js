@@ -686,7 +686,7 @@ api.get('/config', async (req, res) => res.json({
 }));
 
 // Lets the landing page (also the GitHub Pages copy) show only sign-up options that work.
-api.get('/public/features', (req, res) => res.json({ version: version(), google: googleEnabled(), github: githubEnabled(), adviser: adviserFor(req.user), phone: N.twilioEnabled() ? process.env.TWILIO_FROM : null, ai: aiEnabled(), yiddishCredit: process.env.YIDDISH_CREDIT || null }));
+api.get('/public/features', (req, res) => res.json({ version: version(), google: googleEnabled(), github: githubEnabled(), adviser: adviserFor(req.user), phone: N.twilioEnabled() ? process.env.TWILIO_FROM : null, ai: aiEnabled() }));
 // Public, rate-limited demo backtest used by the landing page (also from the GitHub Pages copy).
 api.post('/public/backtest', async (req, res) => {
   if (!auth.rateLimit('pub:' + req.ip, 20, 600e3)) return res.status(429).json({ error: 'Demo limit reached - create a free account for unlimited backtests' });
@@ -1069,7 +1069,6 @@ api.get('/admin/setup', U, auth.requireAdmin, async (req, res) => {
     ['AI assistant, free (Groq or Gemini)', 'GROQ_API_KEY / GEMINI_API_KEY', !!(process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY || process.env.OPENROUTER_API_KEY || process.env.AI_BASE_URL)],
     ['AI assistant upgrade (Claude)', 'ANTHROPIC_API_KEY', !!process.env.ANTHROPIC_API_KEY],
     ...Object.values(PAY.PROVIDERS).map(p => [`Deposits: ${p.name} (${p.via})`, ({ stripe_ach: 'STRIPE_SECRET_KEY', stripe_card: 'STRIPE_SECRET_KEY', helcim: 'HELCIM_API_TOKEN', square: 'SQUARE_ACCESS_TOKEN, SQUARE_LOCATION_ID, SQUARE_WEBHOOK_SIGNATURE_KEY', authorizenet: 'ANET_LOGIN_ID, ANET_TRANSACTION_KEY, ANET_SIGNATURE_KEY' })[p.id] || '', p.enabled()]),
-    ['Yiddish Labs credit line', 'YIDDISH_CREDIT', has('YIDDISH_CREDIT')],
   ].map(([name, env, on]) => ({ name, env, on: !!on })) });
 });
 // Sends a test email to the signed-in owner and reports exactly what the email service answered.

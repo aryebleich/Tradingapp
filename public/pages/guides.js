@@ -167,7 +167,7 @@ function note(text) {
 export function pageGuide(view, route, { practice = true } = {}) {
   const g = G[route]; if (!g || !view || view.querySelector('.pguide')) return;
   // Switched off (in a guide, or in Settings): no guide is drawn on any page.
-  if (guidesOff()) return;
+  if (guidesOff() || get('qp_help') === 'off') return;
   const [title, what, steps, caution] = g;
   // A page that redraws itself (every 20 seconds on live pages) keeps the guide as the user left it.
   const open = shown[route] ?? (!guidesOff() && get(key(route)) !== 'seen');

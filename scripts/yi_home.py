@@ -535,10 +535,11 @@ YI.update({
 
 YI.update({
     'Brightolio in 20 seconds': 'ברייטאליא אין 20 סעקונדעס',
+    'See it in 20 seconds': 'זעט עס אין 20 סעקונדעס',
     'Trade like the professionals, practice with $100,000, automate, and use tools for long-term investing.': 'האנדלט ווי די פראפעסיאנאלן, פראקטיצירט מיט $100,000, לאזט עס לויפן אויטאמאטיש, און ניצט געצייג פאר לאנג-טערמיניגע אינוועסטמענטס.',
 })
-# Translations made with Yiddish Labs (npm run yiddish:import) take precedence.
+# More homepage Yiddish, kept as data.
 import json as _json, os as _os
-_labs = _os.path.join(_os.path.dirname(__file__), 'yi_labs.json')
-if _os.path.exists(_labs):
-    with open(_labs, encoding='utf-8') as _f: YI.update(_json.load(_f))
+_more = _os.path.join(_os.path.dirname(__file__), 'yi_more.json')
+if _os.path.exists(_more):
+    with open(_more, encoding='utf-8') as _f: YI.update(_json.load(_f))
