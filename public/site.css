@@ -550,10 +550,12 @@ section.dark .sub, section.dark .trust .feature p { color: #b6c4da; }
 @media (max-width: 520px) { .basics-grid { grid-template-columns: 1fr; } }
 
 /* homepage ad */
-.adreel { padding: 64px 0 24px; }
-.adreel h2.sec { margin-bottom: 22px; }
-.adbox { margin: 0 auto; max-width: 1080px; border-radius: 20px; overflow: hidden; background: #0b1020; box-shadow: 0 30px 80px -30px rgba(15, 23, 42, .55); }
-.adbox video { display: block; width: 100%; aspect-ratio: 16 / 9; height: auto; object-fit: cover; background: #0b1020; cursor: pointer; }
-.adbox figcaption { padding: 14px 20px; color: #cbd5e1; font-size: 15px; display: flex; gap: 10px; flex-wrap: wrap; }
-.adbox figcaption b { color: #fff; }
-@media (max-width: 640px) { .adbox { border-radius: 14px; } .adbox figcaption { font-size: 14px; padding: 12px 14px; } }
+.adreel { padding: 40px 0 16px; }
+/* The video has no frame: its edges fade softly into the page on every side. */
+.adbox { margin: 0 auto; max-width: 1080px; background: none; }
+.adbox video { display: block; width: 100%; aspect-ratio: 16 / 9; height: auto; object-fit: cover; background: transparent; cursor: pointer;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 9%, #000 91%, transparent), linear-gradient(to bottom, transparent, #000 10%, #000 90%, transparent);
+  -webkit-mask-composite: source-in; mask-image: linear-gradient(to right, transparent, #000 9%, #000 91%, transparent), linear-gradient(to bottom, transparent, #000 10%, #000 90%, transparent); mask-composite: intersect; }
+.adbox figcaption { padding: 6px 20px 0; color: var(--mu); font-size: 15px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; text-align: center; }
+.adbox figcaption b { color: var(--tx); }
+@media (max-width: 640px) { .adbox figcaption { font-size: 14px; padding: 4px 14px 0; } }

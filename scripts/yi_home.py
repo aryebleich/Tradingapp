@@ -535,7 +535,6 @@ YI.update({
 
 YI.update({
     'Brightolio in 20 seconds': 'ברייטאליא אין 20 סעקונדעס',
-    'See it in 20 seconds': 'זעט עס אין 20 סעקונדעס',
     'Trade like the professionals, practice with $100,000, automate, and use tools for long-term investing.': 'האנדלט ווי די פראפעסיאנאלן, פראקטיצירט מיט $100,000, לאזט עס לויפן אויטאמאטיש, און ניצט געצייג פאר לאנג-טערמיניגע אינוועסטמענטס.',
 })
 # More homepage Yiddish, kept as data.
