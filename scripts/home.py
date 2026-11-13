@@ -307,7 +307,7 @@ def index(lang='en'):
 <section class="adreel"><div class="wrap">
   <figure class="adbox"><video muted playsinline loop preload="none" poster="media/brightolio-ad.jpg" aria-label="{T('Brightolio in 20 seconds')}" data-adreel>
     <source src="media/brightolio-ad.webm" type="video/webm"><source src="media/brightolio-ad.mp4" type="video/mp4"></video>
-    <figcaption><b>{T('Brightolio in 20 seconds')}</b> <span>{T('Trade like the professionals, practice with $100,000, automate, and build wealth for the long run.')}</span></figcaption></figure>
+    <figcaption><b>{T('Brightolio in 20 seconds')}</b> <span>{T('Trade like the professionals, practice with $100,000, automate, and use tools for long-term investing.')}</span></figcaption></figure>
 </div></section>
 
 <section class="twoways"><div class="wrap">

@@ -535,7 +535,7 @@ YI.update({
 
 YI.update({
     'Brightolio in 20 seconds': 'ברייטאליא אין 20 סעקונדעס',
-    'Trade like the professionals, practice with $100,000, automate, and build wealth for the long run.': 'האנדלט ווי די פראפעסיאנאלן, פראקטיצירט מיט $100,000, לאזט עס לויפן אויטאמאטיש, און בויט פארמעגן אויף לאנגע יארן.',
+    'Trade like the professionals, practice with $100,000, automate, and use tools for long-term investing.': 'האנדלט ווי די פראפעסיאנאלן, פראקטיצירט מיט $100,000, לאזט עס לויפן אויטאמאטיש, און ניצט געצייג פאר לאנג-טערמיניגע אינוועסטמענטס.',
 })
 # Translations made with Yiddish Labs (npm run yiddish:import) take precedence.
 import json as _json, os as _os
