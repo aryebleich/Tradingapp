@@ -1033,7 +1033,7 @@ const MKT_LABEL = { open: 'market open', 'pre-market': 'pre-market (regular hour
 function homeClock(view) {
   if (!view || $('#homeClock', view)) return;
   const el = document.createElement('div'); el.id = 'homeClock'; el.className = 'homeclock'; el.setAttribute('role', 'timer'); el.setAttribute('aria-label', 'Current time');
-  el.innerHTML = '<b class="hc-time" dir="ltr"></b><span class="hc-date"></span><span class="hc-ny" dir="ltr"></span>';
+  el.innerHTML = '<b class="hc-time" dir="ltr"></b><span class="hc-date"></span><span class="hc-ny" dir="auto"></span>';
   const anchor = $('h1', view)?.closest('.row') || $('h1', view);
   anchor ? anchor.after(el) : view.prepend(el);
   const t = el.querySelector('.hc-time'), d = el.querySelector('.hc-date'), ny = el.querySelector('.hc-ny');

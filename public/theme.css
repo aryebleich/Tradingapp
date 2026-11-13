@@ -979,7 +979,10 @@ body.signedin > footer { display: none; }
 .tmmsg summary { cursor: pointer; }
 pre.tmtext { white-space: pre-wrap; word-break: break-word; max-height: 420px; overflow: auto; font-size: 12.5px; background: var(--bg); padding: 10px; border-radius: 8px; }
 /* Setup steps (Stripe Treasury) */
-ol.steps { padding-left: 20px; }
+ol.steps { display: block; padding-left: 20px; }
+ol.steps li { overflow-wrap: anywhere; }
+/* Strategy rules: long rules wrap instead of widening the page */
+table.slim td.rule { font-size: 13px; white-space: normal; overflow-wrap: anywhere; }
 ol.steps li { margin: 8px 0; }
 ol.steps li.done > b { color: var(--mu); }
 ol.steps li p { margin: 2px 0 0; font-size: 13px; }
