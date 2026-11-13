@@ -1214,7 +1214,7 @@ for (const p of ['terms', 'privacy', 'risk', 'contact', 'status', 'security', 'i
 app.use(express.static(pub, {
   index: 'index.html', extensions: ['html'],
   // Font files never change under the same name: kept for a year.
-  setHeaders: (res, file) => res.setHeader('Cache-Control', /\.woff2$/.test(file) ? 'public, max-age=31536000, immutable' : /\.(png|svg|webmanifest)$/.test(file) ? 'public, max-age=604800' : 'no-cache'),
+  setHeaders: (res, file) => res.setHeader('Cache-Control', /\.woff2$/.test(file) ? 'public, max-age=31536000, immutable' : /\.(png|svg|webmanifest|mp4|webm|jpg)$/.test(file) ? 'public, max-age=604800' : 'no-cache'),
 }));
 app.use(async (req, res) => res.status(404).sendFile(path.join(pub, '404.html')));
 

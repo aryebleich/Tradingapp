@@ -532,6 +532,11 @@ YI.update({
     "Your whole net worth: banks, crypto, real estate and private investments": "אייער גאנצע נעטא ווערט: בענק, קריפטא, ריעל עסטעיט און פריוואטע אינוועסטמענטס",
     "Tax-saving autopilot and a plain-English weekly money brief": "א שטייער-שפארנדיגער אויטאפילאט און א קלארער וועכנטלעכער געלט-באריכט",
 })
+
+YI.update({
+    'Brightolio in 20 seconds': 'ברייטאליא אין 20 סעקונדעס',
+    'Trade like the professionals, practice with $100,000, automate, and build wealth for the long run.': 'האנדלט ווי די פראפעסיאנאלן, פראקטיצירט מיט $100,000, לאזט עס לויפן אויטאמאטיש, און בויט פארמעגן אויף לאנגע יארן.',
+})
 # Translations made with Yiddish Labs (npm run yiddish:import) take precedence.
 import json as _json, os as _os
 _labs = _os.path.join(_os.path.dirname(__file__), 'yi_labs.json')

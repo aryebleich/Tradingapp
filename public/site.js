@@ -196,3 +196,12 @@ if ('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: re
     el.classList.add('reveal'); io.observe(el);
   });
 }
+
+// The homepage ad: plays silently while it is on screen, pauses when it is not.
+(() => {
+  const v = document.querySelector('[data-adreel]'); if (!v) return;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { v.controls = true; return; }
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { v.preload = 'auto'; v.play().catch(() => { v.controls = true; }); } else v.pause(); }), { threshold: 0.35 });
+  io.observe(v);
+  v.addEventListener('click', () => { v.muted = !v.muted; v.controls = true; });
+})();

@@ -548,3 +548,11 @@ section.dark .sub, section.dark .trust .feature p { color: #b6c4da; }
 .basics-grid p { margin: 0; color: var(--mu); font-size: 14.5px; line-height: 1.5; }
 @media (max-width: 860px) { .basics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 520px) { .basics-grid { grid-template-columns: 1fr; } }
+
+/* homepage ad */
+.adreel { padding: 8px 0 40px; }
+.adbox { margin: 0 auto; max-width: 1080px; border-radius: 20px; overflow: hidden; background: #0b1020; box-shadow: 0 30px 80px -30px rgba(15, 23, 42, .55); }
+.adbox video { display: block; width: 100%; aspect-ratio: 16 / 9; height: auto; object-fit: cover; background: #0b1020; cursor: pointer; }
+.adbox figcaption { padding: 14px 20px; color: #cbd5e1; font-size: 15px; display: flex; gap: 10px; flex-wrap: wrap; }
+.adbox figcaption b { color: #fff; }
+@media (max-width: 640px) { .adbox { border-radius: 14px; } .adbox figcaption { font-size: 14px; padding: 12px 14px; } }

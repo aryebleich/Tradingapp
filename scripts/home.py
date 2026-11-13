@@ -304,6 +304,12 @@ def index(lang='en'):
 <div class="wrap"><div class="logos"><span>{T('Brokers:')} <b>Alpaca</b> · <b>Schwab</b> · <b>tastytrade</b> · <b>Tradier</b> · <b>TradeStation</b></span><span>{T('Payments by')} <b>Stripe</b> &amp; <b>Helcim</b></span></div></div>
 </section>
 
+<section class="adreel"><div class="wrap">
+  <figure class="adbox"><video muted playsinline loop preload="none" poster="media/brightolio-ad.jpg" aria-label="{T('Brightolio in 20 seconds')}" data-adreel>
+    <source src="media/brightolio-ad.webm" type="video/webm"><source src="media/brightolio-ad.mp4" type="video/mp4"></video>
+    <figcaption><b>{T('Brightolio in 20 seconds')}</b> <span>{T('Trade like the professionals, practice with $100,000, automate, and build wealth for the long run.')}</span></figcaption></figure>
+</div></section>
+
 <section class="twoways"><div class="wrap">
   <h2 class="sec center">{T('Two ways to grow your money. One place.')}</h2>
   <div class="tw-grid">
