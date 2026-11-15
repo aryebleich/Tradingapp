@@ -202,6 +202,32 @@ async function seoPage(view) {
   });
   H.act(H.$('#ping', view), async () => { const r = await H.api('/admin/seo/indexnow', { body: {} }); setTimeout(H.render, 800); return `Announced ${r.sent} pages.`; });
   await flagsCard(view);
+  await questionsCard(view);
+}
+// Open questions from the website audit: the owner records the answer and status for each one.
+async function questionsCard(view) {
+  const qs = await H.api('/admin/questions');
+  const label = { open: 'Open', answered: 'Answered', not_needed: 'Not needed' };
+  view.insertAdjacentHTML('beforeend', `<div class="card" id="questionsCard"><h2>Open questions</h2><p class="mu" style="margin-top:0">Questions from the audit that need a decision or a source. Your answers are saved here; they are not shown on the website.</p>
+    ${qs.map(q => `<div class="qrow" data-q="${H.esc(q.id)}" style="border-top:1px solid var(--line,#2a2f3a);padding:12px 0">
+      <div class="row" style="justify-content:space-between;gap:8px;flex-wrap:wrap"><b>${H.esc(q.question)}</b><span class="pill ${q.status === 'open' ? 'warn' : 'pos'}">${label[q.status] || q.status}</span></div>
+      <p class="mu small-print" style="margin:4px 0">${H.esc(q.area)} · ${H.esc(q.ref)}${q.updatedAt ? ' · updated ' + H.esc(new Date(q.updatedAt).toLocaleDateString()) : ''}</p>
+      <div class="row" style="gap:10px;flex-wrap:wrap;align-items:flex-end">
+        ${q.options ? `<label>Decision<select data-f="choice"><option value="">Choose…</option>${q.options.map(o => `<option ${o === q.choice ? 'selected' : ''}>${H.esc(o)}</option>`).join('')}</select></label>` : ''}
+        <label>Status<select data-f="status">${Object.entries(label).map(([k, v]) => `<option value="${k}" ${k === q.status ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
+        <label style="flex:1;min-width:220px">Answer or source<input data-f="answer" maxlength="1000" value="${H.esc(q.answer)}"></label>
+        <button type="button" class="small" data-save>Save</button>
+      </div><div class="err"></div></div>`).join('')}
+    </div>`);
+  for (const row of H.$$('[data-q]', view)) {
+    const btn = H.$('[data-save]', row);
+    H.act(btn, async () => {
+      const body = { status: H.$('[data-f=status]', row).value, answer: H.$('[data-f=answer]', row).value };
+      const sel = H.$('[data-f=choice]', row); if (sel) body.choice = sel.value;
+      await H.api('/admin/questions/' + encodeURIComponent(row.dataset.q), { method: 'PUT', body });
+      return 'Saved.';
+    });
+  }
 }
 // Feature flags from the website audit: each starts off; turn one on for a share of visitors.
 async function flagsCard(view) {

@@ -103,3 +103,9 @@ All Phase 4 work would sit behind feature flags (default off), as you specified.
 - Tests: `test/homev2.test.js` (flag default and rollout, all sections and disclosures kept, accessibility basics, server variant and rollback, admin-only endpoints). Visual check with Playwright at 1280 and 390 px, English and Yiddish: no horizontal overflow.
 - Sign-off needed: LEGAL_REVIEW.md L9 to L12, before the flag is turned on.
 - Rollback: switch the flag off (takes effect on the next page load), or revert the commit.
+
+## Open questions and bug follow-up
+
+- **Open questions (Admin → SEO → Open questions):** each audit question (L1, L3, L4, L6, and the decisions for BUG-002 to BUG-005) has a status (open, answered, not needed), a decision where there is a choice, and a free-text answer or source. Saved on the server; not shown on the website.
+- **BUG-002 fixed:** account data kept for fast start-up now lives in sessionStorage, so it is cleared when the tab closes. The 24-hour localStorage copy is gone.
+- **BUG-003, BUG-004, BUG-005 not fixed.** They touch margin logic, billing (credits) and order entry. The audit rules keep those out of automatic changes, so each needs your sign-off. Each has a "todo" test and a question in Admin.

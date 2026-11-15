@@ -16,3 +16,5 @@ Items found in the audit that need legal or compliance sign-off. L1 to L8: nothi
 | L10 | Homepage v2 | "Trading involves risk. Read the risk disclosure →" beside the hero, pricing and final sign-up buttons | Confirm the wording and placement. |
 | L11 | Homepage v2, Trust & compliance block | Heading "Risks, and how Brightolio works with your broker", then the existing footer disclosure word for word, and links to Risk disclosure, Terms, Privacy, Security, Insurance and protection | No new claims; confirm the block may repeat the footer disclosure. Regulatory status still per L6. |
 | L12 | Yiddish homepage v2 | Hand translations of L9 to L11 | Confirm the Yiddish wording, as in L7. |
+
+Open questions L1, L3, L4, L6 and the bug decisions are recorded in Admin → SEO → Open questions, with status, answer and the source for each. Nothing from them is shown to visitors.

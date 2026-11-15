@@ -643,6 +643,9 @@ api.use('/plain-research', plainResearchRouter);
 // Live market-data stream (Admin → Market data → Live stream).
 api.get('/admin/streams', auth.requireUser, auth.requireAdmin, async (req, res) => { const S = await import('./src/streams.js'); res.json(S.hub.status()); });
 api.put('/admin/streams', auth.requireUser, auth.requireAdmin, async (req, res) => { const S = await import('./src/streams.js'); await S.saveSettings(req.body || {}); await audit(req.user.id, 'stream_settings', { provider: req.body?.provider }, req.ip); res.json(S.hub.status()); });
+// Open questions from the audit: the owner records each answer and its status (Admin → SEO).
+api.get('/admin/questions', async (req, res) => { const Q = await import('./src/questions.js'); res.json(Q.questionList()); });
+api.put('/admin/questions/:id', async (req, res) => { const Q = await import('./src/questions.js'); const q = await Q.saveQuestion(req.params.id, req.body || {}); q ? res.json(q) : res.status(404).json({ error: 'Unknown question' }); });
 api.use('/admin/seo', SEO.seoAdminRouter({ onChange: () => htmlCache.clear() }));
 // Feature flags (website audit, Phase 4): every flag starts off; the owner sets on/off and a rollout percentage.
 api.get('/admin/site/flags', (req, res) => (req.user?.role === 'admin' ? res.json(FLAGS.flagSettings()) : res.status(403).json({ error: 'Admin only' })));

@@ -42,9 +42,9 @@ const KEEP_KEY = 'qp_keep';
 let swrOn = false, swrRedraw = null, keepTimer = null;
 // Small saves (seen markers, settings of one area) only forget that area; anything else forgets all.
 const LIGHT = /^\/(prefs|learn\/ack|sponsored)\//;
-const keepLoad = uid => { try { const k = JSON.parse(localStorage.getItem(KEEP_KEY) || 'null'); if (!k || k.uid !== uid || Date.now() - k.at > 864e5) return; for (const [p, d] of k.e) SWR.set(p, { at: k.at, data: d, json: JSON.stringify(d), ok: true, p: Promise.resolve(d), kept: true }); } catch {} };
-const keepSave = () => { clearTimeout(keepTimer); keepTimer = setTimeout(() => { if (!ME) return; try { const e = [...SWR].filter(([, v]) => v.ok && !v.kept && v.json.length < 60000).slice(-60).map(([k, v]) => [k, v.data]); localStorage.setItem(KEEP_KEY, JSON.stringify({ uid: ME.email || ME.phone, at: Date.now(), e })); } catch {} }, 1500); };
-const keepClear = () => { SWR.clear(); try { localStorage.removeItem(KEEP_KEY); localStorage.removeItem('qp_me'); } catch {} };
+const keepLoad = uid => { try { const k = JSON.parse(sessionStorage.getItem(KEEP_KEY) || 'null'); if (!k || k.uid !== uid || Date.now() - k.at > 864e5) return; for (const [p, d] of k.e) SWR.set(p, { at: k.at, data: d, json: JSON.stringify(d), ok: true, p: Promise.resolve(d), kept: true }); } catch {} };
+const keepSave = () => { clearTimeout(keepTimer); keepTimer = setTimeout(() => { if (!ME) return; try { const e = [...SWR].filter(([, v]) => v.ok && !v.kept && v.json.length < 60000).slice(-60).map(([k, v]) => [k, v.data]); sessionStorage.setItem(KEEP_KEY, JSON.stringify({ uid: ME.email || ME.phone, at: Date.now(), e })); } catch {} }, 1500); };
+const keepClear = () => { SWR.clear(); try { sessionStorage.removeItem(KEEP_KEY); localStorage.removeItem('qp_me'); } catch {} };
 async function api(path, opts = {}, retried) {
   const get = !opts.method && !opts.body;
   if (PREFETCH && !get) throw new Error('Read-only while loading in the background');

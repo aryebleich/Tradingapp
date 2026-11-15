@@ -80,8 +80,10 @@ test('BUG-014: Organization and FAQPage structured data on the homepage', () => 
 });
 
 // ---------- review required: documented, not fixed ----------
-test('BUG-002 (review required): account data stays in localStorage for 24 h after the tab closes', { todo: 'Review: keep the faster start-up, or stop storing financial data on the device' }, () => {
-  assert.doesNotMatch(read('public/app.js'), /localStorage\.setItem\(KEEP_KEY/);
+test('BUG-002: account data is kept only for this browser session (sessionStorage), not 24 h on the device', () => {
+  const src = read('public/app.js');
+  assert.doesNotMatch(src, /localStorage\.(set|get)Item\(KEEP_KEY/);
+  assert.match(src, /sessionStorage\.setItem\(KEEP_KEY/);
 });
 test('BUG-003 (review required): practice margin room is worked out outside the fill transaction', { todo: 'Review: margin logic' }, () => {
   assert.doesNotMatch(read('src/brokers.js'), /const marginRoom = margin \? await accountSummary/);
