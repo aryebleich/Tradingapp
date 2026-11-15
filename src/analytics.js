@@ -17,8 +17,12 @@ export function count(kind, key, n = 1) {
   const k = `${day()}|${kind}|${String(key).slice(0, 80)}`;
   pending.set(k, (pending.get(k) || 0) + n);
 }
+// A keyed hash (HMAC) with a server secret: without the secret nobody can turn a stored hash back
+// into an address by trying every IP. The key comes from ENCRYPTION_KEY, or a random one per process.
+const KEY = crypto.createHash('sha256').update('analytics|' + (process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex'))).digest();
+export const visitorHash = (d, kind, id) => crypto.createHmac('sha256', KEY).update(`${d}|${kind}|${id}`).digest('hex').slice(0, 20);
 export function visitor(id, kind = 'web') {
-  const d = day(), h = crypto.createHash('sha256').update(`${d}|${kind}|${id}`).digest('hex').slice(0, 20);
+  const d = day(), h = visitorHash(d, kind, id);
   seen.set(`${d}|${kind}|${h}`, 1);
 }
 export async function flush() {
