@@ -39,7 +39,7 @@ def layout(title, desc, body, lang='en', home='index.html', banner=''):
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preload" as="font" type="font/woff2" href="fonts/inter-latin.woff2" crossorigin>
 <link rel="stylesheet" href="site.css?v={ver('site.css')}">
-<script src="config.js"></script>
+<script defer src="config.js"></script>
 <script type="module" src="site.js?v={ver('site.js')}"></script>
 </head>
 <body>
