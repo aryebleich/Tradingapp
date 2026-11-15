@@ -10,7 +10,7 @@ export function registerOptionsLab(routes, helpers) {
   H = helpers;
   routes.optionslab = lab;
 }
-const ICON = { covered_call: '📈', cash_secured_put: '💵', bull_call: '↗', bear_put: '↘', bull_put: '🛡', bear_call: '⛱', iron_condor: '🦅', straddle: '⚡', strangle: '🌩', butterfly: '🦋', collar: '🧷' };
+const ICON = { covered_call: '📈', cash_secured_put: '💵', bull_call: '↗', bear_put: '↘', bull_put: '🛡', bear_call: '⛱', iron_condor: '🦅', straddle: '⚡', strangle: '🌩', butterfly: '🦋', collar: '🧷', long_call: '⬆', long_put: '⬇', protective_put: '☂', risk_reversal: '⇅', iron_butterfly: '🪁', put_butterfly: '🦋', jade_lizard: '🦎', ratio_call: '⚖', short_strangle: '🎯' };
 const STRAT = { covered_call: 'Covered call', cash_secured_put: 'Cash-secured put', bull_put: 'Bull put spread', bear_call: 'Bear call spread', iron_condor: 'Iron condor' };
 const usd = v => (v === 'unlimited' ? 'Unlimited' : H.money(v));
 

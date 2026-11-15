@@ -840,6 +840,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS credit_ledger_ref ON credit_ledger (ref) WHERE
 
 // Columns added after the first release; ALTER fails harmlessly when they already exist.
 const MIGRATIONS = [
+  // Batch 23: hedge-fund option hedges.
+  'ALTER TABLE ai_funds ADD COLUMN hedge TEXT',
+  'ALTER TABLE ai_funds ADD COLUMN hedge_plan TEXT',
+  // Batch 23: the Home AI analysis of today's profit and loss (one saved answer per account).
+  'CREATE TABLE IF NOT EXISTS pnl_why (user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, account TEXT NOT NULL, data TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (user_id, account))',
   // AI trading (batch 22): agents and API, AI bots, AI signals, market intelligence.
   'CREATE TABLE IF NOT EXISTS ai_usage (user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, kind TEXT NOT NULL, period TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (user_id, kind, period))',
   'CREATE TABLE IF NOT EXISTS agent_settings (user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, json TEXT NOT NULL)',

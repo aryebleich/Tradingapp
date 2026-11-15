@@ -300,6 +300,11 @@ adminSiteRouter.post('/phone/clips', wrap(async (req, res) => {
 adminSiteRouter.delete('/phone/clips', wrap(async (req, res) => { const V = await import('./voice-yi.js'); await V.deleteClip(String(req.query.k || '')); res.json({ ok: true }); }));
 
 // ---------- AI & privacy: what AI crawlers may read, and what the assistant may send ----------
+// Test every AI provider that has a key, and show its exact answer or error.
+// AI P/L analysis on Home: on or off, and how often it refreshes on each plan.
+adminSiteRouter.get('/pnlwhy', wrap(async (req, res) => { const P = await import('./pnlwhy.js'), C = await import('./credits.js'); res.json({ ...P.config(), defaults: P.DEFAULTS, cost: C.config().costs.pnlwhy }); }));
+adminSiteRouter.put('/pnlwhy', wrap(async (req, res) => { const P = await import('./pnlwhy.js'); const c = await P.saveConfig(req.body || {}); await audit(req.user.id, 'pnlwhy_settings', c, req.ip); res.json(c); }));
+adminSiteRouter.post('/ai/test', wrap(async (req, res) => { const L = await import('./llm.js'); res.json({ ...(await L.testProviders()), lastErrors: L.lastErrors }); }));
 adminSiteRouter.get('/ai', wrap(async (req, res) => {
   const A = await import('./aiaccess.js'), L = await import('./llm.js');
   // Whether the code repository is public (then anyone, AI crawlers included, can read the code and README).

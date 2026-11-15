@@ -12,18 +12,22 @@ export const FREE = {
   gemini: { name: 'Google Gemini (free tier)', base: 'https://generativelanguage.googleapis.com/v1beta/openai', key: 'GEMINI_API_KEY', model: 'gemini-2.5-flash', signup: 'https://aistudio.google.com/apikey' },
   openrouter: { name: 'OpenRouter (free models)', base: 'https://openrouter.ai/api/v1', key: 'OPENROUTER_API_KEY', model: 'meta-llama/llama-3.3-70b-instruct:free', signup: 'https://openrouter.ai/keys' },
 };
-const env = k => process.env[k] || '';
+// Keys are trimmed: a space or line break pasted with a key makes every request fail.
+const env = k => String(process.env[k] || '').trim();
+// Gemini keys are also accepted under Google's own names.
+const keyOf = id => env(FREE[id].key) || (id === 'gemini' ? env('GOOGLE_API_KEY') || env('GOOGLE_AI_API_KEY') : '');
 
 export function provider() {
   const p = env('AI_PROVIDER').toLowerCase();
   if (p === 'anthropic' && env('ANTHROPIC_API_KEY')) return { id: 'anthropic', name: 'Claude' };
   if (p === 'custom' || (!p && env('AI_BASE_URL'))) return env('AI_BASE_URL') ? { id: 'custom', name: 'Custom model', base: env('AI_BASE_URL').replace(/\/$/, ''), apiKey: env('AI_API_KEY'), model: env('AI_MODEL') || 'llama3.1' } : null;
-  if (FREE[p] && env(FREE[p].key)) return free(p);
+  if (FREE[p] && keyOf(p)) return free(p);
   if (!p && env('ANTHROPIC_API_KEY')) return { id: 'anthropic', name: 'Claude' };
-  for (const id of Object.keys(FREE)) if (env(FREE[id].key)) return free(id);
+  for (const id of Object.keys(FREE)) if (keyOf(id)) return free(id);
   return null;
 }
-const free = id => ({ id, name: FREE[id].name, base: env('AI_BASE_URL') || FREE[id].base, apiKey: env(FREE[id].key), model: env('AI_MODEL') || FREE[id].model, free: true });
+const free = id => ({ id, name: FREE[id].name, base: env(id.toUpperCase() + '_BASE_URL') || (env('AI_PROVIDER').toLowerCase() === id && env('AI_BASE_URL')) || FREE[id].base, apiKey: keyOf(id), model: (env('AI_PROVIDER').toLowerCase() === id && env('AI_MODEL')) || (id === 'gemini' && env('GEMINI_MODEL')) || picked[id] || FREE[id].model, free: true });
+const picked = {}; // a model found to work when the default one is retired
 export const llmEnabled = () => !!provider();
 export const llmInfo = () => { const p = provider(); return p ? { provider: p.id, name: p.name, free: !!p.free, model: p.model || 'claude-opus-5-5' } : null; };
 
@@ -32,15 +36,43 @@ const anthropic = () => (claude ||= new Anthropic());
 const failed = (e, p) => (e.status === 401 || e.status === 403 ? Object.assign(new Error(`The AI service refused the request; check the API key for ${p.name}`), { status: 502 }) : e);
 
 // OpenAI-compatible chat completions (Groq, Gemini, OpenRouter, Ollama...).
-async function completions(p, body) {
+async function post(p, body) {
   const r = await fetch(`${p.base}/chat/completions`, {
     method: 'POST', signal: AbortSignal.timeout(60000),
     headers: { 'Content-Type': 'application/json', ...(p.apiKey ? { Authorization: `Bearer ${p.apiKey}` } : {}), ...(p.id === 'openrouter' ? { 'X-Title': 'Brightolio' } : {}) },
     body: JSON.stringify({ model: p.model, ...body }),
   });
   const d = await r.json().catch(() => ({}));
-  if (!r.ok) throw Object.assign(new Error(d.error?.message || `AI service answered ${r.status}`), { status: r.status === 429 ? 429 : r.status });
+  const err = Array.isArray(d) ? d[0]?.error : d.error; // Gemini sometimes answers with an array
+  if (!r.ok) throw Object.assign(new Error(err?.message || `AI service answered ${r.status}`), { status: r.status === 429 ? 429 : r.status });
   return d;
+}
+// The models a Gemini key can use, best first (newest flash, then other flash, then pro).
+export async function geminiModels(apiKey) {
+  const r = await fetch(`${env('GEMINI_NATIVE_URL') || 'https://generativelanguage.googleapis.com/v1beta'}/models?pageSize=200&key=${encodeURIComponent(apiKey)}`, { signal: AbortSignal.timeout(15000) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(d.error?.message || `Gemini answered ${r.status}`), { status: r.status });
+  const ver = n => +(/gemini-(\d+(?:\.\d+)?)/.exec(n)?.[1] || 0);
+  return (d.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent')).map(m => m.name.replace(/^models\//, ''))
+    .filter(n => /^gemini-/.test(n) && !/(tts|image|embedding|audio|live|exp|preview|lite)/.test(n))
+    .sort((a, b) => ((/flash/.test(b) ? 1 : 0) - (/flash/.test(a) ? 1 : 0)) || ver(b) - ver(a) || a.length - b.length);
+}
+async function completions(p, body) {
+  if (p.id !== 'gemini') return post(p, body);
+  // Gemini "thinks" before it answers and the thinking counts against max_tokens: keep it short and
+  // leave room, or the answer comes back empty.
+  const g = { ...body, reasoning_effort: 'low', max_tokens: (body.max_tokens || 2000) + 2048 };
+  try { return await post(p, g); } catch (e) {
+    if (e.status === 400 && /reasoning|thinking/i.test(e.message)) return post(p, { ...body, max_tokens: g.max_tokens });
+    // The model was retired or is not open to this key: use the best one the key can reach.
+    if (e.status === 404 || /not found|not supported|is not available/i.test(e.message)) {
+      const best = (await geminiModels(p.apiKey)).find(m => m !== p.model);
+      if (!best) throw e;
+      picked.gemini = best; p.model = best;
+      return post(p, g).catch(e2 => (e2.status === 400 && /reasoning|thinking/i.test(e2.message) ? post(p, { ...body, max_tokens: g.max_tokens }) : Promise.reject(e2)));
+    }
+    throw e;
+  }
 }
 // The first JSON object in a reply (free models sometimes wrap it in prose or a code fence).
 export function parseJson(text) {
@@ -52,8 +84,8 @@ export function parseJson(text) {
 }
 
 // A structured answer that matches a JSON schema.
-export async function jsonCall({ system, user, schema, maxTokens = 3000 }) {
-  const p = provider(); if (!p) throw Object.assign(new Error('No AI provider is set up'), { status: 503 });
+async function jsonCallOne({ system, user, schema, maxTokens = 3000 }, p) {
+  if (!p) throw Object.assign(new Error('No AI provider is set up'), { status: 503 });
   // Personal details never leave the server (Admin → AI & privacy).
   system = redact(system); user = redact(user);
   try {
@@ -75,8 +107,8 @@ export async function jsonCall({ system, user, schema, maxTokens = 3000 }) {
 
 // Reads an image (a receipt, a document) and answers in JSON. Claude, Gemini and OpenRouter models
 // can see images; for a provider that cannot, the call fails and the caller falls back to typing.
-export async function visionJson({ image, prompt, schema, maxTokens = 800 }) {
-  const p = provider(); if (!p) throw Object.assign(new Error('No AI provider is set up'), { status: 503 });
+async function visionJsonOne({ image, prompt, schema, maxTokens = 800 }, p) {
+  if (!p) throw Object.assign(new Error('No AI provider is set up'), { status: 503 });
   const m = /^data:(image\/[a-z+]+);base64,(.+)$/.exec(String(image || ''));
   if (!m) throw Object.assign(new Error('Not an image'), { status: 400 });
   try {
@@ -96,8 +128,8 @@ export async function visionJson({ image, prompt, schema, maxTokens = 800 }) {
 
 // A conversation with tools. defs: { name: { description, schema, required, run } }.
 // Returns { text, sources, used }. Web search is available with Claude only.
-export async function toolChat({ system, messages: history, defs, webSearch = true, maxRounds = 8 }) {
-  const p = provider(); if (!p) throw Object.assign(new Error('No AI provider is set up'), { status: 503 });
+async function toolChatOne({ system, messages: history, defs, webSearch = true, maxRounds = 8 }, p) {
+  if (!p) throw Object.assign(new Error('No AI provider is set up'), { status: 503 });
   system = redact(system); history = history.map(m => ({ ...m, content: redact(m.content) }));
   const used = [], sources = [];
   const runTool = async (name, input) => {
@@ -134,7 +166,7 @@ export async function toolChat({ system, messages: history, defs, webSearch = tr
       const d = await completions(p, { max_tokens: 3000, temperature: 0.3, messages, tools, tool_choice: 'auto' });
       const msg = d.choices?.[0]?.message || {}, calls = msg.tool_calls || [];
       if (!calls.length) return { text: String(msg.content || '').trim() || 'No answer came back. Please try again.', sources, used };
-      messages.push({ role: 'assistant', content: msg.content || '', tool_calls: calls });
+      messages.push({ role: 'assistant', content: msg.content || null, tool_calls: calls });
       for (const c of calls) {
         let input = {}; try { input = JSON.parse(c.function?.arguments || '{}'); } catch {}
         const r = await runTool(c.function?.name, input);
@@ -150,7 +182,7 @@ export async function toolChat({ system, messages: history, defs, webSearch = tr
 export function providers() {
   const out = [];
   if (env('ANTHROPIC_API_KEY')) out.push({ id: 'anthropic', name: 'Claude', model: 'claude-opus-5-5' });
-  for (const id of Object.keys(FREE)) if (env(FREE[id].key)) out.push(free(id));
+  for (const id of Object.keys(FREE)) if (keyOf(id)) out.push(free(id));
   if (env('AI_BASE_URL')) out.push({ id: 'custom', name: 'Custom model', base: env('AI_BASE_URL').replace(/\/$/, ''), apiKey: env('AI_API_KEY'), model: env('AI_MODEL') || 'default' });
   return out;
 }
@@ -167,4 +199,45 @@ export async function textWith(id, { system, user, maxTokens = 3000 }) {
     const d = await completions(p, { max_tokens: maxTokens, temperature: 0.3, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] });
     return String(d.choices?.[0]?.message?.content || '').trim();
   } catch (e) { throw failed(e, p); }
+}
+
+// ---------- one provider fails: the next one with a key answers ----------
+// The provider chosen by provider() goes first; when it refuses the key, is out of quota, has no
+// such model or is down, the request goes to the next provider that has a key. The last error of
+// each provider is kept for Admin → AI & privacy → Test the AI.
+export const lastErrors = {};
+const retryable = e => !e.refusal && (!e.status || [401, 402, 403, 404, 408, 429].includes(e.status) || e.status >= 500 || /quota|exhausted|overloaded|unavailable|fetch failed|timeout|aborted|api key|api_key|permission|not found|not supported|location is not supported|billing/i.test(e.message));
+function chain() {
+  const first = provider(); if (!first) return [];
+  return [first, ...providers().filter(x => x.id !== first.id)];
+}
+async function viaChain(fn, args) {
+  const list = chain(); if (!list.length) throw Object.assign(new Error('No AI provider is set up'), { status: 503 });
+  let last;
+  for (const p of list) {
+    try { const r = await fn(args, p); delete lastErrors[p.id]; return r; } catch (e) {
+      lastErrors[p.id] = { at: Date.now(), status: e.status || null, message: String(e.message || e).slice(0, 300) };
+      last = e; if (!retryable(e)) throw e;
+    }
+  }
+  throw last;
+}
+export const jsonCall = args => viaChain(jsonCallOne, args);
+export const visionJson = args => viaChain(visionJsonOne, args);
+export const toolChat = args => viaChain(toolChatOne, args);
+
+// Admin test: a tiny request to every provider that has a key, with the exact answer or error.
+export async function testProviders() {
+  const out = [];
+  for (const p of providers()) {
+    const t0 = Date.now();
+    try {
+      const text = await textWith(p.id, { system: 'Answer in one short sentence.', user: 'Say that the connection works.', maxTokens: 60 });
+      out.push({ id: p.id, name: p.name, model: p.id === 'anthropic' ? 'claude-opus-5-5' : (providers().find(x => x.id === p.id) || p).model, ok: !!text, ms: Date.now() - t0, text: text.slice(0, 160) || 'Empty answer' });
+    } catch (e) { out.push({ id: p.id, name: p.name, model: p.model || null, ok: false, ms: Date.now() - t0, error: String(e.message || e).slice(0, 300), status: e.status || null }); }
+  }
+  const gem = keyOf('gemini');
+  let gemini = null;
+  if (gem) { try { gemini = { models: (await geminiModels(gem)).slice(0, 8) }; } catch (e) { gemini = { error: e.message }; } }
+  return { active: llmInfo(), results: out, gemini, keyNames: { gemini: env('GEMINI_API_KEY') ? 'GEMINI_API_KEY' : env('GOOGLE_API_KEY') ? 'GOOGLE_API_KEY' : env('GOOGLE_AI_API_KEY') ? 'GOOGLE_AI_API_KEY' : null }, provider: env('AI_PROVIDER') || null };
 }

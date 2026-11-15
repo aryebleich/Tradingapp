@@ -197,6 +197,9 @@ export async function volatility(symbol, userId) {
 export const riskDeps = userId => ({ summarize: accountSummary, price: s => lastPrice(s, userId), volatility: s => volatility(s, userId) });
 
 // order: { symbol, side, qty?, notional? }. Account "smart" routes to the best connected brokerage.
+// Short selling and borrowing need margin switched on for the account (and approved by the brokerage).
+const marginOn = async (userId, account) => (await import('./shortdesk.js')).marginOn(userId, account);
+const needMargin = () => Object.assign(new Error("Short selling needs margin. Switch on margin for this account in Trading tools, Margin center (a brokerage account also needs the brokerage's approval)."), { status: 409, margin: true });
 export async function placeOrder(userId, account, order, source = 'manual') {
   const symbol = String(order.symbol || '').trim().toUpperCase();
   const side = order.side === 'sell' ? 'sell' : 'buy';
@@ -277,6 +280,7 @@ async function sendOrder(userId, account, symbol, side, q, n, source, order) {
       // A sell must match what the account holds; going short only when the user asked for it.
       if (side === 'sell' && !order.allowShort && (held <= 0 || qty > held)) throw Object.assign(new Error(held > 0 ? `You can sell up to ${held} ${symbol} in this account.` : `You do not own any ${symbol} in this account; selling would open a short position.`), { status: 409 });
       if (kind === 'sell_short' && !b.shorts) throw new Error(`${b.name} does not support short selling here`);
+      if (kind === 'sell_short' && !(await marginOn(userId, account))) throw needMargin();
       const r = await b.place(c, { symbol, side: kind, qty, ...(lim ? { type: 'limit', limit_price: lim.price, tif: lim.tif } : { type: 'market' }) }, save);
       await intent(r.id, account);
       return { id: r.id, status: r.status, symbol, side, qty, broker: account, live: !!c.live, ...(lim ? { type: 'limit', limitPrice: lim.price } : {}) };
@@ -291,6 +295,10 @@ async function sendOrder(userId, account, symbol, side, q, n, source, order) {
     const body = lim
       ? { symbol, side, type: 'limit', limit_price: String(lim.price), time_in_force: lim.extended ? 'day' : lim.tif, qty: String(q > 0 ? q : limQty), ...(lim.extended ? { extended_hours: true } : {}) }
       : { symbol, side, type: 'market', time_in_force: 'day', ...(q > 0 ? { qty: String(q) } : { notional: n.toFixed(2) }) };
+    if (side === 'sell' && order.allowShort) {
+      const held = +(await t.position(symbol).then(p => p.qty, () => 0)) || 0, want = q > 0 ? q : (lim ? limQty : n / (await lastPrice(symbol, userId)));
+      if (want > Math.max(0, held) + 1e-9 && !(await marginOn(userId, account))) throw needMargin();
+    }
     await (await import('./alpaca/trading.js')).sellCheck(t, body, { allowShort: !!order.allowShort });
     const o = await t.placeOrder(body);
     await intent(o.id, account);
@@ -308,10 +316,13 @@ async function sendOrder(userId, account, symbol, side, q, n, source, order) {
   const price = await lastPrice(symbol, userId);
   const qty = q > 0 ? q : +(n / price).toFixed(6);
   if (!(qty > 0)) throw new Error('Amount is too small');
+  const margin = await marginOn(userId, 'paper');
+  // With margin on, buying power is Reg T: everything held may be up to twice the equity.
+  const marginRoom = margin ? await accountSummary(userId, 'paper').then(s => Math.max(0, 2 * s.equity - s.positions.reduce((t, x) => t + Math.abs(x.value), 0))) : 0;
   await recordFill(userId, 'paper', symbol, side, qty, price, source, { expected, signalAt, check: async one => {
     if (side === 'buy') {
       const a = await one('SELECT cash FROM paper_accounts WHERE user_id = ?', userId);
-      if (qty * price > a.cash + 1e-6) throw new Error(`Not enough paper cash ($${a.cash.toFixed(2)})`);
+      if (qty * price > Math.max(a.cash, margin ? marginRoom : 0) + 1e-6) throw new Error(margin ? `Not enough buying power ($${Math.max(a.cash, marginRoom).toFixed(2)} with margin)` : `Not enough paper cash ($${a.cash.toFixed(2)}). Switch on margin for this account to borrow.`);
     } else {
       const p = await one("SELECT qty FROM positions WHERE user_id = ? AND account = 'paper' AND symbol = ?", userId, symbol);
       const held = p?.qty || 0;
@@ -320,6 +331,7 @@ async function sendOrder(userId, account, symbol, side, q, n, source, order) {
         // account with $2,000 or more). The Reg T rule still applies: equity of at least 50% of
         // everything held short (150% of the short value with the sale's own proceeds).
         if (!order.allowShort) throw Object.assign(new Error(held > 0 ? `You hold ${held} ${symbol}; tick "Sell short" to sell more than that` : `You hold no ${symbol}; tick "Sell short" to short it`), { status: 409 });
+        if (!margin) throw needMargin();
         if (symbol.includes('/')) throw Object.assign(new Error('Crypto cannot be sold short'), { status: 409 });
         const s = await accountSummary(userId, 'paper');
         const shortAfter = s.positions.filter(x => x.qty < 0 && x.symbol !== symbol).reduce((t, x) => t - x.value, 0) + (Math.max(0, qty - Math.max(0, held)) + Math.max(0, -held)) * price;

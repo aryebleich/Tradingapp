@@ -57,6 +57,15 @@ export const TEMPLATES = {
   strangle: { name: 'Long strangle', desc: 'Buy an out-of-the-money call and put. Cheaper bet on a big move.' },
   butterfly: { name: 'Call butterfly', desc: 'Buy 1 low, sell 2 middle, buy 1 high call. Profits if the price ends near the middle.' },
   collar: { name: 'Collar', desc: 'Own shares, buy a protective put, sell a call to pay for it.' },
+  long_call: { name: 'Long call', desc: 'Buy a call. Profits if the price rises above the strike plus the premium; the most you lose is the premium.' },
+  long_put: { name: 'Long put', desc: 'Buy a put. Profits if the price falls below the strike minus the premium; the most you lose is the premium.' },
+  protective_put: { name: 'Protective put', desc: 'Own 100 shares and buy a put below the price: insurance that sets a floor under the shares.' },
+  risk_reversal: { name: 'Risk reversal', desc: 'Sell a put and buy a call, often for little or no cost. Bullish; you may have to buy the shares at the put strike.' },
+  iron_butterfly: { name: 'Iron butterfly', desc: 'Sell a call and a put at the same middle strike, buy wings above and below. Bigger credit than an iron condor, narrower profit zone.' },
+  put_butterfly: { name: 'Put butterfly', desc: 'Buy 1 high, sell 2 middle, buy 1 low put. Low cost; profits if the price ends near the middle strike.' },
+  jade_lizard: { name: 'Jade lizard', desc: 'Sell a put, and sell a call spread above. No risk to the upside when the credit is larger than the call spread\'s width.' },
+  ratio_call: { name: 'Call ratio spread', desc: 'Buy 1 call, sell 2 higher calls. Cheap or a credit; profits up to the short strike, risk above it is unlimited.' },
+  short_strangle: { name: 'Short strangle', desc: 'Sell an out-of-the-money call and put. Income in a quiet market; the risk is unlimited on both sides.' },
 };
 const mid = c => (c.bid > 0 && c.ask > 0 ? (c.bid + c.ask) / 2 : c.last || c.ask || c.bid || 0);
 const byDelta = (list, target) => list.filter(c => c.greeks?.delta != null).sort((a, b) => Math.abs(Math.abs(a.greeks.delta) - target) - Math.abs(Math.abs(b.greeks.delta) - target))[0];
@@ -81,6 +90,15 @@ export function buildTemplate(id, contracts, spot, expiration) {
     strangle: () => [leg(byDelta(calls, 0.25) || wing(calls, spot, 1, 2), 'buy'), leg(byDelta(puts, 0.25) || wing(puts, spot, -1, 2), 'buy')],
     butterfly: () => [leg(wing(calls, atmC.strike, -1, 2), 'buy'), leg(atmC, 'sell', 2), leg(wing(calls, atmC.strike, 1, 2), 'buy')],
     collar: () => [stock, leg(byDelta(puts, 0.25) || wing(puts, spot, -1, 2), 'buy'), leg(byDelta(calls, 0.25) || wing(calls, spot, 1, 2), 'sell')],
+    long_call: () => [leg(byDelta(calls, 0.5) || atmC, 'buy')],
+    long_put: () => [leg(byDelta(puts, 0.5) || atmP, 'buy')],
+    protective_put: () => [stock, leg(byDelta(puts, 0.3) || wing(puts, spot, -1, 2), 'buy')],
+    risk_reversal: () => [leg(byDelta(puts, 0.25) || wing(puts, spot, -1, 2), 'sell'), leg(byDelta(calls, 0.25) || wing(calls, spot, 1, 2), 'buy')],
+    iron_butterfly: () => [leg(wing(puts, atmP.strike, -1, 2), 'buy'), leg(atmP, 'sell'), leg(nearStrike(calls, atmP.strike), 'sell'), leg(wing(calls, atmP.strike, 1, 2), 'buy')],
+    put_butterfly: () => [leg(wing(puts, atmP.strike, 1, 2), 'buy'), leg(atmP, 'sell', 2), leg(wing(puts, atmP.strike, -1, 2), 'buy')],
+    jade_lizard: () => { const sc = byDelta(calls, 0.25) || wing(calls, spot, 1, 2); return [leg(byDelta(puts, 0.3) || wing(puts, spot, -1, 2), 'sell'), leg(sc, 'sell'), leg(wing(calls, sc.strike, 1, 1), 'buy')]; },
+    ratio_call: () => [leg(atmC, 'buy'), leg(byDelta(calls, 0.3) || wing(calls, atmC.strike, 1, 2), 'sell', 2)],
+    short_strangle: () => [leg(byDelta(calls, 0.2) || wing(calls, spot, 1, 3), 'sell'), leg(byDelta(puts, 0.2) || wing(puts, spot, -1, 3), 'sell')],
   }[id];
   if (!L) throw Object.assign(new Error('Unknown template'), { status: 400 });
   const legs = L().filter(Boolean);

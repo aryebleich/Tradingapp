@@ -368,10 +368,10 @@ const CORE = [['dashboard', 'Home'], ['start', 'Get started'], ['trade', 'Trade'
 const BIZ_NAV = ['My business', [['business', 'Business dashboard'], ['invoices', 'Invoices & payments'], ['books', 'Bookkeeping'], ['bank', 'Bank & receipts'], ['inventory', 'Inventory'], ['payroll', 'Payroll'], ['bizreports', 'Financial reports']]];
 const NAV = [
   ['Investing', [['analyze', 'Stock & fund analyzer'], ['lowcost', 'Low-cost index & mutual funds'], ['earnings', 'Earnings vs expectations'], ['institutions', 'Institutional portfolios'], ['sp500', 'S&P 500 plan'], ['wealth', 'Investing toolkit'], ['robo', 'Automated portfolios'], ['longterm', 'Long-term view'], ['invest', 'Futures, funds & savings'], ['alpaca-tools', 'Bonds, rates & crypto'], ['tokenized', 'Tokenized securities'], ['values', 'Values investing'], ['spend', 'Invest as you spend']]],
-  ['Trading tools', [['chart', 'Chart'], ['options', 'Options chain'], ['optionslab', 'Options lab'], ['scanner', 'Scanner'], ['leaders', 'New leaders'], ['short', 'Short the market'], ['margin', 'Margin center'], ['calendar', 'Calendar & events'], ['execution', 'Execution & routing'], ['workspace', 'Workspace']]],
+  ['Trading tools', [['chart', 'Chart'], ['options', 'Options desk'], ['optionslab', 'Options lab'], ['scanner', 'Scanner'], ['leaders', 'New leaders'], ['short', 'Short selling'], ['margin', 'Margin center'], ['calendar', 'Calendar & events'], ['execution', 'Execution & routing'], ['workspace', 'Workspace']]],
   // Intelligence: research first (ask, read, follow the news), then AI predictions, then AI that trades.
   ['Intelligence', [['ai', 'AI assistant'], ['research', 'Plain-language research'], ['news', 'News & sentiment'], ['intel', 'Market intelligence'], ['aisignals', 'AI signals'], ['agents', 'Forecasts & AI agents'], ['aibots', 'AI bots'], ['agenthub', 'Agents & API']]],
-  ['Automation', [['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['schedule', 'Scheduled trades'], ['rules', 'Rules across accounts'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['portfolios', 'Portfolios'], ['aifunds', 'AI long/short portfolios'], ['text', 'Text commands'], ['hotline', 'Phone hotline']]],
+  ['Automation', [['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['schedule', 'Scheduled trades'], ['rules', 'Rules across accounts'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['portfolios', 'Portfolios'], ['aifunds', 'AI hedge funds'], ['text', 'Text commands'], ['hotline', 'Phone hotline']]],
   // Marketplace: everything members share, to copy or follow.
   ['Marketplace', [['marketplace', 'Marketplace overview'], ['traders', 'Top traders'], ['aimarket', 'AI strategy marketplace'], ['sharedstrategies', 'Shared strategies'], ['sharedportfolios', 'Shared portfolios'], ['signalchannels', 'Signal channels']]],
   ['Quant lab', [['pairs', 'Pairs trading'], ['statarb', 'Statistical arbitrage'], ['code', 'Code lab'], ['quantconnect', 'Cloud algorithms']]],
@@ -1917,6 +1917,7 @@ lazyRoutes(() => import('./pages/build.js'), 'registerBuild', shared, ["scanner"
 lazyRoutes(() => import('./pages/analytics.js'), 'registerAnalytics', shared, ["insights", "risk", "values", "halal", "institutions", "spend", "news"]);
 lazyRoutes(() => import('./chart.js'), 'registerChart', shared, ["chart"]);
 lazyRoutes(() => import('./pages/optionslab.js'), 'registerOptionsLab', shared, ["optionslab"]);
+lazyRoutes(() => import('./pages/optionsdesk.js'), 'registerOptionsDesk', shared, ["options"]);
 registerProtect(routes, shared);
 lazyRoutes(() => import('./pages/owner.js'), 'registerOwner', shared, ["admin-upgrades", "admin-business", "admin-alpaca", "admin-money", "admin-phone", "admin-phoneaccts", "admin-ai", "admin-readme", "admin-admins", "admin-keys"]);
 lazyRoutes(() => import('./pages/alts.js'), 'registerAlts', shared, ["private", "realestate"]);
@@ -1933,6 +1934,8 @@ initSearch(shared, [['Main', [...CORE, ['extras', 'My tools']]], ...NAV]);
 routes.extras = async (view, q) => (await import('./pages/extras.js')).page(view, q, shared);
 // Home: the My day card, when switched on.
 { const home = routes.dashboard; routes.dashboard = async (view, q) => { await home(view, q); if (EXTRAS.myday && view.isConnected) (await import('./pages/extras.js')).myDayCard(shared, view).catch(() => {}); }; }
+// Home: the AI's read of why the P/L moved today (on unless the owner switched it off).
+{ const home = routes.dashboard; routes.dashboard = async (view, q) => { await home(view, q); if (view.isConnected) (await import('./pages/pnlwhy.js')).pnlWhyCard(shared, view).catch(() => {}); }; }
 // Settings in sections: optional features first, then how it looks, trading and taxes, sign-in
 // and security, connections, your data. Each card keeps its form and its buttons; only its place changes.
 const SET_SECTIONS = [

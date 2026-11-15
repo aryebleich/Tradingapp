@@ -568,6 +568,9 @@ api.use('/credits', CR.creditsRouter({ checkout: async (user, pack) => {
 api.use('/sp500', sp500Router);
 api.use('/brokerages', extRouter);
 api.use('/insights', insightsRouter({ summarize: accountSummary }));
+api.use('/pnlwhy', (await import('./src/pnlwhy.js')).pnlWhyRouter);
+api.use('/shortdesk', (await import('./src/shortdesk.js')).shortRouter);
+api.use('/optdesk', (await import('./src/optionsdesk.js')).optionsDeskRouter);
 api.use('/ml', mlRouter);
 api.use('/scanners', scannerRouter);
 api.use('/baskets', basketsRouter);

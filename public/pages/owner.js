@@ -308,8 +308,17 @@ Trade
 // AI & privacy: which AI crawlers may read the public site, what AI tools may say about it, and
 // what the app's own assistant may send to its AI provider.
 async function aiPrivacy(view) {
-  const d = await H.api('/admin/site/ai'), s = d.settings;
+  const [d, pw] = await Promise.all([H.api('/admin/site/ai'), H.api('/admin/site/pnlwhy')]), s = d.settings;
   view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-ai')}
+  <div class="card" id="aiTest"><h2>The AI the app uses</h2>
+    <p class="mu" style="margin-top:0">${d.ai ? `In use now: <b>${H.esc(d.ai.name)}</b> <span class="mu" data-no-tr>(${H.esc(d.ai.model)})</span>. When it fails, the next provider that has a key answers instead.` : 'No AI key is set. Add GEMINI_API_KEY (free at aistudio.google.com/apikey), GROQ_API_KEY, OPENROUTER_API_KEY or ANTHROPIC_API_KEY in <a href="#/admin-keys">Keys</a>.'}</p>
+    <button type="button" id="aiTestB">Test the AI now</button><div id="aiTestOut"></div></div>
+  <form class="card" id="pwf"><h2>AI P/L analysis on Home</h2>
+    <p class="mu" style="margin-top:0">A box on every user's Home that explains what moved their profit or loss today: the market, their sectors, each holding and its news. It runs on the AI above; with none, a plain summary of the same numbers.</p>
+    <label class="check"><input type="checkbox" name="on" ${pw.on ? 'checked' : ''}> Show it on Home</label>
+    <p class="mu small-print">Refreshes by itself at most this often (minutes). Refreshing sooner costs ${pw.cost} credit${pw.cost === 1 ? '' : 's'} (set with the other credit prices in Money &amp; fees).</p>
+    <div class="row">${['free', 'pro', 'elite', 'ultimate'].map(k => `<label>${({ free: 'Starter', pro: 'Pro', elite: 'Elite', ultimate: 'Ultimate' })[k]}<input type="number" min="5" max="10080" name="${k}" value="${pw.every[k]}"></label>`).join('')}</div>
+    <button>Save</button><div class="err"></div></form>
   <div class="card"><h2>Where AI tools get information about Brightolio</h2>
     <ul class="tips">
       <li><b>The public website</b> (homepage, Terms, Privacy, Risk): AI crawlers such as Google's for Gemini read public pages. Block or allow each one below; the setting is published as <a href="/robots.txt" target="_blank" rel="noopener">robots.txt</a> and as a "no AI" header on every page.</li>
@@ -333,6 +342,15 @@ async function aiPrivacy(view) {
       <option value="always" ${s.accountData === 'always' ? 'selected' : ''}>Always, free tiers included</option></select></label>
     <button>Save</button><div class="err"></div></form>
   <div class="card"><h2>robots.txt now</h2><pre class="ivrtree" data-no-tr id="robots">${H.esc(d.robots)}</pre></div>`;
+  { const f = H.$('#pwf', view); H.act(f.querySelector('button'), async () => { await H.api('/admin/site/pnlwhy', { method: 'PUT', body: { on: f.on.checked, every: Object.fromEntries(['free', 'pro', 'elite', 'ultimate'].map(k => [k, +f[k].value])) } }); return 'Saved.'; }); }
+  H.act(H.$('#aiTestB', view), async () => {
+    const r = await H.api('/admin/site/ai/test', { body: {} });
+    const hint = e => /API key not valid|API_KEY_INVALID|invalid api key|401|403/i.test(e) ? 'The key is wrong or was deleted: make a new one and save it in Keys (no spaces).' : /quota|exhausted|429/i.test(e) ? 'The free quota is used up for now; it refills (per minute and per day), or add a second provider.' : /not found|404|not supported/i.test(e) ? 'This model is not open to the key; the app now picks one that is.' : /location|region|country/i.test(e) ? 'Google does not offer the free Gemini API in the server\'s region; use Groq or OpenRouter as well.' : '';
+    H.$('#aiTestOut', view).innerHTML = (r.results.length ? `<div class="tablewrap"><table class="slim"><tr><th>Provider</th><th>Model</th><th>Result</th><th class="num">Time</th></tr>${r.results.map(x => `<tr><td><b>${H.esc(x.name)}</b></td><td data-no-tr>${H.esc(x.model || '-')}</td><td>${x.ok ? `<span class="pill pos">works</span> <span class="mu">${H.esc(x.text)}</span>` : `<span class="pill warn">failed</span> <span data-no-tr>${H.esc(x.error)}</span>${hint(x.error) ? `<div class="mu small-print">${hint(x.error)}</div>` : ''}`}</td><td class="num">${(x.ms / 1000).toFixed(1)} s</td></tr>`).join('')}</table></div>` : '<p class="err">No AI key is set.</p>')
+      + (r.gemini?.models ? `<p class="mu small-print">Gemini models this key can use: <span data-no-tr>${r.gemini.models.map(H.esc).join(', ')}</span>. To choose one, set GEMINI_MODEL in Keys.</p>` : r.gemini?.error ? `<p class="mu small-print">Gemini: <span data-no-tr>${H.esc(r.gemini.error)}</span></p>` : '')
+      + (r.provider ? `<p class="mu small-print">AI_PROVIDER is set to <code data-no-tr>${H.esc(r.provider)}</code>; that provider goes first.</p>` : '');
+    return '';
+  });
   const f = H.$('#aif', view);
   H.act(H.$('button', f), async () => {
     const allow = Object.fromEntries(Object.keys(d.crawlers).map(k => [k, f['allow_' + k].checked]));

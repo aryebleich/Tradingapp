@@ -61,6 +61,9 @@ test('sponsored news: listed companies only, disclosure required, free plan only
 test('practice short selling: no minimum, needs the box ticked, 50% equity rule, covers at the right price', async () => {
   await call('user', '/account?account=paper');
   assert.equal((await call('user', '/orders', { symbol: 'AAPL', side: 'sell', qty: 2, account: 'paper' })).status, 409);
+  // Margin is off until the user switches it on: no short selling before that.
+  assert.match((await call('user', '/orders', { symbol: 'AAPL', side: 'sell', qty: 2, account: 'paper', allowShort: true })).body.error, /needs margin/);
+  assert.equal((await call('user', '/shortdesk/margin', { account: 'paper', on: true }, 'PUT')).body.status, 'on');
   const s = await call('user', '/orders', { symbol: 'AAPL', side: 'sell', qty: 2, account: 'paper', allowShort: true });
   assert.equal(s.status, 200, JSON.stringify(s.body));
   let pos = (await call('user', '/account?account=paper')).body.positions.find(p => p.symbol === 'AAPL');

@@ -18,6 +18,8 @@ export const AI_PLAN = {
     optionsFlow: 'eod', earningsSummaries: 0, darkPool: true, whales: 3,
     // Chart co-pilot questions a day.
     copilot: 5,
+    // AI short-selling and options analysis a day.
+    shortAi: 3, optionsAi: 3,
   },
   pro: {
     label: 'Pro',
@@ -26,6 +28,8 @@ export const AI_PLAN = {
     signals: 25, signalAuto: 'paper', customSignals: false,
     optionsFlow: 'delayed', earningsSummaries: 5, darkPool: true, whales: 10,
     copilot: 50,
+    // AI short-selling and options analysis a day.
+    shortAi: 30, optionsAi: 30,
   },
   elite: {
     label: 'Elite',
@@ -34,6 +38,8 @@ export const AI_PLAN = {
     signals: 100, signalAuto: 'live', customSignals: true,
     optionsFlow: 'realtime', earningsSummaries: 30, darkPool: true, whales: 25,
     copilot: 200,
+    // AI short-selling and options analysis a day.
+    shortAi: 100, optionsAi: 100,
   },
   ultimate: {
     label: 'Ultimate',
@@ -42,6 +48,8 @@ export const AI_PLAN = {
     signals: 100, signalAuto: 'live', customSignals: true,
     optionsFlow: 'realtime', earningsSummaries: 200, darkPool: true, whales: 100,
     copilot: 1000,
+    // AI short-selling and options analysis a day.
+    shortAi: 500, optionsAi: 500,
   },
 };
 
@@ -74,6 +82,8 @@ export const AI_PLAN_ROWS = [
   ['Unusual options flow', p => flow[p.optionsFlow]],
   ['AI earnings-call summaries a month', p => String(p.earningsSummaries || '-')],
   ['Chart co-pilot questions a day', p => String(p.copilot)],
+  ['AI short-selling analyses a day', p => String(p.shortAi)],
+  ['AI options analyses a day', p => String(p.optionsAi)],
 ];
 export const aiPlanTable = () => ({ plans: Object.fromEntries(Object.entries(AI_PLAN).map(([k, p]) => [k, p.label])), rows: AI_PLAN_ROWS.map(([name, f]) => [name, ...Object.values(AI_PLAN).map(f)]) });
 

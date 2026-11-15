@@ -188,6 +188,8 @@ test('other brokerages: Tradier connect, summary, orders and shorts', async () =
   // A sell of something not held is refused unless the user chose to sell short; then it opens a short.
   await run("UPDATE users SET plan = 'pro', plan_status = 'active' WHERE email = 'broker@example.com'");
   assert.equal((await call('/orders', { account: 'tradier', symbol: 'PEP', side: 'sell', qty: 3 })).status, 409);
+  assert.match((await call('/orders', { account: 'tradier', symbol: 'PEP', side: 'sell', qty: 3, allowShort: true })).body.error, /needs margin/);
+  assert.equal((await call('/shortdesk/margin', { account: 'tradier', on: true }, 'PUT')).body.status, 'on'); // the brokerage checks its own approval
   const o = (await call('/orders', { account: 'tradier', symbol: 'PEP', side: 'sell', qty: 3, allowShort: true })).body;
   assert.equal(o.id, '777');
   const post = seen.filter(x => x.method === 'POST' && x.url === '/v1/accounts/VA123/orders').pop();

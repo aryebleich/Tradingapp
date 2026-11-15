@@ -1147,3 +1147,50 @@ html[dir="rtl"] .set-sec input[type=checkbox]::after { left: auto; right: 3px; }
 /* ---- No help for beginners ---- */
 body.nohelp .pguide, body.nohelp .gl, body.nohelp .onboard, body.nohelp .glpop, body.nohelp #nav a[href="#/start"], body.nohelp #tabs a[data-r="start"] { display: none !important; }
 .set-stack { display: grid; gap: 16px; } .set-stack > .card { margin: 0; overflow-x: auto; }
+
+/* ---- Home: AI analysis of today's P/L ---- */
+.pnlwhy .kicker { display: block; font-size: 11.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ac); }
+.pnlwhy .pw-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.pnlwhy .pw-head h2 { margin: 2px 0 0; }
+.pnlwhy .pw-total { text-align: end; } .pnlwhy .pw-total b { display: block; font-size: 24px; font-variant-numeric: tabular-nums; } .pnlwhy .pw-total span { font-size: 13px; }
+.pnlwhy .pw-headline { margin: 10px 0 4px; }
+.pnlwhy .pw-mkt { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; } .pnlwhy .pw-mkt .chip { font-size: 12.5px; }
+.pnlwhy .pw-factors { list-style: none; padding: 0; margin: 12px 0 6px; display: grid; gap: 12px; }
+.pnlwhy .pw-factors li { border: 1px solid var(--bd); border-radius: 12px; padding: 10px 12px; }
+.pnlwhy .pw-row { display: flex; align-items: center; gap: 8px; } .pnlwhy .pw-row b { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.pnlwhy .pw-imp { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pnlwhy .pw-bar { height: 5px; border-radius: 3px; background: var(--bd); margin: 7px 0 6px; overflow: hidden; }
+.pnlwhy .pw-bar i { display: block; height: 100%; border-radius: 3px; } .pnlwhy .pw-bar i.up { background: var(--gr, #16a34a); } .pnlwhy .pw-bar i.down { background: var(--rd, #dc2626); }
+html[dir="rtl"] .pnlwhy .pw-bar i { margin-inline-start: 0; }
+.pnlwhy .pw-factors p { margin: 0; font-size: 14px; }
+.pnlwhy .pw-news { display: block; font-size: 12.5px; margin-top: 4px; overflow-wrap: anywhere; }
+.pnlwhy .pw-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+.pnlwhy .pw-note { margin: 6px 0 0; }
+
+/* ---- Switches outside Settings (margin, and other single on/off controls) ---- */
+.switch-row { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; white-space: nowrap; }
+.switch-row input[type=checkbox] { appearance: none; -webkit-appearance: none; flex: none; width: 44px; height: 24px; margin: 0; border-radius: 999px; background: var(--bd); position: relative; cursor: pointer; transition: background .15s; border: 0; }
+.switch-row input[type=checkbox]::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); transition: transform .15s; }
+.switch-row input[type=checkbox]:checked { background: var(--ac); }
+.switch-row input[type=checkbox]:checked::after { transform: translateX(20px); }
+html[dir="rtl"] .switch-row input[type=checkbox]::after { left: auto; right: 3px; }
+html[dir="rtl"] .switch-row input[type=checkbox]:checked::after { transform: translateX(-20px); }
+.switch-row input[type=checkbox]:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
+/* AI answers inside a card */
+.aibox { margin-top: 12px; padding: 14px 16px; border-radius: 12px; background: color-mix(in srgb, var(--ac) 7%, transparent); border: 1px solid color-mix(in srgb, var(--ac) 25%, transparent); }
+.aibox h3 { font-size: 14px; margin: 10px 0 4px; } .aibox ul { margin: 0; padding-inline-start: 20px; } .aibox li { margin: 3px 0; }
+
+/* ---- Options desk ---- */
+.optchain th.ctr, .optchain td.strike { text-align: center; }
+.optchain td.strike small { display: block; font-size: 11px; }
+.optchain td.itm { background: color-mix(in srgb, var(--ac) 9%, transparent); }
+.optchain tr.atmrow td, table.scen tr.atmrow td { border-top: 2px solid var(--ac); border-bottom: 2px solid var(--ac); }
+.optchain td.pick { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+.optchain td.pick:hover { background: color-mix(in srgb, var(--ac) 18%, transparent); }
+.expchips { margin: 10px 0; } .expchips small { opacity: .7; margin-inline-start: 3px; }
+.optct .decaybar { display: block; height: 6px; border-radius: 3px; background: var(--ac); opacity: .7; }
+table.scen td small { display: block; font-size: 11px; opacity: .8; }
+details.optrisk { margin-top: 14px; padding: 12px 16px; border: 1px solid var(--bd); border-radius: 12px; font-size: 13.5px; }
+details.optrisk ul { margin: 8px 0 0; padding-inline-start: 20px; } details.optrisk li { margin: 4px 0; }
+.card.picked { outline: 2px solid var(--ac); }
+td.nowrap { white-space: nowrap; }

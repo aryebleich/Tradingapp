@@ -15,10 +15,10 @@ import { siteGet, siteSet } from './site.js';
 
 export const DEFAULTS = {
   monthly: { free: 100, pro: 1000, elite: 3000, ultimate: 10000 },
-  costs: { ai: 1, sms: 1, call: 3, filing: 5, agent: 10, optimize: 3 },
+  costs: { ai: 1, sms: 1, call: 3, filing: 5, agent: 10, optimize: 3, pnlwhy: 2 },
   packs: [{ id: 'c500', credits: 500, price: 5 }, { id: 'c3000', credits: 3000, price: 25 }, { id: 'c12000', credits: 12000, price: 80 }],
 };
-export const LABELS = { ai: 'AI message beyond the daily allowance', sms: 'Text message sent to you', call: 'Call to the phone line', filing: 'AI summary of a 10-K or 10-Q', agent: 'Training an AI agent', optimize: 'Strategy optimizer run' };
+export const LABELS = { ai: 'AI message beyond the daily allowance', sms: 'Text message sent to you', call: 'Call to the phone line', filing: 'AI summary of a 10-K or 10-Q', agent: 'Training an AI agent', optimize: 'Strategy optimizer run', pnlwhy: 'AI P/L analysis refreshed before its time' };
 export const config = () => { const s = siteGet('credits', {}) || {}; return { monthly: { ...DEFAULTS.monthly, ...(s.monthly || {}) }, costs: { ...DEFAULTS.costs, ...(s.costs || {}) }, packs: s.packs?.length ? s.packs : DEFAULTS.packs }; };
 export async function saveConfig(b = {}) {
   const cur = config(), int = (v, lo, hi) => { const n = Math.round(+v); if (!(n >= lo && n <= hi)) throw Object.assign(new Error(`Use a whole number from ${lo} to ${hi}`), { status: 400 }); return n; };
