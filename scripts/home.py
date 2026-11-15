@@ -304,7 +304,7 @@ def index(lang='en'):
     <p class="acctlink"><a data-app="#/brokers" href="app">{T('Connect your brokerage')} &rarr;</a> <span>{T('Use the broker you already have, or open a commission-free account (we suggest Alpaca)')}</span></p>
     <p class="phoneline hero-phone" data-phone hidden>{ic('msg', 16)} {T('Text or call us:')} <a data-phone-link dir="ltr"></a></p>
   </div>
-  <figure class="shot" data-live><div class="frame"><i></i><i></i><i></i><span class="livetag" hidden><b></b>LIVE</span></div><img src="hero-brightolio.webp" width="1600" height="1000" alt="{T('Brightolio portfolio dashboard with equity chart, positions and order ticket')}" fetchpriority="high"><figcaption>{T('Illustrative paper-trading account')}</figcaption></figure>
+  <figure class="shot" data-live><div class="frame"><i></i><i></i><i></i><span class="livetag" hidden><b></b>LIVE</span></div><img src="hero-brightolio.webp" width="1600" height="1000" alt="{T('Brightolio portfolio dashboard with equity chart, positions and order ticket')}" decoding="async"><figcaption>{T('Illustrative paper-trading account')}</figcaption></figure>
 </div>
 <div class="marquee" aria-hidden="true"><div class="track">{''.join(f'<span>{ic(i, 16)}{T(t)}</span>' for i, t, d in FEATURES if t != 'English &amp; Yiddish') * 2}</div></div>
 <div class="wrap"><div class="logos"><span>{T('Brokers:')} <b>Alpaca</b> · <b>Schwab</b> · <b>tastytrade</b> · <b>Tradier</b> · <b>TradeStation</b></span><span>{T('Payments by')} <b>Stripe</b> &amp; <b>Helcim</b></span></div></div>
