@@ -47,7 +47,7 @@ async function assistant(view) {
   const log = H.$('#log', view), box = H.$('#draftBox', view), ta = H.$('textarea', view);
   const save = () => { try { sessionStorage.setItem('qp_chat', JSON.stringify(msgs.slice(-30))); } catch {} };
   const draw = () => {
-    log.innerHTML = msgs.length ? msgs.map(m => `<div class="msg ${m.role}">${m.role === 'user' ? H.esc(m.content) : md(m.content)}${m.sources?.length ? `<div class="mu srcs">Sources: ${m.sources.map(s => `<a href="${H.esc(s.url)}" target="_blank" rel="noopener">${H.esc(s.title || new URL(s.url).hostname)}</a>`).join(' · ')}</div>` : ''}</div>`).join('')
+    log.innerHTML = msgs.length ? msgs.map(m => `<div class="msg ${m.role}">${m.role === 'user' ? H.esc(m.content) : md(m.content)}${m.sources?.length ? `<div class="mu srcs">Sources: ${m.sources.map(s => `<a href="${H.esc(H.safeUrl(s.url))}" target="_blank" rel="noopener">${H.esc(s.title || new URL(s.url).hostname)}</a>`).join(' · ')}</div>` : ''}</div>`).join('')
       : '<div class="mu" style="padding:12px">Start with a question, or tap a suggestion.</div>';
     log.scrollTop = log.scrollHeight;
   };

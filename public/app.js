@@ -19,6 +19,8 @@ import { attachGlossary } from './pages/glossary.js';
 import { startI18n, setLang, canvasNote, LANGS, current as currentLang } from './i18n.js';
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+// Links built from outside data (news, filings, feeds) may only open http(s) addresses.
+const safeUrl = u => (/^https?:\/\//i.test(String(u || '')) ? String(u) : '#');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const money = x => (x < 0 ? '-$' : '$') + Math.abs(+x || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const pct = (x, d = 1) => (isFinite(x) ? (x > 0 ? '+' : '') + (+x).toFixed(d) + '%' : '-');
@@ -744,7 +746,7 @@ async function sponsoredToast() {
   const t = document.createElement('div'); t.className = 'newstoast sponsored'; t.setAttribute('role', 'status');
   t.innerHTML = `<div class="nt-top"><span class="pill">Sponsored</span><span class="nt-syms" data-no-tr>${esc(ad.symbol)}</span><span class="mu" data-no-tr>${esc(ad.company || '')}${ad.exchange ? ' · ' + esc(ad.exchange) : ''}</span><button class="nt-x" aria-label="Close">×</button></div>
     <b class="nt-head" data-no-tr>${esc(ad.headline)}</b>${ad.body ? `<p class="nt-body" data-no-tr>${esc(ad.body)}</p>` : ''}
-    <div class="nt-foot"><a href="#/trade?symbol=${encodeURIComponent(ad.symbol)}" class="nt-buy"><button type="button" class="small">Buy ${esc(ad.symbol)}</button></a>${ad.url ? `<a href="${esc(ad.url)}" target="_blank" rel="noopener sponsored" class="mu">Read more</a>` : ''}<a href="#/funding" class="mu">Hide sponsored news: upgrade</a></div>
+    <div class="nt-foot"><a href="#/trade?symbol=${encodeURIComponent(ad.symbol)}" class="nt-buy"><button type="button" class="small">Buy ${esc(ad.symbol)}</button></a>${ad.url ? `<a href="${esc(safeUrl(ad.url))}" target="_blank" rel="noopener sponsored" class="mu">Read more</a>` : ''}<a href="#/funding" class="mu">Hide sponsored news: upgrade</a></div>
     <p class="nt-disc mu" data-no-tr>${esc(ad.disclosure)}</p>`;
   document.body.append(t);
   requestAnimationFrame(() => t.classList.add('in'));
@@ -1954,7 +1956,7 @@ for (const k of ['trade', 'positions', 'orders']) {
 }
 // The tabs on top of every Marketplace page.
 const marketTabs = on => `<div class="chips viewtabs">${NAV.find(([g]) => g === 'Marketplace')[1].map(([k, t]) => `<a href="#/${k}"><button type="button" class="${k === on ? 'on' : ''}">${esc({ marketplace: 'Overview', sharedstrategies: 'Strategies', sharedportfolios: 'Portfolios' }[k] || t)}</button></a>`).join('')}</div>`;
-const shared = { extras: () => EXTRAS, setExtras: on => { EXTRAS = on; render.navKey = null; }, marketTabs, $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, refreshMe, accounts, accountOptions, acctLabel, state, adminTabs, adminPage, secureConfirm, me: () => ME, paid: () => isPaid(ME) };
+const shared = { safeUrl, extras: () => EXTRAS, setExtras: on => { EXTRAS = on; render.navKey = null; }, marketTabs, $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, refreshMe, accounts, accountOptions, acctLabel, state, adminTabs, adminPage, secureConfirm, me: () => ME, paid: () => isPaid(ME) };
 lazyRoutes(() => import('./pages/studio.js'), 'registerStudio', shared, ["ai", "agents", "code"]);
 lazyRoutes(() => import('./pages/build.js'), 'registerBuild', shared, ["scanner", "portfolios", "fleet", "marketplace", "aimarket", "sharedstrategies", "sharedportfolios", "signalchannels"]);
 lazyRoutes(() => import('./pages/analytics.js'), 'registerAnalytics', shared, ["insights", "risk", "values", "halal", "institutions", "spend", "news"]);

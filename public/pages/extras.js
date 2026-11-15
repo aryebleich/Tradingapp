@@ -177,7 +177,7 @@ async function explain(body, acct, q) {
       if (d.empty) { out.innerHTML = `<p class="mu">${H.esc(d.empty)}</p>`; return; }
       out.innerHTML = `<div class="stats" style="margin-top:12px"><div class="stat"><span data-no-tr>${H.esc(d.symbol)} on ${d.day}</span><b class="${H.cls(d.pct)}">${pc(d.pct, 2)}</b></div><div class="stat"><span>The market that day</span><b>${d.market == null ? '-' : pc(d.market, 2)}</b></div><div class="stat"><span>Compared with a usual day</span><b>${d.unusual}×</b></div></div>
         <h3>Most likely why</h3><ul>${d.causes.map(c => `<li>${H.esc(c)}</li>`).join('')}</ul>
-        ${d.news.length ? `<h3>Headlines around that day</h3><ul class="plain" data-no-tr>${d.news.map(n => `<li>${n.url ? `<a href="${H.esc(n.url)}" target="_blank" rel="noopener">${H.esc(n.headline)}</a>` : H.esc(n.headline)} <span class="mu">${H.esc(n.source || '')}</span></li>`).join('')}</ul>` : ''}
+        ${d.news.length ? `<h3>Headlines around that day</h3><ul class="plain" data-no-tr>${d.news.map(n => `<li>${n.url ? `<a href="${H.esc(H.safeUrl(n.url))}" target="_blank" rel="noopener">${H.esc(n.headline)}</a>` : H.esc(n.headline)} <span class="mu">${H.esc(n.source || '')}</span></li>`).join('')}</ul>` : ''}
         <h3>Its biggest days lately</h3><div class="chips">${d.biggest.map(b => `<button type="button" data-day="${b.day}"><span data-no-tr>${b.day}</span> ${pc(b.pct)}</button>`).join('')}</div>`;
       H.$$('[data-day]', out).forEach(b => (b.onclick = () => { f.day.value = b.dataset.day; go(); }));
     } catch (e) { out.innerHTML = ''; H.$('.err', f).textContent = e.message; }

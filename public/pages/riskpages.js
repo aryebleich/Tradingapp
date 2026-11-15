@@ -70,7 +70,7 @@ async function research(view, q) {
     fOut.innerHTML = '<p class="mu">Reading the filing…</p>'; nOut.innerHTML = '<p class="mu">Reading the news…</p>';
     H.api(`/plain-research/filing/${encodeURIComponent(s)}?form=${form}`).then(f => {
       const S = f.summary, list = (t, a) => (a?.length ? `<h3>${t}</h3><ul>${a.map(x => `<li>${H.esc(x)}</li>`).join('')}</ul>` : '');
-      fOut.innerHTML = `<h3>${H.esc(f.company)}: ${H.esc(f.form)}</h3><p class="mu">Filed ${H.esc(f.filed)} · period ending ${H.esc(f.period)} · <a href="${H.esc(f.url)}" target="_blank" rel="noopener">Read the original on SEC.gov ↗</a></p>
+      fOut.innerHTML = `<h3>${H.esc(f.company)}: ${H.esc(f.form)}</h3><p class="mu">Filed ${H.esc(f.filed)} · period ending ${H.esc(f.period)} · <a href="${H.esc(H.safeUrl(f.url))}" target="_blank" rel="noopener">Read the original on SEC.gov ↗</a></p>
         ${S ? `<p>${H.esc(S.plain)}</p>${S.business ? `<h3>The business</h3><p>${H.esc(S.business)}</p>` : ''}${list('Key numbers (as stated)', S.numbers)}${list('Risks the company names', S.risks)}${list('What the company says to watch', S.watch)}<p class="mu small-print">AI summary of the filing above. It can leave things out or get things wrong.</p>`
           : `<p class="mu">${H.esc(f.note || '')}</p>${['business', 'riskFactors', 'mdna'].map(k => f.excerpts[k] ? `<h3>${{ business: 'The business', riskFactors: 'Risk factors', mdna: "Management's discussion" }[k]}</h3><p class="small-print">${H.esc(f.excerpts[k])}…</p>` : '').join('')}`}`;
     }).catch(e => (fOut.innerHTML = `<p class="err">${H.esc(e.message)}</p>`));
@@ -78,7 +78,7 @@ async function research(view, q) {
       if (n.unavailable || !n.items.length) { nOut.innerHTML = `<h3>News</h3><p class="mu">${H.esc(n.message || 'No recent news found.')}</p>`; return; }
       const ref = i => `<a href="#n${i}" class="mu">[${i}]</a>`;
       nOut.innerHTML = `<h3>News in short</h3>${n.summary?.points?.length ? `<ul>${n.summary.points.map(p => `<li>${H.esc(p.text)} ${p.refs.map(ref).join(' ')}</li>`).join('')}</ul><p class="mu small-print">AI summary of the headlines below; the numbers point to its sources.</p>` : ''}
-        <ol class="newslist">${n.items.map(i => `<li id="n${i.n}"><a href="${H.esc(i.url)}" target="_blank" rel="noopener">${H.esc(i.headline)}</a> <span class="mu">${H.esc(i.source || '')} · ${i.at ? new Date(i.at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : ''}</span></li>`).join('')}</ol>`;
+        <ol class="newslist">${n.items.map(i => `<li id="n${i.n}"><a href="${H.esc(H.safeUrl(i.url))}" target="_blank" rel="noopener">${H.esc(i.headline)}</a> <span class="mu">${H.esc(i.source || '')} · ${i.at ? new Date(i.at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : ''}</span></li>`).join('')}</ol>`;
     }).catch(e => (nOut.innerHTML = `<p class="err">${H.esc(e.message)}</p>`));
   };
   H.$('#lf', view).onsubmit = e => { e.preventDefault(); const f = H.form(e.target), s = f.s.trim().toUpperCase(); if (s) lookup(s, f.form); };
@@ -94,7 +94,7 @@ async function research(view, q) {
     <form id="cf" class="crit">${d.criteria.map(c => `<div class="critrow"><span title="${H.esc(c.about)}">${H.esc(c.name)} <span class="mu">(${H.esc(c.unit)})</span></span><input name="${c.id}_lo" type="number" step="any" placeholder="min"><input name="${c.id}_hi" type="number" step="any" placeholder="max"><span class="mu small-print">${H.esc(c.about)}</span></div>`).join('')}
       <label>Sector<select name="sector"><option value="">Any</option>${d.sectors.map(s => `<option>${H.esc(s)}</option>`).join('')}</select></label></form>
     <p id="cCount" class="mu"></p><div class="tablewrap"><table id="cT"></table></div>
-    <p class="mu small-print">Source: <a href="${H.esc(d.source.url)}" target="_blank" rel="noopener">${H.esc(d.source.name)}</a>. Numbers are from the latest yearly filings and can be out of date. A stock passing a screen is not a recommendation.</p>`;
+    <p class="mu small-print">Source: <a href="${H.esc(H.safeUrl(d.source.url))}" target="_blank" rel="noopener">${H.esc(d.source.name)}</a>. Numbers are from the latest yearly filings and can be out of date. A stock passing a screen is not a recommendation.</p>`;
   const cf = H.$('#cf', view), num = v => (v === '' || v == null ? null : +v);
   const draw = () => {
     const f = H.form(cf), list = d.rows.filter(r => (!f.sector || r.sector === f.sector) && d.criteria.every(c => {
