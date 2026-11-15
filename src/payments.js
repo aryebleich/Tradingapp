@@ -13,6 +13,7 @@
 //
 // The owner's fee (DEPOSIT_FEE_PERCENT, DEPOSIT_FEE_FIXED) is shown before paying and added on top,
 // so the user's account is credited the full amount they chose.
+import { stripePost } from './stripe-client.js';
 import crypto from 'node:crypto';
 
 const env = k => process.env[k];
@@ -30,14 +31,7 @@ export { serviceFee, feeTerms } from './revenue.js';
 export const methods = () => Object.values(PROVIDERS).filter(p => p.enabled()).map(({ id, name, via, cost, note }) => ({ id, name, via, cost, note }));
 
 // ---------- Stripe (card or bank) ----------
-async function stripe(path, params) {
-  const r = await fetch((env('STRIPE_API_URL') || 'https://api.stripe.com') + '/v1' + path, {
-    method: 'POST', headers: { Authorization: 'Bearer ' + env('STRIPE_SECRET_KEY'), 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(params),
-  });
-  const d = await r.json();
-  if (!r.ok) throw new Error('Stripe: ' + (d.error?.message || r.status));
-  return d;
-}
+const stripe = (path, params, idempotencyKey) => stripePost(path, params, { idempotencyKey });
 export function stripeDeposit({ method, amount, fee, email, userId, ledgerId, baseUrl }) {
   const p = {
     mode: 'payment', customer_email: email, client_reference_id: String(userId),
@@ -48,7 +42,7 @@ export function stripeDeposit({ method, amount, fee, email, userId, ledgerId, ba
     success_url: `${baseUrl}/app#/funding?ok=1`, cancel_url: `${baseUrl}/app#/funding`,
   };
   if (fee > 0) Object.assign(p, { 'line_items[1][price_data][currency]': 'usd', 'line_items[1][price_data][product_data][name]': 'Service fee', 'line_items[1][price_data][unit_amount]': String(Math.round(fee * 100)), 'line_items[1][quantity]': '1' });
-  return stripe('/checkout/sessions', p);
+  return stripe('/checkout/sessions', p, `qp-deposit-${ledgerId}`);
 }
 
 // ---------- Helcim (HelcimPay.js) ----------

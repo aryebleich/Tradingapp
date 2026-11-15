@@ -91,6 +91,8 @@ import { ownHosts, publicUrl } from './src/origin.js';
 import { edgeSecret } from './src/edgesetup.js';
 import { router as githubRouter, githubEnabled } from './src/github.js';
 import { adminSiteRouter } from './src/admin-site.js';
+import * as SE from './src/stripe-events.js';
+import { logStripe } from './src/stripe-client.js';
 import * as FLAGS from './src/flags.js';
 import { tokensRouter, mcpHandler } from './src/mcp.js';
 import { agentRouter } from './src/agentic.js';
@@ -263,14 +265,38 @@ app.use((req, res, next) => {
   next();
 });
 
+// Every request gets an id (X-Request-Id), so a customer's error can be found in the log. An id sent
+// by a proxy is kept only when it is plain (letters, digits, - and _), up to 64 characters.
+app.use((req, res, next) => {
+  const given = String(req.get('x-request-id') || '');
+  req.id = /^[\w-]{8,64}$/.test(given) ? given : crypto.randomUUID();
+  res.setHeader('X-Request-Id', req.id);
+  next();
+});
 // Stripe needs the raw body for signature checks, so mount it before the JSON parser.
+// What the event handlers need beyond the database: the audit log, an alert to the owner (event ids,
+// amounts and reasons only, no card or personal data) and an e-mail to the customer.
+const stripeDeps = {
+  audit,
+  alertOwner: async (subject, text) => { for (const to of auth.allAdminEmails()) await N.sendEmail(to, subject, text).catch(() => {}); },
+  emailUser: (to, subject, text) => N.sendEmail(to, subject, text),
+};
 app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
   const raw = req.body.toString('utf8');
+  // The signature is checked on the raw body before anything is parsed or trusted.
   if (!N.verifyStripe(raw, req.headers['stripe-signature'])) { siteSet('stripeBadSignature', { at: now() }).catch(() => {}); return res.status(400).send('bad signature'); }
-  const ev = JSON.parse(raw), o = ev.data.object;
+  let ev; try { ev = JSON.parse(raw); } catch { return res.status(400).send('bad payload'); }
+  if (!ev || typeof ev.type !== 'string') return res.status(400).send('bad payload');
+  const o = ev.data?.object || {};
   // Shown in Admin → Money & fees → Stripe, so the owner can see events arriving.
   siteSet('stripeLastEvent', { type: ev.type, id: ev.id, livemode: !!ev.livemode, at: now() }).catch(() => {});
+  // A live event on a test key (or the reverse) means the endpoint is wired to the wrong account: acknowledge and ignore it.
+  if (SE.modeMismatch(ev)) { logStripe('warn', 'event_mode_mismatch', { eventId: ev.id, eventType: ev.type, livemode: !!ev.livemode }); return res.json({ received: true, ignored: 'mode' }); }
+  // Each event id is processed once; a failed or abandoned one is processed again when Stripe retries it.
+  if (await SE.claimEvent(ev) === 'duplicate') return res.json({ received: true, duplicate: true });
   try {
+    // A late event never overwrites newer state (for example "updated" after "deleted").
+    if (await SE.isStale(ev)) { await SE.finishEvent(ev); return res.json({ received: true, ignored: 'stale' }); }
     // Stripe retries deliveries, so every ledger write is keyed by a Stripe id (unique index ledger_ref).
     if (ev.type === 'checkout.session.completed' && o.metadata?.kind === 'subscription') {
       const plan = Object.hasOwn(PLANS, o.metadata.plan) ? o.metadata.plan : 'free';
@@ -301,7 +327,7 @@ app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (r
       if (o.payment_status === 'paid') await CR.grant(+o.client_reference_id, +o.metadata.credits, 'purchase', `${(+o.metadata.credits).toLocaleString('en-US')} credits pack`, `stripe:${o.id}`);
     } else if (ev.type === 'checkout.session.completed' && o.metadata?.kind === 'deposit') {
       const id = +o.metadata.ledger_id;
-      if ((await one('SELECT status FROM ledger WHERE id = ?', id))?.status !== 'pending') return res.json({ received: true });
+      if ((await one('SELECT status FROM ledger WHERE id = ?', id))?.status !== 'pending') { await SE.finishEvent(ev); return res.json({ received: true }); }
       // The page shows the methods switched on in the Stripe dashboard, so what counts is how the
       // customer paid: a bank transfer is still processing here (it settles days later through
       // checkout.session.async_payment_succeeded / _failed); a payment that is already paid must
@@ -324,8 +350,18 @@ app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (r
       await run("UPDATE ledger SET status = 'failed' WHERE kind = 'deposit_fee' AND ref = ?", `fee:${+o.metadata.ledger_id}`);
     } else if (ev.type === 'customer.subscription.deleted') {
       await run("UPDATE users SET plan = 'free', plan_status = 'canceled', plan_renews = NULL WHERE stripe_customer = ?", o.customer);
+    } else if (SE.EXTRA_EVENTS.has(ev.type)) {
+      // payment_intent.*, charge.refunded, charge.dispute.created, invoice.payment_failed, checkout.session.expired
+      await SE.handleExtra(ev, stripeDeps);
     }
-  } catch (e) { console.error('stripe webhook', e); return res.status(500).send('error'); }
+    await SE.tagLivemode(ev);   // test-mode payments stay out of revenue reports
+    await SE.commitOrder(ev);   // remember how far this subscription / customer's invoices have got
+    await SE.finishEvent(ev);
+  } catch (e) {
+    await SE.failEvent(ev).catch(() => {}); // Stripe will deliver it again
+    logStripe('error', 'webhook_failed', { eventId: ev.id, eventType: ev.type, livemode: !!ev.livemode, reason: e.name });
+    return res.status(500).send('error');
+  }
   res.json({ received: true });
 });
 
@@ -512,7 +548,7 @@ async function rewardReferral(u) {
     if (!(amount > 0)) continue;
     let status = 'earned';
     if (ref.stripe_customer && N.stripeEnabled()) {
-      try { await N.creditCustomer(ref.stripe_customer, amount, memo); status = 'applied'; } catch (e) { console.warn('referral credit', e.message); }
+      try { await N.creditCustomer(ref.stripe_customer, amount, memo, N.idemKey('refcredit', ref.id, u.id, memo)); status = 'applied'; } catch (e) { console.warn('referral credit', e.message); }
     }
     await run('INSERT INTO ledger (user_id, kind, amount, status, memo, at) VALUES (?,?,?,?,?,?)', ref.id, 'referral_credit', amount, status, memo, now());
   }
@@ -529,7 +565,7 @@ async function funnel() {
   const paying = await n("SELECT COUNT(*) n FROM users WHERE plan != 'free' AND COALESCE(plan_status, 'active') = 'active'");
   const rows = await all("SELECT plan, plan_interval, COUNT(*) n FROM users WHERE plan != 'free' AND COALESCE(plan_status, 'active') = 'active' GROUP BY plan, plan_interval");
   const mrr = rows.reduce((a, r) => a + r.n * (r.plan_interval === 'year' ? (PLANS[r.plan]?.yearly || 0) / 12 : PLANS[r.plan]?.monthly || 0), 0);
-  const revenue30 = (await one("SELECT COALESCE(SUM(amount), 0) n FROM ledger WHERE (kind IN ('subscription', 'performance_fee', 'deposit_fee') AND status IN ('paid', 'collected') OR kind = 'broker_commission') AND at > ?", since(30))).n;
+  const revenue30 = (await one("SELECT COALESCE(SUM(amount), 0) n FROM ledger WHERE (kind IN ('subscription', 'performance_fee', 'deposit_fee') AND status IN ('paid', 'collected') OR kind = 'broker_commission') AND COALESCE(livemode, 1) = 1 AND at > ?", since(30))).n;
   return { signups, signups30, connected, traded, trialing, paying, mrr: +mrr.toFixed(2), arr: +(mrr * 12).toFixed(2), revenue30, conversion: signups ? +(paying / signups * 100).toFixed(1) : 0 };
 }
 
@@ -684,7 +720,7 @@ api.put('/admin/preview-plan', U, auth.requireAdmin, async (req, res) => {
 });
 api.get('/queue', U, async (req, res) => res.json(await userQueue(req.user.id)));
 api.get('/accounts', U, async (req, res) => res.json(await accountsFor(req.user.id)));
-const wrap = fn => async (req, res) => Promise.resolve(fn(req, res)).catch(e => res.status(e.status || 400).json({ error: e.message, ...(e.upgrade ? { upgrade: true, feature: e.feature } : {}), ...(e.needsAck ? { needsAck: e.needsAck } : {}), ...(e.needsLesson ? { needsLesson: e.needsLesson } : {}), ...(e.locked ? { locked: true } : {}) }));
+const wrap = fn => async (req, res) => Promise.resolve(fn(req, res)).catch(e => (e.name === 'StripeError' && logStripe(e.status >= 500 ? 'error' : 'warn', 'request_failed', { rid: req.id, method: req.method, path: req.path, status: e.stripeStatus, type: e.type, code: e.code, declineCode: e.declineCode, requestId: e.requestId }), res.status(e.status || 400).json({ error: e.message, ...(e.upgrade ? { upgrade: true, feature: e.feature } : {}), ...(e.needsAck ? { needsAck: e.needsAck } : {}), ...(e.needsLesson ? { needsLesson: e.needsLesson } : {}), ...(e.locked ? { locked: true } : {}) })));
 const acct = req => { const a = req.query.account || req.body?.account; return ACCOUNT_IDS.includes(a) || (a === 'smart' && req.method === 'POST' && req.path === '/orders') ? a : 'paper'; };
 // 402 with upgrade: true makes the app show the upgrade window instead of a plain error.
 const upgrade = feature => Object.assign(new Error(`${feature} is part of the Pro plan`), { status: 402, upgrade: true, feature });
@@ -1056,7 +1092,7 @@ api.get('/admin/summary', U, auth.requireAdmin, async (req, res) => res.json({
   feesDue: await all("SELECT l.*, u.email FROM ledger l JOIN users u ON u.id = l.user_id WHERE l.kind = 'performance_fee' AND l.status = 'due' ORDER BY l.id DESC"),
   users: (await all('SELECT id, email, plan, plan_status, role, totp_enabled, phone_verified, google_sub IS NOT NULL AS google, github_id IS NOT NULL AS github, phone, created_at FROM users ORDER BY id DESC LIMIT 500')).map(u => ({ ...u, nickname: publicName(u.id) })),
   payments: Object.values(PAY.PROVIDERS).map(p => ({ id: p.id, name: p.name, via: p.via, cost: p.cost, enabled: p.enabled(), on500: +p.costOf(500).toFixed(2) })),
-  depositFee: { ...PAY.feeTerms(), collected: (await one("SELECT COALESCE(SUM(amount), 0) n FROM ledger WHERE kind = 'deposit_fee' AND status = 'collected'")).n },
+  depositFee: { ...PAY.feeTerms(), collected: (await one("SELECT COALESCE(SUM(amount), 0) n FROM ledger WHERE kind = 'deposit_fee' AND status = 'collected' AND COALESCE(livemode, 1) = 1")).n },
 }));
 api.get('/admin/messages', U, auth.requireAdmin, async (req, res) => res.json(await all('SELECT * FROM messages ORDER BY id DESC LIMIT 100')));
 api.post('/admin/messages/:id', U, auth.requireAdmin, async (req, res) => { await run("UPDATE messages SET status = 'closed' WHERE id = ?", +req.params.id); res.json({ ok: true }); });
@@ -1120,8 +1156,10 @@ api.post('/admin/ledger/:id', U, auth.requireAdmin, wrap(async (req, res) => {
 api.use((req, res) => res.status(404).json({ error: 'Not found' }));
 api.use((err, req, res, _next) => {
   if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'Invalid JSON' });
-  if (!err.status || (err.status >= 500 && err.status !== 503)) console.error(err);
-  else if (err.status === 503) console.warn(`503 ${req.method} ${req.path}: ${err.message}`);
+  // Payment errors are logged as one safe line (request ids, codes, no bodies); the customer sees err.message, which is plain language.
+  if (err.name === 'StripeError') logStripe(err.status >= 500 ? 'error' : 'warn', 'request_failed', { rid: req.id, method: req.method, path: req.path, status: err.stripeStatus, type: err.type, code: err.code, declineCode: err.declineCode, requestId: err.requestId });
+  else if (!err.status || (err.status >= 500 && err.status !== 503)) console.error(`[${req.id}] ${req.method} ${req.path}`, err);
+  else if (err.status === 503) console.warn(`[${req.id}] 503 ${req.method} ${req.path}: ${err.message}`);
   res.status(err.status || 400).json({ error: err.expose === false ? 'Something went wrong' : err.message, ...(err.upgrade ? { upgrade: true, feature: err.feature } : {}), ...(err.needsAck ? { needsAck: err.needsAck } : {}), ...(err.needsLesson ? { needsLesson: err.needsLesson } : {}), ...(err.locked ? { locked: true } : {}), ...(err.shed ? { shed: true } : {}) });
 });
 app.use('/api', api);

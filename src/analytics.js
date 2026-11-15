@@ -84,7 +84,7 @@ export async function report(days = 30) {
   const smsEvents = await q("SELECT event, COUNT(*) n FROM audit_log WHERE (event LIKE 'sms%' OR event LIKE 'text%') AND at >= ? GROUP BY event ORDER BY n DESC", sinceMs);
   const c = (ch, dir) => comms.filter(x => (Array.isArray(ch) ? ch.includes(x.channel) : x.channel === ch) && (!dir || x.direction === dir)).reduce((a, x) => a + x.n, 0);
   // Profit and loss: the business (revenue) and the users' accounts (equity at the start and end of the range).
-  const ledger = await q("SELECT kind, status, ROUND(SUM(amount), 2) total, COUNT(*) n FROM ledger WHERE at >= ? GROUP BY kind, status", sinceMs);
+  const ledger = await q("SELECT kind, status, ROUND(SUM(amount), 2) total, COUNT(*) n FROM ledger WHERE at >= ? AND COALESCE(livemode, 1) = 1 GROUP BY kind, status", sinceMs);
   const credits = await one_("SELECT COUNT(*) n, SUM(delta) credits FROM credit_ledger WHERE kind = 'purchase' AND at >= ?", sinceMs);
   const userPnl = { paper: null, live: null };
   for (const row of await q(`SELECT CASE WHEN account = 'paper' THEN 'paper' ELSE 'live' END grp, SUM(CASE WHEN rn_first = 1 THEN equity ELSE 0 END) start, SUM(CASE WHEN rn_last = 1 THEN equity ELSE 0 END) end_ FROM (

@@ -180,7 +180,7 @@ adminSiteRouter.post('/env/render/deploy', wrap(async (req, res) => {
 // ---------- money levers: deposit fee, referrals, partner commission ----------
 adminSiteRouter.get('/money', wrap(async (req, res) => {
   const { settings } = await import('./revenue.js');
-  const sum = async (kind, statuses) => (await one(`SELECT COALESCE(SUM(amount), 0) n FROM ledger WHERE kind = ? AND status IN (${statuses.map(() => '?').join(',')})`, kind, ...statuses)).n;
+  const sum = async (kind, statuses) => (await one(`SELECT COALESCE(SUM(amount), 0) n FROM ledger WHERE kind = ? AND COALESCE(livemode, 1) = 1 AND status IN (${statuses.map(() => '?').join(',')})`, kind, ...statuses)).n;
   res.json({
     settings: settings(),
     stats: {

@@ -1,5 +1,7 @@
 // Twilio (SMS + voice hotline) and Stripe (plans + debit card deposits) over plain HTTPS.
 import crypto from 'node:crypto';
+import { stripePost, stripeGet, idemKey, idemWindow } from './stripe-client.js';
+export { idemKey } from './stripe-client.js';
 
 const env = k => process.env[k];
 export const twilioEnabled = () => !!(env('TWILIO_ACCOUNT_SID') && env('TWILIO_AUTH_TOKEN') && env('TWILIO_FROM'));
@@ -40,16 +42,9 @@ export function validTwilioSignature(url, params, signature) {
 
 export const xml = s => String(s).replace(/[<>&'"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[c]));
 
-async function stripe(path, params) {
-  const r = await fetch((env('STRIPE_API_URL') || 'https://api.stripe.com') + '/v1' + path, {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + env('STRIPE_SECRET_KEY'), 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams(params),
-  });
-  const d = await r.json();
-  if (!r.ok) throw new Error('Stripe: ' + (d.error?.message || r.status));
-  return d;
-}
+// Every create request goes through src/stripe-client.js (pinned API version, idempotency key,
+// timeout, request id in the log, customer-safe error text).
+const stripe = (path, params, idempotencyKey) => stripePost(path, params, { idempotencyKey });
 
 // A one-time credit pack payment; the webhook adds the credits (metadata.kind = 'credits').
 export const checkoutCredits = ({ pack, email, userId, baseUrl }) => stripe('/checkout/sessions', {
@@ -58,7 +53,7 @@ export const checkoutCredits = ({ pack, email, userId, baseUrl }) => stripe('/ch
   'line_items[0][price_data][currency]': 'usd', 'line_items[0][price_data][product_data][name]': `${pack.credits.toLocaleString('en-US')} Brightolio credits`,
   'line_items[0][price_data][unit_amount]': String(Math.round(pack.price * 100)), 'line_items[0][quantity]': '1',
   success_url: `${baseUrl}/app#/funding?credits=1`, cancel_url: `${baseUrl}/app#/funding`,
-});
+}, idemKey('credits', userId, pack.id, pack.credits, pack.price, idemWindow()));
 
 // interval: 'month' or 'year' (STRIPE_PRICE_PRO / STRIPE_PRICE_PRO_YEARLY ...). trialDays > 0 adds a free trial.
 export function checkoutSubscription({ plan, interval = 'month', trialDays = 0, email, customer, userId, baseUrl }) {
@@ -75,15 +70,16 @@ export function checkoutSubscription({ plan, interval = 'month', trialDays = 0, 
     allow_promotion_codes: 'true',
     'line_items[0][price]': price, 'line_items[0][quantity]': '1',
     success_url: `${baseUrl}/app#/funding?ok=1`, cancel_url: `${baseUrl}/app#/funding`,
-  });
+  }, idemKey('subscription', userId, plan, interval, trialDays, price, customer || email, idemWindow()));
 }
 
 // Stripe-hosted page where customers update cards, switch plans, download invoices or cancel.
-export const billingPortal = ({ customer, baseUrl }) => stripe('/billing_portal/sessions', { customer, return_url: `${baseUrl}/app#/funding`, ...(env('STRIPE_PORTAL_CONFIG') ? { configuration: env('STRIPE_PORTAL_CONFIG') } : {}) });
+export const billingPortal = ({ customer, baseUrl }) => stripe('/billing_portal/sessions', { customer, return_url: `${baseUrl}/app#/funding`, ...(env('STRIPE_PORTAL_CONFIG') ? { configuration: env('STRIPE_PORTAL_CONFIG') } : {}) }, idemKey('portal', customer, idemWindow()));
 
 // Account credit applied to the customer's next invoice (negative amount = credit).
-export const creditCustomer = (customer, dollars, description) =>
-  stripe(`/customers/${encodeURIComponent(customer)}/balance_transactions`, { amount: String(-Math.round(dollars * 100)), currency: 'usd', description });
+// idempotencyKey: pass one that names the thing being credited (the caller knows what is unique).
+export const creditCustomer = (customer, dollars, description, idempotencyKey) =>
+  stripe(`/customers/${encodeURIComponent(customer)}/balance_transactions`, { amount: String(-Math.round(dollars * 100)), currency: 'usd', description }, idempotencyKey || idemKey('credit', customer, dollars, description));
 
 // Card deposit. The methods offered come from the Stripe dashboard; the webhook accepts a debit
 // card (Stripe reports card.funding = 'debit') or a bank transfer, and refunds anything else.
@@ -95,16 +91,15 @@ export function checkoutDeposit({ amount, email, userId, ledgerId, baseUrl }) {
     'line_items[0][price_data][unit_amount]': String(Math.round(amount * 100)), 'line_items[0][quantity]': '1',
     'payment_intent_data[metadata][ledger_id]': String(ledgerId),
     success_url: `${baseUrl}/app#/funding?ok=1`, cancel_url: `${baseUrl}/app#/funding`,
-  });
+  }, `qp-deposit-${ledgerId}`); // one Checkout session per ledger row, however many times the request is retried
 }
 
 export async function cardFunding(paymentIntentId) {
-  const r = await fetch(`${env('STRIPE_API_URL') || 'https://api.stripe.com'}/v1/payment_intents/${paymentIntentId}?expand[]=latest_charge`, { headers: { Authorization: 'Bearer ' + env('STRIPE_SECRET_KEY') } });
-  const d = await r.json();
+  const d = await stripeGet(`/payment_intents/${encodeURIComponent(paymentIntentId)}`, { 'expand[]': 'latest_charge' });
   return d.latest_charge?.payment_method_details?.card?.funding;
 }
 
-export const refund = paymentIntent => stripe('/refunds', { payment_intent: paymentIntent });
+export const refund = paymentIntent => stripe('/refunds', { payment_intent: paymentIntent }, `qp-refund-${paymentIntent}`);
 
 // https://docs.stripe.com/webhooks#verify-manually
 export function verifyStripe(raw, header) {
