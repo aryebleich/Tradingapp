@@ -92,6 +92,7 @@ import { edgeSecret } from './src/edgesetup.js';
 import { router as githubRouter, githubEnabled } from './src/github.js';
 import { adminSiteRouter } from './src/admin-site.js';
 import * as SE from './src/stripe-events.js';
+import { mountCommsWebhooks, commsRouter, commsAdminRouter as smsVoiceAdminRouter } from './src/sms-voice/routes.js';
 import { logStripe } from './src/stripe-client.js';
 import * as FLAGS from './src/flags.js';
 import { tokensRouter, mcpHandler } from './src/mcp.js';
@@ -260,7 +261,7 @@ app.use((req, res, next) => {
   res.setHeader('Referrer-Policy', 'same-origin');
   // Pyodide (the code lab's Python) loads only from its own jsdelivr folder; Plaid Link from cdn.plaid.com.
   res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://secure.helcim.app https://cdn.jsdelivr.net/pyodide/ https://cdn.plaid.com; frame-src 'self' https://secure.helcim.app https://cdn.plaid.com; connect-src 'self' https://cdn.jsdelivr.net/pyodide/; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://checkout.stripe.com https://accept.authorize.net https://test.authorize.net");
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(self), geolocation=()'); // microphone: the web dialer (src/sms-voice), same origin only
   if (process.env.NODE_ENV === 'production') res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   next();
 });
@@ -274,6 +275,9 @@ app.use((req, res, next) => {
   next();
 });
 // Stripe needs the raw body for signature checks, so mount it before the JSON parser.
+// SMS and voice provider webhooks (flag comms_drawer, off by default): signature checked on the raw body.
+mountCommsWebhooks(app);
+
 // What the event handlers need beyond the database: the audit log, an alert to the owner (event ids,
 // amounts and reasons only, no card or personal data) and an e-mail to the customer.
 const stripeDeps = {
@@ -634,6 +638,8 @@ api.use('/fundamentals', fundamentalsRouter);
 api.use('/instruments', instrumentsRouter);
 api.use('/taxrates', taxRatesRouter);
 api.use('/admin/comms', commsAdminRouter);
+api.use('/admin/sms-voice', smsVoiceAdminRouter);
+api.use('/comms', commsRouter);
 api.use('/statscan', statScanRouter);
 api.use('/search', searchRouter);
 api.use('/paper/orders', paperOrdersRouter);

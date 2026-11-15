@@ -13,7 +13,9 @@
     "test": "node --import ./test/setup.js --test --test-force-exit test/*.test.js",
     "e2e": "node test/e2e/run.mjs",
     "security:check": "node scripts/security-check.mjs",
-    "clean": "node scripts/clean-check.mjs && node scripts/readme-check.mjs"
+    "clean": "node scripts/clean-check.mjs && node scripts/readme-check.mjs",
+    "comms:ui": "node test/comms-ui.mjs",
+    "comms:sim": "node scripts/comms-webhook-sim.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.99.0",

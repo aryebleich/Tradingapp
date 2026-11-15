@@ -929,6 +929,20 @@ const MIGRATIONS = [
   'CREATE TABLE IF NOT EXISTS stripe_object_state (object_id TEXT PRIMARY KEY, last_created INTEGER NOT NULL, terminal INTEGER NOT NULL DEFAULT 0)',
   'ALTER TABLE ledger ADD COLUMN livemode INTEGER',
   'CREATE INDEX IF NOT EXISTS ledger_ref_lookup ON ledger (ref)',
+  // SMS and voice module (src/sms-voice/, flag comms_drawer). Metadata only: message text is never kept
+  // for good. An inbound text waits, encrypted, in sms_messages.pending_body until the browser confirms
+  // it has it (at most 72 hours); the history itself lives on the user's device. Recordings are never stored.
+  'CREATE TABLE IF NOT EXISTS comms_numbers (number TEXT PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, voice_mode TEXT NOT NULL DEFAULT \'ivr\', greeting TEXT, credential_id TEXT, sip_username TEXT, created_at INTEGER NOT NULL)',
+  'CREATE UNIQUE INDEX IF NOT EXISTS comms_numbers_user ON comms_numbers (user_id)',
+  'CREATE TABLE IF NOT EXISTS sms_messages (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, provider TEXT NOT NULL, provider_message_id TEXT NOT NULL, direction TEXT NOT NULL, thread_key TEXT NOT NULL, peer_last4 TEXT, our_number TEXT, status TEXT NOT NULL, error_code TEXT, pending_body TEXT, pending_until INTEGER, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
+  'CREATE UNIQUE INDEX IF NOT EXISTS sms_messages_provider_id ON sms_messages (provider, provider_message_id)',
+  'CREATE INDEX IF NOT EXISTS sms_messages_thread ON sms_messages (user_id, thread_key, created_at)',
+  'CREATE INDEX IF NOT EXISTS sms_messages_pending ON sms_messages (user_id, pending_until) WHERE pending_body IS NOT NULL',
+  'CREATE TABLE IF NOT EXISTS call_records (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, provider TEXT NOT NULL, provider_call_id TEXT NOT NULL, leg_id TEXT, direction TEXT NOT NULL, thread_key TEXT NOT NULL, peer_last4 TEXT, our_number TEXT, status TEXT NOT NULL, handling TEXT, stage TEXT, seen INTEGER NOT NULL DEFAULT 0, started_at INTEGER NOT NULL, answered_at INTEGER, ended_at INTEGER, duration_s INTEGER, created_at INTEGER NOT NULL)',
+  'CREATE UNIQUE INDEX IF NOT EXISTS call_records_provider_id ON call_records (provider, provider_call_id)',
+  'CREATE INDEX IF NOT EXISTS call_records_user ON call_records (user_id, started_at)',
+  'CREATE TABLE IF NOT EXISTS sms_consent (user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, thread_key TEXT NOT NULL, status TEXT NOT NULL, source TEXT NOT NULL, last_inbound_at INTEGER, updated_at INTEGER NOT NULL, PRIMARY KEY (user_id, thread_key))',
+  'CREATE TABLE IF NOT EXISTS comms_webhook_events (id TEXT PRIMARY KEY, kind TEXT NOT NULL, at INTEGER NOT NULL)',
 ];
 
 // Migrations run on every start. Re-running one that is already applied ("duplicate column",
