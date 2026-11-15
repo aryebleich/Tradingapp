@@ -219,7 +219,9 @@ console.log('Desktop (1360x900)');
       await navTo(p, k); await p.waitForSelector(`.admintabs button.on`); await p.waitForSelector(`text=${h}`);
     }
     await p.screenshot({ path: path.join(OUT, 'admin-setup.png'), fullPage: true });
-    await navTo(p, 'admin-system'); await p.waitForSelector('text=Capacity plan');
+    // Analytics replaces System health in the menu; System health is its last tab.
+    await navTo(p, 'admin-analytics'); await p.waitForSelector('.antabs'); await p.waitForSelector('text=Website visits');
+    await p.click('.antabs a[href="#/admin-system"] button'); await p.waitForSelector('text=Capacity plan');
     // Upgrades: the version, each tab, and an upgrade behind the password and UPGRADE.
     await navTo(p, 'admin-upgrades'); await p.waitForSelector('.upgradehead .ver b');
     for (const t of ['alpaca', 'render', 'history', 'github']) { await p.goto(B + '/app#/admin-upgrades?tab=' + t); await p.waitForSelector('.upgradehead'); }
