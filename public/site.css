@@ -578,3 +578,7 @@ section.dark .sub, section.dark .trust .feature p { color: #b6c4da; }
 .livedash .ld-pos div { display: grid; grid-template-columns: 1fr auto; gap: 0 6px; padding: 7px 9px; border-radius: 9px; background: rgba(255, 255, 255, .035); }
 .livedash .ld-pos div [data-p] { grid-column: 1; color: #aab4c8; } .livedash .ld-pos div [data-c] { grid-column: 2; grid-row: 1 / 3; align-self: center; font-weight: 700; }
 @media (max-width: 640px) { .livedash { grid-template-columns: 1fr; aspect-ratio: auto; } .livedash canvas { height: 150px; } .livedash .ld-pos { grid-column: 1; grid-row: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); } .livedash .ld-pos .ld-h { grid-column: 1 / -1; } }
+
+.shot .ld-pause { margin-inline-start: 8px; font: 600 11px/1 Inter, system-ui, sans-serif; color: #cbd5e1; background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .18); border-radius: 999px; padding: 5px 10px; cursor: pointer; }
+.shot .ld-pause:hover { background: rgba(255, 255, 255, .16); }
+.shot .ld-pause:focus-visible { outline: 2px solid #a5b4fc; outline-offset: 2px; }

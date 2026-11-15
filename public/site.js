@@ -251,9 +251,15 @@ if ('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: re
   };
   draw();
   if (calm) return;
-  let on = false, raf = 0;
-  const loop = () => { if (!on) return; step(); raf = requestAnimationFrame(loop); };
-  new IntersectionObserver(es => { on = es[0].isIntersecting && !document.hidden; cancelAnimationFrame(raf); if (on) loop(); }).observe(fig);
+  let on = false, raf = 0, paused = false, seen = false;
+  const loop = () => { if (!on || paused) return; step(); raf = requestAnimationFrame(loop); };
+  // WCAG 2.2.2: anything that moves for more than 5 seconds can be paused.
+  const pb = document.createElement('button');
+  pb.type = 'button'; pb.className = 'ld-pause'; pb.setAttribute('aria-pressed', 'false');
+  const label = () => { pb.textContent = paused ? (yi ? '▶ שפילט' : '▶ Play') : (yi ? '❚❚ פויזע' : '❚❚ Pause'); pb.setAttribute('aria-label', paused ? (yi ? 'שפילט די אנימאציע' : 'Play the animation') : (yi ? 'פויזירט די אנימאציע' : 'Pause the animation')); };
+  label(); fig.querySelector('.frame').append(pb);
+  pb.onclick = () => { paused = !paused; pb.setAttribute('aria-pressed', String(paused)); label(); cancelAnimationFrame(raf); if (!paused && on) loop(); };
+  new IntersectionObserver(es => { seen = es[0].isIntersecting; on = seen && !document.hidden; cancelAnimationFrame(raf); if (on) loop(); }).observe(fig);
   document.addEventListener('visibilitychange', () => { if (document.hidden) { on = false; cancelAnimationFrame(raf); } });
   addEventListener('resize', draw, { passive: true });
 })();
