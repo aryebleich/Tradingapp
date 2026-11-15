@@ -288,6 +288,13 @@ def index(lang='en'):
     matrix = ''.join(f'<tr><th scope="row">{T(r)}</th>{"".join(cell(v) for v in vs)}</tr>' for r, *vs in MATRIX)
     learn = ''.join(f'<details class="learn"><summary><span class="ic">{ic(i, 18)}</span>{T(t)}</summary><p>{T(d)}</p></details>' for i, t, d in LEARN)
     faq = lambda items: ''.join(f'<details><summary>{T(q)}</summary><p>{T(a)}</p></details>' for q, a in items)
+    # Structured data for search engines: only facts already on the page (name, address, logo, the FAQ).
+    import json as _json, re as _re
+    _strip = lambda h: html.unescape(_re.sub(r'<[^>]+>', '', h)).strip()
+    _ld = lambda o: '<script type="application/ld+json">' + _json.dumps(o, ensure_ascii=False).replace('</', '<\\/') + '</script>'
+    ldjson = _ld({'@context': 'https://schema.org', '@type': 'Organization', 'name': 'Brightolio', 'url': 'https://app.brightolio.com/', 'logo': 'https://app.brightolio.com/icon-512.png'}) + _ld({
+        '@context': 'https://schema.org', '@type': 'FAQPage', 'inLanguage': lang,
+        'mainEntity': [{'@type': 'Question', 'name': _strip(T(q)), 'acceptedAnswer': {'@type': 'Answer', 'text': _strip(T(a))}} for q, a in FAQ_AUTO + FAQ_ACCOUNT]})
     plans = ''.join(f'''<div class="plan{' best' if best else ''}">{'<div class="ribbon">' + T('Most popular') + '</div>' if best else ''}<h3>{T(n)}</h3><p class="tag">{T(tg)}</p>
       <div class="price"{f' data-m="{pm}" data-y="{py}"' if py else ''}>{pm}<small{f' data-m="{T(sm)}" data-y="{T(sy)}"' if sy else ''}>{T(sm)}</small></div>
       <ul>{''.join(f'<li>{T(x)}</li>' for x in feats_)}</ul><a class="btn{'' if best else ' ghost'}" data-app="#/register" href="app">{T(cta)}</a></div>''' for n, tg, pm, py, sm, sy, fee, feats_, cta, best in PLANS)
@@ -488,6 +495,7 @@ def index(lang='en'):
   <p class="fine">{T('Secure checkout by Stripe. Cancel anytime. Trading involves risk; see the')} <a href="risk.html">{T('Risk Disclosure')}</a>.</p>
 </div></section>
 
+{ldjson}
 <section id="faq"><div class="wrap faq" style="max-width:860px">
   <h2 class="sec center">{T('Popular questions')}</h2>
   <div data-tabs>
