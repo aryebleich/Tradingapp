@@ -312,8 +312,9 @@ def index(lang='en'):
 
 <section class="adreel"><div class="wrap">
   <figure class="adbox"><video width="1280" height="720" style="max-width:100%;height:auto" muted playsinline loop preload="none" poster="media/brightolio-ad.jpg" aria-label="{T('Brightolio in 20 seconds')}" data-adreel>
-    <source src="media/brightolio-ad.webm" type="video/webm"><source src="media/brightolio-ad.mp4" type="video/mp4"></video>
+    <source src="media/brightolio-ad.webm" type="video/webm"><source src="media/brightolio-ad.mp4" type="video/mp4"><track kind="captions" src="media/brightolio-ad.en.vtt" srclang="en" label="English" default></video>
     <figcaption><b>{T('Brightolio in 20 seconds')}</b> <span>{T('Trade like the professionals, practice with $100,000, automate, and use tools for long-term investing.')}</span></figcaption></figure>
+    <details class="adtrans" id="adTranscript"><summary>{T('Transcript')}</summary><p>{T('Trade like the professionals. A real order desk, live prices and every order type, explained in plain words.')}</p><p>{T('$100,000 to practice with. Real market prices, pretend money. No card needed.')}</p><p>{T('Test it. Then let it run. Backtest strategies on years of data, then run them as bots, with limits you set.')}</p><p>{T('Tools for the long term. Index funds, an automatic S&P 500 plan, bonds and retirement, all in one place.')}</p><p>{T('Brightolio. Trade every day. Invest for a lifetime. app.brightolio.com, start free. Investing involves risk of loss. Brightolio is software, not a broker. Photos are for illustration; Brightolio is not affiliated with the exchange or the companies shown.')}</p></details>
 </div></section>
 
 <section class="twoways"><div class="wrap">

@@ -381,6 +381,12 @@ YI = {
 }
 
 YI.update({
+    'Trade like the professionals. A real order desk, live prices and every order type, explained in plain words.': "האנדלט ווי די פראפעסיאנאלן. אן עכטער ארדער-טיש, לייוו פרייזן און יעדע סארט ארדער, ערקלערט אין פשוט'ע ווערטער.",
+    '$100,000 to practice with. Real market prices, pretend money. No card needed.': "$100,000 צו פראקטיצירן. עכטע מארקעט פרייזן, שפיל-געלט. מ'דארף נישט קיין קארטל.",
+    'Test it. Then let it run. Backtest strategies on years of data, then run them as bots, with limits you set.': 'פרובירט עס. דערנאך לאזט עס לויפן. בעקטעסט סטראטעגיעס אויף יארן דאטא, דערנאך לאזט זיי לויפן אלס באטס, מיט גרענעצן וואס איר שטעלט.',
+    'Tools for the long term. Index funds, an automatic S&P 500 plan, bonds and retirement, all in one place.': 'געצייג פאר לאנגע טערמין. אינדעקס פאנדס, אן אויטאמאטישער S&P 500 פלאן, באנדס און פענסיע, אלעס אויף איין ארט.',
+    'Brightolio. Trade every day. Invest for a lifetime. app.brightolio.com, start free. Investing involves risk of loss. Brightolio is software, not a broker. Photos are for illustration; Brightolio is not affiliated with the exchange or the companies shown.': 'ברייטאליא. האנדלט יעדן טאג. אינוועסטירט פאר א גאנץ לעבן. app.brightolio.com, הייבט אן אומזיסט. אינוועסטירן איז פארבונדן מיט א ריזיקע צו פארלירן געלט. ברייטאליא איז א סאפטווער, נישט קיין בראוקער. די בילדער זענען נאר צום אילוסטרירן; ברייטאליא איז נישט פארבונדן מיט דער בערזע אדער מיט די פירמעס וואס מען זעט.',
+    'Transcript': 'טעקסט פון דעם ווידעא',
  'Trading and alerts by text and phone, QuantConnect and bank-card linking': 'טרעידן און אלערטס דורך טעקסט און טעלעפאן, QuantConnect און פארבינדן א באנק קארטל',
  'Investing toolkit': 'אינוועסטירן מכשירים',
  'Index funds, compound growth, automatic monthly investing, dividend reinvestment and rebalancing, each with a tool.': 'אינדעקס פאנדס, קאמפאונד וואוקס, אויטאמאטיש חודש\'לעכע אינוועסטירן, ווידער-אינוועסטירן דיווידענדן און ווידער באלאנסירן, יעדעס מיט א געצייג.',
