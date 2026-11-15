@@ -48,10 +48,19 @@ export async function logo(sym) {
   return v;
 }
 
+const lookups = new Map(); // ip -> [windowStart, count]
+function allow(ip, max = 200, win = 600e3) {
+  const now = Date.now(), w = lookups.get(ip);
+  if (!w || now - w[0] > win) { if (lookups.size > 10000) lookups.clear(); lookups.set(ip, [now, 1]); return true; }
+  return ++w[1] <= max;
+}
 export function logoRoute(app) {
   app.get('/logo/:sym', async (req, res) => {
     const sym = decodeURIComponent(String(req.params.sym || '')).toUpperCase().replace('-', '/');
     if (!validTicker(sym)) return res.status(404).end();
+    // Cached logos are free; each address may make the server look up at most 200 new ones in 10 minutes.
+    const hit = cache.get(sym);
+    if (!(hit && Date.now() - hit.at < WEEK) && !allow(req.ip)) return res.status(429).set('Retry-After', '600').end();
     const v = await logo(sym);
     res.set({ 'Content-Type': v.type, 'Cache-Control': `public, max-age=${v.real ? 604800 : 86400}`, 'X-Content-Type-Options': 'nosniff' });
     if (v.type === 'image/svg+xml') res.set('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'");
