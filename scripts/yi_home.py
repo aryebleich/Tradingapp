@@ -378,6 +378,12 @@ YI = {
  "or": "אדער",
  "put $200 into the S&amp;P every month": "לייג אריין $200 אין S&amp;P יעדן חודש",
  "very high risk": "זייער הויכע ריזיקע",
+    "Start free with $100,000 in practice money": "הייבט אן בחינם מיט $100,000 איבונג-געלט",
+    "Try the live demo": "פרובירט די לייוו דעמא",
+    "Or sign up with": "אדער שרייבט זיך איין מיט",
+    "Trading involves risk. Read the risk disclosure": "טריידן טראגט מיט זיך ריזיקע. ליינט די ריזיקע ערקלערונג",
+    "Risks, and how Brightolio works with your broker": "ריזיקעס, און ווי Brightolio ארבעט מיט אייער בראוקער",
+    "Risk disclosure": "ריזיקע ערקלערונג",
 }
 
 YI.update({

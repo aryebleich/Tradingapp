@@ -94,3 +94,12 @@ Cross-cutting findings:
 | R16 | Analytics | Events for the new CTAs through the existing first-party counter (`count('cta', id)`); no third-party tags | Quick win | Low |
 
 All Phase 4 work would sit behind feature flags (default off), as you specified. **Stopping here for your approval.**
+
+## Phase 4: implementation summary
+
+**Group: Homepage v2 (R1 order, R2 one main button, R3 risk links, R4 Trust & compliance)**, one flag `home_v2`, default **off**, rollout 0 to 100% (Admin → SEO → Feature flags).
+- Files: `scripts/home.py` (`regroup()` builds v2 from the same sections), `scripts/pages.py` (writes `index-v2.html`, `yi-v2.html`), `scripts/yi_home.py` (Yiddish), `public/site.css`, `public/site.js` (button-click counter), `src/flags.js`, `server.js` (variant per visitor, `Cache-Control: private` and `Vary: Cookie` only while the flag is on; no cookie while it is off), `src/analytics.js` (`count('cta', name)`), `public/pages/admin-ops.js` (flags card).
+- Content: every v1 sentence is still on v2 except the three hero sign-up buttons, which become one main button plus smaller Google and GitHub buttons. The Trust & compliance block repeats the existing footer disclosure word for word.
+- Tests: `test/homev2.test.js` (flag default and rollout, all sections and disclosures kept, accessibility basics, server variant and rollback, admin-only endpoints). Visual check with Playwright at 1280 and 390 px, English and Yiddish: no horizontal overflow.
+- Sign-off needed: LEGAL_REVIEW.md L9 to L12, before the flag is turned on.
+- Rollback: switch the flag off (takes effect on the next page load), or revert the commit.

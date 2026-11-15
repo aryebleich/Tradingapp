@@ -263,3 +263,6 @@ if ('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: re
   document.addEventListener('visibilitychange', () => { if (document.hidden) { on = false; cancelAnimationFrame(raf); } });
   addEventListener('resize', draw, { passive: true });
 })();
+
+// Homepage v2: count clicks on its buttons (the button name only).
+document.addEventListener("click", e => { const a = e.target.closest?.("[data-cta]"); if (a) fetch(API + "/api/a/cta", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json", "X-Requested-With": "qp" }, body: JSON.stringify({ cta: a.dataset.cta }) }).catch(() => {}); });

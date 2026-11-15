@@ -583,3 +583,13 @@ section.dark .sub, section.dark .trust .feature p { color: #b6c4da; }
 .shot .ld-pause:hover { background: rgba(255, 255, 255, .16); }
 .shot .ld-pause:focus-visible { outline: 2px solid #a5b4fc; outline-offset: 2px; }
 .adtrans { max-width: 1080px; margin: 10px auto 0; font-size: 14px; color: var(--mu); } .adtrans summary { cursor: pointer; font-weight: 600; } .adtrans p { margin: 6px 0; }
+
+/* Homepage v2: risk link beside sign-ups, other sign-up options, Trust & compliance block */
+.risklink { margin: 10px 0 0; font-size: 14px; } .risklink.center { text-align: center; margin-top: 18px; }
+.risklink a { color: inherit; text-decoration: underline; text-underline-offset: 3px; opacity: .85; }
+.altsign { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0 0; font-size: 14px; opacity: .9; }
+.altsign .btn { padding: 8px 14px; font-size: 14px; }
+.complinks { list-style: none; padding: 0; margin: 18px auto 0; display: flex; flex-wrap: wrap; gap: 10px 22px; justify-content: center; max-width: 860px; }
+.complinks a { font-weight: 600; }
+.altsign:not(:has(.btn:not([hidden]))) { display: none; }
+@media (max-width: 560px) { .hero .cta .btn[data-cta] { white-space: normal; text-align: center; max-width: 100%; } }

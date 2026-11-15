@@ -201,6 +201,18 @@ async function seoPage(view) {
     await H.api('/admin/seo', { method: 'PUT', body: { pages } }); setTimeout(H.render, 500); return 'Saved. The pages now show these.';
   });
   H.act(H.$('#ping', view), async () => { const r = await H.api('/admin/seo/indexnow', { body: {} }); setTimeout(H.render, 800); return `Announced ${r.sent} pages.`; });
+  await flagsCard(view);
+}
+// Feature flags from the website audit: each starts off; turn one on for a share of visitors.
+async function flagsCard(view) {
+  const f = await H.api('/admin/site/flags');
+  view.insertAdjacentHTML('beforeend', `<div class="card" id="flagsCard"><h2>Feature flags</h2><p class="mu" style="margin-top:0">New website changes start switched off. Turn one on for a share of visitors; switch it off to undo at once.</p>
+    ${Object.entries(f).map(([k, v]) => `<div class="row" data-flag="${H.esc(k)}" style="align-items:center;gap:14px;flex-wrap:wrap"><label class="switch"><input type="checkbox" data-f="on" ${v.on ? 'checked' : ''}> <b data-no-tr>${H.esc(k)}</b></label><span class="mu">${H.esc(v.about)}</span><label>Visitors (%)<input type="number" data-f="pct" min="0" max="100" value="${v.pct}" style="width:90px"></label></div>`).join('')}
+    <button id="saveFlags">Save flags</button><div class="err"></div></div>`);
+  H.act(H.$('#saveFlags', view), async () => {
+    const body = Object.fromEntries(H.$$('[data-flag]', view).map(r => [r.dataset.flag, { on: H.$('[data-f=on]', r).checked, pct: +H.$('[data-f=pct]', r).value }]));
+    await H.api('/admin/site/flags', { method: 'PUT', body }); return 'Saved.';
+  });
 }
 
 // ---------- Admin → AI team (nine agents and their manager), then the coding agent on GitHub ----------

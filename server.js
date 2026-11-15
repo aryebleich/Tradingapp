@@ -91,6 +91,7 @@ import { ownHosts, publicUrl } from './src/origin.js';
 import { edgeSecret } from './src/edgesetup.js';
 import { router as githubRouter, githubEnabled } from './src/github.js';
 import { adminSiteRouter } from './src/admin-site.js';
+import * as FLAGS from './src/flags.js';
 import { tokensRouter, mcpHandler } from './src/mcp.js';
 import { agentRouter } from './src/agentic.js';
 import { aiBotsRouter } from './src/aibots.js';
@@ -643,6 +644,9 @@ api.use('/plain-research', plainResearchRouter);
 api.get('/admin/streams', auth.requireUser, auth.requireAdmin, async (req, res) => { const S = await import('./src/streams.js'); res.json(S.hub.status()); });
 api.put('/admin/streams', auth.requireUser, auth.requireAdmin, async (req, res) => { const S = await import('./src/streams.js'); await S.saveSettings(req.body || {}); await audit(req.user.id, 'stream_settings', { provider: req.body?.provider }, req.ip); res.json(S.hub.status()); });
 api.use('/admin/seo', SEO.seoAdminRouter({ onChange: () => htmlCache.clear() }));
+// Feature flags (website audit, Phase 4): every flag starts off; the owner sets on/off and a rollout percentage.
+api.get('/admin/site/flags', (req, res) => (req.user?.role === 'admin' ? res.json(FLAGS.flagSettings()) : res.status(403).json({ error: 'Admin only' })));
+api.put('/admin/site/flags', async (req, res, next) => { if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Admin only' }); try { res.json(await FLAGS.saveFlags(req.body || {})); } catch (e) { next(e); } });
 api.use('/admin/site', adminSiteRouter);
 api.get('/admin/issues', (req, res) => res.json({ issues: listIssues() }));
 api.delete('/admin/issues', async (req, res) => { await clearIssues(); res.json({ ok: true }); });
@@ -1122,10 +1126,16 @@ const pub = path.join(here, 'public');
 // Marketing pages get absolute social-preview image URLs (crawlers ignore relative ones).
 const htmlCache = new Map();
 // Public pages: the owner's SEO settings (titles, descriptions, canonical, structured data) applied.
-const page = file => async (req, res) => {
+const page = base => async (req, res) => {
+  // Homepage v2 (Admin → SEO → Feature flags, off by default): only visitors in the rollout see it.
+  let file = base;
+  if ((base === 'index.html' || base === 'yi.html') && FLAGS.flagSettings().home_v2.on) {
+    if (FLAGS.isOn('home_v2', FLAGS.visitorId(req, res))) file = base.replace('.html', '-v2.html');
+    res.set({ 'Cache-Control': 'private, no-cache', Vary: 'Cookie' });
+  }
   if (!htmlCache.has(file) || process.env.NODE_ENV !== 'production') {
     const raw = (await fs.readFile(path.join(pub, file), 'utf8')).replace('content="og-brightolio.png"', `content="${PUBLIC_URL}/og-brightolio.png"`);
-    htmlCache.set(file, SEO.transform(raw, file.replace(/\.html$/, ''), SEO.settings(), PUBLIC_URL));
+    htmlCache.set(file, SEO.transform(raw, base.replace(/\.html$/, ''), SEO.settings(), PUBLIC_URL));
   }
   res.type('html').set('X-QP-Build', BUILD).send(htmlCache.get(file));
 };

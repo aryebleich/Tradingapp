@@ -111,6 +111,12 @@ export const analyticsRouter = (() => {
     if (req.user && /^[a-z0-9-]{1,40}$/.test(route)) { count('page', route); visitor(`u${req.user.id}`, 'app'); }
     res.status(204).end();
   });
+  // A homepage button was clicked (homepage v2): the button's name only, nothing about the visitor.
+  r.post('/cta', (req, res) => {
+    const k = String(req.body?.cta || '');
+    if (/^[a-z0-9_]{1,30}$/.test(k)) count('cta', k);
+    res.status(204).end();
+  });
   r.get('/admin', wrap(async (req, res) => {
     if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
     res.json(await report(Math.min(365, Math.max(7, +req.query.days || 30))));
