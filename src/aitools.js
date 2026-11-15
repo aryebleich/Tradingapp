@@ -122,8 +122,10 @@ export async function theme(user, text) {
   const D = await import('./alpaca/data.js');
   if (D.dataEnabled() && out.companies.length) {
     const snaps = await D.snapshots(out.companies.map(x => x.symbol)).catch(() => null);
-    if (snaps) out.companies = out.companies.filter(x => snaps[x.symbol]).map(x => ({ ...x, price: snaps[x.symbol].price ?? null, changePct: snaps[x.symbol].changePct != null ? r2(snaps[x.symbol].changePct) : null }));
+    if (snaps) out.companies = out.companies.filter(x => snaps[x.symbol]).map(x => ({ ...x, checked: true, price: snaps[x.symbol].price ?? null, changePct: snaps[x.symbol].changePct != null ? r2(snaps[x.symbol].changePct) : null }));
   }
+  // Without market data the tickers could not be checked: say so on each one.
+  out.companies = out.companies.map(x => ({ ...x, checked: x.checked === true }));
   return { ...out, engine };
 }
 
