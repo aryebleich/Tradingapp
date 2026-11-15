@@ -6,7 +6,7 @@ import http from 'node:http';
 import { serve } from './client.js';
 import { roshHashana, yomTovDays, shabbosAt, upcoming } from '../src/zmanim.js';
 import { screen, maaser, shabbosBlock } from '../src/values.js';
-import { xirr, privateStats, propertyStats, mortgagePayment } from '../src/alts.js';
+import { xirr, privateStats } from '../src/alts.js';
 import { journalFor } from '../src/quickbooks.js';
 import { richStates, blendedColors } from '../public/chartstates.js';
 import { one, run } from '../src/db.js';
@@ -68,13 +68,10 @@ test('values investing: presets, screens, maaser and the Shabbos pause', async (
   } finally { s.close(); }
 });
 
-test('private markets and real estate: multiple, yearly return, cash flow and net worth', async () => {
+test('private markets: multiple, yearly return and net worth (the real estate page is gone)', async () => {
   assert.ok(Math.abs(xirr([{ date: '2020-01-01', amount: -1000 }, { date: '2021-01-01', amount: 1100 }]) - 10) < 0.05);
   const st = privateStats({ value: 3000, valuedOn: '2026-01-01' }, [{ kind: 'invest', amount: 1000, on: '2023-01-01' }, { kind: 'distribution', amount: 500, on: '2025-01-01' }]);
   assert.equal(st.moic, 3.5); assert.equal(st.gain, 2500); assert.ok(st.irr > 40 && st.irr < 60);
-  assert.equal(mortgagePayment(200000, 6, 30), 1199.1);
-  const p = propertyStats({ value: 400000, mortgage: 200000, rate: 6, yearsLeft: 30, rent: 3000, costs: 800, cashInvested: 100000, price: 350000 });
-  assert.deepEqual([p.equity, p.payment, p.monthlyCashFlow, p.capRate, p.cashOnCash, p.gain], [200000, 1199.1, 1000.9, 6.6, 12.01, 50000]);
   const s = await serve();
   try {
     const u = s.client(); await u.signup('alts@example.com');
@@ -83,9 +80,9 @@ test('private markets and real estate: multiple, yearly return, cash flow and ne
     await u(`/alts/item/${id}/events`, { kind: 'distribution', amount: 2000, on: '2025-06-01' });
     const pv = (await u('/alts/private')).body;
     assert.equal(pv.items[0].stats.moic, 2.7); assert.equal(pv.totals.value, 25000);
-    await u('/alts/realestate', { name: 'Two-family', type: 'rental', value: 500000, mortgage: 300000, rate: 5, rent: 4000, costs: 1000 });
+    assert.equal((await u('/alts/realestate', { name: 'Two-family', type: 'rental', value: 500000 })).status, 404);
     const nw = (await u('/alts/networth')).body;
-    assert.equal(nw.private, 25000); assert.equal(nw.realEstate, 200000); assert.equal(nw.total, 225000 + nw.brokerage);
+    assert.equal(nw.private, 25000); assert.equal(nw.realEstate, undefined); assert.equal(nw.total, 25000 + nw.brokerage);
     const other = s.client(); await other.signup('alts-other@example.com');
     assert.equal((await other(`/alts/item/${id}`, { name: 'x' }, 'PUT')).status, 404, 'only the owner');
     assert.equal((await u('/alts/stocks')).status, 404);

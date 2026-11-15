@@ -514,7 +514,7 @@ YI.update({
     "A professional trading desk and a long-term investing plan on your own brokerage account: stocks, ETFs, options, futures, funds, bonds and savings, with automation and Reality Check. In English and Yiddish.": "א פראפעסיאנעלער טרעידינג טיש און א לאנג-טערמיניגער אינוועסטירונג פלאן אויף אייער אייגענעם בראקערעדזש אקאונט: סטאקס, ETFs, אפציעס, פיוטשערס, פאנדס, באנדס און סעיווינגס, מיט אויטאמאציע און Reality Check. אויף ענגליש און אידיש.",
     "<b>Trade today. Build wealth for decades.</b> One platform for both, on your own brokerage account.": "<b>האנדלט היינט. בויט עשירות פאר צענדליגער יארן.</b> איין פלאטפארמע פאר ביידע, אויף אייער אייגענעם בראקערעדזש אקאונט.",
     "Trade every day. <span>Invest for a lifetime.</span>": "האנדלט יעדן טאג. <span>אינוועסטירט פארן גאנצן לעבן.</span>",
-    "One platform for both. Trade stocks, options, futures and crypto with a professional order desk, and build long-term wealth with index plans, funds, bonds, savings, real estate and private markets, all on your own brokerage account.": "איין פלאטפארמע פאר ביידע. האנדלט סטאקס, אפציעס, פיוטשערס און קריפטא מיט א פראפעסיאנעלן ארדער-טיש, און בויט לאנג-טערמיניגע עשירות מיט אינדעקס פלענער, פאנדס, באנדס, סעיווינגס, ריעל עסטעיט און פריוואטע מארקעטס, אלעס אויף אייער אייגענעם בראקערעדזש אקאונט.",
+    "One platform for both. Trade stocks, options, futures and crypto with a professional order desk, and build long-term wealth with index plans, funds, bonds, savings and private markets, all on your own brokerage account.": "איין פלאטפארמע פאר ביידע. האנדלט סטאקס, אפציעס, פיוטשערס און קריפטא מיט א פראפעסיאנעלן ארדער-טיש, און בויט לאנג-טערמיניגע עשירות מיט אינדעקס פלענער, פאנדס, באנדס, סעיווינגס און פריוואטע מארקעטס, אלעס אויף אייער אייגענעם בראקערעדזש אקאונט.",
     "Two ways to grow your money. One place.": "צוויי וועגן צו וואקסן אייער געלט. איין ארט.",
     "For trading": "פאר האנדלען", "For investing": "פאר אינוועסטירן",
     "A professional trading desk": "א פראפעסיאנעלער טרעידינג טיש", "Wealth that builds itself": "עשירות וואס בויט זיך אליין",
@@ -529,7 +529,7 @@ YI.update({
     "Index funds and ETFs compared by what they cost you each year": "אינדעקס פאנדס און ETFs פארגליכן לויט וויפיל זיי קאסטן אייך יעדעס יאר",
     "Bonds, Treasury bills and savings, with today's rates where you live": "באנדס, טרעזשורי בילס און סעיווינגס, מיט די היינטיגע ראטעס וואו איר וואוינט",
     "One mix for all your accounts, rebalanced with one tap": "איין מישונג פאר אלע אייערע אקאונטס, איבערבאלאנסירט מיט איין קליק",
-    "Your whole net worth: banks, crypto, real estate and private investments": "אייער גאנצע נעטא ווערט: בענק, קריפטא, ריעל עסטעיט און פריוואטע אינוועסטמענטס",
+    "Your whole net worth: banks, crypto and private investments": "אייער גאנצע נעטא ווערט: בענק, קריפטא און פריוואטע אינוועסטמענטס",
     "Tax-saving autopilot and a plain-English weekly money brief": "א שטייער-שפארנדיגער אויטאפילאט און א קלארער וועכנטלעכער געלט-באריכט",
 })
 

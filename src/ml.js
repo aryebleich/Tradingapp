@@ -162,7 +162,7 @@ export const mlRouter = (() => {
   r.get('/agents', async (req, res) => res.json((await all('SELECT * FROM agents WHERE user_id = ? ORDER BY id DESC', req.user.id)).map(a => ({ ...a, config: JSON.parse(a.config), metrics: a.metrics ? JSON.parse(a.metrics) : null, model: undefined }))));
   r.post('/agents', async (req, res) => {
     const n = (await one('SELECT COUNT(*) n FROM agents WHERE user_id = ?', req.user.id)).n;
-    if (n >= (isPaid(req.user) ? 50 : 3)) throw Object.assign(bad(isPaid(req.user) ? 'Agent limit reached' : 'The free plan has 3 AI agents'), { upgrade: !isPaid(req.user), feature: 'More AI agents', status: 402 });
+    if (n >= (isPaid(req.user) ? 50 : 10)) throw Object.assign(bad(isPaid(req.user) ? 'Agent limit reached' : 'The free plan has 10 AI agents'), { upgrade: !isPaid(req.user), feature: 'More AI agents', status: 402 });
     const symbol = String(req.body.symbol || '').trim().toUpperCase(), cfg = cleanCfg(req.body);
     await spend(req.user, 'agent', { memo: symbol.slice(0, 10) });
     const r0 = await forecastSymbol(req.user.id, symbol, cfg); // trains and validates before saving

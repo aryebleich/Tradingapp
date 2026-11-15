@@ -1,6 +1,4 @@
-// Live data for private investments and real estate (add-ons, each can be switched off):
-//  - home value and rent estimates from RentCast (RENTCAST_API_KEY), by hand or monthly, and
-//    optionally used as the property's value and rent;
+// Live data for private investments (add-ons, each can be switched off):
 //  - a cap table per private company: funding rounds, your shares, ownership after each round,
 //    and the value your shares imply at the latest price;
 //  - K-1 forms from private funds: expected each year, the key boxes, the PDF, and a reminder
@@ -14,44 +12,6 @@ import { notifyUser } from './notify-user.js';
 const bad = (msg, status = 400) => Object.assign(new Error(msg), { status });
 const r2 = x => +(+x || 0).toFixed(2);
 const DAY = 864e5;
-
-// ---------- home values and rent (RentCast) ----------
-export const rentcastOn = () => !!process.env.RENTCAST_API_KEY;
-async function rentcast(path, address) {
-  const base = (process.env.RENTCAST_BASE_URL || 'https://api.rentcast.io/v1').replace(/\/$/, '');
-  const r = await fetch(`${base}${path}?address=${encodeURIComponent(address)}`, { headers: { 'X-Api-Key': process.env.RENTCAST_API_KEY, Accept: 'application/json' }, signal: AbortSignal.timeout(15000) });
-  if (r.status === 404) throw bad('RentCast has no estimate for that address. Check the full street address, city, state and ZIP.', 404);
-  if (!r.ok) throw bad(`RentCast answered ${r.status}`, 502);
-  return r.json();
-}
-export async function estimate(asset) {
-  if (!rentcastOn()) throw bad('Live property values are not set up on this server yet (RENTCAST_API_KEY)', 503);
-  const d = JSON.parse(asset.data || '{}');
-  if (!d.address || d.address.length < 8) throw bad('Add the full address of the property first');
-  const [v, rent] = await Promise.all([rentcast('/avm/value', d.address), rentcast('/avm/rent/long-term', d.address).catch(() => ({}))]);
-  const e = { value: r2(v.price), valueLow: r2(v.priceRangeLow), valueHigh: r2(v.priceRangeHigh), rent: rent.rent ? r2(rent.rent) : null, rentLow: rent.rentRangeLow ? r2(rent.rentRangeLow) : null, rentHigh: rent.rentRangeHigh ? r2(rent.rentRangeHigh) : null };
-  const cur = await one('SELECT auto, apply FROM property_estimates WHERE asset_id = ?', asset.id);
-  await run('INSERT INTO property_estimates (asset_id, user_id, value, value_low, value_high, rent, rent_low, rent_high, auto, apply, at) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(asset_id) DO UPDATE SET value = excluded.value, value_low = excluded.value_low, value_high = excluded.value_high, rent = excluded.rent, rent_low = excluded.rent_low, rent_high = excluded.rent_high, at = excluded.at',
-    asset.id, asset.user_id, e.value, e.valueLow, e.valueHigh, e.rent, e.rentLow, e.rentHigh, cur?.auto ?? 0, cur?.apply ?? 0, now());
-  if (cur?.apply) await applyEstimate(asset, e);
-  return e;
-}
-async function applyEstimate(asset, e) {
-  const d = JSON.parse(asset.data || '{}');
-  const next = { ...d, value: e.value || d.value, ...(e.rent && d.type !== 'home' ? { rent: e.rent } : {}) };
-  await run('UPDATE alt_assets SET data = ?, updated_at = ? WHERE id = ?', JSON.stringify(next), now(), asset.id);
-}
-// Monthly: properties set to update themselves (RentCast's free plan has 50 lookups a month).
-export async function refreshEstimates(t = now()) {
-  if (!rentcastOn()) return 0;
-  let n = 0;
-  for (const p of await all('SELECT a.* FROM alt_assets a JOIN property_estimates e ON e.asset_id = a.id WHERE e.auto = 1 AND e.at < ?', t - 30 * DAY)) {
-    if (!(await addonOn(p.user_id, 'liveProperty'))) continue;
-    await estimate(p).then(() => n++).catch(e => console.warn('estimate', p.id, e.message));
-    if (n >= 40) break;
-  }
-  return n;
-}
 
 // ---------- cap tables ----------
 function cleanCap(b) {
@@ -114,19 +74,6 @@ export const altLiveRouter = (() => {
   const r = express.Router();
   r.use(requireUser);
   const mine = async (req, kind) => { const a = await one('SELECT * FROM alt_assets WHERE id = ? AND user_id = ? AND kind = ?', +req.params.id, req.user.id, kind); if (!a) throw bad('Not found', 404); return a; };
-
-  r.get('/estimate/:id', requireAddon('liveProperty'), async (req, res) => {
-    const a = await mine(req, 'realestate'), e = await one('SELECT * FROM property_estimates WHERE asset_id = ?', a.id);
-    res.json({ enabled: rentcastOn(), estimate: e && { value: e.value, valueLow: e.value_low, valueHigh: e.value_high, rent: e.rent, rentLow: e.rent_low, rentHigh: e.rent_high, at: e.at, auto: !!e.auto, apply: !!e.apply } });
-  });
-  r.post('/estimate/:id', requireAddon('liveProperty'), async (req, res) => { const a = await mine(req, 'realestate'); res.json(await estimate(a)); });
-  r.put('/estimate/:id', requireAddon('liveProperty'), async (req, res) => {
-    const a = await mine(req, 'realestate'), e = await one('SELECT * FROM property_estimates WHERE asset_id = ?', a.id);
-    if (!e) throw bad('Get an estimate first');
-    await run('UPDATE property_estimates SET auto = ?, apply = ? WHERE asset_id = ?', req.body?.auto ? 1 : 0, req.body?.apply ? 1 : 0, a.id);
-    if (req.body?.apply) await applyEstimate(a, { value: e.value, rent: e.rent });
-    res.json({ ok: true });
-  });
 
   r.get('/cap/:id', requireAddon('capTable'), async (req, res) => {
     const a = await mine(req, 'private'), c = await one('SELECT data FROM cap_tables WHERE asset_id = ?', a.id);

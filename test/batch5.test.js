@@ -71,7 +71,7 @@ test('statistical arbitrage: pair matrix, s-scores and a walk-forward backtest',
   for (const x of sc) assert.ok(Number.isFinite(x.s));
   const b = backtest(d);
   assert.ok(b.curve.length > 10 && Number.isFinite(b.m.cagr));
-  assert.deepEqual(limitsFor({ plan: 'free' }), { symbols: 6, refresh: 0 });
+  assert.deepEqual(limitsFor({ plan: 'free' }), { symbols: 30, refresh: 60 }); // the full engine on every plan
   assert.equal(limitsFor({ plan: 'elite', plan_status: 'active' }).symbols, 30);
   assert.equal(limitsFor({ role: 'admin' }).symbols, 50);
 });
@@ -82,10 +82,11 @@ test('statistical arbitrage API: plan limits on basket size', async () => {
     const owner = s.client(); await owner.signup('site-owner@example.com');
     const free = s.client(); await free.signup('statarb-free@example.com');
     const info = (await free('/statarb/baskets')).body;
-    assert.equal(info.limits.symbols, 6); assert.ok(info.baskets.Banks.length >= 6);
+    // The full engine on every plan: the free plan analyzes up to 30 stocks at once.
+    assert.equal(info.limits.symbols, 30); assert.ok(info.baskets.Banks.length >= 6);
     const seven = 'KO, PEP, PG, CL, KMB, MDLZ, HSY';
     const r = await free('/statarb/analyze', { symbols: seven });
-    assert.equal(r.status, 402); assert.equal(r.body.upgrade, true);
+    assert.equal(r.status, 200, JSON.stringify(r.body)); assert.equal(r.body.refresh, 60);
     assert.equal((await free('/statarb/analyze', { symbols: 'KO, PEP' })).status, 400);
     const ok = await owner('/statarb/analyze', { symbols: seven });
     assert.equal(ok.status, 200, JSON.stringify(ok.body));

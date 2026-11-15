@@ -1,10 +1,10 @@
 // All my money: net worth across banks, cards, loans, crypto wallets, brokerage accounts, private
-// investments and real estate, and cash flow (money in and out by month, and where it went).
+// investments, and cash flow (money in and out by month, and where it went).
 let H;
 export function registerMoney(routes, helpers) { H = helpers; routes.money = page; }
 const stat = (k, v, c = '') => `<div class="stat"><span>${k}</span><b class="${c}">${v}</b></div>`;
-const LABELS = { brokerage: 'Brokerage accounts', cash: 'Bank accounts', investmentsElsewhere: 'Investments at other firms', crypto: 'Crypto wallets', private: 'Private markets', realEstate: 'Real estate', creditCards: 'Credit cards', loans: 'Loans', mortgages: 'Mortgages' };
-const LINKS = { brokerage: '#/accounts', private: '#/private', realEstate: '#/realestate', mortgages: '#/realestate' };
+const LABELS = { brokerage: 'Brokerage accounts', cash: 'Bank accounts', investmentsElsewhere: 'Investments at other firms', crypto: 'Crypto wallets', private: 'Private markets', creditCards: 'Credit cards', loans: 'Loans', mortgages: 'Mortgages' };
+const LINKS = { brokerage: '#/accounts', private: '#/private' };
 
 async function page(view) {
   const d = await H.api('/money');

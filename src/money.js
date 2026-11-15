@@ -1,6 +1,6 @@
 // One app for all your money: banks, credit cards and loans linked through Plaid (balances and
 // transactions), crypto wallets watched by their public address (read-only: no keys, nothing can
-// move), the brokerage accounts, private investments and real estate, as one net worth, plus cash
+// move), the brokerage accounts, private investments, as one net worth, plus cash
 // flow (money in and out by month and where it went). Linking a bank is read-only too.
 import express from 'express';
 import { one, all, run, now, audit } from './db.js';
@@ -72,13 +72,13 @@ export async function overview(user) {
     if (s) brokerage.push({ id: a.id, name: a.name || a.id, value: r2(s.equity) });
   }
   const { listAlts } = await import('./alts.js');
-  const [priv, re] = await Promise.all([listAlts(user.id, 'private'), listAlts(user.id, 'realestate')]);
+  const priv = await listAlts(user.id, 'private');
   const parts = {
     brokerage: r2(brokerage.reduce((s, a) => s + a.value, 0)), cash: r2(sums.cash), investmentsElsewhere: r2(sums.investment),
-    crypto: r2(wallets.reduce((s, w) => s + (w.value || 0), 0)), private: r2(priv.reduce((s, a) => s + a.stats.value, 0)), realEstate: r2(re.reduce((s, a) => s + (+a.value || 0), 0)),
-    creditCards: r2(-sums.credit), loans: r2(-sums.loan), mortgages: r2(-sums.mortgage - re.reduce((s, a) => s + (+a.mortgage || 0), 0)),
+    crypto: r2(wallets.reduce((s, w) => s + (w.value || 0), 0)), private: r2(priv.reduce((s, a) => s + a.stats.value, 0)),
+    creditCards: r2(-sums.credit), loans: r2(-sums.loan), mortgages: r2(-sums.mortgage),
   };
-  const assets = r2(parts.brokerage + parts.cash + parts.investmentsElsewhere + parts.crypto + parts.private + parts.realEstate);
+  const assets = r2(parts.brokerage + parts.cash + parts.investmentsElsewhere + parts.crypto + parts.private);
   const debts = r2(parts.creditCards + parts.loans + parts.mortgages);
   return { plaid: plaidEnabled(), items, wallets, brokerage, parts, assets, debts, netWorth: r2(assets + debts), cashflow: await cashflow(user.id) };
 }

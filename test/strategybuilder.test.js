@@ -83,7 +83,7 @@ test('build from a design: choose tickers, step a value up, add a step, then it 
 test('plan features: backtest years, publishing, margin and size limits', async () => {
   const s = (await user('/library', { blueprintId: 'bp_blank', fillExamples: true })).body;
   assert.equal(s.ready, true);
-  assert.equal((await user(`/library/${s.id}/backtest`, { years: 15 })).status, 402); // free: 10 years
+  assert.equal((await user(`/library/${s.id}/backtest`, { years: 15 })).status, 200); // every plan: the full history
   assert.equal((await user(`/library/${s.id}`, { public: true }, 'PUT')).status, 402); // free: copy only
   assert.equal((await user(`/library/${s.id}`, { leverage: 2 }, 'PUT')).status, 402); // free: no margin
   const plans = (await user('/library/plans')).body;
@@ -98,10 +98,12 @@ test('plan features: backtest years, publishing, margin and size limits', async 
   assert.ok(pub && pub.notes === 'Trend rule' && pub.tickers.includes('SPXL') && !('account' in pub));
   const copy = (await other(`/library/community/${s.id}/copy`, {})).body;
   assert.match(copy.name, /\(copy\)/); assert.equal(copy.ready, true);
-  // The free plan has 4 sleeves per strategy (enough for every design).
+  // Every plan has up to 8 sleeves per strategy; a ninth is refused.
   const big = (await other(`/library/${copy.id}`)).body.design;
   big.sleeves = [0, 1, 2, 3, 4].map(i => ({ ...big.sleeves[0], name: 'S' + i, weight: 0.2 }));
-  assert.equal((await other(`/library/${copy.id}`, { spec: big }, 'PUT')).status, 402);
+  assert.equal((await other(`/library/${copy.id}`, { spec: big }, 'PUT')).status, 200);
+  big.sleeves = Array.from({ length: 9 }, (_, i) => ({ ...big.sleeves[0], name: 'S' + i, weight: 1 / 9 }));
+  assert.notEqual((await other(`/library/${copy.id}`, { spec: big }, 'PUT')).status, 200);
 });
 
 test('the originals are kept for the owner only', async () => {

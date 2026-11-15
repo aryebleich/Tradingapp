@@ -1194,3 +1194,58 @@ details.optrisk { margin-top: 14px; padding: 12px 16px; border: 1px solid var(--
 details.optrisk ul { margin: 8px 0 0; padding-inline-start: 20px; } details.optrisk li { margin: 4px 0; }
 .card.picked { outline: 2px solid var(--ac); }
 td.nowrap { white-space: nowrap; }
+
+/* Admin: the advertisement video */
+.adcard .adgrid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.adcard video { width: 100%; border-radius: 12px; background: #0b1020; display: block; }
+.adcard .adfiles { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.adcard .adfiles li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--bd); border-radius: 10px; }
+@media (max-width: 760px) { .adcard .adgrid { grid-template-columns: 1fr; } }
+
+/* Company logos next to tickers */
+img.tlogo { width: 18px; height: 18px; border-radius: 5px; object-fit: contain; background: #fff; vertical-align: -4px; margin-inline-end: 6px; flex: none; box-shadow: 0 0 0 1px rgba(15, 23, 42, .08); }
+h2 img.tlogo { width: 24px; height: 24px; vertical-align: -5px; border-radius: 7px; }
+
+/* Trading mode: a small button in the header that opens the Paper / Live switch */
+header#top .modebtn { gap: 6px; }
+header#top .modebtn svg { width: 14px; height: 14px; }
+header#top .modebtn .mdot { width: 8px; height: 8px; border-radius: 50%; background: var(--mu); flex: none; }
+header#top .modebtn .mdot.live { background: var(--warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 25%, transparent); }
+header#top .modebtn.live { border-color: var(--warn); }
+.modepop { position: fixed; z-index: 60; width: 260px; padding: 12px; border-radius: 14px; background: var(--card); border: 1px solid var(--bd); box-shadow: 0 18px 40px rgba(0, 0, 0, .25); }
+.modepop .grp { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--mu); margin-bottom: 6px; }
+.modepop .modeswitch { padding: 0 0 8px; border: 0; margin: 0; }
+.modepop p { margin: 4px 0 6px; }
+
+/* Gear: settings for one page, in the page header */
+button.pgear { width: 34px; height: 34px; min-height: 34px; padding: 0; margin-inline-start: 10px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; }
+button.pgear svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform .3s; }
+button.pgear:hover svg { transform: rotate(60deg); }
+dialog.geardlg { width: min(560px, calc(100vw - 32px)); max-height: 85vh; overflow: auto; border: 1px solid var(--bd); border-radius: 16px; padding: 18px; background: var(--bg); color: var(--tx); }
+dialog.geardlg::backdrop { background: rgba(0, 0, 0, .45); }
+dialog.geardlg .gearbody { display: grid; gap: 12px; margin: 12px 0; }
+dialog.geardlg .gearbody .card { margin: 0; }
+dialog.geardlg input[type=checkbox] { appearance: none; -webkit-appearance: none; flex: none; width: 40px; height: 22px; margin: 0; border-radius: 999px; background: var(--bd); position: relative; cursor: pointer; border: 0; }
+dialog.geardlg input[type=checkbox]::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s; }
+dialog.geardlg input[type=checkbox]:checked { background: var(--ac); }
+dialog.geardlg input[type=checkbox]:checked::after { transform: translateX(18px); }
+dialog.geardlg label.chk, dialog.geardlg label.chk2, dialog.geardlg label.check { display: flex; align-items: center; gap: 12px; padding: 6px 0; }
+.movedlist li { margin: 6px 0; }
+
+/* Admin → Analytics */
+.antabs { margin: 10px 0 14px; }
+.anbars { display: flex; align-items: flex-end; gap: 2px; height: 120px; padding-top: 6px; }
+.anbars i { flex: 1; min-width: 2px; background: linear-gradient(180deg, var(--ac), color-mix(in srgb, var(--ac) 45%, transparent)); border-radius: 3px 3px 0 0; }
+.anaxis { display: flex; justify-content: space-between; font-size: 11.5px; margin-top: 4px; }
+.anrank > div { display: grid; grid-template-columns: minmax(120px, 30%) 1fr auto; gap: 10px; align-items: center; padding: 5px 0; font-size: 14px; }
+.anrank i { height: 10px; border-radius: 5px; background: var(--ac); opacity: .8; }
+/* Phones: the trading-mode button keeps only its colored dot and arrow so the header fits */
+@media (max-width: 640px) {
+  header#top .modebtn { padding: 0 8px; gap: 4px; }
+  header#top .modebtn span { display: none; }
+  header#top { min-width: 0; }
+  header#top > * { flex-shrink: 1; min-width: 0; }
+  header#top .brand { flex-shrink: 0; }
+}
+@media (max-width: 420px) { header#top .brand b { display: none; } }
+@media (max-width: 760px) { .tablewrap:has(> table.chain), .tablewrap:has(> table.optchain) { overflow-x: auto; } }

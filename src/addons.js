@@ -1,11 +1,10 @@
-// Add-ons each user can switch off in Settings: live property values, cap tables, K-1 forms, the
+// Add-ons each user can switch off in Settings: cap tables, K-1 forms, the
 // weekly AI brief and the tax-saving autopilot. All start switched on. Also the phone line language.
 import express from 'express';
 import { requireUser } from './auth.js';
 import { getSetting, setSetting } from './settings.js';
 
 export const ADDONS = {
-  liveProperty: 'Live home values and rent estimates',
   capTable: 'Cap-table tracker for private companies',
   k1: 'K-1 tax forms from private funds',
   brief: 'Weekly AI money brief',

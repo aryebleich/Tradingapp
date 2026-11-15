@@ -127,7 +127,11 @@ async function seoPage(view) {
       <label class="chk2"><input type="checkbox" data-f="noindex" ${o.noindex ? 'checked' : ''}> Hide from search engines (noindex)</label>
       <div class="serp"><div class="serp-url" data-no-tr>${H.esc(B.replace(/^https?:\/\//, ''))}${H.esc(p.path === '/' ? '' : ' › ' + p.path.slice(1))}</div><div class="serp-title"></div><div class="serp-desc"></div></div></div>`;
   };
+  const ad = await H.api('/admin/site/ad').catch(() => ({ files: [] }));
   view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-seo')}
+  <div class="card adcard"><h2>Advertisement video</h2><div class="adgrid"><video controls playsinline preload="metadata" poster="/media/brightolio-ad.jpg"><source src="/media/brightolio-ad.webm" type="video/webm"><source src="/media/brightolio-ad.mp4" type="video/mp4"></video>
+    <div><p class="mu" style="margin-top:0">The 20-second ad on the homepage, in every version. Use it on social media, in ads or in emails.</p>
+    <ul class="adfiles">${ad.files.map(f => `<li><span>${H.esc(f.label)} <small class="mu">${(f.size / 1048576).toFixed(1)} MB</small></span><a href="/api/admin/site/ad/${encodeURIComponent(f.file)}" download="${H.esc(f.file)}"><button type="button" class="small">Download</button></a></li>`).join('') || '<li class="mu">No files found on this server.</li>'}</ul></div></div></div>
   <div class="card seoscore"><div class="row" style="gap:18px;align-items:center;flex-wrap:wrap">
     <div class="ring" style="--p:${a.score}"><b>${a.score}</b><span>/100</span></div>
     <div style="flex:1;min-width:240px"><h2 style="margin:0">Search visibility</h2><p class="mu" style="margin:4px 0 0">How ready the public pages are for Google, Bing and AI search (ChatGPT, Claude, Perplexity). ${bad.length ? `<b>${bad.length}</b> thing${bad.length === 1 ? '' : 's'} to fix, most important first.` : 'Everything checked is in place.'}</p></div></div>

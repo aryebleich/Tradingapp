@@ -182,7 +182,7 @@ test('the luach: Hebrew dates, zmanim, the year\'s days and the tzedakah ledger 
   } finally { s.close(); }
 });
 
-test('add-ons: switches, live property values, cap table, K-1s, weekly brief, tax autopilot', async () => {
+test('add-ons: switches, cap table, K-1s, weekly brief, tax autopilot', async () => {
   const { capStats } = await import('../src/altlive.js');
   const { bestLots, openLots, SWAPS } = await import('../src/taxpilot.js');
   // Cap table: 1,000,000 shares before; bought 50,000 more in the A round; ownership after each round.
@@ -197,22 +197,11 @@ test('add-ons: switches, live property values, cap table, K-1s, weekly brief, ta
   assert.equal(b.methods.tax.lots[0].price, 120); assert.ok(b.methods.tax.tax < b.methods.fifo.tax); assert.ok(b.saves > 0);
   assert.equal(SWAPS.VOO, 'VTI'); assert.notEqual(SWAPS.VTI, 'VTI');
 
-  let fake; const calls = [];
-  fake = http.createServer((req, res) => { calls.push(req.url); res.setHeader('Content-Type', 'application/json'); if (req.headers['x-api-key'] !== 'rk') { res.statusCode = 401; return res.end('{}'); } if (req.url.startsWith('/avm/value')) return res.end(JSON.stringify({ price: 612000, priceRangeLow: 580000, priceRangeHigh: 640000 })); if (req.url.startsWith('/avm/rent')) return res.end(JSON.stringify({ rent: 3900, rentRangeLow: 3600, rentRangeHigh: 4200 })); res.statusCode = 404; res.end('{}'); });
-  await new Promise(r => fake.listen(0, r));
-  Object.assign(process.env, { RENTCAST_API_KEY: 'rk', RENTCAST_BASE_URL: `http://127.0.0.1:${fake.address().port}` });
   const s = await serve();
   try {
     const u = s.client(); const me = await u.signup('addons@example.com');
     let a = (await u('/addons')).body; assert.ok(Object.values(a.addons).every(Boolean), 'all on by default'); assert.equal(a.phoneLang, 'en');
     assert.ok((await u('/auth/me')).body.user.addons.brief);
-    // Live property value.
-    const home = (await u('/alts/realestate', { name: 'Two-family', type: 'rental', address: '12 Main St, Monsey, NY 10952', value: 550000, rent: 3500 })).body.id;
-    const e = (await u('/altlive/estimate/' + home, {})).body;
-    assert.equal(e.value, 612000); assert.equal(e.rent, 3900); assert.match(calls[0], /address=12%20Main/);
-    assert.equal((await u('/altlive/estimate/' + home, { auto: true, apply: true }, 'PUT')).status, 200);
-    const prop = (await u('/alts/realestate')).body.items[0];
-    assert.equal(prop.value, 612000); assert.equal(prop.rent, 3900);
     // Cap table and using its value.
     const co = (await u('/alts/private', { name: 'Acme', type: 'equity', invested: 10000 })).body.id;
     const cap = (await u('/altlive/cap/' + co, { myShares: 10000, rounds: [{ name: 'Seed', price: 2, sharesAfter: 1e6, date: '2025-01-10' }] }, 'PUT')).body;
@@ -246,7 +235,7 @@ test('add-ons: switches, live property values, cap table, K-1s, weekly brief, ta
     assert.equal(a.addons.brief, false); assert.equal(a.addons.capTable, true); assert.equal(a.phoneLang, 'yi');
     const off = await u('/brief'); assert.equal(off.status, 403); assert.equal(off.body.addonOff, 'brief');
     assert.equal((await u('/taxpilot')).status, 403);
-  } finally { s.close(); fake.close(); }
+  } finally { s.close(); }
 });
 
 test('Yiddish on the phone line: numbers in Yiddish order, clips played, missing pieces in English', async () => {

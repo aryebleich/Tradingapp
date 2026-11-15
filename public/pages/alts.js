@@ -1,20 +1,21 @@
-// Private markets and real estate: the user's investments outside the stock market, with a net
+// Private markets: the user's investments outside the stock market, with a net
 // worth across everything. Brightolio records and calculates; it does not offer or arrange deals.
-import { propertyExtras, privateExtras, k1Overview } from './altlive.js';
+import { privateExtras, k1Overview } from './altlive.js';
 let H;
 export function registerAlts(routes, helpers) {
   H = helpers;
-  Object.assign(routes, { private: view => page(view, 'private'), realestate: view => page(view, 'realestate') });
+  Object.assign(routes, { private: view => page(view, 'private') });
 }
 const stat = (k, v, c = '') => `<div class="stat"><span>${k}</span><b class="${c}">${v}</b></div>`;
 const pc = v => (v == null ? '-' : `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`);
 
+// Only the private kind is left (the real estate page was removed); priv is always true.
 async function page(view, kind) {
   const priv = kind === 'private';
   const [d, nw, meta] = await Promise.all([H.api('/alts/' + kind), H.api('/alts/networth').catch(() => null), H.api('/alts/platforms')]);
   const types = priv ? meta.privateTypes : meta.propertyTypes, t = d.totals;
   view.innerHTML = `<div class="pagehead"><div><h1>${priv ? 'Private markets' : 'Real estate'}</h1><p class="mu" style="margin:4px 0 0">${priv ? 'Stakes in private companies, startups, funds, loans and your own business: what you put in, what came back, today\'s value, multiple and yearly return.' : 'Your properties next to your stocks: equity, rent, costs and mortgage, with cash flow, cap rate and cash-on-cash return.'}</p></div></div>
-  ${nw ? `<div class="card"><h2>Net worth</h2><div class="stats">${stat('Brokerage accounts', H.money(nw.brokerage))}${stat('Private markets', H.money(nw.private))}${stat('Real estate equity', H.money(nw.realEstate))}${stat('Total', H.money(nw.total))}</div><p class="mu small-print">Brokerage accounts count real money only (not the paper account). Values of private investments and property are the ones you enter.</p></div>` : ''}
+  ${nw ? `<div class="card"><h2>Net worth</h2><div class="stats">${stat('Brokerage accounts', H.money(nw.brokerage))}${stat('Private markets', H.money(nw.private))}${stat('Total', H.money(nw.total))}</div><p class="mu small-print">Brokerage accounts count real money only (not the paper account). Values of private investments and property are the ones you enter.</p></div>` : ''}
   <div class="card"><div class="stats">${priv ? stat('Put in', H.money(t.invested)) + stat('Paid back to you', H.money(t.distributions)) + stat('Value now', H.money(t.value)) + stat('Gain', H.money(t.gain), H.cls(t.gain))
     : stat('Property value', H.money(t.value)) + stat('Mortgages', H.money(t.mortgage)) + stat('Equity', H.money(t.equity)) + stat('Cash flow a month', H.money(t.monthlyCashFlow), H.cls(t.monthlyCashFlow))}</div>
     <div class="tablewrap"><table>${priv ? '<tr><th>Investment</th><th>Type</th><th>Put in</th><th>Back</th><th>Value</th><th>Multiple</th><th>Yearly return</th><th></th></tr>' : '<tr><th>Property</th><th>Type</th><th>Value</th><th>Mortgage</th><th>Equity</th><th>Cash flow / month</th><th>Cap rate</th><th>Cash-on-cash</th><th></th></tr>'}
@@ -55,5 +56,5 @@ function detail(view, kind, a, types) {
   H.act(H.$('#del', box), async () => { if (!confirm(`Delete ${a.name}?`)) return ''; await H.api('/alts/item/' + a.id, { method: 'DELETE' }); H.render(); return ''; });
   if (H.$('#ev', box)) H.act(H.$('#ev button', box), async () => { await H.api(`/alts/item/${a.id}/events`, { body: H.form(H.$('#ev', box)) }); H.render(); return ''; });
   H.$$('[data-rmev]', box).forEach(b => (b.onclick = async () => { await H.api(`/alts/item/${a.id}/events/${b.dataset.rmev}`, { method: 'DELETE' }); H.render(); }));
-  (priv ? privateExtras : propertyExtras)(box, a, H);
+  privateExtras(box, a, H);
 }

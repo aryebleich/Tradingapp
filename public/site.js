@@ -206,3 +206,54 @@ if ('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: re
   io.observe(v);
   v.addEventListener('click', () => { v.muted = !v.muted; v.controls = true; });
 })();
+
+// ---------- Hero: a live portfolio that streams upward (an illustration of a practice account) ----------
+// Replaces the still screenshot once the page runs; the screenshot stays for no script, and for people
+// who asked for less motion (they see the same dashboard, drawn once).
+(() => {
+  const fig = document.querySelector('.shot[data-live]'); if (!fig) return;
+  const still = fig.querySelector('img'), calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const yi = document.documentElement.lang === 'yi';
+  const L = yi ? { pf: 'פארטפאליא', paper: 'פראקטיק', eq: 'ווערט', day: 'היינט', tot: 'זינט אנהייב', pos: 'פאזישאנס' } : { pf: 'Portfolio', paper: 'Paper', eq: 'Equity', day: 'Today', tot: 'Since start', pos: 'Positions' };
+  const POS = [['AAPL', 231.4, 40], ['NVDA', 142.8, 60], ['SPY', 598.2, 25], ['MSFT', 438.9, 18], ['BTC/USD', 91250, 0.15]];
+  const box = document.createElement('div'); box.className = 'livedash'; box.setAttribute('role', 'img'); box.setAttribute('aria-label', still.alt);
+  box.innerHTML = `<div class="ld-top"><b>${L.pf}</b><em>${L.paper}</em></div>
+    <div class="ld-stats"><div><span>${L.eq}</span><b data-k="eq"></b></div><div><span>${L.day}</span><b data-k="day" class="up"></b></div><div><span>${L.tot}</span><b data-k="tot" class="up"></b></div></div>
+    <canvas></canvas><div class="ld-pos"><span class="ld-h">${L.pos}</span>${POS.map(([s]) => `<div data-s="${s}"><b dir="ltr">${s}</b><span data-p dir="ltr"></span><span data-c dir="ltr"></span></div>`).join('')}</div>`;
+  still.after(box); still.hidden = true; fig.querySelector('.livetag').hidden = calm;
+  const cv = box.querySelector('canvas'), g = cv.getContext('2d');
+  const start = 100000, N = 140, pts = [];
+  let v = start * 1.085, t = 0;
+  for (let i = 0; i < N; i++) { v *= 1 + 0.0006 + (Math.sin(i * 0.37) + Math.sin(i * 0.11)) * 0.0011; pts.push(v); }
+  const open = pts[N - 40], px = POS.map(p => ({ s: p[0], p: p[1], o: p[1], q: p[2] }));
+  const fmt = (x, d = 2) => x.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const set = (k, txt) => { const el = box.querySelector(`[data-k="${k}"]`); if (el.textContent !== txt) el.textContent = txt; };
+  const draw = () => {
+    const w = cv.clientWidth, h = cv.clientHeight, dpr = devicePixelRatio || 1;
+    if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+    g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+    const lo = Math.min(...pts) * 0.998, hi = Math.max(...pts) * 1.002, X = i => i / (N - 1) * w, Y = y => h - 6 - (y - lo) / (hi - lo) * (h - 14);
+    for (let k = 1; k < 4; k++) { g.strokeStyle = 'rgba(255,255,255,.06)'; g.beginPath(); g.moveTo(0, h * k / 4); g.lineTo(w, h * k / 4); g.stroke(); }
+    const grad = g.createLinearGradient(0, 0, 0, h); grad.addColorStop(0, 'rgba(34,197,94,.35)'); grad.addColorStop(1, 'rgba(99,102,241,0)');
+    g.beginPath(); pts.forEach((y, i) => (i ? g.lineTo(X(i), Y(y)) : g.moveTo(X(i), Y(y)))); g.lineTo(w, h); g.lineTo(0, h); g.closePath(); g.fillStyle = grad; g.fill();
+    const line = g.createLinearGradient(0, 0, w, 0); line.addColorStop(0, '#6366f1'); line.addColorStop(1, '#22c55e');
+    g.beginPath(); pts.forEach((y, i) => (i ? g.lineTo(X(i), Y(y)) : g.moveTo(X(i), Y(y)))); g.strokeStyle = line; g.lineWidth = 2.2; g.stroke();
+    const ly = Y(pts[N - 1]); g.fillStyle = '#22c55e'; g.beginPath(); g.arc(w - 3, ly, 4 + (calm ? 0 : Math.sin(t / 6) * 1.2), 0, 7); g.fill();
+    const last = pts[N - 1];
+    set('eq', '$' + fmt(last)); set('day', `+$${fmt(last - open)}`); set('tot', `+${fmt((last / start - 1) * 100)}%`);
+    for (const p of px) { const row = box.querySelector(`[data-s="${p.s}"]`), c = (p.p / p.o - 1) * 100; row.querySelector('[data-p]').textContent = fmt(p.p, p.p > 1000 ? 0 : 2); const ce = row.querySelector('[data-c]'); ce.textContent = `${c >= 0 ? '+' : ''}${fmt(c)}%`; ce.className = c >= 0 ? 'up' : 'down'; }
+  };
+  const step = () => {
+    t++;
+    // A new point every frame batch: an upward drift with small swings, so the line keeps climbing.
+    if (t % 9 === 0) { const prev = pts[N - 1]; pts.shift(); pts.push(prev * (1 + 0.00075 + (Math.random() - 0.42) * 0.0022)); for (const p of px) p.p *= 1 + (Math.random() - 0.4) * 0.0012; }
+    draw();
+  };
+  draw();
+  if (calm) return;
+  let on = false, raf = 0;
+  const loop = () => { if (!on) return; step(); raf = requestAnimationFrame(loop); };
+  new IntersectionObserver(es => { on = es[0].isIntersecting && !document.hidden; cancelAnimationFrame(raf); if (on) loop(); }).observe(fig);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) { on = false; cancelAnimationFrame(raf); } });
+  addEventListener('resize', draw, { passive: true });
+})();

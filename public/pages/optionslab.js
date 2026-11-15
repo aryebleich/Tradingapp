@@ -144,7 +144,7 @@ async function bots(view, head) {
     <label>Target delta<input name="targetDelta" type="number" step="0.05" min="0.05" max="0.5" value="0.25"></label><label>Contracts<input name="contracts" type="number" min="1" max="10" value="1"></label></div>
     <div class="row"><label>Days to expiry from<input name="dteMin" type="number" value="25"></label><label>to<input name="dteMax" type="number" value="45"></label><label>Take profit at % of credit<input name="takeProfitPct" type="number" value="50"></label><label>Stop when loss is × credit<input name="stopMultiple" type="number" step="0.5" value="2"></label><label>Close days before expiry<input name="closeDte" type="number" value="7"></label></div>
     <button>Start bot</button><div class="err"></div>
-    <p class="mu small-print">Income bots trade options on your Alpaca account (Pro plan, options approval needed). They check after 10:30 New York time each trading day, open one position at a time, and respect your risk limits and kill switch.</p></form>`;
+    <p class="mu small-print">Income bots trade options on your Alpaca account (every plan; options approval needed). They check after 10:30 New York time each trading day, open one position at a time, and respect your risk limits and kill switch.</p></form>`;
   H.$$('[data-tab]', view).forEach(b => (b.onclick = () => (location.hash = '#/optionslab?tab=' + b.dataset.tab)));
   H.$$('[data-a]', view).forEach(b => (b.onclick = async () => {
     const id = b.closest('tr').dataset.id;

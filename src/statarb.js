@@ -27,7 +27,8 @@ export const BASKETS = {
   'Bond ETFs': ['TLT', 'IEF', 'SHY', 'LQD', 'HYG', 'JNK'],
 };
 // Stocks per basket and live refresh (seconds, 0 = refresh by hand) by plan.
-export const LIMITS = { free: { symbols: 6, refresh: 0 }, pro: { symbols: 15, refresh: 60 }, elite: { symbols: 30, refresh: 30 }, ultimate: { symbols: 50, refresh: 15 } };
+// Every plan runs the full statistical-arbitrage engine; higher plans refresh it more often.
+export const LIMITS = { free: { symbols: 30, refresh: 60 }, pro: { symbols: 15, refresh: 60 }, elite: { symbols: 30, refresh: 30 }, ultimate: { symbols: 50, refresh: 15 } };
 export const limitsFor = u => LIMITS[u?.role === 'admin' && !u.previewPlan ? 'ultimate' : PAID.includes(u?.plan) && ['active', 'trialing', null, undefined].includes(u?.plan_status) ? u.plan : 'free'];
 export const DEFAULTS = { window: 60, entry: 1.25, exit: 0.5, costBps: 5 };
 // Engle-Granger 5% critical value (2 variables, constant).

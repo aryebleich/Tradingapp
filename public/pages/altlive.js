@@ -1,24 +1,6 @@
-// Live data on the Real estate and Private markets pages (add-ons): home value and rent estimates,
-// a cap table for each private company, and K-1 forms from private funds.
+// Live data on the Private markets page (add-ons): a cap table for each private company, and K-1
+// forms from private funds.
 const offNote = (what, e) => (e?.addonOff ? '' : `<div class="card"><h2>${what}</h2><p class="err">${e.message}</p></div>`);
-
-export async function propertyExtras(box, a, H) {
-  let d;
-  try { d = await H.api('/altlive/estimate/' + a.id); } catch (e) { box.insertAdjacentHTML('beforeend', offNote('Live value', e)); return; }
-  const e = d.estimate, el = document.createElement('div'); el.className = 'card';
-  el.innerHTML = `<h2>Live value and rent</h2>
-    ${!d.enabled ? '<p class="mu">Automatic home values are not set up on this server yet (the owner adds a RentCast key in Admin → Keys).</p>' : e
-      ? `<div class="stats"><div class="stat"><span>Estimated value</span><b>${H.money(e.value)}</b></div><div class="stat"><span>Range</span><b style="font-size:15px">${H.money(e.valueLow)} – ${H.money(e.valueHigh)}</b></div>${e.rent ? `<div class="stat"><span>Estimated rent a month</span><b>${H.money(e.rent)}</b></div>` : ''}<div class="stat"><span>You entered</span><b>${H.money(a.value)}</b></div></div>
-        <p class="mu small-print">From RentCast on ${new Date(e.at).toLocaleDateString()}, based on nearby sales and rentals. An estimate, not an appraisal.</p>
-        <label class="check"><input type="checkbox" id="estAuto" ${e.auto ? 'checked' : ''}> Update every month</label>
-        <label class="check"><input type="checkbox" id="estApply" ${e.apply ? 'checked' : ''}> Use the estimate as this property's value${a.type === 'home' ? '' : ' and rent'}</label>`
-      : `<p class="mu">Get today's estimated value and rent for ${a.address ? `<b>${H.esc(a.address)}</b>` : 'this property (add its full address above first)'}.</p>`}
-    ${d.enabled ? `<button class="small" id="estGo">${e ? 'Update now' : 'Get the estimate'}</button>` : ''}<div class="err"></div>`;
-  box.append(el);
-  if (H.$('#estGo', el)) H.act(H.$('#estGo', el), async () => { await H.api('/altlive/estimate/' + a.id, { body: {} }); H.render(); return ''; });
-  const flags = () => H.api('/altlive/estimate/' + a.id, { method: 'PUT', body: { auto: H.$('#estAuto', el).checked, apply: H.$('#estApply', el).checked } }).then(() => H.$('#estApply', el).checked && H.render());
-  if (H.$('#estAuto', el)) { H.$('#estAuto', el).onchange = flags; H.$('#estApply', el).onchange = flags; }
-}
 
 export async function privateExtras(box, a, H) {
   // Cap table.

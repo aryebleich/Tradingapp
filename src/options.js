@@ -8,7 +8,6 @@ import { requireUser, rateLimit } from './auth.js';
 import { lastPrice, accountSummary } from './brokers.js';
 import { tradingFor } from './alpaca/connections.js';
 import { nyTime, stockSession } from './time.js';
-import { isPaid } from './fees.js';
 import { killed, getRisk } from './risk.js';
 import { notifyUser } from './notify-user.js';
 import * as D from './alpaca/data.js';
@@ -161,7 +160,6 @@ export async function runIncomeBots(t = now()) {
   return ran;
 }
 export async function stepIncomeBot(b) {
-  if (!isPaid(b)) throw new Error('option income bots are part of Pro');
   if (await killed(b.user_id)) return 'hold: kill switch on';
   const t = await tradingFor(b.user_id); if (!t) throw new Error('connect Alpaca first');
   const cfg = { ...BOT_DEFAULTS, ...JSON.parse(b.config) }, state = JSON.parse(b.state || '{}'), save = s => run('UPDATE income_bots SET state = ? WHERE id = ?', JSON.stringify(s), b.id);
@@ -223,7 +221,6 @@ export const optionsRouter = (() => {
   });
   r.get('/bots', async (req, res) => res.json((await all('SELECT * FROM income_bots WHERE user_id = ? ORDER BY id DESC', req.user.id)).map(b => ({ ...b, config: JSON.parse(b.config), state: JSON.parse(b.state || '{}') }))));
   r.post('/bots', async (req, res) => {
-    if (!isPaid(req.user)) throw Object.assign(bad('Option income bots are part of Pro'), { status: 402, upgrade: true, feature: 'Automated option income' });
     if (!(await tradingFor(req.user.id))) throw bad('Connect your Alpaca account first (options trade on Alpaca)');
     const kind = ['covered_call', 'cash_secured_put', 'wheel'].includes(req.body.kind) ? req.body.kind : 'cash_secured_put';
     const cfg = botConfig(req.body || {});

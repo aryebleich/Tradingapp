@@ -7,7 +7,9 @@ let H; // helpers from app.js
 
 export function registerTrading(routes, helpers) {
   H = helpers;
-  Object.assign(routes, { account, 'open-account': openAccount, portfolio, trade, orders, positions, markets, options, watchlists, calendar });
+  // The options desk (pages/optionsdesk.js) takes the Options page; this chain with its multi-leg
+  // order builder stays as the spread builder.
+  Object.assign(routes, { account, 'open-account': openAccount, portfolio, trade, orders, positions, markets, options, optionschain: options, watchlists, calendar });
 }
 
 // ---------- shared helpers ----------
@@ -880,7 +882,7 @@ async function options(view, q) {
   const s = await needConnection(view, 'Options chain');
   if (!s) return;
   const und = (q.get('underlying') || 'AAPL').toUpperCase();
-  view.innerHTML = `<div class="row" style="justify-content:space-between"><h1>Options chain</h1>
+  view.innerHTML = `<div class="row" style="justify-content:space-between"><h1>Spread builder</h1>
     <form id="uf" class="row"><label>Underlying<input name="u" value="${H.esc(und)}" style="max-width:120px"></label><label>Expiration<select name="exp" id="exp"><option>Loading…</option></select></label><button>Load</button></form></div>
   <p class="mu" id="spot"></p>
   <div class="cols"><div class="card tablewrap" id="chain"><p class="mu">Loading…</p></div>
@@ -894,8 +896,8 @@ async function options(view, q) {
   const sel = H.$('#exp', view);
   const exp = q.get('exp') && all.expirations.includes(q.get('exp')) ? q.get('exp') : all.expirations[0];
   sel.innerHTML = all.expirations.map(e => `<option ${e === exp ? 'selected' : ''}>${e}</option>`).join('') || '<option value="">No contracts in the next 75 days</option>';
-  H.$('#uf', view).onsubmit = e => { e.preventDefault(); const f = H.form(e.target); location.hash = `#/options?underlying=${encodeURIComponent(f.u.toUpperCase())}${f.u.toUpperCase() === und && f.exp ? '&exp=' + f.exp : ''}`; };
-  sel.onchange = () => (location.hash = `#/options?underlying=${und}&exp=${sel.value}`);
+  H.$('#uf', view).onsubmit = e => { e.preventDefault(); const f = H.form(e.target); location.hash = `#/optionschain?underlying=${encodeURIComponent(f.u.toUpperCase())}${f.u.toUpperCase() === und && f.exp ? '&exp=' + f.exp : ''}`; };
+  sel.onchange = () => (location.hash = `#/optionschain?underlying=${und}&exp=${sel.value}`);
   if (!exp) { H.$('#chain', view).innerHTML = '<p class="mu">No option contracts found.</p>'; return; }
   const chain = all.contracts.some(c => c.expiration === exp && c.greeks) ? all : await A(`/data/options/${encodeURIComponent(und)}?expiration=${exp}`);
   const rows = {};

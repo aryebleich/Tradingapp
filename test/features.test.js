@@ -107,13 +107,13 @@ test('strategy API: copy, edit, walkdown, execute on paper, plan limits, backtes
   // Executing again changes nothing: holdings already match.
   assert.match((await call(`/library/${s.id}/execute`, {})).body.summary, /No change|BUY|SELL/);
   // Free plan: following by hand on a real account is the user's own trading (every plan); trading
-  // by itself there is Pro. One automatic strategy on paper.
+  // by itself there is Pro. Two automatic strategies on paper.
   assert.equal((await call(`/library/${s.id}`, { account: 'alpaca' }, 'PUT')).status, 200);
   assert.equal((await call(`/library/${s.id}`, { mode: 'auto' }, 'PUT')).status, 402);
   assert.equal((await call(`/library/${s.id}`, { account: 'paper' }, 'PUT')).status, 200);
   assert.equal((await call(`/library/${s.id}`, { mode: 'auto', allocation: 50 }, 'PUT')).status, 200);
   const s2 = (await call('/library', { blueprintId: 'bp_dip_buyer', fillExamples: true })).body;
-  assert.equal((await call(`/library/${s2.id}`, { mode: 'auto' }, 'PUT')).status, 402);
+  assert.equal((await call(`/library/${s2.id}`, { mode: 'auto', allocation: 30 }, 'PUT')).status, 200); // the second (free plan: 2)
   // Edits are validated; the backtest becomes Reality Check's yardstick.
   assert.equal((await call(`/library/${s2.id}`, { spec: { params: { rsiEntry: 500 } } }, 'PUT')).status, 400);
   const bt = (await call(`/library/${s2.id}/backtest`, { years: 3 })).body;
@@ -122,7 +122,10 @@ test('strategy API: copy, edit, walkdown, execute on paper, plan limits, backtes
   assert.equal(d.reality.status, 'learning'); assert.ok(d.state.bt.sd > 0);
   const gm = (await call('/library', { blueprintId: 'bp_exhaustion_fade', fillExamples: true })).body;
   assert.equal((await call(`/library/${gm.id}/backtest`, {})).status, 400); // rules incomplete
-  assert.equal((await call('/library', { blueprintId: 'bp_top_momentum' })).status, 402); // 4th saved strategy on the free plan
+  const s4 = (await call('/library', { blueprintId: 'bp_top_momentum', fillExamples: true })).body; // 4th saved
+  assert.equal((await call(`/library/${s4.id}`, { mode: 'auto', allocation: 10 }, 'PUT')).status, 402); // a third automatic one
+  assert.equal((await call('/library', { blueprintId: 'bp_blank' })).status, 200); // 5th saved
+  assert.equal((await call('/library', { blueprintId: 'bp_blank' })).status, 402); // 6th: more than the free plan keeps
 });
 
 test('Reality Check verdicts and the win-rate split', () => {
@@ -156,7 +159,8 @@ test('pairs: statistics on a cointegrated pair, backtest and bots', async () => 
   assert.equal((await call('/pairs/analyze', { a: 'KO', b: 'PEP', entryZ: 1, exitZ: 2 })).status, 400);
   const scan = (await call('/pairs/scan', { pairs: [['KO', 'PEP'], ['V', 'MA']] })).body;
   assert.equal(scan.length, 2);
-  assert.equal((await call('/pairs/bots', { a: 'KO', b: 'PEP', capital: 1000 })).status, 402); // free plan
+  assert.equal((await call('/pairs/bots', { a: 'KO', b: 'PEP', capital: 1000, account: 'alpaca' })).status, 402); // real money: Pro
+  assert.equal((await call('/pairs/bots', { a: 'KO', b: 'PEP', capital: 1000 })).status, 200); // practice: every plan
 });
 
 test('S&P 500: stats, projection, plan', async () => {

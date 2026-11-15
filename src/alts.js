@@ -1,9 +1,8 @@
-// Private markets and real estate: the user's own investments outside the stock market, tracked
-// next to their brokerage accounts. Private: stakes in private companies, startups, funds and
-// loans, with every cash flow, the latest value, MOIC and IRR. Real estate: properties with value,
-// mortgage, rent and costs, giving equity, cash flow, cap rate and cash-on-cash return. A net-worth
-// view adds them to the brokerage accounts. Brightolio records and calculates; it does not offer,
-// sell or arrange private securities or property deals (the platforms listed are links only).
+// Private markets: the user's own investments outside the stock market, tracked next to their
+// brokerage accounts: stakes in private companies, startups, funds and loans, with every cash flow,
+// the latest value, MOIC and IRR. A net-worth view adds them to the brokerage accounts. Brightolio
+// records and calculates; it does not offer, sell or arrange private securities (the platforms
+// listed are links only).
 import express from 'express';
 import { one, all, run, now, audit } from './db.js';
 import { requireUser } from './auth.js';
@@ -16,22 +15,15 @@ const txt = (v, max = 120) => String(v ?? '').trim().slice(0, max);
 const day = v => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : new Date().toISOString().slice(0, 10));
 
 export const PRIVATE_TYPES = { equity: 'Shares in a private company', safe: 'SAFE or convertible note', fund: 'Private fund (LP)', loan: 'Private loan', business: 'My own business' };
-export const PROPERTY_TYPES = { rental: 'Rental property', home: 'My home', commercial: 'Commercial property', land: 'Land', fund: 'Real estate fund or platform' };
 // Links only: Brightolio has no relationship with these platforms and earns nothing from them.
 export const PLATFORMS = {
   private: [
     ['Wefunder', 'https://wefunder.com', 'Startup investing for everyone (Regulation Crowdfunding)'],
     ['StartEngine', 'https://www.startengine.com', 'Startup and private company offerings'],
-    ['Republic', 'https://republic.com', 'Startups, real estate and more'],
+    ['Republic', 'https://republic.com', 'Startups and private companies'],
     ['EquityZen', 'https://equityzen.com', 'Shares of late-stage private companies (accredited investors)'],
     ['Forge', 'https://forgeglobal.com', 'Pre-IPO shares (accredited investors)'],
     ['AngelList', 'https://www.angellist.com', 'Venture funds and syndicates (accredited investors)'],
-  ],
-  realestate: [
-    ['Fundrise', 'https://fundrise.com', 'Real estate funds from $10'],
-    ['Arrived', 'https://arrived.com', 'Shares of single-family rentals and vacation homes'],
-    ['RealtyMogul', 'https://www.realtymogul.com', 'Commercial real estate (some offerings for accredited investors)'],
-    ['Public REITs', '#/trade?symbol=VNQ', 'Listed real estate trusts trade like stocks in your brokerage account (for example VNQ)'],
   ],
 };
 
@@ -55,35 +47,26 @@ export function privateStats(a, events) {
   const flows = [...events.filter(e => ['invest', 'distribution'].includes(e.kind)).map(e => ({ date: e.on, amount: e.kind === 'invest' ? -e.amount : e.amount })), ...(value ? [{ date: a.valuedOn || new Date().toISOString().slice(0, 10), amount: value }] : [])].sort((x, y) => x.date.localeCompare(y.date));
   return { invested, distributions, value, gain: +(value + distributions - invested).toFixed(2), moic: invested ? +((value + distributions) / invested).toFixed(2) : null, irr: xirr(flows) };
 }
-// Monthly mortgage payment for a balance, yearly rate (%) and years left.
-export const mortgagePayment = (balance, ratePct, years) => { const r = ratePct / 1200, n = years * 12; if (!(balance > 0) || !(n > 0)) return 0; return +(r ? balance * r / (1 - Math.pow(1 + r, -n)) : balance / n).toFixed(2); };
-export function propertyStats(p) {
-  const value = +p.value || 0, mortgage = +p.mortgage || 0, rent = +p.rent || 0, costs = +p.costs || 0;
-  const payment = p.payment ? +p.payment : mortgagePayment(mortgage, +p.rate || 0, +p.yearsLeft || 30);
-  const noi = (rent - costs) * 12, cashFlow = +(rent - costs - payment).toFixed(2), cashIn = +p.cashInvested || 0;
-  return { equity: +(value - mortgage).toFixed(2), payment, monthlyCashFlow: cashFlow, yearlyCashFlow: +(cashFlow * 12).toFixed(2), capRate: value && rent ? +(noi / value * 100).toFixed(2) : null, cashOnCash: cashIn ? +(cashFlow * 12 / cashIn * 100).toFixed(2) : null, loanToValue: value ? +(mortgage / value * 100).toFixed(1) : null, gain: p.price ? +(value - +p.price).toFixed(2) : null };
-}
-
 async function list(userId, kind) {
   const rows = (await all('SELECT * FROM alt_assets WHERE user_id = ? AND kind = ? ORDER BY id', userId, kind)).map(parse);
   const ev = await all('SELECT * FROM alt_events WHERE user_id = ? ORDER BY on_date, id', userId);
   return rows.map(a => {
     const events = ev.filter(e => e.asset_id === a.id).map(e => ({ id: e.id, kind: e.kind, amount: e.amount, on: e.on_date, memo: e.memo }));
-    return { ...a, events, stats: kind === 'private' ? privateStats(a, events) : propertyStats(a) };
+    return { ...a, events, stats: privateStats(a, events) };
   });
 }
 export const listAlts = list;
 function clean(kind, b) {
   if (kind === 'private') return { type: PRIVATE_TYPES[b.type] ? b.type : 'equity', company: txt(b.company), platform: txt(b.platform, 60), stage: txt(b.stage, 40), ownership: b.ownership === '' || b.ownership == null ? null : num(b.ownership, 0, 100), value: num(b.value || 0, 0), valuedOn: day(b.valuedOn), notes: txt(b.notes, 1000) };
-  return { type: PROPERTY_TYPES[b.type] ? b.type : 'rental', address: txt(b.address, 160), price: num(b.price || 0, 0), bought: day(b.bought), value: num(b.value || 0, 0), mortgage: num(b.mortgage || 0, 0), rate: num(b.rate || 0, 0, 30), yearsLeft: num(b.yearsLeft || 30, 0, 50), payment: b.payment === '' || b.payment == null ? null : num(b.payment, 0), rent: num(b.rent || 0, 0), costs: num(b.costs || 0, 0), cashInvested: num(b.cashInvested || 0, 0), notes: txt(b.notes, 1000) };
+  throw bad('Not found', 404);
 }
 
-const KINDS = ['private', 'realestate'];
+const KINDS = ['private'];
 export const altsRouter = (() => {
   const r = express.Router();
   r.use(requireUser);
-  r.get('/platforms', (req, res) => res.json({ ...PLATFORMS, privateTypes: PRIVATE_TYPES, propertyTypes: PROPERTY_TYPES }));
-  // Net worth: brokerage accounts (real money only) plus private investments and real-estate equity.
+  r.get('/platforms', (req, res) => res.json({ ...PLATFORMS, privateTypes: PRIVATE_TYPES }));
+  // Net worth: brokerage accounts (real money only) plus private investments.
   r.get('/networth', async (req, res) => {
     const accounts = [];
     for (const a of await accountsFor(req.user.id).catch(() => [])) {
@@ -91,10 +74,10 @@ export const altsRouter = (() => {
       const s = await accountSummary(req.user.id, a.id).catch(() => null);
       if (s) accounts.push({ id: a.id, name: a.name || a.id, equity: +(+s.equity).toFixed(2) });
     }
-    const [p, re] = await Promise.all([list(req.user.id, 'private'), list(req.user.id, 'realestate')]);
-    const priv = +p.reduce((s, a) => s + a.stats.value, 0).toFixed(2), reEq = +re.reduce((s, a) => s + a.stats.equity, 0).toFixed(2);
+    const p = await list(req.user.id, 'private');
+    const priv = +p.reduce((s, a) => s + a.stats.value, 0).toFixed(2);
     const brokerage = +accounts.reduce((s, a) => s + a.equity, 0).toFixed(2);
-    res.json({ accounts, brokerage, private: priv, realEstate: reEq, total: +(brokerage + priv + reEq).toFixed(2) });
+    res.json({ accounts, brokerage, private: priv, total: +(brokerage + priv).toFixed(2) });
   });
   r.get('/:kind', async (req, res) => {
     if (!KINDS.includes(req.params.kind)) throw bad('Not found', 404);

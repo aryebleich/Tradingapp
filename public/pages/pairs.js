@@ -38,7 +38,7 @@ async function pairs(view, q) {
     <button>Analyze pair</button> <button type="button" class="ghost" id="scan">Scan 20 popular pairs</button><div class="err"></div></form>
   <div id="out"></div>
   <div id="scanOut"></div>
-  <div class="card tablewrap"><h2>Pair bots ${paid ? '' : '<span class="pill">Pro</span>'}</h2>
+  <div class="card tablewrap"><h2>Pair bots</h2>
     <p class="mu" style="margin-top:0">A pair bot checks its pair every trading day at 3:45 pm New York time and trades when the gap crosses your levels.</p>
     <table><tr><th>Pair</th><th>Account</th><th>Mode</th><th>Money</th><th>Position</th><th>Last run</th><th></th></tr>
     ${bots.map(b => `<tr data-bot="${b.id}"><td><b>${H.esc(b.a)} / ${H.esc(b.b)}</b><div class="mu" style="font-size:12px">enter ${b.params.entryZ} · exit ${b.params.exitZ} · stop ${b.params.stopZ}</div></td><td>${H.esc(H.acctLabel(accts.find(a => a.id === b.account) || { id: b.account, name: b.account }))}</td>
@@ -68,7 +68,7 @@ async function pairs(view, q) {
         <label>Account<select name="account">${H.accountOptions(accts, 'paper', paid)}</select></label>
         <label>Mode<select name="mode"><option value="long_only">Long only (no shorting)</option><option value="neutral">Market-neutral (needs margin)</option></select></label>
         <label>Money for this pair ($)<input name="capital" type="number" value="10000" min="100"></label></div>
-        <button>${paid ? 'Start pair bot' : 'Start pair bot (Pro)'}</button><div class="err"></div></form></div>`;
+        <button>Start pair bot</button>${paid ? '' : '<p class="mu small-print">Every plan runs pair bots on practice money; a brokerage account needs Pro.</p>'}<div class="err"></div></form></div>`;
     drawZ(H.$('#zc', view), r.zHistory, r.params.entryZ, r.params.exitZ);
     H.drawChart(H.$('#pc', view), r.backtest.neutral.curve, { base: 10000, compare: r.backtest.longOnly.curve });
     const bf = H.$('#botf', view);

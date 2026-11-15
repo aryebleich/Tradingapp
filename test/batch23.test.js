@@ -166,3 +166,58 @@ test('AI hedge funds: multi-strategy book and the option hedge choices', async (
   assert.ok(!buildBook('hedged', 3, series, { canShort: false, hedge: 'puts' }).some(b => b.symbol === 'SH'));
   assert.ok(buildBook('hedged', 3, series, { canShort: false, hedge: 'etf' }).some(b => b.symbol === 'SH'));
 });
+
+test('company logos: served from this site, a letter badge when no logo source answers', async () => {
+  const r = await fetch(base + '/logo/AAPL');
+  assert.equal(r.status, 200); assert.match(r.headers.get('content-type'), /image\/svg\+xml/);
+  assert.match(await r.text(), /<svg[^>]*>.*AAPL/s);
+  const btc = await (await fetch(base + '/logo/BTC-USD')).text();
+  assert.match(btc, /₿/);
+  assert.equal((await fetch(base + '/logo/not%20a%20ticker!')).status, 404);
+  const { badge } = await import('../src/logos.js');
+  assert.equal(badge('MSFT'), badge('MSFT')); // the same color every time
+});
+
+test('AI tools without an AI key: preset scenario on holdings, themes, news tone, head to head', async () => {
+  const { applyShocks, PRESETS } = await import('../src/aitools.js');
+  const a = applyShocks([{ symbol: 'AAPL', value: 1000 }, { symbol: 'XOM', value: 500 }, { symbol: 'SHORTY', value: -200 }], { Technology: -10, Energy: 5, Other: -2 }, s => ({ AAPL: 'Technology', XOM: 'Energy' })[s] || 'Other');
+  assert.equal(a.total, -100 + 25 + 4); // a short gains when its price falls
+  assert.equal(a.rows[0].symbol, 'AAPL');
+  assert.ok(PRESETS.some(([re]) => re.test('What if the Fed cuts rates?')));
+  const u = client();
+  await u('/auth/register', { email: 'b23-tools@example.com', password: 'Str0ngPassword!9' });
+  const s = (await u('/aitools/scenario', { text: 'A recession starts next quarter', account: 'paper' })).body;
+  assert.equal(s.name, 'Recession'); assert.equal(s.engine, null); assert.ok(s.shocks.Bonds > 0);
+  assert.equal((await u('/aitools/scenario', { text: 'Aliens land in Ohio', account: 'paper' })).status, 422);
+  const t = (await u('/aitools/theme', { text: 'cybersecurity companies' })).body;
+  assert.equal(t.theme, 'cybersecurity'); assert.ok(t.companies.length >= 3);
+  const n = (await u('/aitools/news', { text: 'AAPL beats estimates with strong growth and record profit, shares surge' })).body;
+  assert.ok(n.tickers.some(x => x.symbol === 'AAPL'));
+  assert.equal((await u('/aitools/compare', { a: 'AAPL', b: 'AAPL' })).status, 400);
+});
+
+test('analytics: page views, visitors once a day, and the owner report', async () => {
+  const A = await import('../src/analytics.js');
+  await ownerUp();
+  await fetch(base + '/'); await fetch(base + '/', { headers: { referer: 'https://www.google.com/search?q=brightolio' } }); await fetch(base + '/yi');
+  await owner('/a/track', { route: 'dashboard' }); await owner('/a/track', { route: 'options' }); await owner('/a/track', { route: 'BAD route!' });
+  await A.flush();
+  const r = (await owner('/a/admin?days=7')).body;
+  assert.ok(r.overview.users >= 1);
+  assert.ok(r.web.visits.at(-1).n >= 3); assert.equal(r.web.unique.at(-1).n, 1); // one visitor, three page views
+  assert.ok(r.web.referrers.some(x => x.key === 'google.com'));
+  assert.deepEqual(r.sections.top.map(x => x.key).sort(), ['dashboard', 'options']);
+  assert.equal(r.overview.activeToday, 1);
+  assert.ok('users' in r.pnl && 'voice' in r && 'sms' in r);
+  const u = client(); await u('/auth/register', { email: 'b23-notowner@example.com', password: 'Str0ngPassword!9' });
+  assert.equal((await u('/a/admin')).status, 403);
+});
+
+test('real estate is gone; the ad video files are listed for the owner', async () => {
+  await ownerUp();
+  assert.equal((await owner('/alts/realestate')).status, 404);
+  const ads = (await owner('/admin/site/ad')).body.files;
+  assert.ok(ads.some(f => f.file === 'brightolio-ad-1080p.mp4' && f.size > 1e6));
+  assert.ok(ads.some(f => f.file === 'brightolio-ad-yiddish-1080p.mp4'));
+  assert.equal((await owner('/admin/site/ad/../../server.js')).status, 404);
+});

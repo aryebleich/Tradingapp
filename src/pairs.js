@@ -199,7 +199,6 @@ router.get('/bots', async (req, res) => {
   res.json((await all('SELECT * FROM pair_bots WHERE user_id = ? ORDER BY id', req.user.id)).map(b => ({ ...b, params: JSON.parse(b.params), state: JSON.parse(b.state || '{}') })));
 });
 router.post('/bots', async (req, res) => {
-  if (!isPaid(req.user)) throw upgrade('Automatic pairs trading');
   const a = sym(req.body.a), b = sym(req.body.b), o = params(req.body);
   const account = ACCOUNT_IDS.includes(req.body.account) ? req.body.account : 'paper';
   if (account !== 'paper' && !isPaid(req.user)) throw upgrade('Pair bots on your brokerage account');

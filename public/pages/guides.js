@@ -126,7 +126,6 @@ const G = {
   private: ['Private markets', 'Investments that do not trade on a stock exchange, such as private companies and private funds.',
     ['Check the minimum investment and how long your money is locked up.'],
     'Private investments can be hard to sell and are usually for experienced investors.'],
-  realestate: ['Real estate', 'Ways to invest in property: real estate funds (REITs) that trade like shares, and property tools.', ['REITs pay out most of their income as dividends.'], 'Property values and rents can fall.'],
   'alpaca-tools': ['Bonds, rates & crypto', 'Bonds (loans to governments or companies that pay interest), current interest rates, and cryptocurrencies.',
     ['A bond\'s yield is its yearly interest as a percentage of its price.', 'Crypto trades every day of the week, around the clock.'],
     'Crypto prices can swing by 10% or more in a day.'],

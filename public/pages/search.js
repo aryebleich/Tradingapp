@@ -32,7 +32,7 @@ function open() {
     const sec = (title, rows) => (rows.length ? `<h4>${title}</h4>${rows.join('')}` : '');
     const row = (url, main, sub) => `<a href="${H.esc(url)}" class="sitem" role="option"><b>${main}</b>${sub ? `<span class="mu">${sub}</span>` : ''}</a>`;
     res.innerHTML = sec('Pages', pg.map(p => row('#/' + p.k, H.esc(p.t), H.esc(p.g))))
-      + sec('Stocks, funds & futures', (server?.symbols || []).map(s => row(s.url, `<span data-no-tr>${H.esc(s.symbol)}</span>`, `${H.esc(s.name)} · ${H.esc(s.kind)}`)))
+      + sec('Stocks, funds & futures', (server?.symbols || []).map(s => row(s.url, `<img class="tlogo" alt="" width="18" height="18" loading="lazy" src="/logo/${encodeURIComponent(String(s.symbol).replace('/', '-'))}"><span data-no-tr>${H.esc(s.symbol)}</span>`, `${H.esc(s.name)} · ${H.esc(s.kind)}`)))
       + sec('Yours', (server?.mine || []).map(m => row(m.url, H.esc(m.title), H.esc(m.kind))))
       + sec('Glossary', terms.map(([k, v]) => `<div class="sitem term"><b>${H.esc(k)}</b><span class="mu">${H.esc(String(v).slice(0, 160))}</span></div>`))
       || (q ? `<p class="mu">${server ? 'Nothing found.' : 'Searching…'}</p>` : '<p class="mu">Try "sell all", "AAPL", "futures", "tax" or the name of one of your strategies.</p>');

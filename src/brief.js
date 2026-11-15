@@ -1,5 +1,5 @@
 // The weekly money brief: everything linked (brokerage accounts, banks, cards, crypto, private
-// investments and property) read once a week and written up in plain English: "here is what
+// investments) read once a week and written up in plain English: "here is what
 // changed and why". The AI writes it when one is set up; otherwise a plain summary of the same
 // numbers. Facts only, from the user's own data: it never tells anyone to buy or sell.
 import express from 'express';

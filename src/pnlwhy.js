@@ -30,7 +30,7 @@ const pct = x => `${x >= 0 ? '+' : ''}${(+x).toFixed(2)}%`;
 const SECTOR_ETF = { Technology: 'XLK', Communication: 'XLC', 'Consumer discretionary': 'XLY', 'Consumer staples': 'XLP', 'Health care': 'XLV', Financials: 'XLF', Industrials: 'XLI', Energy: 'XLE', Materials: 'XLB', Utilities: 'XLU', 'Real estate': 'XLRE' };
 
 // Positions of one account, or of every connected account ('all').
-async function positionsOf(userId, account) {
+export async function positionsOf(userId, account) {
   const { accountSummary } = await import('./brokers.js');
   const ids = account === 'all' ? (await (await import('./ext/routes.js')).accountsFor(userId).catch(() => [])).filter(a => a.connected !== false).map(a => a.id) : [account || 'paper'];
   const rows = [];

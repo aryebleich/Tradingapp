@@ -193,10 +193,20 @@ console.log('Desktop (1360x900)');
   });
   await step('markets & news', async () => { await p.goto(B + '/app#/markets'); await p.waitForSelector('text=NVDA'); await p.waitForSelector('text=Apple beats estimates'); });
   await step('options spread', async () => {
-    await p.goto(B + '/app#/options?underlying=AAPL'); await p.waitForSelector('.chain');
+    await p.goto(B + '/app#/optionschain?underlying=AAPL'); await p.waitForSelector('.chain');
     await p.click('td.pick[data-sym=AAPL261120C00150000][data-side=buy]'); await p.click('td.pick[data-sym=AAPL261120P00150000][data-side=buy]');
     await p.click('#of button'); await confirmDialog(p); await p.waitForSelector('#of .ok');
     await p.screenshot({ path: path.join(OUT, 'desktop-options.png'), fullPage: true });
+  });
+  await step('options desk: chain, one contract, buy to open', async () => {
+    await p.goto(B + '/app#/options?underlying=AAPL&exp=2026-11-20'); await p.waitForSelector('.optchain');
+    if (!(await p.$('.optchain td.itm'))) throw new Error('no in-the-money shading');
+    await p.click('td.pick[data-sym=AAPL261120C00150000] >> nth=0'); await p.waitForSelector('.optct');
+    await p.waitForSelector('text=Return if the price moves'); await p.waitForSelector('text=Time decay');
+    await p.click('#place'); await p.waitForSelector('.optct .err:has-text("risk disclosure")');
+    await p.check('#ack'); await p.click('#place'); await p.waitForSelector('.optct .ok');
+    await p.click('[data-t=ai]'); await p.waitForSelector('#sf'); await p.click('#sf button'); await p.waitForSelector('text=Open in the Options lab');
+    await p.screenshot({ path: path.join(OUT, 'options-desk.png'), fullPage: true });
   });
   await step('watchlists', async () => {
     await p.goto(B + '/app#/watchlists'); await p.fill('#nw [name=name]', 'Tech'); await p.click('#nw button'); await p.waitForSelector('#add');
@@ -296,7 +306,7 @@ console.log('Phone (iPhone 13)');
     await p.screenshot({ path: path.join(OUT, 'phone-positions.png') });
   });
   await step('options leg bar', async () => {
-    await p.goto(B + '/app#/options?underlying=AAPL'); await p.waitForSelector('.chain'); await p.tap('td.pick[data-side=buy] >> nth=0');
+    await p.goto(B + '/app#/optionschain?underlying=AAPL'); await p.waitForSelector('.chain'); await p.tap('td.pick[data-side=buy] >> nth=0');
     await p.waitForSelector('#legBar:not([hidden])'); await p.tap('#legGo'); await p.waitForTimeout(600); await p.tap('#of button'); await confirmDialog(p, true); await p.waitForSelector('#of .ok');
   });
   await step('menu opens above everything and closes', async () => {
@@ -352,7 +362,7 @@ console.log('Settings → Language');
   await p.click("form.auth button:not([type=button])"); await p.waitForSelector('#tabs a.on', { state: 'attached' });
   const go = async (r, sel) => { if (p.url() === B + '/app' + r) await p.reload(); else await p.goto(B + '/app' + r); await p.waitForSelector(sel, { timeout: 15000 }); };
   const okText = async box => { await p.waitForSelector(`${box} .ok`, { timeout: 20000 }).catch(async () => { throw new Error((await p.textContent(`${box} .err`).catch(() => '')) || 'no result'); }); };
-  await step('menu lists the new pages', async () => { for (const k of ['chart', 'ai', 'scanner', 'optionslab', 'portfolios', 'fleet', 'insights', 'risk', 'values', 'private', 'realestate', 'money', 'rules', 'brief', 'taxpilot', 'invest', 'analyze', 'leaders', 'short', 'margin', 'aifunds', 'text', 'hotline']) await p.waitForSelector(`#nav a[href="#/${k}"]`, { state: 'attached' }); });
+  await step('menu lists the new pages', async () => { for (const k of ['chart', 'ai', 'scanner', 'optionslab', 'portfolios', 'fleet', 'insights', 'risk', 'values', 'private', 'money', 'rules', 'brief', 'taxpilot', 'invest', 'analyze', 'leaders', 'short', 'margin', 'aifunds', 'text', 'hotline']) await p.waitForSelector(`#nav a[href="#/${k}"]`, { state: 'attached' }); });
   await step('strategy builder: a design, my tickers, step a value with +, save, today\'s result', async () => {
     await p.goto(B + '/app#/strategies'); await p.waitForSelector('[data-use="bp_four_sleeve"]');
     await p.screenshot({ path: path.join(OUT, 'strategy-builder.png'), fullPage: true });
@@ -394,9 +404,8 @@ console.log('Settings → Language');
     await go('#/values?tab=maaser', '#mz'); await p.fill('#mz input[name=otherIncome]', '5000'); await p.click('#mz button'); await p.waitForSelector('#mzOut .stats');
     await go('#/values?tab=shabbos', '#sh'); await p.waitForSelector('text=Coming up');
   });
-  await step('private markets and real estate', async () => {
+  await step('private markets', async () => {
     await go('#/private', '#add'); await p.fill('#add [name=name]', 'Seed round'); await p.fill('#add [name=invested]', '5000'); await p.fill('#add [name=value]', '8000'); await p.click('#add button'); await p.waitForSelector('text=Seed round');
-    await go('#/realestate', '#add'); await p.fill('#add [name=name]', 'Two-family'); await p.fill('#add [name=value]', '500000'); await p.fill('#add [name=rent]', '4000'); await p.click('#add button'); await p.waitForSelector('text=Two-family');
   });
   await step('all my money and a crypto wallet form', async () => { await go('#/money', '#wf'); await p.waitForSelector('text=Cash flow'); });
   await step('all accounts: add a sub account, group, equalize preview', async () => {
@@ -495,8 +504,7 @@ console.log('Settings → Language');
     await go('#/brief', '#write'); await p.click('#write'); await p.waitForSelector('.briefcard h2', { timeout: 30000 });
     await go('#/taxpilot', '#lotf');
   });
-  await step('property detail shows the live value card; settings show add-ons', async () => {
-    await go('#/realestate', '[data-open]'); await p.click('[data-open]'); await p.waitForSelector('text=Live value and rent');
+  await step('settings show add-ons', async () => {
     await go('#/settings', '#addonsCard');
   });
   await step('paper: buy, then sell all matches the paper account', async () => {
@@ -539,8 +547,9 @@ console.log('Settings → Language');
     if (!(await p.$('#legs tr[data-i]'))) { await p.fill('#spot', '100'); await p.dispatchEvent('#spot', 'change'); await p.click('#addLeg'); }
     await p.waitForSelector('#pstats .stat', { timeout: 15000 });
   });
-  await step('tax settings save (state, automatic rates)', async () => {
-    await go('#/settings', '#taxs select[name=state]');
+  await step('tax settings save, from the gear on the Taxes page (state, automatic rates)', async () => {
+    await go('#/settings', '.movedlist'); await p.waitForSelector('.movedlist a[href="#/tax"]');
+    await go('#/tax', '.pgear'); await p.click('.pgear'); await p.waitForSelector('#gearDlg #taxs select[name=state]');
     await p.selectOption('#taxs select[name=state]', { index: 5 });
     await p.click('#taxs button:has-text("Save")');
     await okText('#taxs');

@@ -28,7 +28,7 @@ export const codeRouter = (() => {
       await run('UPDATE code_scripts SET name = ?, code = ?, updated_at = ? WHERE id = ?', name, code, now(), s.id);
       return res.json({ id: s.id });
     }
-    if ((await one('SELECT COUNT(*) n FROM code_scripts WHERE user_id = ?', req.user.id)).n >= (isPaid(req.user) ? 200 : 5)) throw Object.assign(bad('The free plan keeps 5 scripts'), { status: 402, upgrade: true, feature: 'More saved scripts' });
+    if ((await one('SELECT COUNT(*) n FROM code_scripts WHERE user_id = ?', req.user.id)).n >= (isPaid(req.user) ? 200 : 25)) throw Object.assign(bad('The free plan keeps 25 scripts'), { status: 402, upgrade: true, feature: 'More saved scripts' });
     res.json({ id: (await run('INSERT INTO code_scripts (user_id, name, code, updated_at) VALUES (?,?,?,?)', req.user.id, name, code, now())).lastInsertRowid });
   });
   r.delete('/scripts/:id', async (req, res) => { await run('DELETE FROM code_scripts WHERE id = ? AND user_id = ?', +req.params.id, req.user.id); res.json({ ok: true }); });

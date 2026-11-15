@@ -196,6 +196,8 @@ app.get('/download/android', (req, res) => res.redirect(302, androidApkUrl()));
 app.get('/vm.sh', (req, res) => res.redirect(302, 'https://raw.githubusercontent.com/aryebleich/Tradingapp/main/deploy/vm/setup.sh'));
 // Paper stays paper and live stays live: checked by the deploy workflow after every push.
 app.get('/healthz/routing', async (req, res) => { const { routingReport } = await import('./src/routingcheck.js'); const r = routingReport(); res.status(r.ok ? 200 : 500).json(r); });
+// Company logos next to tickers (served from this site; see src/logos.js).
+(await import('./src/logos.js')).logoRoute(app);
 app.get('/healthz', async (req, res) => {
   try { await one('SELECT 1 AS ok'); res.json({ ok: true, time: new Date().toISOString() }); }
   catch (e) { res.status(503).json({ ok: false }); }
@@ -571,6 +573,8 @@ api.use('/insights', insightsRouter({ summarize: accountSummary }));
 api.use('/pnlwhy', (await import('./src/pnlwhy.js')).pnlWhyRouter);
 api.use('/shortdesk', (await import('./src/shortdesk.js')).shortRouter);
 api.use('/optdesk', (await import('./src/optionsdesk.js')).optionsDeskRouter);
+api.use('/a', (await import('./src/analytics.js')).analyticsRouter);
+api.use('/aitools', (await import('./src/aitools.js')).aiToolsRouter);
 api.use('/ml', mlRouter);
 api.use('/scanners', scannerRouter);
 api.use('/baskets', basketsRouter);
@@ -1208,6 +1212,8 @@ app.get('/app', async (req, res) => {
   if ('prefetch' in req.query) res.set({ 'X-Frame-Options': 'SAMEORIGIN', 'Content-Security-Policy': String(res.getHeader('Content-Security-Policy') || '').replace("frame-ancestors 'none'", "frame-ancestors 'self'") });
   res.type('html').set({ 'Cache-Control': 'no-cache', 'X-QP-Build': BUILD }).send(appHtml);
 });
+// Admin → Analytics: page views and visitors of the public pages (counted privately, see src/analytics.js).
+{ const A = await import('./src/analytics.js'); app.use(A.webMiddleware); A.start(); }
 app.get(['/', '/index.html', '/pricing'], page('index.html'));
 app.get(['/yi', '/yi.html'], page('yi.html'));
 for (const p of ['terms', 'privacy', 'risk', 'contact', 'status', 'security', 'insurance']) app.get(['/' + p, `/${p}.html`], page(p + '.html'));

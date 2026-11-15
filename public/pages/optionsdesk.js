@@ -21,14 +21,14 @@ const every = (fn, ms, view) => { clearInterval(timer); timer = setInterval(() =
 
 async function desk(view, q) {
   const und = (q.get('underlying') || q.get('symbol') || 'SPY').toUpperCase(), tab = q.get('tab') || 'chain', account = q.get('account') || H.state.account || 'paper';
-  const tabs = [['chain', 'Chain'], ['mine', 'My options'], ['ai', 'AI strategist'], ['lab', 'Strategies']];
+  const tabs = [['chain', 'Chain'], ['mine', 'My options'], ['ai', 'AI strategist'], ['spread', 'Spread builder'], ['lab', 'Strategies']];
   view.innerHTML = `<div class="pagehead"><div><h1>Options desk</h1><p class="mu" style="margin:4px 0 0">Calls and puts with strike, premium, expiration, every Greek, in / at / out of the money, time decay and live return; buy or sell contracts, close, roll or exercise; and AI that builds and reviews trades.</p></div></div>
     <div class="card row" style="align-items:center;justify-content:space-between"><form id="uf" class="row" style="align-items:flex-end"><label>Underlying<input name="u" value="${H.esc(und)}" style="max-width:120px" data-no-tr></label><button class="small">Load</button></form>
       <div class="chips">${tabs.map(([k, n]) => `<button type="button" class="chip ${k === tab ? 'on' : ''}" data-t="${k}">${n}</button>`).join('')}</div></div>
     <div id="od"></div>${DISCLOSE}`;
   const go = (extra = '') => (location.hash = `#/options?underlying=${encodeURIComponent(und)}&tab=${tab}${extra}`);
   H.$('#uf', view).onsubmit = e => { e.preventDefault(); location.hash = `#/options?underlying=${encodeURIComponent(H.form(e.target).u.trim().toUpperCase())}&tab=${tab === 'mine' ? 'chain' : tab}`; };
-  H.$$('[data-t]', view).forEach(b => (b.onclick = () => { if (b.dataset.t === 'lab') { location.hash = '#/optionslab?symbol=' + encodeURIComponent(und); return; } location.hash = `#/options?underlying=${encodeURIComponent(und)}&tab=${b.dataset.t}`; }));
+  H.$$('[data-t]', view).forEach(b => (b.onclick = () => { if (b.dataset.t === 'lab') { location.hash = '#/optionslab?symbol=' + encodeURIComponent(und); return; } if (b.dataset.t === 'spread') { location.hash = '#/optionschain?underlying=' + encodeURIComponent(und); return; } location.hash = `#/options?underlying=${encodeURIComponent(und)}&tab=${b.dataset.t}`; }));
   const out = H.$('#od', view);
   if (tab === 'mine') return mine(out, account, view);
   if (tab === 'ai') return strategist(out, und, q, view);
@@ -45,7 +45,11 @@ async function chainTab(out, und, q, view, go) {
   if (!d.contracts.length) { out.innerHTML = '<p class="mu card">No option contracts found for this symbol.</p>'; return; }
   const draw = () => {
     const lim = range === 'all' ? Infinity : +range;
-    const strikes = [...new Set(d.contracts.map(c => c.strike))].filter(k => Math.abs(k / d.spot - 1) * 100 <= lim).sort((a, b) => a - b);
+    const all = [...new Set(d.contracts.map(c => c.strike))].sort((a, b) => a - b);
+    let strikes = all.filter(k => Math.abs(k / d.spot - 1) * 100 <= lim);
+    // No strike that close to the price: show them all rather than an empty table.
+    const widened = !strikes.length && all.length;
+    if (widened) strikes = all;
     const by = {}; for (const c of d.contracts) (by[c.strike] ||= {})[c.type] = c;
     const cells = (c, t) => !c ? `<td colspan="7" class="mu">-</td>` : `<td class="num pick ${t} ${c.moneyness === 'ITM' ? 'itm' : ''}" data-sym="${c.symbol}">${f2(c.bid)}</td><td class="num pick ${t} ${c.moneyness === 'ITM' ? 'itm' : ''}" data-sym="${c.symbol}">${f2(c.ask)}</td><td class="num ${c.moneyness === 'ITM' ? 'itm' : ''}"><b>${f2(c.mid)}</b></td><td class="num ${c.moneyness === 'ITM' ? 'itm' : ''}">${c.iv != null ? c.iv.toFixed(1) + '%' : '-'}</td><td class="num ${c.moneyness === 'ITM' ? 'itm' : ''}">${f2(c.delta)}</td><td class="num ${c.moneyness === 'ITM' ? 'itm' : ''}">${usd(-c.decayPerDay)}</td><td class="num ${c.moneyness === 'ITM' ? 'itm' : ''}">${Math.round(c.probItm)}%</td>`;
     const head = '<th class="num">Bid</th><th class="num">Ask</th><th class="num">Premium</th><th class="num">IV</th><th class="num">Delta</th><th class="num">Decay / day</th><th class="num">Chance ITM</th>';
@@ -55,7 +59,7 @@ async function chainTab(out, und, q, view, go) {
       <div class="chips expchips">${d.expirations.map(e => `<button type="button" class="chip ${e.date === d.expiration ? 'on' : ''}" data-e="${e.date}">${e.date.slice(5)} <small>${e.dte}d</small></button>`).join('')}</div>
       <div class="tablewrap"><table class="chain optchain"><tr><th colspan="7" class="ctr">Calls</th><th class="ctr">Strike</th><th colspan="7" class="ctr">Puts</th></tr><tr>${head}<th class="ctr">Price</th>${head}</tr>
       ${strikes.map(k => `<tr class="${k === d.atmStrike ? 'atmrow' : ''}">${cells(by[k].call, 'call')}<td class="strike"><b>${f2(k)}</b><small class="mu">${(k / d.spot - 1) * 100 >= 0 ? '+' : ''}${((k / d.spot - 1) * 100).toFixed(1)}%</small></td>${cells(by[k].put, 'put')}</tr>`).join('')}</table></div>
-      <p class="mu small-print">Shaded: in the money. Highlighted row: at the money. Click a call's or put's bid or ask to open the contract. Premium is the mid price, per share (one contract is 100 shares).</p></div>`;
+      <p class="mu small-print">Shaded: in the money. Highlighted row: at the money. Click a call's or put's bid or ask to open the contract. Premium is the mid price, per share (one contract is 100 shares).${widened ? ' No strikes are that close to the price, so all strikes are shown.' : ''}</p></div>`;
     H.$('#rg', out).onchange = e => go(`&range=${e.target.value}&exp=${d.expiration}`);
     H.$$('[data-e]', out).forEach(b => (b.onclick = () => go(`&range=${range}&exp=${b.dataset.e}`)));
     H.$$('td.pick', out).forEach(td => (td.onclick = () => contract(H.$('#ct', out), td.dataset.sym, q.get('account') || H.state.account)));

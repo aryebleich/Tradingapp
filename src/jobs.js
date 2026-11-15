@@ -21,8 +21,7 @@ export const JOBS = [
   // The public status page's checks.
   // Opt-in reminders before Shabbos and Yom Tov (the luach).
   ['luach', 30, async t => (await import('./luach.js')).runLuachReminders(t)],
-  // Add-ons: property values (monthly per property), K-1 reminders, the weekly brief, tax autopilot.
-  ['propvalues', 1440, async t => (await import('./altlive.js')).refreshEstimates(t)],
+  // Add-ons: K-1 reminders, the weekly brief, tax autopilot.
   ['k1remind', 1440, async t => (await import('./altlive.js')).k1Reminders(t)],
   ['brief', 60, async t => (await import('./brief.js')).weeklyBriefs(t)],
   ['taxpilot', 60, async t => (await import('./taxpilot.js')).weeklyScan(t)],

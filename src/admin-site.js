@@ -299,6 +299,28 @@ adminSiteRouter.post('/phone/clips', wrap(async (req, res) => {
 }));
 adminSiteRouter.delete('/phone/clips', wrap(async (req, res) => { const V = await import('./voice-yi.js'); await V.deleteClip(String(req.query.k || '')); res.json({ ok: true }); }));
 
+// ---------- the advertisement video: every version, to download ----------
+// The full-quality files are kept in ad/ (not public); the homepage plays the 720p copy in public/media.
+export const AD_FILES = [
+  ['brightolio-ad-1080p.mp4', 'English, full HD (1920x1080), MP4', 'ad'],
+  ['brightolio-ad-yiddish-1080p.mp4', 'Yiddish, full HD (1920x1080), MP4', 'ad'],
+  ['brightolio-ad.mp4', 'English, 720p, MP4 (the homepage copy)', 'public/media'],
+  ['brightolio-ad.webm', 'English, 720p, WebM', 'public/media'],
+  ['brightolio-ad.jpg', 'English cover image (JPG)', 'public/media'],
+  ['brightolio-ad-yiddish-poster.jpg', 'Yiddish cover image (JPG)', 'ad'],
+];
+adminSiteRouter.get('/ad', wrap(async (req, res) => {
+  const fs = await import('node:fs/promises');
+  const out = [];
+  for (const [file, label, dir] of AD_FILES) { const st = await fs.stat(new URL(`../${dir}/${file}`, import.meta.url)).catch(() => null); if (st) out.push({ file, label, size: st.size }); }
+  res.json({ files: out });
+}));
+adminSiteRouter.get('/ad/:file', wrap(async (req, res) => {
+  const f = AD_FILES.find(x => x[0] === req.params.file); if (!f) throw bad('No such file', 404);
+  const { fileURLToPath } = await import('node:url');
+  res.download(fileURLToPath(new URL(`../${f[2]}/${f[0]}`, import.meta.url)), f[0]);
+}));
+
 // ---------- AI & privacy: what AI crawlers may read, and what the assistant may send ----------
 // Test every AI provider that has a key, and show its exact answer or error.
 // AI P/L analysis on Home: on or off, and how often it refreshes on each plan.

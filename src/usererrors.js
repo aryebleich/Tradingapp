@@ -1,7 +1,7 @@
 // What a customer may read in an error, and what only the owner should see.
 // A customer sees errors about what they typed (a missing field, a wrong symbol, not enough cash).
 // Errors about how the site is set up (a missing key, a service that is not configured, a server
-// fault) show the customer one plain sentence; the full text goes to Admin → System health.
+// fault) show the customer one plain sentence; the full text goes to Admin → Analytics → System health.
 import { siteGet, siteSet } from './site.js';
 
 export const GENERIC = 'This is not available right now. We have been notified and are looking into it.';

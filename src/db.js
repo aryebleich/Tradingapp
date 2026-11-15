@@ -840,6 +840,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS credit_ledger_ref ON credit_ledger (ref) WHERE
 
 // Columns added after the first release; ALTER fails harmlessly when they already exist.
 const MIGRATIONS = [
+  // Batch 23: Admin → Analytics (page views and once-a-day visitor hashes).
+  'CREATE TABLE IF NOT EXISTS traffic (day TEXT NOT NULL, kind TEXT NOT NULL, key TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, kind, key))',
+  'CREATE TABLE IF NOT EXISTS traffic_visitors (day TEXT NOT NULL, kind TEXT NOT NULL, hash TEXT NOT NULL, PRIMARY KEY (day, kind, hash))',
   // Batch 23: hedge-fund option hedges.
   'ALTER TABLE ai_funds ADD COLUMN hedge TEXT',
   'ALTER TABLE ai_funds ADD COLUMN hedge_plan TEXT',

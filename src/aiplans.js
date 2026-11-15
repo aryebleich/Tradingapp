@@ -20,6 +20,8 @@ export const AI_PLAN = {
     copilot: 5,
     // AI short-selling and options analysis a day.
     shortAi: 3, optionsAi: 3,
+    // AI tools (what-if scenarios, news to trades, theme to watchlist, head to head) a day.
+    toolsAi: 10,
   },
   pro: {
     label: 'Pro',
@@ -30,6 +32,7 @@ export const AI_PLAN = {
     copilot: 50,
     // AI short-selling and options analysis a day.
     shortAi: 30, optionsAi: 30,
+    toolsAi: 60,
   },
   elite: {
     label: 'Elite',
@@ -40,6 +43,7 @@ export const AI_PLAN = {
     copilot: 200,
     // AI short-selling and options analysis a day.
     shortAi: 100, optionsAi: 100,
+    toolsAi: 200,
   },
   ultimate: {
     label: 'Ultimate',
@@ -50,6 +54,7 @@ export const AI_PLAN = {
     copilot: 1000,
     // AI short-selling and options analysis a day.
     shortAi: 500, optionsAi: 500,
+    toolsAi: 1000,
   },
 };
 
@@ -84,6 +89,7 @@ export const AI_PLAN_ROWS = [
   ['Chart co-pilot questions a day', p => String(p.copilot)],
   ['AI short-selling analyses a day', p => String(p.shortAi)],
   ['AI options analyses a day', p => String(p.optionsAi)],
+  ['AI tools a day (scenarios, news, themes, comparisons)', p => String(p.toolsAi)],
 ];
 export const aiPlanTable = () => ({ plans: Object.fromEntries(Object.entries(AI_PLAN).map(([k, p]) => [k, p.label])), rows: AI_PLAN_ROWS.map(([name, f]) => [name, ...Object.values(AI_PLAN).map(f)]) });
 

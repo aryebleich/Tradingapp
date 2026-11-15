@@ -1,6 +1,6 @@
 // The search box (Ctrl+K): stocks, ETFs, mutual funds and futures by ticker or name, and the
 // user's own things (strategies, bots, scanners, portfolios, scripts, rules, journal notes,
-// private investments and properties). The app's pages are matched in the browser. Admin pages,
+// private investments). The app's pages are matched in the browser. Admin pages,
 // the homepage and the owner's private README are never searched.
 import express from 'express';
 import { all } from './db.js';
@@ -34,7 +34,7 @@ export async function searchAll(user, qRaw) {
   await pick('SELECT id, name t FROM baskets WHERE user_id = ? AND name LIKE ? LIMIT 5', 'Portfolio', () => '#/portfolios?tab=mine');
   await pick('SELECT id, name t FROM code_scripts WHERE user_id = ? AND name LIKE ? LIMIT 5', 'Script', () => '#/code');
   await pick('SELECT id, name t FROM rules WHERE user_id = ? AND name LIKE ? LIMIT 5', 'Rule', r => `#/rules?edit=${r.id}`);
-  await pick("SELECT id, name t, kind FROM alt_assets WHERE user_id = ? AND name LIKE ? LIMIT 5", 'Private investment or property', () => '#/private');
+  await pick("SELECT id, name t, kind FROM alt_assets WHERE user_id = ? AND name LIKE ? LIMIT 5", 'Private investment', () => '#/private');
   await pick('SELECT id, substr(note, 1, 80) t FROM journal_notes WHERE user_id = ? AND note LIKE ? LIMIT 5', 'Journal note', () => '#/insights?tab=journal');
   await pick('SELECT id, recipient t FROM tzedakah WHERE user_id = ? AND recipient LIKE ? GROUP BY recipient LIMIT 3', 'Tzedakah', () => '#/luach?tab=tzedakah');
   return { symbols: symbols.slice(0, 12), mine: mine.slice(0, 15) };
