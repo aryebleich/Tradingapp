@@ -15,7 +15,7 @@ const read = f => { try { return fs.readFileSync(path.join(root, f), 'utf8'); } 
 const exists = f => tracked.includes(f);
 
 // Files that are entry points or configuration on their own.
-const KEEP = [/^\.github\//, /^android\//, /^deploy\//, /^\.devcontainer\//, /^security\//, /^edge\//, /^i18n\//, /^README\.md$/, /^[^/]+$/, /^test\/(setup|mock-[\w-]+)\.js$/, /^test\/[\w-]+\.test\.js$/, /^test\/e2e\/run\.mjs$/,
+const KEEP = [/^docs\//, /^\.github\//, /^android\//, /^deploy\//, /^\.devcontainer\//, /^security\//, /^edge\//, /^i18n\//, /^README\.md$/, /^[^/]+$/, /^test\/(setup|mock-[\w-]+)\.js$/, /^test\/[\w-]+\.test\.js$/, /^test\/e2e\/run\.mjs$/,
   /^scripts\/yi_more\.json$/, /^ad\/brightolio-ad[\w-]*\.(mp4|jpg)$/];
 
 // Follow imports (static, dynamic, and import('./x' + ...) prefixes) from a set of starting files.
