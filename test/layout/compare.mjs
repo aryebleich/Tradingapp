@@ -15,7 +15,7 @@ import { chromium } from 'playwright';
 const DIR = path.resolve(process.argv[2] || 'e2e-output/layout');
 const { results, pages, widths } = JSON.parse(fs.readFileSync(path.join(DIR, 'pair.json'), 'utf8'));
 const fail = { disclosure: [], figures: [], controls: [], axe: [], overflow: [], load: [] };
-const info = { h1: [], targets: [] };
+const info = { h1: [], targets: [], live: [] };
 const multiset = a => a.reduce((m, x) => m.set(x, (m.get(x) || 0) + 1), new Map());
 
 for (const pg of pages) for (const w of widths) {
@@ -38,7 +38,11 @@ for (const pg of pages) for (const w of widths) {
   const val = a => a.map(f => f.split('\t')[0]), ctx = (a, k) => a.find(f => f.startsWith(k + '\t'))?.split('\t')[1] || '';
   const of = multiset(val(o.figures)), nf = multiset(val(n.figures)), diff = [];
   for (const k of new Set([...of.keys(), ...nf.keys()])) if ((of.get(k) || 0) !== (nf.get(k) || 0)) diff.push(`${k} ${of.get(k) || 0}→${nf.get(k) || 0} ("${ctx(o.figures, k) || ctx(n.figures, k)}")`);
-  if (diff.length) fail.figures.push(`${at}: ${diff.slice(0, 12).join(', ')}`);
+  // Reviewed exception: Admin → Data shows a live counter of incoming stream events ("0 / 75"); it rises
+  // between the old and the new page load a second apart. Only differences in that counter are excused.
+  const live = pg.id === 'app/admin-data' && diff.every(x => /\("0 \/ \d+"\)$/.test(x));
+  if (diff.length && live) info.live.push(`${at}: ${diff.join(', ')} (live event counter)`);
+  else if (diff.length) fail.figures.push(`${at}: ${diff.slice(0, 12).join(', ')}`);
   // Controls
   const nc = multiset(n.controls);
   for (const [k, c] of multiset(o.controls)) if ((nc.get(k) || 0) < c) fail.controls.push(`${at}: control "${k}" ${c}→${nc.get(k) || 0}`);
@@ -80,7 +84,7 @@ const md = [`# Layout v2 comparison\n\n${pages.length} pages × ${widths.length}
   `**Result: ${hard.length ? 'FAIL' : 'PASS'}**\n`,
   sec('Disclosures (gate 2)', fail.disclosure), sec('Figures (gate 4)', fail.figures), sec('Controls still present (rule 2)', fail.controls),
   sec('New axe violations (gate 6)', fail.axe), sec('New sideways page scroll', fail.overflow), sec('Pages that failed to load', fail.load),
-  sec('Pages without exactly one visible h1 (information)', info.h1), sec('More small targets than before (information)', info.targets),
+  sec('Figures that are live counters (reviewed, excused)', info.live), sec('Pages without exactly one visible h1 (information)', info.h1), sec('More small targets than before (information)', info.targets),
   `### Visual differences (gate 5)\n\n| Page | Width | Pixels changed | Height old → new |\n|---|---|---|---|\n` +
   visual.sort((a, b) => b.pct - a.pct).map(v => `| ${v.page} | ${v.width} | ${v.pct}% | ${v.hOld} → ${v.hNew} |`).join('\n') + '\n'].join('\n');
 fs.writeFileSync(path.join(DIR, 'REPORT.md'), md);

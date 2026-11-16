@@ -19,7 +19,8 @@ function names(root) {
 
 function tidy(root) {
   names(root);
-  for (const t of root.querySelectorAll('table')) {
+  const all = sel => (root.matches?.(sel) ? [root] : []).concat([...root.querySelectorAll(sel)]);
+  for (const t of all('table')) {
     if (t.closest('.tablewrap, ' + SKIP) || t.classList.contains('stack')) continue;
     const box = document.createElement('div');
     box.className = 'tablewrap'; box.tabIndex = 0; box.setAttribute('role', 'region');
@@ -27,7 +28,7 @@ function tidy(root) {
     box.setAttribute('aria-label', name.trim().slice(0, 80));
     t.replaceWith(box); box.append(t);
   }
-  for (const el of root.querySelectorAll('.mu, .pf-t, .wbody')) {
+  for (const el of all('.mu, .pf-t, .wbody')) {
     if (el.closest(SKIP) || el.children.length) continue;
     const s = el.textContent.trim();
     const loading = /^Loading\b.*(…|\.\.\.)$/.test(s);
@@ -37,14 +38,19 @@ function tidy(root) {
       if (hit && !location.hash.startsWith(hit[1])) {
         el.classList.add('lv2-empty');
         const a = document.createElement('a'); a.className = 'lv2-next'; a.href = hit[1]; a.textContent = hit[2];
-        el.append(document.createElement('br'), a);
+        el.append(' ', a);
       }
     }
   }
 }
 
-let queued = false;
-const run = () => { queued = false; tidy(document.body); };
-new MutationObserver(() => { if (!queued) { queued = true; requestAnimationFrame(run); } })
-  .observe(document.documentElement, { childList: true, subtree: true, characterData: true });
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run();
+// Only new elements are looked at (live price ticks change text, not elements, and are ignored),
+// at most once per frame, and in idle time when the browser has some.
+let pending = new Set(), queued = false;
+const later = window.requestIdleCallback || (f => setTimeout(f, 50));
+const run = () => { queued = false; const roots = [...pending]; pending = new Set(); for (const r of roots) if (r.isConnected) tidy(r); };
+new MutationObserver(list => {
+  for (const m of list) for (const n of m.addedNodes) if (n.nodeType === 1) pending.add(n); else if (n.nodeType === 3 && n.parentElement) pending.add(n.parentElement);
+  if (pending.size && !queued) { queued = true; later(run, { timeout: 200 }); }
+}).observe(document.body, { childList: true, subtree: true });
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => tidy(document.body)); else tidy(document.body);

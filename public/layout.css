@@ -27,22 +27,16 @@ html.lv2:not([data-theme="dark"]) :is(.pill.warn, .warn.pill, .risk.warn) { colo
 
 /* ---------- focus and targets (WCAG 2.4.7, 2.4.11, 2.5.8) ---------- */
 html.lv2 :is(a, button, input, select, textarea, summary, [tabindex]):focus-visible { outline: var(--focus); outline-offset: 2px; }
-html.lv2 #view :is(.chips button, .seg button, button.small) { min-height: 24px; min-width: 24px; }
+html.lv2 #view :is(.chips button, .seg button, button.small):not(.link) { min-height: 24px; min-width: 24px; } /* text-style link buttons are inline targets (WCAG 2.5.8 exception) */
 html.lv2 :target { scroll-margin-top: 80px; }
 
 /* ---------- app: page frame ---------- */
-html.lv2 #view { padding: var(--s5) var(--s6) var(--s7); }
+html.lv2 #view { padding-inline: var(--s5); } /* same gutters and vertical rhythm as before: text wraps and disclosures sit exactly where they did */
 html.lv2 #view > * { max-width: var(--w-page); margin-inline: auto; }
 html.lv2 #view > .card, html.lv2 #view > .grid, html.lv2 #view > .cols, html.lv2 #view > .stats { margin-bottom: var(--s4); }
-html.lv2 #view > h1:first-child, html.lv2 #view > :first-child > h1:first-child { margin: 0 auto var(--s4); font-size: var(--t-2xl); line-height: 1.2; }
-html.lv2 #view h2 { line-height: 1.3; }
 html.lv2 .card > :last-child { margin-bottom: 0; }
 html.lv2 .grid, html.lv2 .cols { gap: var(--s4); }
 html.lv2 .grid > .card, html.lv2 .cols > .card { margin-bottom: 0; }
-html.lv2 .stats { gap: var(--s3); }
-html.lv2 .row { gap: var(--s3); }
-html.lv2 label { margin-top: var(--s2); }
-html.lv2 #view > p { max-width: var(--w-read); }
 
 /* tables: scroll inside their own box, never the page (tables are wrapped by layout.js) */
 html.lv2 .tablewrap { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%;
@@ -62,8 +56,8 @@ html.lv2 .lv2-load::after { top: 30px; width: min(45%, 260px); }
 @media (prefers-reduced-motion: reduce) { html.lv2 .lv2-load::before, html.lv2 .lv2-load::after { animation: none; } }
 
 /* empty states: centred, with the next step under the message */
-html.lv2 .lv2-empty { text-align: center; padding: var(--s5) var(--s4); border: 1px dashed var(--bd); border-radius: var(--r-sm); color: var(--mu); }
-html.lv2 .lv2-empty .lv2-next { display: inline-block; margin-top: var(--s2); font-weight: 600; }
+/* the next step sits on the same line as the message, so nothing below it moves */
+html.lv2 .lv2-empty .lv2-next { margin-inline-start: var(--s2); font-weight: 600; white-space: nowrap; }
 
 /* error messages: a visible box once they have text (empty ones keep their reserved line) */
 html.lv2 .err:not(:empty):not(.ok) { padding: var(--s2) var(--s3); border-radius: var(--r-sm); border-inline-start: 3px solid var(--rd);
@@ -75,14 +69,10 @@ html.lv2 body.signedin > footer, html.lv2 body > footer { display: block; max-wi
 html.lv2 body.popout > footer { display: none !important; }
 
 /* ---------- tablet ---------- */
-@media (max-width: 1100px) {
-  html.lv2 #view { padding: var(--s5) var(--s5) var(--s7); }
-}
 
 /* ---------- phone: one column, primary actions in thumb reach ---------- */
 @media (max-width: 640px) {
-  html.lv2 #view { padding: var(--s4) var(--s4) var(--s6); }
-  html.lv2 #view > h1:first-child, html.lv2 #view > :first-child > h1:first-child { font-size: var(--t-xl); margin-bottom: var(--s3); }
+  html.lv2 #view { padding-inline: var(--s4); }
   html.lv2 .grid { grid-template-columns: minmax(0, 1fr); }
   html.lv2 .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   html.lv2 .row > label { flex-basis: 100%; }
