@@ -21,7 +21,7 @@
     "layout:gate": "bash test/layout/gate.sh"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.99.0",
+    "@anthropic-ai/sdk": "^1.8.0",
     "@libsql/client": "^0.18.0",
     "@simplewebauthn/server": "^13.3.3",
     "compression": "^1.8.2",
