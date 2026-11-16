@@ -1,0 +1,72 @@
+name: Verify live site
+# After every deploy to production: smoke-test the live site, watch it for 15 minutes, and if a check
+# keeps failing roll back to what was live before (the release commit's first parent). Needs the repository variable APP_URL and the
+# secret RENDER_DEPLOY_HOOK_URL (the same ones the deploy uses). Optional secrets SMOKE_EMAIL and
+# SMOKE_PASSWORD: a TEST account (never a customer) so the smoke test can also sign in.
+on:
+  workflow_run:
+    workflows: [Deploy to Render]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: post-deploy
+  cancel-in-progress: false
+jobs:
+  verify:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      APP_URL: ${{ vars.APP_URL }}
+      HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+      SMOKE_EMAIL: ${{ secrets.SMOKE_EMAIL }}
+      SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
+      SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          check-latest: true
+      - name: Wait until the live site serves this commit, then smoke-test it
+        run: |
+          [ -n "$APP_URL" ] || { echo "::warning::Set the APP_URL repository variable to verify the live site."; exit 0; }
+          for i in $(seq 1 40); do
+            commit=$(curl -fsS --max-time 20 "${APP_URL%/}/healthz/routing" 2>/dev/null | python3 -c "import sys,json;print(json.load(sys.stdin).get('commit') or '')" 2>/dev/null || true)
+            if [ -z "$commit" ] || [ "${commit:0:7}" = "${SHA:0:7}" ]; then break; fi
+            sleep 30
+          done
+          node scripts/smoke.mjs "$APP_URL"
+      - name: Watch for 15 minutes (a check failing twice in a row counts as a regression)
+        run: |
+          [ -n "$APP_URL" ] || exit 0
+          fails=0; total=0; bad=0
+          for i in $(seq 1 15); do
+            sleep 60; total=$((total+1))
+            if out=$(node scripts/smoke.mjs "$APP_URL" 2>&1); then fails=0; else fails=$((fails+1)); bad=$((bad+1)); echo "minute $i: FAILED"; echo "$out" | grep '✗' || true; fi
+            if [ "$fails" -ge 2 ]; then echo "::error::The live site failed its smoke test twice in a row."; exit 1; fi
+          done
+          echo "Watched $total minutes: $bad failed check(s), none twice in a row."
+      - name: Roll back to the previous release
+        if: failure()
+        run: |
+          [ -n "$HOOK" ] || { echo "::error::No RENDER_DEPLOY_HOOK_URL secret: cannot roll back automatically."; exit 1; }
+          # Every release is a merge commit on main: its first parent is what was live before it.
+          prev_sha=$(git rev-parse "${SHA}^1" 2>/dev/null || true)
+          [ -n "$prev_sha" ] || { echo "::error::No previous commit to roll back to."; exit 1; }
+          prev=$(git tag --points-at "$prev_sha" --list 'v*' | head -1); prev=${prev:-${prev_sha:0:7}}
+          echo "::warning::Rolling back production to $prev (${prev_sha:0:7})."
+          curl -fsS -X POST "${HOOK}&ref=${prev_sha}" -o /dev/null
+          for i in $(seq 1 40); do
+            commit=$(curl -fsS --max-time 20 "${APP_URL%/}/healthz/routing" 2>/dev/null | python3 -c "import sys,json;print(json.load(sys.stdin).get('commit') or '')" 2>/dev/null || true)
+            [ "${commit:0:7}" = "${prev_sha:0:7}" ] && break; sleep 30
+          done
+          node scripts/smoke.mjs "$APP_URL" && echo "Rolled back to $prev; the live site passes its smoke test." || echo "::error::Rolled back to $prev but the smoke test still fails."
+          echo "::error::Production was rolled back to $prev because the release ${SHA:0:7} failed live verification. Fix the cause on a branch and redeploy."
+          exit 1

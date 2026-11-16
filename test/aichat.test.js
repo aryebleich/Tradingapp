@@ -12,7 +12,6 @@ process.env.ADMIN_EMAIL = [process.env.ADMIN_EMAIL, OWNER, ADMIN2].filter(Boolea
 const logs = []; const warn = console.warn.bind(console); console.warn = (...a) => { logs.push(a.map(String).join(' ')); warn(...a); };
 const MD = await import('../public/pages/chatmd.js');
 const E = await import('../src/aichat/engine.js');
-const F = await import('../src/flags.js');
 const { run, one, all } = await import('../src/db.js');
 const { serve } = await import('./client.js');
 const S = await serve();
@@ -109,16 +108,14 @@ async function sse(client, path, body, { abortAfter } = {}) {
 const text = ev => ev.filter(e => e.event === 'text').map(e => e.data.delta).join('');
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
-test('access: non-admin 403, admin without the permission 403, flag off 404, owner with the flag on 200', async () => {
+test('access: non-admin 403, admin without the permission 403, owner 200', async () => {
   for (const p of ['/admin/aichat/status', '/admin/aichat/conversations']) assert.equal((await user(p)).status, 403, `non-admin ${p}`);
   assert.equal((await user('/admin/aichat/conversations/x/messages', { content: 'hi' })).status, 403);
   assert.equal((await admin2('/admin/aichat/status')).status, 403, 'admin without the AI team chat permission');
-  assert.equal((await owner('/admin/aichat/status')).status, 404, 'flag off by default');
-  await F.saveFlags({ ai_team_chat: { on: true, pct: 100 } });
   const st = await owner('/admin/aichat/status');
   assert.equal(st.status, 200); assert.deepEqual(st.body.models.map(m => m.id), ['fake', 'fake-plain']); assert.equal(st.body.retentionDays, 90);
   assert.equal(JSON.stringify(st.body).includes('systemPrompt'), false, 'the system prompt never reaches the browser');
-  assert.equal((await user('/admin/aichat/status')).status, 403, 'still 403 for a non-admin with the flag on');
+  assert.equal((await user('/admin/aichat/status')).status, 403, 'still 403 for a non-admin');
   assert.equal((await admin2('/admin/aichat/access')).status, 403);
 });
 let conv;

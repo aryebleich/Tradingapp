@@ -3,7 +3,7 @@
 //                             the provider's signature is checked on the raw bytes.
 //   commsRouter               under /api/comms, for the signed-in user (the Comms Drawer)
 //   commsAdminRouter          under /api/admin/sms-voice: assign phone numbers to users
-// Everything is off (404) until the owner switches the comms_drawer flag on.
+// Everything answers 404 for a user who has not been given a number.
 import express from 'express';
 import { rateLimit, requireUser } from '../auth.js';
 import * as core from './core.js';
@@ -13,7 +13,6 @@ import './index.js'; // registers the adapters
 
 // ---------- provider webhooks (no session; the signature is the credential) ----------
 async function webhook(kind, req, res) {
-  if (!core.moduleOn()) return res.status(404).end();
   if (!rateLimit(`comms:hook:${req.ip}`, 1200, 60e3)) return res.status(429).end();
   let adapter; try { adapter = getAdapter(); } catch { return res.status(503).json({ error: 'not configured' }); }
   const raw = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
@@ -48,17 +47,16 @@ const fail = (res, e) => {
 };
 const route = fn => (req, res) => Promise.resolve(fn(req, res)).catch(e => fail(res, e));
 // 404 unless the module is on for this user; 429 past a generous per-user ceiling.
-const gate = (req, res, next) => {
+const gate = async (req, res, next) => {
   if (!req.user) return res.status(401).json({ error: 'Not signed in' });
-  if (!core.moduleOn() || !core.userOn(req.user)) return res.status(404).json({ error: 'Not found' });
+  if (!(await core.userOn(req.user))) return res.status(404).json({ error: 'Not found' });
   if (!rateLimit(`comms:api:${req.user.id}`, 600, 600e3)) return res.status(429).json({ error: 'Too many requests', code: 'rate_limited' });
   next();
 };
 
 // Always answers for a signed-in user, so the app can ask once after sign-in without a 404 in the console.
 commsRouter.get('/status', requireUser, route(async (req, res) => {
-  const on = core.moduleOn() && core.userOn(req.user);
-  if (!on) return res.json({ enabled: false });
+  if (!(await core.userOn(req.user))) return res.json({ enabled: false });
   let configured = false; try { configured = getAdapter().configured(); } catch {}
   const row = await (await import('../db.js')).one('SELECT number, voice_mode FROM comms_numbers WHERE user_id = ?', req.user.id);
   res.json({ enabled: true, configured, number: row?.number || null, voiceMode: row?.voice_mode || null, recording: core.cfg().recording });
@@ -88,7 +86,7 @@ commsRouter.post('/webrtc/login', gate, route(async (req, res) => {
 export const commsAdminRouter = express.Router(); // mounted under /api/admin, which already requires an admin
 commsAdminRouter.get('/', route(async (req, res) => {
   let provider = null, configured = false; try { const a = getAdapter(); provider = a.name; configured = a.configured(); } catch {}
-  res.json({ on: core.moduleOn(), provider, configured, numbers: await core.listNumbers(), settings: (({ quietStart, quietEnd, quietTz, recording, sendPerHour, sendPerDay, retentionDays }) => ({ quietStart, quietEnd, quietTz, recording, sendPerHour, sendPerDay, retentionDays }))(core.cfg()) });
+  res.json({ provider, configured, numbers: await core.listNumbers(), settings: (({ quietStart, quietEnd, quietTz, recording, sendPerHour, sendPerDay, retentionDays }) => ({ quietStart, quietEnd, quietTz, recording, sendPerHour, sendPerDay, retentionDays }))(core.cfg()) });
 }));
 commsAdminRouter.put('/numbers', route(async (req, res) => res.json(await core.assignNumber(req.body || {}))));
 commsAdminRouter.delete('/numbers/:number', route(async (req, res) => res.json({ removed: await core.removeNumber(String(req.params.number)) })));

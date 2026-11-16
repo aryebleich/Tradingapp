@@ -1,6 +1,5 @@
 // Planning tools in a real browser (npm run tools:ui): the real app, the Alpaca mock for read-only
-// market data, flags switched on through the admin API. Checks that the tools are hidden while their
-// flags are off, work from the keyboard, explain errors, show the disclaimer and data-delay label on
+// market data. Checks that the tools are in the menu, work from the keyboard, explain errors, show the disclaimer and data-delay label on
 // every tab, label AI output, refuse advice requests, meet basic WCAG 2.2 rules and fit a phone.
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
@@ -24,7 +23,6 @@ const log = []; server.stdout.on('data', d => log.push(String(d))); server.stder
 for (let i = 0; i < 60; i++) { if (await fetch(B + '/healthz').then(r => r.ok, () => false)) break; await new Promise(r => setTimeout(r, 200)); }
 const reg = async email => { const r = await fetch(B + '/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ email, password: 'Str0ngPassword1', agree: true }) }); const kv = (r.headers.get('set-cookie') || '').split(';')[0], i = kv.indexOf('='); return { name: kv.slice(0, i), value: kv.slice(i + 1) }; };
 const owner = await reg('tools-owner@example.com'), me = await reg('tools-ui@example.com');
-const flags = on => fetch(B + '/api/admin/site/flags', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp', cookie: `${owner.name}=${owner.value}` }, body: JSON.stringify(Object.fromEntries(['tools_sizing', 'tools_rr', 'tools_heatmap', 'ai_portfolio_explainer', 'ai_indicator_explainer'].map(f => [f, { on, pct: 100 }]))) }).then(r => r.status);
 
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
@@ -45,15 +43,7 @@ const a11y = () => page.evaluate(() => {
   return bad;
 });
 
-await step('flags off: no menu entry, and the page says the tools are not on', async () => {
-  must(await flags(false) === 200, 'flags');
-  await page.goto(B + '/app#/dashboard'); await page.waitForSelector('#nav');
-  must(!(await page.$('#nav a[href="#/tradetools"]')), 'menu entry should be hidden');
-  await page.goto(B + '/app#/tradetools'); await page.waitForTimeout(800);
-  must(/not switched on/.test(await page.innerText('#view')), 'off message');
-});
-await step('flags on: the menu entry appears and all five tabs are listed', async () => {
-  must(await flags(true) === 200, 'flags');
+await step('the menu entry is there and all five tabs are listed', async () => {
   await page.goto(B + '/app#/dashboard'); await page.reload(); await page.waitForSelector('#nav');
   await page.waitForSelector('#nav a[href="#/tradetools"]', { state: 'attached', timeout: 8000 });
   await page.goto(B + '/app#/tradetools'); await page.waitForSelector('.tt-form');
@@ -110,10 +100,6 @@ await step('phone width: no sideways scrolling on any tab', async () => {
     must(!(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)), `overflow on ${t}`);
   }
   await page.goto(B + '/app#/tradetools?tab=heatmap'); await page.waitForSelector('.tt-tile'); await page.screenshot({ path: path.join(OUT, 'tools-heatmap-phone.png') });
-});
-await step('switching the flags off hides the tools again (rollback)', async () => {
-  await flags(false); await page.goto(B + '/app#/tradetools'); await page.reload(); await page.waitForTimeout(900);
-  must(/not switched on/.test(await page.innerText('#view')), 'off again');
 });
 console.log(errors.length ? `  ✗ browser errors: ${errors.join(' | ').slice(0, 400)}` : '  ✓ no browser errors'); if (errors.length) failures++;
 await browser.close(); server.kill(); mock.close();

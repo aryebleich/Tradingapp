@@ -14,14 +14,11 @@ Everything that is waiting on you, in order. This list is kept up to date by the
 
 ### 2. Legal sign-off before switching things on
 - [ ] Have LEGAL_REVIEW.md items L1 to L12 checked.
-- [ ] The new homepage (flag **home_v2**, Admin → SEO → Feature flags) stays off until L9 to L12 are approved. Then turn it on for 10% of visitors, then more.
+- [ ] The audited-order homepage (L9 to L12) was not released: when the flags were removed, the previous homepage was kept and the new version's code deleted. It can be rebuilt from git history (commit 1d9efaf) once L9 to L12 are approved.
 
-### 3. Merge the two finished branches (nothing is live until you do)
-- [ ] **feature/stripe-audit**: Stripe fixes (no duplicate charges, refunds and disputes reach the ledger, test payments kept out of revenue). Merge this one first.
-- [ ] **feature/comms-module**: the SMS and voice drawer, built on top of the Stripe branch, switched off by its flag.
-- [ ] **feature/ai-team-chat**: a Chat job in Admin → AI team (streaming replies, separate Thinking, stop, retry, edit to branch). Flag ai_team_chat off; you have the permission as owner and can grant it to other admins. Staging steps and checklist: docs/AI_CHAT.md.
-- [ ] **feature/trading-tools**: Planning tools (position size, risk/reward with ATR stop, sector heatmap) and two AI explainers with an advice filter, kill switch and compliance log. All five flags off.
-- Open a pull request for each on GitHub (or ask Claude to), check the tests are green, then merge. After merging, the docs folder has the details: STRIPE_AUDIT.md, STRIPE_TEST_PLAN.md, COMMS_SETUP.md, COMMS_ARCHITECTURE.md.
+### 3. Everything is merged and live (nothing is waiting on a merge)
+- The Stripe fixes, the SMS and voice drawer, the AI team Chat, the planning tools with two AI explainers and the new page layout are all in the live site. There are **no feature flags any more** (see CHANGELOG_AI.md). Details: STRIPE_AUDIT.md, STRIPE_TEST_PLAN.md, COMMS_SETUP.md, COMMS_ARCHITECTURE.md, AI_CHAT.md, TRADING_TOOLS.md, DESIGN_SYSTEM.md.
+- Releases are tagged (v-numbers on GitHub). To go back to one, redeploy its tag, or revert the release commit on main.
 
 ### 4. Stripe, before taking real payments (after step 3)
 - [ ] In a test copy of the site: put a **test** key (starts sk_test_) in Admin → Keys and set STRIPE_TEST_ONLY=1.
@@ -36,15 +33,15 @@ Everything that is waiting on you, in order. This list is kept up to date by the
 - [ ] Create a messaging profile and a voice (Call Control) application; point their webhooks at your site's /api/comms/webhooks/sms and /api/comms/webhooks/voice.
 - [ ] **Register for 10DLC** (brand and campaign) before any real texts: carriers block unregistered US traffic, and approval takes days to weeks.
 - [ ] For browser calls: a credential connection (TELNYX_CREDENTIAL_CONNECTION_ID), the Telnyx browser SDK saved as public/vendor/telnyx-webrtc.js, and a TURN server (TURN_URLS, TURN_SECRET).
-- [ ] Give each user a number (Admin API, see COMMS_SETUP.md), then turn the flag **comms_drawer** on for a small share of users.
+- [ ] Give each user a number (Admin API, see COMMS_SETUP.md). The drawer appears for a user as soon as they have a number; nobody sees it before that.
 - [ ] The Telnyx names in the code were written without access to Telnyx's documentation: check them against developers.telnyx.com (or ask Claude once the docs can be reached) before the first real call.
 - [ ] Have the legal list in COMMS_ARCHITECTURE.md checked (consent, quiet hours by the recipient's time zone, call recording, record keeping, UK and EU). Leave call recording off until then.
 
-### 6. Planning tools and AI explainers (after merging feature/trading-tools)
+### 6. Planning tools and AI explainers (live for everyone)
 - [ ] Have each row of COMPLIANCE_REVIEW.md signed off; the two AI explainers are marked **Review required** (they talk about your users' own holdings and named securities).
 - [ ] Check the market-data licence allows showing prices to users (sector heatmap).
 - [ ] Set up a staging copy (own database, paper keys) and run the smoke test in docs/TRADING_TOOLS.md, section 6.
-- [ ] Roll out one flag at a time: staging 100%, then production 5%, 25%, 100% (Admin → SEO → Feature flags). AI explainers last.
+- [ ] The five tools are on for every signed-in user. The AI explainers have kill switches (AI_TOOLS_KILL=all, or Admin) that act at once.
 - [ ] Read the AI log now and then (Admin API /api/admin/tools/log). If an answer slips through, switch the tool off at once: AI_TOOLS_KILL=all, or the kill switch.
 - [ ] Decide the AI log retention (default 3 years) and an economic-calendar data provider if you want that tool.
 - [ ] Decide whether the existing AI tools ("News to trades", AI signals, AI bots) should get the same advice filter (needs legal review).

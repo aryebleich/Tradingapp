@@ -1,0 +1,41 @@
+{
+ "note": "Lighthouse scores (mobile, median of 5 runs) before the layout redesign, commit a4b8528.",
+ "scores": {
+  "home": {
+   "performance": 95,
+   "accessibility": 97,
+   "best-practices": 100,
+   "seo": 100
+  },
+  "risk": {
+   "performance": 100,
+   "accessibility": 100,
+   "best-practices": 100,
+   "seo": 100
+  },
+  "terms": {
+   "performance": 100,
+   "accessibility": 100,
+   "best-practices": 100,
+   "seo": 100
+  },
+  "login": {
+   "performance": 96,
+   "accessibility": 100,
+   "best-practices": 100,
+   "seo": 63
+  },
+  "dashboard": {
+   "performance": 93,
+   "accessibility": 94,
+   "best-practices": 100,
+   "seo": 66
+  },
+  "trade": {
+   "performance": 94,
+   "accessibility": 94,
+   "best-practices": 100,
+   "seo": 66
+  }
+ }
+}

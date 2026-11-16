@@ -29,7 +29,7 @@ jobs:
         run: |
           mkdir -p _site
           cd public
-          cp index.html yi.html terms.html privacy.html risk.html contact.html status.html security.html insurance.html trust-page.js 404.html site.css site.js favicon.svg icon-512.png og-brightolio.png hero-brightolio.webp manifest.webmanifest chartstates.js ../_site/
+          cp index.html yi.html terms.html privacy.html risk.html contact.html status.html security.html insurance.html trust-page.js 404.html site.css site.js layout.css layout.js favicon.svg icon-512.png og-brightolio.png hero-brightolio.webp manifest.webmanifest chartstates.js ../_site/
           cp ../src/engine.js ../_site/engine.js
           cp -r fonts ../_site/fonts
           cp -r media ../_site/media

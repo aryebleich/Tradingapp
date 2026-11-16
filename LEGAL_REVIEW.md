@@ -1,5 +1,7 @@
 # LEGAL_REVIEW.md
 
+> **Update 2026-11-16:** the flag `home_v2` is gone and the audited-order homepage (L9 to L12) was **not** released: the previous homepage stays live and the new version's code was removed (recoverable from git history, commit 1d9efaf).
+
 Items found in the audit that need legal or compliance sign-off. L1 to L8: nothing was changed. L9 to L12: new copy in homepage v2 (flag `home_v2`, off); it must be signed off before the flag is turned on.
 
 | # | Where | Text or issue | Question for Legal |

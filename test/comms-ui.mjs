@@ -1,4 +1,4 @@
-// The Comms Drawer in a real browser (npm run comms:ui): the real app with the comms_drawer flag on, a
+// The Comms Drawer in a real browser (npm run comms:ui): the real app with a number assigned, a
 // fake Telnyx API and a fake Telnyx browser SDK (served by the test, nothing is added to the repo).
 // Checks: opening and focus, keyboard use, live announcements, unread badge, threaded texts, consent,
 // the dialer (keypad, timer, mute, hang up, history), microphone refused, incoming and missed calls,
@@ -55,7 +55,7 @@ const call = (s, method, p, body) => fetch(B + '/api' + p, { method, headers: { 
 const owner = await sessionOf('owner-ui@example.com'), me = await sessionOf('comms-ui@example.com');
 if (owner.status !== 200 || me.status !== 200) { console.log('  ✗ could not register', owner.status, me.status); process.exit(1); }
 const NUM = '+18455550900', PEER = '+15551230001';
-console.log('  flag + number:', (await call(owner, 'PUT', '/admin/site/flags', { comms_drawer: { on: true, pct: 100 } })).status, (await call(owner, 'PUT', '/admin/sms-voice/numbers', { number: NUM, userId: me.id, voiceMode: 'softphone' })).status);
+console.log('  number:', (await call(owner, 'PUT', '/admin/sms-voice/numbers', { number: NUM, userId: me.id, voiceMode: 'softphone' })).status);
 
 const sig = body => { const ts = Math.floor(Date.now() / 1000); return { 'telnyx-timestamp': String(ts), 'telnyx-signature-ed25519': crypto.sign(null, Buffer.from(`${ts}|${body}`), privateKey).toString('base64') }; };
 const hook = async (kind, payload) => { const b = JSON.stringify(payload); return (await fetch(`${B}/api/comms/webhooks/${kind}`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...sig(b) }, body: b })).status; };

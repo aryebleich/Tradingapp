@@ -1,5 +1,7 @@
 # ASSUMPTIONS.md
 
+> **Update 2026-11-16:** the feature flag system was removed. `comms_drawer` (B-13) is replaced by the rule that a user sees the drawer once they have a number; every other flag is permanently on. See CHANGELOG_AI.md.
+
 Choices made without asking, with the reason. Project A (Stripe) first, then Project B (SMS and voice). Project B's branch is stacked on Project A's, so this file
 is shared.
 

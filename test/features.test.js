@@ -237,7 +237,7 @@ test('assistant output becomes the app\'s own commands; PIN never comes from the
 
 test('homepage in English and Yiddish, app dictionary loads', async () => {
   const en = await (await fetch(base + '/')).text(), yi = await (await fetch(base + '/yi')).text();
-  assert.match(en, /<html lang="en" dir="ltr">/); assert.match(yi, /<html lang="yi" dir="rtl">/);
+  assert.match(en, /<html lang="en" dir="ltr" class="lv2">/); assert.match(yi, /<html lang="yi" dir="rtl" class="lv2">/);
   assert.match(yi, /ריעליטי טשעק/); assert.match(en, /id="reality"/);
   const f = await (await fetch(base + '/api/public/features')).json();
   assert.equal(typeof f.google, 'boolean');

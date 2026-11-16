@@ -1,7 +1,9 @@
 # SMS and voice module: setup guide
 
+> **Update 2026-11-16: the feature flag system was removed** (CHANGELOG_AI.md). Wherever this page mentions a flag, read it as the feature being permanently on. The drawer shows for a user as soon as the owner assigns them a number; without a number every route answers 404.
+
 Architecture and the compliance list: [COMMS_ARCHITECTURE.md](COMMS_ARCHITECTURE.md). The module is **off** until
-the flag is switched on and a number is assigned to a user.
+a number is assigned to a user.
 
 **Check the provider screens and API names against Telnyx's current documentation.** The steps below name Telnyx
 menus and settings from memory (ASSUMPTIONS.md B-2); the build environment could not open developers.telnyx.com.
@@ -31,7 +33,7 @@ Secrets go only in the host's environment (Render) or Admin → Keys, never in t
 
 Nothing to run by hand. The tables are created by `src/db.js` when the server starts (`CREATE TABLE IF NOT EXISTS`,
 five tables, see the architecture page). To check: `sqlite3 data/quantpocket.db ".tables" | tr ' ' '\n' | grep -E "sms_|call_|comms_"`
-(use `DB_FILE` or your libSQL URL if set). Rollback of the schema is not needed: the tables are unused while the flag is off,
+(use `DB_FILE` or your libSQL URL if set). Rollback of the schema is not needed: the tables are unused until a number is assigned,
 and dropping them is `DROP TABLE comms_numbers, sms_messages, call_records, sms_consent, comms_webhook_events;`.
 
 ## 3. Try it locally, with no provider and no tunnel
@@ -40,7 +42,7 @@ and dropping them is `DROP TABLE comms_numbers, sms_messages, call_records, sms_
 npm run comms:sim -- keygen                        # writes .comms-sim-key.pem (git-ignored), prints TELNYX_PUBLIC_KEY=...
 # put that line in .env (local only), plus COMMS_PROVIDER=telnyx and TELNYX_API_KEY=anything; then:
 npm start
-# sign in as the owner: Admin → SEO → Feature flags → comms_drawer → on, 100%, Save
+# sign in as the owner: assign a number to your own user (PUT /api/admin/sms-voice/numbers)
 # give a user a number (admin only; the owner's session cookie is needed, easiest from the browser console):
 #   fetch('/api/admin/sms-voice/numbers', {method:'PUT', headers:{'Content-Type':'application/json','X-Requested-With':'qp'},
 #     body: JSON.stringify({number:'+18455550100', userId: 2, voiceMode:'ivr'})}).then(r=>r.json()).then(console.log)
@@ -70,7 +72,7 @@ Then set `PUBLIC_URL` to that address if you use features that build links, keep
 provider these two addresses (section 5): `https://<tunnel>/api/comms/webhooks/sms` and
 `https://<tunnel>/api/comms/webhooks/voice`. Watch deliveries arrive in the server log (`POST /api/comms/webhooks/sms 200`);
 a `401` means the signature check failed (wrong `TELNYX_PUBLIC_KEY`, or the body was changed by a proxy), a `404` means the
-flag is off. Free tunnel addresses change on every restart; update the provider each time. Never leave a tunnel open
+no number is assigned. Free tunnel addresses change on every restart; update the provider each time. Never leave a tunnel open
 with a production key.
 
 ## 5. Link Telnyx (verify each step against the current Telnyx portal)
@@ -93,7 +95,7 @@ with a production key.
    ports (UDP/TCP 3478, TLS 5349, the relay port range). `TURN_URLS=turns:turn.example.com:5349?transport=tcp`.
 7. **Number to user.** `PUT /api/admin/sms-voice/numbers` (admin session) with `{ "number": "+1…", "userId": N, "voiceMode": "ivr" | "softphone", "greeting": "…" }`.
    One number per user. `softphone` rings the user's open browser and falls back to the greeting when it is closed or unanswered.
-8. **Flag.** Admin → SEO → Feature flags → `comms_drawer`: switch on and set a small percentage first (for example 10%).
+8. **Users.** Assign a number to a small group of users first; the drawer appears only for them.
 
 ### Asterisk / FreeSWITCH instead of Telnyx
 
@@ -123,11 +125,11 @@ npm run comms:sim -- …      # signed sample webhooks to a local server (sectio
 - [ ] Privacy policy and terms updated (provider, retention, device-side history, recording, consent).
 - [ ] Monitoring and alerts: webhook responses (alert on any 401 or 5xx on `/api/comms/webhooks/*`), the provider's delivery-failure rate, TURN availability, server log lines with `"src":"comms"` and `"event":"…_failed"`.
 - [ ] More than one server instance? The rate limits and live streams are per instance (ASSUMPTIONS.md B-14): use one instance, sticky routing, or move them to a shared store first.
-- [ ] Start with the flag at a small percentage; watch for a day; widen.
+- [ ] Start by assigning numbers to a few users; watch for a day; widen.
 
 ## 8. Rollback
 
-1. Admin → SEO → Feature flags → `comms_drawer` → **off** → Save. Takes effect on the next request: the drawer stops loading,
+1. Remove the user's number (DELETE /api/admin/sms-voice/numbers/{number}) or clear the provider keys. Takes effect on the next request: the drawer stops loading,
    every `/api/comms/*` route and both webhooks answer 404, nothing else in the app changes.
 2. Tell the provider to stop sending (clear the two webhook URLs), or let it retry and give up.
 3. Waiting texts still erase themselves after 72 hours; metadata stays until retention removes it (or `DROP TABLE`, section 2).

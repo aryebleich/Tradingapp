@@ -1,0 +1,94 @@
+/* Layout layer (every page). Rules: DESIGN_SYSTEM.md. Everything here is scoped to html.lv2, uses the
+   existing tokens of theme.css / site.css (colours, fonts, radii, shadows) and changes layout only:
+   spacing, widths, type sizes, stacking, focus, loading, empty and error states. No text, number,
+   control, validation message or confirmation step is added, removed or reordered by this file. */
+
+html.lv2 {
+  /* contrast shades for tinted pills and public-site captions (D-9) */
+  --gr-ink: #0b6d36; --rd-ink: #a83438; --warn-ink: #8e4e00; --ac-ink: #4b4bd6; --cap-on-dark: #9aa4bd;
+  /* spacing scale (4 px base) */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px; --s8: 64px;
+  /* type scale */
+  --t-xs: 12px; --t-sm: 13.5px; --t-md: 15px; --t-lg: 18px; --t-xl: 22px; --t-2xl: 28px;
+  /* content widths */
+  --w-page: 1280px; --w-read: 760px;
+  /* focus ring: a solid outline, also visible in forced-colours mode */
+  --focus: 2px solid var(--ac);
+}
+
+/* ---------- contrast (WCAG 1.4.3): light mode only, the smallest darkening that reaches 4.5:1 ----------
+   gain, loss, warning and accent text failed AA on the light backgrounds (2.9 to 4.3:1). Same hues,
+   darker by 8 to 33%. Dark mode already passed and is unchanged. See DESIGN_DECISIONS.md D-9. */
+html.lv2:not([data-theme="dark"]) { --gr: #0d7b3d; --rd: #c03c40; --warn: #a25900; --ac: #5656e9; }
+/* tinted pills and risk badges sit on a 12-18% tint of their own colour: their text needs one step darker */
+html.lv2:not([data-theme="dark"]) :is(.pill.neg, .neg.pill, .risk.neg) { color: var(--rd-ink); }
+html.lv2:not([data-theme="dark"]) :is(.pill.pos, .pos.pill, .risk.pos) { color: var(--gr-ink); }
+html.lv2:not([data-theme="dark"]) :is(.pill.warn, .warn.pill, .risk.warn) { color: var(--warn-ink); }
+@media (prefers-color-scheme: dark) { html.lv2:not([data-theme="light"]) :is(.pill.neg, .neg.pill, .risk.neg) { color: var(--rd); } html.lv2:not([data-theme="light"]) :is(.pill.pos, .pos.pill, .risk.pos) { color: var(--gr); } html.lv2:not([data-theme="light"]) :is(.pill.warn, .warn.pill) { color: var(--warn); } html.lv2:not([data-theme="light"]) .risk.warn { color: #c26a00; } }
+@media (prefers-color-scheme: dark) { html.lv2:not([data-theme="light"]) { --gr: #22c55e; --rd: #f05252; --warn: #f5b041; --ac: #7c7cff; } }
+
+/* ---------- focus and targets (WCAG 2.4.7, 2.4.11, 2.5.8) ---------- */
+html.lv2 :is(a, button, input, select, textarea, summary, [tabindex]):focus-visible { outline: var(--focus); outline-offset: 2px; }
+html.lv2 #view :is(.chips button, .seg button, button.small):not(.link) { min-height: 24px; min-width: 24px; } /* text-style link buttons are inline targets (WCAG 2.5.8 exception) */
+html.lv2 :target { scroll-margin-top: 80px; }
+
+/* ---------- app: page frame ---------- */
+/* gutters and vertical rhythm are the theme's own (unchanged), so text wraps and disclosures sit exactly where they did */
+html.lv2 #view > * { max-width: var(--w-page); margin-inline: auto; }
+html.lv2 #view > .card, html.lv2 #view > .grid, html.lv2 #view > .cols, html.lv2 #view > .stats { margin-bottom: var(--s4); }
+html.lv2 .card > :last-child { margin-bottom: 0; }
+html.lv2 .grid, html.lv2 .cols { gap: var(--s4); }
+html.lv2 .grid > .card, html.lv2 .cols > .card { margin-bottom: 0; }
+
+/* tables: scroll inside their own box, never the page (tables are wrapped by layout.js) */
+html.lv2 .tablewrap { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%;
+  background: linear-gradient(to right, var(--card) 30%, transparent) left / 24px 100% no-repeat local,
+              linear-gradient(to left, var(--card) 30%, transparent) right / 24px 100% no-repeat local,
+              radial-gradient(farthest-side at 0 50%, color-mix(in srgb, var(--tx) 14%, transparent), transparent) left / 10px 100% no-repeat scroll,
+              radial-gradient(farthest-side at 100% 50%, color-mix(in srgb, var(--tx) 14%, transparent), transparent) right / 10px 100% no-repeat scroll; }
+html.lv2 .tablewrap:focus-visible { outline: var(--focus); outline-offset: 2px; }
+html.lv2 th { position: sticky; top: 0; background: var(--card); z-index: 1; }
+
+/* loading: a skeleton in the shape of a line of content; the words stay for screen readers */
+html.lv2 .lv2-load { position: relative; min-height: 56px; color: transparent !important; }
+html.lv2 .lv2-load::before, html.lv2 .lv2-load::after { content: ''; position: absolute; inset-inline-start: 0; height: 14px; border-radius: 7px;
+  background: linear-gradient(90deg, var(--bg2) 0%, color-mix(in srgb, var(--bd) 70%, var(--bg2)) 50%, var(--bg2) 100%); background-size: 200% 100%; animation: shimmer 1.2s infinite linear; }
+html.lv2 .lv2-load::before { top: 6px; width: min(70%, 420px); }
+html.lv2 .lv2-load::after { top: 30px; width: min(45%, 260px); }
+@media (prefers-reduced-motion: reduce) { html.lv2 .lv2-load::before, html.lv2 .lv2-load::after { animation: none; } }
+
+/* empty states: centred, with the next step under the message */
+/* the next step sits on the same line as the message, so nothing below it moves */
+html.lv2 .lv2-empty .lv2-next { margin-inline-start: var(--s2); font-weight: 600; white-space: nowrap; }
+
+/* error messages: a visible box once they have text (empty ones keep their reserved line) */
+html.lv2 .err:not(:empty):not(.ok) { padding: var(--s2) var(--s3); border-radius: var(--r-sm); border-inline-start: 3px solid var(--rd);
+  background: color-mix(in srgb, var(--rd) 8%, transparent); }
+
+/* signed in: the footer's disclosures are shown under every page (the previous layout hid them) */
+html.lv2 body:is(.signedin, .signedout) > footer { display: block; max-width: var(--w-page); margin: 0 auto; padding: var(--s4) var(--s6) var(--s5);
+  font-size: var(--t-xs); line-height: 1.55; color: var(--mu); border-top: 1px solid var(--bd); }
+html.lv2 body.popout > footer { display: none !important; }
+/* signed in, the page area is a full screen tall, so the footer starts below the first screen and never shifts while a page loads */
+html.lv2 body.signedin #view { min-height: 100vh; min-height: 100dvh; }
+
+/* ---------- tablet ---------- */
+
+/* ---------- phone: one column, primary actions in thumb reach ---------- */
+/* phones: field and button sizes stay the theme's (24px minimum targets above); growing them to 44px
+   pushed disclosures on long form pages 100-290px lower (D-13) */
+@media (max-width: 640px) {
+  html.lv2 .grid { grid-template-columns: minmax(0, 1fr); }
+  html.lv2 .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html.lv2 body:is(.signedin, .signedout) > footer { padding: var(--s4) var(--s4) calc(var(--s8) + env(safe-area-inset-bottom)); } /* clear of the bottom tab bar */
+  html.lv2 dialog { max-height: calc(100dvh - 32px); overflow-y: auto; }
+}
+
+/* ---------- public site: spacing, widths and type are the site's own (unchanged); only contrast and names below ---------- */
+
+/* public site contrast (light mode): the hero caption (a disclosure) on the dark demo panel, the
+   kicker label on the grey section background, and the "2 months free" badge */
+html.lv2 .term .figcap { color: var(--cap-on-dark); }
+html.lv2:not([data-theme="dark"]) section.alt .kicker { color: var(--ac-ink); }
+html.lv2:not([data-theme="dark"]) .toggle em { color: var(--gr-ink); }
+@media (prefers-color-scheme: dark) { html.lv2 section.alt .kicker { color: var(--ac); } html.lv2 .toggle em { color: var(--gr); } }

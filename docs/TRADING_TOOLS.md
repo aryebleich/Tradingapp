@@ -1,6 +1,8 @@
 # Trading tools: gap analysis, how each new tool works, release package
 
-Branch `feature/trading-tools`. Nothing is deployed and every flag is off. Decisions: [DECISIONS.md](../DECISIONS.md).
+> **Update 2026-11-16: the feature flag system was removed** (CHANGELOG_AI.md). Wherever this page mentions a flag, read it as the feature being permanently on. The five tools are on for every signed-in user; the two AI explainers keep their kill switches.
+
+Merged and live (2026-11-16). Decisions: [DECISIONS.md](../DECISIONS.md).
 Legal and compliance review: [COMPLIANCE_REVIEW.md](../COMPLIANCE_REVIEW.md).
 
 ## 1. Gap analysis
@@ -30,7 +32,7 @@ public documentation could not be fetched from the build environment (DECISIONS.
 | Scenario / what-if | Yes: AI tools, What-if scenarios | None | – | Medium | Keep; add the AI guard (next row) |
 | **Guardrails on the existing AI tools** (advice blocking, kill switch, compliance log) | No | **High** | M | High | **Not changed** (outside "new tools"); recommend routing the existing AI tools through `src/tradetools/aiguard.js`: **Review required** |
 
-## 2. Tools built (all behind flags, all default off)
+## 2. Tools built (all on; the AI ones have kill switches)
 
 | Tool | Route | Flag | Data | Status |
 |---|---|---|---|---|
@@ -115,13 +117,13 @@ mock is used), screen readers by a person, colour contrast with a measuring tool
 1. Create a staging service (a second Render service, or any host) from branch `feature/trading-tools` with its **own
    database**, `NODE_ENV=production`, `ENCRYPTION_KEY`, Alpaca **paper** keys and market-data keys, and optionally an AI
    provider key. No live brokerage keys.
-2. Sign in as the owner on staging: Admin → SEO → Feature flags: switch on the five flags at 100% (staging has only
+2. Sign in as the owner on staging (staging has only
    internal users).
 3. Run the smoke test below. Read `GET /api/admin/tools/log` after the AI checks.
 
 ### Smoke-test checklist (staging)
 
-- [ ] Flags off: no "Planning tools" in the menu; `/api/tools/size` answers 404.
+- [ ] "Planning tools" is in the menu and `/api/tools/size` answers 200 for a signed-in user.
 - [ ] Position size: $10,000 / 1% / 50 / 48 gives 50 shares; a stop above the entry for a long is refused in words.
 - [ ] Risk / reward: 100 / 95 / 110 gives R 2 and 33.3%; with a liquid symbol the ATR stop and its data label appear.
 - [ ] Heatmap: 11 sectors, a data label (IEX, SIP or delayed), price ages; refresh works.
@@ -133,24 +135,24 @@ mock is used), screen readers by a person, colour contrast with a measuring tool
 - [ ] Keyboard only and a screen reader on each tab; phone width; light and dark theme.
 - [ ] `npm test` and `npm run tools:ui` green on the branch.
 
-### Flag rollout (each step gated on COMPLIANCE_REVIEW.md sign-off for that tool)
+### Rollout history (each step was to be gated on COMPLIANCE_REVIEW.md sign-off for that tool)
 
 | Step | Who | How | Gate to move on |
 |---|---|---|---|
-| 1. Internal | the owner and admins, on **staging** | flags on at 100% on staging | smoke test passed; legal sign-off on the tool's row |
-| 2. Small share | real users | production flag on at **5%** (percentage by user id, Admin → SEO → Feature flags) | 7 days with no blocked-output spikes, error rate < 1%, no complaints; log reviewed |
+| 1. Internal | the owner and admins, on **staging** | on at 100% on staging | smoke test passed; legal sign-off on the tool's row |
+| 2. Small share | real users | 5% (percentage by user id) | 7 days with no blocked-output spikes, error rate < 1%, no complaints; log reviewed |
 | 3. Wider | real users | 25%, then 50% | same, 7 days each |
 | 4. Full | everyone | 100% | sign-off recorded in COMPLIANCE_REVIEW.md |
 
 The calculators (sizing, risk / reward, heatmap) can go first; the AI tools only after the legal items marked on them.
-The flag system targets a percentage of users, not named people: "internal first" is done on staging (DECISIONS.md D-6).
+The flag system is gone; the rollout steps above are history. The kill switches below act at once.
 
 ### Rollback, per tool
 
 | Tool | Rollback |
 |---|---|
-| Any calculator | Switch its flag off: the tab and the menu entry disappear on the next page load and its route answers 404. Nothing is stored, so nothing to undo. |
-| AI explainers | Instant: kill switch (`PUT /api/admin/tools/kill` or `AI_TOOLS_KILL=all` and restart); then switch the flag off. The compliance log stays for review. |
+| Any calculator | Nothing is stored, so there is nothing to undo; to withdraw one, revert the release. |
+| AI explainers | Instant: kill switch (`PUT /api/admin/tools/kill` or `AI_TOOLS_KILL=all` and restart). The compliance log stays for review. |
 | All of it | Revert the merge commit of `feature/trading-tools`. The `ai_compliance_log` table is left (harmless); drop it only after the retention period. |
 
 ### Monitoring and alerts

@@ -11,18 +11,16 @@ import crypto from 'node:crypto';
 import { run, one, all } from '../db.js';
 import { encrypt, tryDecrypt, hmac } from '../crypto.js';
 import { rateLimit } from '../auth.js';
-import { flagSettings, isOn } from '../flags.js';
 import { isE164, last4 } from './phone.js';
 import { getAdapter, ProviderError } from './adapter.js';
 import * as sse from './sse.js';
 
 export const clock = { now: () => Date.now() }; // tests move it
 
-// ---------- switch ----------
-// The module is off unless the owner turns the flag on (Admin → SEO → Feature flags); a percentage
-// switches it on for that share of signed-in users.
-export const moduleOn = () => !!flagSettings().comms_drawer?.on;
-export const userOn = user => !!user && isOn('comms_drawer', String(user.id));
+// ---------- who has it ----------
+// There is no site-wide switch: a user has the drawer once the owner has given them a number
+// (Admin → SMS and voice). Without a number every route answers 404 and the app downloads nothing.
+export const userOn = async user => !!user && !!(await one('SELECT 1 AS x FROM comms_numbers WHERE user_id = ?', user.id));
 
 // ---------- settings ----------
 const int = (v, d, lo, hi) => { const n = Math.round(+v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };

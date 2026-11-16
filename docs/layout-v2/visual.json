@@ -1,0 +1,4394 @@
+[
+ {
+  "page": "site/home",
+  "width": 1440,
+  "pct": 18.59,
+  "hOld": 13761,
+  "hNew": 14052,
+  "old": "site_home-1440-old.png",
+  "new": "site_home-1440-new.png"
+ },
+ {
+  "page": "site/home",
+  "width": 1280,
+  "pct": 20.63,
+  "hOld": 13761,
+  "hNew": 14052,
+  "old": "site_home-1280-old.png",
+  "new": "site_home-1280-new.png"
+ },
+ {
+  "page": "site/home",
+  "width": 768,
+  "pct": 17.15,
+  "hOld": 18202,
+  "hNew": 18206,
+  "old": "site_home-768-old.png",
+  "new": "site_home-768-new.png"
+ },
+ {
+  "page": "site/home",
+  "width": 390,
+  "pct": 15.77,
+  "hOld": 24527,
+  "hNew": 24243,
+  "old": "site_home-390-old.png",
+  "new": "site_home-390-new.png"
+ },
+ {
+  "page": "site/yi",
+  "width": 1440,
+  "pct": 3.68,
+  "hOld": 14420,
+  "hNew": 14656,
+  "old": "site_yi-1440-old.png",
+  "new": "site_yi-1440-new.png"
+ },
+ {
+  "page": "site/yi",
+  "width": 1280,
+  "pct": 4.14,
+  "hOld": 14420,
+  "hNew": 14656,
+  "old": "site_yi-1280-old.png",
+  "new": "site_yi-1280-new.png"
+ },
+ {
+  "page": "site/yi",
+  "width": 768,
+  "pct": 16.38,
+  "hOld": 19167,
+  "hNew": 19005,
+  "old": "site_yi-768-old.png",
+  "new": "site_yi-768-new.png"
+ },
+ {
+  "page": "site/yi",
+  "width": 390,
+  "pct": 15.64,
+  "hOld": 25966,
+  "hNew": 25771,
+  "old": "site_yi-390-old.png",
+  "new": "site_yi-390-new.png"
+ },
+ {
+  "page": "site/terms",
+  "width": 1440,
+  "pct": 1.09,
+  "hOld": 2798,
+  "hNew": 2795,
+  "old": "site_terms-1440-old.png",
+  "new": "site_terms-1440-new.png"
+ },
+ {
+  "page": "site/terms",
+  "width": 1280,
+  "pct": 1.22,
+  "hOld": 2798,
+  "hNew": 2795,
+  "old": "site_terms-1280-old.png",
+  "new": "site_terms-1280-new.png"
+ },
+ {
+  "page": "site/terms",
+  "width": 768,
+  "pct": 1.98,
+  "hOld": 2967,
+  "hNew": 2937,
+  "old": "site_terms-768-old.png",
+  "new": "site_terms-768-new.png"
+ },
+ {
+  "page": "site/terms",
+  "width": 390,
+  "pct": 2.6,
+  "hOld": 4246,
+  "hNew": 4172,
+  "old": "site_terms-390-old.png",
+  "new": "site_terms-390-new.png"
+ },
+ {
+  "page": "site/privacy",
+  "width": 1440,
+  "pct": 1.05,
+  "hOld": 2889,
+  "hNew": 2886,
+  "old": "site_privacy-1440-old.png",
+  "new": "site_privacy-1440-new.png"
+ },
+ {
+  "page": "site/privacy",
+  "width": 1280,
+  "pct": 1.18,
+  "hOld": 2889,
+  "hNew": 2886,
+  "old": "site_privacy-1280-old.png",
+  "new": "site_privacy-1280-new.png"
+ },
+ {
+  "page": "site/privacy",
+  "width": 768,
+  "pct": 1.92,
+  "hOld": 3083,
+  "hNew": 3053,
+  "old": "site_privacy-768-old.png",
+  "new": "site_privacy-768-new.png"
+ },
+ {
+  "page": "site/privacy",
+  "width": 390,
+  "pct": 2.39,
+  "hOld": 4660,
+  "hNew": 4586,
+  "old": "site_privacy-390-old.png",
+  "new": "site_privacy-390-new.png"
+ },
+ {
+  "page": "site/risk",
+  "width": 1440,
+  "pct": 1.12,
+  "hOld": 3032,
+  "hNew": 3029,
+  "old": "site_risk-1440-old.png",
+  "new": "site_risk-1440-new.png"
+ },
+ {
+  "page": "site/risk",
+  "width": 1280,
+  "pct": 1.27,
+  "hOld": 3032,
+  "hNew": 3029,
+  "old": "site_risk-1280-old.png",
+  "new": "site_risk-1280-new.png"
+ },
+ {
+  "page": "site/risk",
+  "width": 768,
+  "pct": 2.07,
+  "hOld": 3200,
+  "hNew": 3171,
+  "old": "site_risk-768-old.png",
+  "new": "site_risk-768-new.png"
+ },
+ {
+  "page": "site/risk",
+  "width": 390,
+  "pct": 2.65,
+  "hOld": 4667,
+  "hNew": 4593,
+  "old": "site_risk-390-old.png",
+  "new": "site_risk-390-new.png"
+ },
+ {
+  "page": "site/contact",
+  "width": 1440,
+  "pct": 2.16,
+  "hOld": 1381,
+  "hNew": 1377,
+  "old": "site_contact-1440-old.png",
+  "new": "site_contact-1440-new.png"
+ },
+ {
+  "page": "site/contact",
+  "width": 1280,
+  "pct": 2.43,
+  "hOld": 1381,
+  "hNew": 1377,
+  "old": "site_contact-1280-old.png",
+  "new": "site_contact-1280-new.png"
+ },
+ {
+  "page": "site/contact",
+  "width": 768,
+  "pct": 3.79,
+  "hOld": 1549,
+  "hNew": 1519,
+  "old": "site_contact-768-old.png",
+  "new": "site_contact-768-new.png"
+ },
+ {
+  "page": "site/contact",
+  "width": 390,
+  "pct": 10.77,
+  "hOld": 1920,
+  "hNew": 1782,
+  "old": "site_contact-390-old.png",
+  "new": "site_contact-390-new.png"
+ },
+ {
+  "page": "site/status",
+  "width": 1440,
+  "pct": 1.94,
+  "hOld": 1628,
+  "hNew": 1625,
+  "old": "site_status-1440-old.png",
+  "new": "site_status-1440-new.png"
+ },
+ {
+  "page": "site/status",
+  "width": 1280,
+  "pct": 2.18,
+  "hOld": 1628,
+  "hNew": 1625,
+  "old": "site_status-1280-old.png",
+  "new": "site_status-1280-new.png"
+ },
+ {
+  "page": "site/status",
+  "width": 768,
+  "pct": 3.44,
+  "hOld": 1796,
+  "hNew": 1766,
+  "old": "site_status-768-old.png",
+  "new": "site_status-768-new.png"
+ },
+ {
+  "page": "site/status",
+  "width": 390,
+  "pct": 5.24,
+  "hOld": 2205,
+  "hNew": 2131,
+  "old": "site_status-390-old.png",
+  "new": "site_status-390-new.png"
+ },
+ {
+  "page": "site/security",
+  "width": 1440,
+  "pct": 1.64,
+  "hOld": 1834,
+  "hNew": 1831,
+  "old": "site_security-1440-old.png",
+  "new": "site_security-1440-new.png"
+ },
+ {
+  "page": "site/security",
+  "width": 1280,
+  "pct": 1.85,
+  "hOld": 1834,
+  "hNew": 1831,
+  "old": "site_security-1280-old.png",
+  "new": "site_security-1280-new.png"
+ },
+ {
+  "page": "site/security",
+  "width": 768,
+  "pct": 2.95,
+  "hOld": 2002,
+  "hNew": 1973,
+  "old": "site_security-768-old.png",
+  "new": "site_security-768-new.png"
+ },
+ {
+  "page": "site/security",
+  "width": 390,
+  "pct": 3.78,
+  "hOld": 2923,
+  "hNew": 2849,
+  "old": "site_security-390-old.png",
+  "new": "site_security-390-new.png"
+ },
+ {
+  "page": "site/insurance",
+  "width": 1440,
+  "pct": 1.96,
+  "hOld": 1544,
+  "hNew": 1541,
+  "old": "site_insurance-1440-old.png",
+  "new": "site_insurance-1440-new.png"
+ },
+ {
+  "page": "site/insurance",
+  "width": 1280,
+  "pct": 2.2,
+  "hOld": 1544,
+  "hNew": 1541,
+  "old": "site_insurance-1280-old.png",
+  "new": "site_insurance-1280-new.png"
+ },
+ {
+  "page": "site/insurance",
+  "width": 768,
+  "pct": 3.47,
+  "hOld": 1712,
+  "hNew": 1682,
+  "old": "site_insurance-768-old.png",
+  "new": "site_insurance-768-new.png"
+ },
+ {
+  "page": "site/insurance",
+  "width": 390,
+  "pct": 4.61,
+  "hOld": 2412,
+  "hNew": 2338,
+  "old": "site_insurance-390-old.png",
+  "new": "site_insurance-390-new.png"
+ },
+ {
+  "page": "site/no-such-page",
+  "width": 1440,
+  "pct": 0,
+  "hOld": 932,
+  "hNew": 932,
+  "old": "site_no_such_page-1440-old.png",
+  "new": "site_no_such_page-1440-new.png"
+ },
+ {
+  "page": "site/no-such-page",
+  "width": 1280,
+  "pct": 0,
+  "hOld": 832,
+  "hNew": 832,
+  "old": "site_no_such_page-1280-old.png",
+  "new": "site_no_such_page-1280-new.png"
+ },
+ {
+  "page": "site/no-such-page",
+  "width": 768,
+  "pct": 0,
+  "hOld": 1056,
+  "hNew": 1056,
+  "old": "site_no_such_page-768-old.png",
+  "new": "site_no_such_page-768-new.png"
+ },
+ {
+  "page": "site/no-such-page",
+  "width": 390,
+  "pct": 0,
+  "hOld": 876,
+  "hNew": 876,
+  "old": "site_no_such_page-390-old.png",
+  "new": "site_no_such_page-390-new.png"
+ },
+ {
+  "page": "out/login",
+  "width": 1440,
+  "pct": 1.68,
+  "hOld": 902,
+  "hNew": 900,
+  "old": "out_login-1440-old.png",
+  "new": "out_login-1440-new.png"
+ },
+ {
+  "page": "out/login",
+  "width": 1280,
+  "pct": 1.93,
+  "hOld": 888,
+  "hNew": 882,
+  "old": "out_login-1280-old.png",
+  "new": "out_login-1280-new.png"
+ },
+ {
+  "page": "out/login",
+  "width": 768,
+  "pct": 2.82,
+  "hOld": 1067,
+  "hNew": 1082,
+  "old": "out_login-768-old.png",
+  "new": "out_login-768-new.png"
+ },
+ {
+  "page": "out/login",
+  "width": 390,
+  "pct": 8.48,
+  "hOld": 1018,
+  "hNew": 1038,
+  "old": "out_login-390-old.png",
+  "new": "out_login-390-new.png"
+ },
+ {
+  "page": "out/register",
+  "width": 1440,
+  "pct": 1.83,
+  "hOld": 900,
+  "hNew": 900,
+  "old": "out_register-1440-old.png",
+  "new": "out_register-1440-new.png"
+ },
+ {
+  "page": "out/register",
+  "width": 1280,
+  "pct": 2.31,
+  "hOld": 800,
+  "hNew": 800,
+  "old": "out_register-1280-old.png",
+  "new": "out_register-1280-new.png"
+ },
+ {
+  "page": "out/register",
+  "width": 768,
+  "pct": 2.82,
+  "hOld": 1067,
+  "hNew": 1082,
+  "old": "out_register-768-old.png",
+  "new": "out_register-768-new.png"
+ },
+ {
+  "page": "out/register",
+  "width": 390,
+  "pct": 12.78,
+  "hOld": 964,
+  "hNew": 998,
+  "old": "out_register-390-old.png",
+  "new": "out_register-390-new.png"
+ },
+ {
+  "page": "out/forgot",
+  "width": 1440,
+  "pct": 1.83,
+  "hOld": 900,
+  "hNew": 900,
+  "old": "out_forgot-1440-old.png",
+  "new": "out_forgot-1440-new.png"
+ },
+ {
+  "page": "out/forgot",
+  "width": 1280,
+  "pct": 2.31,
+  "hOld": 800,
+  "hNew": 800,
+  "old": "out_forgot-1280-old.png",
+  "new": "out_forgot-1280-new.png"
+ },
+ {
+  "page": "out/forgot",
+  "width": 768,
+  "pct": 2.82,
+  "hOld": 1067,
+  "hNew": 1082,
+  "old": "out_forgot-768-old.png",
+  "new": "out_forgot-768-new.png"
+ },
+ {
+  "page": "out/forgot",
+  "width": 390,
+  "pct": 10.11,
+  "hOld": 964,
+  "hNew": 998,
+  "old": "out_forgot-390-old.png",
+  "new": "out_forgot-390-new.png"
+ },
+ {
+  "page": "out/login-phone",
+  "width": 1440,
+  "pct": 1.83,
+  "hOld": 900,
+  "hNew": 900,
+  "old": "out_login_phone-1440-old.png",
+  "new": "out_login_phone-1440-new.png"
+ },
+ {
+  "page": "out/login-phone",
+  "width": 1280,
+  "pct": 2.31,
+  "hOld": 800,
+  "hNew": 800,
+  "old": "out_login_phone-1280-old.png",
+  "new": "out_login_phone-1280-new.png"
+ },
+ {
+  "page": "out/login-phone",
+  "width": 768,
+  "pct": 2.82,
+  "hOld": 1067,
+  "hNew": 1082,
+  "old": "out_login_phone-768-old.png",
+  "new": "out_login_phone-768-new.png"
+ },
+ {
+  "page": "out/login-phone",
+  "width": 390,
+  "pct": 9.38,
+  "hOld": 964,
+  "hNew": 998,
+  "old": "out_login_phone-390-old.png",
+  "new": "out_login_phone-390-new.png"
+ },
+ {
+  "page": "app/dashboard",
+  "width": 1440,
+  "pct": 0.41,
+  "hOld": 1903,
+  "hNew": 1965,
+  "old": "app_dashboard-1440-old.png",
+  "new": "app_dashboard-1440-new.png"
+ },
+ {
+  "page": "app/dashboard",
+  "width": 1280,
+  "pct": 0.42,
+  "hOld": 1935,
+  "hNew": 1997,
+  "old": "app_dashboard-1280-old.png",
+  "new": "app_dashboard-1280-new.png"
+ },
+ {
+  "page": "app/dashboard",
+  "width": 768,
+  "pct": 8.09,
+  "hOld": 2093,
+  "hNew": 2174,
+  "old": "app_dashboard-768-old.png",
+  "new": "app_dashboard-768-new.png"
+ },
+ {
+  "page": "app/dashboard",
+  "width": 390,
+  "pct": 19.62,
+  "hOld": 2642,
+  "hNew": 2767,
+  "old": "app_dashboard-390-old.png",
+  "new": "app_dashboard-390-new.png"
+ },
+ {
+  "page": "app/start",
+  "width": 1440,
+  "pct": 0.06,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_start-1440-old.png",
+  "new": "app_start-1440-new.png"
+ },
+ {
+  "page": "app/start",
+  "width": 1280,
+  "pct": 0.08,
+  "hOld": 800,
+  "hNew": 935,
+  "old": "app_start-1280-old.png",
+  "new": "app_start-1280-new.png"
+ },
+ {
+  "page": "app/start",
+  "width": 768,
+  "pct": 4.01,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_start-768-old.png",
+  "new": "app_start-768-new.png"
+ },
+ {
+  "page": "app/start",
+  "width": 390,
+  "pct": 9.41,
+  "hOld": 951,
+  "hNew": 1135,
+  "old": "app_start-390-old.png",
+  "new": "app_start-390-new.png"
+ },
+ {
+  "page": "app/trade",
+  "width": 1440,
+  "pct": 1.01,
+  "hOld": 2067,
+  "hNew": 2145,
+  "old": "app_trade-1440-old.png",
+  "new": "app_trade-1440-new.png"
+ },
+ {
+  "page": "app/trade",
+  "width": 1280,
+  "pct": 0.92,
+  "hOld": 2108,
+  "hNew": 2186,
+  "old": "app_trade-1280-old.png",
+  "new": "app_trade-1280-new.png"
+ },
+ {
+  "page": "app/trade",
+  "width": 768,
+  "pct": 8.97,
+  "hOld": 2942,
+  "hNew": 2985,
+  "old": "app_trade-768-old.png",
+  "new": "app_trade-768-new.png"
+ },
+ {
+  "page": "app/trade",
+  "width": 390,
+  "pct": 21.83,
+  "hOld": 3283,
+  "hNew": 3464,
+  "old": "app_trade-390-old.png",
+  "new": "app_trade-390-new.png"
+ },
+ {
+  "page": "app/positions",
+  "width": 1440,
+  "pct": 0.45,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_positions-1440-old.png",
+  "new": "app_positions-1440-new.png"
+ },
+ {
+  "page": "app/positions",
+  "width": 1280,
+  "pct": 0.57,
+  "hOld": 800,
+  "hNew": 935,
+  "old": "app_positions-1280-old.png",
+  "new": "app_positions-1280-new.png"
+ },
+ {
+  "page": "app/positions",
+  "width": 768,
+  "pct": 7.04,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_positions-768-old.png",
+  "new": "app_positions-768-new.png"
+ },
+ {
+  "page": "app/positions",
+  "width": 390,
+  "pct": 19.96,
+  "hOld": 1312,
+  "hNew": 1476,
+  "old": "app_positions-390-old.png",
+  "new": "app_positions-390-new.png"
+ },
+ {
+  "page": "app/orders",
+  "width": 1440,
+  "pct": 1.48,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_orders-1440-old.png",
+  "new": "app_orders-1440-new.png"
+ },
+ {
+  "page": "app/orders",
+  "width": 1280,
+  "pct": 1.66,
+  "hOld": 800,
+  "hNew": 935,
+  "old": "app_orders-1280-old.png",
+  "new": "app_orders-1280-new.png"
+ },
+ {
+  "page": "app/orders",
+  "width": 768,
+  "pct": 5.95,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_orders-768-old.png",
+  "new": "app_orders-768-new.png"
+ },
+ {
+  "page": "app/orders",
+  "width": 390,
+  "pct": 19.95,
+  "hOld": 886,
+  "hNew": 1135,
+  "old": "app_orders-390-old.png",
+  "new": "app_orders-390-new.png"
+ },
+ {
+  "page": "app/watchlists",
+  "width": 1440,
+  "pct": 0.06,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_watchlists-1440-old.png",
+  "new": "app_watchlists-1440-new.png"
+ },
+ {
+  "page": "app/watchlists",
+  "width": 1280,
+  "pct": 0.08,
+  "hOld": 800,
+  "hNew": 935,
+  "old": "app_watchlists-1280-old.png",
+  "new": "app_watchlists-1280-new.png"
+ },
+ {
+  "page": "app/watchlists",
+  "width": 768,
+  "pct": 0.79,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_watchlists-768-old.png",
+  "new": "app_watchlists-768-new.png"
+ },
+ {
+  "page": "app/watchlists",
+  "width": 390,
+  "pct": 2.04,
+  "hOld": 844,
+  "hNew": 1135,
+  "old": "app_watchlists-390-old.png",
+  "new": "app_watchlists-390-new.png"
+ },
+ {
+  "page": "app/markets",
+  "width": 1440,
+  "pct": 4.87,
+  "hOld": 1591,
+  "hNew": 1637,
+  "old": "app_markets-1440-old.png",
+  "new": "app_markets-1440-new.png"
+ },
+ {
+  "page": "app/markets",
+  "width": 1280,
+  "pct": 4.96,
+  "hOld": 1591,
+  "hNew": 1637,
+  "old": "app_markets-1280-old.png",
+  "new": "app_markets-1280-new.png"
+ },
+ {
+  "page": "app/markets",
+  "width": 768,
+  "pct": 10.34,
+  "hOld": 1842,
+  "hNew": 1927,
+  "old": "app_markets-768-old.png",
+  "new": "app_markets-768-new.png"
+ },
+ {
+  "page": "app/markets",
+  "width": 390,
+  "pct": 13.28,
+  "hOld": 2887,
+  "hNew": 2971,
+  "old": "app_markets-390-old.png",
+  "new": "app_markets-390-new.png"
+ },
+ {
+  "page": "app/admin",
+  "width": 1440,
+  "pct": 0.06,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_admin-1440-old.png",
+  "new": "app_admin-1440-new.png"
+ },
+ {
+  "page": "app/admin",
+  "width": 1280,
+  "pct": 0.08,
+  "hOld": 805,
+  "hNew": 935,
+  "old": "app_admin-1280-old.png",
+  "new": "app_admin-1280-new.png"
+ },
+ {
+  "page": "app/admin",
+  "width": 768,
+  "pct": 12.84,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_admin-768-old.png",
+  "new": "app_admin-768-new.png"
+ },
+ {
+  "page": "app/admin",
+  "width": 390,
+  "pct": 15.6,
+  "hOld": 1084,
+  "hNew": 1274,
+  "old": "app_admin-390-old.png",
+  "new": "app_admin-390-new.png"
+ },
+ {
+  "page": "app/admin-users",
+  "width": 1440,
+  "pct": 1.22,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_admin_users-1440-old.png",
+  "new": "app_admin_users-1440-new.png"
+ },
+ {
+  "page": "app/admin-users",
+  "width": 1280,
+  "pct": 1.53,
+  "hOld": 800,
+  "hNew": 935,
+  "old": "app_admin_users-1280-old.png",
+  "new": "app_admin_users-1280-new.png"
+ },
+ {
+  "page": "app/admin-users",
+  "width": 768,
+  "pct": 5.59,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_admin_users-768-old.png",
+  "new": "app_admin_users-768-new.png"
+ },
+ {
+  "page": "app/admin-users",
+  "width": 390,
+  "pct": 16,
+  "hOld": 967,
+  "hNew": 1135,
+  "old": "app_admin_users-390-old.png",
+  "new": "app_admin_users-390-new.png"
+ },
+ {
+  "page": "app/admin-admins",
+  "width": 1440,
+  "pct": 0.73,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_admin_admins-1440-old.png",
+  "new": "app_admin_admins-1440-new.png"
+ },
+ {
+  "page": "app/admin-admins",
+  "width": 1280,
+  "pct": 0.71,
+  "hOld": 800,
+  "hNew": 935,
+  "old": "app_admin_admins-1280-old.png",
+  "new": "app_admin_admins-1280-new.png"
+ },
+ {
+  "page": "app/admin-admins",
+  "width": 768,
+  "pct": 2.79,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_admin_admins-768-old.png",
+  "new": "app_admin_admins-768-new.png"
+ },
+ {
+  "page": "app/admin-admins",
+  "width": 390,
+  "pct": 13.08,
+  "hOld": 844,
+  "hNew": 1135,
+  "old": "app_admin_admins-390-old.png",
+  "new": "app_admin_admins-390-new.png"
+ },
+ {
+  "page": "app/admin-support",
+  "width": 1440,
+  "pct": 0.06,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_admin_support-1440-old.png",
+  "new": "app_admin_support-1440-new.png"
+ },
+ {
+  "page": "app/admin-support",
+  "width": 1280,
+  "pct": 0.08,
+  "hOld": 800,
+  "hNew": 935,
+  "old": "app_admin_support-1280-old.png",
+  "new": "app_admin_support-1280-new.png"
+ },
+ {
+  "page": "app/admin-support",
+  "width": 768,
+  "pct": 1.12,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_admin_support-768-old.png",
+  "new": "app_admin_support-768-new.png"
+ },
+ {
+  "page": "app/admin-support",
+  "width": 390,
+  "pct": 3.15,
+  "hOld": 844,
+  "hNew": 1135,
+  "old": "app_admin_support-390-old.png",
+  "new": "app_admin_support-390-new.png"
+ },
+ {
+  "page": "app/admin-comms",
+  "width": 1440,
+  "pct": 0.03,
+  "hOld": 1657,
+  "hNew": 1735,
+  "old": "app_admin_comms-1440-old.png",
+  "new": "app_admin_comms-1440-new.png"
+ },
+ {
+  "page": "app/admin-comms",
+  "width": 1280,
+  "pct": 0.04,
+  "hOld": 1678,
+  "hNew": 1756,
+  "old": "app_admin_comms-1280-old.png",
+  "new": "app_admin_comms-1280-new.png"
+ },
+ {
+  "page": "app/admin-comms",
+  "width": 768,
+  "pct": 10.87,
+  "hOld": 1858,
+  "hNew": 1972,
+  "old": "app_admin_comms-768-old.png",
+  "new": "app_admin_comms-768-new.png"
+ },
+ {
+  "page": "app/admin-comms",
+  "width": 390,
+  "pct": 17.26,
+  "hOld": 2356,
+  "hNew": 2537,
+  "old": "app_admin_comms-390-old.png",
+  "new": "app_admin_comms-390-new.png"
+ },
+ {
+  "page": "app/admin-phone",
+  "width": 1440,
+  "pct": 0.52,
+  "hOld": 5834,
+  "hNew": 5912,
+  "old": "app_admin_phone-1440-old.png",
+  "new": "app_admin_phone-1440-new.png"
+ },
+ {
+  "page": "app/admin-phone",
+  "width": 1280,
+  "pct": 0.46,
+  "hOld": 5855,
+  "hNew": 5934,
+  "old": "app_admin_phone-1280-old.png",
+  "new": "app_admin_phone-1280-new.png"
+ },
+ {
+  "page": "app/admin-phone",
+  "width": 768,
+  "pct": 21.61,
+  "hOld": 6103,
+  "hNew": 6274,
+  "old": "app_admin_phone-768-old.png",
+  "new": "app_admin_phone-768-new.png"
+ },
+ {
+  "page": "app/admin-phone",
+  "width": 390,
+  "pct": 20.83,
+  "hOld": 14214,
+  "hNew": 14347,
+  "old": "app_admin_phone-390-old.png",
+  "new": "app_admin_phone-390-new.png"
+ },
+ {
+  "page": "app/admin-phoneaccts",
+  "width": 1440,
+  "pct": 0.06,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_admin_phoneaccts-1440-old.png",
+  "new": "app_admin_phoneaccts-1440-new.png"
+ },
+ {
+  "page": "app/admin-phoneaccts",
+  "width": 1280,
+  "pct": 0.08,
+  "hOld": 800,
+  "hNew": 935,
+  "old": "app_admin_phoneaccts-1280-old.png",
+  "new": "app_admin_phoneaccts-1280-new.png"
+ },
+ {
+  "page": "app/admin-phoneaccts",
+  "width": 768,
+  "pct": 9.03,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_admin_phoneaccts-768-old.png",
+  "new": "app_admin_phoneaccts-768-new.png"
+ },
+ {
+  "page": "app/admin-phoneaccts",
+  "width": 390,
+  "pct": 14.75,
+  "hOld": 880,
+  "hNew": 1135,
+  "old": "app_admin_phoneaccts-390-old.png",
+  "new": "app_admin_phoneaccts-390-new.png"
+ },
+ {
+  "page": "app/admin-money",
+  "width": 1440,
+  "pct": 14.29,
+  "hOld": 4353,
+  "hNew": 4396,
+  "old": "app_admin_money-1440-old.png",
+  "new": "app_admin_money-1440-new.png"
+ },
+ {
+  "page": "app/admin-money",
+  "width": 1280,
+  "pct": 14.27,
+  "hOld": 4532,
+  "hNew": 4575,
+  "old": "app_admin_money-1280-old.png",
+  "new": "app_admin_money-1280-new.png"
+ },
+ {
+  "page": "app/admin-money",
+  "width": 768,
+  "pct": 18.09,
+  "hOld": 5019,
+  "hNew": 5140,
+  "old": "app_admin_money-768-old.png",
+  "new": "app_admin_money-768-new.png"
+ },
+ {
+  "page": "app/admin-money",
+  "width": 390,
+  "pct": 20.93,
+  "hOld": 8734,
+  "hNew": 9020,
+  "old": "app_admin_money-390-old.png",
+  "new": "app_admin_money-390-new.png"
+ },
+ {
+  "page": "app/admin-sponsored",
+  "width": 1440,
+  "pct": 0.04,
+  "hOld": 1271,
+  "hNew": 1349,
+  "old": "app_admin_sponsored-1440-old.png",
+  "new": "app_admin_sponsored-1440-new.png"
+ },
+ {
+  "page": "app/admin-sponsored",
+  "width": 1280,
+  "pct": 0.05,
+  "hOld": 1271,
+  "hNew": 1349,
+  "old": "app_admin_sponsored-1280-old.png",
+  "new": "app_admin_sponsored-1280-new.png"
+ },
+ {
+  "page": "app/admin-sponsored",
+  "width": 768,
+  "pct": 6.66,
+  "hOld": 1340,
+  "hNew": 1437,
+  "old": "app_admin_sponsored-768-old.png",
+  "new": "app_admin_sponsored-768-new.png"
+ },
+ {
+  "page": "app/admin-sponsored",
+  "width": 390,
+  "pct": 14.81,
+  "hOld": 2120,
+  "hNew": 2318,
+  "old": "app_admin_sponsored-390-old.png",
+  "new": "app_admin_sponsored-390-new.png"
+ },
+ {
+  "page": "app/admin-upgrades",
+  "width": 1440,
+  "pct": 0.04,
+  "hOld": 1218,
+  "hNew": 1296,
+  "old": "app_admin_upgrades-1440-old.png",
+  "new": "app_admin_upgrades-1440-new.png"
+ },
+ {
+  "page": "app/admin-upgrades",
+  "width": 1280,
+  "pct": 0.05,
+  "hOld": 1264,
+  "hNew": 1342,
+  "old": "app_admin_upgrades-1280-old.png",
+  "new": "app_admin_upgrades-1280-new.png"
+ },
+ {
+  "page": "app/admin-upgrades",
+  "width": 768,
+  "pct": 11.74,
+  "hOld": 1377,
+  "hNew": 1494,
+  "old": "app_admin_upgrades-768-old.png",
+  "new": "app_admin_upgrades-768-new.png"
+ },
+ {
+  "page": "app/admin-upgrades",
+  "width": 390,
+  "pct": 22.59,
+  "hOld": 1931,
+  "hNew": 2196,
+  "old": "app_admin_upgrades-390-old.png",
+  "new": "app_admin_upgrades-390-new.png"
+ },
+ {
+  "page": "app/admin-readme",
+  "width": 1440,
+  "pct": 0.05,
+  "hOld": 11127,
+  "hNew": 11190,
+  "old": "app_admin_readme-1440-old.png",
+  "new": "app_admin_readme-1440-new.png"
+ },
+ {
+  "page": "app/admin-readme",
+  "width": 1280,
+  "pct": 0.02,
+  "hOld": 11987,
+  "hNew": 12050,
+  "old": "app_admin_readme-1280-old.png",
+  "new": "app_admin_readme-1280-new.png"
+ },
+ {
+  "page": "app/admin-readme",
+  "width": 768,
+  "pct": 18.28,
+  "hOld": 14431,
+  "hNew": 14705,
+  "old": "app_admin_readme-768-old.png",
+  "new": "app_admin_readme-768-new.png"
+ },
+ {
+  "page": "app/admin-readme",
+  "width": 390,
+  "pct": 24.71,
+  "hOld": 26142,
+  "hNew": 27058,
+  "old": "app_admin_readme-390-old.png",
+  "new": "app_admin_readme-390-new.png"
+ },
+ {
+  "page": "app/admin-seo",
+  "width": 1440,
+  "pct": 0.06,
+  "hOld": 8760,
+  "hNew": 8838,
+  "old": "app_admin_seo-1440-old.png",
+  "new": "app_admin_seo-1440-new.png"
+ },
+ {
+  "page": "app/admin-seo",
+  "width": 1280,
+  "pct": 0.01,
+  "hOld": 8864,
+  "hNew": 8943,
+  "old": "app_admin_seo-1280-old.png",
+  "new": "app_admin_seo-1280-new.png"
+ },
+ {
+  "page": "app/admin-seo",
+  "width": 768,
+  "pct": 8.66,
+  "hOld": 9509,
+  "hNew": 9606,
+  "old": "app_admin_seo-768-old.png",
+  "new": "app_admin_seo-768-new.png"
+ },
+ {
+  "page": "app/admin-seo",
+  "width": 390,
+  "pct": 21.6,
+  "hOld": 13522,
+  "hNew": 13962,
+  "old": "app_admin_seo-390-old.png",
+  "new": "app_admin_seo-390-new.png"
+ },
+ {
+  "page": "app/admin-strategies",
+  "width": 1440,
+  "pct": 9.1,
+  "hOld": 6159,
+  "hNew": 6223,
+  "old": "app_admin_strategies-1440-old.png",
+  "new": "app_admin_strategies-1440-new.png"
+ },
+ {
+  "page": "app/admin-strategies",
+  "width": 1280,
+  "pct": 9.45,
+  "hOld": 6181,
+  "hNew": 6244,
+  "old": "app_admin_strategies-1280-old.png",
+  "new": "app_admin_strategies-1280-new.png"
+ },
+ {
+  "page": "app/admin-strategies",
+  "width": 768,
+  "pct": 14.89,
+  "hOld": 6465,
+  "hNew": 6547,
+  "old": "app_admin_strategies-768-old.png",
+  "new": "app_admin_strategies-768-new.png"
+ },
+ {
+  "page": "app/admin-strategies",
+  "width": 390,
+  "pct": 24.45,
+  "hOld": 7654,
+  "hNew": 7899,
+  "old": "app_admin_strategies-390-old.png",
+  "new": "app_admin_strategies-390-new.png"
+ },
+ {
+  "page": "app/admin-trust",
+  "width": 1440,
+  "pct": 0.29,
+  "hOld": 1454,
+  "hNew": 1532,
+  "old": "app_admin_trust-1440-old.png",
+  "new": "app_admin_trust-1440-new.png"
+ },
+ {
+  "page": "app/admin-trust",
+  "width": 1280,
+  "pct": 0.04,
+  "hOld": 1472,
+  "hNew": 1550,
+  "old": "app_admin_trust-1280-old.png",
+  "new": "app_admin_trust-1280-new.png"
+ },
+ {
+  "page": "app/admin-trust",
+  "width": 768,
+  "pct": 5.44,
+  "hOld": 1561,
+  "hNew": 1657,
+  "old": "app_admin_trust-768-old.png",
+  "new": "app_admin_trust-768-new.png"
+ },
+ {
+  "page": "app/admin-trust",
+  "width": 390,
+  "pct": 13.71,
+  "hOld": 2644,
+  "hNew": 2965,
+  "old": "app_admin_trust-390-old.png",
+  "new": "app_admin_trust-390-new.png"
+ },
+ {
+  "page": "app/admin-agents",
+  "width": 1440,
+  "pct": 5.07,
+  "hOld": 2429,
+  "hNew": 2496,
+  "old": "app_admin_agents-1440-old.png",
+  "new": "app_admin_agents-1440-new.png"
+ },
+ {
+  "page": "app/admin-agents",
+  "width": 1280,
+  "pct": 5.09,
+  "hOld": 2429,
+  "hNew": 2496,
+  "old": "app_admin_agents-1280-old.png",
+  "new": "app_admin_agents-1280-new.png"
+ },
+ {
+  "page": "app/admin-agents",
+  "width": 768,
+  "pct": 11.81,
+  "hOld": 2541,
+  "hNew": 2626,
+  "old": "app_admin_agents-768-old.png",
+  "new": "app_admin_agents-768-new.png"
+ },
+ {
+  "page": "app/admin-agents",
+  "width": 390,
+  "pct": 19.67,
+  "hOld": 4171,
+  "hNew": 4354,
+  "old": "app_admin_agents-390-old.png",
+  "new": "app_admin_agents-390-new.png"
+ },
+ {
+  "page": "app/admin-ai",
+  "width": 1440,
+  "pct": 5.86,
+  "hOld": 3394,
+  "hNew": 3450,
+  "old": "app_admin_ai-1440-old.png",
+  "new": "app_admin_ai-1440-new.png"
+ },
+ {
+  "page": "app/admin-ai",
+  "width": 1280,
+  "pct": 6.19,
+  "hOld": 3417,
+  "hNew": 3472,
+  "old": "app_admin_ai-1280-old.png",
+  "new": "app_admin_ai-1280-new.png"
+ },
+ {
+  "page": "app/admin-ai",
+  "width": 768,
+  "pct": 12.47,
+  "hOld": 3553,
+  "hNew": 3627,
+  "old": "app_admin_ai-768-old.png",
+  "new": "app_admin_ai-768-new.png"
+ },
+ {
+  "page": "app/admin-ai",
+  "width": 390,
+  "pct": 20.47,
+  "hOld": 5231,
+  "hNew": 5422,
+  "old": "app_admin_ai-390-old.png",
+  "new": "app_admin_ai-390-new.png"
+ },
+ {
+  "page": "app/admin-keys",
+  "width": 1440,
+  "pct": 8.41,
+  "hOld": 8142,
+  "hNew": 8204,
+  "old": "app_admin_keys-1440-old.png",
+  "new": "app_admin_keys-1440-new.png"
+ },
+ {
+  "page": "app/admin-keys",
+  "width": 1280,
+  "pct": 8.66,
+  "hOld": 8142,
+  "hNew": 8204,
+  "old": "app_admin_keys-1280-old.png",
+  "new": "app_admin_keys-1280-new.png"
+ },
+ {
+  "page": "app/admin-keys",
+  "width": 768,
+  "pct": 13.72,
+  "hOld": 8197,
+  "hNew": 8277,
+  "old": "app_admin_keys-768-old.png",
+  "new": "app_admin_keys-768-new.png"
+ },
+ {
+  "page": "app/admin-keys",
+  "width": 390,
+  "pct": 17.31,
+  "hOld": 14045,
+  "hNew": 14818,
+  "old": "app_admin_keys-390-old.png",
+  "new": "app_admin_keys-390-new.png"
+ },
+ {
+  "page": "app/admin-data",
+  "width": 1440,
+  "pct": 0.11,
+  "hOld": 2003,
+  "hNew": 2081,
+  "old": "app_admin_data-1440-old.png",
+  "new": "app_admin_data-1440-new.png"
+ },
+ {
+  "page": "app/admin-data",
+  "width": 1280,
+  "pct": 0.12,
+  "hOld": 2046,
+  "hNew": 2124,
+  "old": "app_admin_data-1280-old.png",
+  "new": "app_admin_data-1280-new.png"
+ },
+ {
+  "page": "app/admin-data",
+  "width": 768,
+  "pct": 7.7,
+  "hOld": 2122,
+  "hNew": 2219,
+  "old": "app_admin_data-768-old.png",
+  "new": "app_admin_data-768-new.png"
+ },
+ {
+  "page": "app/admin-data",
+  "width": 390,
+  "pct": 14.33,
+  "hOld": 6017,
+  "hNew": 6471,
+  "old": "app_admin_data-390-old.png",
+  "new": "app_admin_data-390-new.png"
+ },
+ {
+  "page": "app/admin-hosting",
+  "width": 1440,
+  "pct": 7.28,
+  "hOld": 1489,
+  "hNew": 1565,
+  "old": "app_admin_hosting-1440-old.png",
+  "new": "app_admin_hosting-1440-new.png"
+ },
+ {
+  "page": "app/admin-hosting",
+  "width": 1280,
+  "pct": 7.41,
+  "hOld": 1533,
+  "hNew": 1609,
+  "old": "app_admin_hosting-1280-old.png",
+  "new": "app_admin_hosting-1280-new.png"
+ },
+ {
+  "page": "app/admin-hosting",
+  "width": 768,
+  "pct": 16.4,
+  "hOld": 1691,
+  "hNew": 1782,
+  "old": "app_admin_hosting-768-old.png",
+  "new": "app_admin_hosting-768-new.png"
+ },
+ {
+  "page": "app/admin-hosting",
+  "width": 390,
+  "pct": 20.85,
+  "hOld": 2492,
+  "hNew": 2688,
+  "old": "app_admin_hosting-390-old.png",
+  "new": "app_admin_hosting-390-new.png"
+ },
+ {
+  "page": "app/admin-analytics",
+  "width": 1440,
+  "pct": 0.06,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_admin_analytics-1440-old.png",
+  "new": "app_admin_analytics-1440-new.png"
+ },
+ {
+  "page": "app/admin-analytics",
+  "width": 1280,
+  "pct": 0.07,
+  "hOld": 854,
+  "hNew": 935,
+  "old": "app_admin_analytics-1280-old.png",
+  "new": "app_admin_analytics-1280-new.png"
+ },
+ {
+  "page": "app/admin-analytics",
+  "width": 768,
+  "pct": 5,
+  "hOld": 1112,
+  "hNew": 1238,
+  "old": "app_admin_analytics-768-old.png",
+  "new": "app_admin_analytics-768-new.png"
+ },
+ {
+  "page": "app/admin-analytics",
+  "width": 390,
+  "pct": 13.38,
+  "hOld": 1557,
+  "hNew": 1673,
+  "old": "app_admin_analytics-390-old.png",
+  "new": "app_admin_analytics-390-new.png"
+ },
+ {
+  "page": "app/admin-setup",
+  "width": 1440,
+  "pct": 0.91,
+  "hOld": 1544,
+  "hNew": 1610,
+  "old": "app_admin_setup-1440-old.png",
+  "new": "app_admin_setup-1440-new.png"
+ },
+ {
+  "page": "app/admin-setup",
+  "width": 1280,
+  "pct": 0.92,
+  "hOld": 1544,
+  "hNew": 1610,
+  "old": "app_admin_setup-1280-old.png",
+  "new": "app_admin_setup-1280-new.png"
+ },
+ {
+  "page": "app/admin-setup",
+  "width": 768,
+  "pct": 13.08,
+  "hOld": 1706,
+  "hNew": 1811,
+  "old": "app_admin_setup-768-old.png",
+  "new": "app_admin_setup-768-new.png"
+ },
+ {
+  "page": "app/admin-setup",
+  "width": 390,
+  "pct": 28.79,
+  "hOld": 2611,
+  "hNew": 2820,
+  "old": "app_admin_setup-390-old.png",
+  "new": "app_admin_setup-390-new.png"
+ },
+ {
+  "page": "app/business",
+  "width": 1440,
+  "pct": 2.31,
+  "hOld": 1064,
+  "hNew": 1126,
+  "old": "app_business-1440-old.png",
+  "new": "app_business-1440-new.png"
+ },
+ {
+  "page": "app/business",
+  "width": 1280,
+  "pct": 2.38,
+  "hOld": 1064,
+  "hNew": 1126,
+  "old": "app_business-1280-old.png",
+  "new": "app_business-1280-new.png"
+ },
+ {
+  "page": "app/business",
+  "width": 768,
+  "pct": 15.62,
+  "hOld": 1230,
+  "hNew": 1346,
+  "old": "app_business-768-old.png",
+  "new": "app_business-768-new.png"
+ },
+ {
+  "page": "app/business",
+  "width": 390,
+  "pct": 15.05,
+  "hOld": 1819,
+  "hNew": 1955,
+  "old": "app_business-390-old.png",
+  "new": "app_business-390-new.png"
+ },
+ {
+  "page": "app/invoices",
+  "width": 1440,
+  "pct": 0.05,
+  "hOld": 1131,
+  "hNew": 1209,
+  "old": "app_invoices-1440-old.png",
+  "new": "app_invoices-1440-new.png"
+ },
+ {
+  "page": "app/invoices",
+  "width": 1280,
+  "pct": 0.05,
+  "hOld": 1131,
+  "hNew": 1209,
+  "old": "app_invoices-1280-old.png",
+  "new": "app_invoices-1280-new.png"
+ },
+ {
+  "page": "app/invoices",
+  "width": 768,
+  "pct": 13.55,
+  "hOld": 1163,
+  "hNew": 1295,
+  "old": "app_invoices-768-old.png",
+  "new": "app_invoices-768-new.png"
+ },
+ {
+  "page": "app/invoices",
+  "width": 390,
+  "pct": 12.06,
+  "hOld": 1993,
+  "hNew": 2176,
+  "old": "app_invoices-390-old.png",
+  "new": "app_invoices-390-new.png"
+ },
+ {
+  "page": "app/books",
+  "width": 1440,
+  "pct": 0.04,
+  "hOld": 1901,
+  "hNew": 1979,
+  "old": "app_books-1440-old.png",
+  "new": "app_books-1440-new.png"
+ },
+ {
+  "page": "app/books",
+  "width": 1280,
+  "pct": 0.04,
+  "hOld": 1901,
+  "hNew": 1979,
+  "old": "app_books-1280-old.png",
+  "new": "app_books-1280-new.png"
+ },
+ {
+  "page": "app/books",
+  "width": 768,
+  "pct": 14.87,
+  "hOld": 1955,
+  "hNew": 2086,
+  "old": "app_books-768-old.png",
+  "new": "app_books-768-new.png"
+ },
+ {
+  "page": "app/books",
+  "width": 390,
+  "pct": 13.98,
+  "hOld": 5886,
+  "hNew": 6041,
+  "old": "app_books-390-old.png",
+  "new": "app_books-390-new.png"
+ },
+ {
+  "page": "app/bank",
+  "width": 1440,
+  "pct": 4.52,
+  "hOld": 1096,
+  "hNew": 1158,
+  "old": "app_bank-1440-old.png",
+  "new": "app_bank-1440-new.png"
+ },
+ {
+  "page": "app/bank",
+  "width": 1280,
+  "pct": 4.47,
+  "hOld": 1096,
+  "hNew": 1158,
+  "old": "app_bank-1280-old.png",
+  "new": "app_bank-1280-new.png"
+ },
+ {
+  "page": "app/bank",
+  "width": 768,
+  "pct": 15.53,
+  "hOld": 1272,
+  "hNew": 1461,
+  "old": "app_bank-768-old.png",
+  "new": "app_bank-768-new.png"
+ },
+ {
+  "page": "app/bank",
+  "width": 390,
+  "pct": 17.29,
+  "hOld": 1908,
+  "hNew": 2069,
+  "old": "app_bank-390-old.png",
+  "new": "app_bank-390-new.png"
+ },
+ {
+  "page": "app/inventory",
+  "width": 1440,
+  "pct": 0.06,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_inventory-1440-old.png",
+  "new": "app_inventory-1440-new.png"
+ },
+ {
+  "page": "app/inventory",
+  "width": 1280,
+  "pct": 0.07,
+  "hOld": 826,
+  "hNew": 935,
+  "old": "app_inventory-1280-old.png",
+  "new": "app_inventory-1280-new.png"
+ },
+ {
+  "page": "app/inventory",
+  "width": 768,
+  "pct": 11.96,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_inventory-768-old.png",
+  "new": "app_inventory-768-new.png"
+ },
+ {
+  "page": "app/inventory",
+  "width": 390,
+  "pct": 13.72,
+  "hOld": 1415,
+  "hNew": 1584,
+  "old": "app_inventory-390-old.png",
+  "new": "app_inventory-390-new.png"
+ },
+ {
+  "page": "app/payroll",
+  "width": 1440,
+  "pct": 9.18,
+  "hOld": 1174,
+  "hNew": 1237,
+  "old": "app_payroll-1440-old.png",
+  "new": "app_payroll-1440-new.png"
+ },
+ {
+  "page": "app/payroll",
+  "width": 1280,
+  "pct": 9.08,
+  "hOld": 1192,
+  "hNew": 1256,
+  "old": "app_payroll-1280-old.png",
+  "new": "app_payroll-1280-new.png"
+ },
+ {
+  "page": "app/payroll",
+  "width": 768,
+  "pct": 18.79,
+  "hOld": 1243,
+  "hNew": 1360,
+  "old": "app_payroll-768-old.png",
+  "new": "app_payroll-768-new.png"
+ },
+ {
+  "page": "app/payroll",
+  "width": 390,
+  "pct": 18.38,
+  "hOld": 1807,
+  "hNew": 1961,
+  "old": "app_payroll-390-old.png",
+  "new": "app_payroll-390-new.png"
+ },
+ {
+  "page": "app/bizreports",
+  "width": 1440,
+  "pct": 5.01,
+  "hOld": 1080,
+  "hNew": 1143,
+  "old": "app_bizreports-1440-old.png",
+  "new": "app_bizreports-1440-new.png"
+ },
+ {
+  "page": "app/bizreports",
+  "width": 1280,
+  "pct": 5.01,
+  "hOld": 1080,
+  "hNew": 1143,
+  "old": "app_bizreports-1280-old.png",
+  "new": "app_bizreports-1280-new.png"
+ },
+ {
+  "page": "app/bizreports",
+  "width": 768,
+  "pct": 16.16,
+  "hOld": 1112,
+  "hNew": 1238,
+  "old": "app_bizreports-768-old.png",
+  "new": "app_bizreports-768-new.png"
+ },
+ {
+  "page": "app/bizreports",
+  "width": 390,
+  "pct": 17.82,
+  "hOld": 1832,
+  "hNew": 1959,
+  "old": "app_bizreports-390-old.png",
+  "new": "app_bizreports-390-new.png"
+ },
+ {
+  "page": "app/analyze",
+  "width": 1440,
+  "pct": 1.22,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_analyze-1440-old.png",
+  "new": "app_analyze-1440-new.png"
+ },
+ {
+  "page": "app/analyze",
+  "width": 1280,
+  "pct": 1.34,
+  "hOld": 800,
+  "hNew": 935,
+  "old": "app_analyze-1280-old.png",
+  "new": "app_analyze-1280-new.png"
+ },
+ {
+  "page": "app/analyze",
+  "width": 768,
+  "pct": 17.38,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_analyze-768-old.png",
+  "new": "app_analyze-768-new.png"
+ },
+ {
+  "page": "app/analyze",
+  "width": 390,
+  "pct": 18.23,
+  "hOld": 1036,
+  "hNew": 1188,
+  "old": "app_analyze-390-old.png",
+  "new": "app_analyze-390-new.png"
+ },
+ {
+  "page": "app/lowcost",
+  "width": 1440,
+  "pct": 0.16,
+  "hOld": 2438,
+  "hNew": 2516,
+  "old": "app_lowcost-1440-old.png",
+  "new": "app_lowcost-1440-new.png"
+ },
+ {
+  "page": "app/lowcost",
+  "width": 1280,
+  "pct": 0.23,
+  "hOld": 2461,
+  "hNew": 2539,
+  "old": "app_lowcost-1280-old.png",
+  "new": "app_lowcost-1280-new.png"
+ },
+ {
+  "page": "app/lowcost",
+  "width": 768,
+  "pct": 10.17,
+  "hOld": 2511,
+  "hNew": 2607,
+  "old": "app_lowcost-768-old.png",
+  "new": "app_lowcost-768-new.png"
+ },
+ {
+  "page": "app/lowcost",
+  "width": 390,
+  "pct": 15.08,
+  "hOld": 9866,
+  "hNew": 9964,
+  "old": "app_lowcost-390-old.png",
+  "new": "app_lowcost-390-new.png"
+ },
+ {
+  "page": "app/earnings",
+  "width": 1440,
+  "pct": 1.22,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_earnings-1440-old.png",
+  "new": "app_earnings-1440-new.png"
+ },
+ {
+  "page": "app/earnings",
+  "width": 1280,
+  "pct": 1.34,
+  "hOld": 800,
+  "hNew": 935,
+  "old": "app_earnings-1280-old.png",
+  "new": "app_earnings-1280-new.png"
+ },
+ {
+  "page": "app/earnings",
+  "width": 768,
+  "pct": 7.5,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_earnings-768-old.png",
+  "new": "app_earnings-768-new.png"
+ },
+ {
+  "page": "app/earnings",
+  "width": 390,
+  "pct": 17.43,
+  "hOld": 1049,
+  "hNew": 1201,
+  "old": "app_earnings-390-old.png",
+  "new": "app_earnings-390-new.png"
+ },
+ {
+  "page": "app/institutions",
+  "width": 1440,
+  "pct": 0.06,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_institutions-1440-old.png",
+  "new": "app_institutions-1440-new.png"
+ },
+ {
+  "page": "app/institutions",
+  "width": 1280,
+  "pct": 0.07,
+  "hOld": 877,
+  "hNew": 956,
+  "old": "app_institutions-1280-old.png",
+  "new": "app_institutions-1280-new.png"
+ },
+ {
+  "page": "app/institutions",
+  "width": 768,
+  "pct": 9.81,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_institutions-768-old.png",
+  "new": "app_institutions-768-new.png"
+ },
+ {
+  "page": "app/institutions",
+  "width": 390,
+  "pct": 20.02,
+  "hOld": 1797,
+  "hNew": 1966,
+  "old": "app_institutions-390-old.png",
+  "new": "app_institutions-390-new.png"
+ },
+ {
+  "page": "app/sp500",
+  "width": 1440,
+  "pct": 0.45,
+  "hOld": 1911,
+  "hNew": 1989,
+  "old": "app_sp500-1440-old.png",
+  "new": "app_sp500-1440-new.png"
+ },
+ {
+  "page": "app/sp500",
+  "width": 1280,
+  "pct": 0.45,
+  "hOld": 1933,
+  "hNew": 2011,
+  "old": "app_sp500-1280-old.png",
+  "new": "app_sp500-1280-new.png"
+ },
+ {
+  "page": "app/sp500",
+  "width": 768,
+  "pct": 14.19,
+  "hOld": 2730,
+  "hNew": 2806,
+  "old": "app_sp500-768-old.png",
+  "new": "app_sp500-768-new.png"
+ },
+ {
+  "page": "app/sp500",
+  "width": 390,
+  "pct": 14.8,
+  "hOld": 3365,
+  "hNew": 3546,
+  "old": "app_sp500-390-old.png",
+  "new": "app_sp500-390-new.png"
+ },
+ {
+  "page": "app/wealth",
+  "width": 1440,
+  "pct": 1.01,
+  "hOld": 1237,
+  "hNew": 1306,
+  "old": "app_wealth-1440-old.png",
+  "new": "app_wealth-1440-new.png"
+ },
+ {
+  "page": "app/wealth",
+  "width": 1280,
+  "pct": 1.07,
+  "hOld": 1237,
+  "hNew": 1306,
+  "old": "app_wealth-1280-old.png",
+  "new": "app_wealth-1280-new.png"
+ },
+ {
+  "page": "app/wealth",
+  "width": 768,
+  "pct": 10.15,
+  "hOld": 1330,
+  "hNew": 1418,
+  "old": "app_wealth-768-old.png",
+  "new": "app_wealth-768-new.png"
+ },
+ {
+  "page": "app/wealth",
+  "width": 390,
+  "pct": 22.33,
+  "hOld": 3120,
+  "hNew": 3223,
+  "old": "app_wealth-390-old.png",
+  "new": "app_wealth-390-new.png"
+ },
+ {
+  "page": "app/robo",
+  "width": 1440,
+  "pct": 0.05,
+  "hOld": 1175,
+  "hNew": 1253,
+  "old": "app_robo-1440-old.png",
+  "new": "app_robo-1440-new.png"
+ },
+ {
+  "page": "app/robo",
+  "width": 1280,
+  "pct": 0.05,
+  "hOld": 1175,
+  "hNew": 1253,
+  "old": "app_robo-1280-old.png",
+  "new": "app_robo-1280-new.png"
+ },
+ {
+  "page": "app/robo",
+  "width": 768,
+  "pct": 7.09,
+  "hOld": 1230,
+  "hNew": 1327,
+  "old": "app_robo-768-old.png",
+  "new": "app_robo-768-new.png"
+ },
+ {
+  "page": "app/robo",
+  "width": 390,
+  "pct": 15.28,
+  "hOld": 1393,
+  "hNew": 2014,
+  "old": "app_robo-390-old.png",
+  "new": "app_robo-390-new.png"
+ },
+ {
+  "page": "app/longterm",
+  "width": 1440,
+  "pct": 5.31,
+  "hOld": 1841,
+  "hNew": 1889,
+  "old": "app_longterm-1440-old.png",
+  "new": "app_longterm-1440-new.png"
+ },
+ {
+  "page": "app/longterm",
+  "width": 1280,
+  "pct": 5.24,
+  "hOld": 1863,
+  "hNew": 1911,
+  "old": "app_longterm-1280-old.png",
+  "new": "app_longterm-1280-new.png"
+ },
+ {
+  "page": "app/longterm",
+  "width": 768,
+  "pct": 10.7,
+  "hOld": 1939,
+  "hNew": 2005,
+  "old": "app_longterm-768-old.png",
+  "new": "app_longterm-768-new.png"
+ },
+ {
+  "page": "app/longterm",
+  "width": 390,
+  "pct": 15.26,
+  "hOld": 3013,
+  "hNew": 3159,
+  "old": "app_longterm-390-old.png",
+  "new": "app_longterm-390-new.png"
+ },
+ {
+  "page": "app/invest",
+  "width": 1440,
+  "pct": 15.21,
+  "hOld": 2616,
+  "hNew": 2679,
+  "old": "app_invest-1440-old.png",
+  "new": "app_invest-1440-new.png"
+ },
+ {
+  "page": "app/invest",
+  "width": 1280,
+  "pct": 15.56,
+  "hOld": 2633,
+  "hNew": 2696,
+  "old": "app_invest-1280-old.png",
+  "new": "app_invest-1280-new.png"
+ },
+ {
+  "page": "app/invest",
+  "width": 768,
+  "pct": 20.36,
+  "hOld": 2710,
+  "hNew": 2792,
+  "old": "app_invest-768-old.png",
+  "new": "app_invest-768-new.png"
+ },
+ {
+  "page": "app/invest",
+  "width": 390,
+  "pct": 18.36,
+  "hOld": 8205,
+  "hNew": 8311,
+  "old": "app_invest-390-old.png",
+  "new": "app_invest-390-new.png"
+ },
+ {
+  "page": "app/alpaca-tools",
+  "width": 1440,
+  "pct": 8.27,
+  "hOld": 2612,
+  "hNew": 2616,
+  "old": "app_alpaca_tools-1440-old.png",
+  "new": "app_alpaca_tools-1440-new.png"
+ },
+ {
+  "page": "app/alpaca-tools",
+  "width": 1280,
+  "pct": 8.42,
+  "hOld": 2673,
+  "hNew": 2677,
+  "old": "app_alpaca_tools-1280-old.png",
+  "new": "app_alpaca_tools-1280-new.png"
+ },
+ {
+  "page": "app/alpaca-tools",
+  "width": 768,
+  "pct": 13.85,
+  "hOld": 2970,
+  "hNew": 2977,
+  "old": "app_alpaca_tools-768-old.png",
+  "new": "app_alpaca_tools-768-new.png"
+ },
+ {
+  "page": "app/alpaca-tools",
+  "width": 390,
+  "pct": 20.83,
+  "hOld": 3985,
+  "hNew": 4051,
+  "old": "app_alpaca_tools-390-old.png",
+  "new": "app_alpaca_tools-390-new.png"
+ },
+ {
+  "page": "app/tokenized",
+  "width": 1440,
+  "pct": 0.81,
+  "hOld": 2111,
+  "hNew": 2187,
+  "old": "app_tokenized-1440-old.png",
+  "new": "app_tokenized-1440-new.png"
+ },
+ {
+  "page": "app/tokenized",
+  "width": 1280,
+  "pct": 0.86,
+  "hOld": 2172,
+  "hNew": 2248,
+  "old": "app_tokenized-1280-old.png",
+  "new": "app_tokenized-1280-new.png"
+ },
+ {
+  "page": "app/tokenized",
+  "width": 768,
+  "pct": 13.96,
+  "hOld": 2798,
+  "hNew": 2917,
+  "old": "app_tokenized-768-old.png",
+  "new": "app_tokenized-768-new.png"
+ },
+ {
+  "page": "app/tokenized",
+  "width": 390,
+  "pct": 23.73,
+  "hOld": 4382,
+  "hNew": 4683,
+  "old": "app_tokenized-390-old.png",
+  "new": "app_tokenized-390-new.png"
+ },
+ {
+  "page": "app/values",
+  "width": 1440,
+  "pct": 0.06,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_values-1440-old.png",
+  "new": "app_values-1440-new.png"
+ },
+ {
+  "page": "app/values",
+  "width": 1280,
+  "pct": 0.08,
+  "hOld": 800,
+  "hNew": 935,
+  "old": "app_values-1280-old.png",
+  "new": "app_values-1280-new.png"
+ },
+ {
+  "page": "app/values",
+  "width": 768,
+  "pct": 6.47,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_values-768-old.png",
+  "new": "app_values-768-new.png"
+ },
+ {
+  "page": "app/values",
+  "width": 390,
+  "pct": 17.31,
+  "hOld": 1071,
+  "hNew": 1237,
+  "old": "app_values-390-old.png",
+  "new": "app_values-390-new.png"
+ },
+ {
+  "page": "app/spend",
+  "width": 1440,
+  "pct": 2,
+  "hOld": 1157,
+  "hNew": 1219,
+  "old": "app_spend-1440-old.png",
+  "new": "app_spend-1440-new.png"
+ },
+ {
+  "page": "app/spend",
+  "width": 1280,
+  "pct": 2.01,
+  "hOld": 1157,
+  "hNew": 1219,
+  "old": "app_spend-1280-old.png",
+  "new": "app_spend-1280-new.png"
+ },
+ {
+  "page": "app/spend",
+  "width": 768,
+  "pct": 7.81,
+  "hOld": 1206,
+  "hNew": 1287,
+  "old": "app_spend-768-old.png",
+  "new": "app_spend-768-new.png"
+ },
+ {
+  "page": "app/spend",
+  "width": 390,
+  "pct": 14.2,
+  "hOld": 2015,
+  "hNew": 2186,
+  "old": "app_spend-390-old.png",
+  "new": "app_spend-390-new.png"
+ },
+ {
+  "page": "app/chart",
+  "width": 1440,
+  "pct": 11.87,
+  "hOld": 1638,
+  "hNew": 1677,
+  "old": "app_chart-1440-old.png",
+  "new": "app_chart-1440-new.png"
+ },
+ {
+  "page": "app/chart",
+  "width": 1280,
+  "pct": 1.84,
+  "hOld": 1638,
+  "hNew": 1716,
+  "old": "app_chart-1280-old.png",
+  "new": "app_chart-1280-new.png"
+ },
+ {
+  "page": "app/chart",
+  "width": 768,
+  "pct": 9.25,
+  "hOld": 1768,
+  "hNew": 1864,
+  "old": "app_chart-768-old.png",
+  "new": "app_chart-768-new.png"
+ },
+ {
+  "page": "app/chart",
+  "width": 390,
+  "pct": 21,
+  "hOld": 2308,
+  "hNew": 2451,
+  "old": "app_chart-390-old.png",
+  "new": "app_chart-390-new.png"
+ },
+ {
+  "page": "app/options",
+  "width": 1440,
+  "pct": 0.1,
+  "hOld": 1213,
+  "hNew": 1291,
+  "old": "app_options-1440-old.png",
+  "new": "app_options-1440-new.png"
+ },
+ {
+  "page": "app/options",
+  "width": 1280,
+  "pct": 0.11,
+  "hOld": 1234,
+  "hNew": 1312,
+  "old": "app_options-1280-old.png",
+  "new": "app_options-1280-new.png"
+ },
+ {
+  "page": "app/options",
+  "width": 768,
+  "pct": 19.46,
+  "hOld": 1305,
+  "hNew": 1425,
+  "old": "app_options-768-old.png",
+  "new": "app_options-768-new.png"
+ },
+ {
+  "page": "app/options",
+  "width": 390,
+  "pct": 18.63,
+  "hOld": 1733,
+  "hNew": 1899,
+  "old": "app_options-390-old.png",
+  "new": "app_options-390-new.png"
+ },
+ {
+  "page": "app/optionslab",
+  "width": 1440,
+  "pct": 0.08,
+  "hOld": 1899,
+  "hNew": 1961,
+  "old": "app_optionslab-1440-old.png",
+  "new": "app_optionslab-1440-new.png"
+ },
+ {
+  "page": "app/optionslab",
+  "width": 1280,
+  "pct": 0.09,
+  "hOld": 2032,
+  "hNew": 2094,
+  "old": "app_optionslab-1280-old.png",
+  "new": "app_optionslab-1280-new.png"
+ },
+ {
+  "page": "app/optionslab",
+  "width": 768,
+  "pct": 10.94,
+  "hOld": 2646,
+  "hNew": 2727,
+  "old": "app_optionslab-768-old.png",
+  "new": "app_optionslab-768-new.png"
+ },
+ {
+  "page": "app/optionslab",
+  "width": 390,
+  "pct": 15.86,
+  "hOld": 4713,
+  "hNew": 4949,
+  "old": "app_optionslab-390-old.png",
+  "new": "app_optionslab-390-new.png"
+ },
+ {
+  "page": "app/scanner",
+  "width": 1440,
+  "pct": 0.03,
+  "hOld": 1839,
+  "hNew": 1917,
+  "old": "app_scanner-1440-old.png",
+  "new": "app_scanner-1440-new.png"
+ },
+ {
+  "page": "app/scanner",
+  "width": 1280,
+  "pct": 0.03,
+  "hOld": 1839,
+  "hNew": 1917,
+  "old": "app_scanner-1280-old.png",
+  "new": "app_scanner-1280-new.png"
+ },
+ {
+  "page": "app/scanner",
+  "width": 768,
+  "pct": 8.19,
+  "hOld": 1961,
+  "hNew": 2058,
+  "old": "app_scanner-768-old.png",
+  "new": "app_scanner-768-new.png"
+ },
+ {
+  "page": "app/scanner",
+  "width": 390,
+  "pct": 17.4,
+  "hOld": 2422,
+  "hNew": 2603,
+  "old": "app_scanner-390-old.png",
+  "new": "app_scanner-390-new.png"
+ },
+ {
+  "page": "app/leaders",
+  "width": 1440,
+  "pct": 0.33,
+  "hOld": 1481,
+  "hNew": 1559,
+  "old": "app_leaders-1440-old.png",
+  "new": "app_leaders-1440-new.png"
+ },
+ {
+  "page": "app/leaders",
+  "width": 1280,
+  "pct": 0.37,
+  "hOld": 1481,
+  "hNew": 1559,
+  "old": "app_leaders-1280-old.png",
+  "new": "app_leaders-1280-new.png"
+ },
+ {
+  "page": "app/leaders",
+  "width": 768,
+  "pct": 9.37,
+  "hOld": 1536,
+  "hNew": 1633,
+  "old": "app_leaders-768-old.png",
+  "new": "app_leaders-768-new.png"
+ },
+ {
+  "page": "app/leaders",
+  "width": 390,
+  "pct": 16.25,
+  "hOld": 4559,
+  "hNew": 4659,
+  "old": "app_leaders-390-old.png",
+  "new": "app_leaders-390-new.png"
+ },
+ {
+  "page": "app/short",
+  "width": 1440,
+  "pct": 0.05,
+  "hOld": 1008,
+  "hNew": 1086,
+  "old": "app_short-1440-old.png",
+  "new": "app_short-1440-new.png"
+ },
+ {
+  "page": "app/short",
+  "width": 1280,
+  "pct": 0.06,
+  "hOld": 1029,
+  "hNew": 1107,
+  "old": "app_short-1280-old.png",
+  "new": "app_short-1280-new.png"
+ },
+ {
+  "page": "app/short",
+  "width": 768,
+  "pct": 9.37,
+  "hOld": 1225,
+  "hNew": 1322,
+  "old": "app_short-768-old.png",
+  "new": "app_short-768-new.png"
+ },
+ {
+  "page": "app/short",
+  "width": 390,
+  "pct": 18.32,
+  "hOld": 1849,
+  "hNew": 2033,
+  "old": "app_short-390-old.png",
+  "new": "app_short-390-new.png"
+ },
+ {
+  "page": "app/margin",
+  "width": 1440,
+  "pct": 9.53,
+  "hOld": 2270,
+  "hNew": 2304,
+  "old": "app_margin-1440-old.png",
+  "new": "app_margin-1440-new.png"
+ },
+ {
+  "page": "app/margin",
+  "width": 1280,
+  "pct": 9.87,
+  "hOld": 2354,
+  "hNew": 2388,
+  "old": "app_margin-1280-old.png",
+  "new": "app_margin-1280-new.png"
+ },
+ {
+  "page": "app/margin",
+  "width": 768,
+  "pct": 16.6,
+  "hOld": 2805,
+  "hNew": 2972,
+  "old": "app_margin-768-old.png",
+  "new": "app_margin-768-new.png"
+ },
+ {
+  "page": "app/margin",
+  "width": 390,
+  "pct": 22.66,
+  "hOld": 4132,
+  "hNew": 4396,
+  "old": "app_margin-390-old.png",
+  "new": "app_margin-390-new.png"
+ },
+ {
+  "page": "app/calendar",
+  "width": 1440,
+  "pct": 0.8,
+  "hOld": 1618,
+  "hNew": 1669,
+  "old": "app_calendar-1440-old.png",
+  "new": "app_calendar-1440-new.png"
+ },
+ {
+  "page": "app/calendar",
+  "width": 1280,
+  "pct": 0.8,
+  "hOld": 1618,
+  "hNew": 1669,
+  "old": "app_calendar-1280-old.png",
+  "new": "app_calendar-1280-new.png"
+ },
+ {
+  "page": "app/calendar",
+  "width": 768,
+  "pct": 8.97,
+  "hOld": 1710,
+  "hNew": 1791,
+  "old": "app_calendar-768-old.png",
+  "new": "app_calendar-768-new.png"
+ },
+ {
+  "page": "app/calendar",
+  "width": 390,
+  "pct": 20.83,
+  "hOld": 2229,
+  "hNew": 2357,
+  "old": "app_calendar-390-old.png",
+  "new": "app_calendar-390-new.png"
+ },
+ {
+  "page": "app/execution",
+  "width": 1440,
+  "pct": 0.07,
+  "hOld": 1439,
+  "hNew": 1518,
+  "old": "app_execution-1440-old.png",
+  "new": "app_execution-1440-new.png"
+ },
+ {
+  "page": "app/execution",
+  "width": 1280,
+  "pct": 0.07,
+  "hOld": 1492,
+  "hNew": 1570,
+  "old": "app_execution-1280-old.png",
+  "new": "app_execution-1280-new.png"
+ },
+ {
+  "page": "app/execution",
+  "width": 768,
+  "pct": 8.84,
+  "hOld": 1602,
+  "hNew": 1699,
+  "old": "app_execution-768-old.png",
+  "new": "app_execution-768-new.png"
+ },
+ {
+  "page": "app/execution",
+  "width": 390,
+  "pct": 18.2,
+  "hOld": 2250,
+  "hNew": 2470,
+  "old": "app_execution-390-old.png",
+  "new": "app_execution-390-new.png"
+ },
+ {
+  "page": "app/workspace",
+  "width": 1440,
+  "pct": 0.15,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_workspace-1440-old.png",
+  "new": "app_workspace-1440-new.png"
+ },
+ {
+  "page": "app/workspace",
+  "width": 1280,
+  "pct": 0.16,
+  "hOld": 915,
+  "hNew": 993,
+  "old": "app_workspace-1280-old.png",
+  "new": "app_workspace-1280-new.png"
+ },
+ {
+  "page": "app/workspace",
+  "width": 768,
+  "pct": 6.75,
+  "hOld": 1055,
+  "hNew": 1238,
+  "old": "app_workspace-768-old.png",
+  "new": "app_workspace-768-new.png"
+ },
+ {
+  "page": "app/workspace",
+  "width": 390,
+  "pct": 13.95,
+  "hOld": 1642,
+  "hNew": 1815,
+  "old": "app_workspace-390-old.png",
+  "new": "app_workspace-390-new.png"
+ },
+ {
+  "page": "app/ai",
+  "width": 1440,
+  "pct": 0.04,
+  "hOld": 1196,
+  "hNew": 1275,
+  "old": "app_ai-1440-old.png",
+  "new": "app_ai-1440-new.png"
+ },
+ {
+  "page": "app/ai",
+  "width": 1280,
+  "pct": 0.05,
+  "hOld": 1231,
+  "hNew": 1310,
+  "old": "app_ai-1280-old.png",
+  "new": "app_ai-1280-new.png"
+ },
+ {
+  "page": "app/ai",
+  "width": 768,
+  "pct": 8.64,
+  "hOld": 1316,
+  "hNew": 1412,
+  "old": "app_ai-768-old.png",
+  "new": "app_ai-768-new.png"
+ },
+ {
+  "page": "app/ai",
+  "width": 390,
+  "pct": 16.33,
+  "hOld": 1575,
+  "hNew": 1737,
+  "old": "app_ai-390-old.png",
+  "new": "app_ai-390-new.png"
+ },
+ {
+  "page": "app/aitools",
+  "width": 1440,
+  "pct": 0.25,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_aitools-1440-old.png",
+  "new": "app_aitools-1440-new.png"
+ },
+ {
+  "page": "app/aitools",
+  "width": 1280,
+  "pct": 0.32,
+  "hOld": 800,
+  "hNew": 935,
+  "old": "app_aitools-1280-old.png",
+  "new": "app_aitools-1280-new.png"
+ },
+ {
+  "page": "app/aitools",
+  "width": 768,
+  "pct": 4.7,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_aitools-768-old.png",
+  "new": "app_aitools-768-new.png"
+ },
+ {
+  "page": "app/aitools",
+  "width": 390,
+  "pct": 14.34,
+  "hOld": 844,
+  "hNew": 1135,
+  "old": "app_aitools-390-old.png",
+  "new": "app_aitools-390-new.png"
+ },
+ {
+  "page": "app/research",
+  "width": 1440,
+  "pct": 0.06,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_research-1440-old.png",
+  "new": "app_research-1440-new.png"
+ },
+ {
+  "page": "app/research",
+  "width": 1280,
+  "pct": 0.07,
+  "hOld": 884,
+  "hNew": 962,
+  "old": "app_research-1280-old.png",
+  "new": "app_research-1280-new.png"
+ },
+ {
+  "page": "app/research",
+  "width": 768,
+  "pct": 6.97,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_research-768-old.png",
+  "new": "app_research-768-new.png"
+ },
+ {
+  "page": "app/research",
+  "width": 390,
+  "pct": 17.03,
+  "hOld": 1137,
+  "hNew": 1305,
+  "old": "app_research-390-old.png",
+  "new": "app_research-390-new.png"
+ },
+ {
+  "page": "app/news",
+  "width": 1440,
+  "pct": 0.06,
+  "hOld": 1412,
+  "hNew": 1490,
+  "old": "app_news-1440-old.png",
+  "new": "app_news-1440-new.png"
+ },
+ {
+  "page": "app/news",
+  "width": 1280,
+  "pct": 0.07,
+  "hOld": 1412,
+  "hNew": 1490,
+  "old": "app_news-1280-old.png",
+  "new": "app_news-1280-new.png"
+ },
+ {
+  "page": "app/news",
+  "width": 768,
+  "pct": 6,
+  "hOld": 1467,
+  "hNew": 1564,
+  "old": "app_news-768-old.png",
+  "new": "app_news-768-new.png"
+ },
+ {
+  "page": "app/news",
+  "width": 390,
+  "pct": 15.24,
+  "hOld": 2164,
+  "hNew": 2331,
+  "old": "app_news-390-old.png",
+  "new": "app_news-390-new.png"
+ },
+ {
+  "page": "app/intel",
+  "width": 1440,
+  "pct": 4.98,
+  "hOld": 1653,
+  "hNew": 1715,
+  "old": "app_intel-1440-old.png",
+  "new": "app_intel-1440-new.png"
+ },
+ {
+  "page": "app/intel",
+  "width": 1280,
+  "pct": 5.05,
+  "hOld": 1698,
+  "hNew": 1760,
+  "old": "app_intel-1280-old.png",
+  "new": "app_intel-1280-new.png"
+ },
+ {
+  "page": "app/intel",
+  "width": 768,
+  "pct": 11.53,
+  "hOld": 1812,
+  "hNew": 1892,
+  "old": "app_intel-768-old.png",
+  "new": "app_intel-768-new.png"
+ },
+ {
+  "page": "app/intel",
+  "width": 390,
+  "pct": 19.84,
+  "hOld": 2857,
+  "hNew": 3044,
+  "old": "app_intel-390-old.png",
+  "new": "app_intel-390-new.png"
+ },
+ {
+  "page": "app/aisignals",
+  "width": 1440,
+  "pct": 2.15,
+  "hOld": 1482,
+  "hNew": 1544,
+  "old": "app_aisignals-1440-old.png",
+  "new": "app_aisignals-1440-new.png"
+ },
+ {
+  "page": "app/aisignals",
+  "width": 1280,
+  "pct": 2.18,
+  "hOld": 1527,
+  "hNew": 1589,
+  "old": "app_aisignals-1280-old.png",
+  "new": "app_aisignals-1280-new.png"
+ },
+ {
+  "page": "app/aisignals",
+  "width": 768,
+  "pct": 9.19,
+  "hOld": 1887,
+  "hNew": 1967,
+  "old": "app_aisignals-768-old.png",
+  "new": "app_aisignals-768-new.png"
+ },
+ {
+  "page": "app/aisignals",
+  "width": 390,
+  "pct": 21.09,
+  "hOld": 2393,
+  "hNew": 2593,
+  "old": "app_aisignals-390-old.png",
+  "new": "app_aisignals-390-new.png"
+ },
+ {
+  "page": "app/agents",
+  "width": 1440,
+  "pct": 0.06,
+  "hOld": 974,
+  "hNew": 1052,
+  "old": "app_agents-1440-old.png",
+  "new": "app_agents-1440-new.png"
+ },
+ {
+  "page": "app/agents",
+  "width": 1280,
+  "pct": 0.06,
+  "hOld": 974,
+  "hNew": 1052,
+  "old": "app_agents-1280-old.png",
+  "new": "app_agents-1280-new.png"
+ },
+ {
+  "page": "app/agents",
+  "width": 768,
+  "pct": 7.77,
+  "hOld": 1068,
+  "hNew": 1238,
+  "old": "app_agents-768-old.png",
+  "new": "app_agents-768-new.png"
+ },
+ {
+  "page": "app/agents",
+  "width": 390,
+  "pct": 15.99,
+  "hOld": 1491,
+  "hNew": 1660,
+  "old": "app_agents-390-old.png",
+  "new": "app_agents-390-new.png"
+ },
+ {
+  "page": "app/aibots",
+  "width": 1440,
+  "pct": 0.06,
+  "hOld": 976,
+  "hNew": 1054,
+  "old": "app_aibots-1440-old.png",
+  "new": "app_aibots-1440-new.png"
+ },
+ {
+  "page": "app/aibots",
+  "width": 1280,
+  "pct": 0.06,
+  "hOld": 1011,
+  "hNew": 1089,
+  "old": "app_aibots-1280-old.png",
+  "new": "app_aibots-1280-new.png"
+ },
+ {
+  "page": "app/aibots",
+  "width": 768,
+  "pct": 18.75,
+  "hOld": 1133,
+  "hNew": 1253,
+  "old": "app_aibots-768-old.png",
+  "new": "app_aibots-768-new.png"
+ },
+ {
+  "page": "app/aibots",
+  "width": 390,
+  "pct": 23.16,
+  "hOld": 1409,
+  "hNew": 1590,
+  "old": "app_aibots-390-old.png",
+  "new": "app_aibots-390-new.png"
+ },
+ {
+  "page": "app/agenthub",
+  "width": 1440,
+  "pct": 2.54,
+  "hOld": 1463,
+  "hNew": 1526,
+  "old": "app_agenthub-1440-old.png",
+  "new": "app_agenthub-1440-new.png"
+ },
+ {
+  "page": "app/agenthub",
+  "width": 1280,
+  "pct": 2.67,
+  "hOld": 1463,
+  "hNew": 1526,
+  "old": "app_agenthub-1280-old.png",
+  "new": "app_agenthub-1280-new.png"
+ },
+ {
+  "page": "app/agenthub",
+  "width": 768,
+  "pct": 10.07,
+  "hOld": 1740,
+  "hNew": 1821,
+  "old": "app_agenthub-768-old.png",
+  "new": "app_agenthub-768-new.png"
+ },
+ {
+  "page": "app/agenthub",
+  "width": 390,
+  "pct": 17.51,
+  "hOld": 2626,
+  "hNew": 2800,
+  "old": "app_agenthub-390-old.png",
+  "new": "app_agenthub-390-new.png"
+ },
+ {
+  "page": "app/strategies",
+  "width": 1440,
+  "pct": 0.06,
+  "hOld": 2281,
+  "hNew": 2359,
+  "old": "app_strategies-1440-old.png",
+  "new": "app_strategies-1440-new.png"
+ },
+ {
+  "page": "app/strategies",
+  "width": 1280,
+  "pct": 0.06,
+  "hOld": 2559,
+  "hNew": 2638,
+  "old": "app_strategies-1280-old.png",
+  "new": "app_strategies-1280-new.png"
+ },
+ {
+  "page": "app/strategies",
+  "width": 768,
+  "pct": 13.68,
+  "hOld": 2887,
+  "hNew": 3003,
+  "old": "app_strategies-768-old.png",
+  "new": "app_strategies-768-new.png"
+ },
+ {
+  "page": "app/strategies",
+  "width": 390,
+  "pct": 23.38,
+  "hOld": 4778,
+  "hNew": 4998,
+  "old": "app_strategies-390-old.png",
+  "new": "app_strategies-390-new.png"
+ },
+ {
+  "page": "app/backtest",
+  "width": 1440,
+  "pct": 0.05,
+  "hOld": 1114,
+  "hNew": 1192,
+  "old": "app_backtest-1440-old.png",
+  "new": "app_backtest-1440-new.png"
+ },
+ {
+  "page": "app/backtest",
+  "width": 1280,
+  "pct": 0.05,
+  "hOld": 1137,
+  "hNew": 1215,
+  "old": "app_backtest-1280-old.png",
+  "new": "app_backtest-1280-new.png"
+ },
+ {
+  "page": "app/backtest",
+  "width": 768,
+  "pct": 7.71,
+  "hOld": 1208,
+  "hNew": 1305,
+  "old": "app_backtest-768-old.png",
+  "new": "app_backtest-768-new.png"
+ },
+ {
+  "page": "app/backtest",
+  "width": 390,
+  "pct": 15.45,
+  "hOld": 2145,
+  "hNew": 2308,
+  "old": "app_backtest-390-old.png",
+  "new": "app_backtest-390-new.png"
+ },
+ {
+  "page": "app/bots",
+  "width": 1440,
+  "pct": 0.06,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_bots-1440-old.png",
+  "new": "app_bots-1440-new.png"
+ },
+ {
+  "page": "app/bots",
+  "width": 1280,
+  "pct": 0.08,
+  "hOld": 800,
+  "hNew": 935,
+  "old": "app_bots-1280-old.png",
+  "new": "app_bots-1280-new.png"
+ },
+ {
+  "page": "app/bots",
+  "width": 768,
+  "pct": 7.22,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_bots-768-old.png",
+  "new": "app_bots-768-new.png"
+ },
+ {
+  "page": "app/bots",
+  "width": 390,
+  "pct": 24.59,
+  "hOld": 996,
+  "hNew": 1186,
+  "old": "app_bots-390-old.png",
+  "new": "app_bots-390-new.png"
+ },
+ {
+  "page": "app/schedule",
+  "width": 1440,
+  "pct": 0.04,
+  "hOld": 1235,
+  "hNew": 1313,
+  "old": "app_schedule-1440-old.png",
+  "new": "app_schedule-1440-new.png"
+ },
+ {
+  "page": "app/schedule",
+  "width": 1280,
+  "pct": 0.05,
+  "hOld": 1258,
+  "hNew": 1336,
+  "old": "app_schedule-1280-old.png",
+  "new": "app_schedule-1280-new.png"
+ },
+ {
+  "page": "app/schedule",
+  "width": 768,
+  "pct": 7.58,
+  "hOld": 1290,
+  "hNew": 1387,
+  "old": "app_schedule-768-old.png",
+  "new": "app_schedule-768-new.png"
+ },
+ {
+  "page": "app/schedule",
+  "width": 390,
+  "pct": 16.09,
+  "hOld": 2310,
+  "hNew": 2544,
+  "old": "app_schedule-390-old.png",
+  "new": "app_schedule-390-new.png"
+ },
+ {
+  "page": "app/rules",
+  "width": 1440,
+  "pct": 0.04,
+  "hOld": 1235,
+  "hNew": 1313,
+  "old": "app_rules-1440-old.png",
+  "new": "app_rules-1440-new.png"
+ },
+ {
+  "page": "app/rules",
+  "width": 1280,
+  "pct": 0.05,
+  "hOld": 1235,
+  "hNew": 1313,
+  "old": "app_rules-1280-old.png",
+  "new": "app_rules-1280-new.png"
+ },
+ {
+  "page": "app/rules",
+  "width": 768,
+  "pct": 7.26,
+  "hOld": 1342,
+  "hNew": 1439,
+  "old": "app_rules-768-old.png",
+  "new": "app_rules-768-new.png"
+ },
+ {
+  "page": "app/rules",
+  "width": 390,
+  "pct": 14.77,
+  "hOld": 1653,
+  "hNew": 2119,
+  "old": "app_rules-390-old.png",
+  "new": "app_rules-390-new.png"
+ },
+ {
+  "page": "app/signals",
+  "width": 1440,
+  "pct": 0.03,
+  "hOld": 1681,
+  "hNew": 1759,
+  "old": "app_signals-1440-old.png",
+  "new": "app_signals-1440-new.png"
+ },
+ {
+  "page": "app/signals",
+  "width": 1280,
+  "pct": 0.04,
+  "hOld": 1689,
+  "hNew": 1767,
+  "old": "app_signals-1280-old.png",
+  "new": "app_signals-1280-new.png"
+ },
+ {
+  "page": "app/signals",
+  "width": 768,
+  "pct": 7.48,
+  "hOld": 1744,
+  "hNew": 1841,
+  "old": "app_signals-768-old.png",
+  "new": "app_signals-768-new.png"
+ },
+ {
+  "page": "app/signals",
+  "width": 390,
+  "pct": 18.64,
+  "hOld": 2377,
+  "hNew": 2591,
+  "old": "app_signals-390-old.png",
+  "new": "app_signals-390-new.png"
+ },
+ {
+  "page": "app/fleet",
+  "width": 1440,
+  "pct": 2.69,
+  "hOld": 1017,
+  "hNew": 1079,
+  "old": "app_fleet-1440-old.png",
+  "new": "app_fleet-1440-new.png"
+ },
+ {
+  "page": "app/fleet",
+  "width": 1280,
+  "pct": 2.74,
+  "hOld": 1017,
+  "hNew": 1079,
+  "old": "app_fleet-1280-old.png",
+  "new": "app_fleet-1280-new.png"
+ },
+ {
+  "page": "app/fleet",
+  "width": 768,
+  "pct": 9.11,
+  "hOld": 1066,
+  "hNew": 1238,
+  "old": "app_fleet-768-old.png",
+  "new": "app_fleet-768-new.png"
+ },
+ {
+  "page": "app/fleet",
+  "width": 390,
+  "pct": 22.77,
+  "hOld": 1585,
+  "hNew": 1812,
+  "old": "app_fleet-390-old.png",
+  "new": "app_fleet-390-new.png"
+ },
+ {
+  "page": "app/portfolios",
+  "width": 1440,
+  "pct": 0.05,
+  "hOld": 1181,
+  "hNew": 1260,
+  "old": "app_portfolios-1440-old.png",
+  "new": "app_portfolios-1440-new.png"
+ },
+ {
+  "page": "app/portfolios",
+  "width": 1280,
+  "pct": 0.05,
+  "hOld": 1205,
+  "hNew": 1283,
+  "old": "app_portfolios-1280-old.png",
+  "new": "app_portfolios-1280-new.png"
+ },
+ {
+  "page": "app/portfolios",
+  "width": 768,
+  "pct": 7.22,
+  "hOld": 1337,
+  "hNew": 1434,
+  "old": "app_portfolios-768-old.png",
+  "new": "app_portfolios-768-new.png"
+ },
+ {
+  "page": "app/portfolios",
+  "width": 390,
+  "pct": 15.72,
+  "hOld": 2006,
+  "hNew": 2229,
+  "old": "app_portfolios-390-old.png",
+  "new": "app_portfolios-390-new.png"
+ },
+ {
+  "page": "app/aifunds",
+  "width": 1440,
+  "pct": 0.05,
+  "hOld": 1181,
+  "hNew": 1259,
+  "old": "app_aifunds-1440-old.png",
+  "new": "app_aifunds-1440-new.png"
+ },
+ {
+  "page": "app/aifunds",
+  "width": 1280,
+  "pct": 0.05,
+  "hOld": 1224,
+  "hNew": 1302,
+  "old": "app_aifunds-1280-old.png",
+  "new": "app_aifunds-1280-new.png"
+ },
+ {
+  "page": "app/aifunds",
+  "width": 768,
+  "pct": 10.99,
+  "hOld": 1292,
+  "hNew": 1389,
+  "old": "app_aifunds-768-old.png",
+  "new": "app_aifunds-768-new.png"
+ },
+ {
+  "page": "app/aifunds",
+  "width": 390,
+  "pct": 19.55,
+  "hOld": 2107,
+  "hNew": 2365,
+  "old": "app_aifunds-390-old.png",
+  "new": "app_aifunds-390-new.png"
+ },
+ {
+  "page": "app/text",
+  "width": 1440,
+  "pct": 3.45,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_text-1440-old.png",
+  "new": "app_text-1440-new.png"
+ },
+ {
+  "page": "app/text",
+  "width": 1280,
+  "pct": 2.5,
+  "hOld": 800,
+  "hNew": 935,
+  "old": "app_text-1280-old.png",
+  "new": "app_text-1280-new.png"
+ },
+ {
+  "page": "app/text",
+  "width": 768,
+  "pct": 11.6,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_text-768-old.png",
+  "new": "app_text-768-new.png"
+ },
+ {
+  "page": "app/text",
+  "width": 390,
+  "pct": 21.81,
+  "hOld": 1515,
+  "hNew": 1659,
+  "old": "app_text-390-old.png",
+  "new": "app_text-390-new.png"
+ },
+ {
+  "page": "app/hotline",
+  "width": 1440,
+  "pct": 1.31,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_hotline-1440-old.png",
+  "new": "app_hotline-1440-new.png"
+ },
+ {
+  "page": "app/hotline",
+  "width": 1280,
+  "pct": 1.45,
+  "hOld": 800,
+  "hNew": 935,
+  "old": "app_hotline-1280-old.png",
+  "new": "app_hotline-1280-new.png"
+ },
+ {
+  "page": "app/hotline",
+  "width": 768,
+  "pct": 4.87,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_hotline-768-old.png",
+  "new": "app_hotline-768-new.png"
+ },
+ {
+  "page": "app/hotline",
+  "width": 390,
+  "pct": 10.52,
+  "hOld": 844,
+  "hNew": 1135,
+  "old": "app_hotline-390-old.png",
+  "new": "app_hotline-390-new.png"
+ },
+ {
+  "page": "app/marketplace",
+  "width": 1440,
+  "pct": 0.87,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_marketplace-1440-old.png",
+  "new": "app_marketplace-1440-new.png"
+ },
+ {
+  "page": "app/marketplace",
+  "width": 1280,
+  "pct": 2,
+  "hOld": 800,
+  "hNew": 935,
+  "old": "app_marketplace-1280-old.png",
+  "new": "app_marketplace-1280-new.png"
+ },
+ {
+  "page": "app/marketplace",
+  "width": 768,
+  "pct": 8.68,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_marketplace-768-old.png",
+  "new": "app_marketplace-768-new.png"
+ },
+ {
+  "page": "app/marketplace",
+  "width": 390,
+  "pct": 21.95,
+  "hOld": 1763,
+  "hNew": 1907,
+  "old": "app_marketplace-390-old.png",
+  "new": "app_marketplace-390-new.png"
+ },
+ {
+  "page": "app/traders",
+  "width": 1440,
+  "pct": 0.06,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_traders-1440-old.png",
+  "new": "app_traders-1440-new.png"
+ },
+ {
+  "page": "app/traders",
+  "width": 1280,
+  "pct": 0.08,
+  "hOld": 800,
+  "hNew": 935,
+  "old": "app_traders-1280-old.png",
+  "new": "app_traders-1280-new.png"
+ },
+ {
+  "page": "app/traders",
+  "width": 768,
+  "pct": 5.55,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_traders-768-old.png",
+  "new": "app_traders-768-new.png"
+ },
+ {
+  "page": "app/traders",
+  "width": 390,
+  "pct": 16.33,
+  "hOld": 1094,
+  "hNew": 1302,
+  "old": "app_traders-390-old.png",
+  "new": "app_traders-390-new.png"
+ },
+ {
+  "page": "app/aimarket",
+  "width": 1440,
+  "pct": 0.06,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_aimarket-1440-old.png",
+  "new": "app_aimarket-1440-new.png"
+ },
+ {
+  "page": "app/aimarket",
+  "width": 1280,
+  "pct": 0.08,
+  "hOld": 800,
+  "hNew": 935,
+  "old": "app_aimarket-1280-old.png",
+  "new": "app_aimarket-1280-new.png"
+ },
+ {
+  "page": "app/aimarket",
+  "width": 768,
+  "pct": 3.49,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_aimarket-768-old.png",
+  "new": "app_aimarket-768-new.png"
+ },
+ {
+  "page": "app/aimarket",
+  "width": 390,
+  "pct": 14.15,
+  "hOld": 844,
+  "hNew": 1135,
+  "old": "app_aimarket-390-old.png",
+  "new": "app_aimarket-390-new.png"
+ },
+ {
+  "page": "app/sharedstrategies",
+  "width": 1440,
+  "pct": 0.06,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_sharedstrategies-1440-old.png",
+  "new": "app_sharedstrategies-1440-new.png"
+ },
+ {
+  "page": "app/sharedstrategies",
+  "width": 1280,
+  "pct": 0.08,
+  "hOld": 800,
+  "hNew": 935,
+  "old": "app_sharedstrategies-1280-old.png",
+  "new": "app_sharedstrategies-1280-new.png"
+ },
+ {
+  "page": "app/sharedstrategies",
+  "width": 768,
+  "pct": 1.75,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_sharedstrategies-768-old.png",
+  "new": "app_sharedstrategies-768-new.png"
+ },
+ {
+  "page": "app/sharedstrategies",
+  "width": 390,
+  "pct": 7.22,
+  "hOld": 844,
+  "hNew": 1135,
+  "old": "app_sharedstrategies-390-old.png",
+  "new": "app_sharedstrategies-390-new.png"
+ },
+ {
+  "page": "app/sharedportfolios",
+  "width": 1440,
+  "pct": 0.06,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_sharedportfolios-1440-old.png",
+  "new": "app_sharedportfolios-1440-new.png"
+ },
+ {
+  "page": "app/sharedportfolios",
+  "width": 1280,
+  "pct": 0.08,
+  "hOld": 800,
+  "hNew": 935,
+  "old": "app_sharedportfolios-1280-old.png",
+  "new": "app_sharedportfolios-1280-new.png"
+ },
+ {
+  "page": "app/sharedportfolios",
+  "width": 768,
+  "pct": 1.67,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_sharedportfolios-768-old.png",
+  "new": "app_sharedportfolios-768-new.png"
+ },
+ {
+  "page": "app/sharedportfolios",
+  "width": 390,
+  "pct": 7.92,
+  "hOld": 844,
+  "hNew": 1135,
+  "old": "app_sharedportfolios-390-old.png",
+  "new": "app_sharedportfolios-390-new.png"
+ },
+ {
+  "page": "app/signalchannels",
+  "width": 1440,
+  "pct": 0.06,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_signalchannels-1440-old.png",
+  "new": "app_signalchannels-1440-new.png"
+ },
+ {
+  "page": "app/signalchannels",
+  "width": 1280,
+  "pct": 0.08,
+  "hOld": 800,
+  "hNew": 935,
+  "old": "app_signalchannels-1280-old.png",
+  "new": "app_signalchannels-1280-new.png"
+ },
+ {
+  "page": "app/signalchannels",
+  "width": 768,
+  "pct": 1.76,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_signalchannels-768-old.png",
+  "new": "app_signalchannels-768-new.png"
+ },
+ {
+  "page": "app/signalchannels",
+  "width": 390,
+  "pct": 8.45,
+  "hOld": 844,
+  "hNew": 1135,
+  "old": "app_signalchannels-390-old.png",
+  "new": "app_signalchannels-390-new.png"
+ },
+ {
+  "page": "app/pairs",
+  "width": 1440,
+  "pct": 0.05,
+  "hOld": 1058,
+  "hNew": 1136,
+  "old": "app_pairs-1440-old.png",
+  "new": "app_pairs-1440-new.png"
+ },
+ {
+  "page": "app/pairs",
+  "width": 1280,
+  "pct": 0.06,
+  "hOld": 1058,
+  "hNew": 1136,
+  "old": "app_pairs-1280-old.png",
+  "new": "app_pairs-1280-new.png"
+ },
+ {
+  "page": "app/pairs",
+  "width": 768,
+  "pct": 21.05,
+  "hOld": 1309,
+  "hNew": 1452,
+  "old": "app_pairs-768-old.png",
+  "new": "app_pairs-768-new.png"
+ },
+ {
+  "page": "app/pairs",
+  "width": 390,
+  "pct": 17.27,
+  "hOld": 1627,
+  "hNew": 1856,
+  "old": "app_pairs-390-old.png",
+  "new": "app_pairs-390-new.png"
+ },
+ {
+  "page": "app/statarb",
+  "width": 1440,
+  "pct": 4.52,
+  "hOld": 2449,
+  "hNew": 2516,
+  "old": "app_statarb-1440-old.png",
+  "new": "app_statarb-1440-new.png"
+ },
+ {
+  "page": "app/statarb",
+  "width": 1280,
+  "pct": 4.62,
+  "hOld": 2467,
+  "hNew": 2533,
+  "old": "app_statarb-1280-old.png",
+  "new": "app_statarb-1280-new.png"
+ },
+ {
+  "page": "app/statarb",
+  "width": 768,
+  "pct": 11.74,
+  "hOld": 2809,
+  "hNew": 2894,
+  "old": "app_statarb-768-old.png",
+  "new": "app_statarb-768-new.png"
+ },
+ {
+  "page": "app/statarb",
+  "width": 390,
+  "pct": 21.41,
+  "hOld": 4262,
+  "hNew": 4483,
+  "old": "app_statarb-390-old.png",
+  "new": "app_statarb-390-new.png"
+ },
+ {
+  "page": "app/code",
+  "width": 1440,
+  "pct": 1.06,
+  "hOld": 1121,
+  "hNew": 1184,
+  "old": "app_code-1440-old.png",
+  "new": "app_code-1440-new.png"
+ },
+ {
+  "page": "app/code",
+  "width": 1280,
+  "pct": 0.99,
+  "hOld": 1183,
+  "hNew": 1246,
+  "old": "app_code-1280-old.png",
+  "new": "app_code-1280-new.png"
+ },
+ {
+  "page": "app/code",
+  "width": 768,
+  "pct": 8.51,
+  "hOld": 1327,
+  "hNew": 1409,
+  "old": "app_code-768-old.png",
+  "new": "app_code-768-new.png"
+ },
+ {
+  "page": "app/code",
+  "width": 390,
+  "pct": 16.11,
+  "hOld": 1625,
+  "hNew": 1794,
+  "old": "app_code-390-old.png",
+  "new": "app_code-390-new.png"
+ },
+ {
+  "page": "app/quantconnect",
+  "width": 1440,
+  "pct": 1.22,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_quantconnect-1440-old.png",
+  "new": "app_quantconnect-1440-new.png"
+ },
+ {
+  "page": "app/quantconnect",
+  "width": 1280,
+  "pct": 1.34,
+  "hOld": 800,
+  "hNew": 935,
+  "old": "app_quantconnect-1280-old.png",
+  "new": "app_quantconnect-1280-new.png"
+ },
+ {
+  "page": "app/quantconnect",
+  "width": 768,
+  "pct": 3.37,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_quantconnect-768-old.png",
+  "new": "app_quantconnect-768-new.png"
+ },
+ {
+  "page": "app/quantconnect",
+  "width": 390,
+  "pct": 6.89,
+  "hOld": 844,
+  "hNew": 1135,
+  "old": "app_quantconnect-390-old.png",
+  "new": "app_quantconnect-390-new.png"
+ },
+ {
+  "page": "app/riskview",
+  "width": 1440,
+  "pct": 1.22,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_riskview-1440-old.png",
+  "new": "app_riskview-1440-new.png"
+ },
+ {
+  "page": "app/riskview",
+  "width": 1280,
+  "pct": 1.31,
+  "hOld": 818,
+  "hNew": 935,
+  "old": "app_riskview-1280-old.png",
+  "new": "app_riskview-1280-new.png"
+ },
+ {
+  "page": "app/riskview",
+  "width": 768,
+  "pct": 8.36,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_riskview-768-old.png",
+  "new": "app_riskview-768-new.png"
+ },
+ {
+  "page": "app/riskview",
+  "width": 390,
+  "pct": 18.5,
+  "hOld": 1202,
+  "hNew": 1354,
+  "old": "app_riskview-390-old.png",
+  "new": "app_riskview-390-new.png"
+ },
+ {
+  "page": "app/retirement",
+  "width": 1440,
+  "pct": 7.8,
+  "hOld": 2146,
+  "hNew": 2209,
+  "old": "app_retirement-1440-old.png",
+  "new": "app_retirement-1440-new.png"
+ },
+ {
+  "page": "app/retirement",
+  "width": 1280,
+  "pct": 7.8,
+  "hOld": 2182,
+  "hNew": 2244,
+  "old": "app_retirement-1280-old.png",
+  "new": "app_retirement-1280-new.png"
+ },
+ {
+  "page": "app/retirement",
+  "width": 768,
+  "pct": 10.09,
+  "hOld": 2377,
+  "hNew": 2479,
+  "old": "app_retirement-768-old.png",
+  "new": "app_retirement-768-new.png"
+ },
+ {
+  "page": "app/retirement",
+  "width": 390,
+  "pct": 19.65,
+  "hOld": 4764,
+  "hNew": 4995,
+  "old": "app_retirement-390-old.png",
+  "new": "app_retirement-390-new.png"
+ },
+ {
+  "page": "app/money",
+  "width": 1440,
+  "pct": 2.03,
+  "hOld": 1017,
+  "hNew": 1080,
+  "old": "app_money-1440-old.png",
+  "new": "app_money-1440-new.png"
+ },
+ {
+  "page": "app/money",
+  "width": 1280,
+  "pct": 2.03,
+  "hOld": 1052,
+  "hNew": 1114,
+  "old": "app_money-1280-old.png",
+  "new": "app_money-1280-new.png"
+ },
+ {
+  "page": "app/money",
+  "width": 768,
+  "pct": 8.77,
+  "hOld": 1167,
+  "hNew": 1248,
+  "old": "app_money-768-old.png",
+  "new": "app_money-768-new.png"
+ },
+ {
+  "page": "app/money",
+  "width": 390,
+  "pct": 16.41,
+  "hOld": 1830,
+  "hNew": 1967,
+  "old": "app_money-390-old.png",
+  "new": "app_money-390-new.png"
+ },
+ {
+  "page": "app/currencies",
+  "width": 1440,
+  "pct": 0.06,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_currencies-1440-old.png",
+  "new": "app_currencies-1440-new.png"
+ },
+ {
+  "page": "app/currencies",
+  "width": 1280,
+  "pct": 0.08,
+  "hOld": 800,
+  "hNew": 935,
+  "old": "app_currencies-1280-old.png",
+  "new": "app_currencies-1280-new.png"
+ },
+ {
+  "page": "app/currencies",
+  "width": 768,
+  "pct": 2.18,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_currencies-768-old.png",
+  "new": "app_currencies-768-new.png"
+ },
+ {
+  "page": "app/currencies",
+  "width": 390,
+  "pct": 6.44,
+  "hOld": 844,
+  "hNew": 1135,
+  "old": "app_currencies-390-old.png",
+  "new": "app_currencies-390-new.png"
+ },
+ {
+  "page": "app/brief",
+  "width": 1440,
+  "pct": 4.04,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_brief-1440-old.png",
+  "new": "app_brief-1440-new.png"
+ },
+ {
+  "page": "app/brief",
+  "width": 1280,
+  "pct": 4.57,
+  "hOld": 800,
+  "hNew": 935,
+  "old": "app_brief-1280-old.png",
+  "new": "app_brief-1280-new.png"
+ },
+ {
+  "page": "app/brief",
+  "width": 768,
+  "pct": 7.03,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_brief-768-old.png",
+  "new": "app_brief-768-new.png"
+ },
+ {
+  "page": "app/brief",
+  "width": 390,
+  "pct": 12.77,
+  "hOld": 844,
+  "hNew": 1135,
+  "old": "app_brief-390-old.png",
+  "new": "app_brief-390-new.png"
+ },
+ {
+  "page": "app/insights",
+  "width": 1440,
+  "pct": 3.85,
+  "hOld": 1712,
+  "hNew": 1775,
+  "old": "app_insights-1440-old.png",
+  "new": "app_insights-1440-new.png"
+ },
+ {
+  "page": "app/insights",
+  "width": 1280,
+  "pct": 3.58,
+  "hOld": 1808,
+  "hNew": 1870,
+  "old": "app_insights-1280-old.png",
+  "new": "app_insights-1280-new.png"
+ },
+ {
+  "page": "app/insights",
+  "width": 768,
+  "pct": 9.55,
+  "hOld": 1907,
+  "hNew": 1988,
+  "old": "app_insights-768-old.png",
+  "new": "app_insights-768-new.png"
+ },
+ {
+  "page": "app/insights",
+  "width": 390,
+  "pct": 15.85,
+  "hOld": 2690,
+  "hNew": 2834,
+  "old": "app_insights-390-old.png",
+  "new": "app_insights-390-new.png"
+ },
+ {
+  "page": "app/risk",
+  "width": 1440,
+  "pct": 0.26,
+  "hOld": 1672,
+  "hNew": 1751,
+  "old": "app_risk-1440-old.png",
+  "new": "app_risk-1440-new.png"
+ },
+ {
+  "page": "app/risk",
+  "width": 1280,
+  "pct": 0.29,
+  "hOld": 1672,
+  "hNew": 1751,
+  "old": "app_risk-1280-old.png",
+  "new": "app_risk-1280-new.png"
+ },
+ {
+  "page": "app/risk",
+  "width": 768,
+  "pct": 8.01,
+  "hOld": 1809,
+  "hNew": 1906,
+  "old": "app_risk-768-old.png",
+  "new": "app_risk-768-new.png"
+ },
+ {
+  "page": "app/risk",
+  "width": 390,
+  "pct": 16.88,
+  "hOld": 2730,
+  "hNew": 2945,
+  "old": "app_risk-390-old.png",
+  "new": "app_risk-390-new.png"
+ },
+ {
+  "page": "app/tax",
+  "width": 1440,
+  "pct": 9.46,
+  "hOld": 2076,
+  "hNew": 2141,
+  "old": "app_tax-1440-old.png",
+  "new": "app_tax-1440-new.png"
+ },
+ {
+  "page": "app/tax",
+  "width": 1280,
+  "pct": 9.55,
+  "hOld": 2094,
+  "hNew": 2159,
+  "old": "app_tax-1280-old.png",
+  "new": "app_tax-1280-new.png"
+ },
+ {
+  "page": "app/tax",
+  "width": 768,
+  "pct": 16.2,
+  "hOld": 2392,
+  "hNew": 2454,
+  "old": "app_tax-768-old.png",
+  "new": "app_tax-768-new.png"
+ },
+ {
+  "page": "app/tax",
+  "width": 390,
+  "pct": 18.98,
+  "hOld": 3403,
+  "hNew": 3635,
+  "old": "app_tax-390-old.png",
+  "new": "app_tax-390-new.png"
+ },
+ {
+  "page": "app/taxpilot",
+  "width": 1440,
+  "pct": 0.04,
+  "hOld": 1308,
+  "hNew": 1386,
+  "old": "app_taxpilot-1440-old.png",
+  "new": "app_taxpilot-1440-new.png"
+ },
+ {
+  "page": "app/taxpilot",
+  "width": 1280,
+  "pct": 0.05,
+  "hOld": 1308,
+  "hNew": 1386,
+  "old": "app_taxpilot-1280-old.png",
+  "new": "app_taxpilot-1280-new.png"
+ },
+ {
+  "page": "app/taxpilot",
+  "width": 768,
+  "pct": 10.6,
+  "hOld": 1402,
+  "hNew": 1521,
+  "old": "app_taxpilot-768-old.png",
+  "new": "app_taxpilot-768-new.png"
+ },
+ {
+  "page": "app/taxpilot",
+  "width": 390,
+  "pct": 15.54,
+  "hOld": 2154,
+  "hNew": 2332,
+  "old": "app_taxpilot-390-old.png",
+  "new": "app_taxpilot-390-new.png"
+ },
+ {
+  "page": "app/private",
+  "width": 1440,
+  "pct": 0.03,
+  "hOld": 1727,
+  "hNew": 1805,
+  "old": "app_private-1440-old.png",
+  "new": "app_private-1440-new.png"
+ },
+ {
+  "page": "app/private",
+  "width": 1280,
+  "pct": 0.03,
+  "hOld": 1749,
+  "hNew": 1827,
+  "old": "app_private-1280-old.png",
+  "new": "app_private-1280-new.png"
+ },
+ {
+  "page": "app/private",
+  "width": 768,
+  "pct": 7.34,
+  "hOld": 1967,
+  "hNew": 2063,
+  "old": "app_private-768-old.png",
+  "new": "app_private-768-new.png"
+ },
+ {
+  "page": "app/private",
+  "width": 390,
+  "pct": 18.94,
+  "hOld": 3118,
+  "hNew": 3330,
+  "old": "app_private-390-old.png",
+  "new": "app_private-390-new.png"
+ },
+ {
+  "page": "app/brokers",
+  "width": 1440,
+  "pct": 1.54,
+  "hOld": 922,
+  "hNew": 1035,
+  "old": "app_brokers-1440-old.png",
+  "new": "app_brokers-1440-new.png"
+ },
+ {
+  "page": "app/brokers",
+  "width": 1280,
+  "pct": 1.22,
+  "hOld": 1181,
+  "hNew": 1246,
+  "old": "app_brokers-1280-old.png",
+  "new": "app_brokers-1280-new.png"
+ },
+ {
+  "page": "app/brokers",
+  "width": 768,
+  "pct": 8.18,
+  "hOld": 1275,
+  "hNew": 1359,
+  "old": "app_brokers-768-old.png",
+  "new": "app_brokers-768-new.png"
+ },
+ {
+  "page": "app/brokers",
+  "width": 390,
+  "pct": 21.92,
+  "hOld": 1789,
+  "hNew": 1994,
+  "old": "app_brokers-390-old.png",
+  "new": "app_brokers-390-new.png"
+ },
+ {
+  "page": "app/account",
+  "width": 1440,
+  "pct": 9.35,
+  "hOld": 1233,
+  "hNew": 1296,
+  "old": "app_account-1440-old.png",
+  "new": "app_account-1440-new.png"
+ },
+ {
+  "page": "app/account",
+  "width": 1280,
+  "pct": 9.52,
+  "hOld": 1233,
+  "hNew": 1296,
+  "old": "app_account-1280-old.png",
+  "new": "app_account-1280-new.png"
+ },
+ {
+  "page": "app/account",
+  "width": 768,
+  "pct": 11.04,
+  "hOld": 1282,
+  "hNew": 1386,
+  "old": "app_account-768-old.png",
+  "new": "app_account-768-new.png"
+ },
+ {
+  "page": "app/account",
+  "width": 390,
+  "pct": 15.92,
+  "hOld": 1897,
+  "hNew": 2131,
+  "old": "app_account-390-old.png",
+  "new": "app_account-390-new.png"
+ },
+ {
+  "page": "app/accounts",
+  "width": 1440,
+  "pct": 0.09,
+  "hOld": 2456,
+  "hNew": 2534,
+  "old": "app_accounts-1440-old.png",
+  "new": "app_accounts-1440-new.png"
+ },
+ {
+  "page": "app/accounts",
+  "width": 1280,
+  "pct": 0.1,
+  "hOld": 2480,
+  "hNew": 2558,
+  "old": "app_accounts-1280-old.png",
+  "new": "app_accounts-1280-new.png"
+ },
+ {
+  "page": "app/accounts",
+  "width": 768,
+  "pct": 15.82,
+  "hOld": 2667,
+  "hNew": 2746,
+  "old": "app_accounts-768-old.png",
+  "new": "app_accounts-768-new.png"
+ },
+ {
+  "page": "app/accounts",
+  "width": 390,
+  "pct": 17.55,
+  "hOld": 3935,
+  "hNew": 4204,
+  "old": "app_accounts-390-old.png",
+  "new": "app_accounts-390-new.png"
+ },
+ {
+  "page": "app/funding",
+  "width": 1440,
+  "pct": 2.2,
+  "hOld": 2068,
+  "hNew": 2117,
+  "old": "app_funding-1440-old.png",
+  "new": "app_funding-1440-new.png"
+ },
+ {
+  "page": "app/funding",
+  "width": 1280,
+  "pct": 2.1,
+  "hOld": 2169,
+  "hNew": 2218,
+  "old": "app_funding-1280-old.png",
+  "new": "app_funding-1280-new.png"
+ },
+ {
+  "page": "app/funding",
+  "width": 768,
+  "pct": 15.06,
+  "hOld": 2899,
+  "hNew": 3008,
+  "old": "app_funding-768-old.png",
+  "new": "app_funding-768-new.png"
+ },
+ {
+  "page": "app/funding",
+  "width": 390,
+  "pct": 14.06,
+  "hOld": 4087,
+  "hNew": 4216,
+  "old": "app_funding-390-old.png",
+  "new": "app_funding-390-new.png"
+ },
+ {
+  "page": "app/referrals",
+  "width": 1440,
+  "pct": 0.27,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_referrals-1440-old.png",
+  "new": "app_referrals-1440-new.png"
+ },
+ {
+  "page": "app/referrals",
+  "width": 1280,
+  "pct": 0.17,
+  "hOld": 850,
+  "hNew": 935,
+  "old": "app_referrals-1280-old.png",
+  "new": "app_referrals-1280-new.png"
+ },
+ {
+  "page": "app/referrals",
+  "width": 768,
+  "pct": 5.03,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_referrals-768-old.png",
+  "new": "app_referrals-768-new.png"
+ },
+ {
+  "page": "app/referrals",
+  "width": 390,
+  "pct": 21.46,
+  "hOld": 1038,
+  "hNew": 1241,
+  "old": "app_referrals-390-old.png",
+  "new": "app_referrals-390-new.png"
+ },
+ {
+  "page": "app/learn",
+  "width": 1440,
+  "pct": 0.04,
+  "hOld": 1423,
+  "hNew": 1501,
+  "old": "app_learn-1440-old.png",
+  "new": "app_learn-1440-new.png"
+ },
+ {
+  "page": "app/learn",
+  "width": 1280,
+  "pct": 0.04,
+  "hOld": 1622,
+  "hNew": 1700,
+  "old": "app_learn-1280-old.png",
+  "new": "app_learn-1280-new.png"
+ },
+ {
+  "page": "app/learn",
+  "width": 768,
+  "pct": 6.24,
+  "hOld": 1562,
+  "hNew": 1659,
+  "old": "app_learn-768-old.png",
+  "new": "app_learn-768-new.png"
+ },
+ {
+  "page": "app/learn",
+  "width": 390,
+  "pct": 20,
+  "hOld": 2552,
+  "hNew": 3288,
+  "old": "app_learn-390-old.png",
+  "new": "app_learn-390-new.png"
+ },
+ {
+  "page": "app/security",
+  "width": 1440,
+  "pct": 0.4,
+  "hOld": 1015,
+  "hNew": 1093,
+  "old": "app_security-1440-old.png",
+  "new": "app_security-1440-new.png"
+ },
+ {
+  "page": "app/security",
+  "width": 1280,
+  "pct": 0.43,
+  "hOld": 1081,
+  "hNew": 1159,
+  "old": "app_security-1280-old.png",
+  "new": "app_security-1280-new.png"
+ },
+ {
+  "page": "app/security",
+  "width": 768,
+  "pct": 6.04,
+  "hOld": 1174,
+  "hNew": 1271,
+  "old": "app_security-768-old.png",
+  "new": "app_security-768-new.png"
+ },
+ {
+  "page": "app/security",
+  "width": 390,
+  "pct": 14.2,
+  "hOld": 1339,
+  "hNew": 1543,
+  "old": "app_security-390-old.png",
+  "new": "app_security-390-new.png"
+ },
+ {
+  "page": "app/protection",
+  "width": 1440,
+  "pct": 7.89,
+  "hOld": 1150,
+  "hNew": 1165,
+  "old": "app_protection-1440-old.png",
+  "new": "app_protection-1440-new.png"
+ },
+ {
+  "page": "app/protection",
+  "width": 1280,
+  "pct": 8.31,
+  "hOld": 1172,
+  "hNew": 1186,
+  "old": "app_protection-1280-old.png",
+  "new": "app_protection-1280-new.png"
+ },
+ {
+  "page": "app/protection",
+  "width": 768,
+  "pct": 15.36,
+  "hOld": 1465,
+  "hNew": 1520,
+  "old": "app_protection-768-old.png",
+  "new": "app_protection-768-new.png"
+ },
+ {
+  "page": "app/protection",
+  "width": 390,
+  "pct": 26.04,
+  "hOld": 2207,
+  "hNew": 2277,
+  "old": "app_protection-390-old.png",
+  "new": "app_protection-390-new.png"
+ },
+ {
+  "page": "app/android",
+  "width": 1440,
+  "pct": 0.06,
+  "hOld": 900,
+  "hNew": 1035,
+  "old": "app_android-1440-old.png",
+  "new": "app_android-1440-new.png"
+ },
+ {
+  "page": "app/android",
+  "width": 1280,
+  "pct": 0.08,
+  "hOld": 800,
+  "hNew": 935,
+  "old": "app_android-1280-old.png",
+  "new": "app_android-1280-new.png"
+ },
+ {
+  "page": "app/android",
+  "width": 768,
+  "pct": 8.42,
+  "hOld": 1024,
+  "hNew": 1238,
+  "old": "app_android-768-old.png",
+  "new": "app_android-768-new.png"
+ },
+ {
+  "page": "app/android",
+  "width": 390,
+  "pct": 17.4,
+  "hOld": 990,
+  "hNew": 1207,
+  "old": "app_android-390-old.png",
+  "new": "app_android-390-new.png"
+ },
+ {
+  "page": "app/settings",
+  "width": 1440,
+  "pct": 6.42,
+  "hOld": 3375,
+  "hNew": 3438,
+  "old": "app_settings-1440-old.png",
+  "new": "app_settings-1440-new.png"
+ },
+ {
+  "page": "app/settings",
+  "width": 1280,
+  "pct": 6.08,
+  "hOld": 3442,
+  "hNew": 3511,
+  "old": "app_settings-1280-old.png",
+  "new": "app_settings-1280-new.png"
+ },
+ {
+  "page": "app/settings",
+  "width": 768,
+  "pct": 13.61,
+  "hOld": 4322,
+  "hNew": 4382,
+  "old": "app_settings-768-old.png",
+  "new": "app_settings-768-new.png"
+ },
+ {
+  "page": "app/settings",
+  "width": 390,
+  "pct": 19.22,
+  "hOld": 6037,
+  "hNew": 6187,
+  "old": "app_settings-390-old.png",
+  "new": "app_settings-390-new.png"
+ }
+]

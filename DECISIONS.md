@@ -1,5 +1,7 @@
 # DECISIONS.md
 
+> **Update 2026-11-16:** the feature flag system was removed and the flagged features are permanently on (CHANGELOG_AI.md). Rows below that mention a flag describe the earlier design.
+
 ## AI team Chat (branch `feature/ai-team-chat`)
 
 | # | Decision | Reason |

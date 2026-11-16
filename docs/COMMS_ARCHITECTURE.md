@@ -1,7 +1,9 @@
 # SMS and voice module (Project B): architecture
 
+> **Update 2026-11-16: the feature flag system was removed** (CHANGELOG_AI.md). Wherever this page mentions a flag, read it as the feature being permanently on. 
+
 Branch `feature/comms-module` (stacked on `feature/stripe-audit`; not merged, not deployed).
-Feature flag `comms_drawer`, **off by default**. Provider: Telnyx (the brief's default), behind an adapter.
+Always on, but a user sees nothing until the owner assigns them a number. Provider: Telnyx (the brief's default), behind an adapter.
 Setup, local testing and the production checklist: [COMMS_SETUP.md](COMMS_SETUP.md). Choices made without asking:
 ASSUMPTIONS.md, section B.
 
@@ -82,7 +84,7 @@ database per user, deleted at sign-out). A new device starts with an empty inbox
 | `GET /api/comms/status`, `/summary`, `/calls`, `POST /calls/seen` | session | Flag state; unread counts; call history; mark missed calls seen. |
 | `GET/PUT/DELETE /api/admin/sms-voice…` | admin | List providers and numbers; assign a number to a user and choose `ivr` or `softphone`. |
 
-All user endpoints answer 404 unless the flag is on for that user (percentage rollout by user id), 401 when signed
+All user endpoints answer 404 for a user who has no number, 401 when signed
 out, and share a 600-per-10-minutes per-user ceiling.
 
 ## Real-time
