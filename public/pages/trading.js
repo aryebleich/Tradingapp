@@ -2,6 +2,7 @@
 // markets & news, option chains, watchlists, calendar & corporate actions.
 import { canvasNote } from '../i18n.js';
 import * as OD from './orderdesk.js';
+import { whenHtml, wireWhen, reviewAndSchedule, closeLater } from './when.js';
 import { profileCard } from './profile.js';
 let H; // helpers from app.js
 
@@ -636,6 +637,7 @@ function renderTicket(box, symbol, kind, acct, lastPx, q, onPlaced) {
         <div id="tkCost"></div><div id="tkBear"></div>
         <div class="kv" style="margin-top:12px"><span>Estimated ${st.side === 'buy' ? 'cost' : 'proceeds'}</span><span id="est">-</span>
           ${acct ? `<span>Buying power</span><span>${usd(kind === 'option' ? acct.optionsBuyingPower ?? acct.buyingPower : kind === 'crypto' ? acct.nonMarginableBuyingPower ?? acct.cash : acct.buyingPower)}</span>` : ''}</div>
+        ${kind === 'stock' ? whenHtml() : ''}
         <button style="width:100%;margin-top:12px" class="${st.side === 'sell' ? 'danger' : 'buyact'}" id="review">${st.side === 'sell' ? 'Review sell order' : 'Review buy order'}</button><div class="err" id="tkErr"></div>
       </form>`;
     const f = H.$('#tk', box);
@@ -663,10 +665,21 @@ function renderTicket(box, symbol, kind, acct, lastPx, q, onPlaced) {
       const all = H.$('#sellAll', box); if (all) all.onclick = () => { st.mode = 'qty'; if (f.qty) { f.qty.value = d.holding.available ?? d.holding.qty; est(); desk(); } };
     };
     f.oninput = () => { est(); clearTimeout(dt); dt = setTimeout(desk, 350); }; est(); desk();
+    // When: now, or scheduled through the Scheduled trades engine (market and limit orders).
+    const account = H.state?.account || 'alpaca';
+    const sched = kind === 'stock' ? wireWhen(box, { api: H.api, order: () => ({ account, symbol, side: st.side, qty: +f.qty?.value || undefined, notional: +f.notional?.value || undefined, orderType: st.type, limitPrice: +f.limit_price?.value || undefined }) }) : null;
     H.act(H.$('#review', box), async () => {
       const bad = [...f.querySelectorAll('input,select')].find(i => !i.checkValidity()); if (bad) { bad.focus(); throw new Error('Fill in the highlighted field'); }
       const o = { ...H.form(f), symbol, side: st.side, order_class: f.order_class?.value || 'simple' };
       for (const k of Object.keys(o)) if (o[k] === '' || o[k] === false) delete o[k];
+      if (sched && !sched.isNow()) {
+        if (!['market', 'limit'].includes(o.type) || o.order_class !== 'simple') throw new Error('Only simple market and limit orders can be scheduled for now.');
+        const live = !!H.$('.pill.warn', document.getElementById('top'));
+        const what = `${o.side.toUpperCase()} ${o.notional ? usd(+o.notional) + ' of' : o.qty} ${H.esc(symbol)} · ${o.type}${o.limit_price ? ' @ ' + o.limit_price : ''}`;
+        const msg = await reviewAndSchedule(H.api, sched, { account, symbol, side: o.side, qty: +o.qty || undefined, notional: +o.notional || undefined, orderType: o.type, limitPrice: +o.limit_price || undefined, extended: !!o.extended_hours }, { what, live });
+        if (msg) onPlaced();
+        return msg;
+      }
       if (o.side === 'sell' && kind === 'stock' && !o.allow_short && st.hold && +o.qty > (st.hold.available ?? st.hold.qty) + 1e-9) throw new Error(st.hold.qty > 0 ? `You can sell up to ${st.hold.available ?? st.hold.qty} ${symbol}; use "Sell all" or tick "Sell short".` : `You do not own ${symbol} in this account. Tick "Sell short" only if you mean to short it.`);
       if (o.order_class === 'bracket' && lastPx()) o.ref_price = o.limit_price || lastPx();
       const live = H.$('.pill.warn', document.getElementById('top')) ? '<p class="warn"><b>This is a LIVE order with real money.</b></p>' : '';
@@ -767,7 +780,7 @@ async function positions(view) {
   ${ps.map(p => `<tr data-sym="${H.esc(p.symbol)}"><td><a href="#/trade?symbol=${encodeURIComponent(p.symbol)}">${H.esc(p.symbol)}</a> <span class="mu" style="font-size:12px">${H.esc(p.assetClass)}</span></td><td>${H.esc(p.side)}</td>
     <td class="num">${fmt(p.qty, p.qty % 1 ? 4 : 0)}</td><td class="num">${fmt(p.avgEntry)}</td><td class="num" data-px>${fmt(p.price)}</td><td class="num">${usd(p.marketValue)}</td>
     <td class="num ${H.cls(p.todayPl)}">${usd(p.todayPl)}</td><td class="num ${H.cls(p.unrealizedPl)}">${usd(p.unrealizedPl)} (${H.pct(p.unrealizedPlPct)})</td>
-    <td><button class="small ghost" data-close="${H.esc(p.symbol)}" data-qty="${p.qtyAvailable}">Close</button>${p.assetClass === 'us_option' && p.side === 'long' ? ` <button class="small ghost" data-ex="${H.esc(p.symbol)}">Exercise</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="9" class="mu">No open positions. <a href="#/trade">Place a trade</a></td></tr>'}
+    <td><button class="small ghost" data-close="${H.esc(p.symbol)}" data-qty="${p.qtyAvailable}">Close</button>${p.assetClass === 'us_option' ? '' : ` <button class="small ghost" data-later="${H.esc(p.symbol)}" data-qty="${p.side === 'short' ? -Math.abs(p.qtyAvailable) : p.qtyAvailable}">Close later</button>`}${p.assetClass === 'us_option' && p.side === 'long' ? ` <button class="small ghost" data-ex="${H.esc(p.symbol)}">Exercise</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="9" class="mu">No open positions. <a href="#/trade">Place a trade</a></td></tr>'}
   </table></div>`;
   // Crypto positions are reported as BTCUSD; the price stream uses BTC/USD.
   const streamSym = p => (p.assetClass === 'crypto' && !p.symbol.includes('/') ? p.symbol.replace(/(USDT|USDC|USD|BTC)$/, '/$1') : p.symbol);
@@ -784,6 +797,10 @@ async function positions(view) {
     const q2 = [f.mode === 'qty' ? 'qty=' + f.amount : f.mode === 'percentage' ? 'percentage=' + f.amount : '', qs].filter(Boolean).join('&');
     try { await A('/positions/' + encodeURIComponent(b.dataset.close) + (q2 ? '?' + q2 : ''), { method: 'DELETE' }); } catch (e) { return alert(e.message); }
     setTimeout(H.render, 1200);
+  }));
+  H.$$('[data-later]', view).forEach(b => (b.onclick = async () => {
+    const msg = await closeLater(H.api, { account: H.state?.account || 'alpaca', symbol: b.dataset.later, qty: +b.dataset.qty, live: !!H.$('.pill.warn', document.getElementById('top')) });
+    if (msg) alert(msg);
   }));
   H.$$('[data-ex]', view).forEach(b => (b.onclick = async () => {
     if (!(await confirmBox('Exercise option?', `<p>Exercise <b>${H.esc(b.dataset.ex)}</b> now?</p>`, 'Exercise'))) return;

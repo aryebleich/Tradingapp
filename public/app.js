@@ -12,6 +12,7 @@ import { registerBrokers } from './pages/brokers.js';
 import { registerProtect, getPasskey } from './pages/protect.js';
 import { registerAddons } from './pages/addons.js';
 import * as OD from './pages/orderdesk.js';
+import { whenHtml, wireWhen, reviewAndSchedule } from './pages/when.js';
 import { startBell } from './pages/bell.js';
 import { registerStart } from './pages/start.js';
 import { initSearch } from './pages/search.js';
@@ -1194,6 +1195,7 @@ const ticketHtml = (a, symbol = 'SPY') => `<form class="card ticket" id="ticket"
       <div class="row qpx"><label class="qlim" hidden>Limit price<input name="limit_price" type="number" step="any" min="0"></label><label class="qstp" hidden>Stop price<input name="stop_price" type="number" step="any" min="0"></label><label class="qtif" hidden>Good for<select name="time_in_force"><option value="day">Today (Day)</option><option value="gtc">Until cancelled (GTC)</option></select></label></div>
       <label class="check qshort" hidden><input type="checkbox" name="allow_short"> ${state.account === 'paper' ? 'Sell short (practice money: no minimum balance)' : 'Sell short (I do not own it; margin account with $2,000+ needed)'}</label>
       <div id="qGuide"></div><div id="qCost"></div><div id="qBear"></div>
+      ${whenHtml()}
       <button id="qPlace">Review order</button> <button type="button" class="ghost" id="quote">Quote</button><div class="err"></div>
       ${a.live ? '<p class="warn">This sends a real order with real money.</p>' : ''}
     </form>`;
@@ -1228,10 +1230,18 @@ function wireQuickTicket(t, view, a) {
   t.type.onchange = () => { st.type = t.type.value; layout(); schedule(); };
   t.oninput = e => { if (e.target.name !== 'type') schedule(); };
   layout(); refresh();
+  // When: now, or scheduled (at a time, before the close, at the next open, after a delay).
+  const W = wireWhen(t, { api, order: () => { const f = form(t); return { account: state.account, symbol: f.symbol.trim().toUpperCase(), side: st.side, qty: +f.qty || undefined, notional: +f.notional || undefined, orderType: st.type, limitPrice: +f.limit_price || undefined }; } });
   act($('#qPlace', t), async () => {
     const f = form(t); for (const k of Object.keys(f)) if (f[k] === '' || f[k] === false) delete f[k];
     f.symbol = f.symbol.trim().toUpperCase(); f.type = st.type; f.side = st.side;
     if (!(+f.qty > 0) && !(+f.notional > 0)) throw new Error('Enter shares or dollars');
+    if (!W.isNow()) {
+      if (!['market', 'limit'].includes(st.type)) throw new Error('Only market and limit orders can be scheduled from here.');
+      const what = `${f.side.toUpperCase()} ${f.qty ? f.qty + ' shares of' : money(+f.notional) + ' of'} ${f.symbol} · ${OD.ORDER_TYPES[st.type].name}${f.limit_price ? ' limit ' + money(+f.limit_price) : ''}`;
+      const msg = await reviewAndSchedule(api, W, { account: state.account, symbol: f.symbol, side: st.side, qty: +f.qty || undefined, notional: +f.notional || undefined, orderType: st.type, limitPrice: +f.limit_price || undefined }, { what, live: a.live });
+      return msg;
+    }
     if (st.side === 'sell' && !f.allow_short && st.hold && +f.qty > (st.hold.available ?? st.hold.qty) + 1e-9) throw new Error(st.hold.qty > 0 ? `You can sell up to ${st.hold.available ?? st.hold.qty} ${f.symbol}` : `You do not own ${f.symbol} in this account`);
     const what = `${f.side.toUpperCase()} ${f.qty ? f.qty + ' shares of' : money(+f.notional) + ' of'} ${f.symbol} · ${OD.ORDER_TYPES[st.type].name}${f.limit_price ? ' limit ' + money(+f.limit_price) : ''}${f.stop_price ? ' stop ' + money(+f.stop_price) : ''}${st.type !== 'market' ? ' · ' + (f.time_in_force === 'gtc' ? 'GTC' : 'Day') : ''}`;
     if (!confirm(`${a.live ? 'LIVE ORDER WITH REAL MONEY\n' : ''}${what}\n\nPlace this order?`)) return '';
@@ -1441,50 +1451,48 @@ routes.quantconnect = async view => {
 // ---------- scheduled trades + alerts ----------
 routes.schedule = async view => {
   const [rows, alerts, accts] = await Promise.all([api('/schedule'), api('/alerts'), accounts()]);
-  // New York date and time for the form (orders run at exchange time, whatever the browser's zone).
-  const ny = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
   const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const when = o => {
+    if (o.when_kind === 'close') return o.close_offset ? `${o.close_offset} min before the close` : `At the close${o.tif === 'cls' ? ' (closing auction)' : ''}`;
+    if (o.when_kind === 'open') return `At the open${o.tif === 'opg' ? ' (opening auction)' : ''}`;
+    if (o.when_kind === 'delay') return 'After a delay';
     const t = o.run_minutes != null ? `${String(Math.floor(o.run_minutes / 60)).padStart(2, '0')}:${String(o.run_minutes % 60).padStart(2, '0')} ET` : '';
-    const rep = { once: 'Once', daily: 'Every weekday', weekly: o.weekdays ? o.weekdays.split(',').map(d => DAYS[+d]).join(', ') : 'Weekly', monthly: o.month_day ? `Monthly on the ${o.month_day}` : 'Monthly' }[o.repeat] || o.repeat;
+    const rep = { once: 'Once', daily: 'Every trading day', weekly: o.weekdays ? o.weekdays.split(',').map(d => DAYS[+d]).join(', ') : 'Weekly', monthly: o.month_day ? `Monthly on the ${o.month_day}` : 'Monthly' }[o.repeat] || o.repeat;
     return `${rep}${t ? ' at ' + t : ''}`;
   };
+  const what = o => o.close_mode ? `close ${o.close_mode === 'all' ? 'all of' : o.close_mode === 'pct' ? o.close_pct + '% of' : num(o.qty, 4) + ' of'} ${esc(o.symbol)}` : `${o.side} ${o.qty ? num(o.qty, 4) : money(o.notional)} ${esc(o.symbol)}${o.order_type === 'limit' ? ` · limit ${money(o.limit_price)}${o.extended ? ' · ext. hours' : ''}` : ''}`;
   view.innerHTML = `<h1>Scheduled trades</h1>
   <form class="card" id="sch"><h2>New scheduled order</h2>
     <div class="row"><label>Account<select name="account">${accountOptions(accts, 'paper', isPaid(ME))}</select></label>
       <label>Side<select name="side"><option value="buy">Buy</option><option value="sell">Sell</option></select></label>
       <label>Symbol<input name="symbol" value="SPY" autocomplete="off"></label>
       <label>Shares<input name="qty" type="number" step="any"></label><label>or Dollars<input name="notional" type="number" step="any" value="100"></label></div>
-    <div class="row"><label>Date<input name="date" type="date" value="${ny}" min="${ny}"></label>
-      <label>Time (New York)<input name="time" type="time" value="09:35" step="60"></label>
-      <label>Quick pick<select id="preset"><option value="">Choose…</option><option value="09:30">At the open (9:30)</option><option value="09:35">Just after the open (9:35)</option><option value="12:00">Midday (12:00)</option><option value="15:50">Before the close (15:50)</option><option value="08:00">Pre-market (8:00, limit + extended)</option><option value="17:00">After hours (17:00, limit + extended)</option></select></label>
-      <label>Repeat<select name="repeat"><option value="once">Once</option><option value="daily">Every weekday</option><option value="weekly" selected>On chosen weekdays</option><option value="monthly">Monthly on this date</option></select></label></div>
-    <div id="wdRow" style="display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;margin:2px 0 12px"><span class="mu">Weekdays:</span>${[1, 2, 3, 4, 5].map(d => `<label class="chk"><input type="checkbox" name="wd" value="${d}" ${d === new Date(ny + 'T12:00').getDay() || (d === 1 && [0, 6].includes(new Date(ny + 'T12:00').getDay())) ? 'checked' : ''}> ${DAYS[d]}</label>`).join('')}</div>
     <div class="row"><label>Order type<select name="orderType"><option value="market">Market</option><option value="limit">Limit</option></select></label>
       <label id="lpL" hidden>Limit price<input name="limitPrice" type="number" step="any"></label>
       <label class="chk" id="exL" hidden><input type="checkbox" name="extended"> Extended hours (4:00–9:30 and 16:00–20:00, Alpaca)</label></div>
-    <p class="mu" style="font-size:12.5px;margin:4px 0 10px">Times are New York (exchange) time. Market orders run during the regular session (9:30–16:00); a time outside it runs at the next open. Limit orders with extended hours can run pre-market and after hours on an Alpaca account.</p>
-    <button>Schedule</button><div class="err"></div></form>
+    ${whenHtml({ repeat: true, kinds: [['at', 'At a date and time'], ['close', 'Before the close'], ['open', 'At the next open'], ['delay', 'After a delay']] })}
+    <p class="mu" style="font-size:12.5px;margin:4px 0 10px">Times are New York (exchange) time. Weekends and market holidays are skipped; on early-close days the market closes at 1:00 PM. An order that cannot be sent within its window is cancelled, never sent late.</p>
+    <button>Review</button><div class="err"></div></form>
   <div class="card tablewrap"><table><tr><th>#</th><th>Order</th><th>Account</th><th>When</th><th>Next run</th><th>Last result</th><th></th></tr>
-    ${rows.map(o => `<tr class="${o.active ? '' : 'mu'}"><td>${o.id}</td><td>${o.side} ${o.qty ? num(o.qty, 4) : money(o.notional)} ${esc(o.symbol)}${o.order_type === 'limit' ? ` · limit ${money(o.limit_price)}${o.extended ? ' · ext. hours' : ''}` : ''}</td><td>${esc(o.account)}</td><td>${esc(when(o))}</td><td>${o.active ? new Date(o.next_run).toLocaleString([], { timeZone: 'America/New_York', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' ET' : 'done'}</td><td>${esc(o.last_result || '')}</td><td>${o.active ? `<button class="small ghost" data-c="${o.id}">Cancel</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="7" class="mu">No scheduled trades yet</td></tr>'}
+    ${rows.map(o => `<tr class="${o.active ? '' : 'mu'}"><td>${o.id}</td><td>${what(o)}</td>
+      <td>${esc(o.account)}</td><td>${esc(when(o))}</td><td>${o.active ? new Date(o.next_run).toLocaleString([], { timeZone: 'America/New_York', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' ET' : '-'}</td>
+      <td>${esc(o.last_result || '-')}</td><td>${o.active ? `<button class="small ghost" data-c="${o.id}">Cancel</button>` : ''}</td></tr>`).join('')}
   </table></div>
   <form class="card" id="al"><h2>Price alerts (sent by SMS)</h2>
-    <div class="row"><label>Symbol<input name="symbol" value="AAPL"></label><label>When price is<select name="op"><option>above</option><option>below</option></select></label><label>Price<input name="price" type="number" step="any"></label><button>Add alert</button></div><div class="err"></div>
+    <div class="row"><label>Symbol<input name="symbol" value="AAPL"></label><label>When price is<select name="op"><option>above</option><option>below</option></select></label><label>Price<input name="price" type="number" step="any"></label><button>Add alert</button></div>
     <table>${alerts.map(a => `<tr class="${a.active ? '' : 'mu'}"><td>${esc(a.symbol)} ${a.op} ${money(a.price)}</td><td>${a.active ? 'watching' : 'triggered'}</td><td><button class="small ghost" data-a="${a.id}">Remove</button></td></tr>`).join('')}</table></form>`;
-  const sf = $('#sch', view), sync = () => {
-    $('#wdRow', view).hidden = sf.repeat.value !== 'weekly';
-    const lim = sf.orderType.value === 'limit'; $('#lpL', view).hidden = !lim; $('#exL', view).hidden = !lim;
-  };
-  sf.repeat.onchange = sf.orderType.onchange = sync; sync();
-  $('#preset', view).onchange = e => {
-    if (!e.target.value) return; sf.time.value = e.target.value;
-    const ext = /^(08|17)/.test(e.target.value); if (ext) { sf.orderType.value = 'limit'; sf.extended.checked = true; } sync();
-  };
-  act($('button', sf), async () => {
-    const f = form(sf), weekdays = $$('[name=wd]:checked', view).map(c => +c.value);
-    const r = await api('/schedule', { body: { account: f.account, side: f.side, symbol: f.symbol, qty: f.qty, notional: f.notional, date: f.date, time: f.time, repeat: f.repeat, weekdays, orderType: f.orderType, limitPrice: f.limitPrice, extended: sf.extended.checked } });
-    setTimeout(render, 900);
-    return 'Scheduled. First run ' + new Date(r.nextRun).toLocaleString([], { timeZone: 'America/New_York', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' New York time.';
+  const sf = $('#sch', view);
+  const order = () => { const f = form(sf); return { account: f.account, side: f.side, symbol: f.symbol.trim().toUpperCase(), qty: +f.qty || undefined, notional: +f.notional || undefined, orderType: f.orderType, limitPrice: +f.limitPrice || undefined, extended: !!sf.extended.checked }; };
+  const W = wireWhen(sf, { api, order });
+  W.setKind('at');
+  const sync = () => { const lim = sf.orderType.value === 'limit'; $('#lpL', view).hidden = !lim; $('#exL', view).hidden = !lim; W.refresh(); };
+  sf.orderType.onchange = sync; sf.account.onchange = sf.qty.oninput = sf.notional.oninput = sf.symbol.onchange = () => W.refresh(); sync();
+  act($('button:last-of-type', sf) && [...sf.querySelectorAll('button')].at(-1), async () => {
+    const o = order(); if (!(o.qty > 0) && !(o.notional > 0)) throw new Error('Give a quantity or dollar amount');
+    const acctRow = accts.find(x => x.id === o.account);
+    const msg = await reviewAndSchedule(api, W, o, { what: `${o.side.toUpperCase()} ${o.qty ? o.qty + ' shares of' : money(o.notional) + ' of'} ${o.symbol} · ${o.orderType}${o.limitPrice ? ' @ ' + o.limitPrice : ''}`, live: !!acctRow?.live });
+    if (msg) setTimeout(render, 1500);
+    return msg;
   });
   act($('button', $('#al', view)), async () => { await api('/alerts', { body: form($('#al', view)) }); render(); });
   $$('[data-c]', view).forEach(b => (b.onclick = async () => { await api('/schedule/' + b.dataset.c, { method: 'DELETE' }); render(); }));

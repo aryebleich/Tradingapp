@@ -70,6 +70,19 @@ export function orderOf(o) {
   return order;
 }
 
+// A scheduled close never sells more than the position holds at run time (rule 3). Returns the order to
+// send, or a note when there is nothing left to close.
+export async function closeOrderOf(o) {
+  const held = (await accountSummary(o.user_id, o.account).catch(() => ({ positions: [] }))).positions.find(p => p.symbol === o.symbol);
+  const size = Math.abs(+held?.qty || 0);
+  if (!(size > 0)) return { note: `done: no ${o.symbol} position left to close` };
+  let qty = o.close_mode === 'all' ? size : o.close_mode === 'pct' ? size * Math.min(100, Math.max(0, +o.close_pct || 0)) / 100 : Math.min(+o.qty || 0, size);
+  qty = +qty.toFixed(6);
+  if (o.tif === 'opg' || o.tif === 'cls') qty = Math.floor(qty); // auction orders take whole shares
+  if (!(qty > 0)) return { note: `done: nothing to close (${o.symbol} position is ${size})` };
+  return { order: { ...orderOf(o), symbol: o.symbol, side: +held.qty > 0 ? 'sell' : 'buy', qty, notional: null }, capped: o.close_mode === 'qty' && +o.qty > size };
+}
+
 export async function runScheduledOrders(t = now()) {
   const due = await all('SELECT * FROM scheduled_orders WHERE active = 1 AND next_run <= ?', t);
   let ran = 0;
@@ -96,8 +109,14 @@ export async function runScheduledOrders(t = now()) {
     ran++;
     let result;
     try {
-      const r = await placeOrder(o.user_id, o.account, orderOf(o), 'schedule');
-      result = `${r.status}${r.price ? ' @ ' + r.price.toFixed(2) : ''}`;
+      let order = orderOf(o), capped = false;
+      if (o.close_mode) {
+        const c = await closeOrderOf(o);
+        if (c.note) { await run('UPDATE scheduled_orders SET last_result = ? WHERE id = ?', c.note, o.id); await notify(o.user_id, `Scheduled close of ${o.symbol}: ${c.note.replace(/^done: /, '')}.`); continue; }
+        order = c.order; capped = c.capped;
+      }
+      const r = await placeOrder(o.user_id, o.account, order, 'schedule');
+      result = `${r.status}${r.price ? ' @ ' + r.price.toFixed(2) : ''}${capped ? ` (capped at the ${order.qty} held)` : ''}`;
     } catch (e) { result = 'error: ' + e.message; } // recorded and notified, never retried blindly
     await run('UPDATE scheduled_orders SET last_result = ? WHERE id = ?', result, o.id);
     await notify(o.user_id, `Scheduled ${o.side} ${o.symbol}: ${result}`);
