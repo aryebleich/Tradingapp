@@ -1,0 +1,189 @@
+diff --git a/.env.example b/.env.example
+index 52be624..d37a8bf 100644
+--- a/.env.example
++++ b/.env.example
+@@ -53,6 +53,35 @@ TWILIO_ACCOUNT_SID=
+ TWILIO_AUTH_TOKEN=
+ TWILIO_FROM=+1...
+ 
++# Optional: SMS and voice module (feature flag comms_drawer, off by default). See docs/COMMS_SETUP.md.
++# Placeholders only: real values go in the host's environment or Admin > Keys, never in git.
++COMMS_PROVIDER=telnyx
++TELNYX_API_KEY=
++# Public key (base64) from the Telnyx portal: webhooks are refused without it
++TELNYX_PUBLIC_KEY=
++TELNYX_MESSAGING_PROFILE_ID=
++TELNYX_CREDENTIAL_CONNECTION_ID=
++# Browser calls behind NAT: a TURN server (coturn, static-auth-secret) and optional STUN
++TURN_URLS=
++TURN_SECRET=
++STUN_URLS=
++# Texts to new people are paused from QUIET_START:00 to QUIET_END:00 in this time zone
++COMMS_QUIET_TZ=America/New_York
++COMMS_QUIET_START=21
++COMMS_QUIET_END=8
++COMMS_SEND_PER_HOUR=30
++COMMS_SEND_PER_DAY=200
++COMMS_RETENTION_DAYS=365
++# Call recording stays off unless legal review has signed off the notice: off | announce
++COMMS_RECORDING=off
++COMMS_HELP_TEXT=
++# off = the provider answers HELP / STOP itself
++COMMS_HELP_REPLY=on
++# Asterisk / FreeSWITCH (private network only, TLS, 16+ character password); the adapter is a stub
++ASTERISK_ARI_URL=
++ASTERISK_ARI_USER=
++ASTERISK_ARI_PASSWORD=
++
+ # Optional: paid plans + debit card deposits (stripe.com)
+ STRIPE_SECRET_KEY=
+ STRIPE_WEBHOOK_SECRET=
+diff --git a/.gitignore b/.gitignore
+index 4dc533e..459d5e5 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -6,3 +6,4 @@ __pycache__/
+ android/project/
+ android/brightfolio.apk
+ screenshots/
++.comms-sim-key.pem
+diff --git a/package.json b/package.json
+index 9268d9e..5484f6d 100644
+--- a/package.json
++++ b/package.json
+@@ -13,7 +13,9 @@
+     "test": "node --import ./test/setup.js --test --test-force-exit test/*.test.js",
+     "e2e": "node test/e2e/run.mjs",
+     "security:check": "node scripts/security-check.mjs",
+-    "clean": "node scripts/clean-check.mjs && node scripts/readme-check.mjs"
++    "clean": "node scripts/clean-check.mjs && node scripts/readme-check.mjs",
++    "comms:ui": "node test/comms-ui.mjs",
++    "comms:sim": "node scripts/comms-webhook-sim.mjs"
+   },
+   "dependencies": {
+     "@anthropic-ai/sdk": "^0.99.0",
+diff --git a/public/app.js b/public/app.js
+index 87d6541..817b976 100644
+--- a/public/app.js
++++ b/public/app.js
+@@ -39,12 +39,13 @@ const PREFETCH = window.parent !== window && new URLSearchParams(location.search
+ if (PREFETCH) Object.assign(window, { alert: () => {}, confirm: () => false, prompt: () => null });
+ const SWR = new Map(), SWR_SKIP = /^\/(auth|alpaca\/stream|notifications|admin\/agents|sponsored)/;
+ const KEEP_KEY = 'qp_keep';
++let commsFor = null; // the user the SMS and voice drawer was started for (flag comms_drawer)
+ let swrOn = false, swrRedraw = null, keepTimer = null;
+ // Small saves (seen markers, settings of one area) only forget that area; anything else forgets all.
+ const LIGHT = /^\/(prefs|learn\/ack|sponsored)\//;
+ const keepLoad = uid => { try { const k = JSON.parse(sessionStorage.getItem(KEEP_KEY) || 'null'); if (!k || k.uid !== uid || Date.now() - k.at > 864e5) return; for (const [p, d] of k.e) SWR.set(p, { at: k.at, data: d, json: JSON.stringify(d), ok: true, p: Promise.resolve(d), kept: true }); } catch {} };
+ const keepSave = () => { clearTimeout(keepTimer); keepTimer = setTimeout(() => { if (!ME) return; try { const e = [...SWR].filter(([, v]) => v.ok && !v.kept && v.json.length < 60000).slice(-60).map(([k, v]) => [k, v.data]); sessionStorage.setItem(KEEP_KEY, JSON.stringify({ uid: ME.email || ME.phone, at: Date.now(), e })); } catch {} }, 1500); };
+-const keepClear = () => { SWR.clear(); try { sessionStorage.removeItem(KEEP_KEY); localStorage.removeItem('qp_me'); } catch {} };
++const keepClear = () => { SWR.clear(); commsFor = null; document.dispatchEvent(new Event('qp:signout')); try { sessionStorage.removeItem(KEEP_KEY); localStorage.removeItem('qp_me'); } catch {} };
+ async function api(path, opts = {}, retried) {
+   const get = !opts.method && !opts.body;
+   if (PREFETCH && !get) throw new Error('Read-only while loading in the background');
+@@ -2065,6 +2066,15 @@ function addGear(view, route) {
+   await (await import('./pages/extras.js')).settingsCard(shared, $('#set-extras .set-extras', view)).catch(e => console.warn('extras', e));
+ }; }
+ startBell(shared);
++// SMS and voice drawer (flag comms_drawer, off by default): the server is asked once per sign-in and
++// nothing is downloaded unless it says yes. Signing out removes the drawer and this browser's copy of the texts.
++const commsBoot = () => {
++  if (!ME || commsFor === ME.id) return;
++  commsFor = ME.id;
++  fetch('/api/comms/status', { headers: { 'X-Requested-With': 'qp' } }).then(r => (r.ok ? r.json() : null))
++    .then(st => st?.enabled && import('./pages/comms.js').then(m => m.startComms({ userId: ME.id, status: st }))).catch(() => {});
++};
++addEventListener('hashchange', commsBoot); setTimeout(commsBoot, 2500);
+ lazyRoutes(() => import('./pages/wealth.js'), 'registerWealth', shared, ["wealth"]);
+ lazyRoutes(() => import('./pages/tools.js'), 'registerTools', shared, ["alpaca-tools"]);
+ lazyRoutes(() => import('./pages/riskpages.js'), 'registerRiskPages', shared, ["riskview", "research", "tokenized", "protection"]);
+diff --git a/server.js b/server.js
+index 32c5725..35d19c6 100644
+--- a/server.js
++++ b/server.js
+@@ -92,6 +92,7 @@ import { edgeSecret } from './src/edgesetup.js';
+ import { router as githubRouter, githubEnabled } from './src/github.js';
+ import { adminSiteRouter } from './src/admin-site.js';
+ import * as SE from './src/stripe-events.js';
++import { mountCommsWebhooks, commsRouter, commsAdminRouter as smsVoiceAdminRouter } from './src/sms-voice/routes.js';
+ import { logStripe } from './src/stripe-client.js';
+ import * as FLAGS from './src/flags.js';
+ import { tokensRouter, mcpHandler } from './src/mcp.js';
+@@ -260,7 +261,7 @@ app.use((req, res, next) => {
+   res.setHeader('Referrer-Policy', 'same-origin');
+   // Pyodide (the code lab's Python) loads only from its own jsdelivr folder; Plaid Link from cdn.plaid.com.
+   res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://secure.helcim.app https://cdn.jsdelivr.net/pyodide/ https://cdn.plaid.com; frame-src 'self' https://secure.helcim.app https://cdn.plaid.com; connect-src 'self' https://cdn.jsdelivr.net/pyodide/; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://checkout.stripe.com https://accept.authorize.net https://test.authorize.net");
+-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
++  res.setHeader('Permissions-Policy', 'camera=(), microphone=(self), geolocation=()'); // microphone: the web dialer (src/sms-voice), same origin only
+   if (process.env.NODE_ENV === 'production') res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+   next();
+ });
+@@ -274,6 +275,9 @@ app.use((req, res, next) => {
+   next();
+ });
+ // Stripe needs the raw body for signature checks, so mount it before the JSON parser.
++// SMS and voice provider webhooks (flag comms_drawer, off by default): signature checked on the raw body.
++mountCommsWebhooks(app);
++
+ // What the event handlers need beyond the database: the audit log, an alert to the owner (event ids,
+ // amounts and reasons only, no card or personal data) and an e-mail to the customer.
+ const stripeDeps = {
+@@ -634,6 +638,8 @@ api.use('/fundamentals', fundamentalsRouter);
+ api.use('/instruments', instrumentsRouter);
+ api.use('/taxrates', taxRatesRouter);
+ api.use('/admin/comms', commsAdminRouter);
++api.use('/admin/sms-voice', smsVoiceAdminRouter);
++api.use('/comms', commsRouter);
+ api.use('/statscan', statScanRouter);
+ api.use('/search', searchRouter);
+ api.use('/paper/orders', paperOrdersRouter);
+diff --git a/src/db.js b/src/db.js
+index 1b90b9f..751b1bf 100644
+--- a/src/db.js
++++ b/src/db.js
+@@ -929,6 +929,20 @@ const MIGRATIONS = [
+   'CREATE TABLE IF NOT EXISTS stripe_object_state (object_id TEXT PRIMARY KEY, last_created INTEGER NOT NULL, terminal INTEGER NOT NULL DEFAULT 0)',
+   'ALTER TABLE ledger ADD COLUMN livemode INTEGER',
+   'CREATE INDEX IF NOT EXISTS ledger_ref_lookup ON ledger (ref)',
++  // SMS and voice module (src/sms-voice/, flag comms_drawer). Metadata only: message text is never kept
++  // for good. An inbound text waits, encrypted, in sms_messages.pending_body until the browser confirms
++  // it has it (at most 72 hours); the history itself lives on the user's device. Recordings are never stored.
++  'CREATE TABLE IF NOT EXISTS comms_numbers (number TEXT PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, voice_mode TEXT NOT NULL DEFAULT \'ivr\', greeting TEXT, credential_id TEXT, sip_username TEXT, created_at INTEGER NOT NULL)',
++  'CREATE UNIQUE INDEX IF NOT EXISTS comms_numbers_user ON comms_numbers (user_id)',
++  'CREATE TABLE IF NOT EXISTS sms_messages (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, provider TEXT NOT NULL, provider_message_id TEXT NOT NULL, direction TEXT NOT NULL, thread_key TEXT NOT NULL, peer_last4 TEXT, our_number TEXT, status TEXT NOT NULL, error_code TEXT, pending_body TEXT, pending_until INTEGER, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
++  'CREATE UNIQUE INDEX IF NOT EXISTS sms_messages_provider_id ON sms_messages (provider, provider_message_id)',
++  'CREATE INDEX IF NOT EXISTS sms_messages_thread ON sms_messages (user_id, thread_key, created_at)',
++  'CREATE INDEX IF NOT EXISTS sms_messages_pending ON sms_messages (user_id, pending_until) WHERE pending_body IS NOT NULL',
++  'CREATE TABLE IF NOT EXISTS call_records (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, provider TEXT NOT NULL, provider_call_id TEXT NOT NULL, leg_id TEXT, direction TEXT NOT NULL, thread_key TEXT NOT NULL, peer_last4 TEXT, our_number TEXT, status TEXT NOT NULL, handling TEXT, stage TEXT, seen INTEGER NOT NULL DEFAULT 0, started_at INTEGER NOT NULL, answered_at INTEGER, ended_at INTEGER, duration_s INTEGER, created_at INTEGER NOT NULL)',
++  'CREATE UNIQUE INDEX IF NOT EXISTS call_records_provider_id ON call_records (provider, provider_call_id)',
++  'CREATE INDEX IF NOT EXISTS call_records_user ON call_records (user_id, started_at)',
++  'CREATE TABLE IF NOT EXISTS sms_consent (user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, thread_key TEXT NOT NULL, status TEXT NOT NULL, source TEXT NOT NULL, last_inbound_at INTEGER, updated_at INTEGER NOT NULL, PRIMARY KEY (user_id, thread_key))',
++  'CREATE TABLE IF NOT EXISTS comms_webhook_events (id TEXT PRIMARY KEY, kind TEXT NOT NULL, at INTEGER NOT NULL)',
+ ];
+ 
+ // Migrations run on every start. Re-running one that is already applied ("duplicate column",
+diff --git a/src/flags.js b/src/flags.js
+index 0e651fa..7f4e828 100644
+--- a/src/flags.js
++++ b/src/flags.js
+@@ -7,6 +7,7 @@ import { siteGet, siteSet } from './site.js';
+ 
+ export const FLAGS = {
+   home_v2: 'New homepage: audited section order, one main hero button, a risk link beside each sign-up, and a Trust & compliance block',
++  comms_drawer: 'SMS and voice: the Comms Drawer (text inbox and web dialer). Needs a provider set up and a number assigned to the user (docs/COMMS_SETUP.md).',
+ };
+ const clampPct = v => Math.min(100, Math.max(0, Math.round(+v || 0)));
+ export function flagSettings() {
+diff --git a/test/homev2.test.js b/test/homev2.test.js
+index 6ba7749..866aa13 100644
+--- a/test/homev2.test.js
++++ b/test/homev2.test.js
+@@ -14,7 +14,7 @@ const S = await serve();
+ after(() => S.close());
+ 
+ test('flags: off by default, stable buckets, rollout percentage respected', async () => {
+-  assert.deepEqual(Object.keys(F.FLAGS), ['home_v2']);
++  assert.deepEqual(Object.keys(F.FLAGS), ['home_v2', 'comms_drawer']);
+   assert.equal(F.flagSettings().home_v2.on, false);
+   assert.equal(F.isOn('home_v2', 'abc'), false);
+   assert.equal(F.bucketOf('abc', 'home_v2'), F.bucketOf('abc', 'home_v2'));

@@ -14,7 +14,9 @@
     "e2e": "node test/e2e/run.mjs",
     "security:check": "node scripts/security-check.mjs",
     "clean": "node scripts/clean-check.mjs && node scripts/readme-check.mjs",
-    "aichat:ui": "node test/aichat-ui.mjs"
+    "aichat:ui": "node test/aichat-ui.mjs",
+    "comms:ui": "node test/comms-ui.mjs",
+    "comms:sim": "node scripts/comms-webhook-sim.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.99.0",

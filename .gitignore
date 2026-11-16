@@ -6,3 +6,4 @@ __pycache__/
 android/project/
 android/brightfolio.apk
 screenshots/
+.comms-sim-key.pem

@@ -1,7 +1,7 @@
 # ASSUMPTIONS.md
 
-Choices made without asking, with the reason. Project A (Stripe) first; Project B (SMS and voice) is
-appended in its own section when that branch is built.
+Choices made without asking, with the reason. Project A (Stripe) first, then Project B (SMS and voice). Project B's branch is stacked on Project A's, so this file
+is shared.
 
 ## Project A: Stripe
 
@@ -21,3 +21,26 @@ appended in its own section when that branch is built.
 | A-12 | Work is on branch `feature/stripe-audit`; nothing is merged or deployed. | Hard rule 6. This overrides the earlier standing instruction to push to main. |
 | A-13 | No new dependency was added. | Hard rule 7: the Stripe client is plain `fetch`, as before. |
 | A-14 | Jurisdiction: US. Receipts, tax and refund-policy wording for UK/EU are listed for legal review in the go-live checklist, not changed. | Brief default. |
+
+## Project B: SMS and voice module
+
+| # | Assumption | Reason |
+|---|---|---|
+| B-1 | Same stack as A-1: Express routes in `src/sms-voice/`, libSQL tables in `src/db.js`. Real-time is Server-Sent Events. | The brief says to match the existing stack. |
+| B-2 | **Telnyx's documentation could not be read** (`developers.telnyx.com` was added to the allowed hosts with your approval, but the fetch tool could not resolve it). Every Telnyx endpoint, header, event and field name (webhook signature headers, Ed25519 over `timestamp|body`, `message.received`, `call.initiated`, Call Control actions, telephony credentials and tokens, the browser SDK calls) is from memory. The webhook samples in the tests are shaped from that memory, not copied from the docs. | Not inventing: each such place says so in the file header, and `docs/COMMS_SETUP.md` marks the steps to verify. The adapter is the only place that would change. |
+| B-3 | US traffic. The server accepts E.164 only; the drawer turns a 10-digit number into +1. UK / EU rules are on the legal list, not built. | Brief default. |
+| B-4 | Provider is **Telnyx** as the brief says, although the app's existing phone line and business inbox use Twilio (`src/comms.js`, `src/hotline.js`, `src/notify.js`). The existing code is untouched and runs side by side. A Twilio adapter is not written; it would implement the same interface. Asterisk / FreeSWITCH is a stub. | The brief names Telnyx for this module and an adapter interface for others. The new module is per-user; the existing one is the company's own line. |
+| B-5 | **Message text is not stored at rest.** An inbound text waits encrypted in `sms_messages.pending_body` until the browser confirms it (at most 72 hours); history is kept in the user's browser and deleted at sign-out; outgoing text is never stored; recordings are never stored. | The brief says to store the minimum and not store content or recordings, yet the drawer must show threads. A delivery buffer plus device-side history satisfies both. Consequences: a new device starts empty, clearing browser data loses history, and regulated users may have archiving duties (legal list item 5). |
+| B-6 | The other party's number is stored as a keyed hash (thread key) plus the last four digits, not in full. Call history on a new device shows `••••1234`. | Privacy; same reason as B-5. |
+| B-7 | One number per user, assigned by an admin (`PUT /api/admin/sms-voice/numbers`). The module does not buy or release numbers through the provider. Two tables beyond the brief's two (`comms_numbers`, `sms_consent`) plus `comms_webhook_events` exist because inbound routing, consent and replay protection need them. | The brief's `sms_messages` and `call_records` cannot route an inbound text to a user on their own. |
+| B-8 | Consent: the sender attests once per recipient (stored with the source); a recipient who texts first counts as consenting to replies; STOP words (`STOP, STOPALL, UNSUBSCRIBE, CANCEL, END, QUIT`) block until `START` or `UNSTOP`; `YES` is not a START word. | Standard carrier keywords; `YES` appears in ordinary conversation. |
+| B-9 | Quiet hours use one configured time zone (default New York), not the recipient's, and do not apply to a reply within 24 hours of the recipient's own message or to calls. | The recipient's zone is not known. Legal list item 2. |
+| B-10 | Voice uses Telnyx **Call Control** (commands after the webhook), not TeXML. The webhook answer is a plain 200; the "instructions" are the commands sent right after. A call rings the browser softphone only if the user's drawer is open and a softphone address exists; otherwise, or if nobody answers, the caller hears the greeting (there is no voicemail). | Call Control is the provider's own model; no recording storage was asked for. |
+| B-11 | The Telnyx browser SDK (`@telnyx/webrtc`) is **not added** to `package.json`: the owner copies its browser build to `public/vendor/telnyx-webrtc.js`. The drawer says so when it is missing. It is the one dependency this module needs, for the softphone only. | Rule 7: no new dependency unless necessary, and it cannot be tested here. |
+| B-12 | `Permissions-Policy` changes from `microphone=()` to `microphone=(self)`. This is the only change to existing behaviour outside the module's own routes and the minimal hooks (flag entry, one route mount, three lines in `public/app.js`, a `qp:signout` event in `keepClear`). | The web dialer cannot use the microphone otherwise. Same-origin only; camera and geolocation stay off. |
+| B-13 | The flag `comms_drawer` uses the existing flag system (percentage by user id), default off. Off means the webhooks and every `/api/comms/*` route answer 404, except `/status`, which answers `{enabled:false}` for a signed-in user. | Rule 3. |
+| B-14 | Rate limits and live streams are in the memory of one server instance. | The app's own limiter is the same; more than one instance needs a shared store (production checklist). |
+| B-15 | Metadata is kept 365 days (`COMMS_RETENTION_DAYS`); housekeeping runs every 10 minutes while the server is up. | A default; it is a legal and product choice. |
+| B-16 | Emergency calling is not supported, and the dialer says so. | A web dialer on a business number does not meet E911 rules; legal list item 7. |
+| B-17 | No credits are charged for texts or calls sent through this module; the app's existing credit costs apply only to its own SMS features. | Pricing is an owner decision. |
+| B-18 | Work is on branch `feature/comms-module`, stacked on `feature/stripe-audit`. Not merged, not deployed. | Hard rule 6. |

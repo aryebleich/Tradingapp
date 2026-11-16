@@ -8,6 +8,7 @@ import { siteGet, siteSet } from './site.js';
 export const FLAGS = {
   home_v2: 'New homepage: audited section order, one main hero button, a risk link beside each sign-up, and a Trust & compliance block',
   ai_team_chat: 'Admin → AI team: the Chat job (streaming conversation with thinking). Admins with the AI team chat permission only.',
+  comms_drawer: 'SMS and voice: the Comms Drawer (text inbox and web dialer). Needs a provider set up and a number assigned to the user (docs/COMMS_SETUP.md).',
 };
 const clampPct = v => Math.min(100, Math.max(0, Math.round(+v || 0)));
 export function flagSettings() {

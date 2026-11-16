@@ -39,12 +39,13 @@ const PREFETCH = window.parent !== window && new URLSearchParams(location.search
 if (PREFETCH) Object.assign(window, { alert: () => {}, confirm: () => false, prompt: () => null });
 const SWR = new Map(), SWR_SKIP = /^\/(auth|alpaca\/stream|notifications|admin\/agents|sponsored)/;
 const KEEP_KEY = 'qp_keep';
+let commsFor = null; // the user the SMS and voice drawer was started for (flag comms_drawer)
 let swrOn = false, swrRedraw = null, keepTimer = null;
 // Small saves (seen markers, settings of one area) only forget that area; anything else forgets all.
 const LIGHT = /^\/(prefs|learn\/ack|sponsored)\//;
 const keepLoad = uid => { try { const k = JSON.parse(sessionStorage.getItem(KEEP_KEY) || 'null'); if (!k || k.uid !== uid || Date.now() - k.at > 864e5) return; for (const [p, d] of k.e) SWR.set(p, { at: k.at, data: d, json: JSON.stringify(d), ok: true, p: Promise.resolve(d), kept: true }); } catch {} };
 const keepSave = () => { clearTimeout(keepTimer); keepTimer = setTimeout(() => { if (!ME) return; try { const e = [...SWR].filter(([, v]) => v.ok && !v.kept && v.json.length < 60000).slice(-60).map(([k, v]) => [k, v.data]); sessionStorage.setItem(KEEP_KEY, JSON.stringify({ uid: ME.email || ME.phone, at: Date.now(), e })); } catch {} }, 1500); };
-const keepClear = () => { SWR.clear(); try { sessionStorage.removeItem(KEEP_KEY); localStorage.removeItem('qp_me'); } catch {} };
+const keepClear = () => { SWR.clear(); commsFor = null; document.dispatchEvent(new Event('qp:signout')); try { sessionStorage.removeItem(KEEP_KEY); localStorage.removeItem('qp_me'); } catch {} };
 async function api(path, opts = {}, retried) {
   const get = !opts.method && !opts.body;
   if (PREFETCH && !get) throw new Error('Read-only while loading in the background');
@@ -2066,6 +2067,15 @@ function addGear(view, route) {
   await (await import('./pages/extras.js')).settingsCard(shared, $('#set-extras .set-extras', view)).catch(e => console.warn('extras', e));
 }; }
 startBell(shared);
+// SMS and voice drawer (flag comms_drawer, off by default): the server is asked once per sign-in and
+// nothing is downloaded unless it says yes. Signing out removes the drawer and this browser's copy of the texts.
+const commsBoot = () => {
+  if (!ME || commsFor === ME.id) return;
+  commsFor = ME.id;
+  fetch('/api/comms/status', { headers: { 'X-Requested-With': 'qp' } }).then(r => (r.ok ? r.json() : null))
+    .then(st => st?.enabled && import('./pages/comms.js').then(m => m.startComms({ userId: ME.id, status: st }))).catch(() => {});
+};
+addEventListener('hashchange', commsBoot); setTimeout(commsBoot, 2500);
 lazyRoutes(() => import('./pages/wealth.js'), 'registerWealth', shared, ["wealth"]);
 lazyRoutes(() => import('./pages/tools.js'), 'registerTools', shared, ["alpaca-tools"]);
 lazyRoutes(() => import('./pages/riskpages.js'), 'registerRiskPages', shared, ["riskview", "research", "tokenized", "protection"]);

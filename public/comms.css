@@ -1,0 +1,93 @@
+/* The Comms Drawer (public/pages/comms.js). Uses the app's theme variables; colours here are chosen to
+   keep text at 4.5:1 or better in light and dark; sizes are logical so right-to-left pages mirror. */
+.cm-root { --cm-ac: color-mix(in srgb, var(--ac, #5b5bf6) 78%, #000); --cm-err: #b42318; --cm-badge: #b42318; font: 15px/1.45 Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .cm-root { --cm-err: #ff9d9d; } }
+:root[data-theme="dark"] .cm-root { --cm-err: #ff9d9d; }
+.cm-sr { position: absolute !important; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+.cm-fab { position: fixed; inset-inline-end: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 90; width: 56px; height: 56px; border-radius: 50%; border: 0; display: grid; place-items: center; cursor: pointer; color: #fff; background: var(--cm-ac); box-shadow: var(--shadow-lg, 0 8px 24px rgba(0, 0, 0, .25)); }
+.cm-fab:hover { filter: brightness(1.08); }
+.cm-badge { position: absolute; inset-block-start: -4px; inset-inline-end: -4px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--cm-badge); color: #fff; font-size: 12px; font-weight: 700; display: grid; place-items: center; border: 2px solid var(--card, #fff); }
+.cm-badge[hidden] { display: none; }
+
+.cm-drawer { position: fixed; inset-inline-end: 16px; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); z-index: 91; width: min(400px, calc(100vw - 32px)); height: min(640px, calc(100dvh - 110px)); display: flex; flex-direction: column; overflow: hidden; background: var(--card, #fff); color: var(--tx, #0b1220); border: 1px solid var(--bd, #e2e7f0); border-radius: var(--r, 14px); box-shadow: var(--shadow-lg, 0 12px 40px rgba(16, 24, 40, .14)); }
+.cm-drawer[hidden] { display: none; }
+.cm-drawer:focus { outline: none; }
+@media (max-width: 520px) { .cm-drawer { inset: 0; width: auto; height: auto; border-radius: 0; border: 0; } .cm-fab { z-index: 89; } }
+
+.cm-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--bd, #e2e7f0); }
+.cm-head h2 { margin: 0; flex: 1; font-size: 16px; }
+.cm-head h2:focus { outline: none; }
+.cm-conn { font-size: 13px; color: var(--mu, #5d6a85); }
+.cm-x { width: 44px; height: 44px; font-size: 26px; line-height: 1; border: 0; background: transparent; color: inherit; border-radius: 10px; cursor: pointer; }
+
+.cm-tabs { display: flex; border-bottom: 1px solid var(--bd, #e2e7f0); }
+.cm-tabs [role=tab] { flex: 1; min-height: 44px; border: 0; border-block-end: 3px solid transparent; background: transparent; color: var(--mu, #5d6a85); font: inherit; font-weight: 650; cursor: pointer; }
+.cm-tabs [aria-selected=true] { color: var(--tx, #0b1220); border-block-end-color: var(--cm-ac); }
+.cm-n { font-weight: 600; font-size: 13px; }
+.cm-setup { margin: 0; padding: 10px 12px; background: color-mix(in srgb, var(--warn, #c26a00) 14%, transparent); font-size: 14px; }
+
+.cm-panel { flex: 1; min-height: 0; overflow: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; }
+.cm-panel[hidden], .cm-threads[hidden], .cm-convo[hidden] { display: none; }
+.cm-bar { display: flex; align-items: center; gap: 8px; }
+.cm-bar h3 { margin: 0; font-size: 15px; letter-spacing: 0; text-transform: none; flex: 1; overflow-wrap: anywhere; }
+.cm-h { margin: 8px 0 0; font-size: 14px; letter-spacing: 0; text-transform: none; }
+
+.cm-btn { min-height: 44px; min-width: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--bd, #cfd6e4); background: var(--card, #fff); color: var(--tx, #0b1220); font: inherit; font-weight: 600; cursor: pointer; }
+.cm-btn:disabled { opacity: .6; cursor: default; }
+.cm-primary { background: var(--cm-ac); border-color: var(--cm-ac); color: #fff; }
+.cm-btn[aria-pressed=true] { background: var(--tx, #0b1220); color: var(--card, #fff); }
+.cm-fab:focus-visible, .cm-btn:focus-visible, .cm-key:focus-visible, .cm-x:focus-visible, .cm-thread:focus-visible, .cm-tabs [role=tab]:focus-visible, .cm-log:focus-visible, .cm-root input:focus-visible, .cm-root textarea:focus-visible { outline: 3px solid var(--ac, #5b5bf6); outline-offset: 2px; }
+
+.cm-tlist, .cm-hist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.cm-thread { width: 100%; min-height: 56px; display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; text-align: start; padding: 8px 10px; border: 1px solid var(--bd, #e2e7f0); border-radius: 10px; background: var(--card, #fff); color: inherit; font: inherit; cursor: pointer; }
+.cm-who { font-weight: 650; overflow-wrap: anywhere; }
+.cm-new { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: var(--cm-ac); color: #fff; }
+.cm-snip { grid-column: 1; color: var(--mu, #5d6a85); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cm-thread time { grid-column: 2; grid-row: 2; font-size: 12px; color: var(--mu, #5d6a85); }
+.cm-empty { color: var(--mu, #5d6a85); font-size: 14px; }
+
+.cm-convo { display: flex; flex-direction: column; gap: 10px; min-height: 0; flex: 1; }
+.cm-log { flex: 1; min-height: 120px; overflow: auto; display: flex; flex-direction: column; gap: 8px; padding: 6px; border: 1px solid var(--bd, #e2e7f0); border-radius: 10px; background: var(--bg2, #eceff7); }
+.cm-msg { max-width: 85%; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--bd, #cfd6e4); background: var(--card, #fff); }
+.cm-msg p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.cm-msg small { display: block; margin-top: 2px; color: var(--mu, #5d6a85); font-size: 12px; }
+.cm-out { align-self: flex-end; border-color: var(--cm-ac); border-width: 2px; }
+.cm-in { align-self: flex-start; }
+.cm-sys { align-self: center; margin: 0; font-size: 13px; color: var(--mu, #5d6a85); text-align: center; }
+
+.cm-form, .cm-dial { display: flex; flex-direction: column; gap: 8px; }
+.cm-field { display: flex; flex-direction: column; gap: 4px; }
+.cm-field label { font-size: 13px; font-weight: 650; }
+.cm-field[hidden] { display: none; }
+.cm-root input[type=tel], .cm-root textarea { width: 100%; box-sizing: border-box; min-height: 44px; padding: 8px 10px; font: inherit; font-size: 16px; color: var(--tx, #0b1220); background: var(--input, #fff); border: 1px solid var(--bd, #b7c0d3); border-radius: 10px; }
+.cm-check { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; }
+.cm-check[hidden] { display: none; }
+.cm-check input { width: 24px; height: 24px; margin: 0; flex: none; }
+.cm-err { margin: 0; color: var(--cm-err); font-size: 14px; font-weight: 600; }
+.cm-err[hidden] { display: none; }
+
+.cm-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.cm-key { min-height: 56px; display: grid; place-items: center; align-content: center; border: 1px solid var(--bd, #cfd6e4); border-radius: 12px; background: var(--card, #fff); color: var(--tx, #0b1220); font: inherit; font-size: 20px; font-weight: 650; cursor: pointer; }
+.cm-key small { font-size: 10px; letter-spacing: .08em; color: var(--mu, #5d6a85); min-height: 12px; }
+.cm-note { margin: 0; font-size: 13px; color: var(--mu, #5d6a85); }
+.cm-cstate { margin: 0; text-align: center; color: var(--mu, #5d6a85); }
+.cm-timer { text-align: center; font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cm-timer[hidden] { display: none; }
+.cm-actions { display: flex; gap: 8px; justify-content: center; }
+.cm-actions .cm-btn[hidden] { display: none; }
+.cm-hang { background: var(--cm-badge); border-color: var(--cm-badge); color: #fff; }
+.cm-incoming { padding: 10px; border: 2px solid var(--cm-ac); border-radius: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.cm-incoming[hidden] { display: none; }
+.cm-inc-text { margin: 0; flex: 1 1 100%; font-weight: 700; }
+.cm-hist li { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--bd, #e2e7f0); font-size: 14px; }
+.cm-kind { font-weight: 650; }
+.cm-missed { color: var(--cm-err); }
+@media (prefers-reduced-motion: no-preference) { .cm-fab, .cm-btn { transition: filter .15s, background-color .15s; } }
+@media print { .cm-root { display: none; } }
+
+/* The app styles every <button> (glow, rounded tab bubbles); inside the drawer keep them plain and flat. */
+.cm-root button { box-shadow: none; text-shadow: none; font-family: inherit; }
+.cm-root .cm-tabs [role=tab] { background: transparent; border-radius: 0; box-shadow: none; }
+.cm-root .cm-x { background: transparent; border: 0; }
+.cm-root .cm-btn.cm-primary, .cm-root .cm-btn.cm-hang { background-image: none; }
