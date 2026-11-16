@@ -1,0 +1,92 @@
+{
+ "at": "2026-11-16T18:16:43.629Z",
+ "base": "http://localhost:3172",
+ "runs": 5,
+ "scores": {
+  "home": {
+   "old": {
+    "performance": 95,
+    "accessibility": 97,
+    "best-practices": 100,
+    "seo": 100
+   },
+   "new": {
+    "performance": 96,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 100
+   }
+  },
+  "risk": {
+   "old": {
+    "performance": 100,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 100
+   },
+   "new": {
+    "performance": 100,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 100
+   }
+  },
+  "terms": {
+   "old": {
+    "performance": 100,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 100
+   },
+   "new": {
+    "performance": 100,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 100
+   }
+  },
+  "login": {
+   "old": {
+    "performance": 96,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 63
+   },
+   "new": {
+    "performance": 94,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 63
+   }
+  },
+  "dashboard": {
+   "old": {
+    "performance": 93,
+    "accessibility": 94,
+    "best-practices": 100,
+    "seo": 66
+   },
+   "new": {
+    "performance": 91,
+    "accessibility": 97,
+    "best-practices": 100,
+    "seo": 66
+   }
+  },
+  "trade": {
+   "old": {
+    "performance": 94,
+    "accessibility": 94,
+    "best-practices": 100,
+    "seo": 66
+   },
+   "new": {
+    "performance": 92,
+    "accessibility": 97,
+    "best-practices": 100,
+    "seo": 66
+   }
+  }
+ },
+ "drops": []
+}

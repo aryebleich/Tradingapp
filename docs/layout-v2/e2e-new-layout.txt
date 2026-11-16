@@ -1,0 +1,436 @@
+  ✓ runs on the new layout (layout_v2)
+  ✓ register
+  ✓ homepage demo + legal pages
+  ✓ open brokerage account (5 steps + ID upload)
+  ✓ status dashboard updates live to ACTIVE
+  ✓ link bank and deposit
+  ✓ portfolio
+  ✓ limit order
+  ✓ bracket order
+  ✓ crypto order in dollars
+  ✓ modify, cancel, cancel all
+  ✓ trade: symbol search lists matches and opens one with the keyboard
+  ✓ live: sell all matches the Alpaca account, and a sell of shares not held is refused
+  ✓ partial close
+  ✓ markets & news
+  ✓ options spread
+  ✓ options desk: chain, one contract, buy to open
+  ✓ watchlists
+  ✓ calendar & events
+  ✓ admin: every owner page is in the menu and opens
+  ✓ no idle background copy after a reload
+  ✓ strategy backtest
+  ✓ create login, then the application starts
+  ✓ register
+  ✓ connect API keys from the menu
+  ✓ sticky Buy bar places an order
+  ✓ order filters and cancel
+  ✓ close half a position from its card
+  ✓ options leg bar
+  ✓ menu opens above everything and closes
+  ✓ switch to Yiddish and back
+  ✓ homepage has no language links
+  ✓ menu lists the new pages
+  ✓ strategy builder: a design, my tickers, step a value with +, save, today's result
+  ✓ AI assistant answers (basic mode)
+  ✓ scanner runs
+  ✓ scanner saves
+  ✓ portfolio backtest and save
+  ✓ signal channel: create, follow, send
+  ✓ marketplace lists shared items
+  ✓ risk limits and kill switch
+  ✓ insights and journal
+  ✓ values investing: screen, maaser, Shabbos times
+  ✓ private markets
+  ✓ all my money and a crypto wallet form
+  ✓ all accounts: add a sub account, group, equalize preview
+  ✓ equalize from Home and from Positions
+  ✓ marketplace section: overview, AI bots, top traders tabs
+  ✓ guides: one switch hides them on every page; setup notes are not shown to customers
+  ✓ settings in sections; optional features: switch on, My tools, My day, check before an order
+  ✓ tokenized securities: sections and checklist
+  ✓ rule across accounts: create, check, prepare
+  ✓ luach: zmanim, month and the tzedakah ledger
+  ✓ weekly brief and tax autopilot
+  ✓ settings show add-ons
+  ✓ paper: buy, then sell all matches the paper account
+  ✓ paper limit order waits, then cancels
+  ✓ futures, funds & savings; growth and value scan; stat-arb live scan; search
+  ✓ round-ups import
+  ✓ news sentiment
+  ✓ chart draws with candles and a trend line
+  ✓ options lab template and payoff
+  ✓ tax settings save, from the gear on the Taxes page (state, automatic rates)
+  ✓ tax page shows Schedule D
+  ✓ bots page offers frequency
+  ✓ lesson, long-term view, workspace, execution log
+  ✓ AI bots: plain English to rules, backtest, create
+  ✓ agents: boundaries save, token created
+  ✓ AI signals and market intelligence open
+  ✓ chart co-pilot answers and draws
+  ✓ glossary tooltip explains a term
+  ✓ close all positions from the header (typed CLOSE and the password)
+  ✓ lock on Security, then unlock
+  ✓ /
+  ✓ /yi
+  ✓ /terms
+  ✓ /app#/register
+  ✓ /app#/login
+  ✓ #/dashboard
+  ✓ #/trade?symbol=AAPL
+  ✓ #/orders
+  ✓ #/positions
+  ✓ #/watchlists
+  ✓ #/markets
+  ✓ #/options?underlying=AAPL
+  ✓ #/calendar
+  ✓ #/account
+  ✓ #/open-account
+  ✓ #/brokers
+  ✓ #/strategies
+  ✓ #/strategy?id=2
+  ✓ #/signals
+  ✓ #/pairs
+  ✓ #/statarb
+  ✓ #/sp500
+  ✓ #/backtest
+  ✓ #/bots
+  ✓ #/schedule
+  ✓ #/text
+  ✓ #/tax
+  ✓ #/funding
+  ✓ #/settings
+  ✓ #/chart?symbol=AAPL
+  ✓ #/ai
+  ✓ #/agents
+  ✓ #/code
+  ✓ #/news
+  ✓ #/scanner
+  ✓ #/optionslab
+  ✓ #/institutions
+  ✓ #/portfolios
+  ✓ #/portfolios?tab=mine
+  ✓ #/fleet
+  ✓ #/extras
+  ✓ #/extras?tab=family
+  ✓ #/marketplace
+  ✓ #/aimarket
+  ✓ #/sharedstrategies
+  ✓ #/sharedportfolios
+  ✓ #/signalchannels
+  ✓ #/insights
+  ✓ #/insights?tab=journal
+  ✓ #/risk
+  ✓ #/spend
+  ✓ #/values
+  ✓ #/values?tab=maaser
+  ✓ #/values?tab=shabbos
+  ✓ #/private
+  ✓ #/realestate
+  ✓ #/money
+  ✓ #/rules
+  ✓ #/android
+  ✓ #/luach
+  ✓ #/luach?tab=month
+  ✓ #/luach?tab=tzedakah
+  ✓ #/brief
+  ✓ #/taxpilot
+  ✓ #/invest
+  ✓ #/invest?tab=funds
+  ✓ #/invest?tab=savings
+  ✓ #/security
+  ✓ #/execution
+  ✓ #/learn
+  ✓ #/longterm
+  ✓ #/workspace
+  ✓ #/accounts
+  ✓ #/wealth
+  ✓ #/wealth?tab=compound
+  ✓ #/wealth?tab=auto
+  ✓ #/wealth?tab=hold
+  ✓ #/wealth?tab=drip
+  ✓ #/wealth?tab=understand
+  ✓ #/wealth?tab=tax
+  ✓ #/wealth?tab=core
+  ✓ #/wealth?tab=diversify
+  ✓ #/alpaca-tools
+  ✓ #/referrals
+  ✓ #/riskview
+  ✓ #/riskview?add=SPY:1000
+  ✓ #/research
+  ✓ #/tokenized
+  ✓ #/protection
+  ✓ #/retirement
+  ✓ #/business
+  ✓ #/invoices
+  ✓ #/books
+  ✓ #/bank
+  ✓ #/inventory
+  ✓ #/payroll
+  ✓ #/bizreports
+  ✓ #/business?tab=settings
+  ✓ #/traders
+  ✓ #/robo
+  ✓ #/currencies
+  ✓ #/learn?tab=glossary
+  ✓ #/learn?tab=calc
+  ✓ #/analyze?symbol=AAPL
+  ✓ #/analyze?symbol=VOO
+  ✓ #/lowcost
+  ✓ #/earnings
+  ✓ #/leaders
+  ✓ #/short
+  ✓ #/margin
+  ✓ #/aifunds
+  ✓ #/hotline
+  ✓ #/admin-sponsored
+  ✓ #/admin-agents
+  ✓ #/agenthub
+  ✓ #/aibots
+  ✓ #/aibots?tab=new
+  ✓ #/aibots?tab=mine
+  ✓ #/aibots?tab=market
+  ✓ #/aisignals
+  ✓ #/intel
+  ✓ /
+  ✓ /yi
+  ✓ /terms
+  ✓ /app#/register
+  ✓ /app#/login
+  ✓ #/dashboard
+  ✓ #/trade?symbol=AAPL
+  ✓ #/orders
+  ✓ #/positions
+  ✓ #/watchlists
+  ✓ #/markets
+  ✓ #/options?underlying=AAPL
+  ✓ #/calendar
+  ✓ #/account
+  ✓ #/open-account
+  ✓ #/brokers
+  ✓ #/strategies
+  ✓ #/strategy?id=3
+  ✓ #/signals
+  ✓ #/pairs
+  ✓ #/statarb
+  ✓ #/sp500
+  ✓ #/backtest
+  ✓ #/bots
+  ✓ #/schedule
+  ✓ #/text
+  ✓ #/tax
+  ✓ #/funding
+  ✓ #/settings
+  ✓ #/chart?symbol=AAPL
+  ✓ #/ai
+  ✓ #/agents
+  ✓ #/code
+  ✓ #/news
+  ✓ #/scanner
+  ✓ #/optionslab
+  ✓ #/institutions
+  ✓ #/portfolios
+  ✓ #/portfolios?tab=mine
+  ✓ #/fleet
+  ✓ #/extras
+  ✓ #/extras?tab=family
+  ✓ #/marketplace
+  ✓ #/aimarket
+  ✓ #/sharedstrategies
+  ✓ #/sharedportfolios
+  ✓ #/signalchannels
+  ✓ #/insights
+  ✓ #/insights?tab=journal
+  ✓ #/risk
+  ✓ #/spend
+  ✓ #/values
+  ✓ #/values?tab=maaser
+  ✓ #/values?tab=shabbos
+  ✓ #/private
+  ✓ #/realestate
+  ✓ #/money
+  ✓ #/rules
+  ✓ #/android
+  ✓ #/luach
+  ✓ #/luach?tab=month
+  ✓ #/luach?tab=tzedakah
+  ✓ #/brief
+  ✓ #/taxpilot
+  ✓ #/invest
+  ✓ #/invest?tab=funds
+  ✓ #/invest?tab=savings
+  ✓ #/security
+  ✓ #/execution
+  ✓ #/learn
+  ✓ #/longterm
+  ✓ #/workspace
+  ✓ #/accounts
+  ✓ #/wealth
+  ✓ #/wealth?tab=compound
+  ✓ #/wealth?tab=auto
+  ✓ #/wealth?tab=hold
+  ✓ #/wealth?tab=drip
+  ✓ #/wealth?tab=understand
+  ✓ #/wealth?tab=tax
+  ✓ #/wealth?tab=core
+  ✓ #/wealth?tab=diversify
+  ✓ #/alpaca-tools
+  ✓ #/referrals
+  ✓ #/riskview
+  ✓ #/riskview?add=SPY:1000
+  ✓ #/research
+  ✓ #/tokenized
+  ✓ #/protection
+  ✓ #/retirement
+  ✓ #/business
+  ✓ #/invoices
+  ✓ #/books
+  ✓ #/bank
+  ✓ #/inventory
+  ✓ #/payroll
+  ✓ #/bizreports
+  ✓ #/business?tab=settings
+  ✓ #/traders
+  ✓ #/robo
+  ✓ #/currencies
+  ✓ #/learn?tab=glossary
+  ✓ #/learn?tab=calc
+  ✓ #/analyze?symbol=AAPL
+  ✓ #/analyze?symbol=VOO
+  ✓ #/lowcost
+  ✓ #/earnings
+  ✓ #/leaders
+  ✓ #/short
+  ✓ #/margin
+  ✓ #/aifunds
+  ✓ #/hotline
+  ✓ #/admin-sponsored
+  ✓ #/admin-agents
+  ✓ #/agenthub
+  ✓ #/aibots
+  ✓ #/aibots?tab=new
+  ✓ #/aibots?tab=mine
+  ✓ #/aibots?tab=market
+  ✓ #/aisignals
+  ✓ #/intel
+  ✓ /
+  ✓ /yi
+  ✓ /terms
+  ✓ /app#/register
+  ✓ /app#/login
+  ✓ #/dashboard
+  ✓ #/trade?symbol=AAPL
+  ✓ #/orders
+  ✓ #/positions
+  ✓ #/watchlists
+  ✓ #/markets
+  ✓ #/options?underlying=AAPL
+  ✓ #/calendar
+  ✓ #/account
+  ✓ #/open-account
+  ✓ #/brokers
+  ✓ #/strategies
+  ✓ #/strategy?id=4
+  ✓ #/signals
+  ✓ #/pairs
+  ✓ #/statarb
+  ✓ #/sp500
+  ✓ #/backtest
+  ✓ #/bots
+  ✓ #/schedule
+  ✓ #/text
+  ✓ #/tax
+  ✓ #/funding
+  ✓ #/settings
+  ✓ #/chart?symbol=AAPL
+  ✓ #/ai
+  ✓ #/agents
+  ✓ #/code
+  ✓ #/news
+  ✓ #/scanner
+  ✓ #/optionslab
+  ✓ #/institutions
+  ✓ #/portfolios
+  ✓ #/portfolios?tab=mine
+  ✓ #/fleet
+  ✓ #/extras
+  ✓ #/extras?tab=family
+  ✓ #/marketplace
+  ✓ #/aimarket
+  ✓ #/sharedstrategies
+  ✓ #/sharedportfolios
+  ✓ #/signalchannels
+  ✓ #/insights
+  ✓ #/insights?tab=journal
+  ✓ #/risk
+  ✓ #/spend
+  ✓ #/values
+  ✓ #/values?tab=maaser
+  ✓ #/values?tab=shabbos
+  ✓ #/private
+  ✓ #/realestate
+  ✓ #/money
+  ✓ #/rules
+  ✓ #/android
+  ✓ #/luach
+  ✓ #/luach?tab=month
+  ✓ #/luach?tab=tzedakah
+  ✓ #/brief
+  ✓ #/taxpilot
+  ✓ #/invest
+  ✓ #/invest?tab=funds
+  ✓ #/invest?tab=savings
+  ✓ #/security
+  ✓ #/execution
+  ✓ #/learn
+  ✓ #/longterm
+  ✓ #/workspace
+  ✓ #/accounts
+  ✓ #/wealth
+  ✓ #/wealth?tab=compound
+  ✓ #/wealth?tab=auto
+  ✓ #/wealth?tab=hold
+  ✓ #/wealth?tab=drip
+  ✓ #/wealth?tab=understand
+  ✓ #/wealth?tab=tax
+  ✓ #/wealth?tab=core
+  ✓ #/wealth?tab=diversify
+  ✓ #/alpaca-tools
+  ✓ #/referrals
+  ✓ #/riskview
+  ✓ #/riskview?add=SPY:1000
+  ✓ #/research
+  ✓ #/tokenized
+  ✓ #/protection
+  ✓ #/retirement
+  ✓ #/business
+  ✓ #/invoices
+  ✓ #/books
+  ✓ #/bank
+  ✓ #/inventory
+  ✓ #/payroll
+  ✓ #/bizreports
+  ✓ #/business?tab=settings
+  ✓ #/traders
+  ✓ #/robo
+  ✓ #/currencies
+  ✓ #/learn?tab=glossary
+  ✓ #/learn?tab=calc
+  ✓ #/analyze?symbol=AAPL
+  ✓ #/analyze?symbol=VOO
+  ✓ #/lowcost
+  ✓ #/earnings
+  ✓ #/leaders
+  ✓ #/short
+  ✓ #/margin
+  ✓ #/aifunds
+  ✓ #/hotline
+  ✓ #/admin-sponsored
+  ✓ #/admin-agents
+  ✓ #/agenthub
+  ✓ #/aibots
+  ✓ #/aibots?tab=new
+  ✓ #/aibots?tab=mine
+  ✓ #/aibots?tab=market
+  ✓ #/aisignals
+  ✓ #/intel
