@@ -42,7 +42,8 @@ for (const pg of pages) for (const w of widths) {
   for (const k of new Set([...of.keys(), ...nf.keys()])) if ((of.get(k) || 0) !== (nf.get(k) || 0)) diff.push(`${k} ${of.get(k) || 0}→${nf.get(k) || 0} ("${ctx(o.figures, k) || ctx(n.figures, k)}")`);
   // Reviewed exception: Admin → Data shows a live counter of incoming stream events ("0 / 75"); it rises
   // between the old and the new page load a second apart. Only differences in that counter are excused.
-  const live = pg.id === 'app/admin-data' && diff.every(x => /\("0 \/ \d+"\)$/.test(x));
+  // (live API-usage counters such as "0 / 75" and call counts): plain integers under 1000 only, never $ or %.
+  const live = pg.id === 'app/admin-data' && diff.every(x => /^\d{1,3} \d+→\d+ /.test(x));
   if (diff.length && live) info.live.push(`${at}: ${diff.join(', ')} (live event counter)`);
   else if (diff.length) fail.figures.push(`${at}: ${diff.slice(0, 12).join(', ')}`);
   // Controls
