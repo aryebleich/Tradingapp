@@ -14,6 +14,17 @@ html.lv2 {
   --focus: 2px solid var(--ac);
 }
 
+/* ---------- contrast (WCAG 1.4.3): light mode only, the smallest darkening that reaches 4.5:1 ----------
+   gain, loss, warning and accent text failed AA on the light backgrounds (2.9 to 4.3:1). Same hues,
+   darker by 8 to 33%. Dark mode already passed and is unchanged. See DESIGN_DECISIONS.md D-9. */
+html.lv2:not([data-theme="dark"]) { --gr: #0d7b3d; --rd: #c03c40; --warn: #a25900; --ac: #5656e9; }
+/* tinted pills and risk badges sit on a 12-18% tint of their own colour: their text needs one step darker */
+html.lv2:not([data-theme="dark"]) :is(.pill.neg, .neg.pill, .risk.neg) { color: #a83438; }
+html.lv2:not([data-theme="dark"]) :is(.pill.pos, .pos.pill, .risk.pos) { color: #0b6d36; }
+html.lv2:not([data-theme="dark"]) :is(.pill.warn, .warn.pill, .risk.warn) { color: #8e4e00; }
+@media (prefers-color-scheme: dark) { html.lv2:not([data-theme="light"]) :is(.pill.neg, .neg.pill, .risk.neg) { color: var(--rd); } html.lv2:not([data-theme="light"]) :is(.pill.pos, .pos.pill, .risk.pos) { color: var(--gr); } html.lv2:not([data-theme="light"]) :is(.pill.warn, .warn.pill) { color: var(--warn); } html.lv2:not([data-theme="light"]) .risk.warn { color: #c26a00; } }
+@media (prefers-color-scheme: dark) { html.lv2:not([data-theme="light"]) { --gr: #22c55e; --rd: #f05252; --warn: #f5b041; --ac: #7c7cff; } }
+
 /* ---------- focus and targets (WCAG 2.4.7, 2.4.11, 2.5.8) ---------- */
 html.lv2 :is(a, button, input, select, textarea, summary, [tabindex]):focus-visible { outline: var(--focus); outline-offset: 2px; }
 html.lv2 #view :is(.chips button, .seg button, button.small) { min-height: 24px; min-width: 24px; }
@@ -92,3 +103,10 @@ html.lv2 footer.site p, html.lv2 footer.site small { line-height: 1.6; }
   html.lv2 .wrap { padding-inline: var(--s4); }
   html.lv2 .btn { min-height: 44px; }
 }
+
+/* public site contrast (light mode): the hero caption (a disclosure) on the dark demo panel, the
+   kicker label on the grey section background, and the "2 months free" badge */
+html.lv2 .term .figcap { color: #9aa4bd; }
+html.lv2:not([data-theme="dark"]) section.alt .kicker { color: #4b4bd6; }
+html.lv2:not([data-theme="dark"]) .toggle em { color: #0b6d36; }
+@media (prefers-color-scheme: dark) { html.lv2 section.alt .kicker { color: var(--ac); } html.lv2 .toggle em { color: var(--gr); } }

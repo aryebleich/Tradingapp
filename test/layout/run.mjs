@@ -109,7 +109,7 @@ async function measure(p, width) {
       overflowX: document.documentElement.scrollWidth > innerWidth + 1,
       pageHeight: document.documentElement.scrollHeight, smallTargets: targets,
       disclosures, figures: figs.sort(), lv2: document.documentElement.classList.contains('lv2'),
-      controls: [...main.querySelectorAll('button, input:not([type=hidden]), select, textarea, a[href]')].filter(shown).map(e => (e.name || e.id || e.getAttribute('aria-label') || e.textContent || '').trim().slice(0, 40)).filter(Boolean).sort(),
+      controls: [...main.querySelectorAll('button, input:not([type=hidden]), select, textarea, a[href]')].filter(shown).map(e => (e.name || e.id || e.textContent.trim() || e.getAttribute('aria-label') || '').trim().slice(0, 40)).filter(Boolean).sort(),
     };
   }, { DISC, width });
 }

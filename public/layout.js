@@ -10,7 +10,15 @@ const EMPTY = [
   [/^No signals\b/i, '#/signals', 'Open Signals'],
 ];
 
+// Accessible names only (no visible text changes): the logo link, and fields inside table cells
+// that are labelled by their column (the cell's data-label).
+function names(root) {
+  for (const a of root.querySelectorAll('a.brand:not([aria-label]), a.logo:not([aria-label])')) a.setAttribute('aria-label', 'Brightolio home');
+  for (const f of root.querySelectorAll('td[data-label] > :is(input, select, textarea):not([aria-label]):not([id])')) f.setAttribute('aria-label', f.parentElement.dataset.label);
+}
+
 function tidy(root) {
+  names(root);
   for (const t of root.querySelectorAll('table')) {
     if (t.closest('.tablewrap, ' + SKIP) || t.classList.contains('stack')) continue;
     const box = document.createElement('div');
