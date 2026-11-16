@@ -19,6 +19,7 @@ Everything that is waiting on you, in order. This list is kept up to date by the
 ### 3. Merge the two finished branches (nothing is live until you do)
 - [ ] **feature/stripe-audit**: Stripe fixes (no duplicate charges, refunds and disputes reach the ledger, test payments kept out of revenue). Merge this one first.
 - [ ] **feature/comms-module**: the SMS and voice drawer, built on top of the Stripe branch, switched off by its flag.
+- [ ] **feature/trading-tools**: Planning tools (position size, risk/reward with ATR stop, sector heatmap) and two AI explainers with an advice filter, kill switch and compliance log. All five flags off.
 - Open a pull request for each on GitHub (or ask Claude to), check the tests are green, then merge. After merging, the docs folder has the details: STRIPE_AUDIT.md, STRIPE_TEST_PLAN.md, COMMS_SETUP.md, COMMS_ARCHITECTURE.md.
 
 ### 4. Stripe, before taking real payments (after step 3)
@@ -38,11 +39,20 @@ Everything that is waiting on you, in order. This list is kept up to date by the
 - [ ] The Telnyx names in the code were written without access to Telnyx's documentation: check them against developers.telnyx.com (or ask Claude once the docs can be reached) before the first real call.
 - [ ] Have the legal list in COMMS_ARCHITECTURE.md checked (consent, quiet hours by the recipient's time zone, call recording, record keeping, UK and EU). Leave call recording off until then.
 
-### 6. Keys and safety
+### 6. Planning tools and AI explainers (after merging feature/trading-tools)
+- [ ] Have each row of COMPLIANCE_REVIEW.md signed off; the two AI explainers are marked **Review required** (they talk about your users' own holdings and named securities).
+- [ ] Check the market-data licence allows showing prices to users (sector heatmap).
+- [ ] Set up a staging copy (own database, paper keys) and run the smoke test in docs/TRADING_TOOLS.md, section 6.
+- [ ] Roll out one flag at a time: staging 100%, then production 5%, 25%, 100% (Admin → SEO → Feature flags). AI explainers last.
+- [ ] Read the AI log now and then (Admin API /api/admin/tools/log). If an answer slips through, switch the tool off at once: AI_TOOLS_KILL=all, or the kill switch.
+- [ ] Decide the AI log retention (default 3 years) and an economic-calendar data provider if you want that tool.
+- [ ] Decide whether the existing AI tools ("News to trades", AI signals, AI bots) should get the same advice filter (needs legal review).
+
+### 7. Keys and safety
 - [ ] ENCRYPTION_KEY is set in Render **and saved somewhere safe**. This README, saved keys and waiting texts are encrypted with it; if it changes, they cannot be read (this README would look empty: use Import below to bring the guide back).
 - [ ] After any test with a public tunnel (ngrok, Cloudflare), change the keys that were used.
 
-### 7. So Claude can check the official documentation
+### 8. So Claude can check the official documentation
 - [ ] docs.stripe.com and developers.telnyx.com were added to this project's allowed sites, but Claude's reader still could not open them. If you want answers checked against the live docs, look at the environment's network settings in Claude (or paste the page).
 ` };
 export const SECTIONS = [
