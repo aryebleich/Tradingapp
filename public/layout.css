@@ -64,9 +64,11 @@ html.lv2 .err:not(:empty):not(.ok) { padding: var(--s2) var(--s3); border-radius
   background: color-mix(in srgb, var(--rd) 8%, transparent); }
 
 /* signed in: the footer's disclosures are shown under every page (the previous layout hid them) */
-html.lv2 body.signedin > footer, html.lv2 body > footer { display: block; max-width: var(--w-page); margin: 0 auto; padding: var(--s4) var(--s6) var(--s5);
+html.lv2 body:is(.signedin, .signedout) > footer { display: block; max-width: var(--w-page); margin: 0 auto; padding: var(--s4) var(--s6) var(--s5);
   font-size: var(--t-xs); line-height: 1.55; color: var(--mu); border-top: 1px solid var(--bd); }
 html.lv2 body.popout > footer { display: none !important; }
+/* signed in, the page area is a full screen tall, so the footer starts below the first screen and never shifts while a page loads */
+html.lv2 body.signedin #view { min-height: 100vh; min-height: 100dvh; }
 
 /* ---------- tablet ---------- */
 
@@ -80,7 +82,7 @@ html.lv2 body.popout > footer { display: none !important; }
   html.lv2 #view :is(form, dialog, .row, .card) > button:not(.small):not([aria-label]), html.lv2 dialog button:not([aria-label]), html.lv2 .btn { min-height: 44px; }
   html.lv2 #view :is(.chips button, .seg button) { min-height: 36px; }
   html.lv2 input, html.lv2 select, html.lv2 textarea { font-size: 16px; min-height: 44px; } /* no zoom on focus */
-  html.lv2 body > footer { padding: var(--s4) var(--s4) calc(var(--s8) + env(safe-area-inset-bottom)); } /* clear of the bottom tab bar */
+  html.lv2 body:is(.signedin, .signedout) > footer { padding: var(--s4) var(--s4) calc(var(--s8) + env(safe-area-inset-bottom)); } /* clear of the bottom tab bar */
   html.lv2 dialog { max-height: calc(100dvh - 32px); overflow-y: auto; }
 }
 
