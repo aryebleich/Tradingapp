@@ -32,8 +32,17 @@ for (const f of ['index.html', 'yi.html']) {
   });
 }
 
+test('every sentence of the old homepage is still on the new one (English and Yiddish)', () => {
+  const gold = JSON.parse(fs.readFileSync(path.join(root, 'test/golden/homepage-v1-sentences.json'), 'utf8')).sentences;
+  for (const f of ['index.html', 'yi.html']) {
+    const cur = text(read(f)), missing = gold[f].filter(x => !cur.includes(x));
+    assert.deepEqual(missing, [], `${f}: ${missing.length} sentence(s) of the old homepage are gone`);
+    assert.ok(gold[f].length > 250, 'the golden list is not empty');
+  }
+});
+
 test('every page carries the layout layer; the old homepage copies and the flag system are gone', async () => {
-  for (const f of ['index.html', 'yi.html', 'terms.html', 'privacy.html', 'risk.html', 'contact.html', 'status.html', 'security.html', 'insurance.html', 'app.html']) {
+  for (const f of ['index.html', 'yi.html', 'terms.html', 'privacy.html', 'risk.html', 'contact.html', 'status.html', 'security.html', 'insurance.html', 'app.html', '404.html']) {
     const h = read(f);
     assert.match(h, /<html[^>]*class="lv2"/, f); assert.match(h, /layout\.css/, f); assert.match(h, /layout\.js/, f);
   }

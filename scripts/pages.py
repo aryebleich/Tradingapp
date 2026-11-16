@@ -117,7 +117,8 @@ CONTACT = '''
 </form>
 <p class="mu" style="margin-top:30px">Urgent account security issue? Sign in and use Settings &gt; Active sessions to sign out other devices, change your password, and text <b>PAUSE &lt;PIN&gt;</b> to stop all automation.</p>
 '''
-NOTFOUND = '''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Page not found | Brightolio</title>
+NOTFOUND = '''<!doctype html><html lang="en" class="lv2"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Page not found | Brightolio</title>
+<link rel="stylesheet" href="/layout.css"><script type="module" src="/layout.js"></script>
 <style>body{margin:0;min-height:100vh;display:grid;place-items:center;font:16px/1.5 system-ui,sans-serif;background:#0b1324;color:#e7ecf5;text-align:center;padding:16px}a{color:#8fb2ff}h1{font-size:64px;margin:0}</style></head>
 <body><div><h1>404</h1><p>We could not find that page.</p><p><a href="/">Go to the home page</a></p></div></body></html>
 '''
