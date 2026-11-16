@@ -15,7 +15,7 @@ const read = f => { try { return fs.readFileSync(path.join(root, f), 'utf8'); } 
 const exists = f => tracked.includes(f);
 
 // Files that are entry points or configuration on their own.
-const KEEP = [/^\.github\//, /^android\//, /^deploy\//, /^\.devcontainer\//, /^security\//, /^edge\//, /^i18n\//, /^README\.md$/, /^[^/]+$/, /^test\/(setup|mock-[\w-]+)\.js$/, /^test\/[\w-]+\.test\.js$/, /^test\/e2e\/run\.mjs$/,
+const KEEP = [/^docs\//, /^\.github\//, /^android\//, /^deploy\//, /^\.devcontainer\//, /^security\//, /^edge\//, /^i18n\//, /^README\.md$/, /^[^/]+$/, /^test\/(setup|mock-[\w-]+)\.js$/, /^test\/[\w-]+\.test\.js$/, /^test\/e2e\/run\.mjs$/,
   /^scripts\/yi_more\.json$/, /^ad\/brightolio-ad[\w-]*\.(mp4|jpg)$/];
 
 // Follow imports (static, dynamic, and import('./x' + ...) prefixes) from a set of starting files.
@@ -31,7 +31,7 @@ function follow(starts) {
     }
     // Absolute app paths inside public code ('/pages/x.js', "/chart.js") and server code naming public files.
     for (const m of src.matchAll(/['"`(]\/((?:pages|i18n)\/[\w./-]+\.js|[\w-]+\.(?:js|css|html|png|svg|webp|webmanifest))/g)) todo.push('public/' + m[1]);
-    for (const m of src.matchAll(/['"`]((?:src|public|scripts|test)\/[\w./-]+\.(?:js|mjs|py|json|html))/g)) todo.push(m[1]);
+    for (const m of src.matchAll(/['"`]((?:src|public|scripts|test)\/[\w./-]+\.(?:js|mjs|py|json|html))(?![\w])/g)) todo.push(m[1]); // (?![\w]): "x.json" is not read as "x.js"
     // Pages: <script src="x.js">, <link href="x.css">, <img src="x.png"> (relative or absolute).
     if (f.endsWith('.html')) for (const m of src.matchAll(/(?:src|href|content)=["'](?:https?:\/\/[^"']*?)?\/?([\w./-]+\.(?:js|css|png|svg|webp|webmanifest|ico))["'?]/g)) todo.push(path.posix.normalize(path.posix.join(dir, m[1])));
     // Dynamic imports built from a folder ('./i18n/' + lang + '.js'): everything in that folder counts.

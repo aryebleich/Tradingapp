@@ -1,0 +1,68 @@
+/* Admin → AI team → Chat (public/pages/aichat.js). Uses the app's theme variables. */
+.ac-wrap { display: grid; grid-template-columns: 260px 1fr; gap: 16px; height: calc(100dvh - 120px); min-height: 480px; }
+.ac-sr { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+.ac-side { display: flex; flex-direction: column; gap: 8px; min-height: 0; padding: 12px; border: 1px solid var(--bd); border-radius: var(--r); background: var(--card); }
+.ac-sidehead { display: flex; align-items: center; justify-content: space-between; }
+.ac-sidehead h2 { margin: 0; font-size: 15px; }
+.ac-close-side, .ac-open-side { display: none; }
+.ac-convs { list-style: none; margin: 0; padding: 0; overflow: auto; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.ac-convs li { border-radius: var(--r-sm); border: 1px solid transparent; }
+.ac-convs li.on { border-color: var(--ac); background: var(--acs); }
+.ac-open { width: 100%; text-align: start; background: transparent; border: 0; color: inherit; padding: 8px; display: flex; flex-direction: column; gap: 2px; min-height: 44px; font: inherit; cursor: pointer; }
+.ac-ctitle { font-weight: 600; overflow-wrap: anywhere; } .ac-open time { font-size: 12px; color: var(--mu); }
+.ac-cact { display: flex; gap: 4px; padding: 0 8px 8px; }
+.ac-cact button { min-height: 32px; padding: 0 10px; font-size: 13px; }
+.ac-rn { width: 100%; font: inherit; }
+.ac-main { display: flex; flex-direction: column; min-height: 0; min-width: 0; border: 1px solid var(--bd); border-radius: var(--r); background: var(--card); padding: 12px; }
+.ac-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ac-titles { flex: 1; min-width: 0; } .ac-titles h1 { margin: 0; font-size: 20px; overflow-wrap: anywhere; } .ac-sub { margin: 2px 0 0; font-size: 13px; }
+.ac-model { display: flex; flex-direction: column; font-size: 13px; font-weight: 600; }
+.ac-budget { margin: 6px 0; font-size: 13px; }
+.ac-scroll { flex: 1; overflow: auto; min-height: 0; padding: 4px 2px; overscroll-behavior: contain; }
+.ac-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.ac-msg { padding: 10px 12px; border-radius: var(--r-sm); border: 1px solid var(--bd); max-width: 100%; }
+.ac-user { background: var(--bg2); align-self: flex-end; max-width: min(85%, 720px); }
+.ac-asst { background: var(--card); }
+.ac-meta { font-size: 12px; color: var(--mu); margin-bottom: 4px; display: flex; gap: 8px; align-items: center; }
+.ac-meta b { color: var(--tx); }
+.ac-plain { white-space: pre-wrap; overflow-wrap: anywhere; }
+.ac-mact { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.ac-mact button, .ac-errline button { min-height: 32px; padding: 0 10px; font-size: 13px; }
+.ac-think { margin: 4px 0 8px; border: 1px dashed var(--bd); border-radius: var(--r-sm); padding: 6px 10px; }
+.ac-think summary { cursor: pointer; font-size: 13px; color: var(--mu); min-height: 28px; display: list-item; }
+.ac-tlabel { font-weight: 650; color: var(--tx); }
+.ac-tbody { white-space: pre-wrap; font-size: 13px; color: var(--mu); margin: 6px 0; overflow-wrap: anywhere; }
+.ac-copythink { min-height: 28px; font-size: 12px; padding: 0 8px; }
+.ac-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ac); vertical-align: middle; animation: ac-pulse 1s ease-in-out infinite; }
+.ac-cursor { display: inline-block; width: .55em; height: 1.1em; vertical-align: text-bottom; background: currentColor; margin-inline-start: 2px; animation: ac-blink 1s steps(1) infinite; }
+@keyframes ac-blink { 50% { opacity: 0; } } @keyframes ac-pulse { 50% { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .ac-cursor, .ac-dot { animation: none; } .ac-cursor { opacity: .6; } }
+.ac-jump { align-self: center; margin: 6px 0; }
+.ac-form { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.ac-form textarea { width: 100%; box-sizing: border-box; font: inherit; font-size: 16px; resize: vertical; min-height: 64px; max-height: 40dvh; }
+.ac-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.ac-actions button { min-height: 44px; min-width: 88px; }
+/* Markdown */
+.md { overflow-wrap: anywhere; line-height: 1.55; } .md > :first-child { margin-top: 0; } .md p { margin: 0 0 .7em; }
+.md .md-h { margin: .9em 0 .4em; letter-spacing: 0; text-transform: none; font-size: 1.05em; }
+.md code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .92em; background: var(--bg2); padding: .1em .3em; border-radius: 4px; }
+.md a { color: var(--ac); text-decoration: underline; }
+.md blockquote { margin: .6em 0; padding-inline-start: 12px; border-inline-start: 3px solid var(--bd); color: var(--mu); }
+.md-table { overflow-x: auto; margin: .6em 0; } .md table { border-collapse: collapse; font-size: 14px; } .md th, .md td { border: 1px solid var(--bd); padding: 4px 8px; text-align: start; }
+.md-code { margin: .7em 0; border: 1px solid var(--bd); border-radius: var(--r-sm); overflow: hidden; }
+.md-codebar { display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; background: var(--bg2); font-size: 12px; color: var(--mu); }
+.md-copy { min-height: 28px; font-size: 12px; padding: 0 8px; }
+.md-code pre { margin: 0; padding: 10px 12px; overflow-x: auto; background: var(--input); } .md-code pre code { background: none; padding: 0; white-space: pre; }
+.tk-k { color: #8b3fd9; font-weight: 600; } .tk-s { color: #0a7a3f; } .tk-c { color: #6b7280; font-style: italic; } .tk-n { color: #b45309; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tk-k { color: #c4a5ff; } :root:not([data-theme="light"]) .tk-s { color: #7ee2a8; } :root:not([data-theme="light"]) .tk-c { color: #9aa4b2; } :root:not([data-theme="light"]) .tk-n { color: #fbbf72; } }
+:root[data-theme="dark"] .tk-k { color: #c4a5ff; } :root[data-theme="dark"] .tk-s { color: #7ee2a8; } :root[data-theme="dark"] .tk-c { color: #9aa4b2; } :root[data-theme="dark"] .tk-n { color: #fbbf72; }
+/* Phones: the conversation list becomes a drawer */
+@media (max-width: 860px) {
+  .ac-wrap { grid-template-columns: 1fr; height: calc(100dvh - 150px); }
+  .ac-open-side, .ac-close-side { display: inline-flex; min-height: 44px; align-items: center; }
+  .ac-side { position: fixed; inset-block: 0; inset-inline-start: 0; width: min(320px, 86vw); z-index: 95; border-radius: 0; transform: translateX(-105%); visibility: hidden; transition: transform .2s; box-shadow: var(--shadow-lg); }
+  [dir=rtl] .ac-side { transform: translateX(105%); }
+  .ac-side.open { transform: none; visibility: visible; }
+  .ac-user { max-width: 92%; }
+}
+@media (prefers-reduced-motion: reduce) { .ac-side { transition: none; } }

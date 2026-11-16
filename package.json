@@ -13,7 +13,8 @@
     "test": "node --import ./test/setup.js --test --test-force-exit test/*.test.js",
     "e2e": "node test/e2e/run.mjs",
     "security:check": "node scripts/security-check.mjs",
-    "clean": "node scripts/clean-check.mjs && node scripts/readme-check.mjs"
+    "clean": "node scripts/clean-check.mjs && node scripts/readme-check.mjs",
+    "aichat:ui": "node test/aichat-ui.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.99.0",

@@ -14,7 +14,7 @@ const S = await serve();
 after(() => S.close());
 
 test('flags: off by default, stable buckets, rollout percentage respected', async () => {
-  assert.deepEqual(Object.keys(F.FLAGS), ['home_v2']);
+  assert.deepEqual(Object.keys(F.FLAGS), ['home_v2', 'ai_team_chat']);
   assert.equal(F.flagSettings().home_v2.on, false);
   assert.equal(F.isOn('home_v2', 'abc'), false);
   assert.equal(F.bucketOf('abc', 'home_v2'), F.bucketOf('abc', 'home_v2'));

@@ -921,6 +921,12 @@ const MIGRATIONS = [
   // The execution log is append-only: the database itself refuses edits and deletions.
   "CREATE TRIGGER IF NOT EXISTS exec_audit_no_update BEFORE UPDATE ON exec_audit BEGIN SELECT RAISE(ABORT, 'exec_audit is append-only'); END",
   "CREATE TRIGGER IF NOT EXISTS exec_audit_no_delete BEFORE DELETE ON exec_audit BEGIN SELECT RAISE(ABORT, 'exec_audit is append-only'); END",
+  // AI team Chat (src/aichat, flag ai_team_chat): conversations, messages and, kept apart, the model's thinking.
+  'CREATE TABLE IF NOT EXISTS ai_chat_conversations (id TEXT PRIMARY KEY, owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, title TEXT NOT NULL, model TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
+  'CREATE INDEX IF NOT EXISTS ai_chat_conversations_owner ON ai_chat_conversations (owner_id, updated_at)',
+  'CREATE TABLE IF NOT EXISTS ai_chat_messages (id INTEGER PRIMARY KEY, conversation_id TEXT NOT NULL REFERENCES ai_chat_conversations(id) ON DELETE CASCADE, role TEXT NOT NULL, content TEXT NOT NULL, status TEXT NOT NULL, model TEXT, input_tokens INTEGER NOT NULL DEFAULT 0, output_tokens INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
+  'CREATE INDEX IF NOT EXISTS ai_chat_messages_conv ON ai_chat_messages (conversation_id, id)',
+  'CREATE TABLE IF NOT EXISTS ai_chat_thinking (message_id INTEGER PRIMARY KEY REFERENCES ai_chat_messages(id) ON DELETE CASCADE, content TEXT NOT NULL, duration_ms INTEGER)',
 ];
 
 // Migrations run on every start. Re-running one that is already applied ("duplicate column",
