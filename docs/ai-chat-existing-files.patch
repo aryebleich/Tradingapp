@@ -1,0 +1,115 @@
+diff --git a/package.json b/package.json
+index 9268d9e..0d24409 100644
+--- a/package.json
++++ b/package.json
+@@ -13,7 +13,8 @@
+     "test": "node --import ./test/setup.js --test --test-force-exit test/*.test.js",
+     "e2e": "node test/e2e/run.mjs",
+     "security:check": "node scripts/security-check.mjs",
+-    "clean": "node scripts/clean-check.mjs && node scripts/readme-check.mjs"
++    "clean": "node scripts/clean-check.mjs && node scripts/readme-check.mjs",
++    "aichat:ui": "node test/aichat-ui.mjs"
+   },
+   "dependencies": {
+     "@anthropic-ai/sdk": "^0.99.0",
+diff --git a/public/app.js b/public/app.js
+index 87d6541..06dcd84 100644
+--- a/public/app.js
++++ b/public/app.js
+@@ -1958,6 +1958,7 @@ for (const k of ['trade', 'positions', 'orders']) {
+ const marketTabs = on => `<div class="chips viewtabs">${NAV.find(([g]) => g === 'Marketplace')[1].map(([k, t]) => `<a href="#/${k}"><button type="button" class="${k === on ? 'on' : ''}">${esc({ marketplace: 'Overview', sharedstrategies: 'Strategies', sharedportfolios: 'Portfolios' }[k] || t)}</button></a>`).join('')}</div>`;
+ const shared = { safeUrl, extras: () => EXTRAS, setExtras: on => { EXTRAS = on; render.navKey = null; }, marketTabs, $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, refreshMe, accounts, accountOptions, acctLabel, state, adminTabs, adminPage, secureConfirm, me: () => ME, paid: () => isPaid(ME) };
+ lazyRoutes(() => import('./pages/studio.js'), 'registerStudio', shared, ["ai", "agents", "code"]);
++lazyRoutes(() => import('./pages/aichat.js'), 'registerAiChat', shared, ["admin-aichat"]);
+ lazyRoutes(() => import('./pages/build.js'), 'registerBuild', shared, ["scanner", "portfolios", "fleet", "marketplace", "aimarket", "sharedstrategies", "sharedportfolios", "signalchannels"]);
+ lazyRoutes(() => import('./pages/analytics.js'), 'registerAnalytics', shared, ["insights", "risk", "values", "halal", "institutions", "spend", "news"]);
+ lazyRoutes(() => import('./chart.js'), 'registerChart', shared, ["chart"]);
+diff --git a/public/pages/admin-ops.js b/public/pages/admin-ops.js
+index 388f9f9..69fa845 100644
+--- a/public/pages/admin-ops.js
++++ b/public/pages/admin-ops.js
+@@ -247,6 +247,9 @@ async function agentsPage(view) {
+   const at = H.$('.admintabs', view); if (!at) return;
+   at.insertAdjacentHTML('afterend', '<div id="aiTeam"></div>');
+   await teamCard(H.$('#aiTeam', view));
++  // The Chat job (flag ai_team_chat): shown only when the server says this admin may use it.
++  const st = await fetch('/api/admin/aichat/status', { headers: { 'X-Requested-With': 'qp' } }).then(r => (r.ok ? r.json() : null)).catch(() => null);
++  if (st) H.$('#aiTeam', view).insertAdjacentHTML('afterbegin', '<div class="card"><h2>Chat</h2><p class="mu" style="margin-top:0">A normal conversation with the AI team\'s model: replies stream as they are written, with the model\'s thinking shown separately.</p><a href="#/admin-aichat"><button type="button" tabindex="-1">Open chat</button></a></div>');
+ }
+ const jobPill = s => `<span class="pill ${s === 'done' ? 'pos' : s === 'failed' ? 'neg' : 'warn'}">${H.esc(s)}</span>`;
+ async function teamCard(el, openId) {
+diff --git a/scripts/clean-check.mjs b/scripts/clean-check.mjs
+index 81fc508..e7a9858 100644
+--- a/scripts/clean-check.mjs
++++ b/scripts/clean-check.mjs
+@@ -15,7 +15,7 @@ const read = f => { try { return fs.readFileSync(path.join(root, f), 'utf8'); }
+ const exists = f => tracked.includes(f);
+ 
+ // Files that are entry points or configuration on their own.
+-const KEEP = [/^\.github\//, /^android\//, /^deploy\//, /^\.devcontainer\//, /^security\//, /^edge\//, /^i18n\//, /^README\.md$/, /^[^/]+$/, /^test\/(setup|mock-[\w-]+)\.js$/, /^test\/[\w-]+\.test\.js$/, /^test\/e2e\/run\.mjs$/,
++const KEEP = [/^docs\//, /^\.github\//, /^android\//, /^deploy\//, /^\.devcontainer\//, /^security\//, /^edge\//, /^i18n\//, /^README\.md$/, /^[^/]+$/, /^test\/(setup|mock-[\w-]+)\.js$/, /^test\/[\w-]+\.test\.js$/, /^test\/e2e\/run\.mjs$/,
+   /^scripts\/yi_more\.json$/, /^ad\/brightolio-ad[\w-]*\.(mp4|jpg)$/];
+ 
+ // Follow imports (static, dynamic, and import('./x' + ...) prefixes) from a set of starting files.
+diff --git a/server.js b/server.js
+index b445e94..5ad4546 100644
+--- a/server.js
++++ b/server.js
+@@ -72,6 +72,7 @@ import { sponsoredRouter } from './src/sponsored.js';
+ import { investRouter } from './src/invest.js';
+ import { aiFundsRouter } from './src/aifunds.js';
+ import { aiTeamRouter } from './src/aiteam.js';
++import { aiChatRouter } from './src/aichat/routes.js';
+ import { equalizeRouter } from './src/equalize.js';
+ import { filterErrors, listIssues, clearIssues } from './src/usererrors.js';
+ import { bizRouter, publicInvoiceRouter } from './src/business/routes.js';
+@@ -624,6 +625,7 @@ api.use('/chartai', chartCopilotRouter);
+ api.get('/aiplans', (req, res) => res.json(aiPlanTable()));
+ api.use('/aifunds', aiFundsRouter);
+ api.use('/admin/aiteam', aiTeamRouter);
++api.use('/admin/aichat', aiChatRouter); // AI team Chat job (flag ai_team_chat, off by default)
+ api.use('/quickbooks', quickbooksRouter);
+ api.use('/institutions', institutionsRouter);
+ api.use('/roundups', roundupRouter);
+diff --git a/src/db.js b/src/db.js
+index 564e334..5be80df 100644
+--- a/src/db.js
++++ b/src/db.js
+@@ -921,6 +921,12 @@ const MIGRATIONS = [
+   // The execution log is append-only: the database itself refuses edits and deletions.
+   "CREATE TRIGGER IF NOT EXISTS exec_audit_no_update BEFORE UPDATE ON exec_audit BEGIN SELECT RAISE(ABORT, 'exec_audit is append-only'); END",
+   "CREATE TRIGGER IF NOT EXISTS exec_audit_no_delete BEFORE DELETE ON exec_audit BEGIN SELECT RAISE(ABORT, 'exec_audit is append-only'); END",
++  // AI team Chat (src/aichat, flag ai_team_chat): conversations, messages and, kept apart, the model's thinking.
++  'CREATE TABLE IF NOT EXISTS ai_chat_conversations (id TEXT PRIMARY KEY, owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, title TEXT NOT NULL, model TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
++  'CREATE INDEX IF NOT EXISTS ai_chat_conversations_owner ON ai_chat_conversations (owner_id, updated_at)',
++  'CREATE TABLE IF NOT EXISTS ai_chat_messages (id INTEGER PRIMARY KEY, conversation_id TEXT NOT NULL REFERENCES ai_chat_conversations(id) ON DELETE CASCADE, role TEXT NOT NULL, content TEXT NOT NULL, status TEXT NOT NULL, model TEXT, input_tokens INTEGER NOT NULL DEFAULT 0, output_tokens INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
++  'CREATE INDEX IF NOT EXISTS ai_chat_messages_conv ON ai_chat_messages (conversation_id, id)',
++  'CREATE TABLE IF NOT EXISTS ai_chat_thinking (message_id INTEGER PRIMARY KEY REFERENCES ai_chat_messages(id) ON DELETE CASCADE, content TEXT NOT NULL, duration_ms INTEGER)',
+ ];
+ 
+ // Migrations run on every start. Re-running one that is already applied ("duplicate column",
+diff --git a/src/flags.js b/src/flags.js
+index 0e651fa..e3cfe71 100644
+--- a/src/flags.js
++++ b/src/flags.js
+@@ -7,6 +7,7 @@ import { siteGet, siteSet } from './site.js';
+ 
+ export const FLAGS = {
+   home_v2: 'New homepage: audited section order, one main hero button, a risk link beside each sign-up, and a Trust & compliance block',
++  ai_team_chat: 'Admin → AI team: the Chat job (streaming conversation with thinking). Admins with the AI team chat permission only.',
+ };
+ const clampPct = v => Math.min(100, Math.max(0, Math.round(+v || 0)));
+ export function flagSettings() {
+diff --git a/test/homev2.test.js b/test/homev2.test.js
+index 6ba7749..9c2ec65 100644
+--- a/test/homev2.test.js
++++ b/test/homev2.test.js
+@@ -14,7 +14,7 @@ const S = await serve();
+ after(() => S.close());
+ 
+ test('flags: off by default, stable buckets, rollout percentage respected', async () => {
+-  assert.deepEqual(Object.keys(F.FLAGS), ['home_v2']);
++  assert.deepEqual(Object.keys(F.FLAGS), ['home_v2', 'ai_team_chat']);
+   assert.equal(F.flagSettings().home_v2.on, false);
+   assert.equal(F.isOn('home_v2', 'abc'), false);
+   assert.equal(F.bucketOf('abc', 'home_v2'), F.bucketOf('abc', 'home_v2'));

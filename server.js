@@ -72,6 +72,7 @@ import { sponsoredRouter } from './src/sponsored.js';
 import { investRouter } from './src/invest.js';
 import { aiFundsRouter } from './src/aifunds.js';
 import { aiTeamRouter } from './src/aiteam.js';
+import { aiChatRouter } from './src/aichat/routes.js';
 import { equalizeRouter } from './src/equalize.js';
 import { filterErrors, listIssues, clearIssues } from './src/usererrors.js';
 import { bizRouter, publicInvoiceRouter } from './src/business/routes.js';
@@ -624,6 +625,7 @@ api.use('/chartai', chartCopilotRouter);
 api.get('/aiplans', (req, res) => res.json(aiPlanTable()));
 api.use('/aifunds', aiFundsRouter);
 api.use('/admin/aiteam', aiTeamRouter);
+api.use('/admin/aichat', aiChatRouter); // AI team Chat job (flag ai_team_chat, off by default)
 api.use('/quickbooks', quickbooksRouter);
 api.use('/institutions', institutionsRouter);
 api.use('/roundups', roundupRouter);

@@ -247,6 +247,9 @@ async function agentsPage(view) {
   const at = H.$('.admintabs', view); if (!at) return;
   at.insertAdjacentHTML('afterend', '<div id="aiTeam"></div>');
   await teamCard(H.$('#aiTeam', view));
+  // The Chat job (flag ai_team_chat): shown only when the server says this admin may use it.
+  const st = await fetch('/api/admin/aichat/status', { headers: { 'X-Requested-With': 'qp' } }).then(r => (r.ok ? r.json() : null)).catch(() => null);
+  if (st) H.$('#aiTeam', view).insertAdjacentHTML('afterbegin', '<div class="card"><h2>Chat</h2><p class="mu" style="margin-top:0">A normal conversation with the AI team\'s model: replies stream as they are written, with the model\'s thinking shown separately.</p><a href="#/admin-aichat"><button type="button" tabindex="-1">Open chat</button></a></div>');
 }
 const jobPill = s => `<span class="pill ${s === 'done' ? 'pos' : s === 'failed' ? 'neg' : 'warn'}">${H.esc(s)}</span>`;
 async function teamCard(el, openId) {
