@@ -19,6 +19,7 @@ Everything that is waiting on you, in order. This list is kept up to date by the
 ### 3. Merge the two finished branches (nothing is live until you do)
 - [ ] **feature/stripe-audit**: Stripe fixes (no duplicate charges, refunds and disputes reach the ledger, test payments kept out of revenue). Merge this one first.
 - [ ] **feature/comms-module**: the SMS and voice drawer, built on top of the Stripe branch, switched off by its flag.
+- [ ] **feature/ai-team-chat**: a Chat job in Admin → AI team (streaming replies, separate Thinking, stop, retry, edit to branch). Flag ai_team_chat off; you have the permission as owner and can grant it to other admins. Staging steps and checklist: docs/AI_CHAT.md.
 - [ ] **feature/trading-tools**: Planning tools (position size, risk/reward with ATR stop, sector heatmap) and two AI explainers with an advice filter, kill switch and compliance log. All five flags off.
 - Open a pull request for each on GitHub (or ask Claude to), check the tests are green, then merge. After merging, the docs folder has the details: STRIPE_AUDIT.md, STRIPE_TEST_PLAN.md, COMMS_SETUP.md, COMMS_ARCHITECTURE.md.
 
