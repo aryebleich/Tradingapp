@@ -91,6 +91,7 @@ import { ownHosts, publicUrl } from './src/origin.js';
 import { edgeSecret } from './src/edgesetup.js';
 import { router as githubRouter, githubEnabled } from './src/github.js';
 import { adminSiteRouter } from './src/admin-site.js';
+import { toolsRouter, toolsAdminRouter } from './src/tradetools/routes.js';
 import * as FLAGS from './src/flags.js';
 import { tokensRouter, mcpHandler } from './src/mcp.js';
 import { agentRouter } from './src/agentic.js';
@@ -598,6 +599,8 @@ api.use('/fundamentals', fundamentalsRouter);
 api.use('/instruments', instrumentsRouter);
 api.use('/taxrates', taxRatesRouter);
 api.use('/admin/comms', commsAdminRouter);
+api.use('/admin/tools', toolsAdminRouter); // trading tools: AI kill switches and compliance log
+api.use('/tools', toolsRouter);          // trading tools (flags tools_* and ai_*, all off by default)
 api.use('/statscan', statScanRouter);
 api.use('/search', searchRouter);
 api.use('/paper/orders', paperOrdersRouter);

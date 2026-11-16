@@ -7,6 +7,11 @@ import { siteGet, siteSet } from './site.js';
 
 export const FLAGS = {
   home_v2: 'New homepage: audited section order, one main hero button, a risk link beside each sign-up, and a Trust & compliance block',
+  tools_sizing: 'Trading tools: position-size calculator',
+  tools_rr: 'Trading tools: risk/reward planner with ATR stop',
+  tools_heatmap: 'Trading tools: sector heatmap (needs live market data)',
+  ai_portfolio_explainer: 'AI tool: portfolio concentration explainer (guarded, logged, has a kill switch)',
+  ai_indicator_explainer: 'AI tool: indicator explainer, educational (guarded, logged, has a kill switch)',
 };
 const clampPct = v => Math.min(100, Math.max(0, Math.round(+v || 0)));
 export function flagSettings() {

@@ -921,6 +921,9 @@ const MIGRATIONS = [
   // The execution log is append-only: the database itself refuses edits and deletions.
   "CREATE TRIGGER IF NOT EXISTS exec_audit_no_update BEFORE UPDATE ON exec_audit BEGIN SELECT RAISE(ABORT, 'exec_audit is append-only'); END",
   "CREATE TRIGGER IF NOT EXISTS exec_audit_no_delete BEFORE DELETE ON exec_audit BEGIN SELECT RAISE(ABORT, 'exec_audit is append-only'); END",
+  // Trading tools (src/tradetools): what each AI explainer was asked and answered, redacted, for compliance review.
+  'CREATE TABLE IF NOT EXISTS ai_compliance_log (id INTEGER PRIMARY KEY, tool TEXT NOT NULL, user_ref TEXT NOT NULL, prompt TEXT, output TEXT, outcome TEXT NOT NULL, reason TEXT, model TEXT, at INTEGER NOT NULL)',
+  'CREATE INDEX IF NOT EXISTS ai_compliance_log_at ON ai_compliance_log (at)',
 ];
 
 // Migrations run on every start. Re-running one that is already applied ("duplicate column",
