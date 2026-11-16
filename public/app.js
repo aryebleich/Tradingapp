@@ -150,6 +150,10 @@ function act(btn, fn, out) {
 }
 
 let ME = null, CFG = null;
+// Planning tools (src/tradetools): shown in the menu only when one of their flags is on for this user.
+let TOOLS_ON = false;
+const loadToolFlags = () => fetch('/api/tools/flags', { headers: { 'X-Requested-With': 'qp' } }).then(r => (r.ok ? r.json() : null)).then(f => { TOOLS_ON = !!f?.any; }).catch(() => { TOOLS_ON = false; });
+const withTools = gs => (TOOLS_ON ? gs.map(([g, it]) => (g === 'Trading tools' ? [g, [...it, ['tradetools', 'Planning tools']]] : [g, it])) : gs);
 try { if (new URLSearchParams(location.search).get('next') === 'handoff') sessionStorage.setItem('qp_next', 'handoff'); } catch {}
 // The user's display preferences (Settings → Portfolio numbers), loaded once after sign-in.
 const PREFS = { portfolio: { mode: 'live', hideToday: false }, chart: { mode: 'colorful', color: '#2563eb' }, loaded: false };
@@ -384,6 +388,7 @@ const NAV = [
 ];
 // Simple line icons (24x24 paths) for the menu.
 const ICONS = {
+  tradetools: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h2M12 11h2M16 11h0M8 15h2M12 15h2M8 19h8"/>',
   aimarket: '<path d="M3 9l2-5h14l2 5M3 9v11h18V9"/><circle cx="12" cy="15" r="2.5"/>', sharedstrategies: '<path d="M4 18l5-6 4 3 7-9"/><path d="M3 21h18"/>', sharedportfolios: '<circle cx="12" cy="12" r="9"/><path d="M12 3v9l7 4"/>', signalchannels: '<path d="M5 12a7 7 0 0 1 14 0M8 12a4 4 0 0 1 8 0"/><circle cx="12" cy="14" r="1.5"/><path d="M12 16v5"/>',
   aitools: '<path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/>', agenthub: '<rect x="4" y="7" width="16" height="12" rx="3"/><path d="M12 3v4M9 12h.01M15 12h.01M9 16h6"/>', aibots: '<path d="M4 17l5-5 4 4 7-8"/><circle cx="20" cy="8" r="1.5"/><path d="M4 21h16"/>', aisignals: '<path d="M2 12h4l3-8 4 16 3-8h6"/>', intel: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M8 11h6M11 8v6"/>',
   business: '<path d="M3 7h18v13H3z"/><path d="M8 7V4h8v3M3 12h18"/>', invoices: '<path d="M6 2h9l4 4v16H6z"/><path d="M9 10h7M9 14h7M9 18h4"/>',
@@ -555,8 +560,8 @@ async function render(opts) {
   if (ME) {
     // Signing in for the Android app: back to the app once signed in here.
     if (sessionStorage.getItem('qp_next') === 'handoff') { sessionStorage.removeItem('qp_next'); location.href = '/api/auth/app-handoff'; return; }
-    const groups = ME.role === 'admin' ? [adminNav(), ...NAV] : NAV;
-    await Promise.all([accounts(), loadPrefs(), loadExtras()]); await defaultAccount();
+    await Promise.all([accounts(), loadPrefs(), loadExtras(), loadToolFlags()]); await defaultAccount();
+    const groups = withTools(ME.role === 'admin' ? [adminNav(), ...NAV] : NAV);
     if (EXTRAS.voice || $('#voiceBtn')) import('./pages/extras.js').then(m => m.voiceButton(shared)).catch(() => {});
     // Groups start folded; their arrow opens them (remembered). The group holding the current page opens.
     const opened = [...(() => { try { return JSON.parse(localStorage.getItem('qp_nav_open') || '[]'); } catch { return []; } })(), ...$$('#nav .grp.sec[aria-expanded="true"]').map(b => b.dataset.g)];
@@ -1960,6 +1965,7 @@ const marketTabs = on => `<div class="chips viewtabs">${NAV.find(([g]) => g === 
 const shared = { safeUrl, extras: () => EXTRAS, setExtras: on => { EXTRAS = on; render.navKey = null; }, marketTabs, $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, refreshMe, accounts, accountOptions, acctLabel, state, adminTabs, adminPage, secureConfirm, me: () => ME, paid: () => isPaid(ME) };
 lazyRoutes(() => import('./pages/studio.js'), 'registerStudio', shared, ["ai", "agents", "code"]);
 lazyRoutes(() => import('./pages/aichat.js'), 'registerAiChat', shared, ["admin-aichat"]);
+lazyRoutes(() => import('./pages/tradetools.js'), 'registerTradeTools', shared, ["tradetools"]);
 lazyRoutes(() => import('./pages/build.js'), 'registerBuild', shared, ["scanner", "portfolios", "fleet", "marketplace", "aimarket", "sharedstrategies", "sharedportfolios", "signalchannels"]);
 lazyRoutes(() => import('./pages/analytics.js'), 'registerAnalytics', shared, ["insights", "risk", "values", "halal", "institutions", "spend", "news"]);
 lazyRoutes(() => import('./chart.js'), 'registerChart', shared, ["chart"]);

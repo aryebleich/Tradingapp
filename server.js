@@ -95,6 +95,7 @@ import { adminSiteRouter } from './src/admin-site.js';
 import * as SE from './src/stripe-events.js';
 import { mountCommsWebhooks, commsRouter, commsAdminRouter as smsVoiceAdminRouter } from './src/sms-voice/routes.js';
 import { logStripe } from './src/stripe-client.js';
+import { toolsRouter, toolsAdminRouter } from './src/tradetools/routes.js';
 import * as FLAGS from './src/flags.js';
 import { tokensRouter, mcpHandler } from './src/mcp.js';
 import { agentRouter } from './src/agentic.js';
@@ -641,6 +642,8 @@ api.use('/taxrates', taxRatesRouter);
 api.use('/admin/comms', commsAdminRouter);
 api.use('/admin/sms-voice', smsVoiceAdminRouter);
 api.use('/comms', commsRouter);
+api.use('/admin/tools', toolsAdminRouter); // trading tools: AI kill switches and compliance log
+api.use('/tools', toolsRouter);          // trading tools (flags tools_* and ai_*, all off by default)
 api.use('/statscan', statScanRouter);
 api.use('/search', searchRouter);
 api.use('/paper/orders', paperOrdersRouter);

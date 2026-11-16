@@ -949,6 +949,9 @@ const MIGRATIONS = [
   'CREATE INDEX IF NOT EXISTS call_records_user ON call_records (user_id, started_at)',
   'CREATE TABLE IF NOT EXISTS sms_consent (user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, thread_key TEXT NOT NULL, status TEXT NOT NULL, source TEXT NOT NULL, last_inbound_at INTEGER, updated_at INTEGER NOT NULL, PRIMARY KEY (user_id, thread_key))',
   'CREATE TABLE IF NOT EXISTS comms_webhook_events (id TEXT PRIMARY KEY, kind TEXT NOT NULL, at INTEGER NOT NULL)',
+  // Trading tools (src/tradetools): what each AI explainer was asked and answered, redacted, for compliance review.
+  'CREATE TABLE IF NOT EXISTS ai_compliance_log (id INTEGER PRIMARY KEY, tool TEXT NOT NULL, user_ref TEXT NOT NULL, prompt TEXT, output TEXT, outcome TEXT NOT NULL, reason TEXT, model TEXT, at INTEGER NOT NULL)',
+  'CREATE INDEX IF NOT EXISTS ai_compliance_log_at ON ai_compliance_log (at)',
 ];
 
 // Migrations run on every start. Re-running one that is already applied ("duplicate column",

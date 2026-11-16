@@ -237,3 +237,13 @@ tr.dim td, label.dim { opacity: .62; }
 .homeclock .hc-ny.open { color: var(--ac); }
 @media (max-width: 600px) { .homeclock .hc-time { font-size: 22px; } .homeclock .hc-ny { flex-basis: 100%; } }
 #nav .navsub { padding: 10px 10px 2px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--mu); }
+
+/* Planning tools (public/pages/tradetools.js) */
+.tt-disclaimer { margin: 12px 0; padding: 10px 12px; border: 1px solid var(--bd); border-inline-start: 4px solid var(--warn); border-radius: var(--r-sm); background: var(--card); font-size: 14px; }
+.tt-side { border: 0; padding: 0; margin: 0 0 8px; display: flex; gap: 16px; flex-wrap: wrap; }
+.tt-side legend { font-weight: 650; font-size: 13px; margin-bottom: 4px; }
+.tt-big { font-size: 28px; margin: 4px 0 12px; }
+.tt-heat { list-style: none; padding: 0; margin: 12px 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.tt-tile { display: flex; flex-direction: column; gap: 2px; padding: 10px; border-radius: var(--r-sm); border: 1px solid var(--bd); background: var(--card); }
+.tt-tile.up { border-inline-start: 4px solid var(--gr); } .tt-tile.down { border-inline-start: 4px solid var(--rd); }
+.tt-result h3 { margin-top: 14px; }
