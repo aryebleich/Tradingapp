@@ -19,14 +19,14 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 | Flag | Decision | Reason |
 |---|---|---|
 | `layout_v2` | **On for everyone** | Passed every gate: 0 disclosure, figure or control differences on 122 pages × 4 widths (test mode and production-mode build), 0 new axe violations (921 → 146), Lighthouse within tolerance, 436 end-to-end checks identical to the old layout. |
-| `home_v2` | **On: the single homepage** (`index.html`, `yi.html` are now the audited-order page; the old copies and the `-v2` files are deleted) | Every sentence of the old page was kept (tested); tests pass. **Risk to know:** the legal items L9 to L12 were never signed off. If a check finds a problem, change the wording and redeploy. |
+| `home_v2` | **Removed, not released** (owner's choice, option 2): the previous homepage stays live, unchanged; the audited-order version's code (section regrouping, risk links, Trust & compliance block, its CSS) was deleted. Recoverable from git history (commit `1d9efaf`). | Releasing it would have needed a change to the page snapshot (golden baseline) that the safety check refused, and its legal items L9 to L12 were never signed off. |
 | `ai_team_chat` | **On** (still needs the "AI team chat" permission: owner, or admins the owner grants) | 18 unit tests and a browser suite pass; the flag only hid a feature that is already permission-gated on the server. |
 | `comms_drawer` | **On, but a user sees it only once an admin assigns them a number** (no number: every route answers 404 and the app downloads nothing) | 30 unit tests and a browser suite pass. The site-wide flag could not be removed without making every user see an unconfigured drawer, so the natural switch (having a number) replaces it. **Risk:** the Telnyx call names were written without the vendor documentation (COMMS_SETUP.md); the webhooks fail closed (503 without keys, 401 without a valid signature). |
 | `tools_sizing`, `tools_rr` | **On for every signed-in user** | Tests pass (maths against worked examples, routes, browser suite). |
 | `tools_heatmap` | **On** | Tests pass. Without a market-data feed it answers "not set up" honestly instead of showing prices. |
 | `ai_portfolio_explainer`, `ai_indicator_explainer` | **On, with their kill switches unchanged** (`PUT /api/admin/tools/kill`, `AI_TOOLS_KILL`) | Advice-filter tests (adversarial set), redaction, logging and kill-switch tests pass. **Risk:** COMPLIANCE_REVIEW.md marks them "Review required"; they talk about a user's own holdings. Use the kill switch if a legal check says so. |
 
-No feature was unfinished or failing, so none was deleted.
+One feature was removed instead of released: the audited-order homepage (above).
 
 ### Test results
 

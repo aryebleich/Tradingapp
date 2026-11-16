@@ -14,7 +14,7 @@ Everything that is waiting on you, in order. This list is kept up to date by the
 
 ### 2. Legal sign-off before switching things on
 - [ ] Have LEGAL_REVIEW.md items L1 to L12 checked.
-- [ ] The new homepage (L9 to L12) is live for everyone: the feature flags were removed, so there is no switch. If a legal check finds a problem, change the wording and redeploy.
+- [ ] The audited-order homepage (L9 to L12) was not released: when the flags were removed, the previous homepage was kept and the new version's code deleted. It can be rebuilt from git history (commit 1d9efaf) once L9 to L12 are approved.
 
 ### 3. Everything is merged and live (nothing is waiting on a merge)
 - The Stripe fixes, the SMS and voice drawer, the AI team Chat, the planning tools with two AI explainers and the new page layout are all in the live site. There are **no feature flags any more** (see CHANGELOG_AI.md). Details: STRIPE_AUDIT.md, STRIPE_TEST_PLAN.md, COMMS_SETUP.md, COMMS_ARCHITECTURE.md, AI_CHAT.md, TRADING_TOOLS.md, DESIGN_SYSTEM.md.

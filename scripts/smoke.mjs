@@ -17,7 +17,7 @@ export async function smoke(base, { email = process.env.SMOKE_EMAIL, password = 
     for (const n of needles) must(t.includes(n), `${p} is missing "${n}"`);
     return t;
   };
-  await check('homepage: loads, risk text and link, layout', () => page('/', ['Risk Disclosure', 'layout.css', 'id="compliance"']));
+  await check('homepage: loads, risk text and link, layout', () => page('/', ['Risk Disclosure', 'layout.css', 'class="hero"']));
   await check('risk disclosure page', () => page('/risk', ['Risk']));
   await check('terms page', () => page('/terms', ['Terms']));
   await check('privacy page', () => page('/privacy', ['Privacy']));

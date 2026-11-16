@@ -1,5 +1,5 @@
-// Homepage (audited order, one main hero button, a risk link beside each sign-up, a Trust & compliance
-// block) and the layout layer on every public page. Both are always on: there is no flag.
+// Homepage (the page as before the redesign; the audited-order version was not released) and the layout
+// layer on every public page. There is no flag.
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -14,12 +14,10 @@ const S = await serve();
 after(() => S.close());
 
 for (const f of ['index.html', 'yi.html']) {
-  test(`${f}: audited section order with Trust & compliance after pricing, every disclosure kept`, () => {
+  test(`${f}: the legal links and risk text are on the page`, () => {
     const h = read(f), order = ids(h);
-    assert.ok(order.includes('compliance') && order.indexOf('pricing') < order.indexOf('trust'), order.join(','));
-    assert.equal(order[0], 'hero'); assert.equal(order.at(-1), 'final');
-    assert.equal((h.match(/href="risk" data-cta="risk_link"/g) || []).length, 3, 'risk link beside hero, pricing and final sign-ups');
-    for (const p of ['risk', 'terms', 'privacy', 'security', 'insurance']) assert.ok(h.includes(`<li><a href="${p}">`), p);
+    assert.equal(order[0], 'hero'); assert.ok(!order.includes('compliance'), 'the unreleased audited-order version is not served');
+    for (const p of ["risk", "terms", "privacy"]) assert.ok(h.includes(`href="${p}.html"`), p);
     if (f === 'index.html') for (const s of ['Illustrative paper-trading account', 'Trading involves risk', 'not a broker']) assert.ok(text(h).includes(s), s);
   });
   test(`${f}: accessibility basics`, () => {
@@ -49,10 +47,10 @@ test('every page carries the layout layer; the old homepage copies and the flag 
   for (const gone of ['public/index-v2.html', 'public/yi-v2.html', 'src/flags.js', 'src/layout-rollout.js']) assert.equal(fs.existsSync(path.join(root, gone)), false, gone);
 });
 
-test('server: / and /yi serve the homepage with Trust & compliance, no cookie is set, and the layout files load', async () => {
+test('server: / and /yi serve the homepage, no cookie is set, and the layout files load', async () => {
   for (const u of ['/', '/yi']) {
     const r = await fetch(S.base + u); const h = await r.text();
-    assert.ok(h.includes('id="compliance"'), u); assert.equal(r.headers.get('set-cookie'), null, u);
+    assert.ok(h.includes('class="hero"') && !h.includes('id="compliance"'), u); assert.equal(r.headers.get('set-cookie'), null, u);
     assert.ok(h.includes('layout.css') && h.includes('layout.js'), u);
   }
   const app = await (await fetch(S.base + '/app')).text();
