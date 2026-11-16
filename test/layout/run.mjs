@@ -48,7 +48,7 @@ const host = new URL(B).hostname;
 const p0 = await base.newPage(); p0.on('dialog', d => d.accept());
 
 // Test account (sandbox data only): the first account is the owner, so admin pages are covered too.
-const email = `layout-owner-${Date.now()}@example.com`;
+const email = process.env.LAYOUT_OWNER_EMAIL || `layout-owner-${Date.now()}@example.com`;
 await p0.goto(B + '/app#/register'); await p0.fill('input[name=email]', email); await p0.fill('input[name=password]', 'Str0ngPassword');
 await p0.check('input[name=agree]'); await p0.click('button:has-text("Create account")'); await p0.waitForSelector('#nav a', { state: 'attached' });
 await p0.goto(B + '/app#/account'); await p0.waitForSelector('#keysForm');
