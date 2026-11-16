@@ -1197,13 +1197,16 @@ const page = base => async (req, res) => {
 // Layout redesign (flag layout_v2, see DESIGN_SYSTEM.md): visitors in the rollout get the new layout
 // layer: one stylesheet and one small script, both scoped to <html class="lv2">. Switching the flag
 // off serves the previous layout at once; nothing else in the page changes.
+// LAYOUT_V2_FORCE=1 (tests only, NODE_ENV=test) serves it to everyone, so the end-to-end suite runs on the new layout.
+const LAYOUT_FORCED = process.env.NODE_ENV === 'test' && process.env.LAYOUT_V2_FORCE === '1';
 function withLayout(req, res, html) {
+  if (LAYOUT_FORCED) return withLayer(html);
   if (!FLAGS.flagSettings().layout_v2?.on) return html;
   res.set({ 'Cache-Control': 'private, no-cache', Vary: 'Cookie' });
   if (!FLAGS.isOn('layout_v2', FLAGS.visitorId(req, res))) return html;
-  return html.replace(/<html\b/, '<html class="lv2"')
-    .replace('</head>', `  <link rel="stylesheet" href="/layout.css?v=${ASSET_V}">\n  <script type="module" src="/layout.js?v=${ASSET_V}"></script>\n</head>`);
+  return withLayer(html);
 }
+const withLayer = html => html.replace(/<html\b/, '<html class="lv2"').replace('</head>', `  <link rel="stylesheet" href="/layout.css?v=${ASSET_V}">\n  <script type="module" src="/layout.js?v=${ASSET_V}"></script>\n</head>`);
 // The app page lists every module it imports (modulepreload), so the browser downloads them all at
 // once instead of one import level after another.
 let appHtml = null;

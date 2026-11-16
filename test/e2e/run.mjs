@@ -73,6 +73,9 @@ console.log('Desktop (1360x900)');
 {
   const p = await browser.newPage({ viewport: { width: 1360, height: 900 } });
   const { step, done } = harness(p, 'desktop');
+  if (process.env.LAYOUT_V2_FORCE === '1') await step('runs on the new layout (layout_v2)', async () => {
+    await p.goto(B + '/app#/login'); if (!(await p.evaluate(() => document.documentElement.classList.contains('lv2')))) throw new Error('layout_v2 not applied');
+  });
   await step('register', async () => {
     await p.goto(B + '/app#/register'); await p.fill('input[name=email]', 'desk@example.com'); await p.fill('input[name=password]', 'Str0ngPassword'); await p.check('input[name=agree]');
     await p.click('button:has-text("Create account")'); await p.waitForSelector('.st-card');
