@@ -1189,8 +1189,18 @@ const page = base => async (req, res) => {
     const raw = (await fs.readFile(path.join(pub, file), 'utf8')).replace('content="og-brightolio.png"', `content="${PUBLIC_URL}/og-brightolio.png"`);
     htmlCache.set(file, SEO.transform(raw, base.replace(/\.html$/, ''), SEO.settings(), PUBLIC_URL));
   }
-  res.type('html').set('X-QP-Build', BUILD).send(htmlCache.get(file));
+  res.type('html').set('X-QP-Build', BUILD).send(withLayout(req, res, htmlCache.get(file)));
 };
+// Layout redesign (flag layout_v2, see DESIGN_SYSTEM.md): visitors in the rollout get the new layout
+// layer: one stylesheet and one small script, both scoped to <html class="lv2">. Switching the flag
+// off serves the previous layout at once; nothing else in the page changes.
+function withLayout(req, res, html) {
+  if (!FLAGS.flagSettings().layout_v2?.on) return html;
+  res.set({ 'Cache-Control': 'private, no-cache', Vary: 'Cookie' });
+  if (!FLAGS.isOn('layout_v2', FLAGS.visitorId(req, res))) return html;
+  return html.replace(/<html\b/, '<html class="lv2"')
+    .replace('</head>', `  <link rel="stylesheet" href="/layout.css?v=${ASSET_V}">\n  <script type="module" src="/layout.js?v=${ASSET_V}"></script>\n</head>`);
+}
 // The app page lists every module it imports (modulepreload), so the browser downloads them all at
 // once instead of one import level after another.
 let appHtml = null;
@@ -1272,7 +1282,7 @@ app.get('/app', async (req, res) => {
   // The background loader (the app's own hidden, read-only copy) may be framed by the app itself;
   // every other page still refuses to be framed by anyone.
   if ('prefetch' in req.query) res.set({ 'X-Frame-Options': 'SAMEORIGIN', 'Content-Security-Policy': String(res.getHeader('Content-Security-Policy') || '').replace("frame-ancestors 'none'", "frame-ancestors 'self'") });
-  res.type('html').set({ 'Cache-Control': 'no-cache', 'X-QP-Build': BUILD }).send(appHtml);
+  res.type('html').set({ 'Cache-Control': 'no-cache', 'X-QP-Build': BUILD }).send(withLayout(req, res, appHtml));
 });
 // Admin → Analytics: page views and visitors of the public pages (counted privately, see src/analytics.js).
 { const A = await import('./src/analytics.js'); app.use(A.webMiddleware); A.start(); }
@@ -1286,7 +1296,7 @@ app.use(express.static(pub, {
   // Font files never change under the same name: kept for a year.
   setHeaders: (res, file) => res.setHeader('Cache-Control', /\.woff2$/.test(file) ? 'public, max-age=31536000, immutable' : /\.(png|svg|webmanifest|mp4|webm|jpg)$/.test(file) ? 'public, max-age=604800' : 'no-cache'),
 }));
-app.use(async (req, res) => res.status(404).sendFile(path.join(pub, '404.html')));
+app.use(async (req, res) => res.status(404).type('html').send(withLayout(req, res, await fs.readFile(path.join(pub, '404.html'), 'utf8'))));
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   // A promise somebody forgot to catch (a background job, a fire-and-forget email) is logged and

@@ -14,6 +14,7 @@ export const FLAGS = {
   tools_heatmap: 'Trading tools: sector heatmap (needs live market data)',
   ai_portfolio_explainer: 'AI tool: portfolio concentration explainer (guarded, logged, has a kill switch)',
   ai_indicator_explainer: 'AI tool: indicator explainer, educational (guarded, logged, has a kill switch)',
+  layout_v2: 'New page layout on every page (DESIGN_SYSTEM.md): spacing, type, tables, loading and empty states. Disclosures, figures and trading and payment controls unchanged.',
 };
 const clampPct = v => Math.min(100, Math.max(0, Math.round(+v || 0)));
 export function flagSettings() {
