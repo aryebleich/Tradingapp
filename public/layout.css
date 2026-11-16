@@ -4,6 +4,8 @@
    control, validation message or confirmation step is added, removed or reordered by this file. */
 
 html.lv2 {
+  /* contrast shades for tinted pills and public-site captions (D-9) */
+  --gr-ink: #0b6d36; --rd-ink: #a83438; --warn-ink: #8e4e00; --ac-ink: #4b4bd6; --cap-on-dark: #9aa4bd;
   /* spacing scale (4 px base) */
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px; --s8: 64px;
   /* type scale */
@@ -19,9 +21,9 @@ html.lv2 {
    darker by 8 to 33%. Dark mode already passed and is unchanged. See DESIGN_DECISIONS.md D-9. */
 html.lv2:not([data-theme="dark"]) { --gr: #0d7b3d; --rd: #c03c40; --warn: #a25900; --ac: #5656e9; }
 /* tinted pills and risk badges sit on a 12-18% tint of their own colour: their text needs one step darker */
-html.lv2:not([data-theme="dark"]) :is(.pill.neg, .neg.pill, .risk.neg) { color: #a83438; }
-html.lv2:not([data-theme="dark"]) :is(.pill.pos, .pos.pill, .risk.pos) { color: #0b6d36; }
-html.lv2:not([data-theme="dark"]) :is(.pill.warn, .warn.pill, .risk.warn) { color: #8e4e00; }
+html.lv2:not([data-theme="dark"]) :is(.pill.neg, .neg.pill, .risk.neg) { color: var(--rd-ink); }
+html.lv2:not([data-theme="dark"]) :is(.pill.pos, .pos.pill, .risk.pos) { color: var(--gr-ink); }
+html.lv2:not([data-theme="dark"]) :is(.pill.warn, .warn.pill, .risk.warn) { color: var(--warn-ink); }
 @media (prefers-color-scheme: dark) { html.lv2:not([data-theme="light"]) :is(.pill.neg, .neg.pill, .risk.neg) { color: var(--rd); } html.lv2:not([data-theme="light"]) :is(.pill.pos, .pos.pill, .risk.pos) { color: var(--gr); } html.lv2:not([data-theme="light"]) :is(.pill.warn, .warn.pill) { color: var(--warn); } html.lv2:not([data-theme="light"]) .risk.warn { color: #c26a00; } }
 @media (prefers-color-scheme: dark) { html.lv2:not([data-theme="light"]) { --gr: #22c55e; --rd: #f05252; --warn: #f5b041; --ac: #7c7cff; } }
 
@@ -31,7 +33,7 @@ html.lv2 #view :is(.chips button, .seg button, button.small):not(.link) { min-he
 html.lv2 :target { scroll-margin-top: 80px; }
 
 /* ---------- app: page frame ---------- */
-html.lv2 #view { padding-inline: var(--s5); } /* same gutters and vertical rhythm as before: text wraps and disclosures sit exactly where they did */
+/* gutters and vertical rhythm are the theme's own (unchanged), so text wraps and disclosures sit exactly where they did */
 html.lv2 #view > * { max-width: var(--w-page); margin-inline: auto; }
 html.lv2 #view > .card, html.lv2 #view > .grid, html.lv2 #view > .cols, html.lv2 #view > .stats { margin-bottom: var(--s4); }
 html.lv2 .card > :last-child { margin-bottom: 0; }
@@ -74,7 +76,6 @@ html.lv2 body.signedin #view { min-height: 100vh; min-height: 100dvh; }
 
 /* ---------- phone: one column, primary actions in thumb reach ---------- */
 @media (max-width: 640px) {
-  html.lv2 #view { padding-inline: var(--s4); }
   html.lv2 .grid { grid-template-columns: minmax(0, 1fr); }
   html.lv2 .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   html.lv2 .row > label { flex-basis: 100%; }
@@ -86,19 +87,11 @@ html.lv2 body.signedin #view { min-height: 100vh; min-height: 100dvh; }
   html.lv2 dialog { max-height: calc(100dvh - 32px); overflow-y: auto; }
 }
 
-/* ---------- public site ---------- */
-html.lv2 body:not(:has(#shell)) main { scroll-margin-top: 80px; }
-html.lv2 .wrap { padding-inline: var(--s5); }
-html.lv2 footer.site { font-size: var(--t-sm); }
-html.lv2 footer.site p, html.lv2 footer.site small { line-height: 1.6; }
-@media (max-width: 640px) {
-  html.lv2 .wrap { padding-inline: var(--s4); }
-  html.lv2 .btn { min-height: 44px; }
-}
+/* ---------- public site: spacing, widths and type are the site's own (unchanged); only contrast and names below ---------- */
 
 /* public site contrast (light mode): the hero caption (a disclosure) on the dark demo panel, the
    kicker label on the grey section background, and the "2 months free" badge */
-html.lv2 .term .figcap { color: #9aa4bd; }
-html.lv2:not([data-theme="dark"]) section.alt .kicker { color: #4b4bd6; }
-html.lv2:not([data-theme="dark"]) .toggle em { color: #0b6d36; }
+html.lv2 .term .figcap { color: var(--cap-on-dark); }
+html.lv2:not([data-theme="dark"]) section.alt .kicker { color: var(--ac-ink); }
+html.lv2:not([data-theme="dark"]) .toggle em { color: var(--gr-ink); }
 @media (prefers-color-scheme: dark) { html.lv2 section.alt .kicker { color: var(--ac); } html.lv2 .toggle em { color: var(--gr); } }

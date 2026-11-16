@@ -97,7 +97,7 @@ async function measure(p, width) {
       if (n.parentElement.closest('script,style,noscript,template,#nav,option,.skel,canvas,svg,[data-no-fig]')) continue;
       for (const m of n.textContent.matchAll(/[-+−]?[$€£₪]?\d[\d,]*(\.\d+)?\s?[%KMB]?/g)) {
         const around = n.textContent.slice(Math.max(0, m.index - 4), m.index + m[0].length + 4);
-        if (/\d:\d|\bago\b|\bsec|\d\s?m?s\b|\d+h\s?\d+m|\d+\s?m\b/.test(around)) continue; // clocks, countdowns and live latency, not figures
+        if (/\b\d{1,2}:\d{2}\b|\bago\b|\bsec\b|\d\s?ms\b|\b\d+s\b|\d+h\s?\d+m\b/.test(around)) continue; // clock times (4:05), countdowns (4h 53m) and live latency (8 ms), not figures
         figs.push(m[0].replace(/\s/g, '').replace('−', '-') + '\t' + n.textContent.replace(/\s+/g, ' ').trim().slice(0, 60));
       }
     }

@@ -51,6 +51,36 @@ test('rollout: 10% → 100% after 30 clean minutes', async () => {
   assert.deepEqual([F.flagSettings().layout_v2.pct, LR.state().stage], [100, '100']);
 });
 
+test('no promotion without evidence: a quiet site stays at 10%', async () => {
+  await siteSet('flags', {}); await siteSet('layoutRollout', null); LR._reset();
+  const t0 = Date.now();
+  await LR.start({ now: t0, log: { log() {}, error() {} } });
+  for (let m = 1; m <= 40; m++) { fake({ req: 2, err: 0 }, { req: 1, err: 0 }); await LR.tick({ now: t0 + m * 60e3 }); }
+  assert.deepEqual([F.flagSettings().layout_v2.pct, LR.state().stage], [10, '10']);
+});
+
+test('evidence survives a restart; a restart does not promote on its own', async () => {
+  await siteSet('flags', {}); await siteSet('layoutRollout', null); LR._reset();
+  const t0 = Date.now();
+  await LR.start({ now: t0, log: { log() {}, error() {} } });
+  for (let m = 1; m <= 5; m++) { fake({ req: 100, err: 0 }, { req: 40, err: 0 }); await LR.tick({ now: t0 + m * 60e3 }); }
+  LR._reset(); // server restart: memory is gone, stored evidence is not
+  assert.equal(LR.state().ev.new.req, 200);
+  fake({ req: 1, err: 0 }, { req: 1, err: 0 }); await LR.tick({ now: t0 + 31 * 60e3 });
+  assert.equal(F.flagSettings().layout_v2.pct, 10, '201 requests is not enough');
+  fake({ req: 300, err: 0 }, { req: 100, err: 0 }); await LR.tick({ now: t0 + 32 * 60e3 });
+  assert.equal(F.flagSettings().layout_v2.pct, 100);
+});
+
+test('the owner changing the percentage during the rollout stops the automation', async () => {
+  await siteSet('flags', {}); await siteSet('layoutRollout', null); LR._reset();
+  const t0 = Date.now();
+  await LR.start({ now: t0, log: { log() {}, error() {} } });
+  await F.saveFlags({ layout_v2: { on: true, pct: 25 } });
+  fake({ req: 500, err: 0 }, { req: 400, err: 0 }); await LR.tick({ now: t0 + 40 * 60e3 });
+  assert.deepEqual([F.flagSettings().layout_v2.pct, LR.state().stage], [25, 'manual']);
+});
+
 test('rollback: errors above twice the old layout switch the flag off and alert', async () => {
   await siteSet('flags', {}); await siteSet('layoutRollout', null); LR._reset();
   const alerts = [];

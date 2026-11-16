@@ -4,7 +4,9 @@
 //   - Every minute, the new layout's visitors are compared with the old layout's visitors over the
 //     same minutes: server errors (5xx) and failed order, payment and funding attempts.
 //   - Every 5 minutes the live pages are fetched as a new-layout visitor and their disclosures checked.
-//   - After 30 minutes at 10% with no regression: 100%. On a regression (an error rate above twice the
+//   - After 30 minutes at 10% AND at least 300 new-layout requests seen (stored, so restarts do not
+//     reset the evidence), with no regression: 100%. A quiet site simply stays at 10%.
+//   - If the owner changes the percentage in Admin, the automation stops and their setting stays. On a regression (an error rate above twice the
 //     old layout's, or any disclosure check failing): the flag goes off at once, the admins get an
 //     e-mail and the rollout stops; it never switches itself back on.
 // State is kept in the site settings ("layoutRollout"), shown in Admin with the flags.
@@ -13,6 +15,9 @@ import * as F from './flags.js';
 
 const FLAG = 'layout_v2';
 const STAGE_MIN = 30, START_PCT = 10;
+// Promotion needs evidence, not just time: at least this much new-layout traffic seen during the
+// 10% stage (kept in the stored state, so a restart or redeploy does not reset it to "no problems").
+export const MIN_EVIDENCE = { req: 300, money: 0 };
 // Order, payment and funding endpoints whose failures count as "failed attempts".
 const MONEY = /^\/api\/(orders|trade|options\/orders|billing|checkout|funding|transfers|ach|deposit|withdraw|money|pay)/;
 const BENIGN = new Set([401, 403, 404, 409, 429]); // signed out, not allowed, idempotent repeats, rate limits
@@ -87,16 +92,24 @@ export async function tick({ base, now = Date.now() } = {}) {
   if (!s || !['10', '100'].includes(String(s.stage))) return s;
   const f = F.flagSettings()[FLAG];
   if (!f.on) { await siteSet('layoutRollout', { ...s, stage: 'stopped', at: now, why: ['switched off in Admin'] }); return state(); }
+  // The owner changed the percentage in Admin: their setting wins and the automation stops for good.
+  if (f.pct !== (String(s.stage) === '10' ? START_PCT : 100)) { await siteSet('layoutRollout', { ...s, stage: 'manual', at: now, why: [`the owner set ${f.pct}% in Admin`] }); return state(); }
+  // Evidence seen during this stage, added to what earlier server runs stored.
+  const last = history[history.length - 1], ev = { old: { ...w(), ...(s.ev?.old || {}) }, new: { ...w(), ...(s.ev?.new || {}) } };
+  for (const v of ['old', 'new']) for (const k of Object.keys(w())) ev[v][k] += last[v][k];
+  await siteSet('layoutRollout', { ...s, ev });
+  // A regression over the last 30 minutes, or over the whole stage so far.
   const why = regression(sum('old'), sum('new'));
+  if (!why.length) why.push(...regression(ev.old, ev.new).map(x => x + ' (whole stage)'));
   if (base && (now - (s.checkedAt || 0)) >= 5 * 60e3) {
     const vid = vidIn(true);
     why.push(...(await liveCheck(base, vid)).map(x => 'live disclosure check: ' + x));
     await siteSet('layoutRollout', { ...state(), checkedAt: now });
   }
   if (why.length) { await rollback(why); return state(); }
-  if (String(s.stage) === '10' && now - s.since >= STAGE_MIN * 60e3) {
+  if (String(s.stage) === '10' && now - s.since >= STAGE_MIN * 60e3 && ev.new.req >= MIN_EVIDENCE.req) {
     await F.saveFlags({ [FLAG]: { on: true, pct: 100 } });
-    await siteSet('layoutRollout', { ...state(), stage: '100', since: now });
+    await siteSet('layoutRollout', { ...state(), stage: '100', since: now, ev: null });
     deps.log.log('[layout-rollout] 30 minutes at 10% with no regression: now 100%');
     await deps.alert('Layout redesign now at 100%', 'The new layout ran for 30 minutes at 10% of visitors with no rise in errors or failed orders and payments, and the live disclosure checks passed. It is now on for everyone. Monitoring and automatic rollback stay on.').catch(() => {});
   }
