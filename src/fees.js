@@ -52,7 +52,7 @@ export async function assessFee(userId, account, equity) {
 }
 
 export async function revenueSummary() {
-  const byKind = await all("SELECT kind, status, COUNT(*) n, ROUND(SUM(amount), 2) total FROM ledger WHERE kind IN ('performance_fee','subscription') GROUP BY kind, status");
+  const byKind = await all("SELECT kind, status, COUNT(*) n, ROUND(SUM(amount), 2) total FROM ledger WHERE kind IN ('performance_fee','subscription') AND COALESCE(livemode, 1) = 1 GROUP BY kind, status");
   const plans = await all('SELECT plan, COUNT(*) n FROM users GROUP BY plan');
   const mrr = plans.reduce((a, p) => a + (PLANS[p.plan]?.monthly || 0) * p.n, 0);
   return { byKind, plans, mrr, users: (await one('SELECT COUNT(*) n FROM users')).n };

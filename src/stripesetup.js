@@ -7,10 +7,13 @@
 //            account has none yet
 // Returns the settings to save (price ids, webhook secret, portal id) and a plain report.
 import { PLANS, PAID } from './fees.js';
+import { stripeVersion, keyMode as clientKeyMode, DEFAULT_STRIPE_VERSION, assertKeyAllowed } from './stripe-client.js';
 
 const API = () => (process.env.STRIPE_API_URL || 'https://api.stripe.com').replace(/\/$/, '');
-export const WEBHOOK_EVENTS = ['checkout.session.completed', 'checkout.session.async_payment_succeeded', 'checkout.session.async_payment_failed', 'invoice.paid', 'customer.subscription.created', 'customer.subscription.updated', 'customer.subscription.deleted'];
-export const STRIPE_VERSION = '2024-06-20';
+export const WEBHOOK_EVENTS = ['checkout.session.completed', 'checkout.session.async_payment_succeeded', 'checkout.session.async_payment_failed', 'invoice.paid', 'customer.subscription.created', 'customer.subscription.updated', 'customer.subscription.deleted', 'payment_intent.succeeded', 'payment_intent.payment_failed', 'charge.refunded', 'charge.dispute.created', 'invoice.payment_failed', 'checkout.session.expired'];
+// The pinned API version is set in src/stripe-client.js (STRIPE_API_VERSION overrides the default).
+export const STRIPE_VERSION = stripeVersion();
+export { DEFAULT_STRIPE_VERSION };
 const bad = (m, s = 400) => Object.assign(new Error(m), { status: s });
 
 // Stripe's form encoding, nested: { a: { b: [1, 2] } } → a[b][0]=1&a[b][1]=2
@@ -26,13 +29,14 @@ export function form(obj, prefix = '', out = new URLSearchParams()) {
 export async function stripeApi(method, path, params) {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw bad('Add STRIPE_SECRET_KEY first');
+  try { assertKeyAllowed(key); } catch (e) { throw bad(e.detail || e.message, 400); }
   const q = method === 'GET' && params ? '?' + form(params) : '';
   const r = await fetch(API() + '/v1' + path + q, { method, headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/x-www-form-urlencoded', 'Stripe-Version': STRIPE_VERSION }, body: method === 'GET' ? undefined : form(params || {}), signal: AbortSignal.timeout(20000) });
   const d = await r.json().catch(() => ({}));
   if (!r.ok) throw bad(`Stripe: ${d.error?.message || r.status}`, r.status === 401 ? 400 : 502);
   return d;
 }
-export const keyMode = (k = process.env.STRIPE_SECRET_KEY || '') => (/^(sk|rk)_live_/.test(k) ? 'live' : /^(sk|rk)_test_/.test(k) ? 'test' : 'unknown');
+export const keyMode = clientKeyMode;
 const lookupKey = (plan, interval) => `brightfolio_${plan}_${interval}`;
 export const priceEnv = (plan, interval) => `STRIPE_PRICE_${plan.toUpperCase()}${interval === 'year' ? '_YEARLY' : ''}`;
 // The plan and billing period a Stripe price belongs to (STRIPE_PRICE_<PLAN>[_YEARLY]), or null.

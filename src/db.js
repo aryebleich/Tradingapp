@@ -927,6 +927,14 @@ const MIGRATIONS = [
   'CREATE TABLE IF NOT EXISTS ai_chat_messages (id INTEGER PRIMARY KEY, conversation_id TEXT NOT NULL REFERENCES ai_chat_conversations(id) ON DELETE CASCADE, role TEXT NOT NULL, content TEXT NOT NULL, status TEXT NOT NULL, model TEXT, input_tokens INTEGER NOT NULL DEFAULT 0, output_tokens INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
   'CREATE INDEX IF NOT EXISTS ai_chat_messages_conv ON ai_chat_messages (conversation_id, id)',
   'CREATE TABLE IF NOT EXISTS ai_chat_thinking (message_id INTEGER PRIMARY KEY REFERENCES ai_chat_messages(id) ON DELETE CASCADE, content TEXT NOT NULL, duration_ms INTEGER)',
+  // Stripe webhook hardening: each event id is processed once (Stripe re-sends events and may deliver
+  // them late or out of order); per-object state lets a late "subscription updated" be ignored after
+  // the subscription was deleted; ledger.livemode keeps test-mode payments out of revenue reports
+  // (NULL = written before this column existed, counted as live).
+  'CREATE TABLE IF NOT EXISTS stripe_events (id TEXT PRIMARY KEY, type TEXT NOT NULL, livemode INTEGER, created INTEGER, status TEXT NOT NULL, received_at INTEGER NOT NULL, done_at INTEGER)',
+  'CREATE TABLE IF NOT EXISTS stripe_object_state (object_id TEXT PRIMARY KEY, last_created INTEGER NOT NULL, terminal INTEGER NOT NULL DEFAULT 0)',
+  'ALTER TABLE ledger ADD COLUMN livemode INTEGER',
+  'CREATE INDEX IF NOT EXISTS ledger_ref_lookup ON ledger (ref)',
 ];
 
 // Migrations run on every start. Re-running one that is already applied ("duplicate column",
