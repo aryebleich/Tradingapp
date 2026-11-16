@@ -52,3 +52,7 @@ Choices and assumptions made without asking, with the reason. Trading-tools work
 | D-18 | Rate limits: 120 requests per 10 minutes per user per tool. | Protects the data and AI providers; generous for a person. |
 | D-19 | Position sizes round down to whole lots with a tiny tolerance (1e-9) so floating-point results like 9.999999999 count as 10. | Shown by a test; never rounds up past the risk budget. |
 | D-20 | Backtests and simulations: none were added. The tools only calculate from user inputs and read-only prices. | Rule 5 needs no new handling here. |
+
+## Deploys
+
+- D-1 (2026-11-16): released flag removal, permanent layout layer, Chat, planning tools, AI explainers, comms drawer for users with a number, previous homepage kept, post-deploy smoke/rollback workflows; merge commit f392309; gates npm test 354/0, e2e 435 exit 0, security:check 0; no revert. The page-snapshot gate still flags Admin → SEO (Feature flags card gone) and the owner to-do list (flag steps gone): intentional, snapshot update for those two pages left for the owner.
