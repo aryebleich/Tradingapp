@@ -15,9 +15,9 @@ Rules for anyone adding a page:
 | `--s1` | 4px | Icon to label |
 | `--s2` | 8px | Between a label and its field; inside pills |
 | `--s3` | 12px | Between fields in a row; between stat tiles |
-| `--s4` | 16px | Between cards; card padding on phones; page gutter on phones |
-| `--s5` | 24px | Page gutter on tablets; top of the page |
-| `--s6` | 32px | Page gutter on desktop |
+| `--s4` | 16px | Between cards; page gutter on phones |
+| `--s5` | 24px | Page gutter on tablets and desktop |
+| `--s6` | 32px | Footer gutter on desktop |
 | `--s7` | 48px | Bottom of the page |
 | `--s8` | 64px | Space kept clear above the phone tab bar |
 
@@ -27,8 +27,8 @@ Cards keep their existing padding from theme.css (18px). Component padding is no
 
 | Token | Size | Use |
 |---|---|---|
-| `--t-2xl` | 28px | The page's one `h1` on desktop and tablet |
-| `--t-xl` | 22px | The page's `h1` on phones |
+| `--t-2xl` | 28px | The page's one `h1` (the existing size, kept) |
+| `--t-xl` | 22px | Reserved for the page `h1` on phones in a later pass (see below) |
 | `--t-lg` | 18px | Reserved for section titles in long pages |
 | `--t-md` | 15px | Body text (unchanged) |
 | `--t-sm` | 13.5px | Public-site footer |
@@ -57,11 +57,15 @@ No colour was changed. The axe contrast failures already in the old layout are l
 |---|---|---|
 | Phone | ≤ 640px | One column. Stat tiles 2 across. Form labels full width. Bottom tab bar (existing). 16px gutter. |
 | Tablet | 641–1100px | One column for trading (`.cols` already stacks at 1100). Cards in an auto-fit grid. 24px gutter. |
-| Desktop | > 1100px | Sidebar (existing) plus content up to 1280px wide (`--w-page`), centred. 32px gutter. |
+| Desktop | > 1100px | Sidebar (existing) plus content up to 1280px wide (`--w-page`), centred. 24px gutter. |
 
 The widths tested are 390, 768, 1280 and 1440px.
 
 Grid: the existing `.grid` (auto-fit, minimum 300px) and `.cols` (content plus a 360px side column) are kept. Gaps are `--s4`. On phones `.grid` is always one column.
+
+## Vertical rhythm is frozen
+
+The new layout keeps every vertical distance of the old one: headings, margins between fields and rows, gutters and line lengths. A first version enlarged headings and gutters, and the comparison showed disclosures moving 54 to 70px down at 1280px, three of them below the fold. Rule 1 forbids that. So vertical spacing changes only where it can't move a disclosure: below the last disclosure, or inside phone stacks the tests cover.
 
 ## Component rules
 
@@ -71,7 +75,7 @@ Grid: the existing `.grid` (auto-fit, minimum 300px) and `.cols` (content plus a
 - **Fields on phones** use 16px text, so iOS doesn't zoom in on focus.
 - **Tables** scroll inside their own box, never the page. `layout.js` wraps any unwrapped table in `.tablewrap`: a keyboard-focusable region named after its card heading, with edge shadows when more columns are hidden. Tables already built to stack into cards (`table.stack`) keep that behaviour. Header cells stay visible while the table scrolls.
 - **Loading.** Where the shape of the content is known, show a skeleton, not a spinner or bare text. Page loads already show the skeleton outline (`.skel`). A section that says "Loading…" becomes two skeleton lines (`.lv2-load`). The words stay in the page for screen readers (`role="status"`), and the animation stops under reduced motion.
-- **Empty states** say what is empty and give the next step as a link (for example "No positions" → "Go to Trade"). The copy added is listed in COPY_CHANGES.md.
+- **Empty states** say what is empty and give the next step as a link on the same line (for example "No positions" → "Go to Trade"), so nothing below moves. The copy added is listed in COPY_CHANGES.md.
 - **Errors.** A message in `.err` shows as a tinted box with a red edge once it has text. It stays next to the control it belongs to.
 - **Disclosures** are never collapsed, hidden or moved further down than they were. Signed-in pages now show the footer disclosures under every page; the old layout hid them while signed in.
 - **Trading, order, payment, funding and sign-in pages.** Only the wrapping layout and spacing change. `layout.js` never touches forms, dialogs, the order ticket (`#tk`, `.ticket`) or the buy bar (`#tradeBar`). The order of controls and confirmation steps is unchanged.
