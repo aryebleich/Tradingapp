@@ -1,0 +1,29 @@
+name: Tag release
+# Every deploy of main gets a tag (vYYYY.MM.DD-N) so any version can be restored by name:
+#   git checkout v2026.11.16-1   or   redeploy it with the deploy hook (ref=<tag commit>).
+on:
+  workflow_run:
+    workflows: [Deploy to Render]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      sha: { description: 'Commit to tag (default: the head of main)', required: false, type: string }
+permissions:
+  contents: write
+jobs:
+  tag:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }
+      - run: |
+          sha="${{ inputs.sha || github.event.workflow_run.head_sha || github.sha }}"
+          existing=$(git tag --points-at "$sha" --list 'v*' | head -1)
+          [ -z "$existing" ] || { echo "Already tagged $existing"; exit 0; }
+          day=$(date -u +%Y.%m.%d); n=$(git tag --list "v$day-*" | wc -l); tag="v$day-$((n+1))"
+          git config user.name "release-gates[bot]"; git config user.email "release-gates@users.noreply.github.com"
+          git tag -a "$tag" "$sha" -m "Production release ${sha:0:7}"
+          git push origin "$tag"
+          echo "Tagged ${sha:0:7} as $tag"

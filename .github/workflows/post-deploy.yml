@@ -1,6 +1,6 @@
 name: Verify live site
 # After every deploy to production: smoke-test the live site, watch it for 15 minutes, and if a check
-# keeps failing roll back to the previous release tag. Needs the repository variable APP_URL and the
+# keeps failing roll back to what was live before (the release commit's first parent). Needs the repository variable APP_URL and the
 # secret RENDER_DEPLOY_HOOK_URL (the same ones the deploy uses). Optional secrets SMOKE_EMAIL and
 # SMOKE_PASSWORD: a TEST account (never a customer) so the smoke test can also sign in.
 on:
@@ -53,9 +53,10 @@ jobs:
         if: failure()
         run: |
           [ -n "$HOOK" ] || { echo "::error::No RENDER_DEPLOY_HOOK_URL secret: cannot roll back automatically."; exit 1; }
-          prev=$(git describe --tags --abbrev=0 --match 'v*' "${SHA}^" 2>/dev/null || true)
-          [ -n "$prev" ] || { echo "::error::No previous release tag (v*) to roll back to."; exit 1; }
-          prev_sha=$(git rev-parse "$prev^{commit}")
+          # Every release is a merge commit on main: its first parent is what was live before it.
+          prev_sha=$(git rev-parse "${SHA}^1" 2>/dev/null || true)
+          [ -n "$prev_sha" ] || { echo "::error::No previous commit to roll back to."; exit 1; }
+          prev=$(git tag --points-at "$prev_sha" --list 'v*' | head -1); prev=${prev:-${prev_sha:0:7}}
           echo "::warning::Rolling back production to $prev (${prev_sha:0:7})."
           curl -fsS -X POST "${HOOK}&ref=${prev_sha}" -o /dev/null
           for i in $(seq 1 40); do
