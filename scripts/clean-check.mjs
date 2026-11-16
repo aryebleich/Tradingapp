@@ -31,7 +31,7 @@ function follow(starts) {
     }
     // Absolute app paths inside public code ('/pages/x.js', "/chart.js") and server code naming public files.
     for (const m of src.matchAll(/['"`(]\/((?:pages|i18n)\/[\w./-]+\.js|[\w-]+\.(?:js|css|html|png|svg|webp|webmanifest))/g)) todo.push('public/' + m[1]);
-    for (const m of src.matchAll(/['"`]((?:src|public|scripts|test)\/[\w./-]+\.(?:js|mjs|py|json|html))/g)) todo.push(m[1]);
+    for (const m of src.matchAll(/['"`]((?:src|public|scripts|test)\/[\w./-]+\.(?:js|mjs|py|json|html))(?![\w])/g)) todo.push(m[1]); // (?![\w]): "x.json" is not read as "x.js"
     // Pages: <script src="x.js">, <link href="x.css">, <img src="x.png"> (relative or absolute).
     if (f.endsWith('.html')) for (const m of src.matchAll(/(?:src|href|content)=["'](?:https?:\/\/[^"']*?)?\/?([\w./-]+\.(?:js|css|png|svg|webp|webmanifest|ico))["'?]/g)) todo.push(path.posix.normalize(path.posix.join(dir, m[1])));
     // Dynamic imports built from a folder ('./i18n/' + lang + '.js'): everything in that folder counts.
