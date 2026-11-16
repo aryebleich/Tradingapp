@@ -1,6 +1,6 @@
 // The Comms Drawer: a floating button that opens a panel with two tabs, Texts (threaded two-way
 // SMS inbox) and Calls (keypad, call timer, mute, hang up, call history). Loaded only after the
-// server says the module is on for this user (flag comms_drawer, off by default).
+// server says the module is on for this user (they were given a number).
 //
 // Privacy: message text never lives on the server for good. It arrives over the live stream, is saved
 // in THIS browser (IndexedDB, one database per user, deleted at sign-out), and the browser then tells

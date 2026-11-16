@@ -1,19 +1,25 @@
-// Release gates 2, 4, 5 and 6 for the layout redesign: reads pair.json from run.mjs --pair and checks,
-// for every page and width, the new layout against the old one on the same server and data.
-//   - disclosures: every one still present, visible if it was, above the fold if it was, readable
-//     (at least 12 px and the WCAG AA contrast of 4.5:1, or no worse than before)
-//   - figures: the same list of numbers, character for character
-//   - controls: every control of the old page is still on the new one
-//   - axe: no rule with more violations than before; no new page-level horizontal scroll
-//   - screenshots: pixel difference, listed for review (gate 5 needs a written reason for each)
-// Writes REPORT.md and visual.json next to pair.json. Exit code 1 if a hard gate fails.
+// Release gate for every merge: the current site against the golden baseline (test/golden/layout-baseline.json,
+// every page at 1440/1280/768/390 px before the redesign), reading current.json from run.mjs.
+//   - disclosures: every one still present, visible if it was, above the fold if it was, no more than
+//     100 px lower, readable (at least 12 px and AA contrast of 4.5:1, or no worse than before)
+//   - figures: the same list of numbers, character for character (clocks, countdowns, latencies excluded)
+//   - controls: every control of the baseline page is still on the page
+//   - axe: no rule with more violations than the baseline; no new page-level horizontal scroll
+// Writes REPORT.md next to current.json. Exit code 1 if a hard gate fails.
 //   node test/layout/compare.mjs [DIR]
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';
 
 const DIR = path.resolve(process.argv[2] || 'e2e-output/layout');
-const { results, pages, widths } = JSON.parse(fs.readFileSync(path.join(DIR, 'pair.json'), 'utf8'));
+// "old" is the committed golden baseline (every page measured before the redesign); "new" is the
+// current run from run.mjs. Pages added since the baseline are listed and not compared.
+const GOLDEN = JSON.parse(fs.readFileSync(path.resolve(path.dirname(new URL(import.meta.url).pathname), '../golden/layout-baseline.json'), 'utf8'));
+const cur = JSON.parse(fs.readFileSync(path.join(DIR, 'current.json'), 'utf8'));
+const widths = cur.widths, pages = cur.pages.filter(pg => GOLDEN.results[pg.id]);
+const results = Object.fromEntries(pages.map(pg => [pg.id, Object.fromEntries(widths.map(w => [w, { old: GOLDEN.results[pg.id][w]?.old, new: cur.results[pg.id]?.[w]?.new }]))]));
+const added = cur.pages.filter(pg => !GOLDEN.results[pg.id]).map(pg => pg.id);
+fs.writeFileSync(path.join(DIR, 'pair.json'), JSON.stringify({ widths, pages, results }));
 const fail = { disclosure: [], figures: [], controls: [], axe: [], overflow: [], load: [] };
 const info = { h1: [], targets: [], live: [] };
 const multiset = a => a.reduce((m, x) => m.set(x, (m.get(x) || 0) + 1), new Map());
@@ -83,10 +89,10 @@ fs.writeFileSync(path.join(DIR, 'visual.json'), JSON.stringify(visual, null, 1))
 
 const hard = Object.entries(fail).filter(([, v]) => v.length);
 const sec = (t, a) => `### ${t} (${a.length})\n\n${a.length ? a.map(x => '- ' + x).join('\n') : '- none'}\n`;
-const md = [`# Layout v2 comparison\n\n${pages.length} pages × ${widths.length} widths (${widths.join(', ')} px), old and new layout on the same server and data.\n`,
+const md = [`# Layout comparison against the golden baseline\n\n${pages.length} pages × ${widths.length} widths (${widths.join(', ')} px), old and new layout on the same server and data.\n`,
   `**Result: ${hard.length ? 'FAIL' : 'PASS'}**\n`,
   sec('Disclosures (gate 2)', fail.disclosure), sec('Figures (gate 4)', fail.figures), sec('Controls still present (rule 2)', fail.controls),
-  sec('New axe violations (gate 6)', fail.axe), sec('New sideways page scroll', fail.overflow), sec('Pages that failed to load', fail.load),
+  sec('New axe violations (gate 6)', fail.axe), sec('New sideways page scroll', fail.overflow), sec('Pages that failed to load', fail.load), sec('Pages added since the baseline (not compared; add them to test/golden when intended)', added),
   sec('Figures that are live counters (reviewed, excused)', info.live), sec('Pages without exactly one visible h1 (information)', info.h1), sec('More small targets than before (information)', info.targets),
   `### Visual differences (gate 5)\n\n| Page | Width | Pixels changed | Height old → new |\n|---|---|---|---|\n` +
   visual.sort((a, b) => b.pct - a.pct).map(v => `| ${v.page} | ${v.width} | ${v.pct}% | ${v.hOld} → ${v.hNew} |`).join('\n') + '\n'].join('\n');

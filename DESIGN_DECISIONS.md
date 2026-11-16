@@ -1,5 +1,7 @@
 # Design decisions: layout v2
 
+> **Update 2026-11-16:** decisions D-2, D-3 and D-16 (flag, paired comparison, staged rollout) were superseded when the flag system was removed: the layout is permanent, checked against a golden baseline (`test/golden/`), and released with tags and rollback by revert. See CHANGELOG_AI.md.
+
 These choices were made without asking, as the brief required. Each has its reason.
 
 | # | Decision | Reason |

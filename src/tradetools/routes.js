@@ -1,21 +1,18 @@
 // /api/tools/* : planning tools (position size, risk/reward, sector heatmap) and the AI explainers.
 // Read-only: market data is read, nothing is ordered, no account or balance is changed. Each tool has
-// its own feature flag (Admin → SEO → Feature flags), all off by default; a tool that is off answers 404.
+// the AI explainers can be switched off at once with the kill switches below (Admin, or AI_TOOLS_KILL).
 // /api/admin/tools/* : the AI kill switches and the compliance log (admins only, via the /admin guard).
 import express from 'express';
 import { requireUser, rateLimit } from '../auth.js';
-import { isOn } from '../flags.js';
 import { count } from '../analytics.js';
 import * as M from './math.js';
 import * as G from './aiguard.js';
 
-export const TOOL_FLAGS = { sizing: 'tools_sizing', rr: 'tools_rr', heatmap: 'tools_heatmap', portfolio: 'ai_portfolio_explainer', indicator: 'ai_indicator_explainer' };
+export const TOOLS = ['sizing', 'rr', 'heatmap', 'portfolio', 'indicator'];
 export const DISCLOSURE = 'For planning and education only. Not investment advice and not an order: nothing is sent to your broker. Investing involves risk, including the loss of the money you invest.';
-const on = (user, key) => !!user && isOn(TOOL_FLAGS[key], String(user.id));
 
 const fail = (res, e) => res.status(e.status || 500).json({ error: e.status ? e.message : 'Something went wrong', ...(e.field ? { field: e.field } : {}), ...(e.code ? { code: e.code } : {}) });
-const tool = (key, fn) => [requireUser, (req, res, next) => (on(req.user, key) ? next() : res.status(404).json({ error: 'Not found' })),
-  (req, res) => { if (!rateLimit(`tools:${key}:${req.user.id}`, 120, 600e3)) return res.status(429).json({ error: 'Too many requests. Please wait a little.' }); return Promise.resolve().then(() => fn(req, res)).catch(e => fail(res, e)); }];
+const tool = (key, fn) => [requireUser, (req, res) => { if (!rateLimit(`tools:${key}:${req.user.id}`, 120, 600e3)) return res.status(429).json({ error: 'Too many requests. Please wait a little.' }); return Promise.resolve().then(() => fn(req, res)).catch(e => fail(res, e)); }];
 
 // Where the prices come from and how fresh they are, in words (shown on every page that uses them).
 export async function dataLabel() {
@@ -28,10 +25,8 @@ export async function dataLabel() {
 }
 
 export const toolsRouter = express.Router();
-toolsRouter.get('/flags', requireUser, (req, res) => {
-  const f = Object.fromEntries(Object.keys(TOOL_FLAGS).map(k => [k, on(req.user, k)]));
-  res.json({ ...f, any: Object.values(f).some(Boolean), killed: G.killStates() });
-});
+// Which AI explainers are currently switched off by a kill switch (the planning tools have none).
+toolsRouter.get('/status', requireUser, (req, res) => res.json({ killed: G.killStates() }));
 
 toolsRouter.post('/size', ...tool('sizing', (req, res) => { const r = M.positionSize(req.body || {}); count('tool', 'sizing:used'); res.json({ ...r, disclosure: DISCLOSURE }); }));
 
@@ -110,6 +105,6 @@ toolsRouter.post('/ai/indicator', ...tool('indicator', async (req, res) => {
 
 // ---------- admin ----------
 export const toolsAdminRouter = express.Router();
-toolsAdminRouter.get('/', async (req, res) => res.json({ tools: G.AI_TOOLS, killed: G.killStates(), flags: TOOL_FLAGS, envKill: process.env.AI_TOOLS_KILL || null }));
+toolsAdminRouter.get('/', async (req, res) => res.json({ tools: G.AI_TOOLS, killed: G.killStates(), tools: TOOLS, envKill: process.env.AI_TOOLS_KILL || null }));
 toolsAdminRouter.put('/kill', async (req, res) => { try { res.json({ killed: await G.setKill(String(req.body?.tool || ''), !!req.body?.killed) }); } catch (e) { fail(res, e); } });
 toolsAdminRouter.get('/log', async (req, res) => res.json({ log: await G.readLog({ limit: Math.min(500, +req.query.limit || 100), tool: req.query.tool && G.AI_TOOLS[req.query.tool] ? req.query.tool : undefined }) }));

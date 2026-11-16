@@ -1,5 +1,5 @@
 // Planning tools (#/tradetools): position size, risk/reward with an ATR stop, the sector heatmap, and
-// two guarded AI explainers. Each tab appears only when its feature flag is on for this user. Nothing
+// two guarded AI explainers. Nothing
 // here places, changes or cancels an order. How each tool works: docs/TRADING_TOOLS.md.
 let H;
 export function registerTradeTools(routes, helpers) { H = helpers; routes.tradetools = page; }
@@ -14,9 +14,7 @@ const field = (label, name, attrs = '', help = '') => `<label>${label}<input nam
 const side = () => `<fieldset class="tt-side"><legend>Direction</legend><label class="check"><input type="radio" name="side" value="long" checked> Long (buy first)</label><label class="check"><input type="radio" name="side" value="short"> Short (sell first)</label></fieldset>`;
 
 async function page(view, q) {
-  const flags = await H.api('/tools/flags').catch(() => ({ any: false }));
-  const tabs = TABS.filter(([k]) => flags[k]);
-  if (!tabs.length) { view.innerHTML = '<h1>Planning tools</h1><p class="mu">These tools are not switched on for your account yet.</p>'; return; }
+  const tabs = TABS;
   const tab = tabs.some(([k]) => k === q.get('tab')) ? q.get('tab') : tabs[0][0];
   view.innerHTML = `<div class="pagehead"><div><h1>Planning tools</h1><p class="mu" style="margin:4px 0 0">Calculators and explainers that read data and show the arithmetic. They never place an order.</p></div></div>
     <nav class="chips" aria-label="Planning tools">${tabs.map(([k, t]) => `<a href="#/tradetools?tab=${k}" ${k === tab ? 'aria-current="page"' : ''}><button type="button" class="${k === tab ? 'on' : ''}" tabindex="-1">${t}</button></a>`).join('')}</nav>

@@ -1,12 +1,10 @@
-// Layout redesign safety harness (flag "layout_v2"). For every page at 1440, 1280, 768 and 390 px it
-// records, for the current layout ("old") and, with --pair, the new layout ("new") side by side:
+// Layout safety harness. For every page at 1440, 1280, 768 and 390 px it records:
 //   - every disclosure (legal text, risk warnings, notices): present, visible, readable, above the fold or not
 //   - every figure (prices, fees, balances, P&L, percentages) as text
 //   - axe-core accessibility violations, one heading-1 count, horizontal overflow, small targets
 //   - a screenshot (compared pixel by pixel in compare.mjs)
-// Old and new run against the same server and data; a visitor-bucket cookie picks the layout
-// (flag at 50%), so the comparison is exact and needs no test-only switch in the product.
-//   node test/layout/run.mjs [--pair] [--out DIR] [--only route,route] [--base https://staging-url]
+// Run it against the golden baseline with compare.mjs (the same checks, before and after).
+//   node test/layout/run.mjs [--out DIR] [--only route,route] [--base https://staging-url]
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -15,21 +13,15 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { startMock } from '../mock-alpaca.js';
-import { bucketOf } from '../../src/flags.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
-const PAIR = process.argv.includes('--pair');
 const OUT = path.resolve(arg('--out', path.join(root, 'e2e-output/layout')));
 const ONLY = arg('--only', '') ? arg('--only').split(',') : null;
 const WIDTHS = [1440, 1280, 768, 390];
 const HEIGHT = { 1440: 900, 1280: 800, 768: 1024, 390: 844 };
 fs.mkdirSync(path.join(OUT, 'shots'), { recursive: true });
 const axeSrc = fs.readFileSync(createRequire(import.meta.url).resolve('axe-core/axe.min.js'), 'utf8');
-
-// A visitor id in the old bucket and one in the new bucket of the flag at 50%.
-const vid = want => { for (let i = 0; ; i++) { const v = i.toString(16).padStart(16, '0'); if ((bucketOf(v, 'layout_v2') < 50) === want) return v; } };
-const VARIANTS = PAIR ? [['old', vid(false)], ['new', vid(true)]] : [['old', vid(false)]];
 
 let B = arg('--base', ''), server, mock;
 if (!B) {
@@ -55,10 +47,6 @@ await p0.goto(B + '/app#/account'); await p0.waitForSelector('#keysForm');
 await p0.fill('#keysForm [name=keyId]', 'LAYOUTKEY'); await p0.fill('#keysForm [name=secret]', 'S'); await p0.click('#keysForm button');
 // Production mode refuses the mock's keys; the pages then show the paper account only (still compared).
 const keys = await p0.waitForSelector('#keysForm .ok', { timeout: 15000 }).then(() => 'connected', () => 'not connected (paper data only)'); console.log('broker keys:', keys);
-if (PAIR) {
-  const r = await p0.evaluate(async () => (await fetch('/api/admin/site/flags', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ layout_v2: { on: true, pct: 50 } }) })).status);
-  if (r !== 200) throw new Error('could not set the layout_v2 flag: ' + r);
-}
 const routes = (await p0.$$eval('#nav a[href^="#/"]', as => [...new Set(as.map(a => a.getAttribute('href').slice(2)))])).filter(r => !/^(logout)$/.test(r));
 const session = (await base.cookies()).filter(c => !/qp_vb/.test(c.name));
 await p0.close();
@@ -127,18 +115,18 @@ async function settle(p) {
 
 const results = {}, started = Date.now();
 const ctxs = {};
-for (const [name, v] of VARIANTS) for (const auth of [false, true]) {
+for (const auth of [false, true]) {
   const c = await browser.newContext({ reducedMotion: 'reduce', bypassCSP: true });
-  await c.addCookies([{ name: 'qp_vb', value: v, domain: host, path: '/' }, ...(auth ? session : [])]);
-  ctxs[name + auth] = c;
+  if (auth) await c.addCookies(session);
+  ctxs[auth] = c;
 }
 const JOBS = +arg('--jobs', 4), queue = [...PAGES];
 await Promise.all(Array.from({ length: JOBS }, async () => { for (let pg; (pg = queue.shift());) {
   results[pg.id] = {};
   for (const w of WIDTHS) {
     results[pg.id][w] = {};
-    for (const [name] of VARIANTS) {
-      const p = await ctxs[name + pg.auth].newPage(); p.on('dialog', d => d.dismiss());
+    {
+      const p = await ctxs[pg.auth].newPage(); p.on('dialog', d => d.dismiss());
       const errs = []; p.on('pageerror', e => errs.push(e.message));
       await p.setViewportSize({ width: w, height: HEIGHT[w] });
       try {
@@ -149,17 +137,17 @@ await Promise.all(Array.from({ length: JOBS }, async () => { for (let pg; (pg = 
           const ax = await p.evaluate(async () => (await axe.run(document, { runOnly: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'], resultTypes: ['violations'] })).violations.map(v => ({ id: v.id, impact: v.impact, n: v.nodes.length, targets: v.nodes.slice(0, 5).map(n => n.target.join(' ')) })));
           m.axe = ax;
         }
-        const file = `${pg.id.replace(/\W+/g, '_')}-${w}-${name}.png`;
+        const file = `${pg.id.replace(/\W+/g, '_')}-${w}.png`;
         await p.screenshot({ path: path.join(OUT, 'shots', file), fullPage: true, timeout: 20000 }).catch(() => p.screenshot({ path: path.join(OUT, 'shots', file) }));
         m.shot = file; m.errors = errs;
-        results[pg.id][w][name] = m;
-      } catch (e) { results[pg.id][w][name] = { failed: e.message.split('\n')[0], errors: errs }; }
+        results[pg.id][w].new = m;
+      } catch (e) { results[pg.id][w].new = { failed: e.message.split('\n')[0], errors: errs }; }
       await p.close();
     }
   }
   process.stdout.write(`${pg.id} `);
 } }));
-fs.writeFileSync(path.join(OUT, PAIR ? 'pair.json' : 'baseline.json'), JSON.stringify({ at: new Date().toISOString(), base: B, widths: WIDTHS, pages: PAGES, results }, null, 1));
+fs.writeFileSync(path.join(OUT, 'current.json'), JSON.stringify({ at: new Date().toISOString(), base: B, widths: WIDTHS, pages: PAGES, results }, null, 1));
 console.log(`\n${PAGES.length} pages x ${WIDTHS.length} widths in ${Math.round((Date.now() - started) / 1000)} s → ${OUT}`);
 await browser.close(); server?.kill(); mock?.close?.();
 process.exit(0);

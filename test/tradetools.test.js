@@ -1,4 +1,4 @@
-// Trading tools (src/tradetools): the maths against worked examples, the routes behind their flags,
+// Trading tools (src/tradetools): the maths against worked examples, the routes,
 // the AI guard (kill switch, prompt and output checks, compliance log) and the adversarial evaluation
 // that must pass before any AI tool is released (docs/TRADING_TOOLS.md, "Release gate").
 import { test, before, after } from 'node:test';
@@ -12,7 +12,6 @@ const { serve } = await import('./client.js');
 const M = await import('../src/tradetools/math.js');
 const G = await import('../src/tradetools/aiguard.js');
 const R = await import('../src/tradetools/routes.js');
-const F = await import('../src/flags.js');
 const { all } = await import('../src/db.js');
 const S = await serve();
 after(() => { S.close(); mock.close(); });
@@ -70,16 +69,15 @@ test('heatmap: change from the previous close, sorted, with the age of each pric
   assert.equal(h.at(-1).changePct, null, 'a fund with no price is shown as unknown, never as 0');
 });
 
-// =================================================================== routes behind flags
+// =================================================================== routes
 let u;
 before(async () => { u = S.client(); await u.signup('tools-user@example.com'); });
-test('every tool is 404 while its flag is off (the default), and needs a signed-in user', async () => {
-  assert.deepEqual((await u('/tools/flags')).body, { sizing: false, rr: false, heatmap: false, portfolio: false, indicator: false, any: false, killed: { all: false, portfolio: false, indicator: false } });
-  for (const [p, b] of [['/tools/size', { equity: 1 }], ['/tools/rr', {}], ['/tools/heatmap'], ['/tools/ai/portfolio', {}], ['/tools/ai/indicator', {}]]) assert.equal((await u(p, b)).status, 404, p);
-  assert.equal((await S.client()('/tools/size', { equity: 1 })).status, 401);
+test('every tool needs a signed-in user; nothing is killed by default', async () => {
+  assert.deepEqual((await u('/tools/status')).body, { killed: { all: false, portfolio: false, indicator: false } });
+  for (const [p, b] of [['/tools/size', { equity: 1 }], ['/tools/rr', {}], ['/tools/heatmap'], ['/tools/ai/portfolio', {}], ['/tools/ai/indicator', {}]]) assert.equal((await S.client()(p, b)).status, 401, p);
+  assert.equal((await u('/tools/flags')).status, 404, 'the old flags endpoint is gone');
 });
-test('with the flags on: size, risk/reward (with ATR from read-only bars), heatmap with its data label', async () => {
-  await F.saveFlags(Object.fromEntries(Object.values(R.TOOL_FLAGS).map(f => [f, { on: true, pct: 100 }])));
+test('size, risk/reward (with ATR from read-only bars), heatmap with its data label', async () => {
   const s = await u('/tools/size', { equity: 10000, riskPct: 1, entry: 50, stop: 48 });
   assert.equal(s.status, 200); assert.equal(s.body.shares, 50); assert.match(s.body.disclosure, /Not investment advice/); assert.match(s.body.disclosure, /nothing is sent to your broker/);
   const bad = await u('/tools/size', { equity: 10000, riskPct: 1, entry: 50, stop: 51 }); assert.equal(bad.status, 400); assert.equal(bad.body.field, 'stop');

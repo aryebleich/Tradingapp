@@ -82,7 +82,6 @@ import { institutionsRouter } from './src/institutions.js';
 import { roundupRouter } from './src/roundup.js';
 import { codeRouter } from './src/code.js';
 import * as N from './src/notify.js';
-import * as LR from './src/layout-rollout.js';
 import * as PAY from './src/payments.js';
 import { router as alpacaRouter } from './src/routes/alpaca.js';
 import { oauthCallback, oauthEnabled, tradingFor } from './src/alpaca/connections.js';
@@ -97,7 +96,6 @@ import * as SE from './src/stripe-events.js';
 import { mountCommsWebhooks, commsRouter, commsAdminRouter as smsVoiceAdminRouter } from './src/sms-voice/routes.js';
 import { logStripe } from './src/stripe-client.js';
 import { toolsRouter, toolsAdminRouter } from './src/tradetools/routes.js';
-import * as FLAGS from './src/flags.js';
 import { tokensRouter, mcpHandler } from './src/mcp.js';
 import { agentRouter } from './src/agentic.js';
 import { aiBotsRouter } from './src/aibots.js';
@@ -174,8 +172,6 @@ app.use((req, res, next) => {
 
 // Load shedding: under heavy load, optional work is refused first so trading stays responsive.
 app.use(shedMiddleware);
-// Layout redesign rollout: counts errors and failed order/payment attempts per layout (src/layout-rollout.js).
-app.use(LR.middleware);
 // Readiness for Kubernetes: a replica above 95% load stops taking new traffic until it recovers.
 app.get('/readyz', (req, res) => (relLoad() >= 0.95 ? res.status(503).json({ ready: false, load: relLoad() }) : res.json({ ready: true, load: +relLoad().toFixed(3) })));
 // Prometheus metrics (load, in-flight, shed requests, breakers, recommended replicas, order queue).
@@ -646,7 +642,7 @@ api.use('/admin/comms', commsAdminRouter);
 api.use('/admin/sms-voice', smsVoiceAdminRouter);
 api.use('/comms', commsRouter);
 api.use('/admin/tools', toolsAdminRouter); // trading tools: AI kill switches and compliance log
-api.use('/tools', toolsRouter);          // trading tools (flags tools_* and ai_*, all off by default)
+api.use('/tools', toolsRouter);          // planning tools and the AI explainers (the AI ones have kill switches)
 api.use('/statscan', statScanRouter);
 api.use('/search', searchRouter);
 api.use('/paper/orders', paperOrdersRouter);
@@ -697,9 +693,6 @@ api.put('/admin/streams', auth.requireUser, auth.requireAdmin, async (req, res) 
 api.get('/admin/questions', async (req, res) => { const Q = await import('./src/questions.js'); res.json(Q.questionList()); });
 api.put('/admin/questions/:id', async (req, res) => { const Q = await import('./src/questions.js'); const q = await Q.saveQuestion(req.params.id, req.body || {}); q ? res.json(q) : res.status(404).json({ error: 'Unknown question' }); });
 api.use('/admin/seo', SEO.seoAdminRouter({ onChange: () => htmlCache.clear() }));
-// Feature flags (website audit, Phase 4): every flag starts off; the owner sets on/off and a rollout percentage.
-api.get('/admin/site/flags', (req, res) => (req.user?.role === 'admin' ? res.json(FLAGS.flagSettings()) : res.status(403).json({ error: 'Admin only' })));
-api.put('/admin/site/flags', async (req, res, next) => { if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Admin only' }); try { res.json(await FLAGS.saveFlags(req.body || {})); } catch (e) { next(e); } });
 api.use('/admin/site', adminSiteRouter);
 api.get('/admin/issues', (req, res) => res.json({ issues: listIssues() }));
 api.delete('/admin/issues', async (req, res) => { await clearIssues(); res.json({ ok: true }); });
@@ -1182,31 +1175,13 @@ const pub = path.join(here, 'public');
 const htmlCache = new Map();
 // Public pages: the owner's SEO settings (titles, descriptions, canonical, structured data) applied.
 const page = base => async (req, res) => {
-  // Homepage v2 (Admin → SEO → Feature flags, off by default): only visitors in the rollout see it.
-  let file = base;
-  if ((base === 'index.html' || base === 'yi.html') && FLAGS.flagSettings().home_v2.on) {
-    if (FLAGS.isOn('home_v2', FLAGS.visitorId(req, res))) file = base.replace('.html', '-v2.html');
-    res.set({ 'Cache-Control': 'private, no-cache', Vary: 'Cookie' });
-  }
+  const file = base;
   if (!htmlCache.has(file) || process.env.NODE_ENV !== 'production') {
     const raw = (await fs.readFile(path.join(pub, file), 'utf8')).replace('content="og-brightolio.png"', `content="${PUBLIC_URL}/og-brightolio.png"`);
     htmlCache.set(file, SEO.transform(raw, base.replace(/\.html$/, ''), SEO.settings(), PUBLIC_URL));
   }
-  res.type('html').set('X-QP-Build', BUILD).send(withLayout(req, res, htmlCache.get(file)));
+  res.type('html').set('X-QP-Build', BUILD).send(htmlCache.get(file));
 };
-// Layout redesign (flag layout_v2, see DESIGN_SYSTEM.md): visitors in the rollout get the new layout
-// layer: one stylesheet and one small script, both scoped to <html class="lv2">. Switching the flag
-// off serves the previous layout at once; nothing else in the page changes.
-// LAYOUT_V2_FORCE=1 (tests only, NODE_ENV=test) serves it to everyone, so the end-to-end suite runs on the new layout.
-const LAYOUT_FORCED = process.env.NODE_ENV === 'test' && process.env.LAYOUT_V2_FORCE === '1';
-function withLayout(req, res, html) {
-  if (LAYOUT_FORCED) return withLayer(html);
-  if (!FLAGS.flagSettings().layout_v2?.on) return html;
-  res.set({ 'Cache-Control': 'private, no-cache', Vary: 'Cookie' });
-  if (!FLAGS.isOn('layout_v2', FLAGS.visitorId(req, res))) return html;
-  return withLayer(html);
-}
-const withLayer = html => html.replace(/<html\b/, '<html class="lv2"').replace('</head>', `  <link rel="stylesheet" href="/layout.css?v=${ASSET_V}">\n  <script type="module" src="/layout.js?v=${ASSET_V}"></script>\n</head>`);
 // The app page lists every module it imports (modulepreload), so the browser downloads them all at
 // once instead of one import level after another.
 let appHtml = null;
@@ -1268,7 +1243,7 @@ app.get('/bundle/:file', (req, res, next) => {
 });
 async function appPage() {
   const html = await fs.readFile(path.join(pub, 'app.html'), 'utf8');
-  if (BUNDLE) return html.replace('src="/app.js"', `src="/bundle/${BUNDLE.entry}"`).replace(/href="\/(styles|theme)\.css"/g, `href="/$1.css?v=${ASSET_V}"`)
+  if (BUNDLE) return html.replace('src="/app.js"', `src="/bundle/${BUNDLE.entry}"`).replace(/href="\/(styles|theme|layout)\.css"/g, `href="/$1.css?v=${ASSET_V}"`).replace('src="/layout.js"', `src="/layout.js?v=${ASSET_V}"`)
     .replace('</head>', `  <link rel="modulepreload" href="/bundle/${BUNDLE.entry}">\n</head>`);
   // Every module the app imports, followed through public/pages/ and back (static imports only).
   const mods = new Set(), todo = ['app.js'];
@@ -1280,7 +1255,7 @@ async function appPage() {
       if (!dep.startsWith('..') && !dep.startsWith('i18n/')) todo.push(dep);
     }
   }
-  return html.replace('src="/app.js"', `src="/app.js?v=${ASSET_V}"`).replace(/href="\/(styles|theme)\.css"/g, `href="/$1.css?v=${ASSET_V}"`)
+  return html.replace('src="/app.js"', `src="/app.js?v=${ASSET_V}"`).replace(/href="\/(styles|theme|layout)\.css"/g, `href="/$1.css?v=${ASSET_V}"`).replace('src="/layout.js"', `src="/layout.js?v=${ASSET_V}"`)
     .replace('</head>', [...mods].map(m => `  <link rel="modulepreload" href="/${m}?v=${ASSET_V}">`).join('\n') + '\n</head>');
 }
 app.get('/app', async (req, res) => {
@@ -1288,7 +1263,7 @@ app.get('/app', async (req, res) => {
   // The background loader (the app's own hidden, read-only copy) may be framed by the app itself;
   // every other page still refuses to be framed by anyone.
   if ('prefetch' in req.query) res.set({ 'X-Frame-Options': 'SAMEORIGIN', 'Content-Security-Policy': String(res.getHeader('Content-Security-Policy') || '').replace("frame-ancestors 'none'", "frame-ancestors 'self'") });
-  res.type('html').set({ 'Cache-Control': 'no-cache', 'X-QP-Build': BUILD }).send(withLayout(req, res, appHtml));
+  res.type('html').set({ 'Cache-Control': 'no-cache', 'X-QP-Build': BUILD }).send(appHtml);
 });
 // Admin → Analytics: page views and visitors of the public pages (counted privately, see src/analytics.js).
 { const A = await import('./src/analytics.js'); app.use(A.webMiddleware); A.start(); }
@@ -1302,7 +1277,7 @@ app.use(express.static(pub, {
   // Font files never change under the same name: kept for a year.
   setHeaders: (res, file) => res.setHeader('Cache-Control', /\.woff2$/.test(file) ? 'public, max-age=31536000, immutable' : /\.(png|svg|webmanifest|mp4|webm|jpg)$/.test(file) ? 'public, max-age=604800' : 'no-cache'),
 }));
-app.use(async (req, res) => res.status(404).type('html').send(withLayout(req, res, await fs.readFile(path.join(pub, '404.html'), 'utf8'))));
+app.use(async (req, res) => res.status(404).sendFile(path.join(pub, '404.html')));
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   // A promise somebody forgot to catch (a background job, a fire-and-forget email) is logged and
@@ -1310,9 +1285,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   process.on('unhandledRejection', e => { countUnhandled(); console.error('Unhandled promise rejection (server keeps running):', e?.stack || e); });
   const port = +process.env.PORT || 3000;
   const server = app.listen(port, () => console.log(`Brightolio on http://localhost:${port}`));
-  // Staged rollout of the layout redesign with automatic rollback (production only; LAYOUT_V2_AUTOSTART=0 skips it).
-  if (process.env.NODE_ENV === 'production' && process.env.LAYOUT_V2_AUTOSTART !== '0')
-    LR.start({ base: `http://127.0.0.1:${port}`, alert: async (subject, text) => { for (const to of auth.allAdminEmails()) await N.sendEmail(to, subject, text).catch(() => {}); } }).catch(e => console.error('[layout-rollout] start failed:', e.message));
   // Startup check: the same as GET /healthz/full, written to the log so a missing hosted database,
   // a failed migration or wrong paper/live servers are visible right after every deploy.
   setTimeout(async () => {

@@ -23,7 +23,6 @@ const log = []; server.stdout.on('data', d => log.push(String(d))); server.stder
 for (let i = 0; i < 60; i++) { if (await fetch(B + '/healthz').then(r => r.ok, () => false)) break; await new Promise(r => setTimeout(r, 200)); }
 const reg = async email => { const r = await fetch(B + '/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ email, password: 'Str0ngPassword1', agree: true }) }); const kv = (r.headers.get('set-cookie') || '').split(';')[0], i = kv.indexOf('='); return { name: kv.slice(0, i), value: kv.slice(i + 1) }; };
 const owner = await reg(OWNER), other = await reg('chat-ui-user@example.com');
-const flag = on => fetch(B + '/api/admin/site/flags', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp', cookie: `${owner.name}=${owner.value}` }, body: JSON.stringify({ ai_team_chat: { on, pct: 100 } }) }).then(r => r.status);
 
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
@@ -40,15 +39,7 @@ const lastAsst = '.ac-list li.ac-asst:last-of-type';
 const waitDone = () => page.waitForFunction(() => !document.querySelector('.ac-cursor') && document.querySelector('.ac-send') && !document.querySelector('.ac-send').hidden, null, { timeout: 15000 });
 const recordLive = () => page.evaluate(() => { window.__live = []; new MutationObserver(() => window.__live.push(document.querySelector('.ac-sr[role=status]').textContent)).observe(document.querySelector('.ac-sr[role=status]'), { childList: true, characterData: true, subtree: true }); });
 
-await step('flag off: the AI team page has no Chat card and the chat says it is off', async () => {
-  await flag(false);
-  await page.goto(B + '/app#/admin-agents'); await page.waitForSelector('#aiTeam', { timeout: 15000 }); await page.waitForTimeout(600);
-  must(!(await page.$('a[href="#/admin-aichat"]')), 'no card');
-  await page.goto(B + '/app#/admin-aichat'); await page.waitForSelector('#view .err');
-  must(/not switched on/.test(await page.innerText('#view')), 'off message');
-});
-await step('flag on: the Chat job appears in the AI team and opens the conversation view', async () => {
-  must(await flag(true) === 200, 'flag');
+await step('the Chat job appears in the AI team (owner) and opens the conversation view', async () => {
   await page.goto(B + '/app#/admin-agents'); await page.waitForSelector('a[href="#/admin-aichat"]', { timeout: 15000 });
   await page.click('a[href="#/admin-aichat"] button'); await page.waitForSelector('#acInput');
   must(await page.$eval('#acModel', s => [...s.options].map(o => o.value).join()) === 'fake,fake-plain', 'models');

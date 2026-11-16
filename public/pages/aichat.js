@@ -20,7 +20,7 @@ export async function page(view) {
   if (!document.querySelector('link[data-aichat-css]')) { const l = Object.assign(document.createElement('link'), { rel: 'stylesheet', href: '/aichat.css' }); l.dataset.aichatCss = '1'; document.head.append(l); }
   let status;
   try { status = await call('/status'); }
-  catch (e) { view.innerHTML = `<h1>AI team chat</h1><p class="err" role="alert">${esc(e.status === 404 ? 'The Chat job is not switched on (feature flag ai_team_chat).' : e.status === 403 ? 'You do not have the AI team chat permission. The owner can grant it.' : e.message)}</p><p><a href="#/admin-agents">Back to the AI team</a></p>`; return; }
+  catch (e) { view.innerHTML = `<h1>AI team chat</h1><p class="err" role="alert">${esc(e.status === 403 ? 'You do not have the AI team chat permission. The owner can grant it.' : e.message)}</p><p><a href="#/admin-agents">Back to the AI team</a></p>`; return; }
   const S = { conv: null, convs: [], msgs: [], models: status.models, model: status.models[0]?.id, busy: null, stick: true, budget: status.budget };
   view.innerHTML = `<div class="ac-wrap">
     <aside class="ac-side" id="acSide" aria-label="Conversations">

@@ -1,4 +1,4 @@
-/* Layout v2 (flag layout_v2). Rules: DESIGN_SYSTEM.md. Everything here is scoped to html.lv2, uses the
+/* Layout layer (every page). Rules: DESIGN_SYSTEM.md. Everything here is scoped to html.lv2, uses the
    existing tokens of theme.css / site.css (colours, fonts, radii, shadows) and changes layout only:
    spacing, widths, type sizes, stacking, focus, loading, empty and error states. No text, number,
    control, validation message or confirmation step is added, removed or reordered by this file. */

@@ -1,0 +1,59 @@
+// Homepage (audited order, one main hero button, a risk link beside each sign-up, a Trust & compliance
+// block) and the layout layer on every public page. Both are always on: there is no flag.
+import { test, after } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { serve } from './client.js';
+
+const root = path.resolve(import.meta.dirname, '..');
+const read = f => fs.readFileSync(path.join(root, 'public', f), 'utf8');
+const ids = h => [...h.matchAll(/<section(?: class="([\w ]+)")?(?: id="([\w-]+)")?/g)].map(m => m[2] || (m[1] || 'final').split(' ')[0]);
+const text = h => h.replace(/<script[\s\S]*?<\/script>/g, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+const S = await serve();
+after(() => S.close());
+
+for (const f of ['index.html', 'yi.html']) {
+  test(`${f}: audited section order with Trust & compliance after pricing, every disclosure kept`, () => {
+    const h = read(f), order = ids(h);
+    assert.ok(order.includes('compliance') && order.indexOf('pricing') < order.indexOf('trust'), order.join(','));
+    assert.equal(order[0], 'hero'); assert.equal(order.at(-1), 'final');
+    assert.equal((h.match(/href="risk" data-cta="risk_link"/g) || []).length, 3, 'risk link beside hero, pricing and final sign-ups');
+    for (const p of ['risk', 'terms', 'privacy', 'security', 'insurance']) assert.ok(h.includes(`<li><a href="${p}">`), p);
+    if (f === 'index.html') for (const s of ['Illustrative paper-trading account', 'Trading involves risk', 'not a broker']) assert.ok(text(h).includes(s), s);
+  });
+  test(`${f}: accessibility basics`, () => {
+    const h = read(f);
+    assert.equal((h.match(/<h1[\s>]/g) || []).length, 1);
+    assert.ok(/<html[^>]+lang="(en|yi)"/.test(h));
+    for (const img of h.match(/<img\b[^>]*>/g) || []) assert.ok(/\balt="/.test(img), img.slice(0, 80));
+    for (const m of h.matchAll(/<a\b[^>]*>([\s\S]*?)<\/a>/g)) assert.ok(text(m[1]).trim() || /aria-label=|data-phone-link/.test(m[0]), m[0].slice(0, 80));
+    assert.equal(new Set(h.match(/\bid="[^"]+"/g)).size, (h.match(/\bid="[^"]+"/g) || []).length, 'ids are unique');
+  });
+}
+
+test('every page carries the layout layer; the old homepage copies and the flag system are gone', async () => {
+  for (const f of ['index.html', 'yi.html', 'terms.html', 'privacy.html', 'risk.html', 'contact.html', 'status.html', 'security.html', 'insurance.html', 'app.html']) {
+    const h = read(f);
+    assert.match(h, /<html[^>]*class="lv2"/, f); assert.match(h, /layout\.css/, f); assert.match(h, /layout\.js/, f);
+  }
+  for (const gone of ['public/index-v2.html', 'public/yi-v2.html', 'src/flags.js', 'src/layout-rollout.js']) assert.equal(fs.existsSync(path.join(root, gone)), false, gone);
+});
+
+test('server: / and /yi serve the homepage with Trust & compliance, no cookie is set, and the layout files load', async () => {
+  for (const u of ['/', '/yi']) {
+    const r = await fetch(S.base + u); const h = await r.text();
+    assert.ok(h.includes('id="compliance"'), u); assert.equal(r.headers.get('set-cookie'), null, u);
+    assert.ok(h.includes('layout.css') && h.includes('layout.js'), u);
+  }
+  const app = await (await fetch(S.base + '/app')).text();
+  assert.match(app, /class="lv2"/); assert.match(app, /layout\.css\?v=/); assert.match(app, /layout\.js\?v=/);
+  for (const f of ['/layout.css', '/layout.js']) assert.equal((await fetch(S.base + f)).status, 200, f);
+});
+
+test('the flag endpoints are gone', async () => {
+  const o = S.client(); await o.signup('flags-owner@example.com'); // the first account on a fresh database is the owner
+  assert.equal((await o('/admin/site/flags')).status, 404);
+  assert.equal((await o('/admin/site/flags', { x: 1 }, 'PUT')).status, 404);
+  assert.equal((await o('/a/cta', { cta: 'hero_main' })).status, 204);
+});

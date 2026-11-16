@@ -7,7 +7,7 @@
 //   node scripts/comms-webhook-sim.mjs sms  --to +18455550100 --from +15551230001 --text STOP
 //   options: --url http://localhost:3000   --key .comms-sim-key.pem
 // The server must have TELNYX_PUBLIC_KEY set to the public key that `keygen` prints (never your real
-// Telnyx key), COMMS_PROVIDER=telnyx and the comms_drawer flag on. The private key file is ignored by git.
+// Telnyx key), COMMS_PROVIDER=telnyx and a number assigned to a user. The private key file is ignored by git.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 

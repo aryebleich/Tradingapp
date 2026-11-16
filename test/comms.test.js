@@ -42,7 +42,6 @@ delete process.env.COMMS_PROVIDER; delete process.env.COMMS_RECORDING; delete pr
 
 const { app } = await import('../server.js');
 const { one, all, run } = await import('../src/db.js');
-const F = await import('../src/flags.js');
 const core = await import('../src/sms-voice/core.js');
 const sse = await import('../src/sms-voice/sse.js');
 const { isE164, toE164, last4, mask } = await import('../src/sms-voice/phone.js');
@@ -74,7 +73,6 @@ before(async () => {
   }
   // a user for the rate-limit test, made directly (sign-up is rate limited)
   ids.d = Number((await run("INSERT INTO users (email, pass_hash, created_at) VALUES ('comms-d@example.com', 'x', ?)", Date.now())).lastInsertRowid);
-  await F.saveFlags({ comms_drawer: { on: true, pct: 100 } });
   await core.assignNumber({ number: NUM_A, userId: ids['comms-a@example.com'], voiceMode: 'ivr', greeting: 'Hello from A. Please text us.' });
   await core.assignNumber({ number: NUM_B, userId: ids['comms-b@example.com'], voiceMode: 'softphone' });
   await run("UPDATE comms_numbers SET sip_username = 'gencred_b' WHERE number = ?", NUM_B);
@@ -222,12 +220,8 @@ test('Asterisk / FreeSWITCH: the management interface must be private, use TLS a
 });
 
 // ======================================================================= webhooks
-test('webhooks: off (404) when the flag is off; bad, missing, old and altered signatures refused; bad JSON is a 400', async () => {
-  await F.saveFlags({ comms_drawer: { on: false, pct: 0 } });
-  assert.equal((await hook('sms', smsIn())).status, 404);
-  assert.equal((await hook('voice', call('call.initiated', { callId: 'c', session: 's' }))).status, 404);
-  assert.equal((await A('/comms/summary')).status, 404);
-  await F.saveFlags({ comms_drawer: { on: true, pct: 100 } });
+test('webhooks: bad, missing, old and altered signatures refused; bad JSON is a 400; a user without a number gets 404', async () => {
+  assert.equal((await C('/comms/summary')).status, 404, 'no number assigned');
   const p = smsIn(), body = JSON.stringify(p);
   assert.equal((await hook('sms', p, { headers: {} })).status, 401, 'unsigned');
   assert.equal((await hook('sms', p, { headers: sig(body, Math.floor(Date.now() / 1000) - 3600) })).status, 401, 'old timestamp (replay)');
@@ -286,7 +280,7 @@ test('sending: validation, consent, the provider request, the stored row, and st
   assert.equal((await A('/comms/sms/send', { to: PEER2, text: '   ' })).body.code, 'empty');
   assert.equal((await A('/comms/sms/send', { to: PEER2, text: 'x'.repeat(1601) })).body.code, 'too_long');
   assert.equal((await A('/comms/sms/send', { to: NUM_A, text: 'x', attest: true })).body.code, 'own_number');
-  const noNum = await C('/comms/sms/send', { to: PEER2, text: 'x', attest: true }); assert.equal(noNum.status, 409); assert.equal(noNum.body.code, 'no_number');
+  const noNum = await C('/comms/sms/send', { to: PEER2, text: 'x', attest: true }); assert.equal(noNum.status, 404, 'a user without a number cannot reach the send route');
   assert.equal((await X('/comms/sms/send', { to: PEER2, text: 'x' })).status, 401, 'signed out');
   const noConsent = await A('/comms/sms/send', { to: PEER2, text: 'Hello Pat' });
   assert.equal(noConsent.status, 428); assert.equal(noConsent.body.needsConsent, true);
@@ -482,7 +476,7 @@ test('voice webhooks: duplicates, a call to an unknown number, and events for ca
 
 test('outgoing call from the web dialer: registered first, matched by its client state, timed from answer to hangup', async () => {
   assert.equal((await B('/comms/calls/outbound', { to: '555' })).body.code, 'bad_number');
-  assert.equal((await C('/comms/calls/outbound', { to: PEER1 })).status, 409);
+  assert.equal((await C('/comms/calls/outbound', { to: PEER1 })).status, 404);
   const r = await B('/comms/calls/outbound', { to: PEER1 });
   assert.equal(r.status, 200); assert.equal(r.body.callerNumber, NUM_B); assert.equal(Buffer.from(r.body.clientState, 'base64').toString(), r.body.callRef); assert.match(r.body.callRef, /^[a-f0-9]{16}$/);
   const t0 = Date.parse('2026-11-16T16:00:00Z'), clock = core.clock.now; core.clock.now = () => t0;
@@ -503,7 +497,7 @@ test('outgoing call from the web dialer: registered first, matched by its client
 });
 
 test('softphone login: credentials created once and reused; ICE servers with short-lived TURN; needs a number', async () => {
-  assert.equal((await C('/comms/webrtc/login', {})).status, 409);
+  assert.equal((await C('/comms/webrtc/login', {})).status, 404, 'a user without a number cannot reach it');
   const start = api.length;
   const a = await B('/comms/webrtc/login', {});
   assert.equal(a.status, 200, JSON.stringify(a.body)); assert.equal(a.body.loginToken, 'tok.test.jwt'); assert.equal(a.body.callerNumber, NUM_B);
@@ -518,16 +512,13 @@ test('softphone login: credentials created once and reused; ICE servers with sho
 });
 
 // ======================================================================= access, admin, housekeeping
-test('access: everything needs a signed-in user in the rollout; /status always answers; rollout 0% hides it from everyone', async () => {
+test('access: everything needs a signed-in user; /status always answers; a user without a number sees nothing', async () => {
   assert.equal((await X('/comms/status')).status, 401);
   const st = await A('/comms/status'); assert.equal(st.status, 200); assert.equal(st.body.enabled, true); assert.equal(st.body.number, NUM_A); assert.equal(st.body.configured, true); assert.equal(st.body.recording, 'off');
   assert.equal((await X('/comms/events')).status, 401);
-  await F.saveFlags({ comms_drawer: { on: true, pct: 0 } });
-  try {
-    assert.deepEqual((await A('/comms/status')).body, { enabled: false });
-    assert.equal((await A('/comms/summary')).status, 404);
-    assert.equal((await hook('sms', smsIn({ msgId: 'prov-pct0' }))).status, 200, 'the provider is still answered while the module is on');
-  } finally { await F.saveFlags({ comms_drawer: { on: true, pct: 100 } }); }
+  assert.deepEqual((await C('/comms/status')).body, { enabled: false });
+  assert.equal((await C('/comms/summary')).status, 404);
+  assert.equal((await C('/comms/events')).status, 404);
 });
 
 test('events stream: text/event-stream, per-user, at most five connections per user', async () => {
@@ -543,7 +534,7 @@ test('admin: only an admin assigns numbers; bad numbers, unknown users, a second
   assert.ok([401, 403].includes((await A('/admin/sms-voice')).status));
   assert.ok([401, 403].includes((await A('/admin/sms-voice/numbers', { number: '+18455550777', userId: 1 }, 'PUT')).status));
   const list = await owner('/admin/sms-voice'); assert.equal(list.status, 200, JSON.stringify(list.body));
-  assert.equal(list.body.provider, 'telnyx'); assert.equal(list.body.on, true); assert.equal(list.body.numbers.length, 3); assert.equal(list.body.settings.recording, 'off');
+  assert.equal(list.body.provider, 'telnyx'); assert.equal(list.body.on, undefined, 'there is no site-wide switch'); assert.equal(list.body.numbers.length, 3); assert.equal(list.body.settings.recording, 'off');
   const cId = ids['comms-c@example.com'];
   assert.equal((await owner('/admin/sms-voice/numbers', { number: '8455550777', userId: cId }, 'PUT')).body.code, 'bad_number');
   assert.equal((await owner('/admin/sms-voice/numbers', { number: '+18455550777', userId: 999999 }, 'PUT')).status, 404);

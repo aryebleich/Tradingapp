@@ -1,6 +1,6 @@
 // /api/admin/aichat/* : the AI team "Chat" job, a normal back-and-forth conversation.
 // Mounted under /api/admin, so requireUser + requireAdmin already ran (non-admins get 403 there); this
-// router then requires the "AI team chat" permission (403) and the ai_team_chat flag (404 when off).
+// router then requires the "AI team chat" permission (403).
 // Replies stream as server-sent events over the POST response: start, thinking, text, done, error.
 import express from 'express';
 import { rateLimit } from '../auth.js';
@@ -20,7 +20,6 @@ const route = fn => (req, res) => Promise.resolve().then(() => fn(req, res)).cat
 export const aiChatRouter = express.Router();
 aiChatRouter.use((req, res, next) => {
   if (!E.canChat(req.user)) return res.status(403).json({ error: 'You do not have the AI team chat permission.' });
-  if (!E.flagOn(req.user)) return res.status(404).json({ error: 'Not found' });
   if (now() - lastPurge > 3600e3) { lastPurge = now(); E.purgeOld().catch(() => {}); }
   next();
 });

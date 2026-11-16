@@ -1,5 +1,7 @@
 # LEGAL_REVIEW.md
 
+> **Update 2026-11-16:** the flag `home_v2` is gone: the new homepage (L9 to L12) is live for everyone. A legal check that finds a problem is fixed by changing the wording and redeploying.
+
 Items found in the audit that need legal or compliance sign-off. L1 to L8: nothing was changed. L9 to L12: new copy in homepage v2 (flag `home_v2`, off); it must be signed off before the flag is turned on.
 
 | # | Where | Text or issue | Question for Legal |

@@ -1,6 +1,8 @@
 # AI team Chat
 
-Admin → AI team → **Chat**: a normal back-and-forth conversation with the AI team's model. Flag `ai_team_chat`,
+> **Update 2026-11-16: the feature flag system was removed** (CHANGELOG_AI.md). Wherever this page mentions a flag, read it as the feature being permanently on. The Chat is on for every admin who has the AI team chat permission; there is no site-wide switch.
+
+Admin → AI team → **Chat**: a normal back-and-forth conversation with the AI team's model. No flag;
 **off**. Branch `feature/ai-team-chat`. Decisions: [DECISIONS.md](../DECISIONS.md), section "AI team Chat".
 
 ## Architecture
@@ -11,7 +13,7 @@ Admin → AI team page (Chat card, shown only if /api/admin/aichat/status answer
         │  fetch POST …/conversations/:id/messages   → server-sent events: start · thinking · thinking_done · text · done | error
         ▼
 server.js  api.use('/admin', requireUser, requireAdmin)  → 403 for non-admins
-   └─ /api/admin/aichat  src/aichat/routes.js   → 403 without the AI team chat permission, 404 when the flag is off
+   └─ /api/admin/aichat  src/aichat/routes.js   → 403 without the AI team chat permission
         └─ src/aichat/engine.js  permission · models · token budget · streaming (Anthropic SDK with adaptive thinking;
                                  OpenAI-compatible SSE for Gemini/Groq/OpenRouter) · storage · retention
            src/aichat/config.json  system prompt, allowed models, limits, retention (server only)
@@ -47,14 +49,14 @@ Not tested: a real Claude / Gemini stream (the scripted test model is used), a h
 
 1. Deploy branch `feature/ai-team-chat` to a **staging** service with its own database, `NODE_ENV=production`,
    `ENCRYPTION_KEY`, and `ANTHROPIC_API_KEY` (or another AI key) in its environment. Do not set `AI_CHAT_FAKE_MODEL`.
-2. Sign in as the owner on staging. Admin → SEO → Feature flags → `ai_team_chat` → on, 100%, Save.
+2. Sign in as the owner on staging.
 3. Optional: grant another admin: `PUT /api/admin/aichat/access {"email":"…","allowed":true}` (owner session).
-4. Run the smoke test. Production keeps the flag **off** until you approve.
+4. Run the smoke test.
 
 ## Smoke test (staging)
 
-- [ ] Flag off: no Chat card in Admin → AI team; `/api/admin/aichat/status` → 404. A non-admin → 403.
-- [ ] Flag on: the Chat card opens the chat; the model list shows only providers with keys.
+- [ ] A non-admin → 403 on `/api/admin/aichat/status`; an admin without the permission → 403.
+- [ ] The Chat card opens the chat; the model list shows only providers with keys.
 - [ ] Send "Write a table of three fruits and a JavaScript function": text streams with a cursor; the table and highlighted code render; **Thinking** appears collapsed with a duration (Claude only).
 - [ ] Copy copies the answer without the thinking; Copy thinking copies only the thinking; Copy code copies only the code.
 - [ ] Ask for a long answer, press Stop: it stops at once, shows "Stopped", the text so far stays after a reload.
@@ -72,7 +74,7 @@ Not tested: a real Claude / Gemini stream (the scripted test model is used), a h
 - [ ] Dark theme: text, code colours and buttons are readable.
 - [ ] Try `<script>alert(1)</script>`, `[x](javascript:alert(1))` and `<img src=x onerror=alert(1)>` in a message and ask the model to repeat them: they show as text.
 - [ ] Use up the budget on staging (lower `dailyTokenBudget` in the config there): a clear message with the reset time.
-- [ ] Turn the flag off: the chat disappears at once; turn it back on: conversations are still there.
+- [ ] Remove an admin's permission (Admin → AI team): their chat access stops at once; their conversations are kept.
 
 ## Rollback
 

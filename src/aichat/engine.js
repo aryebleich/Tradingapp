@@ -8,7 +8,6 @@ import Anthropic from '@anthropic-ai/sdk';
 import { one, all, run, now } from '../db.js';
 import { siteGet, siteSet, isOwner } from '../site.js';
 import { canonicalEmail } from '../auth.js';
-import { isOn, flagSettings } from '../flags.js';
 import { providers } from '../llm.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -25,9 +24,7 @@ export function clog(event, meta = {}) {
   console.warn(JSON.stringify({ at: new Date().toISOString(), src: 'aichat', event, ...safe }));
 }
 
-// ---------- switch and permission ----------
-export const FLAG = 'ai_team_chat';
-export const flagOn = user => !!flagSettings()[FLAG]?.on && isOn(FLAG, String(user?.id ?? ''));
+// ---------- permission ----------
 // "AI team chat" permission: the owner always has it; other admins only when the owner grants it.
 const granted = () => (siteGet('aiChatAllowed', []) || []).map(canonicalEmail);
 export function canChat(user) {

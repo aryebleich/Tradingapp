@@ -21,7 +21,7 @@ def layout(title, desc, body, lang='en', home='index.html', banner=''):
     rtl = lang == 'yi'
     nav = ''.join(f'<a href="{home}#{a}">{T(t)}</a>' for a, t in [('how', 'How it works'), ('strategies', 'Strategies'), ('sp500', 'S&amp;P 500'), ('pricing', 'Pricing'), ('faq', 'FAQ')])
     return f'''<!doctype html>
-<html lang="{lang}" dir="{'rtl' if rtl else 'ltr'}">
+<html lang="{lang}" dir="{'rtl' if rtl else 'ltr'}" class="lv2">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -39,8 +39,10 @@ def layout(title, desc, body, lang='en', home='index.html', banner=''):
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preload" as="font" type="font/woff2" href="fonts/inter-latin.woff2" crossorigin>
 <link rel="stylesheet" href="site.css?v={ver('site.css')}">
+<link rel="stylesheet" href="layout.css?v={ver('layout.css')}">
 <script defer src="config.js"></script>
 <script type="module" src="site.js?v={ver('site.js')}"></script>
+<script type="module" src="layout.js?v={ver('layout.js')}"></script>
 </head>
 <body>
 {f'<div class="topmsg" role="note">{banner}</div>' if banner else ''}<header class="top"><div class="wrap">
@@ -271,7 +273,7 @@ def panel(key, cls, inner, first):
 
 RISK = {'very high': 'neg', 'high': 'warn', 'medium': ''}
 
-def index(lang='en', v2=False):
+def index(lang='en'):
     LANG['cur'] = lang
     home = 'yi.html' if lang == 'yi' else 'index.html'
     chips = ''.join(tab(i, ic(k, 18) + f'<span>{T(c)}</span>', n == 0) for n, (i, c, k, t, d, b) in enumerate(INTENTS))
@@ -519,13 +521,13 @@ def index(lang='en', v2=False):
     title = T('Brightolio: trade and invest from one place')
     desc = T('A professional trading desk and a long-term investing plan on your own brokerage account: stocks, ETFs, options, futures, funds, bonds and savings, with automation and Reality Check. In English and Yiddish.')
     banner = T('<b>Trade today. Build wealth for decades.</b> One platform for both, on your own brokerage account.')
-    if v2: body = regroup(body)
+    body = regroup(body)
     return layout(title, desc, body, lang, home, banner)
 
 
-# ---------- homepage v2 (feature flag "home_v2", off by default) ----------
+# ---------- homepage: sections in the audited order ----------
 # The same sections in the audited order (AUDIT.md, Phase 2): Introduction, Products, Long-term
-# investing, Pricing, Education, Trust & compliance, Action. Section content is unchanged; v2 adds
+# investing, Pricing, Education, Trust & compliance, Action. Section content is unchanged; the order adds
 # one main button in the hero, a risk link beside each sign-up, and a Trust & compliance block made
 # only of the disclosure already on the site and links to its legal pages.
 V2_ORDER = ['hero', 'how', 'twoways', 'different', 'strategies', 'reality', 'demo', 'features', 'assistant', 'adreel', 'sp500', 'pricing', 'start', 'faq', 'trust', 'compliance', 'final']
@@ -542,12 +544,12 @@ def regroup(body):
     for c in parts:
         c = '<section' + c
         k = _key(c)
-        assert k and k not in chunks, ('homepage v2: unknown or repeated section', k)
+        assert k and k not in chunks, ('homepage: unknown or repeated section', k)
         chunks[k] = c
     # One main button in the hero; the other ways to sign up stay, smaller, under it.
     hero = chunks['hero']
     old = f'<div class="cta">{gbtn()}{ghbtn()}<a class="btn outline lg" data-app="#/register" href="app">{T("Start free with email")}</a></div>'
-    assert old in hero, 'homepage v2: hero buttons changed'
+    assert old in hero, 'homepage: hero buttons changed'
     hero = hero.replace(old, f'<div class="cta"><a class="btn lg" data-app="#/register" href="app" data-cta="hero_main">{T("Start free with $100,000 in practice money")}</a><a class="btn outline lg" href="#demo" data-cta="hero_demo">{T("Try the live demo")}</a></div>'
         f'<p class="altsign">{T("Or sign up with")} {gbtn("Google", "")}{ghbtn("GitHub", "")}</p>' + RISK_LINK())
     chunks['hero'] = hero
@@ -555,7 +557,7 @@ def regroup(body):
     chunks['final'] = chunks['final'].replace('<div class="startbox">', '<div class="startbox">' + RISK_LINK(), 1)
     chunks['compliance'] = COMPLIANCE()
     missing = [k for k in chunks if k not in V2_ORDER]
-    assert not missing, ('homepage v2: sections not placed', missing)
+    assert not missing, ('homepage: sections not placed', missing)
     return head + ''.join('\n' + chunks[k] for k in V2_ORDER if k in chunks)
 
 def RISK_LINK(cls=''):

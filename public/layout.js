@@ -1,7 +1,7 @@
-// Layout v2 (flag layout_v2), loaded only for visitors in the rollout. Presentation only: it wraps
-// wide tables in a scroll box, turns "Loading…" lines into skeletons (the words stay for screen
-// readers) and gives empty lists their next step. It never changes text, numbers, controls or what
-// a button does, and never touches forms, dialogs or the order ticket.
+// Layout layer (DESIGN_SYSTEM.md), loaded on every page. Presentation only: it wraps wide tables in a
+// scroll box, turns "Loading…" lines into skeletons (the words stay for screen readers), names a few
+// unlabeled links and fields, and gives empty lists their next step. It never changes text, numbers,
+// controls or what a button does, and never touches forms, dialogs or the order ticket.
 const SKIP = 'form, dialog, #tk, .ticket, #tradeBar, [data-no-layout]';
 const EMPTY = [
   [/^No positions\b/i, '#/trade', 'Go to Trade'],

@@ -39,7 +39,7 @@ const PREFETCH = window.parent !== window && new URLSearchParams(location.search
 if (PREFETCH) Object.assign(window, { alert: () => {}, confirm: () => false, prompt: () => null });
 const SWR = new Map(), SWR_SKIP = /^\/(auth|alpaca\/stream|notifications|admin\/agents|sponsored)/;
 const KEEP_KEY = 'qp_keep';
-let commsFor = null; // the user the SMS and voice drawer was started for (flag comms_drawer)
+let commsFor = null; // the user the SMS and voice drawer was started for
 let swrOn = false, swrRedraw = null, keepTimer = null;
 // Small saves (seen markers, settings of one area) only forget that area; anything else forgets all.
 const LIGHT = /^\/(prefs|learn\/ack|sponsored)\//;
@@ -150,10 +150,6 @@ function act(btn, fn, out) {
 }
 
 let ME = null, CFG = null;
-// Planning tools (src/tradetools): shown in the menu only when one of their flags is on for this user.
-let TOOLS_ON = false;
-const loadToolFlags = () => fetch('/api/tools/flags', { headers: { 'X-Requested-With': 'qp' } }).then(r => (r.ok ? r.json() : null)).then(f => { TOOLS_ON = !!f?.any; }).catch(() => { TOOLS_ON = false; });
-const withTools = gs => (TOOLS_ON ? gs.map(([g, it]) => (g === 'Trading tools' ? [g, [...it, ['tradetools', 'Planning tools']]] : [g, it])) : gs);
 try { if (new URLSearchParams(location.search).get('next') === 'handoff') sessionStorage.setItem('qp_next', 'handoff'); } catch {}
 // The user's display preferences (Settings → Portfolio numbers), loaded once after sign-in.
 const PREFS = { portfolio: { mode: 'live', hideToday: false }, chart: { mode: 'colorful', color: '#2563eb' }, loaded: false };
@@ -375,7 +371,7 @@ const CORE = [['dashboard', 'Home'], ['start', 'Get started'], ['trade', 'Trade'
 const BIZ_NAV = ['My business', [['business', 'Business dashboard'], ['invoices', 'Invoices & payments'], ['books', 'Bookkeeping'], ['bank', 'Bank & receipts'], ['inventory', 'Inventory'], ['payroll', 'Payroll'], ['bizreports', 'Financial reports']]];
 const NAV = [
   ['Investing', [['analyze', 'Stock & fund analyzer'], ['lowcost', 'Low-cost index & mutual funds'], ['earnings', 'Earnings vs expectations'], ['institutions', 'Institutional portfolios'], ['sp500', 'S&P 500 plan'], ['wealth', 'Investing toolkit'], ['robo', 'Automated portfolios'], ['longterm', 'Long-term view'], ['invest', 'Futures, funds & savings'], ['alpaca-tools', 'Bonds, rates & crypto'], ['tokenized', 'Tokenized securities'], ['values', 'Values investing'], ['spend', 'Invest as you spend']]],
-  ['Trading tools', [['chart', 'Chart'], ['options', 'Options desk'], ['optionslab', 'Options lab'], ['scanner', 'Scanner'], ['leaders', 'New leaders'], ['short', 'Short selling'], ['margin', 'Margin center'], ['calendar', 'Calendar & events'], ['execution', 'Execution & routing'], ['workspace', 'Workspace']]],
+  ['Trading tools', [['chart', 'Chart'], ['options', 'Options desk'], ['optionslab', 'Options lab'], ['scanner', 'Scanner'], ['leaders', 'New leaders'], ['short', 'Short selling'], ['margin', 'Margin center'], ['calendar', 'Calendar & events'], ['tradetools', 'Planning tools'], ['execution', 'Execution & routing'], ['workspace', 'Workspace']]],
   // Intelligence: research first (ask, read, follow the news), then AI predictions, then AI that trades.
   ['Intelligence', [['ai', 'AI assistant'], ['aitools', 'AI tools'], ['research', 'Plain-language research'], ['news', 'News & sentiment'], ['intel', 'Market intelligence'], ['aisignals', 'AI signals'], ['agents', 'Forecasts & AI agents'], ['aibots', 'AI bots'], ['agenthub', 'Agents & API']]],
   ['Automation', [['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['schedule', 'Scheduled trades'], ['rules', 'Rules across accounts'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['portfolios', 'Portfolios'], ['aifunds', 'AI hedge funds'], ['text', 'Text commands'], ['hotline', 'Phone hotline']]],
@@ -560,8 +556,8 @@ async function render(opts) {
   if (ME) {
     // Signing in for the Android app: back to the app once signed in here.
     if (sessionStorage.getItem('qp_next') === 'handoff') { sessionStorage.removeItem('qp_next'); location.href = '/api/auth/app-handoff'; return; }
-    await Promise.all([accounts(), loadPrefs(), loadExtras(), loadToolFlags()]); await defaultAccount();
-    const groups = withTools(ME.role === 'admin' ? [adminNav(), ...NAV] : NAV);
+    await Promise.all([accounts(), loadPrefs(), loadExtras()]); await defaultAccount();
+    const groups = ME.role === 'admin' ? [adminNav(), ...NAV] : NAV;
     if (EXTRAS.voice || $('#voiceBtn')) import('./pages/extras.js').then(m => m.voiceButton(shared)).catch(() => {});
     // Groups start folded; their arrow opens them (remembered). The group holding the current page opens.
     const opened = [...(() => { try { return JSON.parse(localStorage.getItem('qp_nav_open') || '[]'); } catch { return []; } })(), ...$$('#nav .grp.sec[aria-expanded="true"]').map(b => b.dataset.g)];
@@ -2073,7 +2069,7 @@ function addGear(view, route) {
   await (await import('./pages/extras.js')).settingsCard(shared, $('#set-extras .set-extras', view)).catch(e => console.warn('extras', e));
 }; }
 startBell(shared);
-// SMS and voice drawer (flag comms_drawer, off by default): the server is asked once per sign-in and
+// SMS and voice drawer (only for users who were given a number): the server is asked once per sign-in and
 // nothing is downloaded unless it says yes. Signing out removes the drawer and this browser's copy of the texts.
 const commsBoot = () => {
   if (!ME || commsFor === ME.id) return;

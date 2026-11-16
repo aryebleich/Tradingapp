@@ -1,6 +1,6 @@
 # Brightolio design system: layout v2
 
-The layout redesign is a thin layer on top of the existing design system, not a new one. Colours, fonts, radii, shadows and every component (cards, buttons, pills, segmented controls, tables, dialogs, the order ticket) are the ones already in `public/theme.css` (app) and `public/site.css` (public pages). Layout v2 adds the spacing and type scales, page widths, breakpoints and the rules below. They live in `public/layout.css` and `public/layout.js`, and apply only under `<html class="lv2">`, which the server adds for visitors in the `layout_v2` rollout.
+The layout redesign is a thin layer on top of the existing design system, not a new one. Colours, fonts, radii, shadows and every component (cards, buttons, pills, segmented controls, tables, dialogs, the order ticket) are the ones already in `public/theme.css` (app) and `public/site.css` (public pages). Layout v2 adds the spacing and type scales, page widths, breakpoints and the rules below. They live in `public/layout.css` and `public/layout.js`, and apply only under `<html class="lv2">`, which is part of every page.
 
 Rules for anyone adding a page:
 - Use these tokens and the existing components.
@@ -89,6 +89,6 @@ This is the existing pattern, which is kept:
 
 Layout v2 keeps the last disclosures clear of the tab bar (bottom padding plus the safe-area inset).
 
-## Turning it on and off
+## Always on
 
-The flag is `layout_v2` in Admin → SEO → Feature flags, set by percentage of visitors. Off serves the old layout at once. For the automatic staged rollout and rollback, see `src/layout-rollout.js` and DEPLOY_RECORD.md.
+The layout layer is part of every page (`<html class="lv2">`, `layout.css`, `layout.js`). There is no flag. It is checked on every merge by `test/layout/gate.sh` against the golden baseline (`test/golden/`).

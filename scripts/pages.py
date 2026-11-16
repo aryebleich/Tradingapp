@@ -171,9 +171,6 @@ INSURANCE = '''
 files = {
  'index.html': index('en'),
  'yi.html': index('yi').replace('&rarr;', '&larr;'),
- # Homepage v2 behind the "home_v2" flag (served only to visitors in its rollout).
- 'index-v2.html': index('en', v2=True),
- 'yi-v2.html': index('yi', v2=True).replace('&rarr;', '&larr;'),
  'terms.html': doc('Terms of Service', 'The terms that govern your use of Brightolio.', TERMS),
  'privacy.html': doc('Privacy Policy', 'What Brightolio collects, why, and your choices.', PRIVACY),
  'risk.html': doc('Risk Disclosure', 'Important information about trading risk, backtests and automation.', RISK),
@@ -187,7 +184,7 @@ files = {
 # points search engines there, so the two addresses never compete; the app's server replaces this
 # tag with its own (from PUBLIC_URL) when it serves the pages.
 SITE = 'https://app.brightolio.com'
-PATHS = {'index.html': '/', 'yi.html': '/yi', 'index-v2.html': '/', 'yi-v2.html': '/yi'}
+PATHS = {'index.html': '/', 'yi.html': '/yi'}
 def canonical(name, text):
     if name == '404.html': return text
     url = SITE + PATHS.get(name, '/' + name[:-5])
