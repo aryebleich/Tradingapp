@@ -52,7 +52,9 @@ const email = process.env.LAYOUT_OWNER_EMAIL || `layout-owner-${Date.now()}@exam
 await p0.goto(B + '/app#/register'); await p0.fill('input[name=email]', email); await p0.fill('input[name=password]', 'Str0ngPassword');
 await p0.check('input[name=agree]'); await p0.click('button:has-text("Create account")'); await p0.waitForSelector('#nav a', { state: 'attached' });
 await p0.goto(B + '/app#/account'); await p0.waitForSelector('#keysForm');
-await p0.fill('#keysForm [name=keyId]', 'LAYOUTKEY'); await p0.fill('#keysForm [name=secret]', 'S'); await p0.click('#keysForm button'); await p0.waitForSelector('#keysForm .ok');
+await p0.fill('#keysForm [name=keyId]', 'LAYOUTKEY'); await p0.fill('#keysForm [name=secret]', 'S'); await p0.click('#keysForm button');
+// Production mode refuses the mock's keys; the pages then show the paper account only (still compared).
+const keys = await p0.waitForSelector('#keysForm .ok', { timeout: 15000 }).then(() => 'connected', () => 'not connected (paper data only)'); console.log('broker keys:', keys);
 if (PAIR) {
   const r = await p0.evaluate(async () => (await fetch('/api/admin/site/flags', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ layout_v2: { on: true, pct: 50 } }) })).status);
   if (r !== 200) throw new Error('could not set the layout_v2 flag: ' + r);
