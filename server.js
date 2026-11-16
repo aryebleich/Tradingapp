@@ -82,6 +82,7 @@ import { institutionsRouter } from './src/institutions.js';
 import { roundupRouter } from './src/roundup.js';
 import { codeRouter } from './src/code.js';
 import * as N from './src/notify.js';
+import * as LR from './src/layout-rollout.js';
 import * as PAY from './src/payments.js';
 import { router as alpacaRouter } from './src/routes/alpaca.js';
 import { oauthCallback, oauthEnabled, tradingFor } from './src/alpaca/connections.js';
@@ -173,6 +174,8 @@ app.use((req, res, next) => {
 
 // Load shedding: under heavy load, optional work is refused first so trading stays responsive.
 app.use(shedMiddleware);
+// Layout redesign rollout: counts errors and failed order/payment attempts per layout (src/layout-rollout.js).
+app.use(LR.middleware);
 // Readiness for Kubernetes: a replica above 95% load stops taking new traffic until it recovers.
 app.get('/readyz', (req, res) => (relLoad() >= 0.95 ? res.status(503).json({ ready: false, load: relLoad() }) : res.json({ ready: true, load: +relLoad().toFixed(3) })));
 // Prometheus metrics (load, in-flight, shed requests, breakers, recommended replicas, order queue).
@@ -1304,6 +1307,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   process.on('unhandledRejection', e => { countUnhandled(); console.error('Unhandled promise rejection (server keeps running):', e?.stack || e); });
   const port = +process.env.PORT || 3000;
   const server = app.listen(port, () => console.log(`Brightolio on http://localhost:${port}`));
+  // Staged rollout of the layout redesign with automatic rollback (production only; LAYOUT_V2_AUTOSTART=0 skips it).
+  if (process.env.NODE_ENV === 'production' && process.env.LAYOUT_V2_AUTOSTART !== '0')
+    LR.start({ base: `http://127.0.0.1:${port}`, alert: async (subject, text) => { for (const to of auth.allAdminEmails()) await N.sendEmail(to, subject, text).catch(() => {}); } }).catch(e => console.error('[layout-rollout] start failed:', e.message));
   // Startup check: the same as GET /healthz/full, written to the log so a missing hosted database,
   // a failed migration or wrong paper/live servers are visible right after every deploy.
   setTimeout(async () => {
