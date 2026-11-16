@@ -6,7 +6,7 @@
 #   STAGING=1 bash test/layout/gate.sh  # production mode (NODE_ENV=production)
 set -euo pipefail
 cd "$(dirname "$0")/../.."
-OUT=${OUT:-e2e-output/layout-gate}; mkdir -p "$OUT"; PORT=${PORT:-3172}
+OUT=${OUT:-e2e-output/layout-gate}; mkdir -p "$OUT"; PORT=${PORT:-3195}
 if [ -n "${STAGING:-}" ]; then
   node -e "import('./test/mock-alpaca.js').then(async m=>{const s=await m.startMock();require('fs').writeFileSync('$OUT/mock.url',s.url);setInterval(()=>{},1e9)})" > /dev/null 2>&1 &
   MOCK=$!

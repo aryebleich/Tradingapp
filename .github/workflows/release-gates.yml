@@ -48,9 +48,9 @@ jobs:
       - name: End-to-end flows (sign-up, sign-in, deposit, orders in the sandbox, withdrawal)
         run: npm run e2e
       - name: Disclosures, figures, controls and accessibility, every page at four widths (test mode)
-        run: OUT=e2e-output/gate-test PORT=3191 bash test/layout/gate.sh
+        run: OUT=e2e-output/gate-test bash test/layout/gate.sh
       - name: The same on a production-mode build (staging)
-        run: STAGING=1 OUT=e2e-output/gate-staging PORT=3192 bash test/layout/gate.sh
+        run: STAGING=1 OUT=e2e-output/gate-staging bash test/layout/gate.sh
       - name: Browser suites (AI team chat, SMS and voice drawer, planning tools)
         run: npm run aichat:ui && npm run comms:ui && npm run tools:ui
       - name: Upload reports

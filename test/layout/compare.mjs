@@ -43,6 +43,10 @@ for (const pg of pages) for (const w of widths) {
     if (x.clipped && !d.clipped) fail.disclosure.push(`${at}: clipped "${d.text.slice(0, 60)}"`);
   }
   // Figures
+  // Numbers inside addresses and e-mails (the local server's port, the test account's timestamped e-mail) are
+  // not figures. Prices, fees, balances and P&L never sit inside a URL or an e-mail address.
+  const notFig = f => /https?:\/\/|localhost:\d|@[\w.-]+\.[a-z]{2,}/i.test(f.split('\t')[1] || '');
+  o.figures = o.figures.filter(f => !notFig(f)); n.figures = n.figures.filter(f => !notFig(f));
   const val = a => a.map(f => f.split('\t')[0]), ctx = (a, k) => a.find(f => f.startsWith(k + '\t'))?.split('\t')[1] || '';
   const of = multiset(val(o.figures)), nf = multiset(val(n.figures)), diff = [];
   for (const k of new Set([...of.keys(), ...nf.keys()])) if ((of.get(k) || 0) !== (nf.get(k) || 0)) diff.push(`${k} ${of.get(k) || 0}→${nf.get(k) || 0} ("${ctx(o.figures, k) || ctx(n.figures, k)}")`);
