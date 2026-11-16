@@ -262,10 +262,18 @@ export function limitOf(order) {
   if (order?.type !== 'limit') return null;
   const price = +order.limit_price;
   if (!(price > 0)) throw Object.assign(new Error('Enter the limit price'), { status: 400 });
-  return { price, tif: order.time_in_force === 'gtc' ? 'gtc' : 'day', extended: !!order.extended_hours };
+  return { price, tif: ['gtc', 'opg', 'cls'].includes(order.time_in_force) ? order.time_in_force : 'day', extended: !!order.extended_hours };
+}
+// Opening and closing auction orders (time in force 'opg' / 'cls') exist on Alpaca only, for whole shares.
+export function auctionOf(order, account) {
+  const tif = order?.time_in_force;
+  if (tif !== 'opg' && tif !== 'cls') return null;
+  if (!isAlpaca(account)) throw Object.assign(new Error('Opening and closing auction orders are available on Alpaca accounts only'), { status: 400 });
+  if (!(+order.qty > 0 && Number.isInteger(+order.qty))) throw Object.assign(new Error('Auction orders need a whole number of shares'), { status: 400 });
+  return tif;
 }
 async function sendOrder(userId, account, symbol, side, q, n, source, order) {
-  const lim = limitOf(order);
+  const lim = limitOf(order), auction = auctionOf(order, account);
   const expected = +order.expectedPrice > 0 ? +order.expectedPrice : null, signalAt = +order.signalAt || (expected ? now() : null);
   const intent = (brokerId, acct) => (expected || source !== 'web') && brokerId
     ? run('INSERT INTO order_intents (user_id, account, broker_order_id, symbol, side, expected_price, signal_at, source, at) VALUES (?,?,?,?,?,?,?,?,?)', userId, acct, String(brokerId), symbol, side, expected, signalAt, source, now()).catch(() => {}) : null;
@@ -294,7 +302,7 @@ async function sendOrder(userId, account, symbol, side, q, n, source, order) {
     if (lim && !(q > 0) && !(limQty > 0)) throw new Error('Amount is less than one share at the limit price');
     const body = lim
       ? { symbol, side, type: 'limit', limit_price: String(lim.price), time_in_force: lim.extended ? 'day' : lim.tif, qty: String(q > 0 ? q : limQty), ...(lim.extended ? { extended_hours: true } : {}) }
-      : { symbol, side, type: 'market', time_in_force: 'day', ...(q > 0 ? { qty: String(q) } : { notional: n.toFixed(2) }) };
+      : { symbol, side, type: 'market', time_in_force: auction || 'day', ...(q > 0 ? { qty: String(q) } : { notional: n.toFixed(2) }) };
     if (side === 'sell' && order.allowShort) {
       const held = +(await t.position(symbol).then(p => p.qty, () => 0)) || 0, want = q > 0 ? q : (lim ? limQty : n / (await lastPrice(symbol, userId)));
       if (want > Math.max(0, held) + 1e-9 && !(await marginOn(userId, account))) throw needMargin();

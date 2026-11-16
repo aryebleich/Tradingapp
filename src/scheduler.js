@@ -1,6 +1,7 @@
 // Background jobs: scheduled orders, auto-trading bots, price alerts, equity snapshots, monthly fees.
 import { one, all, run, now } from './db.js';
-import { nyTime, nextNyRun, extendedSession } from './time.js';
+import { nyTime, nextNyRun, extendedSession, stockSession, nextOpenAt, nextCloseAt } from './time.js';
+import { DEFAULT_GRACE_MIN, CLS_CUTOFF_BEFORE_CLOSE_MIN, OPG_CUTOFF_BEFORE_OPEN_MIN } from './schedule-plan.js';
 import { runExtraJobs } from './jobs.js';
 import { shabbosBlock } from './values.js';
 import { placeOrder, getBars, lastPrice, snapshotEquity, accountSummary, syncAlpacaFills } from './brokers.js';
@@ -27,7 +28,8 @@ export function nextRunAfter(t, repeat) {
   return d.getTime();
 }
 
-export const marketOpen = (t = now()) => { const n = nyTime(t); return !['Sat', 'Sun'].includes(n.weekday) && n.minutes >= 570 && n.minutes < 960; };
+// Regular session from the market calendar: weekends, holidays and early closes included.
+export const marketOpen = (t = now()) => stockSession(t);
 
 // Text message when the user has a verified phone, otherwise email.
 async function notify(userId, msg) {
@@ -46,27 +48,57 @@ export const nextRunOf = (o, after) => (o.run_minutes != null
 // Market orders run in the regular session (9:30-16:00 New York). Limit orders marked "extended
 // hours" on an Alpaca account may also run pre-market (from 4:00) and after hours (to 20:00).
 const canRunNow = (o, t) => marketOpen(t) || (o.extended && o.order_type === 'limit' && o.account !== 'paper' && extendedSession(t));
+const MIN = 60e3;
+// When a job's run window starts: its time, or the next open when the market is closed then. Auction
+// orders (Alpaca 'opg' / 'cls') are sent at their own time, before the broker's cut-off.
+export function windowStart(o, at = o.next_run) {
+  if (o.tif === 'opg' || o.tif === 'cls') return at;
+  return canRunNow(o, at) ? at : nextOpenAt(at);
+}
+// The latest moment a job may still be sent: its window start plus its grace window, and never past
+// the broker's auction cut-off.
+export function latestSend(o, start = windowStart(o)) {
+  let last = start + (o.grace_min ?? DEFAULT_GRACE_MIN) * MIN;
+  if (o.tif === 'cls') { const c = nextCloseAt(start); last = Math.min(last, c - CLS_CUTOFF_BEFORE_CLOSE_MIN * MIN); }
+  if (o.tif === 'opg') last = Math.min(last, nextOpenAt(start) - OPG_CUTOFF_BEFORE_OPEN_MIN * MIN);
+  return last;
+}
+export function orderOf(o) {
+  const order = { symbol: o.symbol, side: o.side, qty: o.qty, notional: o.notional };
+  if (o.order_type === 'limit' && o.limit_price > 0) Object.assign(order, { type: 'limit', limit_price: o.limit_price, time_in_force: 'day', ...(o.extended ? { extended_hours: true } : {}) });
+  if (o.tif === 'opg' || o.tif === 'cls') order.time_in_force = o.tif;
+  return order;
+}
 
 export async function runScheduledOrders(t = now()) {
   const due = await all('SELECT * FROM scheduled_orders WHERE active = 1 AND next_run <= ?', t);
   let ran = 0;
   for (const o of due) {
-    if (!canRunNow(o, t)) continue; // waits for the session; runs as soon as it opens
+    const start = windowStart(o);
+    if (t < start) continue; // waits for the session to open
+    const missed = t > latestSend(o, start);
+    if (!missed && o.tif !== 'opg' && !canRunNow(o, t)) continue;
     // Shabbos and Yom Tov (Values investing): the order waits and runs when it is over.
-    if (await shabbosBlock(o.user_id, t)) continue;
-    // Skip runs missed while the app was asleep instead of firing them all at once.
+    if (!missed && await shabbosBlock(o.user_id, t)) continue;
+    // A repeating order moves to its next time (runs missed while the app was asleep are skipped).
     let next = nextRunOf(o, o.next_run);
     while (next && next <= t) next = nextRunOf(o, next);
+    // Claimed with a conditional UPDATE: the in-process timer, the cron tick and a restart can never run it twice.
     const claim = await run('UPDATE scheduled_orders SET next_run = ?, active = ? WHERE id = ? AND next_run = ? AND active = 1', next ?? o.next_run, next ? 1 : 0, o.id, o.next_run);
     if (!claim.changes) continue;
+    if (missed) {
+      // Never sent late: the window was missed (the app was asleep or the broker's cut-off passed).
+      const late = Math.round((t - start) / MIN), result = `expired: not sent, ${late} min after its time (window ${o.grace_min ?? DEFAULT_GRACE_MIN} min)`;
+      await run('UPDATE scheduled_orders SET last_result = ? WHERE id = ?', result, o.id);
+      await notify(o.user_id, `Scheduled ${o.side} ${o.symbol} was not sent: its time passed ${late} min ago, more than its ${o.grace_min ?? DEFAULT_GRACE_MIN}-minute window.${next ? ' The next run is still scheduled.' : ''}`);
+      continue;
+    }
     ran++;
     let result;
     try {
-      const order = { symbol: o.symbol, side: o.side, qty: o.qty, notional: o.notional };
-      if (o.order_type === 'limit' && o.limit_price > 0) Object.assign(order, { type: 'limit', limit_price: o.limit_price, time_in_force: 'day', ...(o.extended ? { extended_hours: true } : {}) });
-      const r = await placeOrder(o.user_id, o.account, order, 'schedule');
+      const r = await placeOrder(o.user_id, o.account, orderOf(o), 'schedule');
       result = `${r.status}${r.price ? ' @ ' + r.price.toFixed(2) : ''}`;
-    } catch (e) { result = 'error: ' + e.message; }
+    } catch (e) { result = 'error: ' + e.message; } // recorded and notified, never retried blindly
     await run('UPDATE scheduled_orders SET last_result = ? WHERE id = ?', result, o.id);
     await notify(o.user_id, `Scheduled ${o.side} ${o.symbol}: ${result}`);
   }
