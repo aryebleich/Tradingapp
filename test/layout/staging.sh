@@ -18,7 +18,7 @@ SRV=$!
 trap 'kill $SRV $MOCK 2>/dev/null; rm -f /tmp/qp-staging-$$.db*' EXIT
 for i in $(seq 1 100); do curl -sf localhost:$PORT/healthz > /dev/null && break; sleep 0.3; done
 echo "staging up on http://localhost:$PORT (NODE_ENV=production)"
-LAYOUT_OWNER_EMAIL=layout-owner@example.com node test/layout/run.mjs --pair --base http://localhost:$PORT --out "$OUT" --jobs ${JOBS:-4}
+LAYOUT_OWNER_EMAIL=layout-owner@example.com node test/layout/run.mjs --pair --base http://localhost:$PORT --out "$OUT" --jobs ${JOBS:-4} ${ONLY:+--only $ONLY}
 node test/layout/compare.mjs "$OUT" || STATUS=1
 [ -n "${LIGHTHOUSE:-}" ] && { node test/layout/lighthouse.mjs --base http://localhost:$PORT --out "$OUT" --runs ${LH_RUNS:-3} || STATUS=1; }
 exit ${STATUS:-0}
