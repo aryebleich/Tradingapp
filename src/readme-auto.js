@@ -2,6 +2,49 @@
 // change: on each deploy they are merged into the stored README (Admin → README) between markers,
 // replacing the older version of the same section. Nothing here is secret (this file is in the
 // repository); keep keys, revenue figures and personal details in the README itself.
+// Shown first: what the owner still has to do (kept current by the code).
+export const TODO = { id: 'owner-todo', title: 'What you need to do', md: `
+Everything that is waiting on you, in order. This list is kept up to date by the code; tick things off by telling Claude they are done.
+
+### 1. Decisions only you can make (Admin → SEO → Open questions)
+- [ ] **Regulatory status**: the exact statement for the footer, and which Alpaca disclosures must appear (legal item L6).
+- [ ] **Alpaca referral**: is there a referral or payment arrangement? If yes it must be disclosed next to "we suggest Alpaca" (L1).
+- [ ] **Sources** for the "922% a year" backtest example (L3) and "about 10% a year since 1957" for the S&P 500 (L4), or say they should be relabelled or removed.
+- [ ] **Three bugs held back by the safety rules** (they touch money logic): BUG-003 practice margin race, BUG-004 AI refresh credits charged before it succeeds, BUG-005 options orders use the plain browser confirm. Say "fix BUG-003/004/005" and they will be fixed with tests.
+
+### 2. Legal sign-off before switching things on
+- [ ] Have LEGAL_REVIEW.md items L1 to L12 checked.
+- [ ] The new homepage (flag **home_v2**, Admin → SEO → Feature flags) stays off until L9 to L12 are approved. Then turn it on for 10% of visitors, then more.
+
+### 3. Merge the two finished branches (nothing is live until you do)
+- [ ] **feature/stripe-audit**: Stripe fixes (no duplicate charges, refunds and disputes reach the ledger, test payments kept out of revenue). Merge this one first.
+- [ ] **feature/comms-module**: the SMS and voice drawer, built on top of the Stripe branch, switched off by its flag.
+- Open a pull request for each on GitHub (or ask Claude to), check the tests are green, then merge. After merging, the docs folder has the details: STRIPE_AUDIT.md, STRIPE_TEST_PLAN.md, COMMS_SETUP.md, COMMS_ARCHITECTURE.md.
+
+### 4. Stripe, before taking real payments (after step 3)
+- [ ] In a test copy of the site: put a **test** key (starts sk_test_) in Admin → Keys and set STRIPE_TEST_ONLY=1.
+- [ ] Admin → Money & fees → Stripe → **Finish setup** (adds the new webhook events; it should show 13 events and "ready").
+- [ ] Run every step of docs/STRIPE_TEST_PLAN.md with Stripe's test cards.
+- [ ] Decide D1 to D5 in docs/STRIPE_AUDIT.md: newer API version, a refund button in Admin, take credits back on refund, what to do on a dispute, separate test and live databases.
+- [ ] Choose who answers disputes (each one sends an e-mail to the admins with the deadline).
+- [ ] Going live: live keys only in Render (or Admin → Keys), a live-mode webhook with its own secret, NODE_ENV=production, STRIPE_TEST_ONLY empty.
+
+### 5. SMS and voice drawer (only if you want it)
+- [ ] Open a Telnyx account; put TELNYX_API_KEY and TELNYX_PUBLIC_KEY in Admin → Keys.
+- [ ] Create a messaging profile and a voice (Call Control) application; point their webhooks at your site's /api/comms/webhooks/sms and /api/comms/webhooks/voice.
+- [ ] **Register for 10DLC** (brand and campaign) before any real texts: carriers block unregistered US traffic, and approval takes days to weeks.
+- [ ] For browser calls: a credential connection (TELNYX_CREDENTIAL_CONNECTION_ID), the Telnyx browser SDK saved as public/vendor/telnyx-webrtc.js, and a TURN server (TURN_URLS, TURN_SECRET).
+- [ ] Give each user a number (Admin API, see COMMS_SETUP.md), then turn the flag **comms_drawer** on for a small share of users.
+- [ ] The Telnyx names in the code were written without access to Telnyx's documentation: check them against developers.telnyx.com (or ask Claude once the docs can be reached) before the first real call.
+- [ ] Have the legal list in COMMS_ARCHITECTURE.md checked (consent, quiet hours by the recipient's time zone, call recording, record keeping, UK and EU). Leave call recording off until then.
+
+### 6. Keys and safety
+- [ ] ENCRYPTION_KEY is set in Render **and saved somewhere safe**. This README, saved keys and waiting texts are encrypted with it; if it changes, they cannot be read (this README would look empty: use Import below to bring the guide back).
+- [ ] After any test with a public tunnel (ngrok, Cloudflare), change the keys that were used.
+
+### 7. So Claude can check the official documentation
+- [ ] docs.stripe.com and developers.telnyx.com were added to this project's allowed sites, but Claude's reader still could not open them. If you want answers checked against the live docs, look at the environment's network settings in Claude (or paste the page).
+` };
 export const SECTIONS = [
   { id: 'owner-faq', title: 'Owner questions and answers', md: `
 ### 1. How do I connect to the real servers where the trades go?
@@ -171,6 +214,7 @@ export function mergeSections(text, top = null) {
     else out = `${out.trimEnd()}\n\n${block}\n`;
   };
   if (top) put('overview', 'Product overview', top, true);
+  put(TODO.id, TODO.title, TODO.md, true); // above everything else, right under the title
   for (const s of SECTIONS) put(s.id, s.title, s.md, false);
   return out;
 }

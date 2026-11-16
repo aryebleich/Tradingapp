@@ -146,7 +146,7 @@ test('the private README starts with a full, generated product overview', async 
   for (const s of ['Portfolio & risk', 'Plain-language research', 'Tokenized securities', 'Investor protection', 'AI team', 'Ultimate', 'Finnhub', 'ai-agent.yml']) assert.ok(md.includes(s), s);
   assert.doesNotMatch(md, /sk-|ghp_|BEGIN PRIVATE/); // names of keys only
   const once = mergeSections('# Guide\n\nHello\n', md);
-  assert.match(once, /^# Guide\n\n<!-- auto:overview -->\n## Product overview/);
+  assert.match(once, /^# Guide\n\n<!-- auto:owner-todo -->\n## What you need to do[\s\S]*?<!-- \/auto:owner-todo -->\n\n<!-- auto:overview -->\n## Product overview/);
   const twice = mergeSections(once, md.replace('Tokenized', 'Tokenised'));
   assert.equal(twice.split('<!-- auto:overview -->').length, 2); // replaced, not added again
   assert.ok(twice.includes('Tokenised securities')); assert.ok(twice.includes('Hello'));

@@ -347,17 +347,20 @@ adminSiteRouter.put('/ai', wrap(async (req, res) => {
 // FULL_README_REF: the last commit whose README.md had the whole guide, to import it once.
 export const FULL_README_REF = 'cfdd4ed96a7b9f400821ba15b07d3101a19ff144';
 const readme = async () => {
-  const r = S.siteGet('privateReadme', null);
-  if (!r) return null;
+  // Nothing saved yet, or the saved copy cannot be read (for example ENCRYPTION_KEY changed): the README
+  // still shows everything that comes with the code (the owner's to-do list first), never a blank page.
+  const r = S.siteGet('privateReadme', null) || {};
   const { tryDecrypt } = await import('./crypto.js');
-  let text = tryDecrypt(r.enc, 'private README') ?? '';
+  let text = (r.enc && tryDecrypt(r.enc, 'private README')) || '';
+  if (r.enc && !text) r.unreadable = true;
+  if (!text) text = '# Brightolio: private README\n';
   // Once: shorter (finished setup steps and old change lists out), then kept short by the code.
   if (text && r.tidied !== 3) { const { tidy } = await import('./readme-auto.js'); text = tidy(text); await saveReadme(text, { tidied: 3 }).catch(() => {}); }
   // Sections that come with the code (src/readme-auto.js) are kept current with every change.
   const { mergeSections, organize } = await import('./readme-auto.js'), { overviewMd } = await import('./readme-overview.js');
   // Then put in order: nothing said twice (organize), every time it is read and at every start.
-  const top = await overviewMd().catch(() => null), merged = text ? organize(mergeSections(text, top)) : text;
-  if (merged !== text) await saveReadme(merged).catch(() => {});
+  const top = await overviewMd().catch(() => null), merged = organize(mergeSections(text, top));
+  if (merged !== text && !r.unreadable) await saveReadme(merged).catch(() => {}); // an unreadable copy is kept, so a restored key can still open it
   return { ...r, text: merged };
 };
 // On start (every deploy): bring the stored README up to date with this version of the code.

@@ -38,7 +38,10 @@ test('the public README is for search; the private one is edited and imported in
     const owner = s.client(); await owner.signup('site-owner@example.com');
     const guest = s.client(); await guest.signup('readme-guest@example.com');
     assert.equal((await guest('/admin/site/readme')).status, 403);
-    assert.equal((await owner('/admin/site/readme')).body.text, '');
+    // Before anything is saved the README already shows the sections that come with the code, the owner's to-do list first.
+    const empty = (await owner('/admin/site/readme')).body.text;
+    assert.ok(empty.startsWith('# Brightolio: private README\n\n<!-- auto:owner-todo -->\n## What you need to do'), empty.slice(0, 120));
+    assert.match(empty, /<!-- auto:overview -->/); assert.match(empty, /Register for 10DLC/);
     // Import the last full guide (no token: the public raw file); plan-price comparisons are not part of it.
     const imp = await owner('/admin/site/readme/import', {});
     assert.equal(imp.status, 200, JSON.stringify(imp.body));
@@ -51,7 +54,7 @@ test('the public README is for search; the private one is edited and imported in
     // The README keeps the owner's text and gains the sections that come with the code (readme-auto.js),
     // with the generated Product overview right under the title.
     const rt = (await owner('/admin/site/readme')).body.text;
-    assert.ok(rt.startsWith('# Edited\n\n<!-- auto:overview -->\n## Product overview')); assert.match(rt, /<!-- \/auto:overview -->\n\nNew text\./); assert.match(rt, /<!-- auto:owner-faq -->/);
+    assert.ok(rt.startsWith('# Edited\n\n<!-- auto:owner-todo -->\n## What you need to do'), rt.slice(0, 120)); assert.match(rt, /<!-- \/auto:owner-todo -->\n\n<!-- auto:overview -->\n## Product overview/); assert.match(rt, /<!-- \/auto:overview -->\n\nNew text\./); assert.match(rt, /<!-- auto:owner-faq -->/);
     // A large guide fits.
     assert.equal((await owner('/admin/site/readme', { text: 'x'.repeat(300e3) }, 'PUT')).status, 200);
     await owner('/admin/site/readme', { text: '# Edited\n\nNew text.' }, 'PUT');

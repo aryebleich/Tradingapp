@@ -10,11 +10,14 @@ export function registerStudio(routes, helpers) {
 const pc = (v, d = 1) => (v == null || !Number.isFinite(+v) ? '-' : `${v > 0 ? '+' : ''}${(+v).toFixed(d)}%`);
 
 // Minimal Markdown for assistant replies: escaped text with bold, code, links, lists and tables.
+// Its own escaping, so the README page can use md() before the studio page has ever been opened.
+const escHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export function md(src) {
-  const inline = s => H.esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  const inline = s => escHtml(String(s).replace(/^\[ \] /, '☐ ').replace(/^\[x\] /i, '☑ ')).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
   const out = [], lines = String(src || '').split('\n');
   for (let i = 0; i < lines.length; i++) {
     const l = lines[i];
+    if (/^\s*<!--.*-->\s*$/.test(l)) continue; // section markers kept by the code, not for reading
     if (/^\s*\|.*\|\s*$/.test(l) && /^\s*\|[\s:|-]+\|\s*$/.test(lines[i + 1] || '')) {
       const row = r => r.trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim());
       const head = row(l); i += 2; const body = [];
