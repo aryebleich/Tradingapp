@@ -243,6 +243,7 @@ export async function runDueJobs(t = now()) {
   if (marketOpen(t) && t - lastAlerts > 5 * 60e3) { lastAlerts = t; await runAlerts(); }
   // Library strategies: automatic rebalances, trailing stops, and the after-close record for Reality Check.
   out.strategies = await runAuto(t, claimOnce).catch(e => (console.error('strategies', e), 0));
+  out.playbooks = await (await import('./playbooks.js')).runPlaybooks(t, claimOnce).catch(e => (console.error('playbooks', e), 0));
   out.pairs = await runPairBots(t, claimOnce).catch(e => (console.error('pairs', e), 0));
   if (marketOpen(t) && t - lastStops > 5 * 60e3) { lastStops = t; await checkStops(t).catch(e => console.error('strategy stops', e)); }
   if (n.minutes >= 975 && !['Sat', 'Sun'].includes(n.weekday) && await claimOnce('strategydays:' + n.day)) await recordDaily(t).catch(e => console.error('strategy days', e));

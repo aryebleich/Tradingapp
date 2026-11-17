@@ -53,6 +53,23 @@ Choices and assumptions made without asking, with the reason. Trading-tools work
 | D-19 | Position sizes round down to whole lots with a tiny tolerance (1e-9) so floating-point results like 9.999999999 count as 10. | Shown by a test; never rounds up past the risk budget. |
 | D-20 | Backtests and simulations: none were added. The tools only calculate from user inputs and read-only prices. | Rule 5 needs no new handling here. |
 
+## Standing checks and Playbooks (2026-11-17)
+
+- C-1: Check 1 is the workflow named "CI" (web-ci.yml): changed .js/.mjs syntax, the tests picked by scripts/ci-select.mjs (tests importing a changed module or touched test files, plus core, security, health, and order/money/auth/payment tests when those files change; the whole suite when package.json, the lockfile, server.js or src/db.js change), security and clean checks, and scripts/boot-check.mjs (server.js against the mock broker, /healthz).
+- C-2: The full e2e left Check 1 (it takes ~12 minutes) and runs in the deep check; e2e.yml still runs on push in parallel and does not gate the deploy.
+- C-3: deploy.yml reverts the deployed commit on main (a new revert commit, never a force-push) and opens an issue when the live /healthz/routing check fails; it never reverts a revert, and starts CI on the revert because workflow-token pushes start no workflows.
+- C-4: deep-check.yml runs after "Deploy to Render" succeeds on main: full tests, e2e, npm audit (high), then the Claude Code bug hunt over the diff since the last commit tagged deep-checked-*; one at a time (concurrency group), skipped when a newer commit is on main, stops with an issue after 3 Deepfix/Autofix commits in a row, writes BUG_REPORT.md.
+- P-1: Block-based strategies are called "Playbooks". They are stored in user_strategies with template_id 'playbook' (no new table), so they share the engine, Reality Check, trailing stops, strategy_runs and the daily model record.
+- P-2: One JSON format (src/rotation/playbook-core.js) for the editor, the AI builder, the backtester (engine.js kind 'playbook') and the executor; conditions use only the indicators in src/rotation/indicators.js; a vote condition ("k of n") keeps the existing designs convertible.
+- P-3: Validation lists every problem at once; a ticker is "real" when price history loads for it (unknown tickers are rejected before saving AI output or deploying).
+- P-4: Versions are a JSON column (user_strategies.versions, last 50); deploy and publish need a backtest of the current version.
+- P-5: Playbooks run 20 minutes before each day's real close (13:00 on early-close days), never in the last 5 minutes, at most once a day (claim key playbook:<id>:<day>); a rebalance day the server slept through is logged as expired and the user notified the next morning; nothing is ever traded late.
+- P-6: The old strategy runner (runAuto) and the strategies list skip Playbooks, so nothing runs twice and the strategies page shows only its own kinds.
+- P-7: Copies of ready-made or shared Playbooks follow real accounts by approval unless the business runs in adviser mode, the same rule as the ready-made strategies.
+- P-8: The library seed is the public blueprints with their example tickers, converted to Playbooks; pullback and macro designs have no Playbook equivalent and are left out; the owner-only original strategies are never published.
+- P-9: Three reports from different people hide a library entry until an admin restores or unpublishes it.
+- P-10: Discovery filters on backtested drawdown (low 15%, medium 30%, high any; 5 points tighter under 3 years) and leaves out leveraged funds unless risk is high; it is labelled education, not advice.
+
 ## Scheduled trades (2026-11-16)
 
 - S-1: US market calendar computed from the NYSE rules (holidays, observed days, 13:00 early closes, a list for unscheduled closures) in src/market-calendar.js, so no yearly table needs updating; used by the session checks, repeats, "before the close", "next open" and the date picker.

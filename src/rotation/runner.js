@@ -176,7 +176,7 @@ export async function execute(s, userId, { overrides, kind = 'manual' } = {}) {
   if (s.spec.kind === 'pullback') state.held = Object.fromEntries(Object.keys(w.weights).map(t => [t, s.state.held?.[t] || w.day]));
   const summary = todo.length ? results.map(r => `${r.ok ? '' : '✗ '}${r.side.toUpperCase()} ${r.qty} ${r.ticker}`).join(', ') : 'No change: holdings already match the targets';
   await run('UPDATE user_strategies SET state = ?, last_run = ?, last_result = ? WHERE id = ?', JSON.stringify(state), w.day, JSON.stringify({ weights: w.weights, summary, at: now() }), s.id);
-  await run('INSERT INTO strategy_runs (strategy_id, user_id, kind, summary, detail, at) VALUES (?,?,?,?,?,?)', s.id, userId, kind, summary, JSON.stringify({ weights: w.weights, results }), now());
+  await run('INSERT INTO strategy_runs (strategy_id, user_id, kind, summary, detail, at) VALUES (?,?,?,?,?,?)', s.id, userId, kind, summary, JSON.stringify({ weights: w.weights, results, ...(w.trace ? { trace: w.trace } : {}) }), now());
   return { ...w, results, summary };
 }
 
@@ -193,7 +193,8 @@ export { nyNow };
 export async function runAuto(t = now(), claim) {
   const n = nyNow(t);
   if (n.weekend) return 0;
-  const rows = (await all("SELECT * FROM user_strategies WHERE mode IN ('auto', 'approve')")).map(parse);
+  // Playbooks have their own run before the close (src/playbooks.js runPlaybooks).
+  const rows = (await all("SELECT * FROM user_strategies WHERE mode IN ('auto', 'approve') AND COALESCE(template_id, '') != 'playbook'")).map(parse);
   let ran = 0;
   for (const s of rows) {
     if (!s.ready || n.minutes < s.runAt || n.minutes > 960 || !isRebalanceDay(s.spec, n.day)) continue;

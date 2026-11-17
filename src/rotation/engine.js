@@ -3,6 +3,7 @@ import { getBars } from '../brokers.js';
 import { series, dailyVol, suggestedStop } from './indicators.js';
 import { metricLabel } from './templates.js';
 import { metrics } from '../engine.js';
+import { evaluate as evalPlaybook, tickers as playbookTickers } from './playbook-core.js';
 
 // ---------- market data ----------
 
@@ -59,6 +60,7 @@ const fmt = v => (Number.isFinite(v) ? (Math.abs(v) >= 100 ? v.toFixed(2) : v.to
 const where = to => (!to ? '-' : to.startsWith('@') ? `BUY ${to.slice(1)}` : `step ${to}`);
 
 export function tickersOf(spec) {
+  if (spec.kind === 'playbook') return [...new Set([...playbookTickers(spec), 'SPY'])];
   const out = new Set();
   const add = m => { if (Array.isArray(m)) out.add(m[1]); };
   const leaf = to => { if (typeof to === 'string' && to.startsWith('@')) out.add(to.slice(1)); };
@@ -122,6 +124,7 @@ export function decide(spec, mkt, opts = {}) {
   const ov = opts.overrides || {}, date = opts.date;
   const val = m => (typeof m === 'number' ? m : ov[keyOf(m)] !== undefined && ov[keyOf(m)] !== '' ? +ov[keyOf(m)] : mkt.value(m, date));
   const p = spec.params || {};
+  if (spec.kind === 'playbook') return evalPlaybook(spec, val, t => { const c = mkt.closes(t), i = mkt.idx(t, date); return i < 0 ? [] : c.slice(0, i + 1); });
   if (spec.kind === 'tree') {
     const weights = {}, sleeves = [];
     for (const sl of spec.sleeves) {
@@ -210,20 +213,22 @@ export const stopsFor = (tickers, mkt) => Object.fromEntries(tickers.map(t => { 
 // ---------- backtest ----------
 
 // Decides at each close and earns the next day's return; `costBps` per unit of turnover.
-export function backtest(spec, mkt, { years = 5, costBps = 5 } = {}) {
+// `slippageBps` is added to `costBps` on every unit of turnover; `benchmark` defaults to SPY.
+export function backtest(spec, mkt, { years = 5, costBps = 5, slippageBps = 0, benchmark = 'SPY', isDue = null } = {}) {
   const cal = mkt.calendar('SPY');
+  const bench = mkt.has(benchmark) ? benchmark : 'SPY';
   if (cal.length < 300) throw new Error('Not enough price history to backtest');
   // Start once every ticker the rules read has enough history (trees), or after a year (lists).
   const firstIdx = t => (mkt.has(t) ? Math.max(0, mkt.idx('SPY', mkt.calendar(t)[0])) : 0);
-  const need = spec.kind === 'tree' ? Math.max(0, ...tickersOf(spec).map(firstIdx)) + 210 : 260;
+  const need = spec.kind === 'tree' || spec.kind === 'playbook' ? Math.max(0, ...tickersOf(spec).map(firstIdx)) + 210 : 260;
   let from = Math.max(need, cal.length - Math.round(years * 252) - 1);
   if (from >= cal.length - 30) throw new Error('Not enough overlapping history for these tickers');
   const eq = [10000], bh = [10000], dates = [cal[from]], hist = [];
   let w = {}, state = { held: {} };
-  const spy0 = mkt.price('SPY', cal[from]);
+  const spy0 = mkt.price(bench, cal[from]);
   for (let i = from; i < cal.length - 1; i++) {
     const day = cal[i], next = cal[i + 1];
-    if (isRebalanceDay(spec, day) || i === from) {
+    if ((isDue ? isDue(day) : isRebalanceDay(spec, day)) || i === from) {
       let d;
       try { d = decide(spec, mkt, { date: day, state, today: day }); } catch { d = { weights: w }; }
       if (spec.kind === 'pullback') {
@@ -231,9 +236,9 @@ export function backtest(spec, mkt, { years = 5, costBps = 5 } = {}) {
         for (const t of Object.keys(d.weights)) held[t] = state.held[t] || day;
         state = { held };
       }
-      const nw = d.complete === false && spec.kind === 'tree' ? w : d.weights;
+      const nw = d.complete === false && (spec.kind === 'tree' || spec.kind === 'playbook') ? w : d.weights;
       const turnover = [...new Set([...Object.keys(w), ...Object.keys(nw)])].reduce((a, t) => a + Math.abs((nw[t] || 0) - (w[t] || 0)), 0);
-      eq[eq.length - 1] *= 1 - turnover * costBps / 1e4;
+      eq[eq.length - 1] *= 1 - turnover * (costBps + slippageBps) / 1e4;
       if (JSON.stringify(nw) !== JSON.stringify(w)) hist.push({ day, weights: nw });
       w = nw;
     }
@@ -243,13 +248,13 @@ export function backtest(spec, mkt, { years = 5, costBps = 5 } = {}) {
       if (Number.isFinite(a) && Number.isFinite(b) && a > 0) r += wt * (b / a - 1);
     }
     eq.push(eq[eq.length - 1] * (1 + r));
-    bh.push(10000 * mkt.price('SPY', next) / spy0);
+    bh.push(10000 * mkt.price(bench, next) / spy0);
     dates.push(next);
   }
   const step = Math.max(1, Math.floor(eq.length / 300));
   const daily = eq.slice(1).map((v, i) => v / eq[i] - 1);
   return {
-    m: metrics(eq), bh: metrics(bh), from: dates[0], to: dates[dates.length - 1], days: eq.length - 1, switches: hist.length,
+    m: metrics(eq), bh: metrics(bh), benchmark: bench, from: dates[0], to: dates[dates.length - 1], days: eq.length - 1, switches: hist.length,
     curve: eq.filter((_, i) => i % step === 0 || i === eq.length - 1), bhCurve: bh.filter((_, i) => i % step === 0 || i === bh.length - 1),
     dates: dates.filter((_, i) => i % step === 0 || i === dates.length - 1), lastSwitches: hist.slice(-12).reverse(),
     dailyStats: { mean: daily.reduce((a, b) => a + b, 0) / (daily.length || 1), sd: Math.sqrt(daily.reduce((a, b) => a + b * b, 0) / (daily.length || 1) - (daily.reduce((a, b) => a + b, 0) / (daily.length || 1)) ** 2) },

@@ -72,7 +72,7 @@ router.get('/margin', async (req, res) => { const m = await marginMultiple(req.u
 router.get('/originals', (req, res) => { if (req.user.role !== 'admin') throw bad('Admin only', 403); res.json(TEMPLATES.map(t => ({ ...t, blueprint: BLUEPRINTS.find(b => b.original === t.id)?.name || null }))); });
 // Strategies people chose to publish: the rules and tickers, never the owner, the account or the money.
 router.get('/community', async (req, res) => {
-  const rows = (await all('SELECT * FROM user_strategies WHERE public = 1 ORDER BY published_at DESC LIMIT 100')).map(parse);
+  const rows = (await all("SELECT * FROM user_strategies WHERE public = 1 AND COALESCE(template_id, '') != 'playbook' ORDER BY published_at DESC LIMIT 100")).map(parse);
   res.json(rows.map(s => ({ id: s.id, name: s.name, notes: s.notes, kind: s.design?.kind, rebalance: s.design?.rebalance, by: publicName(s.userId), mine: s.userId === req.user.id, publishedAt: s.publishedAt,
     tickers: s.design?.slots ? Object.values(s.design.slots).map(x => x.ticker).filter(Boolean) : [...(s.design?.lists?.etf || []), ...(s.design?.lists?.lev || [])].slice(0, 12),
     backtest: s.state.bt ? { cagr: s.state.bt.cagr, dd: s.state.bt.dd, years: s.state.bt.years } : null })));
@@ -87,7 +87,7 @@ router.post('/community/:id/copy', async (req, res) => {
 });
 
 router.get('/', async (req, res) => {
-  const rows = (await all('SELECT * FROM user_strategies WHERE user_id = ? ORDER BY id', req.user.id)).map(parse);
+  const rows = (await all("SELECT * FROM user_strategies WHERE user_id = ? AND COALESCE(template_id, '') != 'playbook' ORDER BY id", req.user.id)).map(parse);
   const list = await Promise.all(rows.map(async s => {
     const rc = s.ready ? await realityFor(s) : { status: 'learning', days: 0 };
     return { id: s.id, templateId: s.templateId, name: s.name, kind: s.design?.kind, ready: s.ready, missing: s.missing, public: s.public, account: s.account, allocation: s.allocation, mode: s.mode, lastRun: s.lastRun, lastResult: s.lastResult, reality: { status: rc.status, days: rc.days, winRate: rc.winRate, cumReturn: rc.cumReturn, throttle: rc.throttle } };
