@@ -103,6 +103,9 @@ export function ruleDraft(prompt) {
   if (!tick.length) tick = /bond/i.test(text) ? ['SPY', 'AGG'] : ['SPY', 'QQQ', 'AGG'];
   const reb = /daily|every day/i.test(text) ? 'daily' : /weekly|every week/i.test(text) ? 'weekly' : /quarter/i.test(text) ? 'quarterly' : 'monthly';
   const ma = text.match(/(\d{2,3})[- ]?day/i);
+  // Tickers named only in the trend rule (the signal and the fallback) are not holdings.
+  const trendRule = ma && /average|trend|sma/i.test(text);
+  if (trendRule) { const rest = tick.filter(t => !['SPY', 'BIL'].includes(t) || !new RegExp(`\\b${t}\\b[^.]*\\b(above|below|average|otherwise)|otherwise[^.]*\\b${t}\\b`, 'i').test(text)); if (rest.length) tick = rest; }
   let root = { type: 'group', name: 'Holdings', weighting: /volatil|risk parity/i.test(text) ? 'invvol' : 'equal', children: tick.map(t => ({ type: 'asset', ticker: t })) };
   const top = text.match(/top (\d+)/i);
   if (top && tick.length > +top[1]) root = { type: 'filter', name: 'Strongest', metric: ['ret', 63], select: 'top', count: +top[1], weighting: 'equal', children: tick.map(t => ({ type: 'asset', ticker: t })) };

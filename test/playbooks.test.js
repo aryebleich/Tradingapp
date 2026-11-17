@@ -245,3 +245,10 @@ test('discovery: three answers, matching examples with reasons, framed as educat
   const hi = await c('/playbooks/discover', { goal: 'growth', risk: 'high', horizon: 'long' });
   assert.ok(hi.body.matches.length >= 1);
 });
+
+test('AI fallback draft: tickers named only in the trend rule are not held', () => {
+  const d = PB.ruleDraft('Hold QQQ and XLV equally while SPY is above its 200-day average, otherwise BIL.');
+  assert.equal(d.playbook.root.type, 'if');
+  assert.deepEqual(d.playbook.root.then.children.map(c => c.ticker), ['QQQ', 'XLV']);
+  assert.equal(d.playbook.root.else.ticker, 'BIL');
+});

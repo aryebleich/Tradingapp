@@ -1305,3 +1305,21 @@ ul.runs { list-style: none; margin: 0; padding: 0; font-size: 13px; }
 ul.runs li { margin: 2px 0; }
 td details summary { cursor: pointer; font-size: 12.5px; color: var(--mu); }
 td.nowrap { white-space: nowrap; }
+/* ---------- Playbooks editor (public/pages/playbooks.js) ---------- */
+.pb-tree { margin: 10px 0; }
+.pb-block { border: 1px solid var(--bd); border-radius: 10px; padding: 8px 10px; margin: 6px 0; background: var(--card); min-width: 0; }
+.pb-block:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
+.pb-block .pb-block { margin-left: 4px; }
+.pb-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.pb-btns { margin-left: auto; display: flex; gap: 4px; }
+.pb-grip { cursor: grab; color: var(--mu); user-select: none; }
+.pb-body { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin-top: 6px; }
+.pb-body > .pb-kids, .pb-body > .pb-branch, .pb-body > .pb-add, .pb-body > .pb-cond { flex-basis: 100%; }
+.pb-kids { border-left: 3px solid var(--bd); padding-left: 8px; min-height: 28px; }
+.pb-branch > .mu { font-size: 12.5px; }
+.pb-if { border-color: var(--ac); }
+.pb-over { background: var(--acs); }
+.pb-metric { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.pb-outline { margin: 6px 0; }
+@media (max-width: 640px) { .pb-block .pb-block { margin-left: 0; } .pb-kids { padding-left: 5px; } }
+.pb-metric select, .pb-metric input, .pb-cond > select, .pb-body select { width: auto; max-width: 100%; }

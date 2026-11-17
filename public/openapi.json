@@ -1,0 +1,685 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "Brightolio API",
+  "version": "1.0.0",
+  "description": "Playbooks, history, previews and accounts. Authorization: Bearer bk_… (Settings → Developer API). Scopes: read (default), write, trade. Orders go through the same checks as the website; real-money deploy, resume, rebalance and close are refused over the API (the website asks you to confirm it is you). Backtests are hypothetical; past results do not predict future returns. Trading involves risk of loss."
+ },
+ "servers": [
+  {
+   "url": "/api/v1"
+  }
+ ],
+ "components": {
+  "securitySchemes": {
+   "key": {
+    "type": "http",
+    "scheme": "bearer",
+    "description": "Personal API key, bk_…"
+   }
+  },
+  "schemas": {
+   "Metric": {
+    "description": "[fn, TICKER, length] with fn one of rsi, sma, close, ret, avgret, stdev, high, pstdev; or a number",
+    "oneOf": [
+     {
+      "type": "array"
+     },
+     {
+      "type": "number"
+     }
+    ]
+   },
+   "Cond": {
+    "type": "object",
+    "description": "{a, op, b} or {need, of: [Cond]}",
+    "properties": {
+     "a": {
+      "$ref": "#/components/schemas/Metric"
+     },
+     "op": {
+      "enum": [
+       ">",
+       "<",
+       ">=",
+       "<="
+      ]
+     },
+     "b": {
+      "$ref": "#/components/schemas/Metric"
+     },
+     "need": {
+      "type": "integer"
+     },
+     "of": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/Cond"
+      }
+     }
+    }
+   },
+   "Block": {
+    "type": "object",
+    "required": [
+     "type"
+    ],
+    "properties": {
+     "type": {
+      "enum": [
+       "asset",
+       "cash",
+       "group",
+       "if",
+       "filter"
+      ]
+     },
+     "ticker": {
+      "type": "string"
+     },
+     "weight": {
+      "type": "number",
+      "description": "percent, when the parent uses specified weights"
+     },
+     "name": {
+      "type": "string"
+     },
+     "weighting": {
+      "enum": [
+       "equal",
+       "specified",
+       "invvol"
+      ]
+     },
+     "children": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/Block"
+      }
+     },
+     "cond": {
+      "$ref": "#/components/schemas/Cond"
+     },
+     "then": {
+      "$ref": "#/components/schemas/Block"
+     },
+     "else": {
+      "$ref": "#/components/schemas/Block"
+     },
+     "metric": {
+      "type": "array",
+      "description": "[fn, length] to rank by"
+     },
+     "select": {
+      "enum": [
+       "top",
+       "bottom"
+      ]
+     },
+     "count": {
+      "type": "integer"
+     }
+    }
+   },
+   "Playbook": {
+    "type": "object",
+    "required": [
+     "root"
+    ],
+    "properties": {
+     "kind": {
+      "const": "playbook"
+     },
+     "version": {
+      "const": 1
+     },
+     "rebalance": {
+      "enum": [
+       "daily",
+       "weekly",
+       "monthly",
+       "quarterly"
+      ]
+     },
+     "weekday": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+     },
+     "benchmark": {
+      "type": "string",
+      "default": "SPY"
+     },
+     "root": {
+      "$ref": "#/components/schemas/Block"
+     }
+    }
+   },
+   "Create": {
+    "type": "object",
+    "required": [
+     "playbook"
+    ],
+    "properties": {
+     "name": {
+      "type": "string"
+     },
+     "notes": {
+      "type": "string"
+     },
+     "playbook": {
+      "$ref": "#/components/schemas/Playbook"
+     }
+    }
+   },
+   "Update": {
+    "type": "object",
+    "properties": {
+     "name": {
+      "type": "string"
+     },
+     "notes": {
+      "type": "string"
+     },
+     "note": {
+      "type": "string",
+      "description": "version note"
+     },
+     "playbook": {
+      "$ref": "#/components/schemas/Playbook"
+     }
+    }
+   },
+   "Backtest": {
+    "type": "object",
+    "properties": {
+     "years": {
+      "type": "integer"
+     },
+     "costBps": {
+      "type": "number"
+     },
+     "slippageBps": {
+      "type": "number"
+     },
+     "benchmark": {
+      "type": "string"
+     }
+    }
+   },
+   "Deploy": {
+    "type": "object",
+    "properties": {
+     "account": {
+      "type": "string",
+      "default": "paper"
+     },
+     "mode": {
+      "enum": [
+       "auto",
+       "approve"
+      ]
+     },
+     "allocation": {
+      "type": "number",
+      "description": "percent of the account"
+     }
+    }
+   }
+  }
+ },
+ "paths": {
+  "/me": {
+   "get": {
+    "summary": "The key: user id and scopes",
+    "security": [
+     {
+      "key": []
+     }
+    ],
+    "x-scope": "read",
+    "responses": {
+     "200": {
+      "description": "OK"
+     },
+     "400": {
+      "description": "Invalid request (problems listed)"
+     },
+     "401": {
+      "description": "Missing, unknown or revoked key"
+     },
+     "403": {
+      "description": "Missing scope, or a real-money action (website only)"
+     },
+     "429": {
+      "description": "Rate limit for this key"
+     }
+    }
+   }
+  },
+  "/accounts": {
+   "get": {
+    "summary": "Accounts with equity, cash and positions",
+    "security": [
+     {
+      "key": []
+     }
+    ],
+    "x-scope": "read",
+    "responses": {
+     "200": {
+      "description": "OK"
+     },
+     "400": {
+      "description": "Invalid request (problems listed)"
+     },
+     "401": {
+      "description": "Missing, unknown or revoked key"
+     },
+     "403": {
+      "description": "Missing scope, or a real-money action (website only)"
+     },
+     "429": {
+      "description": "Rate limit for this key"
+     }
+    }
+   }
+  },
+  "/playbooks": {
+   "get": {
+    "summary": "List your Playbooks",
+    "security": [
+     {
+      "key": []
+     }
+    ],
+    "x-scope": "read",
+    "responses": {
+     "200": {
+      "description": "OK"
+     },
+     "400": {
+      "description": "Invalid request (problems listed)"
+     },
+     "401": {
+      "description": "Missing, unknown or revoked key"
+     },
+     "403": {
+      "description": "Missing scope, or a real-money action (website only)"
+     },
+     "429": {
+      "description": "Rate limit for this key"
+     }
+    }
+   },
+   "post": {
+    "summary": "Create a Playbook (validated; every problem listed)",
+    "security": [
+     {
+      "key": []
+     }
+    ],
+    "x-scope": "write",
+    "responses": {
+     "200": {
+      "description": "OK"
+     },
+     "400": {
+      "description": "Invalid request (problems listed)"
+     },
+     "401": {
+      "description": "Missing, unknown or revoked key"
+     },
+     "403": {
+      "description": "Missing scope, or a real-money action (website only)"
+     },
+     "429": {
+      "description": "Rate limit for this key"
+     }
+    },
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/Create"
+       }
+      }
+     }
+    }
+   }
+  },
+  "/playbooks/{id}": {
+   "get": {
+    "summary": "One Playbook with versions",
+    "security": [
+     {
+      "key": []
+     }
+    ],
+    "x-scope": "read",
+    "responses": {
+     "200": {
+      "description": "OK"
+     },
+     "400": {
+      "description": "Invalid request (problems listed)"
+     },
+     "401": {
+      "description": "Missing, unknown or revoked key"
+     },
+     "403": {
+      "description": "Missing scope, or a real-money action (website only)"
+     },
+     "429": {
+      "description": "Rate limit for this key"
+     }
+    },
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer"
+      }
+     }
+    ]
+   },
+   "put": {
+    "summary": "Update (a new version)",
+    "security": [
+     {
+      "key": []
+     }
+    ],
+    "x-scope": "write",
+    "responses": {
+     "200": {
+      "description": "OK"
+     },
+     "400": {
+      "description": "Invalid request (problems listed)"
+     },
+     "401": {
+      "description": "Missing, unknown or revoked key"
+     },
+     "403": {
+      "description": "Missing scope, or a real-money action (website only)"
+     },
+     "429": {
+      "description": "Rate limit for this key"
+     }
+    },
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/Update"
+       }
+      }
+     }
+    }
+   }
+  },
+  "/playbooks/{id}/backtest": {
+   "post": {
+    "summary": "Backtest with costs, slippage and a benchmark",
+    "security": [
+     {
+      "key": []
+     }
+    ],
+    "x-scope": "write",
+    "responses": {
+     "200": {
+      "description": "OK"
+     },
+     "400": {
+      "description": "Invalid request (problems listed)"
+     },
+     "401": {
+      "description": "Missing, unknown or revoked key"
+     },
+     "403": {
+      "description": "Missing scope, or a real-money action (website only)"
+     },
+     "429": {
+      "description": "Rate limit for this key"
+     }
+    },
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/Backtest"
+       }
+      }
+     }
+    }
+   }
+  },
+  "/playbooks/{id}/deploy": {
+   "post": {
+    "summary": "Deploy (needs a backtest of this version; practice account only over the API)",
+    "security": [
+     {
+      "key": []
+     }
+    ],
+    "x-scope": "trade",
+    "responses": {
+     "200": {
+      "description": "OK"
+     },
+     "400": {
+      "description": "Invalid request (problems listed)"
+     },
+     "401": {
+      "description": "Missing, unknown or revoked key"
+     },
+     "403": {
+      "description": "Missing scope, or a real-money action (website only)"
+     },
+     "429": {
+      "description": "Rate limit for this key"
+     }
+    },
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/Deploy"
+       }
+      }
+     }
+    }
+   }
+  },
+  "/playbooks/{id}/pause": {
+   "post": {
+    "summary": "Pause (immediately)",
+    "security": [
+     {
+      "key": []
+     }
+    ],
+    "x-scope": "trade",
+    "responses": {
+     "200": {
+      "description": "OK"
+     },
+     "400": {
+      "description": "Invalid request (problems listed)"
+     },
+     "401": {
+      "description": "Missing, unknown or revoked key"
+     },
+     "403": {
+      "description": "Missing scope, or a real-money action (website only)"
+     },
+     "429": {
+      "description": "Rate limit for this key"
+     }
+    },
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer"
+      }
+     }
+    ]
+   }
+  },
+  "/playbooks/{id}/resume": {
+   "post": {
+    "summary": "Resume",
+    "security": [
+     {
+      "key": []
+     }
+    ],
+    "x-scope": "trade",
+    "responses": {
+     "200": {
+      "description": "OK"
+     },
+     "400": {
+      "description": "Invalid request (problems listed)"
+     },
+     "401": {
+      "description": "Missing, unknown or revoked key"
+     },
+     "403": {
+      "description": "Missing scope, or a real-money action (website only)"
+     },
+     "429": {
+      "description": "Rate limit for this key"
+     }
+    },
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer"
+      }
+     }
+    ]
+   }
+  },
+  "/playbooks/{id}/preview": {
+   "get": {
+    "summary": "Expected trades at the next rebalance (an estimate)",
+    "security": [
+     {
+      "key": []
+     }
+    ],
+    "x-scope": "read",
+    "responses": {
+     "200": {
+      "description": "OK"
+     },
+     "400": {
+      "description": "Invalid request (problems listed)"
+     },
+     "401": {
+      "description": "Missing, unknown or revoked key"
+     },
+     "403": {
+      "description": "Missing scope, or a real-money action (website only)"
+     },
+     "429": {
+      "description": "Rate limit for this key"
+     }
+    },
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer"
+      }
+     }
+    ]
+   }
+  },
+  "/playbooks/{id}/history": {
+   "get": {
+    "summary": "Runs, trades, triggers, skipped and failed runs, overrides",
+    "security": [
+     {
+      "key": []
+     }
+    ],
+    "x-scope": "read",
+    "responses": {
+     "200": {
+      "description": "OK"
+     },
+     "400": {
+      "description": "Invalid request (problems listed)"
+     },
+     "401": {
+      "description": "Missing, unknown or revoked key"
+     },
+     "403": {
+      "description": "Missing scope, or a real-money action (website only)"
+     },
+     "429": {
+      "description": "Rate limit for this key"
+     }
+    },
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer"
+      }
+     }
+    ]
+   }
+  }
+ }
+}

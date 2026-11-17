@@ -39,8 +39,9 @@ async function page(view) {
     <div class="row"><label>Yearly return % <span class="mu">(stocks have averaged more, with big drops)</span><input name="returnPct" type="number" value="6" step="0.5" min="-5" max="20"></label><label>Inflation %<input name="inflationPct" type="number" value="2.5" step="0.5" min="0" max="15"></label>
       <label>Tax rate now %<input name="taxNowPct" type="number" value="22" min="0" max="60"></label><label>Tax rate in retirement %<input name="taxLaterPct" type="number" value="15" min="0" max="60"></label></div>
     <div id="pOut"></div></form>
-  <form class="card" id="acc"><h2>Which of my accounts are IRAs?</h2><p class="mu">Mark an IRA so the Taxes page treats it as tax-sheltered (no capital-gains tax on its trades) and planning counts it as retirement money. The broker opens the IRA itself; this only tells Brightolio what it is.</p>
-    <div class="tablewrap"><table class="slim">${accts.filter(a => a.connected !== false && a.id !== 'paper').map(a => `<tr><td>${H.esc(H.acctLabel ? H.acctLabel(a) : a.name || a.id)}</td><td><select name="${H.esc(a.id)}">${Object.entries(d.types).map(([k, v]) => `<option value="${k}" ${(d.accounts[a.id] || 'taxable') === k ? 'selected' : ''}>${H.esc(v)}</option>`).join('')}</select></td></tr>`).join('') || '<tr><td class="mu">Connect a brokerage account first (Accounts → Choose your brokerage).</td></tr>'}</table></div>
+  <form class="card" id="acc"><h2>Account types</h2><p class="mu">Mark an IRA so the Taxes page treats it as tax-sheltered (no capital-gains tax on its trades) and planning counts it as retirement money. A business account (LLC, partnership, family office) records the entity that owns it. The broker opens the account itself; this only tells Brightolio what it is. Only the types the connected broker supports in Brightolio are offered.</p>
+    <div class="tablewrap"><table class="slim">${accts.filter(a => a.connected !== false).map(a => { const sup = d.support[a.id === 'paper' ? 'paper' : /^alpaca/.test(a.id) ? 'alpaca' : 'other'] || { types: Object.keys(d.types) }; const all = { ...d.types, ...(d.businessTypes || {}) }; const cur = d.accounts[a.id] || 'taxable', ent = (d.entities || {})[a.id] || {}; return `<tr data-acct="${H.esc(a.id)}"><td>${H.esc(H.acctLabel ? H.acctLabel(a) : a.name || a.id)}${sup.note ? `<br><span class="mu small">${H.esc(sup.note)}</span>` : ''}</td><td><select name="${H.esc(a.id)}">${sup.types.map(k => `<option value="${k}" ${cur === k ? 'selected' : ''}>${H.esc(all[k] || k)}</option>`).join('')}</select>
+      <div class="ent row" ${d.businessTypes?.[cur] ? '' : 'hidden'}><label>Entity name<input data-ent="name" value="${H.esc(ent.name || '')}" maxlength="120"></label><label>Entity type<input data-ent="entityType" value="${H.esc(ent.entityType || '')}" maxlength="60" placeholder="e.g. Delaware LLC"></label></div></td></tr>`; }).join('')}</table></div>
     <div class="row"><button>Save</button></div><div class="err"></div></form>
   <p class="mu small-print">Estimates for planning, not tax or investment advice. Returns are not guaranteed and can be negative. Social Security estimates: <a href="https://www.ssa.gov/myaccount/" target="_blank" rel="noopener">ssa.gov/myaccount</a>.</p>`;
 
@@ -70,5 +71,11 @@ async function page(view) {
   let t; pf.oninput = () => { clearTimeout(t); t = setTimeout(runPlan, 250); }; pf.onsubmit = e => { e.preventDefault(); runPlan(); }; runPlan();
 
   const af = H.$('#acc', view);
-  af.onsubmit = async e => { e.preventDefault(); try { await H.api('/retirement/accounts', { method: 'PUT', body: { accounts: H.form(af) } }); H.$('.err', af).textContent = 'Saved'; } catch (err) { H.$('.err', af).textContent = err.message; } };
+  H.$$('tr[data-acct] select', af).forEach(sel => (sel.onchange = () => { sel.closest('td').querySelector('.ent').hidden = !d.businessTypes?.[sel.value]; }));
+  af.onsubmit = async e => {
+    e.preventDefault();
+    const accounts = {}, entities = {};
+    H.$$('tr[data-acct]', af).forEach(tr => { const k = tr.dataset.acct, v = H.$('select', tr).value; accounts[k] = v; if (d.businessTypes?.[v]) entities[k] = { name: H.$('[data-ent=name]', tr).value, entityType: H.$('[data-ent=entityType]', tr).value }; });
+    try { await H.api('/retirement/accounts', { method: 'PUT', body: { accounts, entities } }); H.$('.err', af).textContent = 'Saved'; } catch (err) { H.$('.err', af).textContent = err.message; }
+  };
 }

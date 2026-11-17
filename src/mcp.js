@@ -17,17 +17,17 @@ const TOKEN_PREFIX = 'qpk_';
 // ---------- personal access tokens ----------
 export const tokensRouter = express.Router();
 tokensRouter.use(requireUser);
-tokensRouter.get('/', async (req, res) => res.json(await all('SELECT id, name, hint, created_at, last_used_at FROM api_tokens WHERE user_id = ? ORDER BY id DESC', req.user.id)));
+tokensRouter.get('/', async (req, res) => res.json(await all("SELECT id, name, hint, created_at, last_used_at FROM api_tokens WHERE user_id = ? AND kind = 'agent' ORDER BY id DESC", req.user.id)));
 tokensRouter.post('/', async (req, res) => {
   const lim = aiLimits(req.user);
-  if ((await one('SELECT COUNT(*) n FROM api_tokens WHERE user_id = ?', req.user.id)).n >= lim.agentTokens) { const e = upgrade(`More than ${lim.agentTokens} connected agent${lim.agentTokens === 1 ? '' : 's'}`, p => p.agentTokens > lim.agentTokens); return res.status(402).json({ error: e.message, upgrade: true, feature: e.feature }); }
+  if ((await one("SELECT COUNT(*) n FROM api_tokens WHERE user_id = ? AND kind = 'agent'", req.user.id)).n >= lim.agentTokens) { const e = upgrade(`More than ${lim.agentTokens} connected agent${lim.agentTokens === 1 ? '' : 's'}`, p => p.agentTokens > lim.agentTokens); return res.status(402).json({ error: e.message, upgrade: true, feature: e.feature }); }
   const token = TOKEN_PREFIX + randomToken(24), name = String(req.body?.name || 'AI assistant').slice(0, 40);
   await run('INSERT INTO api_tokens (user_id, token_hash, name, hint, created_at) VALUES (?,?,?,?,?)', req.user.id, sha256(token), name, token.slice(-4), now());
   await audit(req.user.id, 'api_token_created', { name }, req.ip);
   res.json({ token, name }); // shown once
 });
 tokensRouter.delete('/:id', async (req, res) => {
-  await run('DELETE FROM api_tokens WHERE id = ? AND user_id = ?', +req.params.id, req.user.id);
+  await run("DELETE FROM api_tokens WHERE id = ? AND user_id = ? AND kind = 'agent'", +req.params.id, req.user.id);
   await audit(req.user.id, 'api_token_revoked', { id: +req.params.id }, req.ip);
   res.json({ ok: true });
 });
@@ -85,7 +85,7 @@ export function mcpHandler(deps) {
   const tools = TOOLS(deps);
   return async (req, res) => {
     const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-    const row = token.startsWith(TOKEN_PREFIX) ? await one('SELECT t.id tid, t.name tname, u.* FROM api_tokens t JOIN users u ON u.id = t.user_id WHERE t.token_hash = ?', sha256(token)) : null;
+    const row = token.startsWith(TOKEN_PREFIX) ? await one("SELECT t.id tid, t.name tname, u.* FROM api_tokens t JOIN users u ON u.id = t.user_id WHERE t.token_hash = ? AND t.kind = 'agent'", sha256(token)) : null;
     if (!row) return res.status(401).set('WWW-Authenticate', 'Bearer').json({ jsonrpc: '2.0', id: null, error: { code: -32001, message: 'Add your Brightolio token as: Authorization: Bearer qpk_…' } });
     if (!rateLimit('mcp:' + row.id, aiLimits(row).apiPerMin, 60e3)) return res.status(429).json({ jsonrpc: '2.0', id: null, error: { code: -32003, message: 'Too many requests' } });
     await run('UPDATE api_tokens SET last_used_at = ? WHERE id = ?', now(), row.tid);

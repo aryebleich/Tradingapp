@@ -177,7 +177,7 @@ export const agentRouter = deps => {
     const lim = aiLimits(req.user), b = await boundaries(req.user.id);
     const [orders, tokens, accounts] = await Promise.all([
       all('SELECT * FROM agent_orders WHERE user_id = ? ORDER BY id DESC LIMIT 100', req.user.id),
-      all('SELECT id, name, hint, created_at, last_used_at FROM api_tokens WHERE user_id = ? ORDER BY id DESC', req.user.id),
+      all('SELECT id, name, hint, created_at, last_used_at FROM api_tokens WHERE user_id = ? AND kind = \'agent\' ORDER BY id DESC', req.user.id),
       deps.accountsFor(req.user.id)]);
     res.json({ boundaries: b, limits: lim, effective: Object.fromEntries(accounts.filter(a => a.connected).map(a => [a.id, effectiveMode(b, lim, a.id)])), accounts: accounts.filter(a => a.connected).map(a => ({ id: a.id, name: a.name, live: !!a.live })), orders, tokens, session: session(), usage: await usage(req.user.id) });
   });

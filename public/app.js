@@ -374,8 +374,8 @@ const NAV = [
   ['Investing', [['analyze', 'Stock & fund analyzer'], ['lowcost', 'Low-cost index & mutual funds'], ['earnings', 'Earnings vs expectations'], ['institutions', 'Institutional portfolios'], ['sp500', 'S&P 500 plan'], ['wealth', 'Investing toolkit'], ['robo', 'Automated portfolios'], ['longterm', 'Long-term view'], ['invest', 'Futures, funds & savings'], ['alpaca-tools', 'Bonds, rates & crypto'], ['tokenized', 'Tokenized securities'], ['values', 'Values investing'], ['spend', 'Invest as you spend']]],
   ['Trading tools', [['chart', 'Chart'], ['options', 'Options desk'], ['optionslab', 'Options lab'], ['scanner', 'Scanner'], ['leaders', 'New leaders'], ['short', 'Short selling'], ['margin', 'Margin center'], ['calendar', 'Calendar & events'], ['tradetools', 'Planning tools'], ['execution', 'Execution & routing'], ['workspace', 'Workspace']]],
   // Intelligence: research first (ask, read, follow the news), then AI predictions, then AI that trades.
-  ['Intelligence', [['ai', 'AI assistant'], ['aitools', 'AI tools'], ['research', 'Plain-language research'], ['news', 'News & sentiment'], ['intel', 'Market intelligence'], ['aisignals', 'AI signals'], ['agents', 'Forecasts & AI agents'], ['aibots', 'AI bots'], ['agenthub', 'Agents & API']]],
-  ['Automation', [['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['schedule', 'Scheduled trades'], ['rules', 'Rules across accounts'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['portfolios', 'Portfolios'], ['aifunds', 'AI hedge funds'], ['text', 'Text commands'], ['hotline', 'Phone hotline']]],
+  ['Intelligence', [['ai', 'AI assistant'], ['aitools', 'AI tools'], ['research', 'Plain-language research'], ['news', 'News & sentiment'], ['intel', 'Market intelligence'], ['aisignals', 'AI signals'], ['agents', 'Forecasts & AI agents'], ['aibots', 'AI bots'], ['agenthub', 'Agents & API'], ['developers', 'Developer API']]],
+  ['Automation', [['playbooks', 'Playbooks'], ['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['schedule', 'Scheduled trades'], ['rules', 'Rules across accounts'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['portfolios', 'Portfolios'], ['aifunds', 'AI hedge funds'], ['text', 'Text commands'], ['hotline', 'Phone hotline']]],
   // Marketplace: everything members share, to copy or follow.
   ['Marketplace', [['marketplace', 'Marketplace overview'], ['traders', 'Top traders'], ['aimarket', 'AI strategy marketplace'], ['sharedstrategies', 'Shared strategies'], ['sharedportfolios', 'Shared portfolios'], ['signalchannels', 'Signal channels']]],
   ['Quant lab', [['pairs', 'Pairs trading'], ['statarb', 'Statistical arbitrage'], ['code', 'Code lab'], ['quantconnect', 'Cloud algorithms']]],
@@ -399,6 +399,8 @@ const ICONS = {
   bizreports: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
   riskview: '<path d="M12 3v9l7 4"/><circle cx="12" cy="12" r="9"/>',
   retirement: '<path d="M3 21h18M5 21V10l7-6 7 6v11"/><path d="M10 21v-6h4v6"/>',
+  playbooks: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><path d="M10 6.5h4v11h0"/>',
+  developers: '<path d="M8 8l-5 4 5 4M16 8l5 4-5 4M14 4l-4 16"/>',
   research: '<path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h5"/>',
   tokenized: '<path d="M12 2l8 5v10l-8 5-8-5V7z"/><path d="M8 12h8"/>',
   protection: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
@@ -1538,7 +1540,8 @@ routes.schedule = async view => {
     const ot = { market: 'market', limit: 'limit', stop: 'stop', stop_limit: 'stop limit', trailing_stop: 'trailing stop' }[o.orderType];
     const desc = `${ot}${o.stopPrice ? ' stop ' + o.stopPrice : ''}${o.limitPrice ? ' @ ' + o.limitPrice : ''}${o.trailPercent ? ' trail ' + o.trailPercent + '%' : o.trailPrice ? ' trail $' + o.trailPrice : ''}${o.bracket ? ` · bracket: take-profit ${o.takeProfit}, stop-loss ${o.stopLoss}` : ''}`;
     const msg = await reviewAndSchedule(api, W, o, { id: editing?.id, types: ['market', 'limit', 'stop', 'stop_limit', 'trailing_stop'], what: `${o.side.toUpperCase()} ${o.qty ? o.qty + ' shares of' : money(o.notional) + ' of'} ${o.symbol} · ${desc}`, live: !!acctRow?.live || !!was?.live });
-    if (msg) setTimeout(render, 1500);
+    // Redraw this list only if the user is still on this page (a late redraw would wipe another page).
+    if (msg) setTimeout(() => { if (location.hash.startsWith('#/schedule')) render(); }, 1500);
     return msg;
   });
   $$('[data-e]', view).forEach(b => (b.onclick = () => edit(rows.find(o => o.id === +b.dataset.e))));
@@ -2139,6 +2142,14 @@ lazyRoutes(() => import('./pages/wealth.js'), 'registerWealth', shared, ["wealth
 lazyRoutes(() => import('./pages/tools.js'), 'registerTools', shared, ["alpaca-tools"]);
 lazyRoutes(() => import('./pages/riskpages.js'), 'registerRiskPages', shared, ["riskview", "research", "tokenized", "protection"]);
 lazyRoutes(() => import('./pages/retirement.js'), 'registerRetirement', shared, ["retirement"]);
+lazyRoutes(() => import('./pages/playbooks.js'), 'registerPlaybooks', shared, ["playbooks", "playbook", "developers"]);
+// Settings → Developer API: personal API keys (the same card as the Developer API page).
+{ const base = routes.settings; routes.settings = async (view, q) => {
+  await base(view, q);
+  const el = document.createElement('div'); el.className = 'card'; el.id = 'devKeys'; view.append(el);
+  const m = await import('./pages/playbooks.js'); m.registerPlaybooks({}, shared);
+  await m.keysCard(el).catch(e => { el.innerHTML = `<p class="err">${esc(e.message)}</p>`; });
+}; }
 lazyRoutes(() => import('./pages/combined.js'), 'registerCombined', shared, ["accounts"]);
 lazyRoutes(() => import('./pages/business.js'), 'registerBusiness', shared, ["currencies", "business", "invoices", "books", "bank", "inventory", "payroll", "bizreports"]);
 lazyRoutes(() => import('./pages/social.js'), 'registerSocial', shared, ["traders", "robo"]);

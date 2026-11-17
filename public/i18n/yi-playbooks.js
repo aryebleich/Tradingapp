@@ -1,0 +1,30 @@
+// Yiddish for Playbooks (editor, AI builder, library, discovery), the Developer API and account types.
+export const strings = {
+  'Playbooks': 'פלעיבוקס', 'Playbook': 'פלעיבוק', 'New Playbook': 'נייער פלעיבוק', 'My Playbooks': 'מיינע פלעיבוקס', 'Library': 'ביבליאטעק', 'Discover': 'אנטדעקן', 'Developer API': 'API פאר פראגראמירער',
+  'Describe an idea': 'באשרייבט אן אידעע', 'Build it': 'בויט עס', 'Start from blank': 'אנהייבן פון ליידיג', 'Save as a Playbook': 'היט אפ אלס פלעיבוק', 'Edit before saving': 'רעדאגירט איידער אפהיטן',
+  'Status': 'סטאטוס', 'Last run': 'לעצטע לויף', 'Open': 'עפענען', 'Not deployed': 'נישט אריינגעשטעלט', 'not backtested': 'נישט געטעסט אויף פריערדיגע פרייזן',
+  'Name': 'נאמען', 'Rebalance': 'איבערבאלאנסירן', 'Weekday': 'וואכנטאג', 'Benchmark': 'פארגלייך', 'Undo': 'צוריק', 'Redo': 'ווידער',
+  'Asset': 'אקטיוו', 'Cash': 'געלט', 'Group': 'גרופע', 'If / else': 'אויב / אנדערש', 'Filter (top/bottom N)': 'פילטער (בעסטע/ערגסטע N)', 'Ticker': 'טיקער', 'Weighting': 'וואג',
+  'Equal weight': 'גלייכע וואג', 'Specified weights': 'באשטימטע וואגן', 'Inverse volatility': 'פארקערטע וואלאטיליטעט', 'Every trading day': 'יעדן טרעידינג טאג', 'Weekly': 'יעדע וואך', 'Monthly': 'יעדן חודש', 'Quarterly': 'יעדן פערטל יאר',
+  'Indicator': 'אינדיקאטאר', 'Number': 'צאל', 'Keep': 'האלטן', 'Top': 'בעסטע', 'Bottom': 'ערגסטע', 'Add': 'צוגעבן', 'then': 'דאן', 'else': 'אנדערש',
+  'Every rule can run.': 'יעדע כלל קען לויפן.', 'Fix these before it can run:': 'פאררעכט די איידער עס קען לויפן:', 'Save': 'אפהיטן', 'Save as a new version': 'היט אפ אלס נייע ווערסיע',
+  'Backtest': 'טעסט אויף פריערדיגע פרייזן', 'Run backtest': 'לויף דעם טעסט', 'Years': 'יארן', 'Costs (bp)': 'קאסטן (bp)', 'Slippage (bp)': 'פרייז-אונטערשייד (bp)',
+  'Return': 'רעזולטאט', 'Max drawdown': 'גרעסטער פאל', 'Volatility': 'וואלאטיליטעט', 'Run it': 'לאזט עס לויפן', 'Deploy': 'שטעלט עס אריין', 'Account': 'קאנטע', 'Allocation %': 'טייל %', 'Mode': 'מאדע',
+  'Trades by itself': 'האנדלט אליין', 'I approve each rebalance': 'איך באשטעטיג יעדע איבערבאלאנסירונג', 'Pause': 'פאויזע', 'Resume': 'ווייטער', 'Skip the next rebalance': 'איבערהיפן די קומענדיגע איבערבאלאנסירונג',
+  'Run the next rebalance': 'לויפן די קומענדיגע איבערבאלאנסירונג', 'Stop running': 'אויפהערן', 'Close all positions': 'פארמאכן אלע פאזיציעס', 'Swap an asset': 'אויסטוישן אן אקטיוו', 'Swap': 'אויסטוישן', 'Rebalance now': 'איבערבאלאנסירן יעצט',
+  'Next rebalance preview': 'פארויסבליק אויף די קומענדיגע איבערבאלאנסירונג', 'Show the expected trades': 'ווייז די ערווארטעטע האנדלונגען', 'Price': 'פרייז', 'Now': 'יעצט', 'Target': 'ציל', 'Change': 'ענדערונג', 'About': 'בערך',
+  'History': 'געשיכטע', 'Versions': 'ווערסיעס', 'Restore': 'צוריקשטעלן', 'current': 'יעצטיגע', 'Share': 'טיילן', 'Description': 'באשרייבונג', 'Delete this Playbook': 'אויסמעקן דעם פלעיבוק',
+  'Nothing yet.': 'נאך גארנישט.', 'Playbook library': 'פלעיבוק ביבליאטעק', 'Sort': 'סארטירן', 'Newest': 'נייסטע', 'Highest backtest CAGR': 'העכסטער CAGR', 'Smallest drawdown': 'קלענסטער פאל', 'Best Sharpe': 'בעסטער שארפ',
+  'Copy to my Playbooks': 'קאפירן צו מיינע פלעיבוקס', 'Report': 'מעלדן', 'No backtest yet': 'נאך נישט געטעסט', 'Past results do not predict future returns.': 'פריערדיגע רעזולטאטן זאגן נישט פאר צוקונפטיגע.',
+  'Find a Playbook to learn from': 'געפינט א פלעיבוק צו לערנען פון', 'What is your goal?': 'וואס איז אייער ציל?', 'How much of a drop can you live with?': 'וויפיל פון א פאל קענט איר אויסהאלטן?',
+  'How long will the money stay invested?': 'ווי לאנג וועט דאס געלט בלייבן אינוועסטירט?', 'Show matching examples': 'ווייז פאסיגע ביישפילן', 'See it in the Library': 'זעט עס אין דער ביבליאטעק',
+  'Grow my money': 'וואקסן מיין געלט', 'Steadier, income-like returns': 'פעסטערע רעזולטאטן ווי הכנסה', 'Protect what I have': 'באשיצן וואס איך האב',
+  'Under 3 years': 'אונטער 3 יאר', '3 to 10 years': '3 ביז 10 יאר', 'More than 10 years': 'מער ווי 10 יאר',
+  'Developer API keys': 'API שליסלען', 'Create key': 'שאפן א שליסל', 'Revoke': 'צוריקנעמען', 'revoked': 'צוריקגענומען', 'Requests a minute': 'פארלאנגען א מינוט', 'No keys yet.': 'נאך קיין שליסלען.',
+  'How it works': 'ווי עס ארבעט', 'Method': 'מעטאד', 'Path': 'וועג', 'What': 'וואס', 'Scope': 'רשות', 'Download the OpenAPI spec': 'אראפלאדן די OpenAPI באשרייבונג',
+  'Account types': 'סארטן קאנטעס', 'Entity name': 'נאמען פון דער פירמע', 'Entity type': 'סארט פירמע', 'Business: LLC': 'געשעפט: LLC', 'Business: partnership': 'געשעפט: שותפות', 'Family office': 'משפחה אפיס',
+};
+export const patterns = [
+  [/^Saved as version (\d+)\.$/, m => `אפגעהיט אלס ווערסיע ${m[1]}.`],
+  [/^(\d+) earlier$/, m => `${m[1]} פריערדיגע`],
+];

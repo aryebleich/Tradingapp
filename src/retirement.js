@@ -20,6 +20,24 @@ export const LIMITS = {
 };
 export const ACCOUNT_TYPES = { taxable: 'Taxable (regular brokerage)', traditional_ira: 'Traditional IRA', roth_ira: 'Roth IRA', rollover_ira: 'Rollover IRA', sep_ira: 'SEP IRA' };
 export const isIra = t => /_ira$/.test(String(t || ''));
+// Business accounts: an entity owns the account. Metadata only (entity name and type); taxes on the
+// tax page are the entity's, so they are treated like a taxable account there.
+export const BUSINESS_TYPES = { business_llc: 'Business: LLC', business_partnership: 'Business: partnership', family_office: 'Family office' };
+export const isBusiness = t => !!BUSINESS_TYPES[t];
+// Which account types Brightolio offers on each kind of connected account. IRA types label an account
+// the user already holds (as before). Business types are offered only where the broker connection is
+// known to support entity accounts: none of the live connections yet, so only the practice account
+// (as a label). BROKER_ACCOUNT_TYPES (comma list, set by the owner once a broker confirms it) adds them.
+export const BROKER_SUPPORT = {
+  paper: { name: 'Practice account', types: [...Object.keys(ACCOUNT_TYPES), ...Object.keys(BUSINESS_TYPES)], note: 'Pretend money: the type changes only the tax estimates.' },
+  alpaca: { name: 'Alpaca', types: Object.keys(ACCOUNT_TYPES), note: 'Business (entity) accounts are not offered for Alpaca connections in Brightolio yet.' },
+  other: { name: 'Other brokerages', types: Object.keys(ACCOUNT_TYPES), note: 'Labels an account you already hold at that broker; Brightolio does not open it.' },
+};
+export function supportFor(account) {
+  const kind = account === 'paper' ? 'paper' : /^alpaca/.test(account) ? 'alpaca' : 'other';
+  const extra = String(process.env.BROKER_ACCOUNT_TYPES || '').split(',').map(x => x.trim()).filter(x => BUSINESS_TYPES[x] && kind !== 'paper');
+  return { kind, ...BROKER_SUPPORT[kind], types: [...new Set([...BROKER_SUPPORT[kind].types, ...extra])] };
+}
 
 // The IRS phase-out: the limit falls in a straight line across the range, rounded up to the next
 // $10, and anything above zero is at least $200.
@@ -73,7 +91,8 @@ export function plan({ age = 35, retireAge = 65, saved = 0, monthly = 500, retur
 export const retirementRouter = (() => {
   const r = express.Router();
   r.use(requireUser);
-  r.get('/', async (req, res) => res.json({ limits: LIMITS, types: ACCOUNT_TYPES, accounts: await getSetting(req.user.id, 'accountTax', {}) || {} }));
+  r.get('/', async (req, res) => res.json({ limits: LIMITS, types: ACCOUNT_TYPES, businessTypes: BUSINESS_TYPES, support: BROKER_SUPPORT, accounts: await getSetting(req.user.id, 'accountTax', {}) || {}, entities: await getSetting(req.user.id, 'accountEntity', {}) || {} }));
+  r.get('/support/:account', (req, res) => res.json(supportFor(String(req.params.account))));
   r.post('/eligibility', (req, res) => {
     const b = req.body || {}, num = (v, lo, hi) => { const n = +v; if (!Number.isFinite(n) || n < lo || n > hi) throw bad('Check the numbers'); return n; };
     res.json(eligibility({ age: num(b.age ?? 40, 0, 120), filing: b.filing, magi: num(b.magi ?? 0, 0, 1e9), covered: !!b.covered, spouseCovered: !!b.spouseCovered, earned: b.earned === '' || b.earned == null ? null : num(b.earned, 0, 1e9) }));
@@ -85,9 +104,22 @@ export const retirementRouter = (() => {
   // Mark which connected accounts are IRAs (Traditional, Roth...) for taxes and planning.
   r.put('/accounts', async (req, res) => {
     const m = req.body?.accounts || {}, out = {};
-    for (const [k, v] of Object.entries(m).slice(0, 30)) { if (!/^[a-z0-9_-]{2,40}$/.test(k)) throw bad('Unknown account'); if (!ACCOUNT_TYPES[v]) throw bad('Unknown account type'); out[k] = v; }
+    const ent = req.body?.entities || {}, entities = {};
+    for (const [k, v] of Object.entries(m).slice(0, 30)) {
+      if (!/^[a-z0-9_:-]{2,60}$/.test(k)) throw bad('Unknown account');
+      if (!ACCOUNT_TYPES[v] && !BUSINESS_TYPES[v]) throw bad('Unknown account type');
+      const sup = supportFor(k);
+      if (!sup.types.includes(v)) throw bad(`${sup.name} accounts cannot be set up as ${(ACCOUNT_TYPES[v] || BUSINESS_TYPES[v])} in Brightolio. ${sup.note}`);
+      out[k] = v;
+      if (isBusiness(v)) {
+        const name = String(ent[k]?.name || '').trim().slice(0, 120), kind = String(ent[k]?.entityType || '').trim().slice(0, 60);
+        if (name.length < 2) throw bad('Enter the entity name for the business account');
+        entities[k] = { name, entityType: kind || BUSINESS_TYPES[v] };
+      }
+    }
     await setSetting(req.user.id, 'accountTax', out);
-    res.json({ accounts: out });
+    await setSetting(req.user.id, 'accountEntity', entities);
+    res.json({ accounts: out, entities });
   });
   return r;
 })();

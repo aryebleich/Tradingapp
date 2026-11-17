@@ -876,6 +876,12 @@ const MIGRATIONS = [
   // Playbooks (template_id 'playbook'): every saved version (JSON, newest last), the AI-builder label,
   // library reports and moderation, and how often a published one was copied.
   'ALTER TABLE user_strategies ADD COLUMN versions TEXT',
+  // Developer API keys share api_tokens with the agent tokens: kind 'api', JSON scopes, a per-key
+  // rate limit, and revocation (kept for the record).
+  "ALTER TABLE api_tokens ADD COLUMN kind TEXT NOT NULL DEFAULT 'agent'",
+  'ALTER TABLE api_tokens ADD COLUMN scopes TEXT',
+  'ALTER TABLE api_tokens ADD COLUMN rate_per_min INTEGER',
+  'ALTER TABLE api_tokens ADD COLUMN revoked_at INTEGER',
   'ALTER TABLE user_strategies ADD COLUMN ai_generated INTEGER NOT NULL DEFAULT 0',
   'ALTER TABLE user_strategies ADD COLUMN reports TEXT',
   'ALTER TABLE user_strategies ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0',

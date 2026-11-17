@@ -70,6 +70,16 @@ Choices and assumptions made without asking, with the reason. Trading-tools work
 - P-9: Three reports from different people hide a library entry until an admin restores or unpublishes it.
 - P-10: Discovery filters on backtested drawdown (low 15%, medium 30%, high any; 5 points tighter under 3 years) and leaves out leveraged funds unless risk is high; it is labelled education, not advice.
 
+- P-11: The editor moves blocks by drag and drop and by buttons and Alt+Up/Down (keyboard and phones); undo/redo keeps 100 steps in the page; the server re-checks every save, so the editor's live check is a convenience.
+- P-12: Votes ("k of n") come from converted designs and are shown read-only in the editor (edited in the JSON); new conditions are single comparisons.
+- P-13: Playbooks live in the Automation menu; the Library, Discover and Developer API are tabs on the same page.
+- A-1: Business account types (LLC, partnership, family office) are account metadata with entity name and type, offered only where BROKER_SUPPORT allows: the practice account now; no live broker connection in Brightolio is confirmed for entity accounts, so none is offered there until the owner sets BROKER_ACCOUNT_TYPES. IRA labels stay available on every account, as before.
+- K-1: API keys share the api_tokens table with the agent tokens (kind 'api' vs 'agent', additive columns); the agent token list, count and MCP sign-in only see kind 'agent'.
+- K-2: Scopes: read (always), write (create, edit, backtest), trade (deploy, pause, resume, skip, rebalance, close); per-key limit 1-600 requests a minute; revoked keys are kept, marked revoked.
+- K-3: Real-money deploy, resume, rebalance and close are refused over the API (403): they need the website's step-up confirmation, which an API key cannot give. Practice-account trading works over the API through the same handlers and placeOrder.
+- K-4: The docs are the in-app page #/developers (/developers redirects there), built from public/openapi.json, so the docs and the spec cannot drift apart.
+- U-1: The Scheduled trades page redraws itself after saving only while it is still open; a late redraw used to wipe the page the user had moved to (found by the Playbooks e2e).
+
 ## Scheduled trades (2026-11-16)
 
 - S-1: US market calendar computed from the NYSE rules (holidays, observed days, 13:00 early closes, a list for unscheduled closures) in src/market-calendar.js, so no yearly table needs updating; used by the session checks, repeats, "before the close", "next open" and the date picker.

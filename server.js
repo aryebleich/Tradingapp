@@ -117,6 +117,7 @@ import { statementRouter } from './src/statement.js';
 import { router as signalsRouter, receive as receiveSignal } from './src/signals.js';
 import { router as strategiesRouter } from './src/rotation/routes.js';
 import { playbooksRouter } from './src/playbooks.js';
+import { keysRouter as apiKeysRouter, v1Router } from './src/apiv1.js';
 import { router as pairsRouter } from './src/pairs.js';
 import { statArbRouter } from './src/statarb.js';
 import { registerHotline } from './src/hotline.js';
@@ -605,6 +606,7 @@ api.use('/alpaca', alpacaRouter);
 api.use('/signals', signalsRouter);
 api.use('/library', strategiesRouter);
 api.use('/playbooks', auth.requireUser, playbooksRouter());
+api.use('/apikeys', apiKeysRouter);
 api.use('/pairs', pairsRouter);
 api.use('/statarb', statArbRouter);
 api.use('/statement', statementRouter);
@@ -1299,6 +1301,9 @@ api.use((err, req, res, _next) => {
   else if (err.status === 503) console.warn(`[${req.id}] 503 ${req.method} ${req.path}: ${err.message}`);
   res.status(err.status || 400).json({ error: err.expose === false ? 'Something went wrong' : err.message, ...(err.upgrade ? { upgrade: true, feature: err.feature } : {}), ...(err.needsAck ? { needsAck: err.needsAck } : {}), ...(err.needsLesson ? { needsLesson: err.needsLesson } : {}), ...(err.locked ? { locked: true } : {}), ...(err.shed ? { shed: true } : {}) });
 });
+// The developer API (personal API keys, no cookies, so no CSRF header): before the session API.
+app.use('/api/v1', v1Router({ accountsFor, accountSummary }));
+app.get('/developers', (req, res) => res.redirect(302, '/app#/developers'));
 app.use('/api', api);
 const pub = path.join(here, 'public');
 // Marketing pages get absolute social-preview image URLs (crawlers ignore relative ones).

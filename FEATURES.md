@@ -62,10 +62,14 @@ plan, and the status. "Playbooks" is Brightolio's name for block-based strategie
 | Broker | Taxable | IRA types | Business (LLC, partnership, family office) | Notes |
 |---|---|---|---|---|
 | Practice (paper) | Yes | Yes (label only) | Yes (label only) | Pretend money; the type only changes tax estimates. |
-| Alpaca (Trading API keys) | Yes | No | No | Brightolio connects individual accounts by API key; IRAs and entity accounts are not offered here until confirmed for the connected account. |
-| Alpaca (Broker API, accounts opened through Brightolio) | Yes | No | No | Not offered until enabled by the owner (`BROKER_ACCOUNT_TYPES`). |
+| Alpaca (Trading API keys) | Yes | Label only (an IRA you already hold) | No | Entity accounts are not offered until confirmed for the connected account. |
+| Alpaca (Broker API, accounts opened through Brightolio) | Yes | Label only | No | Business types only after the owner enables them (`BROKER_ACCOUNT_TYPES`). |
 | Other connected brokerages | Yes | Label only, when the user's own account at that broker is an IRA | No | The type labels an account the user already holds; Brightolio does not open it. |
 
 ## 11. REST API for developers
 - **Existed:** personal tokens for AI agents (`api_tokens`, `src/mcp.js`).
 - **Built:** `/api/v1` with personal API keys created in Settings → Developer API (hashed, scopes `read` (default), `write`, `trade`; per-key rate limit; revocation). Playbooks (list, create, update, backtest, deploy, pause), history, previews, accounts. Orders go through the same `placeOrder` path and guards; real-money actions are refused over the API (the website's step-up is required). OpenAPI spec at `/openapi.json`, docs at `/developers`.
+
+## Final status (2026-11-17)
+All eleven features are built with unit tests (test/playbooks.test.js, test/apiv1.test.js) and e2e flows (test/e2e/run.mjs: Playbooks editor/AI/backtest/deploy/preview/overrides/history; library and discovery; Developer API key; business account type). Local gates: npm test 389/0, npm run e2e 444 checks passed, security-check and clean-check passed.
+Not live yet: GitHub refused every push from this session (403, the Claude GitHub App has no access to the repository for this organization), so nothing in this round is on main or deployed, and Check 1/Check 2 have not run on GitHub.

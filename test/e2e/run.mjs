@@ -636,6 +636,70 @@ console.log('Settings → Language');
     if (st.length !== 1 || st[0].close_steps !== 3) throw new Error('scale-out not saved');
     await p.evaluate(id => fetch('/api/schedule/' + id, { method: 'DELETE', headers: { 'X-Requested-With': 'qp' } }), st[0].id);
   });
+  await step('playbooks: AI builder (labelled, backtested), editor blocks with undo/redo, new version, backtest vs benchmark, deploy on paper, preview, overrides, history', async () => {
+    await go('#/playbooks', '#ai'); await p.waitForLoadState('networkidle');
+    await p.fill('#ai [name=prompt]', 'Hold QQQ and XLV equally while SPY is above its 200-day average, otherwise BIL. Rebalance monthly.');
+    await p.click('#ai button:has-text("Build it")'); await p.waitForSelector('#aiSave', { timeout: 30000 });
+    if (!/AI-generated\. Not investment advice/.test(await p.textContent('#aiOut'))) throw new Error('no AI label');
+    if (!/CAGR/.test(await p.textContent('#aiOut'))) throw new Error('not backtested before saving');
+    await p.click('#aiSave'); await p.waitForSelector('#pbTree .pb-block', { timeout: 20000 });
+    // Editor: add a block, undo, redo, save a new version.
+    const n0 = await p.$$eval('#pbTree .pb-block', x => x.length);
+    const grp = p.locator('#pbTree .pb-group').first();
+    await grp.locator(':scope > .pb-body > .pb-add select').selectOption('asset');
+    await grp.locator(':scope > .pb-body > .pb-add button').click();
+    if ((await p.$$eval('#pbTree .pb-block', x => x.length)) !== n0 + 1) throw new Error('block not added');
+    await p.waitForSelector('#pbProblems .err', { timeout: 10000 }); // an empty ticker is a problem
+    await p.click('#pbUndo');
+    if ((await p.$$eval('#pbTree .pb-block', x => x.length)) !== n0) throw new Error('undo did not remove it');
+    await p.click('#pbRedo'); await p.click('#pbUndo');
+    await p.waitForSelector('#pbProblems .ok', { timeout: 10000 });
+    await p.selectOption('#pbReb', 'quarterly');
+    await p.fill('#pbNote', 'Quarterly'); await p.click('#pbSave');
+    await p.waitForFunction(() => /Saved as version 2/.test(document.querySelector('#pbSave + div.ok')?.textContent || ''), null, { timeout: 15000 });
+    // Backtest against a benchmark, then deploy on the practice account.
+    await p.waitForSelector('#pbBt'); await p.fill('#pbBt [name=years]', '3'); await p.fill('#pbBt [name=benchmark]', 'QQQ');
+    await p.click('#pbBt button:has-text("Run backtest")'); await p.waitForSelector('#pbChart', { timeout: 30000 });
+    if (!/QQQ CAGR/.test(await p.textContent('#btOut'))) throw new Error('no benchmark');
+    await p.selectOption('#pbRun [name=account]', 'paper'); await p.fill('#pbRun [name=allocation]', '20');
+    await p.click('#pbDeploy'); await p.waitForSelector('#pbRun [data-o=pause]', { timeout: 15000 });
+    await p.click('#pvGo'); await p.waitForSelector('#pvOut table', { timeout: 20000 });
+    if (!/fills may differ/.test(await p.textContent('#pvOut'))) throw new Error('preview not labelled an estimate');
+    await p.click('#pbRun [data-o=pause]'); await p.waitForSelector('#pbRun [data-o=resume]', { timeout: 15000 });
+    await p.click('#pbRun [data-o=skip]'); await p.waitForSelector('#pbRun [data-o=skip]:has-text("Run the next")', { timeout: 15000 });
+    const h = await p.textContent('#hist');
+    for (const w of ['deployed', 'Paused', 'skipped']) if (!h.includes(w)) throw new Error('history is missing ' + w + ': ' + h.slice(0, 300));
+    await p.click('#pbRun [data-o=stop]'); await p.waitForSelector('#pbDeploy', { timeout: 15000 });
+    await p.screenshot({ path: path.join(OUT, 'playbook-editor.png'), fullPage: true });
+  });
+  await step('playbooks: library (Brightolio designs, copy, backtest) and guided discovery framed as education', async () => {
+    await go('#/playbooks?tab=library', '[data-lib]');
+    if (!/past results do not predict/i.test(await p.textContent('main'))) throw new Error('no disclaimer');
+    const card = p.locator('[data-lib^="bp:"]').first();
+    await card.locator('[data-bt]').click(); await card.locator('.lbOut .stats').waitFor({ timeout: 30000 });
+    await card.locator('[data-copy]').click(); await p.waitForSelector('#pbTree .pb-block', { timeout: 20000 });
+    await go('#/playbooks?tab=discover', '#dq');
+    await p.check('#dq [name=goal][value=growth]'); await p.check('#dq [name=risk][value=high]'); await p.check('#dq [name=horizon][value=long]');
+    await p.click('#dq button'); await p.waitForSelector('#dOut .banner', { timeout: 30000 });
+    if (!/not personal investment advice/.test(await p.textContent('#dOut'))) throw new Error('discovery not framed as education');
+  });
+  await step('developer API: create a key in Settings, use it, read-only by default', async () => {
+    await go('#/settings', '#devKeys #kNew');
+    await p.fill('#devKeys [name=name]', 'e2e script'); await p.click('#devKeys #kNew button');
+    await p.waitForSelector('#kTok', { timeout: 15000 });
+    const token = await p.textContent('#kTok');
+    const r = await p.evaluate(async t => [await fetch('/api/v1/playbooks', { headers: { Authorization: 'Bearer ' + t } }).then(x => x.status), await fetch('/api/v1/playbooks', { method: 'POST', headers: { Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' }, body: '{}' }).then(x => x.status)], token);
+    if (r[0] !== 200 || r[1] !== 403) throw new Error('key scopes: ' + r);
+    await go('#/developers', '#keys table');
+    if (!/playbooks\/\{id\}\/deploy/.test(await p.textContent('main'))) throw new Error('docs do not list the endpoints');
+  });
+  await step('account types: a business account with its entity on the practice account', async () => {
+    await go('#/retirement', '#acc');
+    const row = p.locator('#acc tr[data-acct="paper"]');
+    await row.locator('select').selectOption('business_llc');
+    await row.locator('[data-ent=name]').fill('Example Holdings LLC');
+    await p.click('#acc button:has-text("Save")'); await p.waitForFunction(() => /Saved/.test(document.querySelector('#acc .err')?.textContent || ''), null, { timeout: 15000 });
+  });
   await setPlan('features@example.com', 'free'); await p.reload(); // back to free: later steps check what free accounts see
   await step('futures, funds & savings; growth and value scan; stat-arb live scan; search', async () => {
     await go('#/invest', '[data-trade]'); await go('#/invest?tab=funds', '[data-buy]'); await go('#/invest?tab=savings', '#sg');
