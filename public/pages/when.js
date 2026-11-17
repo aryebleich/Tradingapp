@@ -34,9 +34,16 @@ export function whenHtml({ repeat = false, kinds = KINDS } = {}) {
   </fieldset>`;
 }
 
+// The first weekday whose 9:30 AM New York open is still ahead (the date picker greys out holidays).
+function firstDay(t = Date.now()) {
+  const hm = +new Intl.DateTimeFormat('en-GB', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(t)).replace(':', '');
+  let d = new Date(nyDay(t) + 'T12:00:00Z'); if (hm >= 930) d = new Date(+d + 864e5);
+  while ([0, 6].includes(d.getUTCDay())) d = new Date(+d + 864e5);
+  return d.toISOString().slice(0, 10);
+}
 export function wireWhen(root, { api, order = () => ({}), onChange = () => {} } = {}) {
   const box = root.querySelector('fieldset.when');
-  let kind = 'now', delay = 5, date = nyDay(), time = '09:30', timer = null, seq = 0, preview = null;
+  let kind = 'now', delay = 5, date = firstDay(), time = '09:30', timer = null, seq = 0, preview = null;
   const $ = s => box.querySelector(s);
   const dp = datePicker($('.when-date'), { value: date, min: nyDay(), onChange: v => { date = v; refresh(); } });
   const tp = timePicker($('.when-clock'), { value: time, onChange: v => { time = v; refresh(); } });

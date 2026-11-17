@@ -62,6 +62,9 @@ Choices and assumptions made without asking, with the reason. Trading-tools work
 - S-5: The existing test that ran a 10-day-late scheduled order now uses an order 5 minutes late: the double-run assertion is unchanged, and sending a 10-day-late order is exactly what the new rule forbids (covered by test/schedule.test.js).
 - S-6: POST /schedule on any account other than the practice account goes through stepUpGuard, the same check as /orders.
 - S-7: The calendar endpoint is /api/trading-calendar (the /api/market router requires sign-in; the calendar is public data).
+- S-8: The "When" fieldset sets min-width: 0 and its chips wrap: a fieldset's default minimum width made the order desk wider than a phone screen, which pushed the sticky Trade bar off-screen.
+- S-9: POST /schedule/preview returns an incomplete or past choice as {error} (shown on the form), not as HTTP 400; POST /schedule still refuses it with 400. The "At a date and time" picker starts on the next weekday whose 9:30 open is still ahead.
+- S-10: The e2e gives its throwaway test account the Pro plan only around the scheduling steps (written straight into that run's temporary database, as Admin → Users would), then sets it back to free so the later free-plan checks are unchanged; the Close later step buys its own paper position first.
 ## Deploys
 
 - D-1 (2026-11-16): released flag removal, permanent layout layer, Chat, planning tools, AI explainers, comms drawer for users with a number, previous homepage kept, post-deploy smoke/rollback workflows; merge commit f392309; gates npm test 354/0, e2e 435 exit 0, security:check 0; no revert. The page-snapshot gate still flags Admin → SEO (Feature flags card gone) and the owner to-do list (flag steps gone): intentional, snapshot update for those two pages left for the owner.

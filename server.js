@@ -912,7 +912,8 @@ function schedulePlan(req, { preview = false } = {}) {
 // What the review screen shows before a schedule is saved: when it runs (New York and the user's time),
 // how precise that is, and the reminder that the price at run time may differ from the price now.
 api.post('/schedule/preview', U, wrap(async (req, res) => {
-  const p = schedulePlan(req, { preview: true });
+  // An incomplete or past choice is shown on the form as a message, not as a failed request.
+  let p; try { p = schedulePlan(req, { preview: true }); } catch (e) { if (e.status && e.status !== 400) throw e; return res.json({ error: e.message }); }
   res.json({ nextRun: p.at, kind: p.plan.kind, auction: p.plan.tif || null, graceMin: p.plan.graceMin, precision: p.plan.precision, repeat: p.repeat,
     priceNote: 'The price when the order runs may differ from the price now.', account: p.account });
 }));

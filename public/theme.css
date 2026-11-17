@@ -1251,7 +1251,8 @@ dialog.geardlg label.chk, dialog.geardlg label.chk2, dialog.geardlg label.check 
 @media (max-width: 760px) { .tablewrap:has(> table.chain), .tablewrap:has(> table.optchain) { overflow-x: auto; } }
 
 /* ---------- "When" choice and the clock / date pickers (public/pages/when.js, clock.js) ---------- */
-fieldset.when { margin: 12px 0 4px; padding: 10px 12px 12px; }
+fieldset.when { margin: 12px 0 4px; padding: 10px 12px 12px; min-width: 0; max-width: 100%; }
+.when-kinds, .when-delay, .when-quick { display: flex; flex-wrap: wrap; gap: 6px; }
 fieldset.when legend { font-weight: 650; color: var(--tx); }
 .when-kinds { margin: 2px 0 10px; }
 .when-kinds button, .when-delay button, .when-quick button { min-height: 32px; }

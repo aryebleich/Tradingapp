@@ -166,6 +166,37 @@ test('auction orders reach Alpaca with time in force opg or cls; past the cut-of
   assert.throws(() => auctionOf({ time_in_force: 'opg', qty: 1.5 }, 'alpaca'), /whole number of shares/);
 });
 
+// ---------------------------------------------------------------- scheduled close
+test('scheduled close: never more than the position at run time; a closed position marks the order done with a note', async () => {
+  const c = client(); const reg = await c('/auth/register', { email: 'sched-close@example.com', password: 'Str0ngPassword1', agree: true });
+  const u = reg.body.user.id, t = ny('2026-11-24', 11);
+  await run("UPDATE users SET plan = 'pro', plan_status = 'active' WHERE id = ?", u); // Scheduled trades is a paid feature
+  assert.equal((await c('/orders', { account: 'paper', symbol: 'AAPL', side: 'buy', qty: 10 })).status, 200);
+  const held = async s => (await one("SELECT qty FROM positions WHERE user_id = ? AND account = 'paper' AND symbol = ?", u, s))?.qty || 0;
+  // A quantity larger than the position is capped at what is held.
+  const big = await run("INSERT INTO scheduled_orders (user_id, account, symbol, side, qty, repeat, next_run, created_at, order_type, close_mode) VALUES (?, 'paper', 'AAPL', 'sell', 25, 'once', ?, 0, 'market', 'qty')", u, t - MIN).then(r => Number(r.lastInsertRowid));
+  assert.equal(await S.runScheduledOrders(t), 1);
+  assert.equal(await held('AAPL'), 0, 'sold the 10 held, not 25');
+  assert.match((await row(big)).last_result, /capped at the 10 held/);
+  // Nothing left: done with a note, nothing sent.
+  const none = await run("INSERT INTO scheduled_orders (user_id, account, symbol, side, qty, repeat, next_run, created_at, order_type, close_mode) VALUES (?, 'paper', 'AAPL', 'sell', 5, 'once', ?, 0, 'market', 'all')", u, t - MIN).then(r => Number(r.lastInsertRowid));
+  const before = await fills(u, 'AAPL');
+  await S.runScheduledOrders(t + MIN);
+  assert.equal(await fills(u, 'AAPL'), before);
+  assert.match((await row(none)).last_result, /^done: no AAPL position left to close/);
+  assert.equal((await row(none)).active, 0);
+  // A percentage closes that share of what is held then.
+  assert.equal((await c('/orders', { account: 'paper', symbol: 'MSFT', side: 'buy', qty: 8 })).status, 200);
+  await run("INSERT INTO scheduled_orders (user_id, account, symbol, side, qty, repeat, next_run, created_at, order_type, close_mode, close_pct) VALUES (?, 'paper', 'MSFT', 'sell', 8, 'once', ?, 0, 'market', 'pct', 25)", u, t + MIN);
+  await S.runScheduledOrders(t + 2 * MIN);
+  assert.equal(await held('MSFT'), 6);
+  // Through the API: a close of the entire position needs no amount.
+  const s = await c('/schedule', { account: 'paper', symbol: 'MSFT', side: 'sell', close: { mode: 'all' }, when: { kind: 'close', offsetMin: 30 } });
+  assert.equal(s.status, 200, JSON.stringify(s.body));
+  assert.equal((await row(s.body.id)).close_mode, 'all');
+  assert.equal((await c('/schedule', { account: 'paper', symbol: 'MSFT', side: 'sell', notional: 100, close: { mode: 'qty' }, when: { kind: 'open' } })).status, 400, 'a close is in shares, not dollars');
+});
+
 // ---------------------------------------------------------------- API
 test('API: preview states the timing precision and the price reminder; every kind can be saved on paper', async () => {
   for (const when of [{ kind: 'close', offsetMin: 0 }, { kind: 'close', offsetMin: 15 }, { kind: 'open' }, { kind: 'delay', delayMin: 5 }, { kind: 'delay', delayMin: 60 }]) {
@@ -182,7 +213,10 @@ test('API: preview states the timing precision and the price reminder; every kin
   const old = await owner('/schedule', { account: 'paper', symbol: 'SPY', side: 'buy', qty: 1, date: d, time: '10:00', repeat: 'daily' });
   assert.equal(old.status, 200, JSON.stringify(old.body));
   assert.equal((await row(old.body.id)).repeat, 'daily');
-  assert.equal((await owner('/schedule/preview', { account: 'paper', symbol: 'SPY', side: 'buy', qty: 1, when: { kind: 'later' } })).status, 400);
+  // The preview shows a bad choice as a message on the form; saving it is refused.
+  const bad = await owner('/schedule/preview', { account: 'paper', symbol: 'SPY', side: 'buy', qty: 1, when: { kind: 'later' } });
+  assert.equal(bad.body.error, 'Pick when it should run'); assert.equal(bad.body.nextRun, undefined);
+  assert.equal((await owner('/schedule', { account: 'paper', symbol: 'SPY', side: 'buy', qty: 1, when: { kind: 'later' } })).status, 400);
   const cal = await (await fetch(base + '/api/trading-calendar?from=2026-11-20&to=2026-12-31')).json();
   assert.deepEqual(cal.days.filter(x => x.closed).map(x => x.day), ['2026-11-26', '2026-12-25']);
 });
