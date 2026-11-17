@@ -77,7 +77,9 @@ export async function closeOrderOf(o) {
   const held = (await accountSummary(o.user_id, o.account).catch(() => ({ positions: [] }))).positions.find(p => p.symbol === o.symbol);
   const size = Math.abs(+held?.qty || 0);
   if (!(size > 0)) return { note: `done: no ${o.symbol} position left to close` };
-  let qty = o.close_mode === 'all' ? size : o.close_mode === 'pct' ? size * Math.min(100, Math.max(0, +o.close_pct || 0)) / 100 : Math.min(+o.qty || 0, size);
+  // Scale out: an equal part of what is left per remaining step; the last step closes the rest.
+  const left = Math.max(1, (+o.close_steps || 1) - (+o.steps_done || 0));
+  let qty = o.close_mode === 'all' ? size : o.close_mode === 'steps' ? size / left : o.close_mode === 'pct' ? size * Math.min(100, Math.max(0, +o.close_pct || 0)) / 100 : Math.min(+o.qty || 0, size);
   qty = +qty.toFixed(6);
   if (o.tif === 'opg' || o.tif === 'cls') qty = Math.floor(qty); // auction orders take whole shares
   if (!(qty > 0)) return { note: `done: nothing to close (${o.symbol} position is ${size})` };
@@ -115,8 +117,11 @@ export async function runScheduledOrders(t = now()) {
     while (next && next <= t) next = nextRunOf(o, next);
     const ends = !!(next && o.end_at && next > o.end_at);
     if (ends) next = null;
+    // Scale out: the next part runs step_every_min after this one, until every part has run.
+    const step = o.close_mode === 'steps' ? (+o.steps_done || 0) + 1 : 0;
+    if (step && step < (+o.close_steps || 1)) next = t + Math.max(1, +o.step_every_min || 0) * MIN;
     // Claimed with a conditional UPDATE: the in-process timer, the cron tick and a restart can never run it twice.
-    const claim = await run('UPDATE scheduled_orders SET next_run = ?, active = ? WHERE id = ? AND next_run = ? AND active = 1 AND COALESCE(paused, 0) = 0', next ?? o.next_run, next ? 1 : 0, o.id, o.next_run);
+    const claim = await run('UPDATE scheduled_orders SET next_run = ?, active = ?, steps_done = COALESCE(steps_done, 0) + ? WHERE id = ? AND next_run = ? AND active = 1 AND COALESCE(paused, 0) = 0', next ?? o.next_run, next ? 1 : 0, step ? 1 : 0, o.id, o.next_run);
     if (!claim.changes) continue;
     const tail = next ? ' The next run is still scheduled.' : ends ? ' This was its last run before the end date.' : '';
     if (missed) {
@@ -127,20 +132,35 @@ export async function runScheduledOrders(t = now()) {
       continue;
     }
     ran++;
+    const part = step ? `part ${step} of ${o.close_steps}: ` : '';
     try {
+      // Price condition, checked at run time: not met, nothing is sent (a repeating order tries again next time).
+      if (o.cond_op && o.cond_price > 0) {
+        const px = await lastPrice(o.symbol, o.user_id).catch(() => null);
+        if (!(px > 0)) throw new Error(`no price for ${o.symbol} to check the condition, so nothing was sent`);
+        const met = o.cond_op === 'above' ? px > o.cond_price : px < o.cond_price;
+        if (!met) {
+          const why = `${o.symbol} was ${px.toFixed(2)}, not ${o.cond_op} ${o.cond_price.toFixed(2)}`;
+          await recordRun(o.id, 'skipped', `${part}${why}`, t); await notifyUser(o.user_id, `Your ${label(o)} was not sent: ${why}.${tail}`);
+          continue;
+        }
+      }
       let order = orderOf(o), capped = false;
       if (o.close_mode) {
         const c = await closeOrderOf(o);
-        if (c.note) { await recordRun(o.id, 'done', c.note.replace(/^done: /, ''), t); await notifyUser(o.user_id, `Your ${label(o)}: ${c.note.replace(/^done: /, '')}.${tail}`); continue; }
+        if (c.note) {
+          if (step) await run('UPDATE scheduled_orders SET active = 0 WHERE id = ?', o.id); // nothing left for the later parts
+          await recordRun(o.id, 'done', part + c.note.replace(/^done: /, ''), t); await notifyUser(o.user_id, `Your ${label(o)}: ${c.note.replace(/^done: /, '')}.${step ? '' : tail}`); continue;
+        }
         order = c.order; capped = c.capped;
       }
       const r = await placeOrder(o.user_id, o.account, order, 'schedule');
-      const detail = `${r.status}${r.price ? ' @ ' + r.price.toFixed(2) : ''}${capped ? ` (capped at the ${order.qty} held)` : ''}`;
+      const detail = `${part}${r.status}${r.price ? ' @ ' + r.price.toFixed(2) : ''}${step ? ` (${order.qty} shares)` : ''}${capped ? ` (capped at the ${order.qty} held)` : ''}`;
       await recordRun(o.id, 'sent', detail, t);
       await notifyUser(o.user_id, `Your ${label(o)} ran: ${detail}.${tail}`);
     } catch (e) {
       // Recorded and notified, never retried blindly.
-      await recordRun(o.id, 'failed', e.message, t);
+      await recordRun(o.id, 'failed', part + e.message, t);
       await notifyUser(o.user_id, `Your ${label(o)} failed: ${e.message}.${tail}`);
     }
   }

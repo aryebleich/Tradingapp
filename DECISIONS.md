@@ -70,6 +70,8 @@ Choices and assumptions made without asking, with the reason. Trading-tools work
 - S-13: Edit (PUT /schedule/:id) re-runs the same validation as create and is conditional on the run time it read, so it cannot collide with a run in progress; a finished or cancelled schedule cannot be edited. Step-up applies when the schedule is on, or is moved to, a real-money account.
 - S-14: Pausing needs no step-up (it makes an order safer); resuming a real-money schedule does. A resumed order whose time passed by more than its window expires (never sent late).
 - S-15: An end date applies to repeating schedules only and ends after that New York day; a run after it is never scheduled.
+- S-16: A price condition ('above' / 'below' a level) is checked with the last price when the order runs; not met, nothing is sent, the history says why and the user is told; with no price available it fails safe (nothing sent).
+- S-17: Scale-out closes the position in 2 to 10 steps, 5 minutes to a day apart: each step sells an equal part of what is held at that moment (the last step the rest), so no step can exceed the position; if the position is gone, the schedule ends with a note. A scale-out never uses the closing auction (its later steps run at other times) and never repeats.
 ## Deploys
 
 - D-1 (2026-11-16): released flag removal, permanent layout layer, Chat, planning tools, AI explainers, comms drawer for users with a number, previous homepage kept, post-deploy smoke/rollback workflows; merge commit f392309; gates npm test 354/0, e2e 435 exit 0, security:check 0; no revert. The page-snapshot gate still flags Admin → SEO (Feature flags card gone) and the owner to-do list (flag steps gone): intentional, snapshot update for those two pages left for the owner.

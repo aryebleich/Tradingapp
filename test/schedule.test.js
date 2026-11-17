@@ -339,3 +339,67 @@ test('step-up: editing or resuming a real-money schedule needs the same confirma
     assert.equal((await c('/schedule/' + pid, { account: 'paper', symbol: 'SPY', side: 'buy', qty: 5, when: { kind: 'delay', delayMin: 60 } }, 'PUT')).status, 200, 'paper edits are not held');
   } finally { stepUpSessions.delete(token_hash); }
 });
+
+
+// ---------------------------------------------------------------- price condition, scale out
+test('price condition: checked at run time; not met, nothing is sent and the history says why', async () => {
+  const c = client(); const u = (await c('/auth/register', { email: 'sched-cond@example.com', password: 'Str0ngPassword1', agree: true })).body.user.id;
+  await run("UPDATE users SET plan = 'pro', plan_status = 'active' WHERE id = ?", u);
+  const px = await (await import('../src/brokers.js')).lastPrice('AAPL', u);
+  assert.ok(px > 0);
+  // Validation and the review line.
+  assert.equal((await c('/schedule', { account: 'paper', symbol: 'AAPL', side: 'buy', qty: 1, when: { kind: 'open' }, condition: { op: 'above' } })).status, 400);
+  const pv = await c('/schedule/preview', { account: 'paper', symbol: 'AAPL', side: 'buy', qty: 1, when: { kind: 'open' }, condition: { op: 'below', price: 50 } });
+  assert.match(pv.body.condition, /Only if AAPL is below 50\.00 when it runs/);
+  const s = await c('/schedule', { account: 'paper', symbol: 'AAPL', side: 'buy', qty: 1, when: { kind: 'open' }, condition: { op: 'below', price: +(px / 2).toFixed(2) } });
+  assert.equal(s.status, 200, JSON.stringify(s.body));
+  assert.equal((await row(s.body.id)).cond_op, 'below');
+  const t = ny('2026-11-24', 11);
+  await run('UPDATE scheduled_orders SET next_run = ?, grace_min = 15 WHERE id = ?', t - MIN, s.body.id);
+  const n = await notes(() => S.runScheduledOrders(t));
+  assert.equal(await fills(u, 'AAPL'), 0, 'not sent: the price is above the level');
+  assert.deepEqual(await runsOf(s.body.id), ['created', 'skipped']); assert.match((await row(s.body.id)).last_result, /^skipped: AAPL was [\d.]+, not below/);
+  assert.match(n, /was not sent: AAPL was/);
+  // Met: it runs.
+  const ok = await run("INSERT INTO scheduled_orders (user_id, account, symbol, side, qty, repeat, next_run, created_at, order_type, cond_op, cond_price, grace_min) VALUES (?, 'paper', 'AAPL', 'buy', 1, 'once', ?, 0, 'market', 'above', ?, 15)", u, t, px / 2).then(x => Number(x.lastInsertRowid));
+  await S.runScheduledOrders(t + MIN);
+  assert.equal(await fills(u, 'AAPL'), 1); assert.deepEqual(await runsOf(ok), ['sent']);
+});
+
+test('scale out: a close in steps sells an equal part of what is held at each step, never more, then stops', async () => {
+  const c = client(); const u = (await c('/auth/register', { email: 'sched-steps@example.com', password: 'Str0ngPassword1', agree: true })).body.user.id;
+  await run("UPDATE users SET plan = 'pro', plan_status = 'active' WHERE id = ?", u);
+  assert.equal((await c('/orders', { account: 'paper', symbol: 'AMZN', side: 'buy', qty: 9 })).status, 200);
+  const held = async () => (await one("SELECT qty FROM positions WHERE user_id = ? AND account = 'paper' AND symbol = 'AMZN'", u))?.qty || 0;
+  assert.equal((await c('/schedule', { account: 'paper', symbol: 'AMZN', side: 'sell', close: { mode: 'steps', steps: 1, everyMin: 30 }, when: { kind: 'open' } })).status, 400, 'at least 2 steps');
+  assert.equal((await c('/schedule', { account: 'paper', symbol: 'AMZN', side: 'sell', close: { mode: 'steps', steps: 3, everyMin: 2 }, when: { kind: 'open' } })).status, 400, 'at least 5 minutes apart');
+  const pv = await c('/schedule/preview', { account: 'paper', symbol: 'AMZN', side: 'sell', close: { mode: 'steps', steps: 3, everyMin: 30 }, when: { kind: 'open' } });
+  assert.match(pv.body.steps, /In 3 equal parts of what is held then, 30 minutes apart/);
+  const s = await c('/schedule', { account: 'paper', symbol: 'AMZN', side: 'sell', close: { mode: 'steps', steps: 3, everyMin: 30 }, when: { kind: 'open' } });
+  assert.equal(s.status, 200, JSON.stringify(s.body));
+  const id = s.body.id, t = ny('2026-11-24', 10);
+  await run('UPDATE scheduled_orders SET next_run = ?, grace_min = 15 WHERE id = ?', t, id);
+  await S.runScheduledOrders(t);
+  assert.equal(await held(), 6, 'part 1: a third of 9');
+  let r = await row(id); assert.equal(r.steps_done, 1); assert.equal(r.next_run, t + 30 * MIN); assert.equal(r.active, 1);
+  await S.runScheduledOrders(t + 30 * MIN);
+  assert.equal(await held(), 3, 'part 2: half of the 6 left');
+  // Some shares were sold by hand in between: the last part closes only what is left.
+  assert.equal((await c('/orders', { account: 'paper', symbol: 'AMZN', side: 'sell', qty: 1 })).status, 200);
+  await S.runScheduledOrders(t + 60 * MIN);
+  assert.equal(await held(), 0, 'part 3: the rest');
+  r = await row(id); assert.equal(r.active, 0); assert.equal(r.steps_done, 3);
+  await S.runScheduledOrders(t + 90 * MIN);
+  assert.deepEqual(await runsOf(id), ['created', 'sent', 'sent', 'sent']);
+  assert.match((await row(id)).last_result, /part 3 of 3/);
+  // Position already gone before a step: done with a note, the later steps are dropped.
+  assert.equal((await c('/orders', { account: 'paper', symbol: 'AMZN', side: 'buy', qty: 4 })).status, 200);
+  const g = await run("INSERT INTO scheduled_orders (user_id, account, symbol, side, qty, repeat, next_run, created_at, order_type, close_mode, close_steps, step_every_min, grace_min) VALUES (?, 'paper', 'AMZN', 'sell', 4, 'once', ?, 0, 'market', 'steps', 2, 30, 15)", u, t + 120 * MIN).then(x => Number(x.lastInsertRowid));
+  await S.runScheduledOrders(t + 120 * MIN);
+  assert.equal(await held(), 2);
+  assert.equal((await c('/orders', { account: 'paper', symbol: 'AMZN', side: 'sell', qty: 2 })).status, 200);
+  await S.runScheduledOrders(t + 150 * MIN);
+  r = await row(g); assert.equal(r.active, 0); assert.match(r.last_result, /^done: part 2 of 2: no AMZN position left to close/);
+  // A scale-out on Alpaca is never an auction order, and does not repeat.
+  assert.equal((await c('/schedule', { account: 'paper', symbol: 'AMZN', side: 'sell', close: { mode: 'steps', steps: 2, everyMin: 30 }, when: { kind: 'at', date: T.addDays(T.nyTime(Date.now()).day, 7), time: '10:00' }, repeat: 'daily' })).status, 400);
+});

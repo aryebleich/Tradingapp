@@ -894,6 +894,13 @@ const MIGRATIONS = [
   'ALTER TABLE scheduled_orders ADD COLUMN paused INTEGER NOT NULL DEFAULT 0',
   'ALTER TABLE scheduled_orders ADD COLUMN end_at INTEGER',
   'ALTER TABLE scheduled_orders ADD COLUMN history TEXT',
+  // A price condition checked when the order runs ('above' / 'below' a level), and a close in steps
+  // (scale out: close_steps parts, step_every_min apart; steps_done counts the parts already run).
+  'ALTER TABLE scheduled_orders ADD COLUMN cond_op TEXT',
+  'ALTER TABLE scheduled_orders ADD COLUMN cond_price REAL',
+  'ALTER TABLE scheduled_orders ADD COLUMN close_steps INTEGER',
+  'ALTER TABLE scheduled_orders ADD COLUMN step_every_min INTEGER',
+  'ALTER TABLE scheduled_orders ADD COLUMN steps_done INTEGER NOT NULL DEFAULT 0',
   'ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0',
   'ALTER TABLE users ADD COLUMN reset_hash TEXT',
   'ALTER TABLE users ADD COLUMN reset_expires INTEGER',

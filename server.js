@@ -881,10 +881,23 @@ function schedulePlan(req, { preview = false } = {}) {
   if (!['at', 'close', 'open', 'delay'].includes(w.kind)) throw Object.assign(new Error('Pick when it should run'), { status: 400 });
   const repeat = w.kind === 'at' ? (b.repeat || 'once') : 'once';
   if (!['once', 'daily', 'weekly', 'monthly'].includes(repeat)) throw new Error('Bad repeat');
-  const close = b.close && ['all', 'qty', 'pct'].includes(b.close.mode) ? { mode: b.close.mode, pct: b.close.mode === 'pct' ? Math.min(100, Math.max(0, +b.close.pct || 0)) : null } : null;
+  const close = b.close && ['all', 'qty', 'pct', 'steps'].includes(b.close.mode) ? { mode: b.close.mode, pct: b.close.mode === 'pct' ? Math.min(100, Math.max(0, +b.close.pct || 0)) : null } : null;
   if (close?.mode === 'pct' && !(close.pct > 0)) throw Object.assign(new Error('Enter the percentage to close'), { status: 400 });
+  // Scale out: 2 to 10 equal parts of what is held at each run, at least 5 minutes apart.
+  if (close?.mode === 'steps') {
+    close.steps = Math.round(+b.close.steps); close.everyMin = Math.round(+b.close.everyMin);
+    if (!(close.steps >= 2 && close.steps <= 10)) throw Object.assign(new Error('Scale out in 2 to 10 steps'), { status: 400 });
+    if (!(close.everyMin >= 5 && close.everyMin <= 1440)) throw Object.assign(new Error('Put 5 minutes to 1 day between the steps'), { status: 400 });
+  }
+  // A price condition checked when the order runs.
+  let cond = null;
+  if (b.condition && b.condition.op) {
+    if (!['above', 'below'].includes(b.condition.op) || !(+b.condition.price > 0)) throw Object.assign(new Error('Enter the price for the condition'), { status: 400 });
+    cond = { op: b.condition.op, price: +b.condition.price };
+  }
   // A close of the whole position or a percentage needs no amount: it is worked out at run time.
   const needsAmount = !close || close.mode === 'qty';
+  if (close?.mode === 'steps' && (b.repeat || 'once') !== 'once') throw Object.assign(new Error('A scale-out runs once, in steps'), { status: 400 });
   if (!preview && needsAmount && !(+b.qty > 0) && !(+b.notional > 0)) throw new Error('Give a quantity or dollar amount');
   if (close && +b.notional > 0) throw Object.assign(new Error('A scheduled close is in shares, not dollars'), { status: 400 });
   const symbol = String(b.symbol || '').trim().toUpperCase();
@@ -904,6 +917,8 @@ function schedulePlan(req, { preview = false } = {}) {
     }
   }
   if (!(at > now() - 60e3)) throw new Error('Pick a time in the future');
+  // A scale-out's later parts run at intervals, so it is never an auction order (those run only at the open or close).
+  if (close?.mode === 'steps' && plan.tif) plan = { ...plan, tif: null, precision: plan.precision + ' A scale-out uses timed market orders, not the closing auction.' };
   // An end date (repeating schedules only): no run after the end of that New York day.
   let endAt = null;
   if (b.endDate) {
@@ -915,7 +930,7 @@ function schedulePlan(req, { preview = false } = {}) {
   const type = b.orderType === 'limit' ? 'limit' : 'market', limit = type === 'limit' ? +b.limitPrice : null;
   if (!preview && type === 'limit' && !(limit > 0)) throw new Error('Enter the limit price');
   const extended = type === 'limit' && !!b.extended && !plan.tif ? 1 : 0;
-  return { b, w, repeat, symbol, account, plan: { ...plan, nextRun: at }, at, minutes, weekdays, monthDay, type, limit, extended, close, endAt };
+  return { b, w, repeat, symbol, account, plan: { ...plan, nextRun: at }, at, minutes, weekdays, monthDay, type, limit, extended, close, endAt, cond };
 }
 // What the review screen shows before a schedule is saved: when it runs (New York and the user's time),
 // how precise that is, and the reminder that the price at run time may differ from the price now.
@@ -923,18 +938,21 @@ api.post('/schedule/preview', U, wrap(async (req, res) => {
   // An incomplete or past choice is shown on the form as a message, not as a failed request.
   let p; try { p = schedulePlan(req, { preview: true }); } catch (e) { if (e.status && e.status !== 400) throw e; return res.json({ error: e.message }); }
   res.json({ nextRun: p.at, kind: p.plan.kind, auction: p.plan.tif || null, graceMin: p.plan.graceMin, precision: p.plan.precision, repeat: p.repeat,
-    priceNote: 'The price when the order runs may differ from the price now.', account: p.account, endAt: p.endAt });
+    priceNote: 'The price when the order runs may differ from the price now.', account: p.account, endAt: p.endAt,
+    condition: p.cond ? `Only if ${p.symbol} is ${p.cond.op} ${p.cond.price.toFixed(2)} when it runs; otherwise nothing is sent.` : null,
+    steps: p.close?.mode === 'steps' ? `In ${p.close.steps} equal parts of what is held then, ${p.close.everyMin} minutes apart; each part never exceeds the position.` : null });
 }));
 // Schedules on a real-money account need the same step-up confirmation as a live order.
 const scheduleStepUp = (req, res, next) => (acct(req) === 'paper' ? next() : stepUpGuard(req, res, next));
 // The columns a schedule's form sets (create and edit share them).
 const scheduleCols = (p, userId) => {
-  const { b, w, repeat, symbol, account, plan, at, minutes, weekdays, monthDay, type, limit, extended, close, endAt } = p;
+  const { b, w, repeat, symbol, account, plan, at, minutes, weekdays, monthDay, type, limit, extended, close, endAt, cond } = p;
   return {
     user_id: userId, account, symbol, side: b.side === 'sell' ? 'sell' : 'buy', qty: +b.qty || null, notional: +b.notional || null, repeat, next_run: at,
     run_minutes: minutes, weekdays, month_day: monthDay, order_type: type, limit_price: limit, extended,
     when_kind: w.kind, close_offset: w.kind === 'close' ? plan.offsetMin ?? 0 : null, grace_min: plan.graceMin ?? null, tif: plan.tif || null,
     close_mode: close?.mode || null, close_pct: close?.pct ?? null, end_at: endAt,
+    cond_op: cond?.op || null, cond_price: cond?.price ?? null, close_steps: close?.steps ?? null, step_every_min: close?.everyMin ?? null, steps_done: 0,
   };
 };
 const whenText = at => new Date(at).toLocaleString('en-US', { timeZone: 'America/New_York', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' New York time';

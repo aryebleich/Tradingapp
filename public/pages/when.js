@@ -122,7 +122,7 @@ export function wireWhen(root, { api, order = () => ({}), onChange = () => {} } 
 export function reviewHtml(p) {
   return `<p><b>Runs ${esc(fmt(p.nextRun, 'America/New_York'))}</b> New York (${countdown(p.nextRun - Date.now())}).</p>
     ${p.auction ? `<p>${p.auction === 'cls' ? 'Sent as a closing auction order.' : 'Sent as an opening auction order.'}</p>` : ''}
-    <p class="mu"><b>Timing:</b> ${esc(p.precision)}</p><p class="warn">${esc(p.priceNote)}</p>`;
+    <p class="mu"><b>Timing:</b> ${esc(p.precision)}</p>${p.condition ? `<p><b>Condition:</b> ${esc(p.condition)}</p>` : ''}${p.steps ? `<p><b>Scale out:</b> ${esc(p.steps)}</p>` : ''}<p class="warn">${esc(p.priceNote)}</p>`;
 }
 export async function scheduleOrder(api, order, w, extra = {}) {
   return api('/schedule', { body: { ...order, when: w.when(), repeat: w.repeat(), weekdays: w.weekdays(), ...extra } });
@@ -162,22 +162,23 @@ export function closeLater(api, { account, symbol, qty, live = false }) {
     const d = document.createElement('dialog');
     d.className = 'when-dialog'; d.setAttribute('aria-labelledby', 'clTitle');
     d.innerHTML = `<form method="dialog"><h2 id="clTitle">Close ${esc(symbol)} later</h2><p class="mu">Position now: ${esc(qty)}. The amount is checked again when the order runs and never exceeds the position.</p>
-      <label>How much<select name="mode"><option value="all">Entire position</option><option value="qty">A quantity</option><option value="pct">A percentage</option></select></label>
+      <label>How much<select name="mode"><option value="all">Entire position</option><option value="qty">A quantity</option><option value="pct">A percentage</option><option value="steps">Scale out in steps</option></select></label>
       <label class="cl-amt" hidden><span class="cl-lbl">Quantity</span><input name="amount" type="number" step="any" min="0"></label>
+      <div class="row cl-steps" hidden><label>Steps<input name="steps" type="number" min="2" max="10" step="1" value="3"></label><label>Minutes between steps<input name="every" type="number" min="5" max="1440" step="1" value="30"></label></div>
       ${whenHtml({ kinds: KINDS.filter(([k]) => k !== 'now') })}
       <div class="err" role="alert"></div>
       <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="ghost" value="no" formnovalidate>Cancel</button><button value="go" type="button" id="clGo">Review</button></div></form>`;
     document.body.append(d);
     const f = d.querySelector('form'), W = wireWhen(d, { api, order: () => ({ account, symbol, side: +qty > 0 ? 'sell' : 'buy', qty: Math.abs(+qty) }) });
     W.setKind('close');
-    f.mode.onchange = () => { d.querySelector('.cl-amt').hidden = f.mode.value === 'all'; d.querySelector('.cl-lbl').textContent = f.mode.value === 'pct' ? 'Percent of the position' : 'Quantity'; };
+    f.mode.onchange = () => { d.querySelector('.cl-amt').hidden = ['all', 'steps'].includes(f.mode.value); d.querySelector('.cl-steps').hidden = f.mode.value !== 'steps'; d.querySelector('.cl-lbl').textContent = f.mode.value === 'pct' ? 'Percent of the position' : 'Quantity'; };
     d.querySelector('#clGo').onclick = async () => {
       const err = d.querySelector('.err'); err.textContent = '';
       try {
         const mode = f.mode.value, amt = +f.amount.value;
-        if (mode !== 'all' && !(amt > 0)) throw new Error(mode === 'pct' ? 'Enter the percentage' : 'Enter the quantity');
-        const order = { account, symbol, side: +qty > 0 ? 'sell' : 'buy', qty: mode === 'qty' ? amt : Math.abs(+qty), orderType: 'market', close: { mode, pct: mode === 'pct' ? amt : undefined } };
-        const what = `Close ${mode === 'all' ? 'the entire position' : mode === 'pct' ? amt + '% of the position' : amt + ' of the position'} in ${symbol}`;
+        if (['qty', 'pct'].includes(mode) && !(amt > 0)) throw new Error(mode === 'pct' ? 'Enter the percentage' : 'Enter the quantity');
+        const order = { account, symbol, side: +qty > 0 ? 'sell' : 'buy', qty: mode === 'qty' ? amt : Math.abs(+qty), orderType: 'market', close: { mode, pct: mode === 'pct' ? amt : undefined, ...(mode === 'steps' ? { steps: +f.steps.value, everyMin: +f.every.value } : {}) } };
+        const what = `Close ${mode === 'all' ? 'the entire position' : mode === 'steps' ? `the position in ${f.steps.value} steps, ${f.every.value} minutes apart,` : mode === 'pct' ? amt + '% of the position' : amt + ' of the position'} in ${symbol}`;
         const msg = await reviewAndSchedule(api, W, order, { what, live });
         if (msg) { d.close('done'); resolve(msg); }
       } catch (e) { err.textContent = e.message; }

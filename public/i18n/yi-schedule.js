@@ -1,5 +1,8 @@
 // Yiddish for scheduling from the order ticket, the clock and date pickers, and Close later.
 export const strings = {
+  'Scale out in steps': 'פארקויפן אין שריטן', 'Steps': 'שריטן', 'Minutes between steps': 'מינוט צווישן די שריטן', 'Price condition': 'פרייז באדינג',
+  'None: always run': 'קיינע: שטענדיג לויפן', 'Only if the price is above': 'נאר אויב דער פרייז איז העכער ווי', 'Only if the price is below': 'נאר אויב דער פרייז איז נידעריגער ווי',
+  'Price level': 'פרייז שטאפל', 'Condition:': 'באדינג:', 'Scale out:': 'פארקויפן אין שריטן:',
   'Edit': 'רעדאגירן', 'Pause': 'פאויזע', 'Resume': 'ווייטער', 'Paused': 'אפגעשטעלט אויף א וויילע', 'Run history': 'געשיכטע פון לויפן',
   'Created': 'געשאפן', 'Edited': 'רעדאגירט', 'Resumed': 'ווייטער געפירט', 'Cancelled': 'אפגעשטעלט', 'Sent': 'געשיקט', 'Done': 'פארטיג',
   'Failed': 'דורכגעפאלן', 'Expired': 'אויסגעגאנגען', 'Ended': 'געענדיגט', 'Skipped': 'איבערגעהיפּט', 'End date (optional)': 'סוף דאטום (ווען מען וויל)',

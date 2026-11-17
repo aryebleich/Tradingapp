@@ -1468,7 +1468,8 @@ routes.schedule = async view => {
     if (!h.length) return esc(o.last_result || '-');
     return `<ul class="runs">${runLine(h[0])}</ul>${h.length > 1 ? `<details><summary>${h.length - 1} earlier</summary><ul class="runs">${h.slice(1).map(runLine).join('')}</ul></details>` : ''}`;
   };
-  const what = o => o.close_mode ? `close ${o.close_mode === 'all' ? 'all of' : o.close_mode === 'pct' ? o.close_pct + '% of' : num(o.qty, 4) + ' of'} ${esc(o.symbol)}` : `${o.side} ${o.qty ? num(o.qty, 4) : money(o.notional)} ${esc(o.symbol)}${o.order_type === 'limit' ? ` · limit ${money(o.limit_price)}${o.extended ? ' · ext. hours' : ''}` : ''}`;
+  const cond = o => o.cond_op ? ` · only if ${o.cond_op} ${money(o.cond_price)}` : '';
+  const what = o => (o.close_mode ? `close ${o.close_mode === 'all' ? 'all of' : o.close_mode === 'steps' ? `in ${o.close_steps} steps (${o.steps_done || 0} done) every ${o.step_every_min} min,` : o.close_mode === 'pct' ? o.close_pct + '% of' : num(o.qty, 4) + ' of'} ${esc(o.symbol)}` : `${o.side} ${o.qty ? num(o.qty, 4) : money(o.notional)} ${esc(o.symbol)}${o.order_type === 'limit' ? ` · limit ${money(o.limit_price)}${o.extended ? ' · ext. hours' : ''}` : ''}`) + cond(o);
   view.innerHTML = `<h1>Scheduled trades</h1>
   <form class="card" id="sch"><h2>New scheduled order</h2>
     <div class="row"><label>Account<select name="account">${accountOptions(accts, 'paper', isPaid(ME))}</select></label>
@@ -1478,6 +1479,8 @@ routes.schedule = async view => {
     <div class="row"><label>Order type<select name="orderType"><option value="market">Market</option><option value="limit">Limit</option></select></label>
       <label id="lpL" hidden>Limit price<input name="limitPrice" type="number" step="any"></label>
       <label class="chk" id="exL" hidden><input type="checkbox" name="extended"> Extended hours (4:00–9:30 and 16:00–20:00, Alpaca)</label></div>
+    <div class="row"><label>Price condition<select name="condOp"><option value="">None: always run</option><option value="above">Only if the price is above</option><option value="below">Only if the price is below</option></select></label>
+      <label id="cpL" hidden>Price level<input name="condPrice" type="number" step="any" min="0"></label></div>
     ${whenHtml({ repeat: true, kinds: [['at', 'At a date and time'], ['close', 'Before the close'], ['open', 'At the next open'], ['delay', 'After a delay']] })}
     <p class="mu" style="font-size:12.5px;margin:4px 0 10px">Times are New York (exchange) time. Weekends and market holidays are skipped; on early-close days the market closes at 1:00 PM. An order that cannot be sent within its window is cancelled, never sent late.</p>
     <p class="mu" id="editing" hidden></p>
@@ -1493,10 +1496,11 @@ routes.schedule = async view => {
     <div class="row"><label>Symbol<input name="symbol" value="AAPL"></label><label>When price is<select name="op"><option>above</option><option>below</option></select></label><label>Price<input name="price" type="number" step="any"></label><button>Add alert</button></div>
     <table>${alerts.map(a => `<tr class="${a.active ? '' : 'mu'}"><td>${esc(a.symbol)} ${a.op} ${money(a.price)}</td><td>${a.active ? 'watching' : 'triggered'}</td><td><button class="small ghost" data-a="${a.id}">Remove</button></td></tr>`).join('')}</table></form>`;
   const sf = $('#sch', view);
-  const order = () => { const f = form(sf); return { account: f.account, side: f.side, symbol: f.symbol.trim().toUpperCase(), qty: +f.qty || undefined, notional: +f.notional || undefined, orderType: f.orderType, limitPrice: +f.limitPrice || undefined, extended: !!sf.extended.checked }; };
+  const order = () => { const f = form(sf); return { account: f.account, side: f.side, symbol: f.symbol.trim().toUpperCase(), qty: +f.qty || undefined, notional: +f.notional || undefined, orderType: f.orderType, limitPrice: +f.limitPrice || undefined, extended: !!sf.extended.checked, ...(f.condOp ? { condition: { op: f.condOp, price: +f.condPrice } } : {}) }; };
   const W = wireWhen(sf, { api, order });
   W.setKind('at');
   const sync = () => { const lim = sf.orderType.value === 'limit'; $('#lpL', view).hidden = !lim; $('#exL', view).hidden = !lim; W.refresh(); };
+  sf.condOp.onchange = () => { $('#cpL', view).hidden = !sf.condOp.value; W.refresh(); }; sf.condPrice.oninput = () => W.refresh();
   sf.orderType.onchange = sync; sf.account.onchange = sf.qty.oninput = sf.notional.oninput = sf.symbol.onchange = () => W.refresh(); sync();
   // Edit: the form takes the saved schedule; Review then saves the changes to the same schedule.
   let editing = null;
@@ -1504,6 +1508,7 @@ routes.schedule = async view => {
     editing = o;
     for (const [k, v] of [['account', o.account], ['side', o.side], ['symbol', o.symbol], ['qty', o.qty ?? ''], ['notional', o.notional ?? ''], ['orderType', o.order_type || 'market'], ['limitPrice', o.limit_price ?? '']]) if (sf[k]) sf[k].value = v;
     sf.extended.checked = !!o.extended;
+    sf.condOp.value = o.cond_op || ''; sf.condPrice.value = o.cond_price ?? ''; $('#cpL', view).hidden = !o.cond_op;
     W.load(o); sync();
     $('#editing', view).hidden = false; $('#editing', view).textContent = `Editing scheduled order #${o.id}. Review shows the changes before they are saved.`;
     $('#schGo', view).textContent = 'Review changes'; $('#schStop', view).hidden = false;
@@ -1512,7 +1517,7 @@ routes.schedule = async view => {
   $('#schStop', view).onclick = () => render();
   act($('#schGo', view), async () => {
     const o = order(); if (!(o.qty > 0) && !(o.notional > 0) && !editing?.close_mode) throw new Error('Give a quantity or dollar amount');
-    if (editing?.close_mode) Object.assign(o, { close: { mode: editing.close_mode, pct: editing.close_pct }, notional: undefined });
+    if (editing?.close_mode) Object.assign(o, { close: { mode: editing.close_mode, pct: editing.close_pct, steps: editing.close_steps, everyMin: editing.step_every_min }, notional: undefined });
     const acctRow = accts.find(x => x.id === o.account), was = editing && accts.find(x => x.id === editing.account);
     const msg = await reviewAndSchedule(api, W, o, { id: editing?.id, what: `${o.side.toUpperCase()} ${o.qty ? o.qty + ' shares of' : money(o.notional) + ' of'} ${o.symbol} · ${o.orderType}${o.limitPrice ? ' @ ' + o.limitPrice : ''}`, live: !!acctRow?.live || !!was?.live });
     if (msg) setTimeout(render, 1500);
