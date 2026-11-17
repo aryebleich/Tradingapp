@@ -1,0 +1,108 @@
+name: Deep check
+# Check 2 (after the deploy): full test suite, end-to-end run, dependency audit, and a deep bug hunt
+# by Claude Code over the diff since the last deep check. Real bugs get a failing test, the smallest
+# fix and a "Deepfix: <bug>" commit (which runs Check 1 and deploys again). Every finding goes to
+# BUG_REPORT.md. Order, money, balance, auth and payment fixes are pushed only when every test passes;
+# otherwise an issue is opened with the failing test and the proposed fix.
+# Loop guard: stops and opens an issue after 3 "Deepfix:" or "Autofix:" commits in a row. One deep
+# check at a time; skipped when a newer commit is on main. Uses the same secrets as autofix.yml.
+on:
+  workflow_run:
+    workflows: ["Deploy to Render"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: write
+  issues: write
+  id-token: write
+concurrency: { group: deep-check, cancel-in-progress: false }
+jobs:
+  deep:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      HAS_CLAUDE: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' || secrets.ANTHROPIC_API_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v7
+        with: { ref: main, fetch-depth: 200 }
+      - name: Newest commit, and not looping?
+        id: guard
+        run: |
+          if [ "$(git rev-parse HEAD)" != "$SHA" ]; then echo "A newer commit is on main; its own deep check runs."; echo "go=no" >> "$GITHUB_OUTPUT"; exit 0; fi
+          streak=0; for s in $(git log -6 --format=%s | sed 's/ /_/g'); do case "$s" in Deepfix:*|Autofix:*) streak=$((streak+1));; *) break;; esac; done
+          echo "streak=$streak" >> "$GITHUB_OUTPUT"
+          if [ "$streak" -ge 3 ]; then echo "go=loop" >> "$GITHUB_OUTPUT"; else echo "go=yes" >> "$GITHUB_OUTPUT"; fi
+          # The diff to review: since the last commit tagged deep-checked, else the last 10 commits.
+          last=$(git tag --list 'deep-checked-*' --sort=-creatordate | head -1)
+          base=$([ -n "$last" ] && git rev-list -n1 "$last" || git rev-list -n1 HEAD~10)
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+      - name: Stop the loop
+        if: steps.guard.outputs.go == 'loop'
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "Deep check stopped: 3 fix commits in a row" --body "The last three commits on main are Deepfix/Autofix commits. The deep check stopped so it cannot loop. Latest: $SHA"
+      - uses: actions/setup-node@v7
+        if: steps.guard.outputs.go == 'yes'
+        with: { node-version-file: .node-version, check-latest: true, cache: npm }
+      - name: Install
+        if: steps.guard.outputs.go == 'yes'
+        run: npm ci --no-audit --no-fund && npx playwright install --with-deps chromium
+      - name: Full tests
+        id: tests
+        if: steps.guard.outputs.go == 'yes'
+        continue-on-error: true
+        run: npm test 2>&1 | tail -300 > tests.log; exit ${PIPESTATUS[0]}
+      - name: End-to-end
+        id: e2e
+        if: steps.guard.outputs.go == 'yes'
+        continue-on-error: true
+        run: npm run e2e 2>&1 | tail -300 > e2e.log; exit ${PIPESTATUS[0]}
+      - name: Dependency audit
+        id: audit
+        if: steps.guard.outputs.go == 'yes'
+        continue-on-error: true
+        run: npm audit --omit=dev --audit-level=high 2>&1 | tail -100 > audit.log; exit ${PIPESTATUS[0]}
+      - name: Diff to review
+        if: steps.guard.outputs.go == 'yes'
+        run: git diff "${{ steps.guard.outputs.base }}"..HEAD -- . ':!package-lock.json' ':!test/golden' > review.diff; wc -l review.diff
+      - name: Deep bug hunt with Claude Code
+        if: steps.guard.outputs.go == 'yes' && env.HAS_CLAUDE == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
+          claude_args: --allowedTools "Bash,Read,Edit,Write,Glob,Grep" --max-turns 120
+          prompt: |
+            Deep check of Brightolio after deploying ${{ env.SHA }}.
+            Results so far: full tests ${{ steps.tests.outcome }} (tests.log), e2e ${{ steps.e2e.outcome }} (e2e.log), npm audit ${{ steps.audit.outcome }} (audit.log).
+            Review review.diff (changes since the last deep check) and the code it touches for: runtime errors, unhandled
+            promises, logic and rounding errors, New York time and daylight-saving errors, double-run risks in jobs and
+            orders, missing auth or step-up checks, XSS and injection, and secrets in code or logs. Treat failures in the logs as findings too.
+            For each REAL bug (verify it; no speculative findings):
+              1. Write a failing test that reproduces it. 2. Make the smallest fix. 3. Run `npm test` and `npm run e2e`; both must pass.
+              4. Commit as "Deepfix: <bug>" and push to main (git push origin HEAD:main).
+            Bugs in orders, money movement, balances, auth or payments: push only if every test passes; otherwise do not push,
+            and write the failing test and proposed fix to deepcheck-issues.md instead.
+            Record every finding (fixed, not fixed, or not a bug and why) in BUG_REPORT.md with the date and commit, and commit it.
+            Never weaken, skip or delete a test. Never use real accounts, real money or live broker keys. Do not touch workflow files or secrets.
+            Stop after at most 3 Deepfix commits.
+      - name: Open issues for unpushed fixes and failures
+        if: steps.guard.outputs.go == 'yes' && always()
+        run: |
+          if [ -s deepcheck-issues.md ]; then gh issue create --repo "$GITHUB_REPOSITORY" --title "Deep check: fixes that need review" --body-file deepcheck-issues.md; fi
+          if [ "$HAS_CLAUDE" != "true" ] && { [ "${{ steps.tests.outcome }}" = failure ] || [ "${{ steps.e2e.outcome }}" = failure ] || [ "${{ steps.audit.outcome }}" = failure ]; }; then
+            { echo "Deep check of $SHA: tests ${{ steps.tests.outcome }}, e2e ${{ steps.e2e.outcome }}, audit ${{ steps.audit.outcome }}."; echo; echo '```'; tail -60 tests.log e2e.log audit.log 2>/dev/null; echo '```'; } > body.md
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "Deep check failed on ${SHA:0:7}" --body-file body.md
+          fi
+      # Pushes made with the workflow token do not start other workflows: start Check 1 for a Deepfix.
+      - name: Run Check 1 on a pushed fix, and mark this commit deep-checked
+        if: steps.guard.outputs.go == 'yes' && always()
+        run: |
+          git fetch -q origin main --tags
+          if [ "$(git rev-parse origin/main)" != "$SHA" ]; then gh workflow run web-ci.yml --ref main --repo "$GITHUB_REPOSITORY"; fi
+          git tag -f "deep-checked-$(date -u +%Y%m%d%H%M)" "$SHA" && git push -q origin --tags || true

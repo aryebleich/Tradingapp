@@ -1,4 +1,9 @@
 name: CI
+# Check 1 (basic, target under a minute; gates the deploy in deploy.yml, which triggers on this name).
+# Syntax check of changed .js/.mjs files, the tests related to the change plus core, security and
+# health (the whole suite when package.json, the lockfile, server.js or src/db.js changed), the
+# security and clean checks, and a boot of server.js against the mock broker. The full suite, the
+# end-to-end run and the deep bug hunt follow the deploy (deep-check.yml).
 on:
   push:
   pull_request:
@@ -6,12 +11,33 @@ on:
 jobs:
   test:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
+        with: { fetch-depth: 50 }
       - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
           check-latest: true
           cache: npm
-      - run: npm ci
-      - run: npm test
+      - run: npm ci --no-audit --no-fund
+      - name: What changed
+        id: changed
+        env:
+          BEFORE: ${{ github.event.before || github.event.pull_request.base.sha }}
+        run: |
+          base="$BEFORE"; git cat-file -e "$base^{commit}" 2>/dev/null || base=""
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+          if [ -n "$base" ]; then git diff --name-only "$base"...HEAD -- '*.js' '*.mjs' > changed-js.txt || true; else git ls-files '*.js' '*.mjs' > changed-js.txt; fi
+          echo "tests=$(node scripts/ci-select.mjs "$base" HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Syntax check of changed files
+        run: while read -r f; do [ -f "$f" ] && node --check "$f"; done < changed-js.txt
+      - name: Tests for the change
+        env:
+          TESTS: ${{ steps.changed.outputs.tests }}
+        run: |
+          if [ "$TESTS" = "full" ]; then npm test; else node --import ./test/setup.js --test --test-force-exit $TESTS; fi
+      - run: node scripts/security-check.mjs
+      - run: node scripts/clean-check.mjs
+      - name: Boot against the mock broker
+        run: node scripts/boot-check.mjs

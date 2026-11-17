@@ -10,7 +10,9 @@ on:
     branches: [main]
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
+  issues: write
+  actions: write
 concurrency:
   group: render-deploy
   cancel-in-progress: true
@@ -86,3 +88,22 @@ jobs:
           for p in r.get('problems', []): print('::warning::' + p)
           if r.get('ok'): print('OK: hosted database, complete schema, correct routing.')
           "
+      # The live routing check failed: revert the commit on main at once (a new commit, never a
+      # history rewrite), start CI on the revert so it deploys, and open an issue.
+      - uses: actions/checkout@v7
+        if: failure() && github.event_name == 'workflow_run'
+        with: { ref: main, fetch-depth: 20 }
+      - name: Revert the commit and open an issue
+        if: failure() && github.event_name == 'workflow_run'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          git config user.name "github-actions[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ "$(git rev-parse HEAD)" != "$SHA" ]; then echo "A newer commit is on main; reverting only $SHA."; fi
+          if git log -1 --format=%s "$SHA" | grep -q '^Revert '; then echo "Not reverting a revert."; else
+            git revert --no-edit -m 1 "$SHA" 2>/dev/null || git revert --no-edit "$SHA"
+            git push origin HEAD:main && gh workflow run web-ci.yml --ref main --repo "$GITHUB_REPOSITORY"
+          fi
+          { echo "The live check after deploying ${SHA:0:7} failed, so the commit was reverted on main."; echo; echo "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"; } > body.md
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "Deploy of ${SHA:0:7} failed the live check and was reverted" --body-file body.md
