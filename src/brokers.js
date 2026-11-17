@@ -264,6 +264,45 @@ export function limitOf(order) {
   if (!(price > 0)) throw Object.assign(new Error('Enter the limit price'), { status: 400 });
   return { price, tif: ['gtc', 'opg', 'cls'].includes(order.time_in_force) ? order.time_in_force : 'day', extended: !!order.extended_hours };
 }
+// Stop, stop-limit and trailing-stop orders, and bracket orders (an entry with a take-profit and a
+// stop-loss attached). Shares only (no dollar amounts); brackets take whole shares. Validated here so
+// every source (the desk, scheduled trades) gets the same checks through placeOrder.
+export const ADVANCED = ['stop', 'stop_limit', 'trailing_stop'];
+const bad400 = m => Object.assign(new Error(m), { status: 400 });
+export function advancedOf(order) {
+  const bracket = order?.order_class === 'bracket';
+  if (!bracket && !ADVANCED.includes(order?.type)) return null;
+  const type = order.type || 'market', qty = +order.qty, num = v => (v === undefined || v === null || v === '' ? null : +v);
+  if (!(qty > 0)) throw bad400(`${bracket ? 'Bracket' : type.replace('_', ' ')} orders need a number of shares, not a dollar amount`);
+  const a = { type, qty, tif: order.time_in_force === 'gtc' ? 'gtc' : 'day', bracket };
+  if (type === 'limit' || type === 'stop_limit') { a.limit = num(order.limit_price); if (!(a.limit > 0)) throw bad400('Enter the limit price'); }
+  if (type === 'stop' || type === 'stop_limit') { a.stop = num(order.stop_price); if (!(a.stop > 0)) throw bad400('Enter the stop price'); }
+  if (type === 'trailing_stop') {
+    a.trailPct = num(order.trail_percent); a.trailPrice = num(order.trail_price);
+    if (!(a.trailPct > 0) === !(a.trailPrice > 0)) throw bad400('Enter the trail as a percent or a dollar amount (one of the two)');
+    if (a.trailPct >= 50) throw bad400('A trail of 50% or more is not allowed');
+  }
+  if (bracket) {
+    if (!['market', 'limit'].includes(type)) throw bad400('A bracket order starts with a market or limit order');
+    if (!Number.isInteger(qty)) throw bad400('Bracket orders need a whole number of shares');
+    a.tp = num(order.take_profit?.limit_price); a.sl = num(order.stop_loss?.stop_price); a.slLimit = num(order.stop_loss?.limit_price);
+    if (!(a.tp > 0) || !(a.sl > 0)) throw bad400('A bracket needs a take-profit price and a stop-loss price');
+    const buy = order.side !== 'sell';
+    if (buy ? !(a.tp > a.sl) : !(a.tp < a.sl)) throw bad400(buy ? 'For a buy, the take-profit must be above the stop-loss' : 'For a sell, the take-profit must be below the stop-loss');
+    if (a.slLimit !== null && !(a.slLimit > 0)) throw bad400('Enter a valid stop-loss limit price');
+  }
+  return a;
+}
+// The Alpaca order body for an advanced order.
+export function advancedBody(symbol, side, a) {
+  const b = { symbol, side, type: a.type, qty: String(a.qty), time_in_force: a.tif };
+  if (a.limit) b.limit_price = String(a.limit);
+  if (a.stop) b.stop_price = String(a.stop);
+  if (a.trailPct) b.trail_percent = String(a.trailPct);
+  if (a.trailPrice) b.trail_price = String(a.trailPrice);
+  if (a.bracket) Object.assign(b, { order_class: 'bracket', take_profit: { limit_price: String(a.tp) }, stop_loss: { stop_price: String(a.sl), ...(a.slLimit ? { limit_price: String(a.slLimit) } : {}) } });
+  return b;
+}
 // Opening and closing auction orders (time in force 'opg' / 'cls') exist on Alpaca only, for whole shares.
 export function auctionOf(order, account) {
   const tif = order?.time_in_force;
@@ -273,10 +312,13 @@ export function auctionOf(order, account) {
   return tif;
 }
 async function sendOrder(userId, account, symbol, side, q, n, source, order) {
-  const lim = limitOf(order), auction = auctionOf(order, account);
+  // Stop, trailing-stop and bracket orders are read by advancedOf; limitOf reads plain limit orders.
+  const adv = advancedOf(order), lim = adv ? null : limitOf(order), auction = auctionOf(order, account);
+  if (adv && auction) throw bad400('Auction orders are market orders');
   const expected = +order.expectedPrice > 0 ? +order.expectedPrice : null, signalAt = +order.signalAt || (expected ? now() : null);
   const intent = (brokerId, acct) => (expected || source !== 'web') && brokerId
     ? run('INSERT INTO order_intents (user_id, account, broker_order_id, symbol, side, expected_price, signal_at, source, at) VALUES (?,?,?,?,?,?,?,?,?)', userId, acct, String(brokerId), symbol, side, expected, signalAt, source, now()).catch(() => {}) : null;
+  if (adv && isExt(account)) throw bad400('Stop, trailing-stop and bracket orders are available on Alpaca and practice accounts here');
   if (isExt(account)) {
     return withExt(userId, account, async (b, c, save) => {
       // Other brokerages take whole shares. A sell beyond what is held opens a short; a buy
@@ -300,7 +342,7 @@ async function sendOrder(userId, account, symbol, side, q, n, source, order) {
     // (whole shares in extended hours, where fractional orders are not accepted).
     const limQty = lim && !(q > 0) ? (lim.extended ? Math.floor(n / lim.price) : +(n / lim.price).toFixed(6)) : 0;
     if (lim && !(q > 0) && !(limQty > 0)) throw new Error('Amount is less than one share at the limit price');
-    const body = lim
+    const body = adv ? advancedBody(symbol, side, adv) : lim
       ? { symbol, side, type: 'limit', limit_price: String(lim.price), time_in_force: lim.extended ? 'day' : lim.tif, qty: String(q > 0 ? q : limQty), ...(lim.extended ? { extended_hours: true } : {}) }
       : { symbol, side, type: 'market', time_in_force: auction || 'day', ...(q > 0 ? { qty: String(q) } : { notional: n.toFixed(2) }) };
     if (side === 'sell' && order.allowShort) {
@@ -313,7 +355,13 @@ async function sendOrder(userId, account, symbol, side, q, n, source, order) {
     if (t.type === 'broker') await recordCommission(userId, o, +order.expectedPrice || 0).catch(() => {});
     // Usually fills within seconds; anything still open is picked up later by syncAlpacaFills.
     setTimeout(() => syncAlpacaFills(userId, account).catch(() => {}), 4000);
-    return { id: o.id, status: o.status, symbol, side, broker: account, live: t.live, ...(lim ? { type: 'limit', limitPrice: lim.price } : {}) };
+    return { id: o.id, status: o.status, symbol, side, broker: account, live: t.live, ...(lim ? { type: 'limit', limitPrice: lim.price } : {}), ...(adv ? { type: adv.bracket ? 'bracket' : adv.type } : {}) };
+  }
+  if (adv) {
+    // Practice account: stop and stop-limit orders wait in the paper order book (checked every minute).
+    if (adv.bracket || adv.type === 'trailing_stop') throw bad400('Trailing-stop and bracket orders are available on Alpaca accounts; the practice account takes stop and stop-limit orders');
+    const po = await (await import('./paperorders.js')).place(userId, { symbol, side, qty: adv.qty, type: adv.type, limit_price: adv.limit, stop_price: adv.stop, time_in_force: adv.tif });
+    return { id: 'po' + po.id, status: po.status === 'filled' ? 'filled' : 'open', symbol, side, qty: adv.qty, broker: 'paper', live: false, type: adv.type, ...(po.fillPrice ? { price: po.fillPrice } : {}) };
   }
   if (lim) {
     // Practice account: the limit order stays open until the price reaches it (checked every minute).

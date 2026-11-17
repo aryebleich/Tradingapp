@@ -38,6 +38,7 @@ import { aiEnabled, interpret, toCommand } from './src/assistant.js';
 import { startScheduler, assessAllFees, runDueJobs, snapshotAll, nextRunOf, recordRun } from './src/scheduler.js';
 import { nyAt, nyTime } from './src/time.js';
 import { planWhen } from './src/schedule-plan.js';
+import { advancedOf } from './src/brokers.js';
 import { closedDays, addDays } from './src/market-calendar.js';
 import { startKycEvents } from './src/alpaca/kyc.js';
 import { riskRouter } from './src/risk.js';
@@ -927,10 +928,21 @@ function schedulePlan(req, { preview = false } = {}) {
     endAt = nyAt(b.endDate, 24 * 60) - 1;
     if (endAt < at) throw Object.assign(new Error('The end date is before the first run'), { status: 400 });
   }
-  const type = b.orderType === 'limit' ? 'limit' : 'market', limit = type === 'limit' ? +b.limitPrice : null;
+  const type = ['limit', 'stop', 'stop_limit', 'trailing_stop'].includes(b.orderType) ? b.orderType : 'market', limit = ['limit', 'stop_limit'].includes(type) ? +b.limitPrice : null;
   if (!preview && type === 'limit' && !(limit > 0)) throw new Error('Enter the limit price');
-  const extended = type === 'limit' && !!b.extended && !plan.tif ? 1 : 0;
-  return { b, w, repeat, symbol, account, plan: { ...plan, nextRun: at }, at, minutes, weekdays, monthDay, type, limit, extended, close, endAt, cond };
+  // Stop, stop-limit, trailing-stop and bracket orders: the same checks placeOrder makes, done now so a
+  // mistake shows on the form instead of failing at run time.
+  const bracket = !!b.bracket;
+  const adv = { stop: +b.stopPrice || null, trailPct: +b.trailPercent || null, trailPrice: +b.trailPrice || null, tp: +b.takeProfit || null, sl: +b.stopLoss || null, slLimit: +b.stopLossLimit || null, bracket };
+  if (!preview && (type !== 'market' && type !== 'limit' || bracket)) {
+    if (close) throw Object.assign(new Error('A scheduled close is a market order'), { status: 400 });
+    advancedOf({ type, side: b.side === 'sell' ? 'sell' : 'buy', qty: +b.qty, limit_price: limit, stop_price: adv.stop, trail_percent: adv.trailPct, trail_price: adv.trailPrice, ...(bracket ? { order_class: 'bracket', take_profit: { limit_price: adv.tp }, stop_loss: { stop_price: adv.sl, limit_price: adv.slLimit } } : {}) });
+    if (account !== 'paper' && !String(account).startsWith('alpaca')) throw Object.assign(new Error('Stop, trailing-stop and bracket orders can be scheduled on Alpaca and practice accounts'), { status: 400 });
+    if (account === 'paper' && (bracket || type === 'trailing_stop')) throw Object.assign(new Error('Trailing-stop and bracket orders are available on Alpaca accounts; the practice account takes stop and stop-limit orders'), { status: 400 });
+  }
+  const extended = type === 'limit' && !b.bracket && !!b.extended && !plan.tif ? 1 : 0;
+  if ((type !== 'market' || bracket) && plan.tif) plan = { ...plan, tif: null, precision: plan.precision + ' Sent as a timed order, not an auction order (auction orders are market orders).' };
+  return { b, w, repeat, symbol, account, plan: { ...plan, nextRun: at }, at, minutes, weekdays, monthDay, type, limit, extended, close, endAt, cond, adv };
 }
 // What the review screen shows before a schedule is saved: when it runs (New York and the user's time),
 // how precise that is, and the reminder that the price at run time may differ from the price now.
@@ -946,13 +958,15 @@ api.post('/schedule/preview', U, wrap(async (req, res) => {
 const scheduleStepUp = (req, res, next) => (acct(req) === 'paper' ? next() : stepUpGuard(req, res, next));
 // The columns a schedule's form sets (create and edit share them).
 const scheduleCols = (p, userId) => {
-  const { b, w, repeat, symbol, account, plan, at, minutes, weekdays, monthDay, type, limit, extended, close, endAt, cond } = p;
+  const { b, w, repeat, symbol, account, plan, at, minutes, weekdays, monthDay, type, limit, extended, close, endAt, cond, adv } = p;
   return {
     user_id: userId, account, symbol, side: b.side === 'sell' ? 'sell' : 'buy', qty: +b.qty || null, notional: +b.notional || null, repeat, next_run: at,
     run_minutes: minutes, weekdays, month_day: monthDay, order_type: type, limit_price: limit, extended,
     when_kind: w.kind, close_offset: w.kind === 'close' ? plan.offsetMin ?? 0 : null, grace_min: plan.graceMin ?? null, tif: plan.tif || null,
     close_mode: close?.mode || null, close_pct: close?.pct ?? null, end_at: endAt,
     cond_op: cond?.op || null, cond_price: cond?.price ?? null, close_steps: close?.steps ?? null, step_every_min: close?.everyMin ?? null, steps_done: 0,
+    stop_price: ['stop', 'stop_limit'].includes(type) ? adv.stop : null, trail_percent: type === 'trailing_stop' ? adv.trailPct : null, trail_price: type === 'trailing_stop' ? adv.trailPrice : null,
+    bracket: adv.bracket ? 1 : 0, tp_price: adv.bracket ? adv.tp : null, sl_price: adv.bracket ? adv.sl : null, sl_limit: adv.bracket ? adv.slLimit : null,
   };
 };
 const whenText = at => new Date(at).toLocaleString('en-US', { timeZone: 'America/New_York', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' New York time';

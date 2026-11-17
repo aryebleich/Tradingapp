@@ -403,3 +403,69 @@ test('scale out: a close in steps sells an equal part of what is held at each st
   // A scale-out on Alpaca is never an auction order, and does not repeat.
   assert.equal((await c('/schedule', { account: 'paper', symbol: 'AMZN', side: 'sell', close: { mode: 'steps', steps: 2, everyMin: 30 }, when: { kind: 'at', date: T.addDays(T.nyTime(Date.now()).day, 7), time: '10:00' }, repeat: 'daily' })).status, 400);
 });
+
+
+// ---------------------------------------------------------------- stop, stop-limit, trailing-stop, bracket
+test('advanced order types: validated once in placeOrder, for every source', async () => {
+  const { advancedOf } = await import('../src/brokers.js');
+  assert.equal(advancedOf({ type: 'market' }), null); assert.equal(advancedOf({ type: 'limit', limit_price: 5 }), null);
+  assert.throws(() => advancedOf({ type: 'stop', notional: 100 }), /number of shares/);
+  assert.throws(() => advancedOf({ type: 'stop', qty: 1 }), /stop price/);
+  assert.throws(() => advancedOf({ type: 'stop_limit', qty: 1, stop_price: 5 }), /limit price/);
+  assert.throws(() => advancedOf({ type: 'trailing_stop', qty: 1 }), /percent or a dollar amount/);
+  assert.throws(() => advancedOf({ type: 'trailing_stop', qty: 1, trail_percent: 2, trail_price: 1 }), /one of the two/);
+  assert.throws(() => advancedOf({ order_class: 'bracket', type: 'market', side: 'buy', qty: 1.5, take_profit: { limit_price: 120 }, stop_loss: { stop_price: 90 } }), /whole number/);
+  assert.throws(() => advancedOf({ order_class: 'bracket', type: 'market', side: 'buy', qty: 1, take_profit: { limit_price: 80 }, stop_loss: { stop_price: 90 } }), /take-profit must be above/);
+  assert.throws(() => advancedOf({ order_class: 'bracket', type: 'stop', side: 'buy', qty: 1, stop_price: 5, take_profit: { limit_price: 120 }, stop_loss: { stop_price: 90 } }), /market or limit/);
+  assert.equal(advancedOf({ type: 'trailing_stop', qty: 2, trail_percent: 3 }).trailPct, 3);
+});
+
+test('scheduled stop and stop-limit orders on the practice account wait in its order book; trailing and bracket are Alpaca only', async () => {
+  const c = client(); const u = (await c('/auth/register', { email: 'sched-stop@example.com', password: 'Str0ngPassword1', agree: true })).body.user.id;
+  await run("UPDATE users SET plan = 'pro', plan_status = 'active' WHERE id = ?", u);
+  assert.equal((await c('/orders', { account: 'paper', symbol: 'AAPL', side: 'buy', qty: 5 })).status, 200);
+  const px = await (await import('../src/brokers.js')).lastPrice('AAPL', u);
+  // Form checks at save time.
+  assert.equal((await c('/schedule', { account: 'paper', symbol: 'AAPL', side: 'sell', qty: 2, orderType: 'stop', when: { kind: 'open' } })).status, 400, 'stop price needed');
+  assert.equal((await c('/schedule', { account: 'paper', symbol: 'AAPL', side: 'sell', qty: 2, orderType: 'trailing_stop', trailPercent: 3, when: { kind: 'open' } })).status, 400, 'no trailing stop on paper');
+  assert.equal((await c('/schedule', { account: 'paper', symbol: 'AAPL', side: 'buy', qty: 2, bracket: true, takeProfit: px * 1.1, stopLoss: px * 0.9, when: { kind: 'open' } })).status, 400, 'no bracket on paper');
+  assert.equal((await c('/schedule', { account: 'paper', symbol: 'AAPL', side: 'sell', notional: 200, orderType: 'stop', stopPrice: px * 0.5, when: { kind: 'open' } })).status, 400, 'shares, not dollars');
+  const s = await c('/schedule', { account: 'paper', symbol: 'AAPL', side: 'sell', qty: 2, orderType: 'stop', stopPrice: +(px * 0.5).toFixed(2), when: { kind: 'open' } });
+  assert.equal(s.status, 200, JSON.stringify(s.body));
+  const sl = await c('/schedule', { account: 'paper', symbol: 'AAPL', side: 'sell', qty: 1, orderType: 'stop_limit', stopPrice: +(px * 0.5).toFixed(2), limitPrice: +(px * 0.45).toFixed(2), when: { kind: 'open' } });
+  assert.equal(sl.status, 200, JSON.stringify(sl.body));
+  const t = ny('2026-11-24', 10);
+  await run('UPDATE scheduled_orders SET next_run = ?, grace_min = 15 WHERE id IN (?, ?)', t, s.body.id, sl.body.id);
+  await S.runScheduledOrders(t);
+  const book = await all("SELECT type, qty, stop_price, limit_price, status FROM paper_orders WHERE user_id = ? AND symbol = 'AAPL' ORDER BY id", u);
+  assert.deepEqual(book.map(o => [o.type, o.qty, o.status]), [['stop', 2, 'open'], ['stop_limit', 1, 'open']]);
+  assert.match((await row(s.body.id)).last_result, /^sent: open/);
+  assert.equal((await row(s.body.id)).active, 0);
+});
+
+test('scheduled trailing-stop and bracket orders reach Alpaca with their fields, through placeOrder', async () => {
+  const c = owner, u = ownerId; // a fresh sign-up here would hit the registration rate limit
+  assert.equal((await c('/alpaca/keys', { keyId: 'SCHEDADV', secret: 'S' })).status, 200);
+  const sent = () => mock.log.filter(x => x.method === 'POST' && x.path === '/v2/orders' && x.headers['apca-api-key-id'] === 'SCHEDADV');
+  const tr = await c('/schedule', { account: 'alpaca', symbol: 'AAPL', side: 'sell', qty: 3, orderType: 'trailing_stop', trailPercent: 2.5, when: { kind: 'close', offsetMin: 0 } });
+  assert.equal(tr.status, 200, JSON.stringify(tr.body));
+  assert.equal(tr.body.auction, null, 'not an auction order');
+  const br = await c('/schedule', { account: 'alpaca', symbol: 'MSFT', side: 'buy', qty: 4, orderType: 'limit', limitPrice: 100, bracket: true, takeProfit: 120, stopLoss: 90, stopLossLimit: 89, when: { kind: 'open' } });
+  assert.equal(br.status, 200, JSON.stringify(br.body));
+  assert.equal((await c('/schedule', { account: 'alpaca', symbol: 'MSFT', side: 'buy', qty: 4, bracket: true, takeProfit: 80, stopLoss: 90, when: { kind: 'open' } })).status, 400, 'take-profit below the stop-loss on a buy');
+  const t = ny('2026-11-24', 11);
+  await run('UPDATE scheduled_orders SET next_run = ?, grace_min = 15, tif = NULL WHERE id IN (?, ?)', t, tr.body.id, br.body.id);
+  await S.runScheduledOrders(t);
+  const bodies = sent().map(x => x.body);
+  const trail = bodies.find(b => b.type === 'trailing_stop'), brk = bodies.find(b => b.order_class === 'bracket');
+  assert.ok(trail, 'trailing stop sent'); assert.equal(trail.trail_percent, '2.5'); assert.equal(trail.qty, '3'); assert.equal(trail.side, 'sell');
+  assert.ok(brk, 'bracket sent'); assert.equal(brk.type, 'limit'); assert.equal(brk.limit_price, '100'); assert.deepEqual(brk.take_profit, { limit_price: '120' }); assert.deepEqual(brk.stop_loss, { stop_price: '90', limit_price: '89' });
+  assert.match((await row(br.body.id)).last_result, /^sent:/);
+  // Through placeOrder: the guards still apply (a locked account sends nothing).
+  const before = sent().length;
+  await run("INSERT INTO scheduled_orders (user_id, account, symbol, side, qty, repeat, next_run, created_at, order_type, trail_percent, grace_min) VALUES (?, 'alpaca', 'AAPL', 'sell', 1, 'once', ?, 0, 'trailing_stop', 2, 15)", u, t + MIN);
+  const { placeOrder } = await import('../src/brokers.js');
+  await assert.rejects(placeOrder(u, 'paper', { symbol: 'AAPL', side: 'sell', qty: 1, type: 'trailing_stop', trail_percent: 2 }, 'schedule'), /Alpaca accounts/);
+  await S.runScheduledOrders(t + MIN);
+  assert.equal(sent().length, before + 1);
+});

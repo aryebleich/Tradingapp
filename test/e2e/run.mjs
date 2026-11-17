@@ -601,6 +601,41 @@ console.log('Settings → Language');
     if (!/Resumed/.test(await row.textContent()) || !/3 earlier/.test(await row.textContent())) throw new Error('the run history is not shown');
     await p.evaluate(id => fetch('/api/schedule/' + id, { method: 'DELETE', headers: { 'X-Requested-With': 'qp' } }), mk.id);
   });
+  await step('scheduled trades: a stop order with a price condition (review states both); Close later in steps', async () => {
+    await go('#/schedule', '#sch');
+    await p.selectOption('#sch [name=account]', 'paper'); await p.fill('#sch [name=symbol]', 'AAPL'); await p.fill('#sch [name=qty]', '1'); await p.fill('#sch [name=notional]', '');
+    await p.selectOption('#sch [name=side]', 'sell');
+    await p.selectOption('#sch [name=orderType]', 'stop');
+    if (await p.isHidden('#sch [name=stopPrice]')) throw new Error('no stop price field');
+    if (!(await p.isHidden('#brL'))) throw new Error('bracket offered for a stop order');
+    await p.fill('#sch [name=stopPrice]', '50');
+    await p.selectOption('#sch [name=condOp]', 'below'); await p.fill('#sch [name=condPrice]', '500');
+    await p.click('#sch [data-kind=open]'); await p.waitForSelector('#sch .when-prec', { timeout: 15000 });
+    await p.click('#schGo'); await p.waitForSelector('dialog[open] #whenRevTitle', { timeout: 15000 });
+    const rev = await p.textContent('dialog[open]');
+    if (!/Condition:.*below 500\.00/.test(rev) || !/stop 50/.test(rev)) throw new Error('review without the condition or the stop: ' + rev.slice(0, 300));
+    await p.click('dialog[open] button[value=yes]');
+    await p.waitForFunction(() => /Scheduled:/.test(document.querySelector('#sch .ok')?.textContent || ''), null, { timeout: 15000 });
+    const l = await p.evaluate(() => fetch('/api/schedule', { headers: { 'X-Requested-With': 'qp' } }).then(r => r.json()));
+    const o = l.find(x => x.active && x.order_type === 'stop');
+    if (!o || o.stop_price !== 50 || o.cond_op !== 'below') throw new Error('not saved: ' + JSON.stringify(o));
+    await p.evaluate(id => fetch('/api/schedule/' + id, { method: 'DELETE', headers: { 'X-Requested-With': 'qp' } }), o.id);
+    // Close later in steps.
+    const buy = await p.evaluate(() => fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ account: 'paper', symbol: 'MSFT', side: 'buy', qty: 3 }) }).then(r => r.status));
+    if (buy !== 200) throw new Error('paper buy failed: ' + buy);
+    await go('#/positions', '[data-later="MSFT"]'); await p.click('[data-later="MSFT"]');
+    await p.waitForSelector('dialog.when-dialog[open]');
+    await p.selectOption('dialog.when-dialog [name=mode]', 'steps');
+    if (await p.isHidden('dialog.when-dialog [name=steps]')) throw new Error('no steps field');
+    await p.waitForSelector('dialog.when-dialog .when-prec', { timeout: 15000 });
+    await p.click('dialog.when-dialog #clGo'); await p.waitForSelector('dialog[open] #whenRevTitle', { timeout: 15000 });
+    if (!/Scale out:.*3 equal parts/.test(await p.textContent('dialog[open]:not(.when-dialog)'))) throw new Error('review without the scale-out line');
+    await p.click('dialog[open]:not(.when-dialog) button[value=yes]');
+    await p.waitForFunction(() => !document.querySelector('dialog.when-dialog[open]'), null, { timeout: 15000 });
+    const st = await p.evaluate(() => fetch('/api/schedule', { headers: { 'X-Requested-With': 'qp' } }).then(r => r.json()).then(l => l.filter(o => o.active && o.close_mode === 'steps')));
+    if (st.length !== 1 || st[0].close_steps !== 3) throw new Error('scale-out not saved');
+    await p.evaluate(id => fetch('/api/schedule/' + id, { method: 'DELETE', headers: { 'X-Requested-With': 'qp' } }), st[0].id);
+  });
   await setPlan('features@example.com', 'free'); await p.reload(); // back to free: later steps check what free accounts see
   await step('futures, funds & savings; growth and value scan; stat-arb live scan; search', async () => {
     await go('#/invest', '[data-trade]'); await go('#/invest?tab=funds', '[data-buy]'); await go('#/invest?tab=savings', '#sg');

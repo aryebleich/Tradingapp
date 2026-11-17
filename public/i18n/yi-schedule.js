@@ -1,5 +1,8 @@
 // Yiddish for scheduling from the order ticket, the clock and date pickers, and Close later.
 export const strings = {
+  'Stop': 'סטאפ', 'Stop limit': 'סטאפ לימיט', 'Trailing stop': 'נאכפאלגנדיגער סטאפ', 'Stop price': 'סטאפ פרייז', 'Trail %': 'נאכפאלג %', 'or Trail $': 'אדער נאכפאלג $',
+  'Bracket: attach a take-profit and a stop-loss (Alpaca, whole shares)': 'בראקעט: צוגעבן א פראפיט-ציל און א סטאפ-לאס (Alpaca, גאנצע שערס)',
+  'Take-profit price': 'פראפיט-ציל פרייז', 'Stop-loss price': 'סטאפ-לאס פרייז', 'Stop-loss limit (optional)': 'סטאפ-לאס לימיט (ווען מען וויל)',
   'Scale out in steps': 'פארקויפן אין שריטן', 'Steps': 'שריטן', 'Minutes between steps': 'מינוט צווישן די שריטן', 'Price condition': 'פרייז באדינג',
   'None: always run': 'קיינע: שטענדיג לויפן', 'Only if the price is above': 'נאר אויב דער פרייז איז העכער ווי', 'Only if the price is below': 'נאר אויב דער פרייז איז נידעריגער ווי',
   'Price level': 'פרייז שטאפל', 'Condition:': 'באדינג:', 'Scale out:': 'פארקויפן אין שריטן:',

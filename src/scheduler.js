@@ -66,7 +66,9 @@ export function latestSend(o, start = windowStart(o)) {
 }
 export function orderOf(o) {
   const order = { symbol: o.symbol, side: o.side, qty: o.qty, notional: o.notional };
-  if (o.order_type === 'limit' && o.limit_price > 0) Object.assign(order, { type: 'limit', limit_price: o.limit_price, time_in_force: 'day', ...(o.extended ? { extended_hours: true } : {}) });
+  if (o.order_type === 'limit' && o.limit_price > 0) Object.assign(order, { type: 'limit', limit_price: o.limit_price, time_in_force: 'day', ...(o.extended && !o.bracket ? { extended_hours: true } : {}) });
+  if (['stop', 'stop_limit', 'trailing_stop'].includes(o.order_type)) Object.assign(order, { type: o.order_type, stop_price: o.stop_price, limit_price: o.limit_price, trail_percent: o.trail_percent, trail_price: o.trail_price, time_in_force: 'day' });
+  if (o.bracket) Object.assign(order, { order_class: 'bracket', type: order.type || 'market', time_in_force: 'day', take_profit: { limit_price: o.tp_price }, stop_loss: { stop_price: o.sl_price, ...(o.sl_limit ? { limit_price: o.sl_limit } : {}) } });
   if (o.tif === 'opg' || o.tif === 'cls') order.time_in_force = o.tif;
   return order;
 }

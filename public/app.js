@@ -1469,16 +1469,24 @@ routes.schedule = async view => {
     return `<ul class="runs">${runLine(h[0])}</ul>${h.length > 1 ? `<details><summary>${h.length - 1} earlier</summary><ul class="runs">${h.slice(1).map(runLine).join('')}</ul></details>` : ''}`;
   };
   const cond = o => o.cond_op ? ` · only if ${o.cond_op} ${money(o.cond_price)}` : '';
-  const what = o => (o.close_mode ? `close ${o.close_mode === 'all' ? 'all of' : o.close_mode === 'steps' ? `in ${o.close_steps} steps (${o.steps_done || 0} done) every ${o.step_every_min} min,` : o.close_mode === 'pct' ? o.close_pct + '% of' : num(o.qty, 4) + ' of'} ${esc(o.symbol)}` : `${o.side} ${o.qty ? num(o.qty, 4) : money(o.notional)} ${esc(o.symbol)}${o.order_type === 'limit' ? ` · limit ${money(o.limit_price)}${o.extended ? ' · ext. hours' : ''}` : ''}`) + cond(o);
+  const typeTxt = o => ({ stop: ` · stop ${money(o.stop_price)}`, stop_limit: ` · stop ${money(o.stop_price)} limit ${money(o.limit_price)}`, trailing_stop: ` · trailing ${o.trail_percent ? o.trail_percent + '%' : money(o.trail_price)}` }[o.order_type] || '') + (o.bracket ? ` · bracket ${money(o.tp_price)} / ${money(o.sl_price)}` : '');
+  const what = o => (o.close_mode ? `close ${o.close_mode === 'all' ? 'all of' : o.close_mode === 'steps' ? `in ${o.close_steps} steps (${o.steps_done || 0} done) every ${o.step_every_min} min,` : o.close_mode === 'pct' ? o.close_pct + '% of' : num(o.qty, 4) + ' of'} ${esc(o.symbol)}` : `${o.side} ${o.qty ? num(o.qty, 4) : money(o.notional)} ${esc(o.symbol)}${o.order_type === 'limit' ? ` · limit ${money(o.limit_price)}${o.extended ? ' · ext. hours' : ''}` : ''}`) + typeTxt(o) + cond(o);
   view.innerHTML = `<h1>Scheduled trades</h1>
   <form class="card" id="sch"><h2>New scheduled order</h2>
     <div class="row"><label>Account<select name="account">${accountOptions(accts, 'paper', isPaid(ME))}</select></label>
       <label>Side<select name="side"><option value="buy">Buy</option><option value="sell">Sell</option></select></label>
       <label>Symbol<input name="symbol" value="SPY" autocomplete="off"></label>
       <label>Shares<input name="qty" type="number" step="any"></label><label>or Dollars<input name="notional" type="number" step="any" value="100"></label></div>
-    <div class="row"><label>Order type<select name="orderType"><option value="market">Market</option><option value="limit">Limit</option></select></label>
+    <div class="row"><label>Order type<select name="orderType"><option value="market">Market</option><option value="limit">Limit</option><option value="stop">Stop</option><option value="stop_limit">Stop limit</option><option value="trailing_stop">Trailing stop</option></select></label>
+      <label id="spL" hidden>Stop price<input name="stopPrice" type="number" step="any"></label>
       <label id="lpL" hidden>Limit price<input name="limitPrice" type="number" step="any"></label>
+      <label id="tpcL" hidden>Trail %<input name="trailPercent" type="number" step="any" min="0"></label>
+      <label id="tpdL" hidden>or Trail $<input name="trailPrice" type="number" step="any" min="0"></label>
       <label class="chk" id="exL" hidden><input type="checkbox" name="extended"> Extended hours (4:00–9:30 and 16:00–20:00, Alpaca)</label></div>
+    <div class="row"><label class="chk" id="brL"><input type="checkbox" name="bracket"> Bracket: attach a take-profit and a stop-loss (Alpaca, whole shares)</label>
+      <label class="brk" hidden>Take-profit price<input name="takeProfit" type="number" step="any"></label>
+      <label class="brk" hidden>Stop-loss price<input name="stopLoss" type="number" step="any"></label>
+      <label class="brk" hidden>Stop-loss limit (optional)<input name="stopLossLimit" type="number" step="any"></label></div>
     <div class="row"><label>Price condition<select name="condOp"><option value="">None: always run</option><option value="above">Only if the price is above</option><option value="below">Only if the price is below</option></select></label>
       <label id="cpL" hidden>Price level<input name="condPrice" type="number" step="any" min="0"></label></div>
     ${whenHtml({ repeat: true, kinds: [['at', 'At a date and time'], ['close', 'Before the close'], ['open', 'At the next open'], ['delay', 'After a delay']] })}
@@ -1496,10 +1504,17 @@ routes.schedule = async view => {
     <div class="row"><label>Symbol<input name="symbol" value="AAPL"></label><label>When price is<select name="op"><option>above</option><option>below</option></select></label><label>Price<input name="price" type="number" step="any"></label><button>Add alert</button></div>
     <table>${alerts.map(a => `<tr class="${a.active ? '' : 'mu'}"><td>${esc(a.symbol)} ${a.op} ${money(a.price)}</td><td>${a.active ? 'watching' : 'triggered'}</td><td><button class="small ghost" data-a="${a.id}">Remove</button></td></tr>`).join('')}</table></form>`;
   const sf = $('#sch', view);
-  const order = () => { const f = form(sf); return { account: f.account, side: f.side, symbol: f.symbol.trim().toUpperCase(), qty: +f.qty || undefined, notional: +f.notional || undefined, orderType: f.orderType, limitPrice: +f.limitPrice || undefined, extended: !!sf.extended.checked, ...(f.condOp ? { condition: { op: f.condOp, price: +f.condPrice } } : {}) }; };
+  const order = () => { const f = form(sf); return { account: f.account, side: f.side, symbol: f.symbol.trim().toUpperCase(), qty: +f.qty || undefined, notional: +f.notional || undefined, orderType: f.orderType, limitPrice: +f.limitPrice || undefined, extended: !!sf.extended.checked, stopPrice: +f.stopPrice || undefined, trailPercent: +f.trailPercent || undefined, trailPrice: +f.trailPrice || undefined, ...(sf.bracket.checked ? { bracket: true, takeProfit: +f.takeProfit || undefined, stopLoss: +f.stopLoss || undefined, stopLossLimit: +f.stopLossLimit || undefined } : {}), ...(f.condOp ? { condition: { op: f.condOp, price: +f.condPrice } } : {}) }; };
   const W = wireWhen(sf, { api, order });
   W.setKind('at');
-  const sync = () => { const lim = sf.orderType.value === 'limit'; $('#lpL', view).hidden = !lim; $('#exL', view).hidden = !lim; W.refresh(); };
+  const sync = () => {
+    const t = sf.orderType.value, br = sf.bracket.checked;
+    $('#lpL', view).hidden = !['limit', 'stop_limit'].includes(t); $('#exL', view).hidden = t !== 'limit' || br;
+    $('#spL', view).hidden = !['stop', 'stop_limit'].includes(t); $('#tpcL', view).hidden = $('#tpdL', view).hidden = t !== 'trailing_stop';
+    $('#brL', view).hidden = !['market', 'limit'].includes(t); if ($('#brL', view).hidden) sf.bracket.checked = false;
+    $$('.brk', view).forEach(x => (x.hidden = !sf.bracket.checked)); W.refresh();
+  };
+  sf.bracket.onchange = sync;
   sf.condOp.onchange = () => { $('#cpL', view).hidden = !sf.condOp.value; W.refresh(); }; sf.condPrice.oninput = () => W.refresh();
   sf.orderType.onchange = sync; sf.account.onchange = sf.qty.oninput = sf.notional.oninput = sf.symbol.onchange = () => W.refresh(); sync();
   // Edit: the form takes the saved schedule; Review then saves the changes to the same schedule.
@@ -1507,7 +1522,8 @@ routes.schedule = async view => {
   const edit = o => {
     editing = o;
     for (const [k, v] of [['account', o.account], ['side', o.side], ['symbol', o.symbol], ['qty', o.qty ?? ''], ['notional', o.notional ?? ''], ['orderType', o.order_type || 'market'], ['limitPrice', o.limit_price ?? '']]) if (sf[k]) sf[k].value = v;
-    sf.extended.checked = !!o.extended;
+    sf.extended.checked = !!o.extended; sf.bracket.checked = !!o.bracket;
+    for (const [k, v] of [['stopPrice', o.stop_price], ['trailPercent', o.trail_percent], ['trailPrice', o.trail_price], ['takeProfit', o.tp_price], ['stopLoss', o.sl_price], ['stopLossLimit', o.sl_limit]]) sf[k].value = v ?? '';
     sf.condOp.value = o.cond_op || ''; sf.condPrice.value = o.cond_price ?? ''; $('#cpL', view).hidden = !o.cond_op;
     W.load(o); sync();
     $('#editing', view).hidden = false; $('#editing', view).textContent = `Editing scheduled order #${o.id}. Review shows the changes before they are saved.`;
@@ -1519,7 +1535,9 @@ routes.schedule = async view => {
     const o = order(); if (!(o.qty > 0) && !(o.notional > 0) && !editing?.close_mode) throw new Error('Give a quantity or dollar amount');
     if (editing?.close_mode) Object.assign(o, { close: { mode: editing.close_mode, pct: editing.close_pct, steps: editing.close_steps, everyMin: editing.step_every_min }, notional: undefined });
     const acctRow = accts.find(x => x.id === o.account), was = editing && accts.find(x => x.id === editing.account);
-    const msg = await reviewAndSchedule(api, W, o, { id: editing?.id, what: `${o.side.toUpperCase()} ${o.qty ? o.qty + ' shares of' : money(o.notional) + ' of'} ${o.symbol} · ${o.orderType}${o.limitPrice ? ' @ ' + o.limitPrice : ''}`, live: !!acctRow?.live || !!was?.live });
+    const ot = { market: 'market', limit: 'limit', stop: 'stop', stop_limit: 'stop limit', trailing_stop: 'trailing stop' }[o.orderType];
+    const desc = `${ot}${o.stopPrice ? ' stop ' + o.stopPrice : ''}${o.limitPrice ? ' @ ' + o.limitPrice : ''}${o.trailPercent ? ' trail ' + o.trailPercent + '%' : o.trailPrice ? ' trail $' + o.trailPrice : ''}${o.bracket ? ` · bracket: take-profit ${o.takeProfit}, stop-loss ${o.stopLoss}` : ''}`;
+    const msg = await reviewAndSchedule(api, W, o, { id: editing?.id, types: ['market', 'limit', 'stop', 'stop_limit', 'trailing_stop'], what: `${o.side.toUpperCase()} ${o.qty ? o.qty + ' shares of' : money(o.notional) + ' of'} ${o.symbol} · ${desc}`, live: !!acctRow?.live || !!was?.live });
     if (msg) setTimeout(render, 1500);
     return msg;
   });
