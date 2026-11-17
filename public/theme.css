@@ -1301,3 +1301,7 @@ dialog.when-dialog { max-width: 560px; width: calc(100% - 32px); }
 .dpk-sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--bd); }
 .dpk-sw.off { background: var(--bg2); opacity: .6; }
 .dpk-sw.early { border-color: var(--warn); }
+ul.runs { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+ul.runs li { margin: 2px 0; }
+td details summary { cursor: pointer; font-size: 12.5px; color: var(--mu); }
+td.nowrap { white-space: nowrap; }

@@ -238,3 +238,104 @@ test('step-up: a schedule on a real-money account needs the same confirmation as
   } finally { stepUpSessions.delete(token_hash); }
   assert.equal(await one('SELECT COUNT(*) n FROM scheduled_orders WHERE user_id = ? AND account = ?', u, 'alpaca').then(r => r.n), 0);
 });
+
+// ---------------------------------------------------------------- edit, pause, end date, history, notifications
+// Notifications go by email; without an email key notify.js logs them, which the tests read here.
+const notes = async f => {
+  const seen = [], orig = console.log;
+  console.log = (...a) => { const s = a.join(' '); if (s.startsWith('[email disabled]')) seen.push(s); else orig(...a); };
+  try { await f(); } finally { console.log = orig; }
+  return seen.join('\n');
+};
+const runsOf = async id => JSON.parse((await row(id)).history || '[]').map(h => h.status);
+
+test('edit and pause: an edit changes the schedule and its next run; a paused order does not run; history records each step', async () => {
+  const c = client(); const u = (await c('/auth/register', { email: 'sched-edit@example.com', password: 'Str0ngPassword1', agree: true })).body.user.id;
+  await run("UPDATE users SET plan = 'pro', plan_status = 'active' WHERE id = ?", u);
+  let s;
+  const created = await notes(async () => { s = await c('/schedule', { account: 'paper', symbol: 'AAPL', side: 'buy', qty: 2, when: { kind: 'delay', delayMin: 60 } }); });
+  assert.equal(s.status, 200, JSON.stringify(s.body));
+  assert.match(created, /Scheduled: buy AAPL, first run/);
+  const id = s.body.id;
+  // Edit: a different symbol, amount and time; the row is the same schedule.
+  const e = await c('/schedule/' + id, { account: 'paper', symbol: 'MSFT', side: 'buy', qty: 3, when: { kind: 'open' } }, 'PUT');
+  assert.equal(e.status, 200, JSON.stringify(e.body));
+  let r = await row(id);
+  assert.equal(r.symbol, 'MSFT'); assert.equal(r.qty, 3); assert.equal(r.when_kind, 'open'); assert.equal(r.next_run, e.body.nextRun);
+  // A bad edit is refused and changes nothing.
+  assert.equal((await c('/schedule/' + id, { account: 'paper', symbol: 'MSFT', side: 'buy', when: { kind: 'open' } }, 'PUT')).status, 400);
+  assert.equal((await row(id)).qty, 3);
+  // Someone else's schedule cannot be edited, paused or cancelled.
+  assert.equal((await owner('/schedule/' + id, { account: 'paper', symbol: 'SPY', side: 'buy', qty: 1, when: { kind: 'open' } }, 'PUT')).status, 404);
+  assert.equal((await owner('/schedule/' + id + '/pause', { paused: true })).status, 404);
+  // Paused: due, but it does not run.
+  assert.equal((await c('/schedule/' + id + '/pause', { paused: true })).status, 200);
+  const t = ny('2026-11-24', 11);
+  await run('UPDATE scheduled_orders SET next_run = ?, tif = NULL, grace_min = 15 WHERE id = ?', t - MIN, id);
+  await S.runScheduledOrders(t);
+  assert.equal(await fills(u, 'MSFT'), 0); assert.equal((await row(id)).active, 1);
+  // Resumed: it runs once, through placeOrder with source 'schedule', and says so.
+  assert.equal((await c('/schedule/' + id + '/pause', { paused: false })).status, 200);
+  const ran = await notes(() => S.runScheduledOrders(t));
+  assert.equal(await fills(u, 'MSFT'), 1); assert.match(ran, /Your scheduled buy MSFT ran: filled/);
+  await S.runScheduledOrders(t + MIN);
+  assert.equal(await fills(u, 'MSFT'), 1, 'never twice');
+  assert.deepEqual(await runsOf(id), ['created', 'edited', 'paused', 'resumed', 'sent']);
+  // A finished schedule cannot be edited; the list returns the run history.
+  assert.equal((await c('/schedule/' + id, { account: 'paper', symbol: 'MSFT', side: 'buy', qty: 1, when: { kind: 'open' } }, 'PUT')).status, 409);
+  const list = (await c('/schedule')).body.find(o => o.id === id);
+  assert.equal(list.runs.length, 5); assert.equal(list.history, undefined);
+  // A failure is recorded and notified, not retried.
+  const bad = await run("INSERT INTO scheduled_orders (user_id, account, symbol, side, qty, repeat, next_run, created_at, order_type) VALUES (?, 'paper', 'ZZZZZZZZZZZZZZZZZ', 'buy', 1, 'once', ?, 0, 'market')", u, t).then(x => Number(x.lastInsertRowid));
+  const failed = await notes(() => S.runScheduledOrders(t + MIN));
+  assert.deepEqual(await runsOf(bad), ['failed']); assert.equal((await row(bad)).active, 0); assert.match(failed, /failed: Invalid symbol/);
+  // Cancel is recorded.
+  const s2 = await c('/schedule', { account: 'paper', symbol: 'AAPL', side: 'buy', qty: 1, when: { kind: 'delay', delayMin: 60 } });
+  await c('/schedule/' + s2.body.id, null, 'DELETE');
+  assert.deepEqual(await runsOf(s2.body.id), ['created', 'cancelled']);
+});
+
+test('end date: a repeating schedule stops after its end date, and says so', async () => {
+  const c = client(); const u = (await c('/auth/register', { email: 'sched-end@example.com', password: 'Str0ngPassword1', agree: true })).body.user.id;
+  await run("UPDATE users SET plan = 'pro', plan_status = 'active' WHERE id = ?", u);
+  const d = T.addDays(T.nyTime(Date.now()).day, 7);
+  assert.equal((await c('/schedule', { account: 'paper', symbol: 'SPY', side: 'buy', qty: 1, when: { kind: 'at', date: d, time: '10:00' }, repeat: 'once', endDate: T.addDays(d, 5) })).status, 400, 'an end date is for repeating schedules');
+  assert.equal((await c('/schedule', { account: 'paper', symbol: 'SPY', side: 'buy', qty: 1, when: { kind: 'at', date: d, time: '10:00' }, repeat: 'daily', endDate: T.addDays(d, -1) })).status, 400, 'ends before it starts');
+  const ok = await c('/schedule', { account: 'paper', symbol: 'SPY', side: 'buy', qty: 1, when: { kind: 'at', date: d, time: '10:00' }, repeat: 'daily', endDate: T.addDays(d, 5) });
+  assert.equal(ok.status, 200, JSON.stringify(ok.body));
+  assert.equal((await row(ok.body.id)).end_at, T.nyAt(T.addDays(d, 5), 1440) - 1);
+  // Runner: Tue Nov 24 2026 runs, then Wed 25 is the last day before the end date; then it stops.
+  const id = await run("INSERT INTO scheduled_orders (user_id, account, symbol, side, qty, repeat, next_run, created_at, order_type, run_minutes, end_at, grace_min) VALUES (?, 'paper', 'NVDA', 'buy', 1, 'daily', ?, 0, 'market', 600, ?, 15)", u, ny('2026-11-24', 10), T.nyAt('2026-11-25', 1440) - 1).then(x => Number(x.lastInsertRowid));
+  await S.runScheduledOrders(ny('2026-11-24', 10, 1));
+  assert.equal((await row(id)).next_run, ny('2026-11-25', 10));
+  const last = await notes(() => S.runScheduledOrders(ny('2026-11-25', 10, 1)));
+  const r = await row(id);
+  assert.equal(r.active, 0, 'no run after the end date'); assert.equal(await fills(u, 'NVDA'), 2);
+  assert.match(last, /last run before the end date/);
+  // A row already past its end date ends without running.
+  const past = await run("INSERT INTO scheduled_orders (user_id, account, symbol, side, qty, repeat, next_run, created_at, order_type, run_minutes, end_at) VALUES (?, 'paper', 'NVDA', 'buy', 1, 'daily', ?, 0, 'market', 600, ?)", u, ny('2026-11-27', 10), ny('2026-11-26', 0)).then(x => Number(x.lastInsertRowid));
+  const ended = await notes(() => S.runScheduledOrders(ny('2026-11-27', 10, 1)));
+  assert.equal((await row(past)).active, 0); assert.deepEqual(await runsOf(past), ['ended']); assert.equal(await fills(u, 'NVDA'), 2);
+  assert.match(ended, /reached its end date/);
+});
+
+test('step-up: editing or resuming a real-money schedule needs the same confirmation; pausing does not', async () => {
+  const c = client(); const u = (await c('/auth/register', { email: 'sched-live-edit@example.com', password: 'Str0ngPassword1', agree: true })).body.user.id;
+  assert.equal((await c('/alpaca/keys', { keyId: 'SCHEDEDIT', secret: 'S', live: true })).status, 200);
+  await run("UPDATE users SET plan = 'pro', plan_status = 'active' WHERE id = ?", u);
+  const id = await run("INSERT INTO scheduled_orders (user_id, account, symbol, side, qty, repeat, next_run, created_at, order_type) VALUES (?, 'alpaca', 'SPY', 'buy', 1, 'once', ?, 0, 'market')", u, Date.now() + 86400e3).then(x => Number(x.lastInsertRowid));
+  const pid = await run("INSERT INTO scheduled_orders (user_id, account, symbol, side, qty, repeat, next_run, created_at, order_type) VALUES (?, 'paper', 'SPY', 'buy', 1, 'once', ?, 0, 'market')", u, Date.now() + 86400e3).then(x => Number(x.lastInsertRowid));
+  const { token_hash } = await one('SELECT token_hash FROM sessions WHERE user_id = ? ORDER BY created_at DESC LIMIT 1', u);
+  stepUpSessions.set(token_hash, 'test: unusual session');
+  try {
+    const edit = await c('/schedule/' + id, { account: 'alpaca', symbol: 'SPY', side: 'buy', qty: 5, when: { kind: 'delay', delayMin: 60 } }, 'PUT');
+    assert.equal(edit.status, 401); assert.equal(edit.body.stepUp, true);
+    assert.equal((await c('/schedule/' + id, { account: 'paper', symbol: 'SPY', side: 'buy', qty: 5, when: { kind: 'delay', delayMin: 60 } }, 'PUT')).status, 401, 'moving a live schedule to paper is still an edit of a live one');
+    assert.equal((await c('/schedule/' + pid, { account: 'alpaca', symbol: 'SPY', side: 'buy', qty: 5, when: { kind: 'delay', delayMin: 60 } }, 'PUT')).status, 401, 'moving a paper schedule to a live account');
+    assert.equal((await row(id)).qty, 1);
+    assert.equal((await c('/schedule/' + id + '/pause', { paused: true })).status, 200, 'pausing makes it safer');
+    assert.equal((await c('/schedule/' + id + '/pause', { paused: false })).status, 401, 'resuming a live order');
+    assert.equal((await row(id)).paused, 1);
+    assert.equal((await c('/schedule/' + pid, { account: 'paper', symbol: 'SPY', side: 'buy', qty: 5, when: { kind: 'delay', delayMin: 60 } }, 'PUT')).status, 200, 'paper edits are not held');
+  } finally { stepUpSessions.delete(token_hash); }
+});

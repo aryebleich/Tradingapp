@@ -890,6 +890,10 @@ const MIGRATIONS = [
   // always worked out from the position at run time.
   'ALTER TABLE scheduled_orders ADD COLUMN close_mode TEXT',
   'ALTER TABLE scheduled_orders ADD COLUMN close_pct REAL',
+  // Pause, an end date for repeating schedules, and the run history (JSON, newest last, at most 50).
+  'ALTER TABLE scheduled_orders ADD COLUMN paused INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE scheduled_orders ADD COLUMN end_at INTEGER',
+  'ALTER TABLE scheduled_orders ADD COLUMN history TEXT',
   'ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0',
   'ALTER TABLE users ADD COLUMN reset_hash TEXT',
   'ALTER TABLE users ADD COLUMN reset_expires INTEGER',

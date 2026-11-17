@@ -1460,6 +1460,14 @@ routes.schedule = async view => {
     const rep = { once: 'Once', daily: 'Every trading day', weekly: o.weekdays ? o.weekdays.split(',').map(d => DAYS[+d]).join(', ') : 'Weekly', monthly: o.month_day ? `Monthly on the ${o.month_day}` : 'Monthly' }[o.repeat] || o.repeat;
     return `${rep}${t ? ' at ' + t : ''}`;
   };
+  // Run history: the latest step, the rest folded away (newest first).
+  const RUN = { created: 'Created', edited: 'Edited', paused: 'Paused', resumed: 'Resumed', cancelled: 'Cancelled', sent: 'Sent', done: 'Done', failed: 'Failed', expired: 'Expired', ended: 'Ended', skipped: 'Skipped' };
+  const runLine = h => `<li><span class="mu">${new Date(h.at).toLocaleString([], { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} ET</span> <b>${RUN[h.status] || esc(h.status)}</b>${h.detail ? ' · ' + esc(h.detail) : ''}</li>`;
+  const runsHtml = o => {
+    const h = [...(o.runs || [])].reverse();
+    if (!h.length) return esc(o.last_result || '-');
+    return `<ul class="runs">${runLine(h[0])}</ul>${h.length > 1 ? `<details><summary>${h.length - 1} earlier</summary><ul class="runs">${h.slice(1).map(runLine).join('')}</ul></details>` : ''}`;
+  };
   const what = o => o.close_mode ? `close ${o.close_mode === 'all' ? 'all of' : o.close_mode === 'pct' ? o.close_pct + '% of' : num(o.qty, 4) + ' of'} ${esc(o.symbol)}` : `${o.side} ${o.qty ? num(o.qty, 4) : money(o.notional)} ${esc(o.symbol)}${o.order_type === 'limit' ? ` · limit ${money(o.limit_price)}${o.extended ? ' · ext. hours' : ''}` : ''}`;
   view.innerHTML = `<h1>Scheduled trades</h1>
   <form class="card" id="sch"><h2>New scheduled order</h2>
@@ -1472,11 +1480,14 @@ routes.schedule = async view => {
       <label class="chk" id="exL" hidden><input type="checkbox" name="extended"> Extended hours (4:00–9:30 and 16:00–20:00, Alpaca)</label></div>
     ${whenHtml({ repeat: true, kinds: [['at', 'At a date and time'], ['close', 'Before the close'], ['open', 'At the next open'], ['delay', 'After a delay']] })}
     <p class="mu" style="font-size:12.5px;margin:4px 0 10px">Times are New York (exchange) time. Weekends and market holidays are skipped; on early-close days the market closes at 1:00 PM. An order that cannot be sent within its window is cancelled, never sent late.</p>
-    <button>Review</button><div class="err"></div></form>
-  <div class="card tablewrap"><table><tr><th>#</th><th>Order</th><th>Account</th><th>When</th><th>Next run</th><th>Last result</th><th></th></tr>
-    ${rows.map(o => `<tr class="${o.active ? '' : 'mu'}"><td>${o.id}</td><td>${what(o)}</td>
-      <td>${esc(o.account)}</td><td>${esc(when(o))}</td><td>${o.active ? new Date(o.next_run).toLocaleString([], { timeZone: 'America/New_York', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' ET' : '-'}</td>
-      <td>${esc(o.last_result || '-')}</td><td>${o.active ? `<button class="small ghost" data-c="${o.id}">Cancel</button>` : ''}</td></tr>`).join('')}
+    <p class="mu" id="editing" hidden></p>
+    <div class="row"><button id="schGo">Review</button><button type="button" class="ghost" id="schStop" hidden>Stop editing</button></div><div class="err"></div></form>
+  <div class="card tablewrap"><table><tr><th>#</th><th>Order</th><th>Account</th><th>When</th><th>Next run</th><th>Run history</th><th></th></tr>
+    ${rows.map(o => `<tr class="${o.active && !o.paused ? '' : 'mu'}"><td>${o.id}</td><td>${what(o)}</td>
+      <td>${esc(o.account)}</td><td>${esc(when(o))}${o.end_at ? `<br><span class="mu">until ${new Date(o.end_at).toLocaleDateString([], { timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric' })}</span>` : ''}</td>
+      <td>${o.active ? (o.paused ? '<span class="pill">Paused</span>' : new Date(o.next_run).toLocaleString([], { timeZone: 'America/New_York', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' ET') : '-'}</td>
+      <td>${runsHtml(o)}</td>
+      <td class="nowrap">${o.active ? `<button class="small ghost" data-e="${o.id}">Edit</button> <button class="small ghost" data-p="${o.id}" data-v="${o.paused ? 0 : 1}">${o.paused ? 'Resume' : 'Pause'}</button> <button class="small ghost" data-c="${o.id}">Cancel</button>` : ''}</td></tr>`).join('')}
   </table></div>
   <form class="card" id="al"><h2>Price alerts (sent by SMS)</h2>
     <div class="row"><label>Symbol<input name="symbol" value="AAPL"></label><label>When price is<select name="op"><option>above</option><option>below</option></select></label><label>Price<input name="price" type="number" step="any"></label><button>Add alert</button></div>
@@ -1487,13 +1498,28 @@ routes.schedule = async view => {
   W.setKind('at');
   const sync = () => { const lim = sf.orderType.value === 'limit'; $('#lpL', view).hidden = !lim; $('#exL', view).hidden = !lim; W.refresh(); };
   sf.orderType.onchange = sync; sf.account.onchange = sf.qty.oninput = sf.notional.oninput = sf.symbol.onchange = () => W.refresh(); sync();
-  act($('button:last-of-type', sf) && [...sf.querySelectorAll('button')].at(-1), async () => {
-    const o = order(); if (!(o.qty > 0) && !(o.notional > 0)) throw new Error('Give a quantity or dollar amount');
-    const acctRow = accts.find(x => x.id === o.account);
-    const msg = await reviewAndSchedule(api, W, o, { what: `${o.side.toUpperCase()} ${o.qty ? o.qty + ' shares of' : money(o.notional) + ' of'} ${o.symbol} · ${o.orderType}${o.limitPrice ? ' @ ' + o.limitPrice : ''}`, live: !!acctRow?.live });
+  // Edit: the form takes the saved schedule; Review then saves the changes to the same schedule.
+  let editing = null;
+  const edit = o => {
+    editing = o;
+    for (const [k, v] of [['account', o.account], ['side', o.side], ['symbol', o.symbol], ['qty', o.qty ?? ''], ['notional', o.notional ?? ''], ['orderType', o.order_type || 'market'], ['limitPrice', o.limit_price ?? '']]) if (sf[k]) sf[k].value = v;
+    sf.extended.checked = !!o.extended;
+    W.load(o); sync();
+    $('#editing', view).hidden = false; $('#editing', view).textContent = `Editing scheduled order #${o.id}. Review shows the changes before they are saved.`;
+    $('#schGo', view).textContent = 'Review changes'; $('#schStop', view).hidden = false;
+    sf.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  $('#schStop', view).onclick = () => render();
+  act($('#schGo', view), async () => {
+    const o = order(); if (!(o.qty > 0) && !(o.notional > 0) && !editing?.close_mode) throw new Error('Give a quantity or dollar amount');
+    if (editing?.close_mode) Object.assign(o, { close: { mode: editing.close_mode, pct: editing.close_pct }, notional: undefined });
+    const acctRow = accts.find(x => x.id === o.account), was = editing && accts.find(x => x.id === editing.account);
+    const msg = await reviewAndSchedule(api, W, o, { id: editing?.id, what: `${o.side.toUpperCase()} ${o.qty ? o.qty + ' shares of' : money(o.notional) + ' of'} ${o.symbol} · ${o.orderType}${o.limitPrice ? ' @ ' + o.limitPrice : ''}`, live: !!acctRow?.live || !!was?.live });
     if (msg) setTimeout(render, 1500);
     return msg;
   });
+  $$('[data-e]', view).forEach(b => (b.onclick = () => edit(rows.find(o => o.id === +b.dataset.e))));
+  $$('[data-p]', view).forEach(b => (b.onclick = async () => { await api(`/schedule/${b.dataset.p}/pause`, { body: { paused: b.dataset.v === '1' } }); render(); }));
   act($('button', $('#al', view)), async () => { await api('/alerts', { body: form($('#al', view)) }); render(); });
   $$('[data-c]', view).forEach(b => (b.onclick = async () => { await api('/schedule/' + b.dataset.c, { method: 'DELETE' }); render(); }));
   $$('[data-a]', view).forEach(b => (b.onclick = async e => { e.preventDefault(); await api('/alerts/' + b.dataset.a, { method: 'DELETE' }); render(); }));

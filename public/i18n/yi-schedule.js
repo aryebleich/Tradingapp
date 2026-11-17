@@ -1,5 +1,10 @@
 // Yiddish for scheduling from the order ticket, the clock and date pickers, and Close later.
 export const strings = {
+  'Edit': 'רעדאגירן', 'Pause': 'פאויזע', 'Resume': 'ווייטער', 'Paused': 'אפגעשטעלט אויף א וויילע', 'Run history': 'געשיכטע פון לויפן',
+  'Created': 'געשאפן', 'Edited': 'רעדאגירט', 'Resumed': 'ווייטער געפירט', 'Cancelled': 'אפגעשטעלט', 'Sent': 'געשיקט', 'Done': 'פארטיג',
+  'Failed': 'דורכגעפאלן', 'Expired': 'אויסגעגאנגען', 'Ended': 'געענדיגט', 'Skipped': 'איבערגעהיפּט', 'End date (optional)': 'סוף דאטום (ווען מען וויל)',
+  'Review changes': 'קוקט איבער די ענדערונגען', 'Save changes': 'היט אפ די ענדערונגען', 'Stop editing': 'הערט אויף צו רעדאגירן',
+  'This changes a LIVE order with real money.': 'דאס ענדערט א לייוו ארדער מיט אמת\'ע געלט.',
   'When': 'ווען', 'Now': 'יעצט', 'At a date and time': 'אויף א דאטום און צייט', 'Before the close': 'פארן שליסן', 'At the next open': 'ביים קומענדיגן עפענען',
   'After a delay': 'נאך א וויילע', 'Market open': 'מארקעט עפענט', '30 min before close': '30 מינוט פארן שליסן', 'At close': 'ביים שליסן', 'Next open': 'קומענדיגע עפענונג',
   'Repeat': 'איבערחזרן', 'Once': 'איינמאל', 'Every trading day': 'יעדן טרעידינג טאג', 'On chosen weekdays': 'אויף אויסגעקליבענע טעג', 'Monthly on this date': 'יעדן חודש אויף דעם דאטום',
@@ -22,6 +27,9 @@ export const strings = {
     'די צייטן זענען ניו יארק (בערזע) צייט. סוף וואכן און מארקעט יום טובים ווערן איבערגעהיפּט; אויף טעג וואס שליסן פריער פארמאכט דער מארקעט 1:00 נאכמיטאג. א ארדער וואס מען קען נישט שיקן אין איר צייט ווערט אפגעשטעלט, קיינמאל נישט געשיקט שפעט.',
 };
 export const patterns = [
+  [/^(\d+) earlier$/, m => `${m[1]} פריערדיגע`],
+  [/^Editing scheduled order #(\d+)\. Review shows the changes before they are saved\.$/, m => `מען רעדאגירט באשטימטע ארדער #${m[1]}. איבערקוקן ווייזט די ענדערונגען איידער זיי ווערן אפגעהיט.`],
+  [/^until (.+)$/, m => `ביז ${m[1]}`],
   [/^runs in (\d+)d (\d+)h$/, m => `לויפט אין ${m[1]} טעג ${m[2]} שעה`],
   [/^runs in (\d+)h (\d+)m$/, m => `לויפט אין ${m[1]} שעה ${m[2]} מינוט`],
   [/^runs in (\d+)m$/, m => `לויפט אין ${m[1]} מינוט`],
