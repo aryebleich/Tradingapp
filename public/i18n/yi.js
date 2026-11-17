@@ -16,6 +16,7 @@ import * as batch15 from './yi-batch15.js';
 import * as batch16 from './yi-batch16.js';
 import * as batch17 from './yi-batch17.js';
 import * as heimish from './yi-heimish.js';
+import * as schedule from './yi-schedule.js';
 
 export const credit = '';
 
@@ -352,7 +353,7 @@ export const strings = {
   'Admin user update': 'אדמין האט געטוישט א באניצער',
 };
 
-Object.assign(strings, features.strings, protect.strings, wealth.strings, batch5.strings, batch6.strings, { ...batch17.strings, ...batch16.strings, ...batch15.strings, ...batch14.strings, ...batch13.strings, ...batch12.strings, ...batch11.strings, ...batch9.strings, ...batch8.strings, ...strings }, more, heimish.strings);
+Object.assign(strings, features.strings, protect.strings, wealth.strings, batch5.strings, batch6.strings, { ...schedule.strings, ...batch17.strings, ...batch16.strings, ...batch15.strings, ...batch14.strings, ...batch13.strings, ...batch12.strings, ...batch11.strings, ...batch9.strings, ...batch8.strings, ...strings }, more, heimish.strings);
 
 // Sentences that contain numbers or names.
 export const patterns = [
@@ -389,5 +390,6 @@ export const patterns = [
   ...batch12.patterns,
   ...batch13.patterns,
 ];
+patterns.push(...schedule.patterns);
 // The hand-written patterns are tried first.
 patterns.unshift(...heimish.patterns);

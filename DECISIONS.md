@@ -53,6 +53,18 @@ Choices and assumptions made without asking, with the reason. Trading-tools work
 | D-19 | Position sizes round down to whole lots with a tiny tolerance (1e-9) so floating-point results like 9.999999999 count as 10. | Shown by a test; never rounds up past the risk budget. |
 | D-20 | Backtests and simulations: none were added. The tools only calculate from user inputs and read-only prices. | Rule 5 needs no new handling here. |
 
+## Scheduled trades (2026-11-16)
+
+- S-1: US market calendar computed from the NYSE rules (holidays, observed days, 13:00 early closes, a list for unscheduled closures) in src/market-calendar.js, so no yearly table needs updating; used by the session checks, repeats, "before the close", "next open" and the date picker.
+- S-2: Every scheduled order has a grace window (default 15 min, shorter for "N minutes before the close"); missed by more, it expires with a note and a notification and is never sent late; a repeating order moves to its next run.
+- S-3: The window counts from the order's time, or from the next open when the market is closed then, so an order timed before the open runs at the open (as before) and is not treated as late.
+- S-4: "At the close" and "at the next open" use Alpaca's closing and opening auction orders (time in force cls / opg, whole shares, sent 30 and 50 minutes ahead, before the 15:50 and 9:28 cut-offs taken from Alpaca's order documentation as known; the docs could not be fetched from this environment). Paper and other brokers have no auction order: the review screen says so and a timed market order is sent instead.
+- S-5: The existing test that ran a 10-day-late scheduled order now uses an order 5 minutes late: the double-run assertion is unchanged, and sending a 10-day-late order is exactly what the new rule forbids (covered by test/schedule.test.js).
+- S-6: POST /schedule on any account other than the practice account goes through stepUpGuard, the same check as /orders.
+- S-7: The calendar endpoint is /api/trading-calendar (the /api/market router requires sign-in; the calendar is public data).
+- S-8: The "When" fieldset sets min-width: 0 and its chips wrap: a fieldset's default minimum width made the order desk wider than a phone screen, which pushed the sticky Trade bar off-screen.
+- S-9: POST /schedule/preview returns an incomplete or past choice as {error} (shown on the form), not as HTTP 400; POST /schedule still refuses it with 400. The "At a date and time" picker starts on the next weekday whose 9:30 open is still ahead.
+- S-10: The e2e gives its throwaway test account the Pro plan only around the scheduling steps (written straight into that run's temporary database, as Admin → Users would), then sets it back to free so the later free-plan checks are unchanged; the Close later step buys its own paper position first.
 ## Deploys
 
 - D-1 (2026-11-16): released flag removal, permanent layout layer, Chat, planning tools, AI explainers, comms drawer for users with a number, previous homepage kept, post-deploy smoke/rollback workflows; merge commit f392309; gates npm test 354/0, e2e 435 exit 0, security:check 0; no revert. The page-snapshot gate still flags Admin → SEO (Feature flags card gone) and the owner to-do list (flag steps gone): intentional, snapshot update for those two pages left for the owner.

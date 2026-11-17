@@ -32,8 +32,13 @@ export async function positions(view, q, H) {
   <div class="card"><div class="stats"><div class="stat"><span>Market value</span><b>${H.money(value)}</b></div><div class="stat"><span>Unrealized P/L</span><b class="${H.cls(pnl)}">${H.money(pnl)}</b></div><div class="stat"><span>Cash</span><b>${H.money(a.cash)}</b></div><div class="stat"><span>Positions</span><b>${ps.length}</b></div></div></div>
   <div class="card tablewrap"><table><tr><th>Symbol</th><th class="num">Qty</th><th class="num">Avg price</th><th class="num">Price</th><th class="num">Value</th><th class="num">Share</th><th class="num">P/L</th><th></th></tr>
   ${ps.map(p => { const cost = p.avgPrice * p.qty, pct = cost ? p.pnl / Math.abs(cost) * 100 : null; return `<tr><td><a href="#/trade?symbol=${encodeURIComponent(p.symbol)}" data-no-tr>${H.esc(p.symbol)}</a></td><td class="num">${H.num(p.qty, 4)}</td><td class="num">${H.money(p.avgPrice)}</td><td class="num">${H.money(p.price)}</td><td class="num">${H.money(p.value)}</td><td class="num">${a.equity ? (p.value / a.equity * 100).toFixed(1) + '%' : '-'}</td>
-    <td class="num ${H.cls(p.pnl)}">${H.money(p.pnl)}${pct == null ? '' : ` (${H.pct(pct, 1)})`}</td><td><button class="small ghost" data-close="${H.esc(p.symbol)}" data-qty="${p.qtyAvailable ?? p.qty}">Close</button></td></tr>`; }).join('') || '<tr><td colspan="8" class="mu">No positions yet. <a href="#/trade">Place a trade</a> and it shows up here.</td></tr>'}
+    <td class="num ${H.cls(p.pnl)}">${H.money(p.pnl)}${pct == null ? '' : ` (${H.pct(pct, 1)})`}</td><td><button class="small ghost" data-close="${H.esc(p.symbol)}" data-qty="${p.qtyAvailable ?? p.qty}">Close</button> <button class="small ghost" data-later="${H.esc(p.symbol)}" data-qty="${p.qty}">Close later</button></td></tr>`; }).join('') || '<tr><td colspan="8" class="mu">No positions yet. <a href="#/trade">Place a trade</a> and it shows up here.</td></tr>'}
   </table></div><div class="err" id="posErr"></div>`;
+  H.$$('[data-later]', view).forEach(b => (b.onclick = async () => {
+    const { closeLater } = await import('./when.js');
+    const msg = await closeLater(H.api, { account, symbol: b.dataset.later, qty: +b.dataset.qty, live: !!a.live });
+    if (msg) { const e = H.$('#posErr', view); e.className = 'ok'; e.textContent = msg; }
+  }));
   H.$$('[data-close]', view).forEach(b => (b.onclick = async () => {
     const qty = +b.dataset.qty, sym = b.dataset.close, short = qty < 0;
     if (!confirm(`${a.live ? 'LIVE ORDER WITH REAL MONEY\n' : ''}${short ? 'Buy back' : 'Sell'} ${Math.abs(qty)} ${sym} at the market price?`)) return;

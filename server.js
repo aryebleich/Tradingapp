@@ -36,7 +36,9 @@ import { buildStrategy } from './src/ai.js';
 import { handleCommand, userByPhone, normalize, HELP, KNOWN, CHAT_WORDS, FREE_COMMANDS } from './src/commands.js';
 import { aiEnabled, interpret, toCommand } from './src/assistant.js';
 import { startScheduler, assessAllFees, runDueJobs, snapshotAll, nextRunOf } from './src/scheduler.js';
-import { nyAt } from './src/time.js';
+import { nyAt, nyTime } from './src/time.js';
+import { planWhen } from './src/schedule-plan.js';
+import { closedDays, addDays } from './src/market-calendar.js';
 import { startKycEvents } from './src/alpaca/kyc.js';
 import { riskRouter } from './src/risk.js';
 import { insightsRouter } from './src/insights.js';
@@ -868,33 +870,69 @@ api.post('/paper/reset', U, async (req, res) => {
 });
 
 api.get('/schedule', U, async (req, res) => res.json(await all('SELECT * FROM scheduled_orders WHERE user_id = ? ORDER BY active DESC, next_run', req.user.id)));
-// A scheduled trade: a New York date and time, how it repeats (once, every weekday, chosen
-// weekdays, monthly), and a market or limit order (limit orders may run in extended hours on Alpaca).
-api.post('/schedule', U, needPlan('Scheduled trades'), wrap(async (req, res) => {
-  const b = req.body;
-  if (!['once', 'daily', 'weekly', 'monthly'].includes(b.repeat)) throw new Error('Bad repeat');
-  if (!(+b.qty > 0) && !(+b.notional > 0)) throw new Error('Give a quantity or dollar amount');
+// A scheduled trade. "When": a New York date and time (once or repeating: every trading day, chosen
+// weekdays, monthly), at the close or N minutes before it, at the next open, or after a delay. Market or
+// limit order (limit orders may run in extended hours on Alpaca). The plan (src/schedule-plan.js) gives
+// the start time, the grace window (missed by more and the order expires, never sent late), Alpaca's
+// own auction order for the open and the close, and how precise the timing is.
+function schedulePlan(req, { preview = false } = {}) {
+  const b = req.body || {};
+  const w = b.when && typeof b.when === 'object' ? b.when : { kind: 'at', date: b.date, time: b.time };
+  if (!['at', 'close', 'open', 'delay'].includes(w.kind)) throw Object.assign(new Error('Pick when it should run'), { status: 400 });
+  const repeat = w.kind === 'at' ? (b.repeat || 'once') : 'once';
+  if (!['once', 'daily', 'weekly', 'monthly'].includes(repeat)) throw new Error('Bad repeat');
+  const close = b.close && ['all', 'qty', 'pct'].includes(b.close.mode) ? { mode: b.close.mode, pct: b.close.mode === 'pct' ? Math.min(100, Math.max(0, +b.close.pct || 0)) : null } : null;
+  if (close?.mode === 'pct' && !(close.pct > 0)) throw Object.assign(new Error('Enter the percentage to close'), { status: 400 });
+  // A close of the whole position or a percentage needs no amount: it is worked out at run time.
+  const needsAmount = !close || close.mode === 'qty';
+  if (!preview && needsAmount && !(+b.qty > 0) && !(+b.notional > 0)) throw new Error('Give a quantity or dollar amount');
+  if (close && +b.notional > 0) throw Object.assign(new Error('A scheduled close is in shares, not dollars'), { status: 400 });
   const symbol = String(b.symbol || '').trim().toUpperCase();
   if (!/^[A-Z][A-Z0-9.\/-]{0,14}$/.test(symbol)) throw new Error('Enter a valid symbol');
-  let at, minutes = null, weekdays = null, monthDay = null;
-  if (b.date && b.time) {
-    // New York wall-clock time, so "9:35" means 9:35 at the exchange whatever the browser's time zone.
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date) || !/^\d{2}:\d{2}$/.test(b.time)) throw new Error('Pick a date and time');
-    minutes = +b.time.slice(0, 2) * 60 + +b.time.slice(3);
-    weekdays = b.repeat === 'weekly' ? [...new Set((Array.isArray(b.weekdays) ? b.weekdays : String(b.weekdays || '').split(',')).map(Number).filter(d => d >= 1 && d <= 5))].sort().join(',') || null : null;
-    monthDay = +b.date.slice(8);
-    at = nyAt(b.date, minutes);
-    // A repeating order whose first chosen day is not a run day starts on the next one.
-    if (b.repeat !== 'once') { const first = nextRunOf({ repeat: b.repeat, run_minutes: minutes, weekdays, month_day: monthDay }, at - 1); if (first) at = first; }
-  } else at = Date.parse(b.at);
+  const account = acct(req);
+  let plan, at, minutes = null, weekdays = null, monthDay = null;
+  if (w.kind === 'at' && !(w.date && w.time) && b.at) { at = Date.parse(b.at); plan = { kind: 'at', nextRun: at, tif: null, graceMin: 15, precision: '' }; }
+  else {
+    plan = planWhen(w, { account, qty: +b.qty, notional: +b.notional, t: now() });
+    at = plan.nextRun;
+    if (w.kind === 'at') {
+      minutes = plan.minutes;
+      weekdays = repeat === 'weekly' ? [...new Set((Array.isArray(b.weekdays) ? b.weekdays : String(b.weekdays || '').split(',')).map(Number).filter(d => d >= 1 && d <= 5))].sort().join(',') || null : null;
+      monthDay = +w.date.slice(8);
+      // A repeating order whose first chosen day is not a run day starts on the next one.
+      if (repeat !== 'once') { const first = nextRunOf({ repeat, run_minutes: minutes, weekdays, month_day: monthDay }, at - 1); if (first) at = first; }
+    }
+  }
   if (!(at > now() - 60e3)) throw new Error('Pick a time in the future');
   const type = b.orderType === 'limit' ? 'limit' : 'market', limit = type === 'limit' ? +b.limitPrice : null;
-  if (type === 'limit' && !(limit > 0)) throw new Error('Enter the limit price');
-  const extended = type === 'limit' && !!b.extended ? 1 : 0;
-  const r = await run('INSERT INTO scheduled_orders (user_id, account, symbol, side, qty, notional, repeat, next_run, created_at, run_minutes, weekdays, month_day, order_type, limit_price, extended) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-    req.user.id, acct(req), symbol, b.side === 'sell' ? 'sell' : 'buy', +b.qty || null, +b.notional || null, b.repeat, at, now(), minutes, weekdays, monthDay, type, limit, extended);
-  res.json({ id: Number(r.lastInsertRowid), nextRun: at });
+  if (!preview && type === 'limit' && !(limit > 0)) throw new Error('Enter the limit price');
+  const extended = type === 'limit' && !!b.extended && !plan.tif ? 1 : 0;
+  return { b, w, repeat, symbol, account, plan: { ...plan, nextRun: at }, at, minutes, weekdays, monthDay, type, limit, extended, close };
+}
+// What the review screen shows before a schedule is saved: when it runs (New York and the user's time),
+// how precise that is, and the reminder that the price at run time may differ from the price now.
+api.post('/schedule/preview', U, wrap(async (req, res) => {
+  // An incomplete or past choice is shown on the form as a message, not as a failed request.
+  let p; try { p = schedulePlan(req, { preview: true }); } catch (e) { if (e.status && e.status !== 400) throw e; return res.json({ error: e.message }); }
+  res.json({ nextRun: p.at, kind: p.plan.kind, auction: p.plan.tif || null, graceMin: p.plan.graceMin, precision: p.plan.precision, repeat: p.repeat,
+    priceNote: 'The price when the order runs may differ from the price now.', account: p.account });
 }));
+// Schedules on a real-money account need the same step-up confirmation as a live order.
+const scheduleStepUp = (req, res, next) => (acct(req) === 'paper' ? next() : stepUpGuard(req, res, next));
+api.post('/schedule', U, needPlan('Scheduled trades'), scheduleStepUp, wrap(async (req, res) => {
+  const { b, w, repeat, symbol, account, plan, at, minutes, weekdays, monthDay, type, limit, extended, close } = schedulePlan(req);
+  const r = await run('INSERT INTO scheduled_orders (user_id, account, symbol, side, qty, notional, repeat, next_run, created_at, run_minutes, weekdays, month_day, order_type, limit_price, extended, when_kind, close_offset, grace_min, tif, close_mode, close_pct) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+    req.user.id, account, symbol, b.side === 'sell' ? 'sell' : 'buy', +b.qty || null, +b.notional || null, repeat, at, now(), minutes, weekdays, monthDay, type, limit, extended,
+    w.kind, w.kind === 'close' ? plan.offsetMin ?? 0 : null, plan.graceMin ?? null, plan.tif || null, close?.mode || null, close?.pct ?? null);
+  res.json({ id: Number(r.lastInsertRowid), nextRun: at, auction: plan.tif || null, graceMin: plan.graceMin, precision: plan.precision });
+}));
+// The market calendar for the date picker: closed days (holidays) and early closes between two dates.
+api.get('/trading-calendar', async (req, res) => {
+  const ok = d => /^\d{4}-\d{2}-\d{2}$/.test(d || '');
+  const from = ok(req.query.from) ? req.query.from : nyTime(now()).day;
+  const to = ok(req.query.to) && req.query.to >= from && req.query.to <= addDays(from, 400) ? req.query.to : addDays(from, 120);
+  res.set('Cache-Control', 'public, max-age=3600').json({ from, to, days: closedDays(from, to), session: { open: '09:30', close: '16:00', earlyClose: '13:00' }, now: now(), ny: nyTime(now()) });
+});
 api.delete('/schedule/:id', U, async (req, res) => { await run('UPDATE scheduled_orders SET active = 0 WHERE id = ? AND user_id = ?', +req.params.id, req.user.id); res.json({ ok: true }); });
 
 api.get('/alerts', U, async (req, res) => res.json(await all('SELECT * FROM alerts WHERE user_id = ? ORDER BY id DESC', req.user.id)));

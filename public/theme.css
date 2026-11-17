@@ -1249,3 +1249,55 @@ dialog.geardlg label.chk, dialog.geardlg label.chk2, dialog.geardlg label.check 
 }
 @media (max-width: 420px) { header#top .brand b { display: none; } }
 @media (max-width: 760px) { .tablewrap:has(> table.chain), .tablewrap:has(> table.optchain) { overflow-x: auto; } }
+
+/* ---------- "When" choice and the clock / date pickers (public/pages/when.js, clock.js) ---------- */
+fieldset.when { margin: 12px 0 4px; padding: 10px 12px 12px; min-width: 0; max-width: 100%; }
+.when-kinds, .when-delay, .when-quick { display: flex; flex-wrap: wrap; gap: 6px; }
+fieldset.when legend { font-weight: 650; color: var(--tx); }
+.when-kinds { margin: 2px 0 10px; }
+.when-kinds button, .when-delay button, .when-quick button { min-height: 32px; }
+.when-quick { margin: 0 0 10px; }
+.when-pick { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+.when-pick > div { flex: 1 1 240px; min-width: 0; }
+.when-info { margin-top: 10px; font-size: 14px; }
+.when-run { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.when-run .pill { font-variant-numeric: tabular-nums; }
+.when-prec, .when-price, .when-auction { margin: 6px 0 0; font-size: 13px; line-height: 1.5; }
+.when-wd { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 6px 0 0; }
+dialog.when-dialog { max-width: 560px; width: calc(100% - 32px); }
+
+.clk { border: 1px solid var(--bd); border-radius: var(--r); padding: 10px 12px 8px; background: var(--card); }
+.clk-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.clk-head .clk-sp { flex: 1; }
+.clk-part { font: 700 26px/1 inherit; font-variant-numeric: tabular-nums; padding: 4px 8px; background: transparent; color: var(--mu); box-shadow: none; border-radius: var(--r-sm); }
+.clk-part.on { color: var(--ac); background: var(--acs); }
+.clk-head .seg button { padding: 4px 10px; font-size: 13px; }
+.clk-face { width: min(220px, 100%); margin: 0 auto; touch-action: none; cursor: pointer; border-radius: 50%; }
+.clk-face:focus-visible { outline: 2px solid var(--ac); outline-offset: 3px; }
+.clk-face svg { display: block; width: 100%; height: auto; }
+.clk-bg { fill: var(--bg2); stroke: var(--bd); }
+.clk-face text { fill: var(--tx); font-size: 15px; font-weight: 600; user-select: none; pointer-events: none; }
+.clk-face text.in { font-size: 12px; fill: var(--mu); }
+.clk-face text.on { fill: #fff; }
+.clk-hand { transform-origin: 110px 110px; }
+.clk-hand line { stroke: var(--ac); stroke-width: 2.5; }
+.clk-hand circle { fill: var(--ac); }
+.clk-pin { fill: var(--ac); }
+.clk-hint { text-align: center; font-size: 12.5px; margin: 6px 0 0; }
+.clk-digital input { font-size: 18px; font-variant-numeric: tabular-nums; }
+.clk-24 { margin-top: 8px; font-size: 13px; }
+@media (prefers-reduced-motion: no-preference) { .clk-hand { transition: transform .25s ease; } }
+
+.dpk { border: 1px solid var(--bd); border-radius: var(--r); padding: 10px 12px; background: var(--card); }
+.dpk-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.dpk-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+.dpk-wd { text-align: center; font-size: 11.5px; color: var(--mu); padding: 2px 0; }
+.dpk-grid button { margin: 0; min-height: 32px; padding: 0; font-size: 13.5px; font-variant-numeric: tabular-nums; background: transparent; color: var(--tx); box-shadow: none; border: 1px solid transparent; border-radius: 8px; }
+.dpk-grid button:hover:not(.off) { background: var(--bg2); }
+.dpk-grid button.on { background: var(--ac); color: #fff; }
+.dpk-grid button.off { color: var(--mu); opacity: .45; text-decoration: line-through; cursor: not-allowed; }
+.dpk-grid button.early { border-color: color-mix(in srgb, var(--warn) 55%, transparent); }
+.dpk-key { font-size: 12px; margin: 8px 0 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.dpk-sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--bd); }
+.dpk-sw.off { background: var(--bg2); opacity: .6; }
+.dpk-sw.early { border-color: var(--warn); }

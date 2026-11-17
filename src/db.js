@@ -880,6 +880,16 @@ const MIGRATIONS = [
   "ALTER TABLE scheduled_orders ADD COLUMN order_type TEXT NOT NULL DEFAULT 'market'",
   'ALTER TABLE scheduled_orders ADD COLUMN limit_price REAL',
   'ALTER TABLE scheduled_orders ADD COLUMN extended INTEGER NOT NULL DEFAULT 0',
+  // Scheduling from the order ticket: how the time was chosen, the grace window (missed by more and the
+  // order expires, never sent late), and the broker's auction order ('opg' at the open, 'cls' at the close).
+  'ALTER TABLE scheduled_orders ADD COLUMN when_kind TEXT',
+  'ALTER TABLE scheduled_orders ADD COLUMN close_offset INTEGER',
+  'ALTER TABLE scheduled_orders ADD COLUMN grace_min INTEGER',
+  'ALTER TABLE scheduled_orders ADD COLUMN tif TEXT',
+  // A scheduled close: 'all', 'qty' (at most the order's quantity) or 'pct' (close_pct of the position),
+  // always worked out from the position at run time.
+  'ALTER TABLE scheduled_orders ADD COLUMN close_mode TEXT',
+  'ALTER TABLE scheduled_orders ADD COLUMN close_pct REAL',
   'ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0',
   'ALTER TABLE users ADD COLUMN reset_hash TEXT',
   'ALTER TABLE users ADD COLUMN reset_expires INTEGER',

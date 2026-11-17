@@ -14,6 +14,13 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const OUT = path.join(root, 'e2e-output');
 fs.mkdirSync(OUT, { recursive: true });
 const PORT = 3150, B = `http://localhost:${PORT}`;
+const DB_FILE = path.join(os.tmpdir(), `qp-e2e-${Date.now()}.db`);
+// Test data only, in this run's throwaway database: gives a test account a paid plan (as Admin → Users would).
+async function setPlan(email, plan) {
+  const { createClient } = await import('@libsql/client');
+  const db = createClient({ url: 'file:' + DB_FILE });
+  await db.execute({ sql: "UPDATE users SET plan = ?, plan_status = 'active' WHERE email = ?", args: [plan, email] }); db.close();
+}
 let failures = 0;
 
 const mock = await startMock();
@@ -21,7 +28,7 @@ const server = spawn(process.execPath, ['server.js'], {
   cwd: root, stdio: ['ignore', 'pipe', 'pipe'],
   env: {
     ...process.env, PORT: String(PORT), FREE_DATA: 'off', NODE_ENV: 'test',
-    DB_FILE: path.join(os.tmpdir(), `qp-e2e-${Date.now()}.db`),
+    DB_FILE,
     BROKER_API_KEY: 'BKEY', BROKER_API_SECRET: 'BSECRET', BROKER_BASE_URL: mock.url,
     ALPACA_TRADING_URL: mock.url, ALPACA_DATA_URL: mock.url, ALPACA_DATA_SANDBOX_URL: mock.url,
     ALPACA_KEY_ID: 'DKEY', ALPACA_SECRET: 'DSECRET', ALPACA_STREAM_URL: 'ws://127.0.0.1:1',
@@ -528,6 +535,51 @@ console.log('Settings → Language');
     await p.click('#qPlace'); await p.waitForFunction(() => /open/.test(document.querySelector('#ticket .ok')?.textContent || ''), null, { timeout: 15000 });
     await go('#/dashboard', '[data-pcancel]'); await p.click('[data-pcancel]'); await p.waitForTimeout(800);
   });
+  await setPlan('features@example.com', 'pro');
+  await step('schedule from the quick ticket: after a delay; the review states the timing and that the price may differ; then cancel it', async () => {
+    await go('#/dashboard', '#ticket'); await p.fill('#ticket [name=symbol]', 'SPY'); await p.fill('#ticket [name=qty]', '1');
+    await p.click('#ticket [data-kind=delay]'); await p.click('#ticket [data-delay="60"]');
+    await p.waitForSelector('#ticket .when-run .when-cd', { timeout: 15000 });
+    if (!/runs in/.test(await p.textContent('#ticket .when-cd'))) throw new Error('no countdown');
+    await p.click('#qPlace'); await p.waitForSelector('dialog[open] #whenRevTitle', { timeout: 15000 });
+    const rev = await p.textContent('dialog[open]');
+    if (!/price when the order runs may differ/.test(rev) || !/Timing:/.test(rev)) throw new Error('review without timing or price note: ' + rev.slice(0, 200));
+    await p.click('dialog[open] button[value=yes]');
+    await p.waitForFunction(() => /Scheduled:/.test(document.querySelector('#ticket .ok')?.textContent || ''), null, { timeout: 15000 });
+    await go('#/schedule', '#sch');
+    const row = p.locator('tr', { hasText: 'After a delay' }).last(); await row.waitFor();
+    await row.locator('[data-c]').click(); await p.waitForTimeout(900);
+    const left = await p.evaluate(() => fetch('/api/schedule', { headers: { 'X-Requested-With': 'qp' } }).then(r => r.json()).then(l => l.filter(o => o.active && o.when_kind === 'delay').length));
+    if (left) throw new Error('the scheduled order was not cancelled');
+  });
+  await step('clock and date pickers: keyboard dial, digital toggle, closed days greyed out, quick chips', async () => {
+    await go('#/schedule', '#sch .clk-face');
+    const face = '#sch .clk-face', before = await p.getAttribute(face, 'aria-valuenow');
+    await p.focus(face); await p.keyboard.press('ArrowUp');
+    if ((await p.getAttribute(face, 'aria-valuenow')) === before) throw new Error('the dial did not move with the keyboard');
+    await p.keyboard.press('Enter');
+    if (!/^Minute/.test(await p.getAttribute(face, 'aria-label'))) throw new Error('Enter did not move to the minute');
+    await p.click('#sch [data-view=digital]'); await p.waitForSelector('#sch .clk-digital input[type=time]');
+    if ((await p.$$('#sch .dpk-grid button[aria-disabled=true]')).length < 8) throw new Error('weekends are not greyed out');
+    await p.click('#sch [data-q=close0]');
+    if ((await p.getAttribute('#sch [data-kind=close]', 'aria-checked')) !== 'true') throw new Error('the At close chip did not choose Before the close');
+    await p.waitForSelector('#sch .when-prec', { timeout: 15000 });
+    await p.screenshot({ path: path.join(OUT, 'schedule-picker.png'), fullPage: true });
+  });
+  await step('close later from positions: the dialog, the review, saved for the position (never more than held at run time)', async () => {
+    // A paper position of its own to close (the step before sells everything).
+    const buy = await p.evaluate(() => fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ account: 'paper', symbol: 'AAPL', side: 'buy', qty: 2 }) }).then(r => r.status));
+    if (buy !== 200) throw new Error('paper buy failed: ' + buy);
+    await go('#/positions', '[data-later]'); await p.click('[data-later] >> nth=0');
+    await p.waitForSelector('dialog.when-dialog[open]'); await p.waitForSelector('dialog.when-dialog .when-prec', { timeout: 15000 });
+    await p.click('dialog.when-dialog #clGo'); await p.waitForSelector('dialog[open] #whenRevTitle', { timeout: 15000 });
+    await p.click('dialog[open]:not(.when-dialog) button[value=yes]');
+    await p.waitForFunction(() => !document.querySelector('dialog.when-dialog[open]'), null, { timeout: 15000 });
+    const s = await p.evaluate(() => fetch('/api/schedule', { headers: { 'X-Requested-With': 'qp' } }).then(r => r.json()).then(l => l.filter(o => o.active && o.close_mode)));
+    if (!s.length || s[0].close_mode !== 'all') throw new Error('no scheduled close saved');
+    for (const o of s) await p.evaluate(id => fetch('/api/schedule/' + id, { method: 'DELETE', headers: { 'X-Requested-With': 'qp' } }), o.id);
+  });
+  await setPlan('features@example.com', 'free'); await p.reload(); // back to free: later steps check what free accounts see
   await step('futures, funds & savings; growth and value scan; stat-arb live scan; search', async () => {
     await go('#/invest', '[data-trade]'); await go('#/invest?tab=funds', '[data-buy]'); await go('#/invest?tab=savings', '#sg');
     await go('#/scanner', '#gvRun'); await p.click('#gvRun'); await p.waitForSelector('#gvOut table, #gvOut p', { timeout: 60000 });

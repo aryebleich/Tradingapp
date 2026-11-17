@@ -141,7 +141,7 @@ test('fixes: no double execution, deposits, phone code limits, rule validation',
 
   // Two schedulers firing at once (in-process timer + cron) must place the order only once.
   const tue = Date.UTC(2026, 9, 20, 15, 0); // Tuesday 11:00 New York, market open
-  await run("INSERT INTO scheduled_orders (user_id, account, symbol, side, notional, repeat, next_run, created_at) VALUES (?, 'paper', 'SPY', 'buy', 100, 'daily', ?, ?)", u.id, tue - 10 * 86400e3, tue);
+  await run("INSERT INTO scheduled_orders (user_id, account, symbol, side, notional, repeat, next_run, created_at) VALUES (?, 'paper', 'SPY', 'buy', 100, 'daily', ?, ?)", u.id, tue - 5 * 60e3, tue); // within its grace window (an order more than 15 minutes late expires: test/schedule.test.js)
   const ran = await Promise.all([runScheduledOrders(tue), runScheduledOrders(tue)]);
   assert.equal(ran[0] + ran[1], 1);
   assert.equal((await one("SELECT COUNT(*) n FROM fills WHERE user_id = ? AND source = 'schedule'", u.id)).n, 1);
