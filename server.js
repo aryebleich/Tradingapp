@@ -35,7 +35,7 @@ import { taxSummary, harvestCandidates, form8949Csv, scheduleD, scheduleDCsv, ma
 import { buildStrategy } from './src/ai.js';
 import { handleCommand, userByPhone, normalize, HELP, KNOWN, CHAT_WORDS, FREE_COMMANDS } from './src/commands.js';
 import { aiEnabled, interpret, toCommand } from './src/assistant.js';
-import { startScheduler, assessAllFees, runDueJobs, snapshotAll, nextRunOf } from './src/scheduler.js';
+import { startScheduler, assessAllFees, runDueJobs, snapshotAll, nextRunOf, recordRun } from './src/scheduler.js';
 import { nyAt, nyTime } from './src/time.js';
 import { planWhen } from './src/schedule-plan.js';
 import { closedDays, addDays } from './src/market-calendar.js';
@@ -869,7 +869,7 @@ api.post('/paper/reset', U, async (req, res) => {
   res.json({ ok: true });
 });
 
-api.get('/schedule', U, async (req, res) => res.json(await all('SELECT * FROM scheduled_orders WHERE user_id = ? ORDER BY active DESC, next_run', req.user.id)));
+api.get('/schedule', U, async (req, res) => res.json((await all('SELECT * FROM scheduled_orders WHERE user_id = ? ORDER BY active DESC, next_run', req.user.id)).map(o => { let runs = []; try { runs = JSON.parse(o.history || '[]'); } catch { runs = []; } const { history, ...rest } = o; return { ...rest, runs }; })));
 // A scheduled trade. "When": a New York date and time (once or repeating: every trading day, chosen
 // weekdays, monthly), at the close or N minutes before it, at the next open, or after a delay. Market or
 // limit order (limit orders may run in extended hours on Alpaca). The plan (src/schedule-plan.js) gives
@@ -904,10 +904,18 @@ function schedulePlan(req, { preview = false } = {}) {
     }
   }
   if (!(at > now() - 60e3)) throw new Error('Pick a time in the future');
+  // An end date (repeating schedules only): no run after the end of that New York day.
+  let endAt = null;
+  if (b.endDate) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(b.endDate)) throw Object.assign(new Error('Pick a valid end date'), { status: 400 });
+    if (repeat === 'once') throw Object.assign(new Error('An end date is for repeating schedules'), { status: 400 });
+    endAt = nyAt(b.endDate, 24 * 60) - 1;
+    if (endAt < at) throw Object.assign(new Error('The end date is before the first run'), { status: 400 });
+  }
   const type = b.orderType === 'limit' ? 'limit' : 'market', limit = type === 'limit' ? +b.limitPrice : null;
   if (!preview && type === 'limit' && !(limit > 0)) throw new Error('Enter the limit price');
   const extended = type === 'limit' && !!b.extended && !plan.tif ? 1 : 0;
-  return { b, w, repeat, symbol, account, plan: { ...plan, nextRun: at }, at, minutes, weekdays, monthDay, type, limit, extended, close };
+  return { b, w, repeat, symbol, account, plan: { ...plan, nextRun: at }, at, minutes, weekdays, monthDay, type, limit, extended, close, endAt };
 }
 // What the review screen shows before a schedule is saved: when it runs (New York and the user's time),
 // how precise that is, and the reminder that the price at run time may differ from the price now.
@@ -915,16 +923,62 @@ api.post('/schedule/preview', U, wrap(async (req, res) => {
   // An incomplete or past choice is shown on the form as a message, not as a failed request.
   let p; try { p = schedulePlan(req, { preview: true }); } catch (e) { if (e.status && e.status !== 400) throw e; return res.json({ error: e.message }); }
   res.json({ nextRun: p.at, kind: p.plan.kind, auction: p.plan.tif || null, graceMin: p.plan.graceMin, precision: p.plan.precision, repeat: p.repeat,
-    priceNote: 'The price when the order runs may differ from the price now.', account: p.account });
+    priceNote: 'The price when the order runs may differ from the price now.', account: p.account, endAt: p.endAt });
 }));
 // Schedules on a real-money account need the same step-up confirmation as a live order.
 const scheduleStepUp = (req, res, next) => (acct(req) === 'paper' ? next() : stepUpGuard(req, res, next));
+// The columns a schedule's form sets (create and edit share them).
+const scheduleCols = (p, userId) => {
+  const { b, w, repeat, symbol, account, plan, at, minutes, weekdays, monthDay, type, limit, extended, close, endAt } = p;
+  return {
+    user_id: userId, account, symbol, side: b.side === 'sell' ? 'sell' : 'buy', qty: +b.qty || null, notional: +b.notional || null, repeat, next_run: at,
+    run_minutes: minutes, weekdays, month_day: monthDay, order_type: type, limit_price: limit, extended,
+    when_kind: w.kind, close_offset: w.kind === 'close' ? plan.offsetMin ?? 0 : null, grace_min: plan.graceMin ?? null, tif: plan.tif || null,
+    close_mode: close?.mode || null, close_pct: close?.pct ?? null, end_at: endAt,
+  };
+};
+const whenText = at => new Date(at).toLocaleString('en-US', { timeZone: 'America/New_York', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' New York time';
 api.post('/schedule', U, needPlan('Scheduled trades'), scheduleStepUp, wrap(async (req, res) => {
-  const { b, w, repeat, symbol, account, plan, at, minutes, weekdays, monthDay, type, limit, extended, close } = schedulePlan(req);
-  const r = await run('INSERT INTO scheduled_orders (user_id, account, symbol, side, qty, notional, repeat, next_run, created_at, run_minutes, weekdays, month_day, order_type, limit_price, extended, when_kind, close_offset, grace_min, tif, close_mode, close_pct) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-    req.user.id, account, symbol, b.side === 'sell' ? 'sell' : 'buy', +b.qty || null, +b.notional || null, repeat, at, now(), minutes, weekdays, monthDay, type, limit, extended,
-    w.kind, w.kind === 'close' ? plan.offsetMin ?? 0 : null, plan.graceMin ?? null, plan.tif || null, close?.mode || null, close?.pct ?? null);
-  res.json({ id: Number(r.lastInsertRowid), nextRun: at, auction: plan.tif || null, graceMin: plan.graceMin, precision: plan.precision });
+  const p = schedulePlan(req), c = { ...scheduleCols(p, req.user.id), created_at: now() };
+  const r = await run(`INSERT INTO scheduled_orders (${Object.keys(c).join(', ')}) VALUES (${Object.keys(c).map(() => '?').join(',')})`, ...Object.values(c));
+  const id = Number(r.lastInsertRowid);
+  await recordRun(id, 'created', `first run ${whenText(p.at)}`);
+  await notifyAgentUser(req.user.id, `Scheduled: ${c.close_mode ? 'close of' : c.side} ${c.symbol}, first run ${whenText(p.at)}. You can edit, pause or cancel it under Scheduled trades.`).catch(() => {});
+  res.json({ id, nextRun: p.at, auction: p.plan.tif || null, graceMin: p.plan.graceMin, precision: p.plan.precision });
+}));
+// Editing or resuming a schedule that touches a real-money account (before or after the change)
+// needs the same step-up confirmation as creating one.
+const ownSchedule = async req => {
+  const o = await one('SELECT * FROM scheduled_orders WHERE id = ? AND user_id = ?', +req.params.id, req.user.id);
+  if (!o) throw Object.assign(new Error('No such scheduled order'), { status: 404 });
+  return o;
+};
+const scheduleEditStepUp = (req, res, next) => ownSchedule(req).then(o => {
+  const live = o.account !== 'paper' || (req.body?.account !== undefined && acct(req) !== 'paper');
+  return live ? stepUpGuard(req, res, next) : next();
+}, e => res.status(e.status || 400).json({ error: e.message }));
+api.put('/schedule/:id', U, needPlan('Scheduled trades'), scheduleEditStepUp, wrap(async (req, res) => {
+  const o = await ownSchedule(req);
+  if (!o.active) throw Object.assign(new Error('This scheduled order has finished or was cancelled; create a new one'), { status: 409 });
+  const p = schedulePlan(req), c = scheduleCols(p, req.user.id);
+  delete c.user_id;
+  // Conditional on the run time it was read with, so an edit can never collide with a run in progress.
+  const u = await run(`UPDATE scheduled_orders SET ${Object.keys(c).map(k => k + ' = ?').join(', ')} WHERE id = ? AND user_id = ? AND active = 1 AND next_run = ?`, ...Object.values(c), o.id, req.user.id, o.next_run);
+  if (!u.changes) throw Object.assign(new Error('This scheduled order just ran or changed; reload and try again'), { status: 409 });
+  await recordRun(o.id, 'edited', `next run ${whenText(p.at)}`);
+  await notifyAgentUser(req.user.id, `Scheduled ${c.close_mode ? 'close of' : c.side} ${c.symbol} was changed: next run ${whenText(p.at)}.`).catch(() => {});
+  res.json({ id: o.id, nextRun: p.at, auction: p.plan.tif || null, graceMin: p.plan.graceMin, precision: p.plan.precision });
+}));
+// Pause and resume. Resuming a real-money schedule needs step-up; a paused order does not run, and on
+// resume a time that has passed by more than its window expires (never sent late).
+api.post('/schedule/:id/pause', U, (req, res, next) => ownSchedule(req).then(o => (req.body?.paused === false && o.account !== 'paper' ? stepUpGuard(req, res, next) : next()),
+  e => res.status(e.status || 400).json({ error: e.message })), wrap(async (req, res) => {
+  const o = await ownSchedule(req), paused = req.body?.paused !== false;
+  if (!o.active) throw Object.assign(new Error('This scheduled order has finished or was cancelled'), { status: 409 });
+  if (!paused && !isPaid(req.user)) throw upgrade('Scheduled trades');
+  await run('UPDATE scheduled_orders SET paused = ? WHERE id = ? AND user_id = ?', paused ? 1 : 0, o.id, req.user.id);
+  await recordRun(o.id, paused ? 'paused' : 'resumed');
+  res.json({ ok: true, paused });
 }));
 // The market calendar for the date picker: closed days (holidays) and early closes between two dates.
 api.get('/trading-calendar', async (req, res) => {
@@ -933,7 +987,11 @@ api.get('/trading-calendar', async (req, res) => {
   const to = ok(req.query.to) && req.query.to >= from && req.query.to <= addDays(from, 400) ? req.query.to : addDays(from, 120);
   res.set('Cache-Control', 'public, max-age=3600').json({ from, to, days: closedDays(from, to), session: { open: '09:30', close: '16:00', earlyClose: '13:00' }, now: now(), ny: nyTime(now()) });
 });
-api.delete('/schedule/:id', U, async (req, res) => { await run('UPDATE scheduled_orders SET active = 0 WHERE id = ? AND user_id = ?', +req.params.id, req.user.id); res.json({ ok: true }); });
+api.delete('/schedule/:id', U, wrap(async (req, res) => {
+  const c = await run('UPDATE scheduled_orders SET active = 0 WHERE id = ? AND user_id = ? AND active = 1', +req.params.id, req.user.id);
+  if (c.changes) await recordRun(+req.params.id, 'cancelled');
+  res.json({ ok: true });
+}));
 
 api.get('/alerts', U, async (req, res) => res.json(await all('SELECT * FROM alerts WHERE user_id = ? ORDER BY id DESC', req.user.id)));
 api.post('/alerts', U, wrap(async (req, res) => {

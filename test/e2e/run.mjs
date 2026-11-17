@@ -579,6 +579,28 @@ console.log('Settings → Language');
     if (!s.length || s[0].close_mode !== 'all') throw new Error('no scheduled close saved');
     for (const o of s) await p.evaluate(id => fetch('/api/schedule/' + id, { method: 'DELETE', headers: { 'X-Requested-With': 'qp' } }), o.id);
   });
+  await step('scheduled trades: edit through the form, pause, resume; the run history shows each step', async () => {
+    const mk = await p.evaluate(() => fetch('/api/schedule', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ account: 'paper', symbol: 'AAPL', side: 'buy', qty: 1, when: { kind: 'delay', delayMin: 60 } }) }).then(r => r.json()));
+    if (!mk.id) throw new Error('could not create: ' + JSON.stringify(mk));
+    await go('#/schedule', `[data-e="${mk.id}"]`);
+    await p.click(`[data-e="${mk.id}"]`);
+    if (!/Editing scheduled order/.test(await p.textContent('#editing'))) throw new Error('no edit mode');
+    await p.fill('#sch [name=qty]', '4'); await p.click('#sch [data-kind=open]');
+    await p.waitForSelector('#sch .when-prec', { timeout: 15000 });
+    await p.click('#schGo'); await p.waitForSelector('dialog[open] #whenRevTitle', { timeout: 15000 });
+    if (!/Review changes/.test(await p.textContent('dialog[open] #whenRevTitle'))) throw new Error('not the edit review');
+    await p.click('dialog[open] button[value=yes]');
+    await p.waitForFunction(id => /Saved:/.test(document.querySelector('#sch .ok')?.textContent || ''), mk.id, { timeout: 15000 });
+    await go('#/schedule', `[data-p="${mk.id}"]`);
+    await p.click(`[data-p="${mk.id}"]`); await p.waitForSelector(`[data-p="${mk.id}"]:has-text("Resume")`, { timeout: 15000 });
+    await p.click(`[data-p="${mk.id}"]`); await p.waitForSelector(`[data-p="${mk.id}"]:has-text("Pause")`, { timeout: 15000 });
+    const o = await p.evaluate(id => fetch('/api/schedule', { headers: { 'X-Requested-With': 'qp' } }).then(r => r.json()).then(l => l.find(x => x.id === id)), mk.id);
+    if (o.qty !== 4 || o.when_kind !== 'open' || o.paused) throw new Error('the edit or resume did not save: ' + JSON.stringify({ qty: o.qty, kind: o.when_kind, paused: o.paused }));
+    if (o.runs.map(r => r.status).join(',') !== 'created,edited,paused,resumed') throw new Error('history: ' + o.runs.map(r => r.status));
+    const row = p.locator('tr', { has: p.locator(`[data-e="${mk.id}"]`) });
+    if (!/Resumed/.test(await row.textContent()) || !/3 earlier/.test(await row.textContent())) throw new Error('the run history is not shown');
+    await p.evaluate(id => fetch('/api/schedule/' + id, { method: 'DELETE', headers: { 'X-Requested-With': 'qp' } }), mk.id);
+  });
   await setPlan('features@example.com', 'free'); await p.reload(); // back to free: later steps check what free accounts see
   await step('futures, funds & savings; growth and value scan; stat-arb live scan; search', async () => {
     await go('#/invest', '[data-trade]'); await go('#/invest?tab=funds', '[data-buy]'); await go('#/invest?tab=savings', '#sg');

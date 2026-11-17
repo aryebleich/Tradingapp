@@ -25,7 +25,8 @@ export function whenHtml({ repeat = false, kinds = KINDS } = {}) {
       <div class="chips when-quick" aria-label="Quick picks"><button type="button" data-q="open930">Market open</button><button type="button" data-q="close30">30 min before close</button><button type="button" data-q="close0">At close</button><button type="button" data-q="nextopen">Next open</button></div>
       <div class="when-pick"><div class="when-date"></div><div class="when-clock"></div></div>
       ${repeat ? `<label>Repeat<select name="repeat"><option value="once">Once</option><option value="daily">Every trading day</option><option value="weekly">On chosen weekdays</option><option value="monthly">Monthly on this date</option></select></label>
-        <div class="when-wd" hidden>${['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((d, i) => `<label class="check"><input type="checkbox" name="wd" value="${i + 1}"> ${d}</label>`).join('')}</div>` : ''}
+        <div class="when-wd" hidden>${['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((d, i) => `<label class="check"><input type="checkbox" name="wd" value="${i + 1}"> ${d}</label>`).join('')}</div>
+        <label class="when-end" hidden>End date (optional)<input type="date" name="endDate"></label>` : ''}
     </div>
     <div class="when-close" hidden><label>Run<select name="closeOffset"><option value="0">At the close</option><option value="5">5 minutes before the close</option><option value="15">15 minutes before the close</option><option value="30">30 minutes before the close</option><option value="60">1 hour before the close</option><option value="custom">Other…</option></select></label>
       <label class="when-custom" hidden>Minutes before the close<input name="closeCustom" type="number" min="1" max="390" step="1" value="10"></label></div>
@@ -62,7 +63,8 @@ export function wireWhen(root, { api, order = () => ({}), onChange = () => {} } 
   box.querySelectorAll('[data-delay]').forEach(b => (b.onclick = () => { delay = +b.dataset.delay; box.querySelectorAll('[data-delay]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-checked', x === b); }); refresh(); }));
   const off = $('[name=closeOffset]'); off.onchange = () => { $('.when-custom').hidden = off.value !== 'custom'; refresh(); };
   $('[name=closeCustom]').oninput = refresh;
-  const rep = $('[name=repeat]'); if (rep) rep.onchange = () => { $('.when-wd').hidden = rep.value !== 'weekly'; refresh(); };
+  const rep = $('[name=repeat]'); if (rep) rep.onchange = () => { $('.when-wd').hidden = rep.value !== 'weekly'; $('.when-end').hidden = rep.value === 'once'; refresh(); };
+  const endIn = $('[name=endDate]'); if (endIn) endIn.onchange = refresh;
   box.querySelectorAll('[name=wd]').forEach(c => (c.onchange = refresh));
   box.querySelectorAll('[data-q]').forEach(b => (b.onclick = () => {
     const q = b.dataset.q;
@@ -93,14 +95,27 @@ export function wireWhen(root, { api, order = () => ({}), onChange = () => {} } 
     const my = ++seq; preview = null; show();
     timer = setTimeout(async () => {
       const o = order();
-      try { preview = await api('/schedule/preview', { body: { ...o, qty: o.qty || undefined, notional: o.notional || undefined, symbol: o.symbol || 'SPY', side: o.side || 'buy', when: when(), repeat: rep?.value || 'once' } }); }
+      try { preview = await api('/schedule/preview', { body: { ...o, qty: o.qty || undefined, notional: o.notional || undefined, symbol: o.symbol || 'SPY', side: o.side || 'buy', when: when(), repeat: rep?.value || 'once', endDate: endDate() } }); }
       catch (e) { preview = { error: e.message }; }
       if (my === seq) show();
     }, 250);
   }
   // The countdown stays current while the form is open.
   const tick = setInterval(() => { if (!box.isConnected) clearInterval(tick); else if (preview && !preview.error) { const cd = $('.when-cd'); if (cd) cd.textContent = countdown(preview.nextRun - Date.now()); } }, 30e3);
-  return { kind: () => kind, when, isNow: () => kind === 'now', repeat: () => rep?.value || 'once', weekdays, refresh, preview: () => preview, setKind, fmtTime };
+  const endDate = () => (rep && rep.value !== 'once' && endIn?.value) || undefined;
+  // Fills the choice from a saved schedule (Edit). A delay is shown as its date and time.
+  const load = o => {
+    const at = new Date(o.next_run), k = o.when_kind && o.when_kind !== 'delay' ? o.when_kind : 'at';
+    date = nyDay(+at); dp.set(date);
+    time = o.run_minutes != null && o.when_kind !== 'delay' ? `${String(Math.floor(o.run_minutes / 60)).padStart(2, '0')}:${String(o.run_minutes % 60).padStart(2, '0')}` : at.toLocaleTimeString('en-GB', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+    tp.set(time);
+    if (rep) { rep.value = o.when_kind === 'delay' ? 'once' : o.repeat || 'once'; $('.when-wd').hidden = rep.value !== 'weekly'; $('.when-end').hidden = rep.value === 'once'; }
+    box.querySelectorAll('[name=wd]').forEach(c => (c.checked = String(o.weekdays || '').split(',').includes(c.value)));
+    if (endIn) endIn.value = o.end_at ? nyDay(o.end_at) : '';
+    if (k === 'close') { const v = String(o.close_offset ?? 0); off.value = [...off.options].some(x => x.value === v) ? v : 'custom'; $('[name=closeCustom]').value = o.close_offset || 10; $('.when-custom').hidden = off.value !== 'custom'; }
+    setKind(k);
+  };
+  return { kind: () => kind, when, isNow: () => kind === 'now', repeat: () => rep?.value || 'once', weekdays, endDate, refresh, preview: () => preview, setKind, load, fmtTime };
 }
 
 // The review text for a scheduled order, and saving it.
@@ -127,15 +142,17 @@ export function reviewBox(title, html, okText = 'Schedule order') {
 }
 // The whole scheduled-order flow behind a "Review" button: only market and limit orders can be scheduled
 // here; the preview gives the timing, the review states it with the price reminder, then it is saved.
-export async function reviewAndSchedule(api, w, order, { what, live = false } = {}) {
+export async function reviewAndSchedule(api, w, order, { what, live = false, id = null, types = ['market', 'limit'] } = {}) {
   if (w.isNow()) throw new Error('Pick when it should run');
-  if (!['market', 'limit', undefined].includes(order.orderType)) throw new Error('Only market and limit orders can be scheduled from here.');
-  const body = { ...order, when: w.when(), repeat: w.repeat(), weekdays: w.weekdays() };
+  if (![...types, undefined].includes(order.orderType)) throw new Error('Only market and limit orders can be scheduled from here.');
+  const body = { ...order, when: w.when(), repeat: w.repeat(), weekdays: w.weekdays(), endDate: w.endDate?.() };
   const p = await api('/schedule/preview', { body });
-  const ok = await reviewBox('Review scheduled order', `${live ? '<p class="warn"><b>This schedules a LIVE order with real money.</b></p>' : ''}<p><b>${esc(what)}</b></p>${reviewHtml(p)}`);
+  if (p.error) throw new Error(p.error);
+  const end = p.endAt ? `<p>Last run on or before ${esc(new Date(p.endAt).toLocaleDateString('en-US', { timeZone: 'America/New_York', weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }))}.</p>` : '';
+  const ok = await reviewBox(id ? 'Review changes' : 'Review scheduled order', `${live ? `<p class="warn"><b>${id ? 'This changes a LIVE order with real money.' : 'This schedules a LIVE order with real money.'}</b></p>` : ''}<p><b>${esc(what)}</b></p>${reviewHtml(p)}${end}`, id ? 'Save changes' : 'Schedule order');
   if (!ok) return '';
-  const r = await api('/schedule', { body });
-  return `Scheduled: ${fmt(r.nextRun, 'America/New_York')} New York (${countdown(r.nextRun - Date.now())}). See Scheduled trades to edit or cancel it.`;
+  const r = id ? await api('/schedule/' + id, { method: 'PUT', body }) : await api('/schedule', { body });
+  return `${id ? 'Saved' : 'Scheduled'}: ${fmt(r.nextRun, 'America/New_York')} New York (${countdown(r.nextRun - Date.now())}). See Scheduled trades to edit or cancel it.`;
 }
 
 // "Close later" on a position: all of it, a quantity or a percentage, at a chosen time. The amount is

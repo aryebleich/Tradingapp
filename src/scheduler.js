@@ -7,6 +7,7 @@ import { shabbosBlock } from './values.js';
 import { placeOrder, getBars, lastPrice, snapshotEquity, accountSummary, syncAlpacaFills } from './brokers.js';
 import { latestSignal } from './engine.js';
 import { sendSms, sendEmail } from './notify.js';
+import { notifyUser } from './notify-user.js';
 import { assessFee, isPaid } from './fees.js';
 import { adviserMode } from './site.js';
 import { tradingFor } from './alpaca/connections.js';
@@ -83,43 +84,65 @@ export async function closeOrderOf(o) {
   return { order: { ...orderOf(o), symbol: o.symbol, side: +held.qty > 0 ? 'sell' : 'buy', qty, notional: null }, capped: o.close_mode === 'qty' && +o.qty > size };
 }
 
+// The run history of a schedule (replaces the single last_result, which is kept as the latest line).
+export async function recordRun(id, status, detail = '', t = now()) {
+  const row = await one('SELECT history FROM scheduled_orders WHERE id = ?', id);
+  let h = []; try { h = JSON.parse(row?.history || '[]'); } catch { h = []; }
+  h.push({ at: t, status, detail: String(detail).slice(0, 300) }); h = h.slice(-50);
+  await run('UPDATE scheduled_orders SET history = ?, last_result = ? WHERE id = ?', JSON.stringify(h), detail ? `${status}: ${detail}` : status, id);
+}
+const label = o => o.close_mode ? `scheduled close of ${o.symbol}` : `scheduled ${o.side} ${o.symbol}`;
+
 export async function runScheduledOrders(t = now()) {
-  const due = await all('SELECT * FROM scheduled_orders WHERE active = 1 AND next_run <= ?', t);
+  const due = await all('SELECT * FROM scheduled_orders WHERE active = 1 AND COALESCE(paused, 0) = 0 AND next_run <= ?', t);
   let ran = 0;
   for (const o of due) {
+    // Past its end date: the schedule ends without running.
+    if (o.end_at && o.next_run > o.end_at) {
+      const c = await run('UPDATE scheduled_orders SET active = 0 WHERE id = ? AND next_run = ? AND active = 1', o.id, o.next_run);
+      if (c.changes) { await recordRun(o.id, 'ended', 'end date reached', t); await notifyUser(o.user_id, `Your ${label(o)} reached its end date and has stopped.`); }
+      continue;
+    }
     const start = windowStart(o);
     if (t < start) continue; // waits for the session to open
     const missed = t > latestSend(o, start);
     if (!missed && o.tif !== 'opg' && !canRunNow(o, t)) continue;
     // Shabbos and Yom Tov (Values investing): the order waits and runs when it is over.
     if (!missed && await shabbosBlock(o.user_id, t)) continue;
-    // A repeating order moves to its next time (runs missed while the app was asleep are skipped).
+    // A repeating order moves to its next time (runs missed while the app was asleep are skipped);
+    // a run after the end date is not scheduled.
     let next = nextRunOf(o, o.next_run);
     while (next && next <= t) next = nextRunOf(o, next);
+    const ends = !!(next && o.end_at && next > o.end_at);
+    if (ends) next = null;
     // Claimed with a conditional UPDATE: the in-process timer, the cron tick and a restart can never run it twice.
-    const claim = await run('UPDATE scheduled_orders SET next_run = ?, active = ? WHERE id = ? AND next_run = ? AND active = 1', next ?? o.next_run, next ? 1 : 0, o.id, o.next_run);
+    const claim = await run('UPDATE scheduled_orders SET next_run = ?, active = ? WHERE id = ? AND next_run = ? AND active = 1 AND COALESCE(paused, 0) = 0', next ?? o.next_run, next ? 1 : 0, o.id, o.next_run);
     if (!claim.changes) continue;
+    const tail = next ? ' The next run is still scheduled.' : ends ? ' This was its last run before the end date.' : '';
     if (missed) {
       // Never sent late: the window was missed (the app was asleep or the broker's cut-off passed).
-      const late = Math.round((t - start) / MIN), result = `expired: not sent, ${late} min after its time (window ${o.grace_min ?? DEFAULT_GRACE_MIN} min)`;
-      await run('UPDATE scheduled_orders SET last_result = ? WHERE id = ?', result, o.id);
-      await notify(o.user_id, `Scheduled ${o.side} ${o.symbol} was not sent: its time passed ${late} min ago, more than its ${o.grace_min ?? DEFAULT_GRACE_MIN}-minute window.${next ? ' The next run is still scheduled.' : ''}`);
+      const late = Math.round((t - start) / MIN), win = o.grace_min ?? DEFAULT_GRACE_MIN;
+      await recordRun(o.id, 'expired', `not sent, ${late} min after its time (window ${win} min)`, t);
+      await notifyUser(o.user_id, `Your ${label(o)} was not sent: its time passed ${late} min ago, more than its ${win}-minute window.${tail}`);
       continue;
     }
     ran++;
-    let result;
     try {
       let order = orderOf(o), capped = false;
       if (o.close_mode) {
         const c = await closeOrderOf(o);
-        if (c.note) { await run('UPDATE scheduled_orders SET last_result = ? WHERE id = ?', c.note, o.id); await notify(o.user_id, `Scheduled close of ${o.symbol}: ${c.note.replace(/^done: /, '')}.`); continue; }
+        if (c.note) { await recordRun(o.id, 'done', c.note.replace(/^done: /, ''), t); await notifyUser(o.user_id, `Your ${label(o)}: ${c.note.replace(/^done: /, '')}.${tail}`); continue; }
         order = c.order; capped = c.capped;
       }
       const r = await placeOrder(o.user_id, o.account, order, 'schedule');
-      result = `${r.status}${r.price ? ' @ ' + r.price.toFixed(2) : ''}${capped ? ` (capped at the ${order.qty} held)` : ''}`;
-    } catch (e) { result = 'error: ' + e.message; } // recorded and notified, never retried blindly
-    await run('UPDATE scheduled_orders SET last_result = ? WHERE id = ?', result, o.id);
-    await notify(o.user_id, `Scheduled ${o.side} ${o.symbol}: ${result}`);
+      const detail = `${r.status}${r.price ? ' @ ' + r.price.toFixed(2) : ''}${capped ? ` (capped at the ${order.qty} held)` : ''}`;
+      await recordRun(o.id, 'sent', detail, t);
+      await notifyUser(o.user_id, `Your ${label(o)} ran: ${detail}.${tail}`);
+    } catch (e) {
+      // Recorded and notified, never retried blindly.
+      await recordRun(o.id, 'failed', e.message, t);
+      await notifyUser(o.user_id, `Your ${label(o)} failed: ${e.message}.${tail}`);
+    }
   }
   return ran;
 }
