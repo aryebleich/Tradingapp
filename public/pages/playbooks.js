@@ -10,7 +10,8 @@ const pct = x => (Number.isFinite(+x) ? `${(+x).toFixed(1)}%` : '-');
 const FN = { rsi: 'RSI', sma: 'Moving average', close: 'Price', ret: 'Return %', avgret: 'Avg daily return %', stdev: 'Volatility %', high: 'Highest close', pstdev: 'Price st. dev.' };
 const TYPES = { asset: 'Asset', cash: 'Cash', group: 'Group', if: 'If / else', filter: 'Filter (top/bottom N)' };
 const uid = () => 'b' + Math.random().toString(36).slice(2, 8);
-const tabs = cur => `<div class="seg" role="tablist" style="margin-bottom:12px">${[['mine', 'My Playbooks', '#/playbooks'], ['library', 'Library', '#/playbooks?tab=library'], ['discover', 'Discover', '#/playbooks?tab=discover'], ['dev', 'Developer API', '#/developers']].map(([k, n, h]) => `<a role="tab" class="${cur === k ? 'on' : ''}" aria-selected="${cur === k}" href="${h}"><button type="button" class="${cur === k ? 'on' : ''}">${n}</button></a>`).join('')}</div>`;
+// The Developer API is its own tab of Developers now (Automate → Developers), so it has no Playbooks tab.
+const tabs = cur => cur === 'dev' ? '' : `<div class="seg" role="tablist" style="margin-bottom:12px;flex-wrap:wrap;max-width:100%">${[['mine', 'My Playbooks', '#/strategies/playbooks'], ['library', 'Library', '#/strategies/playbooks?tab=library'], ['discover', 'Discover', '#/strategies/playbooks?tab=discover']].map(([k, n, h]) => `<a role="tab" class="${cur === k ? 'on' : ''}" aria-selected="${cur === k}" href="${h}"><button type="button" class="${cur === k ? 'on' : ''}">${n}</button></a>`).join('')}</div>`;
 const disclaimer = m => `<p class="mu small-print">${H.esc(m.disclaimer)}</p>`;
 
 // ---------- list ----------

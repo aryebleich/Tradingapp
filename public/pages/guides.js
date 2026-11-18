@@ -48,7 +48,7 @@ const G = {
     'Backtests are hypothetical. They leave out some real-world costs, and a rule that fit the past may not fit the future.'],
   bots: ['Bots', 'A bot follows a strategy for you, checking its rules once a day near the close and placing the orders it calls for.',
     ['Start a bot on the practice account and watch it for a few weeks.', 'Every action it takes is listed, with the reason.', 'You can pause or stop it at any time.'],
-    'A bot does exactly what its rules say, also in unusual markets. Risk controls (Planning → Risk controls) set limits it cannot cross.'],
+    'A bot does exactly what its rules say, also in unusual markets. Risk controls (Track & plan → Risk → Risk controls) set limits it cannot cross.'],
   schedule: ['Scheduled trades', 'Places an order automatically at a time you choose, once or on a repeat, for example $100 of an index fund every Monday (dollar-cost averaging).',
     ['Pick the symbol, the amount and when.', 'Choose market (at the price then) or limit (only at your price or better).'],
     'A scheduled order uses the account you pick. Make sure there is enough cash in it.'],
@@ -194,5 +194,7 @@ export function pageGuide(view, route, { practice = true } = {}) {
   if (!top) return view.prepend(box);
   if (top !== h1 && !top.classList.contains('row') && !top.classList.contains('pagehead')) return top.before(box);
   const clock = top.nextElementSibling?.id === 'homeClock' ? top.nextElementSibling : null;
-  (clock || top).after(box);
+  // A merged page's tabs stay right under the title; the guide follows them.
+  const after = clock || top, tabs = after.nextElementSibling?.classList.contains('hubtabs') ? after.nextElementSibling : null;
+  (tabs || after).after(box);
 }

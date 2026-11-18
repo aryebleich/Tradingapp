@@ -634,7 +634,7 @@ export const strings = {
   "Start a bot on the practice account and watch it for a few weeks.": "הייבט אן א באט אויפן פראקטיק אקאונט און קוקט אים נאך עטליכע וואכן.",
   "Every action it takes is listed, with the reason.": "יעדע זאך וואס ער טוט ווערט אויסגערעכנט, מיט דער סיבה.",
   "You can pause or stop it at any time.": "איר קענט אים אפשטעלן אויף א וויילע אדער אינגאנצן, ווען אימער.",
-  "A bot does exactly what its rules say, also in unusual markets. Risk controls (Planning → Risk controls) set limits it cannot cross.": "א באט טוט פונקטליך וואס זיינע כללים זאגן, אויך אין אומגעווענליכע מארקעטס. ריזיקע קאנטראל (פלאנירן ← ריזיקע קאנטראל) שטעלט גרעניצן וואס ער קען נישט אריבערגיין.",
+  "A bot does exactly what its rules say, also in unusual markets. Risk controls (Track & plan → Risk → Risk controls) set limits it cannot cross.": "א באט טוט פונקטליך וואס זיינע כללים זאגן, אויך אין אומגעווענליכע מארקעטס. ריזיקע קאנטראל (נאכפאלגן און פלאנירן ← ריזיקע ← ריזיקע קאנטראל) שטעלט גרעניצן וואס ער קען נישט אריבערגיין.",
   "Places an order automatically at a time you choose, once or on a repeat, for example $100 of an index fund every Monday (dollar-cost averaging).": "גיט אריין אן ארדער אויטאמאטיש אין א צייט וואס איר קלויבט אויס, איינמאל אדער כסדר, למשל $100 פון אן אינדעקס פאנד יעדן מאנטאג (דאלער-קאסט עוורעדזשינג).",
   "Pick the symbol, the amount and when.": "קלויבט אויס דעם סימבאל, דעם סכום און ווען.",
   "A scheduled order uses the account you pick. Make sure there is enough cash in it.": "א באשטימטער ארדער ניצט דעם אקאונט וואס איר קלויבט אויס. זעט אז עס זאל זיין דערין גענוג קעש.",

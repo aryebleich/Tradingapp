@@ -10,19 +10,19 @@ async function page(view) {
   view.innerHTML = `<div class="pagehead"><h1>Retirement &amp; IRAs</h1><p class="mu">Save for retirement with tax breaks: what Traditional and Roth IRAs are, how much you can put in this year, and what your savings could grow to.</p></div>
   <div class="grid">
     <div class="card"><h2>Traditional or Roth?</h2>
-      <table class="slim"><tr><th></th><th>Traditional IRA</th><th>Roth IRA</th></tr>
+      <div class="tablewrap"><table class="slim"><tr><th></th><th>Traditional IRA</th><th>Roth IRA</th></tr>
         <tr><td>Tax break</td><td>Now: contributions can lower this year's taxable income</td><td>Later: withdrawals in retirement are tax-free</td></tr>
         <tr><td>Withdrawals</td><td>Taxed as income</td><td>Tax-free after age 59½ and 5 years</td></tr>
         <tr><td>Who can put money in</td><td>Anyone with earned income (the tax deduction depends on income and workplace plans)</td><td>Only below an income limit</td></tr>
         <tr><td>Required withdrawals</td><td>From age ${L.rmdAge} (${L.rmdAgeFrom1960} if born in 1960 or later)</td><td>None while you are alive</td></tr>
-        <tr><td>Taking money out early</td><td colspan="2">Before 59½ usually costs a 10% penalty plus tax (Roth: your own contributions can come out any time)</td></tr></table>
+        <tr><td>Taking money out early</td><td colspan="2">Before 59½ usually costs a 10% penalty plus tax (Roth: your own contributions can come out any time)</td></tr></table></div>
       <p class="mu small-print">A rule of thumb: if you expect a higher tax rate later, Roth; lower later, Traditional. Many people use both.</p></div>
     <div class="card"><h2>${L.year} limits</h2>
       <div class="stats"><div class="stat"><span>IRA (all IRAs together)</span><b>${$$m(L.ira)}</b><span class="mu">+${$$m(L.iraCatchUp)} at 50+</span></div>
       <div class="stat"><span>401(k), 403(b), TSP</span><b>${$$m(L.k401)}</b><span class="mu">+${$$m(L.k401CatchUp)} at 50+, +${$$m(L.k401CatchUp6063)} at 60-63</span></div></div>
-      <table class="slim"><tr><th>Roth IRA income limit (modified AGI)</th><th class="num">Full amount below</th><th class="num">Nothing above</th></tr>
+      <div class="tablewrap"><table class="slim"><tr><th>Roth IRA income limit (modified AGI)</th><th class="num">Full amount below</th><th class="num">Nothing above</th></tr>
         <tr><td>Single</td><td class="num">${$$m(L.roth.single[0])}</td><td class="num">${$$m(L.roth.single[1])}</td></tr>
-        <tr><td>Married filing jointly</td><td class="num">${$$m(L.roth.married[0])}</td><td class="num">${$$m(L.roth.married[1])}</td></tr></table>
+        <tr><td>Married filing jointly</td><td class="num">${$$m(L.roth.married[0])}</td><td class="num">${$$m(L.roth.married[1])}</td></tr></table></div>
       <p class="mu small-print">Source: ${H.esc(L.source)}. Check the IRS site for your situation.</p></div>
   </div>
   <form class="card" id="elig"><h2>How much can I put in?</h2>

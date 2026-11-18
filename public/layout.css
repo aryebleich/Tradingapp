@@ -40,6 +40,19 @@ html.lv2 .card > :last-child { margin-bottom: 0; }
 html.lv2 .grid, html.lv2 .cols { gap: var(--s4); }
 html.lv2 .grid > .card, html.lv2 .cols > .card { margin-bottom: 0; }
 
+/* ---------- app: merged pages (DESIGN_SYSTEM.md, "Merged pages and tabs") ---------- */
+/* one strip of tabs under the title; each tab is its own page and address. Chips, 36px tall; on
+   phones the strip scrolls sideways instead of wrapping, so the title and first card stay put */
+html.lv2 #view .hubtabs { display: flex; flex-wrap: wrap; gap: var(--s2); margin: 0 auto var(--s4); }
+html.lv2 #view .hubtabs a { display: inline-flex; align-items: center; min-height: 36px; padding: 6px 14px; border: 1px solid var(--bd); border-radius: 999px;
+  background: var(--card); color: var(--mu); font-weight: 600; font-size: 14px; line-height: 1.2; text-decoration: none; white-space: nowrap; }
+html.lv2 #view .hubtabs a:hover { color: var(--tx); border-color: var(--ac); }
+html.lv2 #view .hubtabs a.on { background: var(--tx); color: var(--card); border-color: var(--tx); }
+@media (max-width: 640px) {
+  html.lv2 #view .hubtabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
+  html.lv2 #view .hubtabs::-webkit-scrollbar { display: none; }
+}
+
 /* ---------- app: dashboard home (DESIGN_SYSTEM.md, "Dashboard home") ---------- */
 /* chart first, then the key numbers, then a two-column card grid (one column under 768px); every card
    shares the theme's padding, radius and heading style, and the gaps are --s4 */

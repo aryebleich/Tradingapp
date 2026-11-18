@@ -1,9 +1,12 @@
-// Bonds, crypto & AI: Alpaca's newer add-ons in one place. Treasury and bond prices by ISIN,
-// crypto quotes across liquidity venues, connecting AI assistants (Brightolio's own MCP server,
-// Alpaca's Trading MCP server and CLI), and multi-leg options.
+// Two pages from Alpaca's newer add-ons:
+// - Bonds, rates & crypto (Invest → Futures, bonds & more): rates, Treasury and bond prices by ISIN,
+//   crypto quotes across liquidity venues, and pointers to tokenized securities and multi-leg options.
+// - Alpaca AI & CLI tools (Automate → Developers): Alpaca's Trading MCP server and CLI, the owner's
+//   Broker MCP server, and connecting AI agents. They were one page; the developer half was split off
+//   so investors and developers each find their own part (STRUCTURE_AUDIT.md).
 import { ratesCard } from './instruments.js';
 let H;
-export function registerTools(routes, helpers) { H = helpers; routes['alpaca-tools'] = tools; }
+export function registerTools(routes, helpers) { H = helpers; routes['alpaca-tools'] = tools; routes['alpaca-dev'] = devTools; }
 
 const code = s => `<pre data-no-tr><code>${H.esc(s)}</code></pre>`;
 const FIELD = { p: 'Price', bp: 'Bid', ap: 'Ask', ytm: 'Yield to maturity', by: 'Bid yield', ay: 'Ask yield', y: 'Yield', bs: 'Bid size', as: 'Ask size', t: 'Time' };
@@ -20,7 +23,33 @@ async function tools(view) {
   <form class="card" id="cv"><h2>Crypto across venues</h2><p class="mu">The same coin can trade at slightly different prices at each liquidity source: Alpaca US, Kraken US and Kraken EU.</p>
     <div class="row"><label>Pairs<input name="syms" value="BTC/USD, ETH/USD" data-no-tr></label><button>Compare</button></div><div class="err"></div><div id="cvOut"></div></form>
 
-  <div class="card"><h2>Connect AI agents to Brightolio</h2><p>Claude, ChatGPT, Cursor, Codex and other AI agents can scan the market, read order books and news, and draft or place orders within the limits you set. Set it up in <a href="#/agenthub">Intelligence → Agents &amp; API</a>.</p></div>
+  <div class="card"><h2>AI and command-line tools</h2><p>Alpaca's MCP server and trading CLI, and connecting Claude, ChatGPT, Cursor or Codex to your accounts, are under <a href="#/developers/alpaca-dev">Developers → Alpaca AI &amp; CLI tools</a>.</p></div>
+
+  <div class="card"><h2>Multi-leg options</h2><p>Spreads, straddles and iron condors go out as one order with up to four legs, so every leg fills together or not at all. Build one in the <a href="#/optionslab">Options lab</a> or the <a href="#/options">options chain</a>. Professional desks can send the same orders over FIX (New Order - Multileg).</p></div>`;
+  ratesCard(H.$('#ratesBox', view), H);
+
+  const fi = H.$('#fi', view);
+  H.act(H.$('button', fi), async () => {
+    const d = await H.api('/alpaca/data/fixed-income?isins=' + encodeURIComponent(fi.isins.value.replace(/\s/g, '')));
+    H.$('#fiOut', fi).innerHTML = d.map(x => `<div class="firow"><b data-no-tr>${x.isin}</b><div>${fields(x.price)}</div><div>${fields(x.quote)}</div></div>`).join('');
+    return '';
+  });
+  const cv = H.$('#cv', view);
+  H.act(H.$('button', cv), async () => {
+    const d = await H.api('/alpaca/data/crypto-venues?symbols=' + encodeURIComponent(cv.syms.value.replace(/\s/g, '')));
+    H.$('#cvOut', cv).innerHTML = d.map(x => {
+      const bestBid = Math.max(...x.venues.map(v => v.bid || 0)), bestAsk = Math.min(...x.venues.map(v => v.ask || Infinity));
+      return `<h3 data-no-tr>${x.symbol}</h3><div class="tablewrap"><table><tr><th>Venue</th><th>Bid</th><th>Ask</th><th>Spread</th></tr>${x.venues.map(v => `<tr><td>${H.esc(v.name)}</td><td class="${v.bid === bestBid ? 'pos' : ''}">${H.money(v.bid)}</td><td class="${v.ask === bestAsk ? 'pos' : ''}">${H.money(v.ask)}</td><td>${v.bid && v.ask ? ((v.ask - v.bid) / v.ask * 1e4).toFixed(1) + ' bps' : '-'}</td></tr>`).join('') || '<tr><td colspan="4" class="mu">No quotes</td></tr>'}</table></div>`;
+    }).join('');
+    return '';
+  });
+}
+
+// Alpaca AI & CLI tools: the developer half of the old Bonds, rates & crypto page.
+async function devTools(view) {
+  const admin = H.me()?.role === 'admin';
+  view.innerHTML = `<h1>Alpaca AI &amp; CLI tools</h1><p class="mu">Alpaca's own tools for trading from an AI assistant or the terminal, and how to connect an AI agent to Brightolio.</p>
+  <div class="card"><h2>Connect AI agents to Brightolio</h2><p>Claude, ChatGPT, Cursor, Codex and other AI agents can scan the market, read order books and news, and draft or place orders within the limits you set. Set it up in <a href="#/developers/agenthub">Developers → AI agents</a>.</p></div>
 
   <div class="card"><h2>Alpaca's own AI and command-line tools</h2>
     <h3>Trading API MCP server</h3><p class="mu">About 65 tools for trading, market data and account management in Claude, Cursor or VS Code. Runs on your computer with your Alpaca keys (never paste keys into a chat).</p>
@@ -45,23 +74,5 @@ alpaca order cancel-all`)}
     "alpaca-broker-mcp-sandbox": { "type": "http", "url": "https://broker-api.sandbox.alpaca.markets/mcp" }
   }
 }`)}` : ''}</div>
-
-  <div class="card"><h2>Multi-leg options</h2><p>Spreads, straddles and iron condors go out as one order with up to four legs, so every leg fills together or not at all. Build one in the <a href="#/optionslab">Options lab</a> or the <a href="#/options">options chain</a>. Professional desks can send the same orders over FIX (New Order - Multileg).</p></div>`;
-  ratesCard(H.$('#ratesBox', view), H);
-
-  const fi = H.$('#fi', view);
-  H.act(H.$('button', fi), async () => {
-    const d = await H.api('/alpaca/data/fixed-income?isins=' + encodeURIComponent(fi.isins.value.replace(/\s/g, '')));
-    H.$('#fiOut', fi).innerHTML = d.map(x => `<div class="firow"><b data-no-tr>${x.isin}</b><div>${fields(x.price)}</div><div>${fields(x.quote)}</div></div>`).join('');
-    return '';
-  });
-  const cv = H.$('#cv', view);
-  H.act(H.$('button', cv), async () => {
-    const d = await H.api('/alpaca/data/crypto-venues?symbols=' + encodeURIComponent(cv.syms.value.replace(/\s/g, '')));
-    H.$('#cvOut', cv).innerHTML = d.map(x => {
-      const bestBid = Math.max(...x.venues.map(v => v.bid || 0)), bestAsk = Math.min(...x.venues.map(v => v.ask || Infinity));
-      return `<h3 data-no-tr>${x.symbol}</h3><div class="tablewrap"><table><tr><th>Venue</th><th>Bid</th><th>Ask</th><th>Spread</th></tr>${x.venues.map(v => `<tr><td>${H.esc(v.name)}</td><td class="${v.bid === bestBid ? 'pos' : ''}">${H.money(v.bid)}</td><td class="${v.ask === bestAsk ? 'pos' : ''}">${H.money(v.ask)}</td><td>${v.bid && v.ask ? ((v.ask - v.bid) / v.ask * 1e4).toFixed(1) + ' bps' : '-'}</td></tr>`).join('') || '<tr><td colspan="4" class="mu">No quotes</td></tr>'}</table></div>`;
-    }).join('');
-    return '';
-  });
+  <div class="card"><h2>Related</h2><p class="mu" style="margin-top:0"><a href="#/developers">Developer API keys</a> · <a href="#/developers/agenthub">AI agents and their limits</a> · <a href="#/developers/code">Code lab</a> · <a href="#/invest/alpaca-tools">Bonds, rates &amp; crypto</a></p></div>`;
 }

@@ -370,19 +370,69 @@ const ADDON_PAGES = { brief: 'brief', taxpilot: 'taxPilot' };
 const CORE = [['dashboard', 'Home'], ['start', 'Get started'], ['trade', 'Trade'], ['positions', 'Positions'], ['orders', 'Orders'], ['watchlists', 'Watchlists'], ['markets', 'Market overview']];
 // The owner's own business books (Admin only): payroll, invoices, bookkeeping and the rest.
 const BIZ_NAV = ['My business', [['business', 'Business dashboard'], ['invoices', 'Invoices & payments'], ['books', 'Bookkeeping'], ['bank', 'Bank & receipts'], ['inventory', 'Inventory'], ['payroll', 'Payroll'], ['bizreports', 'Financial reports']]];
+// The menu is organized by what members want to do (STRUCTURE_AUDIT.md). Pages that do one job
+// together are merged into one entry with tabs (HUBS below); every old address still works.
 const NAV = [
-  ['Investing', [['analyze', 'Stock & fund analyzer'], ['lowcost', 'Low-cost index & mutual funds'], ['earnings', 'Earnings vs expectations'], ['institutions', 'Institutional portfolios'], ['sp500', 'S&P 500 plan'], ['wealth', 'Investing toolkit'], ['robo', 'Automated portfolios'], ['longterm', 'Long-term view'], ['invest', 'Futures, funds & savings'], ['alpaca-tools', 'Bonds, rates & crypto'], ['tokenized', 'Tokenized securities'], ['values', 'Values investing'], ['spend', 'Invest as you spend']]],
-  ['Trading tools', [['chart', 'Chart'], ['options', 'Options desk'], ['optionslab', 'Options lab'], ['scanner', 'Scanner'], ['leaders', 'New leaders'], ['short', 'Short selling'], ['margin', 'Margin center'], ['calendar', 'Calendar & events'], ['tradetools', 'Planning tools'], ['execution', 'Execution & routing'], ['workspace', 'Workspace']]],
-  // Intelligence: research first (ask, read, follow the news), then AI predictions, then AI that trades.
-  ['Intelligence', [['ai', 'AI assistant'], ['aitools', 'AI tools'], ['research', 'Plain-language research'], ['news', 'News & sentiment'], ['intel', 'Market intelligence'], ['aisignals', 'AI signals'], ['agents', 'Forecasts & AI agents'], ['aibots', 'AI bots'], ['agenthub', 'Agents & API'], ['developers', 'Developer API']]],
-  ['Automation', [['playbooks', 'Playbooks'], ['strategies', 'Strategy library'], ['backtest', 'Backtest'], ['bots', 'Bots'], ['schedule', 'Scheduled trades'], ['rules', 'Rules across accounts'], ['signals', 'Alerts to trades'], ['fleet', 'Signal fleet'], ['portfolios', 'Portfolios'], ['aifunds', 'AI hedge funds'], ['text', 'Text commands'], ['hotline', 'Phone hotline']]],
-  // Marketplace: everything members share, to copy or follow.
-  ['Marketplace', [['marketplace', 'Marketplace overview'], ['traders', 'Top traders'], ['aimarket', 'AI strategy marketplace'], ['sharedstrategies', 'Shared strategies'], ['sharedportfolios', 'Shared portfolios'], ['signalchannels', 'Signal channels']]],
-  ['Quant lab', [['pairs', 'Pairs trading'], ['statarb', 'Statistical arbitrage'], ['code', 'Code lab'], ['quantconnect', 'Cloud algorithms']]],
-  ['Planning', [['riskview', 'Portfolio & risk'], ['retirement', 'Retirement & IRAs'], ['money', 'All my money'], ['currencies', 'Currencies'], ['brief', 'Weekly brief'], ['insights', 'Insights & journal'], ['risk', 'Risk controls'], ['tax', 'Taxes'], ['taxpilot', 'Tax autopilot'], ['private', 'Private markets']]],
-  ['Accounts', [['brokers', 'Choose your brokerage'], ['account', 'Alpaca account'], ['accounts', 'All accounts'], ['funding', 'Plans & billing'], ['referrals', 'Invite & earn']]],
-  ['Help & settings', [['learn', 'Learning center'], ['security', 'Security & help'], ['protection', 'Investor protection'], ['android', 'Android app'], ['settings', 'Settings']]],
+  ['Research', [['analyze', 'Stock & fund analyzer'], ['research', 'Research & news'], ['scanner', 'Scanners'], ['ai', 'AI assistant'], ['calendar', 'Calendar & events']]],
+  ['Trade tools', [['chart', 'Chart'], ['options', 'Options'], ['short', 'Short selling'], ['tradetools', 'Planning tools'], ['workspace', 'Workspace'], ['text', 'Phone & text']]],
+  ['Invest', [['wealth', 'Investing toolkit'], ['portfolios', 'Portfolios'], ['invest', 'Futures, bonds & more'], ['values', 'Values investing'], ['spend', 'Invest as you spend']]],
+  ['Automate', [['strategies', 'Strategies'], ['bots', 'Bots'], ['signals', 'Alerts & signals'], ['schedule', 'Scheduled trades'], ['pairs', 'Pairs & stat arb'], ['marketplace', 'Marketplace'], ['developers', 'Developers']]],
+  ['Track & plan', [['insights', 'Performance'], ['riskview', 'Risk'], ['tax', 'Taxes'], ['money', 'All my money'], ['retirement', 'Retirement & IRAs'], ['brief', 'Weekly brief']]],
+  ['Account & help', [['accounts', 'Accounts'], ['funding', 'Plans & billing'], ['referrals', 'Invite & earn'], ['learn', 'Learning center'], ['security', 'Security & protection'], ['android', 'Android app'], ['settings', 'Settings']]],
 ];
+// Merged pages: one menu entry, tabs across the pages that do the same job. The first tab is the
+// entry's own page (#/bots); the others live at #/<entry>/<tab> (#/bots/aibots), and their old
+// address (#/aibots) redirects there with its query string. Each tab is still its own page, so
+// every feature, setting and saved item stays exactly where it was.
+const HUBS = {
+  analyze: ['Stock & fund analyzer', [['analyze', 'Stock & fund analyzer'], ['earnings', 'Earnings vs expectations']]],
+  research: ['Research & news', [['research', 'Plain-language research'], ['news', 'News & sentiment'], ['intel', 'Market intelligence'], ['institutions', 'Institutional portfolios']]],
+  scanner: ['Scanners', [['scanner', 'Scanner'], ['leaders', 'New leaders']]],
+  ai: ['AI assistant', [['ai', 'AI assistant'], ['aitools', 'AI tools']]],
+  options: ['Options', [['options', 'Options desk'], ['optionslab', 'Options lab']]],
+  text: ['Phone & text', [['text', 'Text commands'], ['hotline', 'Phone hotline']]],
+  wealth: ['Investing toolkit', [['wealth', 'Investing toolkit'], ['sp500', 'S&P 500 plan'], ['lowcost', 'Low-cost index & mutual funds']]],
+  portfolios: ['Portfolios', [['portfolios', 'Portfolios'], ['robo', 'Automated portfolios'], ['aifunds', 'AI hedge funds'], ['rules', 'Rules across accounts']]],
+  invest: ['Futures, bonds & more', [['invest', 'Futures, funds & savings'], ['alpaca-tools', 'Bonds, rates & crypto'], ['tokenized', 'Tokenized securities']]],
+  strategies: ['Strategies', [['strategies', 'Strategy library'], ['playbooks', 'Playbooks'], ['backtest', 'Backtest']]],
+  bots: ['Bots', [['bots', 'My bots'], ['aibots', 'AI bots'], ['agents', 'Forecasts & AI agents']]],
+  signals: ['Alerts & signals', [['signals', 'Alerts to trades'], ['aisignals', 'AI signals'], ['fleet', 'Signal fleet']]],
+  pairs: ['Pairs & stat arb', [['pairs', 'Pairs trading'], ['statarb', 'Statistical arbitrage']]],
+  marketplace: ['Marketplace', [['marketplace', 'Overview'], ['traders', 'Top traders'], ['aimarket', 'AI strategy marketplace'], ['sharedstrategies', 'Strategies'], ['sharedportfolios', 'Portfolios'], ['signalchannels', 'Signal channels']]],
+  developers: ['Developers', [['developers', 'Developer API'], ['agenthub', 'Agents & API'], ['code', 'Code lab'], ['quantconnect', 'Cloud algorithms'], ['alpaca-dev', 'Alpaca AI & CLI tools']]],
+  insights: ['Performance', [['insights', 'Insights & journal'], ['longterm', 'Long-term view'], ['execution', 'Execution & routing']]],
+  riskview: ['Risk', [['riskview', 'Portfolio & risk'], ['risk', 'Risk controls'], ['margin', 'Margin center']]],
+  tax: ['Taxes', [['tax', 'Taxes'], ['taxpilot', 'Tax autopilot']]],
+  money: ['All my money', [['money', 'All my money'], ['private', 'Private markets'], ['currencies', 'Currencies']]],
+  accounts: ['Accounts', [['accounts', 'All accounts'], ['brokers', 'Choose your brokerage'], ['account', 'Alpaca account']]],
+  security: ['Security & protection', [['security', 'Security & help'], ['protection', 'Investor protection']]],
+};
+// Old address → the merged page that now holds it (#/aibots → #/bots/aibots).
+const MERGED_INTO = Object.fromEntries(Object.entries(HUBS).flatMap(([h, [, tabs]]) => tabs.filter(([k]) => k !== h).map(([k]) => [k, h])));
+// The page a route draws: "bots/aibots" draws aibots; any other route draws itself.
+const pageOf = route => { const [h, t] = route.split('/'); return t && HUBS[h]?.[1].some(([k]) => k === t) ? t : route; };
+// The menu entry a route belongs to: "bots/aibots" and "bots" are both under Bots.
+// Detail pages open from a list and belong under it in the menu (one Playbook under Strategies).
+const PARENT = { playbook: 'strategies', strategy: 'strategies', luach: 'extras' };
+const entryOf = route => { const [h, t] = route.split('/'); return t && HUBS[h] ? h : PARENT[route] || route; };
+const hubHref = (h, k) => (k === h ? `#/${h}` : `#/${h}/${k}`);
+// The tab strip of a merged page (add-on tabs leave it while the add-on is off).
+function hubTabs(page) {
+  const h = HUBS[page] ? page : MERGED_INTO[page]; if (!h) return '';
+  const [label, tabs] = HUBS[h], list = tabs.filter(([k]) => !(ADDON_PAGES[k] && ME?.addons?.[ADDON_PAGES[k]] === false));
+  if (list.length < 2) return '';
+  return `<nav class="hubtabs chips" aria-label="${esc(label)}">${list.map(([k, t]) => `<a href="${hubHref(h, k)}"${k === page ? ' aria-current="page" class="on"' : ''}>${esc(t)}</a>`).join('')}</nav>`;
+}
+// Puts the tab strip right under the page title (after the Home clock and the page's own top row).
+function addHubTabs(view, page) {
+  if ($('.hubtabs', view)) return;
+  const html = hubTabs(page); if (!html) return;
+  const h1 = $('h1', view), top = h1 && [...view.children].find(c => c === h1 || c.contains(h1));
+  if (!top) return view.insertAdjacentHTML('afterbegin', html);
+  // A title row (or the title itself) gets the tabs below it; a title inside a card gets them above the card.
+  if (top === h1 || top.classList.contains('row') || top.classList.contains('pagehead')) top.insertAdjacentHTML('afterend', html);
+  else top.insertAdjacentHTML('beforebegin', html);
+}
 // Simple line icons (24x24 paths) for the menu.
 const ICONS = {
   tradetools: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h2M12 11h2M16 11h0M8 15h2M12 15h2M8 19h8"/>',
@@ -508,6 +558,7 @@ async function render(opts) {
   if (!quiet) render.startedAt = Date.now();
   while (cleanups.length) { try { cleanups.pop()(); } catch {} }
   const [route, q] = (location.hash.slice(2) || 'dashboard').split('?');
+  const page = pageOf(route), entry = entryOf(route);
   if (PREFETCH && route === 'pf-wait') return; // the hidden copy waits until it is told to start
   // Each render gets a fresh container: requests still in flight from the previous page then
   // write into a detached element instead of overwriting the page the user moved to.
@@ -520,7 +571,7 @@ async function render(opts) {
   // Only the newest redraw is ever shown: an older one that finishes later is dropped.
   const mine = render.seq = (render.seq || 0) + 1;
   const swap = quiet || samePage;
-  if (route !== render.last) { view.className = 'enter'; render.last = route; if (!PREFETCH) countVisit(route); }
+  if (route !== render.last) { view.className = 'enter'; render.last = route; if (!PREFETCH) countVisit(page); }
   const keepY = scrollY;
   if (swap) { $('#view').style.position = 'relative'; view.style.cssText = 'visibility:hidden;position:absolute;left:0;right:0;top:0'; $('#view').append(view); }
   else {
@@ -555,7 +606,7 @@ async function render(opts) {
     };
   }
   if (!quiet) setMenu(false); // a background refresh leaves an open phone menu open
-  $$('#tabs a[data-r]').forEach(a => a.classList.toggle('on', a.dataset.r === route || ((route === '' || route === 'start') && a.dataset.r === 'dashboard')));
+  $$('#tabs a[data-r]').forEach(a => a.classList.toggle('on', a.dataset.r === entry || ((route === '' || route === 'start') && a.dataset.r === 'dashboard')));
   if (ME) {
     // Signing in for the Android app: back to the app once signed in here.
     if (sessionStorage.getItem('qp_next') === 'handoff') { sessionStorage.removeItem('qp_next'); location.href = '/api/auth/app-handoff'; return; }
@@ -570,9 +621,9 @@ async function render(opts) {
     const navKey = JSON.stringify([route, ME.role, ME.plan, ME.planStatus, ME.previewPlan, ME.previewAdviser, ME.addons, ME.email, ME.trialUsed, START, state.account, TOOL_KEYS.some(k => EXTRAS[k])]);
     if (render.navKey !== navKey || !$('#nav').firstElementChild) {
     render.navKey = navKey;
-    const link = ([k, t]) => k == null ? `<div class="navsub">${esc(t)}</div>` : `<a href="#/${k}" class="${k === route ? 'on' : ''}">${icon(k)}${t}</a>`;
+    const link = ([k, t]) => k == null ? `<div class="navsub">${esc(t)}</div>` : `<a href="#/${k}" class="${k === entry ? 'on' : ''}">${icon(k)}${t}</a>`;
     const core = [...CORE.filter(([k]) => k !== 'start' || ((!START || route === 'start') && helpOn())), ...(TOOL_KEYS.some(k => EXTRAS[k]) ? [['extras', 'My tools']] : [])];
-    $('#nav').innerHTML = `<div class="navcore">${core.map(link).join('')}</div>` + groups.map(([g, items]) => { const list = items.filter(([k]) => !(ADDON_PAGES[k] && ME.addons?.[ADDON_PAGES[k]] === false)), open = opened.includes(g) || list.some(([k]) => k === route);
+    $('#nav').innerHTML = `<div class="navcore">${core.map(link).join('')}</div>` + groups.map(([g, items]) => { const list = items.filter(([k]) => !(ADDON_PAGES[k] && ME.addons?.[ADDON_PAGES[k]] === false)), open = opened.includes(g) || list.some(([k]) => k === entry);
       return `<button type="button" class="grp sec" data-g="${esc(g)}" aria-expanded="${open}"><span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span><span class="gname">${g}</span><span class="gcount" aria-hidden="true">${list.filter(([k]) => k != null).length}</span></button><div class="grpbody" ${open ? '' : 'hidden'}>${list.map(link).join('')}</div>`; }).join('')
       + (isPaid(ME) ? '' : `<a href="#/funding" class="upsell">${icon('star')}${ME.trialUsed ? 'Upgrade to Pro' : 'Try Pro free for 14 days'}</a>`)
       + `<div class="grp">${esc(ME.email)}</div><a href="#" id="navLogout">${icon('account')}Sign out</a>`
@@ -586,8 +637,8 @@ async function render(opts) {
   try {
     await loadPrefs();
     // Owner pages open only for admins (the server refuses their data to anyone else too).
-    try { await (routes[ownerOnly(route) ? 'dashboard' : route] || routes.dashboard)(view, new URLSearchParams(q)); if (render.seq === mine && view.isConnected) { addGear(view, route); if (render.tracked !== route) { render.tracked = route; api('/a/track', { body: { route } }).catch(() => {}); } } } finally { if (render.seq === mine) swrOn = false; }
-    if (!PREFETCH && ME) addGuide(view, ownerOnly(route) || !routes[route] ? 'dashboard' : route);
+    try { await (routes[ownerOnly(page) ? 'dashboard' : page] || routes.dashboard)(view, new URLSearchParams(q)); if (render.seq === mine && view.isConnected) { addHubTabs(view, page); addGear(view, page); if (render.tracked !== page) { render.tracked = page; api('/a/track', { body: { route: page } }).catch(() => {}); } } } finally { if (render.seq === mine) swrOn = false; }
+    if (!PREFETCH && ME) addGuide(view, ownerOnly(page) || !routes[page] ? 'dashboard' : page);
     if (swap) {
       if (!view.isConnected) return; // the user moved to another page meanwhile
       if (render.seq !== mine) { view.remove(); return; } // a newer redraw is on its way
@@ -707,7 +758,7 @@ for (const ev of ['pointerdown', 'keydown', 'wheel', 'touchstart', 'input']) add
 addEventListener('input', e => { const v = e.target?.closest?.('#view > div'); if (v) v.dataset.dirty = '1'; }, true);
 addEventListener('change', e => { const v = e.target?.closest?.('#view > div'); if (v) v.dataset.dirty = '1'; }, true);
 async function liveRefresh() {
-  const route = (location.hash.slice(2) || 'dashboard').split('?')[0];
+  const route = pageOf((location.hash.slice(2) || 'dashboard').split('?')[0]);
   if (liveBusy || !ME || document.hidden || !LIVE_PAGES.has(route) || PREFS.live === false) return;
   if (Date.now() - lastTouch < 8000 || document.querySelector('#view > div[data-dirty]') || document.querySelector('dialog[open]') || document.querySelector('#view details[open], #view .userMore:not([hidden])')) return;
   const a = document.activeElement;
@@ -2026,7 +2077,7 @@ for (const k of ['trade', 'positions', 'orders']) {
   routes[k] = async (view, q) => { await accounts(); return /^alpaca/.test(state.account) ? full(view, q) : (await import('./pages/simple.js'))[k](view, q, { ...shared, ticketHtml, wireQuickTicket }); };
 }
 // The tabs on top of every Marketplace page.
-const marketTabs = on => `<div class="chips viewtabs">${NAV.find(([g]) => g === 'Marketplace')[1].map(([k, t]) => `<a href="#/${k}"><button type="button" class="${k === on ? 'on' : ''}">${esc({ marketplace: 'Overview', sharedstrategies: 'Strategies', sharedportfolios: 'Portfolios' }[k] || t)}</button></a>`).join('')}</div>`;
+const marketTabs = on => hubTabs(on); // the Marketplace tabs are a merged page's tabs (HUBS.marketplace)
 const shared = { safeUrl, extras: () => EXTRAS, setExtras: on => { EXTRAS = on; render.navKey = null; }, marketTabs, $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, refreshMe, accounts, accountOptions, acctLabel, state, adminTabs, adminPage, secureConfirm, me: () => ME, paid: () => isPaid(ME) };
 lazyRoutes(() => import('./pages/studio.js'), 'registerStudio', shared, ["ai", "agents", "code"]);
 lazyRoutes(() => import('./pages/aichat.js'), 'registerAiChat', shared, ["admin-aichat"]);
@@ -2049,7 +2100,9 @@ lazyRoutes(() => import('./pages/instruments.js'), 'registerInstruments', shared
 registerStart(routes, shared);
 lazyRoutes(() => import('./pages/analytics-admin.js'), 'registerAnalyticsAdmin', shared, ["admin-analytics"]);
 lazyRoutes(() => import('./pages/admin-ops.js'), 'registerAdminOps', shared, ["admin-data", "admin-comms", "admin-strategies", "admin-seo", "admin-agents", "admin-hosting"]);
-initSearch(shared, [['Main', [...CORE, ['extras', 'My tools']]], ...NAV]);
+// Search lists every tab of a merged page too, under its new address and "Group › Entry".
+initSearch(shared, [['Main', [...CORE, ['extras', 'My tools']]], ...NAV.flatMap(([g, items]) => [[g, items.filter(([k]) => !HUBS[k])],
+  ...items.filter(([k]) => HUBS[k]).map(([k, t]) => [`${g} › ${t}`, HUBS[k][1].map(([x, xt]) => [hubHref(k, x).slice(2), x === k ? t : xt])])])]);
 // My tools: the optional features that have a page.
 routes.extras = async (view, q) => (await import('./pages/extras.js')).page(view, q, shared);
 // Home: the My day card, when switched on.
@@ -2148,7 +2201,7 @@ const commsBoot = () => {
 };
 addEventListener('hashchange', commsBoot); setTimeout(commsBoot, 2500);
 lazyRoutes(() => import('./pages/wealth.js'), 'registerWealth', shared, ["wealth"]);
-lazyRoutes(() => import('./pages/tools.js'), 'registerTools', shared, ["alpaca-tools"]);
+lazyRoutes(() => import('./pages/tools.js'), 'registerTools', shared, ["alpaca-tools", "alpaca-dev"]);
 lazyRoutes(() => import('./pages/riskpages.js'), 'registerRiskPages', shared, ["riskview", "research", "tokenized", "protection"]);
 lazyRoutes(() => import('./pages/retirement.js'), 'registerRetirement', shared, ["retirement"]);
 lazyRoutes(() => import('./pages/playbooks.js'), 'registerPlaybooks', shared, ["playbooks", "playbook", "developers"]);

@@ -1,4 +1,4 @@
-// AI tools (menu → Intelligence → AI tools): four new tools, each with a plain fallback when no AI is
+// AI tools (menu → Research → AI assistant → AI tools): four new tools, each with a plain fallback when no AI is
 // set up.
 //   What-if scenarios: describe an event ("the Fed cuts rates by half a point", "oil jumps 20%"); the
 //     AI turns it into a move for each sector and asset class, and the app applies those moves to the

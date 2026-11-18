@@ -9,14 +9,16 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = f => { try { return fs.readFileSync(path.join(root, f), 'utf8'); } catch { return ''; } };
-// An array literal assigned to `name` in a client file (our own source, so evaluating it is safe).
+// An array or object literal assigned to `name` in a client file (our own source, so evaluating it is safe).
 export function literal(src, name) {
-  const i = src.indexOf(`const ${name} = [`); if (i < 0) return null;
-  let j = src.indexOf('[', i), depth = 0, k = j, q = null;
+  let i = src.indexOf(`const ${name} = [`), open = '[', close = ']';
+  if (i < 0) { i = src.indexOf(`const ${name} = {`); open = '{'; close = '}'; }
+  if (i < 0) return null;
+  let j = src.indexOf(open, i), depth = 0, k = j, q = null;
   for (; k < src.length; k++) {
     const c = src[k];
     if (q) { if (c === '\\') k++; else if (c === q) q = null; continue; }
-    if (c === "'" || c === '"' || c === '`') q = c; else if (c === '[') depth++; else if (c === ']' && --depth === 0) break;
+    if (c === "'" || c === '"' || c === '`') q = c; else if (c === open) depth++; else if (c === close && --depth === 0) break;
   }
   try { return Function(`return ${src.slice(j, k + 1)}`)(); } catch { return null; }
 }
@@ -24,20 +26,20 @@ const list = a => a.map(x => `- ${x}`).join('\n');
 
 export async function overviewMd() {
   const app = read('public/app.js');
-  const core = literal(app, 'CORE') || [], nav = literal(app, 'NAV') || [], adminGroups = literal(app, 'ADMIN_GROUPS') || [], adminTabs = adminGroups.flatMap(g => g[1]), biz = (literal(app, 'BIZ_NAV') || [])[1] || [];
+  const core = literal(app, 'CORE') || [], nav = literal(app, 'NAV') || [], hubs = literal(app, 'HUBS') || {}, adminGroups = literal(app, 'ADMIN_GROUPS') || [], adminTabs = adminGroups.flatMap(g => g[1]), biz = (literal(app, 'BIZ_NAV') || [])[1] || [];
   const [{ PLANS, AI_LIMITS, TRIAL_DAYS }, { STRATEGY_LIMITS }, DS, { WS_PROVIDERS }, { EXT }, { JOBS }, { ENV_GROUPS }] = await Promise.all([
     import('./fees.js'), import('./rotation/routes.js'), import('./datasources.js'), import('./streams.js'), import('./ext/brokers.js'), import('./jobs.js'), import('./site.js')]);
   const pkg = JSON.parse(read('package.json') || '{}');
   const workflows = fs.existsSync(path.join(root, '.github/workflows')) ? fs.readdirSync(path.join(root, '.github/workflows')).filter(f => /\.ya?ml$/.test(f)).sort() : [];
   const wfName = f => (/^name:\s*(.+)$/m.exec(read('.github/workflows/' + f))?.[1] || f).replace(/^['"]|['"]$/g, '');
   const tests = fs.existsSync(path.join(root, 'test')) ? fs.readdirSync(path.join(root, 'test')).filter(f => f.endsWith('.test.js')).length : 0;
-  const pages = core.length + nav.reduce((a, [, items]) => a + items.length, 0);
+  const pages = core.length + nav.reduce((a, [, items]) => a + items.reduce((n, [k]) => n + (hubs[k] ? hubs[k][1].length : 1), 0), 0);
   const plans = Object.entries(PLANS);
   const limits = k => STRATEGY_LIMITS[k] || STRATEGY_LIMITS.free;
   const lines = [];
   lines.push(`_Generated from the code on ${new Date().toISOString().slice(0, 10)} (package ${pkg.version || '-'}). This section is rebuilt on every deploy, so it always describes the whole product as it is now. The dated "Changes" sections below record what changed and why._`);
   lines.push(`\n### What Brightolio is\nSoftware for practicing, researching, backtesting and automating investments on the brokerage the user chooses. Brightolio is not a broker-dealer and does not hold money; orders go to the user's own brokerage account (or the built-in $100,000 paper account). Users reach it on the web, the Android app, by text message and by phone. ${pages} pages in the menu, ${adminTabs.length} admin tabs, ${JOBS.length} background jobs, ${tests} unit-test files plus a browser end-to-end run.`);
-  lines.push(`\n### The menu (what users see)\n**Always shown:** ${core.map(x => x[1]).join(', ')}.\n\n${nav.map(([g, items]) => `**${g}:** ${items.map(x => x[1]).join(', ')}.`).join('\n\n')}`);
+  lines.push(`\n### The menu (what users see)\n**Always shown:** ${core.map(x => x[1]).join(', ')}.\n\n${nav.map(([g, items]) => `**${g}:** ${items.map(([k, t]) => (hubs[k] ? `${t} (tabs: ${hubs[k][1].map(x => x[1]).join(', ')})` : t)).join(', ')}.`).join('\n\n')}\n\nA page merged into another keeps its old address, which opens its tab (\`#/aibots\` → \`#/bots/aibots\`).`);
   lines.push(`\n### Admin (owner only)\n${adminGroups.map(([g, t]) => `- **${g.replace(/^Owner: /, '')}:** ${t.map(x => x[1]).join(' · ')}`).join('\n')}${biz.length ? `\n- **My business:** ${biz.map(x => x[1]).join(' · ')}` : ''}`);
   lines.push(`\n### Plans\nPaid plans start with a ${TRIAL_DAYS}-day free trial.\n\n| Plan | Price | AI messages a day | Saved / automatic strategies | Backtest years | Margin | Publish strategies |\n|---|---|---|---|---|---|---|\n${plans.map(([k, p]) => { const l = limits(k); return `| ${p.name} | ${p.monthly ? `$${p.monthly}/month or $${p.yearly}/year` : 'Free'} | ${AI_LIMITS[k] ?? '-'} | ${l.saved} / ${l.auto} | ${l.backtestYears} | ${l.margin > 1 ? `up to ${l.margin}x` : 'no'} | ${l.publish ? 'yes' : 'copy only'} |`; }).join('\n')}\n\n${plans.map(([, p]) => `**${p.name}** (${p.tagline}): ${p.features.join('; ')}.`).join('\n\n')}`);
   lines.push(`\n### Brokerages\nThe built-in paper account; Alpaca (suggested: OAuth for users' own accounts, or the Broker API to open accounts); ${Object.keys(EXT).map(k => ({ tradier: 'Tradier', tastytrade: 'tastytrade', schwab: 'Charles Schwab', tradestation: 'TradeStation' }[k] || k)).join(', ')}.`);

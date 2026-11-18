@@ -6,7 +6,7 @@ import { overviewMd, literal } from '../src/readme-overview.js';
 import fs from 'node:fs';
 
 const app = fs.readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
-const labels = new Set([...(literal(app, 'CORE') || []), ...(literal(app, 'NAV') || []).flatMap(g => g[1]), ...(literal(app, 'ADMIN_GROUPS') || []).flatMap(g => g[1]), ...((literal(app, 'BIZ_NAV') || [])[1] || [])].map(x => x[1].toLowerCase()));
+const labels = new Set([...(literal(app, 'CORE') || []), ...(literal(app, 'NAV') || []).flatMap(g => g[1]), ...Object.values(literal(app, 'HUBS') || {}).flatMap(h => h[1]), ...(literal(app, 'ADMIN_GROUPS') || []).flatMap(g => g[1]), ...((literal(app, 'BIZ_NAV') || [])[1] || [])].map(x => x[1].toLowerCase()));
 const groups = new Set([...(literal(app, 'NAV') || []).map(g => g[0].toLowerCase()), 'accounts', 'settings', 'admin', 'menu', 'home']);
 export const PUBLIC_PRIVATE = [
   [/\badmin\b/i, 'admin pages'], [/being built|under construction/i, 'the site being built'], [/yiddish/i, 'the Yiddish language'],
