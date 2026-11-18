@@ -48,6 +48,8 @@ html.lv2 #view .hubtabs a { display: inline-flex; align-items: center; min-heigh
   background: var(--card); color: var(--mu); font-weight: 600; font-size: 14px; line-height: 1.2; text-decoration: none; white-space: nowrap; }
 html.lv2 #view .hubtabs a:hover { color: var(--tx); border-color: var(--ac); }
 html.lv2 #view .hubtabs a.on { background: var(--tx); color: var(--card); border-color: var(--tx); }
+html.lv2 #view .related { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); margin: 0 auto var(--s4); font-size: 14px; }
+html.lv2 #view .related > span { color: var(--mu); font-weight: 600; }
 @media (max-width: 640px) {
   html.lv2 #view .hubtabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
   html.lv2 #view .hubtabs::-webkit-scrollbar { display: none; }

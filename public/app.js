@@ -423,6 +423,63 @@ function hubTabs(page) {
   if (list.length < 2) return '';
   return `<nav class="hubtabs chips" aria-label="${esc(label)}">${list.map(([k, t]) => `<a href="${hubHref(h, k)}"${k === page ? ' aria-current="page" class="on"' : ''}>${esc(t)}</a>`).join('')}</nav>`;
 }
+// Related: links from a page to the features it works with, shown at the end of the page (a page
+// never links to itself). The strategy and Playbook pages also link their own backtest, bot and
+// Marketplace listing at the top (relatedHtml from the page files).
+const R = {
+  strategies: ['strategies', 'Strategy library'], playbooks: ['strategies/playbooks', 'Playbooks'], backtest: ['strategies/backtest', 'Backtest'], bots: ['bots', 'My bots'],
+  aibots: ['bots/aibots', 'AI bots'], agents: ['bots/agents', 'Forecasts & AI agents'], schedule: ['schedule', 'Scheduled trades'], signals: ['signals', 'Alerts to trades'],
+  aisignals: ['signals/aisignals', 'AI signals'], fleet: ['signals/fleet', 'Signal fleet'], risk: ['riskview/risk', 'Risk controls'], riskview: ['riskview', 'Portfolio & risk'],
+  margin: ['riskview/margin', 'Margin center'], short: ['short', 'Short selling'], mStrat: ['marketplace/sharedstrategies', 'Shared strategies'], mBots: ['marketplace/aimarket', 'AI strategy marketplace'],
+  mPorts: ['marketplace/sharedportfolios', 'Shared portfolios'], mChan: ['marketplace/signalchannels', 'Signal channels'], traders: ['marketplace/traders', 'Top traders'],
+  portfolios: ['portfolios', 'Portfolios'], robo: ['portfolios/robo', 'Automated portfolios'], rules: ['portfolios/rules', 'Rules across accounts'], accounts: ['accounts', 'All accounts'],
+  taxpilot: ['tax/taxpilot', 'Tax autopilot'], tax: ['tax', 'Taxes'], insights: ['insights', 'Performance'], orders: ['orders', 'Orders'], watchlists: ['watchlists', 'Watchlists'],
+  chart: ['chart', 'Chart'], scanner: ['scanner', 'Scanners'], analyze: ['analyze', 'Stock & fund analyzer'], research: ['research', 'Research & news'], calendar: ['calendar', 'Calendar & events'],
+  aitools: ['ai/aitools', 'AI tools'], options: ['options', 'Options'], learn: ['learn', 'Learning center'], code: ['developers/code', 'Code lab'], developers: ['developers', 'Developer API'],
+  agenthub: ['developers/agenthub', 'Agents & API'], wealth: ['wealth', 'Investing toolkit'], sp500: ['wealth/sp500', 'S&P 500 plan'], retirement: ['retirement', 'Retirement & IRAs'],
+  money: ['money', 'All my money'], spend: ['spend', 'Invest as you spend'], funding: ['funding', 'Plans & billing'], security: ['security', 'Security & protection'], settings: ['settings', 'Settings'],
+  pairs: ['pairs', 'Pairs & stat arb'], invest: ['invest', 'Futures, bonds & more'],
+};
+const RELATED = (() => {
+  const g = (keys, list) => Object.fromEntries(keys.map(k => [k, list]));
+  return {
+    ...g(['strategies', 'playbooks', 'backtest'], ['strategies', 'playbooks', 'backtest', 'bots', 'mStrat', 'risk']),
+    ...g(['bots', 'aibots', 'agents'], ['bots', 'aibots', 'strategies', 'backtest', 'mBots', 'risk', 'schedule']),
+    ...g(['signals', 'aisignals', 'fleet'], ['signals', 'aisignals', 'fleet', 'mChan', 'traders', 'risk']),
+    ...g(['pairs', 'statarb'], ['backtest', 'bots', 'code', 'risk']),
+    ...g(['portfolios', 'robo', 'aifunds', 'rules'], ['portfolios', 'robo', 'rules', 'mPorts', 'accounts', 'taxpilot', 'riskview']),
+    ...g(['marketplace', 'traders', 'aimarket', 'sharedstrategies', 'sharedportfolios', 'signalchannels'], ['strategies', 'aibots', 'portfolios', 'fleet', 'risk']),
+    ...g(['developers', 'agenthub', 'code', 'quantconnect', 'alpaca-dev'], ['developers', 'agenthub', 'code', 'backtest', 'risk']),
+    ...g(['scanner', 'leaders'], ['watchlists', 'chart', 'signals', 'analyze']),
+    ...g(['analyze', 'earnings'], ['chart', 'research', 'calendar', 'watchlists']),
+    ...g(['research', 'news', 'intel', 'institutions'], ['analyze', 'aitools', 'calendar', 'watchlists']),
+    ...g(['ai', 'aitools'], ['research', 'analyze', 'agenthub']),
+    ...g(['options', 'optionslab'], ['margin', 'risk', 'learn']),
+    short: ['margin', 'risk', 'options'],
+    ...g(['riskview', 'risk', 'margin'], ['riskview', 'risk', 'margin', 'short', 'insights']),
+    ...g(['insights', 'longterm', 'execution'], ['orders', 'riskview', 'tax']),
+    ...g(['tax', 'taxpilot'], ['tax', 'taxpilot', 'insights', 'robo']),
+    ...g(['wealth', 'sp500', 'lowcost'], ['sp500', 'schedule', 'portfolios', 'retirement']),
+    retirement: ['wealth', 'tax'], schedule: ['sp500', 'bots', 'risk'],
+    ...g(['money', 'private', 'currencies'], ['accounts', 'spend']), spend: ['money', 'sp500'],
+    ...g(['invest', 'alpaca-tools', 'tokenized'], ['options', 'money']),
+    ...g(['accounts', 'brokers', 'account'], ['funding', 'money', 'security']),
+    ...g(['text', 'hotline'], ['security', 'settings']), ...g(['security', 'protection'], ['learn', 'settings']),
+    chart: ['options', 'scanner', 'watchlists', 'analyze'], watchlists: ['scanner', 'chart', 'research'], calendar: ['analyze', 'research'],
+    tradetools: ['riskview', 'risk', 'chart'], workspace: ['chart', 'watchlists'], values: ['portfolios', 'risk'], learn: ['security', 'wealth'],
+    brief: ['insights', 'money'],
+  };
+})();
+// One "Related" row. Each item is [route, label]; a route of the current page or its tab is left out.
+const relatedHtml = (items, here) => {
+  const list = items.filter(([href]) => pageOf(href) !== here && href !== here);
+  return list.length ? `<nav class="related" aria-label="Related"><span>Related</span>${list.map(([href, t]) => `<a href="#/${href}">${esc(t)}</a>`).join('')}</nav>` : '';
+};
+function addRelated(view, page) {
+  if (!RELATED[page] || $(':scope > .related.pagerel', view)) return;
+  const html = relatedHtml(RELATED[page].map(k => R[k]).filter(Boolean), page); if (!html) return;
+  view.insertAdjacentHTML('beforeend', html.replace('class="related"', 'class="related pagerel"'));
+}
 // Puts the tab strip right under the page title (after the Home clock and the page's own top row).
 function addHubTabs(view, page) {
   if ($('.hubtabs', view)) return;
@@ -639,7 +696,7 @@ async function render(opts) {
   try {
     await loadPrefs();
     // Owner pages open only for admins (the server refuses their data to anyone else too).
-    try { await (routes[ownerOnly(page) ? 'dashboard' : page] || routes.dashboard)(view, new URLSearchParams(q)); if (render.seq === mine && view.isConnected) { addHubTabs(view, page); addGear(view, page); if (render.tracked !== page) { render.tracked = page; api('/a/track', { body: { route: page } }).catch(() => {}); } } } finally { if (render.seq === mine) swrOn = false; }
+    try { await (routes[ownerOnly(page) ? 'dashboard' : page] || routes.dashboard)(view, new URLSearchParams(q)); if (render.seq === mine && view.isConnected) { addHubTabs(view, page); addRelated(view, page); addGear(view, page); if (render.tracked !== page) { render.tracked = page; api('/a/track', { body: { route: page } }).catch(() => {}); } } } finally { if (render.seq === mine) swrOn = false; }
     if (!PREFETCH && ME) addGuide(view, ownerOnly(page) || !routes[page] ? 'dashboard' : page);
     if (swap) {
       if (!view.isConnected) return; // the user moved to another page meanwhile
@@ -656,6 +713,8 @@ async function render(opts) {
   finally { if (PREFETCH) parent.postMessage({ qpRendered: route }, location.origin); }
 }
 window.addEventListener('hashchange', () => render());
+// In-page jumps in "Related" rows (data-go="#bt"): scroll to that part of the page without changing the address.
+addEventListener('click', e => { const b = e.target.closest?.('#view [data-go]'); if (!b) return; e.preventDefault(); $(b.dataset.go, b.closest('#view'))?.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
 // Menu groups open and close from one listener on the menu, so it works even right after a rebuild.
 $('#nav').addEventListener('click', e => {
   const b = e.target.closest('.grp.sec'); if (!b) return;
@@ -2080,7 +2139,7 @@ for (const k of ['trade', 'positions', 'orders']) {
 }
 // The tabs on top of every Marketplace page.
 const marketTabs = on => hubTabs(on); // the Marketplace tabs are a merged page's tabs (HUBS.marketplace)
-const shared = { safeUrl, extras: () => EXTRAS, setExtras: on => { EXTRAS = on; render.navKey = null; }, marketTabs, $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, refreshMe, accounts, accountOptions, acctLabel, state, adminTabs, adminPage, secureConfirm, me: () => ME, paid: () => isPaid(ME) };
+const shared = { safeUrl, related: (items, here) => relatedHtml(items, here || ''), extras: () => EXTRAS, setExtras: on => { EXTRAS = on; render.navKey = null; }, marketTabs, $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, refreshMe, accounts, accountOptions, acctLabel, state, adminTabs, adminPage, secureConfirm, me: () => ME, paid: () => isPaid(ME) };
 lazyRoutes(() => import('./pages/studio.js'), 'registerStudio', shared, ["ai", "agents", "code"]);
 lazyRoutes(() => import('./pages/aichat.js'), 'registerAiChat', shared, ["admin-aichat"]);
 lazyRoutes(() => import('./pages/tradetools.js'), 'registerTradeTools', shared, ["tradetools"]);
