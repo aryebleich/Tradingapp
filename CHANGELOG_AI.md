@@ -4,6 +4,43 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-18: App structure: menu by goal, merged pages with tabs, redirects, Related links
+
+### What changed
+
+1. **Audit:** STRUCTURE_AUDIT.md lists all 94 pages. For each it gives what the page does, who it is for, which pages overlap with it, the recommendation and the new place.
+2. **Menu:** 6 member groups instead of 9, organized by what members want to do (Research, Trade tools, Invest, Automate, Track & plan, Account & help), with 5 to 7 entries each instead of up to 13. Core and the admin groups are unchanged.
+3. **Merges:** 21 pages with tabs hold 62 pages: Stock & fund analyzer, Research & news, Scanners, AI assistant, Options, Phone & text, Investing toolkit, Portfolios, Futures bonds & more, Strategies, Bots, Alerts & signals, Pairs & stat arb, Marketplace, Developers, Performance, Risk, Taxes, All my money, Accounts, Security & protection. Each tab is still its own page, so no feature, setting or saved item moved. Why each page went where it did: DECISIONS.md M-6 to M-14.
+4. **Split:** the developer half of Bonds, rates & crypto (Alpaca MCP server and CLI, the owner's Broker MCP, connecting AI agents) is now its own page, `#/alpaca-dev`, the Developers → Alpaca AI & CLI tools tab (M-15).
+5. **Redirects:** every old address opens its tab (`#/aibots` → `#/bots/aibots`), and the query string is kept. The menu highlights the merged entry, search lists every tab as "Group › Entry", and page guides and page gears follow the tab.
+6. **Related links:**
+   - A "Related" row at the end of the pages that work together.
+   - A single strategy and a single Playbook link at the top to their own backtest, run settings (the bot) and listing (Marketplace or Playbook library), plus My bots and Risk controls.
+   - AI signals link to Alerts to trades.
+   - The community strategies card links to the Marketplace.
+7. **Translations:** Yiddish for every new label and sentence (`public/i18n/yi-structure.js`). The eight simple-translation languages got the new group and entry names.
+8. **Fixes found by the click-through:** the Retirement tables overflowed at 1280px, and the Playbooks tab strip overflowed at 375px (and still showed a Developer API tab).
+9. **Docs and checks:**
+   - The generated README overview lists each entry with its tabs.
+   - `scripts/readme-check.mjs` accepts tab names.
+   - Three old menu paths in text were updated (a page guide and two code comments).
+   - DESIGN_SYSTEM.md has a "Merged pages and tabs" rule.
+
+### Tests
+
+- `npm test`: 389 pass, 0 fail, 3 todo (the review-only BUG-003/004/005). Security check and clean check pass.
+- Click-through in Chromium against the mock broker, at 1280px and 375px:
+  - all 53 menu entries and detail pages, the 41 tab addresses and all 41 old addresses, plus old addresses with a query;
+  - every old address lands on its tab with the right menu entry marked;
+  - no browser errors, no page wider than the screen after the fixes, and every merged page shows its tabs and its Related row.
+- `npm run e2e` (with the pre-installed Chromium): 444 checks, exit 0. One earlier run had one failure in the trade symbol search step; it passed on the re-run and that page was not changed, so it was a one-off timing failure. The e2e menu steps were updated for the new structure: the Automate group instead of Quant lab, the Alpaca account through Accounts, and a new step that checks 12 old addresses redirect to their tab.
+
+### Rollback
+
+`git revert` the four commits (audit, menu and merged pages, redirects, Related links) and push. Old addresses work in both directions, because every page keeps its own route.
+
+---
+
 ## 2026-11-18: Remove the homepage video; dashboard home with the portfolio chart on top
 
 ### What changed

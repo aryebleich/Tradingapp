@@ -80,6 +80,12 @@ The new layout keeps every vertical distance of the old one: headings, margins b
 - **Disclosures** are never collapsed, hidden or moved further down than they were. Signed-in pages now show the footer disclosures under every page; the old layout hid them while signed in.
 - **Trading, order, payment, funding and sign-in pages.** Only the wrapping layout and spacing change. `layout.js` never touches forms, dialogs, the order ticket (`#tk`, `.ticket`) or the buy bar (`#tradeBar`). The order of controls and confirmation steps is unchanged.
 
+## Merged pages and tabs
+
+When pages do one job together, the menu shows one entry and the page shows a tab strip (`nav.hubtabs`) right under its title, above the page guide. The pages are listed in `HUBS` in `public/app.js`. Each tab stays its own page at `#/<entry>/<tab>`, and its old address redirects there. Tabs are chips: 36px tall, the current one filled (`--tx`) and marked `aria-current="page"`. On phones the strip scrolls sideways instead of wrapping, so the first card does not move down. A page's own inner tabs (`.seg`, `.chips`) stay below it. Tab labels are the pages' own names.
+
+**Related.** A page that works with other features ends with one "Related" row (`nav.related`): links only, never buttons that act. A page that holds one item (a strategy, a Playbook) puts its Related row at the top. That row jumps to the item's own backtest, run settings and sharing (`data-go="#id"` scrolls without changing the address).
+
 ## Dashboard home
 
 The home page (`routes.dashboard`) runs in a fixed order: the title row (the clock sits in it), the portfolio chart at full width, the key numbers (`.stats.dash-kpis`), the page guide, notices and onboarding, and then `.dash-grid`. The grid has two columns, and one column under 768px. Gaps are `--s4` between blocks and cards and `--s3` between stat tiles. Grid cards use the theme's card padding (18px) and `--r`, and their first `h2` uses `--t-lg`. A card added later by another module goes into its own `[data-slot]` (`display: contents`, so an empty slot leaves no gap). It is never appended to the view. A wide card (a table with many columns) takes `.dash-span`.

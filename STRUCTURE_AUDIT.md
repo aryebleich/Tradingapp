@@ -8,9 +8,9 @@ Recommendation: **Keep**, **Merge** (one page with tabs; every feature and all d
 
 ## Findings
 
-- **Too many groups, too many items.** The old menu had 9 member groups and 81 entries; Investing had 13, Planning 10, Intelligence 10, Automation 12. It was organized by how features were built (Intelligence, Quant lab, Planning) rather than by what members want to do.
+- **Too many groups, too many items.** The old menu had 9 member groups with 76 entries (plus 7 always shown); Investing had 13, Automation 12, Trading tools 11, Intelligence and Planning 10 each. The new one has 6 groups with 36 entries. It was organized by how features were built (Intelligence, Quant lab, Planning) rather than by what members want to do.
 - **The same job in several places.** Bots in four pages across two groups (bots, aibots, agents, aifunds); strategies in three (strategies, playbooks, backtest); signals in three across two groups (signals, aisignals, fleet); research in five (research, news, intel, institutions, earnings); accounts in three; risk in three (riskview, risk, margin); taxes in two; text and phone in two pages that open with the same setup card.
-- **Pages holding two jobs.** "Bonds, rates & crypto" also holds the Alpaca AI/CLI developer tools and the agent setup (split). Settings is 14 cards and 3,700px long (section menu added).
+- **Pages holding two jobs.** "Bonds, rates & crypto" also holds the Alpaca AI/CLI developer tools and the agent setup (split). Settings is 14 cards and 3,700px long, but it is already split into sections with a jump menu, so it was left as it is.
 - **Features that do not point to each other.** Strategies, their backtest, their bot and their Marketplace listing are four pages with few links between them; AI signals do not link to the alert-to-trade setup; Margin and Short selling share a card but no link.
 - **Already merged well:** Marketplace (6 pages with tabs) and My business (7 pages with tabs). Their pattern (separate routes, one tab strip) is the one used for the new merged pages.
 
@@ -20,15 +20,15 @@ Core (always shown): Home, Get started, Trade, Positions, Orders, Watchlists, Ma
 
 | Group | Items (tabs) |
 |---|---|
-| Research | Stock & fund analyzer (Analyzer, Earnings) · Research & news (Company research, News & sentiment, Market intelligence, Institutional portfolios) · Scanners (Scanner, New leaders) · AI assistant (Assistant, AI tools) · Calendar & events |
+| Research | Stock & fund analyzer (Stock & fund analyzer, Earnings vs expectations) · Research & news (Plain-language research, News & sentiment, Market intelligence, Institutional portfolios) · Scanners (Scanner, New leaders) · AI assistant (AI assistant, AI tools) · Calendar & events |
 | Trade tools | Chart · Options (Options desk, Options lab) · Short selling · Planning tools · Workspace · Phone & text (Text commands, Phone hotline) |
-| Invest | Investing toolkit (Habits & tools, S&P 500 plan, Low-cost funds) · Portfolios (Rule-based, Automated, AI hedge funds, Rules across accounts) · Futures, bonds & more (Futures, funds & savings; Bonds, rates & crypto; Tokenized securities) · Values investing · Invest as you spend |
-| Automate | Strategies (Strategy builder, Playbooks, Backtest) · Bots (My bots, AI bots, Forecast models) · Alerts & signals (Alerts to trades, AI signals, Signal fleet) · Scheduled trades · Pairs & stat arb (Pairs trading, Statistical arbitrage) · Marketplace (6 tabs) · Developers (Developer API, AI agents, Code lab, Cloud algorithms, Alpaca AI & CLI tools) |
-| Track & plan | Performance (Insights & journal, Long-term view, Execution quality) · Risk (Portfolio & risk, Risk controls, Margin center) · Taxes (Tax information, Tax autopilot) · All my money (Net worth, Private markets, Currencies) · Retirement & IRAs · Weekly brief |
-| Account & help | Accounts (All accounts, Choose your brokerage, Alpaca account) · Plans & billing · Invite & earn · Learning center · Security & protection (Security, Investor protection) · Android app · Settings |
+| Invest | Investing toolkit (Investing toolkit, S&P 500 plan, Low-cost index & mutual funds) · Portfolios (Portfolios, Automated portfolios, AI hedge funds, Rules across accounts) · Futures, bonds & more (Futures, funds & savings, Bonds, rates & crypto, Tokenized securities) · Values investing · Invest as you spend |
+| Automate | Strategies (Strategy library, Playbooks, Backtest) · Bots (My bots, AI bots, Forecasts & AI agents) · Alerts & signals (Alerts to trades, AI signals, Signal fleet) · Scheduled trades · Pairs & stat arb (Pairs trading, Statistical arbitrage) · Marketplace (Overview, Top traders, AI strategy marketplace, Strategies, Portfolios, Signal channels) · Developers (Developer API, Agents & API, Code lab, Cloud algorithms, Alpaca AI & CLI tools) |
+| Track & plan | Performance (Insights & journal, Long-term view, Execution & routing) · Risk (Portfolio & risk, Risk controls, Margin center) · Taxes (Taxes, Tax autopilot) · All my money (All my money, Private markets, Currencies) · Retirement & IRAs · Weekly brief |
+| Account & help | Accounts (All accounts, Choose your brokerage, Alpaca account) · Plans & billing · Invite & earn · Learning center · Security & protection (Security & help, Investor protection) · Android app · Settings |
 | Admin (owner only, separate) | Admin groups and My business, unchanged |
 
-6 member groups, 5 to 7 items each (was 9 groups, up to 13 items). A merged-away page lives at `#/<page>/<tab>` (for example `#/bots/aibots`). Its old address (`#/aibots`) redirects there, query string included.
+6 member groups, 5 to 7 items each (was 9 groups, up to 13 items); 21 merged pages hold 62 tabs. A merged-away page lives at `#/<page>/<tab>` (for example `#/bots/aibots`). Its old address (`#/aibots`) redirects there, query string included.
 
 ## Every page
 
@@ -117,7 +117,7 @@ Core (always shown): Home, Get started, Trade, Positions, Orders, Watchlists, Ma
 | `#/security` | Help & settings | Passkeys, account lock and support | Everyone | protection, settings (sign-in section) | Merge with Investor protection: Security & protection | Account & help → Security & protection |
 | `#/protection` | Help & settings | What Brightolio is, fraud signs, data use, risks | Beginner | security, learn | Merge into Security & protection (tab) | Account & help → Security & protection |
 | `#/android` | Help & settings | The Android app | Everyone | - | Keep | Account & help |
-| `#/settings` | Help & settings | All settings: look, language, sign-in, data, optional features | Everyone | security, extras | Split: too long for one scroll (14 cards); add a section menu at the top that jumps to each part (kept on one page so every setting and link still works) | Account & help |
+| `#/settings` | Help & settings | All settings: look, language, sign-in, data, optional features | Everyone | security, extras | Keep: long (14 cards), but already split into sections with a jump menu at the top (Optional features, Display and language, Sign-in, Data…); page-specific settings already moved to each page's gear | Account & help |
 | `#/extras` | (not in menu) | My tools: optional tools the member switched on | Everyone | settings (Optional features) | Keep (appears in the menu when a tool is on) | Core |
 | `#/luach` | (not in menu) | Hebrew calendar, zmanim, tzedakah ledger (optional tool) | Values-led investor | values, calendar | Keep (opened from My tools) | My tools |
 | `#/business` | My business (admin) | Owner business dashboard | Admin | bizreports | Keep separate (admin only, already one page with tabs) | Admin → My business |
