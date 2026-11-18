@@ -63,12 +63,11 @@ test('BUG-012: the live homepage dashboard has a pause button', () => {
   assert.match(js, /ld-pause/); assert.match(js, /aria-pressed/);
 });
 
-test('BUG-013: the homepage ad video has captions and a transcript', () => {
-  const html = read('public/index.html');
-  assert.match(html, /<track kind="captions" src="media\/brightolio-ad\.en\.vtt" srclang="en"/);
+test('BUG-013: superseded, the homepage ad video was removed (no video means no captions to miss)', () => {
+  for (const f of ['public/index.html', 'public/yi.html', 'scripts/home.py']) assert.doesNotMatch(read(f), /data-adreel|class="adbox"|<video/);
+  // The media files stay for the admin page and other uses.
   const vtt = read('public/media/brightolio-ad.en.vtt');
-  assert.match(vtt, /^WEBVTT/); assert.ok((vtt.match(/-->/g) || []).length >= 5);
-  assert.match(html, /id="adTranscript"/);
+  assert.match(vtt, /^WEBVTT/);
 });
 
 test('BUG-014: Organization and FAQPage structured data on the homepage', () => {

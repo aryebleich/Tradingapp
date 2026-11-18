@@ -31,8 +31,10 @@ export async function myDayCard(helpers, view) {
   if (!d || !view.isConnected || H.$('#myDay', view)) return;
   const el = document.createElement('div'); el.className = 'card myday'; el.id = 'myDay';
   el.innerHTML = `<h2 style="margin-top:0">My day</h2>${d.lines.map(l => `<p>${H.esc(l)}</p>`).join('')}<p class="myday-next"><b>Next step:</b> ${H.esc(d.next.text)} <a href="${H.esc(d.next.href)}">Open →</a></p>`;
-  const anchor = H.$('#homeClock', view) || H.$('.pguide', view) || H.$('h1', view)?.closest('.row') || H.$('h1', view);
-  anchor ? anchor.after(el) : view.prepend(el);
+  // On the home grid the card goes into its own slot; elsewhere it follows the page heading.
+  const slot = H.$('[data-slot=myday]', view);
+  const anchor = slot ? null : H.$('#homeClock', view) || H.$('.pguide', view) || H.$('h1', view)?.closest('.row') || H.$('h1', view);
+  if (slot) slot.append(el); else if (anchor) anchor.after(el); else view.prepend(el);
 }
 
 // ---------- Before an order: second opinion, your habits, the tax ----------

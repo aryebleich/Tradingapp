@@ -1135,34 +1135,43 @@ routes.dashboard = async (view, q) => {
   const todo = !fresh && steps.filter(x => !x[0]).length > 1 && !localStorage.getItem('qp_onboard_done');
   const approvals = await approvalsP, P = PREFS.portfolio;
   const since = P.mode !== 'live' ? sinceStat(await sinceLastLook(state.account, a.equity)) : '';
-  view.innerHTML = `${approvals}
+  // Home layout (top to bottom): the portfolio chart, the key numbers, then a two-column grid of cards
+  // (one column under 768px). My day and the P/L explanation are added later by their own modules,
+  // into their slots ([data-slot]) so they land in the grid in order, not at the end of the view.
+  view.innerHTML = `<div class="row dash-title" style="justify-content:space-between"><h1>Portfolio ${a.live ? '<span class="pill warn">LIVE MONEY</span>' : state.account === 'paper' ? '<span class="pill">Paper</span>' : '<span class="pill">Live account, test money</span>'}</h1></div>
+  <div class="dash">
+  <section class="card dash-chart" aria-label="Portfolio value over time">
+    <canvas id="eqc"></canvas>
+    ${statementRow(state.account)}
+  </section>
+  <div class="stats dash-kpis">
+    <div class="stat"><span>Total value</span><b data-k="eq">${money(a.equity)}</b></div>
+    ${P.hideToday ? '' : `<div class="stat"><span>Today</span><b data-k="day" class="${cls(dayChg)}">${dayChg == null ? '-' : `${money(dayChg)} (${pct(dayChg / prev * 100, 2)})`}</b></div>`}
+    <div class="stat"><span>Buying power</span><b data-k="bp">${money(a.buyingPower ?? a.cash)}</b></div>
+    <div class="stat"><span>Open positions</span><b>${a.positions.length}</b></div>
+    <div class="stat"><span>Profit / loss</span><b data-k="pnl" class="${cls(pnl)}">${money(pnl)} (${pct(pnlPct, 2)})</b></div>
+    ${since}
+    <div class="stat"><span>Cash</span><b data-k="cash">${money(a.cash)}</b></div>
+  </div>
+  <div class="dash-slot" data-slot="guide"></div>
+  ${approvals}
   ${fresh ? `<div class="card onboard welcome-hero"><div><h2>Welcome! Let's get you started</h2><p class="mu" style="margin:0">A 2-minute guided setup: what you want to do, how practice money works, and your first practice purchase. Nothing uses real money.</p></div><a href="#/start"><button type="button">Start the guided setup</button></a></div>` : ''}
   ${todo ? `<div class="card onboard"><div class="ob-head"><div><h2>Get started</h2><p class="mu">${steps.filter(x => x[0]).length} of ${steps.length} done</p></div><button class="ghost small" id="hideOnboard">Hide</button></div>
     <div class="ob-bar"><i style="width:${Math.round(steps.filter(x => x[0]).length / steps.length * 100)}%"></i></div>
     <div class="ob-list">${steps.map(([done, t, href]) => `<a class="ob-item${done ? ' done' : ''}" href="${href}"><span class="ob-check" aria-hidden="true"></span><span class="ob-t">${t}</span><span class="ob-go" aria-hidden="true">→</span></a>`).join('')}</div></div>` : ''}
-  <div class="row" style="justify-content:space-between"><h1>Portfolio ${a.live ? '<span class="pill warn">LIVE MONEY</span>' : state.account === 'paper' ? '<span class="pill">Paper</span>' : '<span class="pill">Live account, test money</span>'}</h1></div>
-  <div class="card">
-    <div class="stats">
-      <div class="stat"><span>Equity</span><b data-k="eq">${money(a.equity)}</b></div>
-      <div class="stat"><span>Profit / loss</span><b data-k="pnl" class="${cls(pnl)}">${money(pnl)} (${pct(pnlPct, 2)})</b></div>
-      ${P.hideToday ? '' : `<div class="stat"><span>Today</span><b data-k="day" class="${cls(dayChg)}">${dayChg == null ? '-' : `${money(dayChg)} (${pct(dayChg / prev * 100, 2)})`}</b></div>`}
-      ${since}
-      <div class="stat"><span>Cash</span><b data-k="cash">${money(a.cash)}</b></div>
-      <div class="stat"><span>Positions</span><b>${a.positions.length}</b></div>
-    </div>
-    <canvas id="eqc"></canvas>
-    ${statementRow(state.account)}
-  </div>
   <div id="acctBoxes"></div>
-  <div class="grid">
-    <div class="card"><h2>Positions</h2><div class="tablewrap"><table><tr><th>Symbol</th><th>Qty</th><th>Avg</th><th>Price</th><th>Value</th><th>P/L</th></tr>
+  <div class="dash-grid">
+    <div class="card dash-positions"><h2>Positions</h2><div class="tablewrap"><table><tr><th>Symbol</th><th>Qty</th><th>Avg</th><th>Price</th><th>Value</th><th>P/L</th></tr>
       ${a.positions.map(p => `<tr><td>${esc(p.symbol)}</td><td>${num(p.qty, 4)}</td><td>${money(p.avgPrice)}</td><td>${money(p.price)}</td><td>${money(p.value)}</td><td class="${cls(p.pnl)}">${money(p.pnl)}</td></tr>`).join('') || '<tr><td colspan="6" class="mu">No positions</td></tr>'}
     </table></div></div>
+    <div class="dash-slot" data-slot="myday"></div>
+    <div class="dash-slot" data-slot="pnlwhy"></div>
     ${ticketHtml(a)}
+    <div class="card dash-span"><h2>Recent orders</h2><div class="tablewrap" id="orders"><p class="mu">Loading…</p></div>
+    ${state.account === 'paper' ? '<button class="ghost small" id="reset">Reset paper account</button>' : ''}</div>
   </div>
-  <div class="card"><h2>Recent orders</h2><div class="tablewrap" id="orders"><p class="mu">Loading…</p></div>
-    ${state.account === 'paper' ? '<button class="ghost small" id="reset">Reset paper account</button>' : ''}</div>`;
-  homeClock(view);
+  </div>`;
+  homeClock(view); if ($('#homeClock', view)) $('.dash-title', view).append($('#homeClock', view)); // the clock sits in the title row, so the chart stays at the top
   if ($('#hideOnboard', view)) $('#hideOnboard', view).onclick = () => { try { localStorage.setItem('qp_onboard_done', '1'); } catch {} render(); };
   drawChart($('#eqc', view), a.history.map(x => x.equity), { base, dates: a.history.map(x => x.day), legend: false });
   wireStatement(view, state.account); accountBoxes($('#acctBoxes', view)).catch(() => {});
@@ -1173,7 +1182,7 @@ routes.dashboard = async (view, q) => {
       const b = await api('/account?account=' + acct).catch(() => null); if (!b || b.error) return;
       const pl = b.equity - base, prv = b.lastEquity || prev, dc = prv ? b.equity - prv : null;
       const set = (k, txt, c) => { const el = $(`[data-k=${k}]`, view); if (el && el.textContent !== txt) el.textContent = txt; if (el && c !== undefined) el.className = c; };
-      set('eq', money(b.equity)); set('pnl', `${money(pl)} (${pct(base ? pl / base * 100 : 0, 2)})`, cls(pl)); set('cash', money(b.cash));
+      set('eq', money(b.equity)); set('pnl', `${money(pl)} (${pct(base ? pl / base * 100 : 0, 2)})`, cls(pl)); set('cash', money(b.cash)); set('bp', money(b.buyingPower ?? b.cash));
       if (dc != null) set('day', `${money(dc)} (${pct(dc / prv * 100, 2)})`, cls(dc));
     }, 60000);
     onLeave(() => clearInterval(t));

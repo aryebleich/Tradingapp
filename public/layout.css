@@ -40,6 +40,23 @@ html.lv2 .card > :last-child { margin-bottom: 0; }
 html.lv2 .grid, html.lv2 .cols { gap: var(--s4); }
 html.lv2 .grid > .card, html.lv2 .cols > .card { margin-bottom: 0; }
 
+/* ---------- app: dashboard home (DESIGN_SYSTEM.md, "Dashboard home") ---------- */
+/* chart first, then the key numbers, then a two-column card grid (one column under 768px); every card
+   shares the theme's padding, radius and heading style, and the gaps are --s4 */
+html.lv2 #view > .dash { display: flex; flex-direction: column; gap: var(--s4); margin-bottom: var(--s4); }
+html.lv2 .dash > * { margin: 0; min-width: 0; max-width: 100%; }
+html.lv2 .dash-title { align-items: baseline; flex-wrap: wrap; gap: var(--s1) var(--s3); }
+html.lv2 .dash-title .homeclock { margin: 0; }
+html.lv2 .dash-chart canvas { height: 320px; }
+html.lv2 .dash-kpis { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--s3); }
+html.lv2 .dash-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4); align-items: stretch; }
+html.lv2 .dash-slot { display: contents; } /* empty until its card arrives, so it never leaves a gap */
+html.lv2 .dash-grid .card { margin: 0; min-width: 0; padding: 18px; border-radius: var(--r); }
+html.lv2 .dash-grid .card > h2:first-child, html.lv2 .dash-grid .pnlwhy .pw-head h2 { font-size: var(--t-lg); line-height: 1.3; margin: 0 0 var(--s3); }
+html.lv2 .dash-span { grid-column: 1 / -1; }
+@media (max-width: 767px) { html.lv2 .dash-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) { html.lv2 .dash-chart canvas { height: 220px; } html.lv2 .dash-title .homeclock { gap: 0 var(--s2); font-size: var(--t-sm); } html.lv2 .dash-title .homeclock .hc-time { font-size: var(--t-lg); } }
+
 /* tables: scroll inside their own box, never the page (tables are wrapped by layout.js) */
 html.lv2 .tablewrap { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%;
   background: linear-gradient(to right, var(--card) 30%, transparent) left / 24px 100% no-repeat local,

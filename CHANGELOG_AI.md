@@ -4,6 +4,36 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-18: Remove the homepage video; dashboard home with the portfolio chart on top
+
+### What changed
+
+1. **Homepage video removed** from `index.html` and `yi.html`, and from their generator `scripts/home.py` (otherwise the next `python3 scripts/pages.py` would bring it back). The whole `<section class="adreel">` went: the video, its caption and its transcript. Its player code in `public/site.js` and its styles (`.adreel`, `.adbox`, `.adtrans`) in `public/site.css` were deleted. The files in `public/media/` stay. The pages were rebuilt with `scripts/pages.py`, so the other public pages differ only in the `site.css`/`site.js` version hashes.
+2. **Dashboard home** (`routes.dashboard`, paper and other non-Alpaca accounts) now goes from top to bottom: the title row (with the clock in it), then the portfolio chart at full width with the monthly statement, then the key numbers, then a two-column card grid (one column under 768px) holding Positions, My day, Why your P/L moved, Trade and Recent orders (full width). The layout rules are in `public/layout.css` under "dashboard home", and DESIGN_SYSTEM.md has a new "Dashboard home" section.
+3. **My day, Why your P/L moved and the page guide** now go into slots (`[data-slot]`, `display: contents`) on the home grid, instead of being inserted under the title. On pages without a slot they work as before.
+
+### Decisions on unclear points
+
+- I left the title row (`h1`) above the chart, because DESIGN_SYSTEM.md requires one `h1`, placed first in the view. I moved the clock into that row so the chart comes right after it (153px from the top at 1280px, 205px at 375px).
+- The key numbers are Total value, Today (hidden when `hideToday` is on), Buying power (new tile: `buyingPower` from `/account`, falling back to cash; it updates live like the others) and Open positions. I kept Profit / loss, Since you last looked (PREFS mode) and Cash after them, so no data is lost.
+- The approvals banner, the welcome and "Get started" cards and the page guide ("How this page works") used to sit above everything. They now sit under the key numbers, above the grid, so the chart is the first thing you see. The guide is unchanged otherwise (Got it, Hide on every page).
+- There is no watchlist card. Watchlists are Alpaca-only, and an Alpaca account's home is the Portfolio page (`routes.portfolio`), which I left alone ("don't touch other pages"). On that page, My day and P/L still go under the title as before. "Recent activity" is the existing Recent orders card.
+- Cards in a grid row stretch to the same height, so the rows end on a clean line.
+- Video tests: BUG-013 (captions and a transcript for the video) is superseded. Its test now checks that the video is gone and that the captions file is still in `public/media`. I removed the 11 English and 11 Yiddish sentences of the video caption and transcript from `test/golden/homepage-v1-sentences.json`. The transcript's legal lines ("Investing involves risk of loss", "software, not a broker") are still covered by the homepage footer disclosure.
+- The layout golden gate (`npm run layout:gate`, not part of `npm test`) will show the dashboard and homepage as changed on purpose. The baseline is for the owner to update.
+
+### Tests
+
+- `npm test`: 389 pass, 0 fail, 3 todo (the review-only BUG-003/004/005).
+- Dashboard checked in Chromium against the mock broker at 1280, 800 and 375px: no horizontal scroll and nothing wider than the page (tables scroll inside their own box). The chart is the first block after the title. The grid is 2 columns at 1280 and 800px and 1 column at 375px, in the order Positions, My day, P/L, Trade, Recent orders. With `hideToday` on, the Today tile is hidden. No browser errors.
+- `npm run e2e` (with the pre-installed Chromium): 444 checks, exit 0, no failures (it includes My day on the home page and the quick-ticket orders).
+
+### Rollback
+
+`git revert <this commit>` and push.
+
+---
+
 ## 2026-11-16: Remove the feature flag system, make the layout permanent, automatic release pipeline
 
 **Release:** see the tag on the deploy of this change (`vYYYY.MM.DD-N`, created automatically after the deploy). Rollback target: the commit before it on main (the release commit's first parent). **Rollback used:** none (filled in below if the live check fails).

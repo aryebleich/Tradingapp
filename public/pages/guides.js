@@ -188,6 +188,8 @@ export function pageGuide(view, route, { practice = true } = {}) {
   });
   // Right under the page title (and the Home clock); before the first card when the title sits
   // inside one, and at the top when the page has no title. Always a direct part of the page.
+  // Home keeps its chart and key numbers at the top: the guide has its own place under them.
+  const slot = view.querySelector('[data-slot=guide]'); if (slot) return slot.append(box);
   const h1 = view.querySelector('h1'), top = h1 && [...view.children].find(c => c === h1 || c.contains(h1));
   if (!top) return view.prepend(box);
   if (top !== h1 && !top.classList.contains('row') && !top.classList.contains('pagehead')) return top.before(box);

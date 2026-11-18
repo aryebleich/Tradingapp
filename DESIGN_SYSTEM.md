@@ -80,6 +80,10 @@ The new layout keeps every vertical distance of the old one: headings, margins b
 - **Disclosures** are never collapsed, hidden or moved further down than they were. Signed-in pages now show the footer disclosures under every page; the old layout hid them while signed in.
 - **Trading, order, payment, funding and sign-in pages.** Only the wrapping layout and spacing change. `layout.js` never touches forms, dialogs, the order ticket (`#tk`, `.ticket`) or the buy bar (`#tradeBar`). The order of controls and confirmation steps is unchanged.
 
+## Dashboard home
+
+The home page (`routes.dashboard`) runs in a fixed order: the title row (the clock sits in it), the portfolio chart at full width, the key numbers (`.stats.dash-kpis`), the page guide, notices and onboarding, and then `.dash-grid`. The grid has two columns, and one column under 768px. Gaps are `--s4` between blocks and cards and `--s3` between stat tiles. Grid cards use the theme's card padding (18px) and `--r`, and their first `h2` uses `--t-lg`. A card added later by another module goes into its own `[data-slot]` (`display: contents`, so an empty slot leaves no gap). It is never appended to the view. A wide card (a table with many columns) takes `.dash-span`.
+
 ## Mobile navigation pattern
 
 This is the existing pattern, which is kept:
