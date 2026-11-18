@@ -291,7 +291,7 @@ console.log('Phone (iPhone 13)');
     await unlockHighRisk(p);
   });
   await step('connect API keys from the menu', async () => {
-    await p.tap('#moreTab'); await p.waitForSelector('#nav.open'); await navTo(p, 'account', 'tap'); await p.waitForSelector('#keysForm');
+    await p.tap('#moreTab'); await p.waitForSelector('#nav.open'); await navTo(p, 'accounts', 'tap'); await p.tap('.hubtabs a[href="#/accounts/account"]'); await p.waitForSelector('#keysForm');
     await p.fill('#keysForm [name=keyId]', 'PHONEKEY'); await p.fill('#keysForm [name=secret]', 'S'); await p.tap('#keysForm button'); await p.waitForSelector('#keysForm .ok');
   });
   await step('sticky Buy bar places an order', async () => {
@@ -343,8 +343,8 @@ console.log('Settings → Language');
     await p.waitForSelector('a.st-choice[href="#/sp500"]'); await p.click('#stDone'); await p.waitForSelector('#ticket');
     if (await p.$('#nav a[href="#/start"]')) throw new Error('Get started still in the menu after finishing');
     // Menu groups start folded and open with their arrow.
-    if (await p.isVisible('#nav a[href="#/statarb"]')) throw new Error('a folded group shows its pages');
-    await p.click('#nav button.grp.sec[data-g="Quant lab"]'); await p.waitForSelector('#nav a[href="#/statarb"]', { state: 'visible' });
+    if (await p.isVisible('#nav a[href="#/pairs"]')) throw new Error('a folded group shows its pages');
+    await p.click('#nav button.grp.sec[data-g="Automate"]'); await p.waitForSelector('#nav a[href="#/pairs"]', { state: 'visible' });
     await p.screenshot({ path: path.join(OUT, 'menu.png') });
     if (await p.$('header #langSel, header .langsel')) throw new Error('language picker still in the header');
     await p.goto(B + '/app#/settings'); await p.selectOption('#langSel', 'yi');
@@ -371,7 +371,19 @@ console.log('Settings → Language');
   await p.click("form.auth button:not([type=button])"); await p.waitForSelector('#tabs a.on', { state: 'attached' });
   const go = async (r, sel) => { if (p.url() === B + '/app' + r) await p.reload(); else await p.goto(B + '/app' + r); await p.waitForSelector(sel, { timeout: 15000 }); };
   const okText = async box => { await p.waitForSelector(`${box} .ok`, { timeout: 20000 }).catch(async () => { throw new Error((await p.textContent(`${box} .err`).catch(() => '')) || 'no result'); }); };
-  await step('menu lists the new pages', async () => { for (const k of ['chart', 'ai', 'scanner', 'optionslab', 'portfolios', 'fleet', 'insights', 'risk', 'values', 'private', 'money', 'rules', 'brief', 'taxpilot', 'invest', 'analyze', 'leaders', 'short', 'margin', 'aifunds', 'text', 'hotline']) await p.waitForSelector(`#nav a[href="#/${k}"]`, { state: 'attached' }); });
+  // The menu is organized by what members want to do: six groups, merged pages with tabs, and every
+  // old address opening its tab on the merged page (STRUCTURE_AUDIT.md).
+  await step('menu lists the merged pages; old addresses open their tab', async () => {
+    for (const k of ['chart', 'ai', 'scanner', 'options', 'portfolios', 'signals', 'insights', 'riskview', 'values', 'money', 'brief', 'tax', 'invest', 'analyze', 'short', 'text', 'strategies', 'bots', 'developers', 'accounts']) await p.waitForSelector(`#nav a[href="#/${k}"]`, { state: 'attached' });
+    const groups = await p.$$eval('#nav button.grp.sec', b => b.map(x => x.dataset.g).filter(g => !/^(Owner|Admin|My business)/.test(g)));
+    if (groups.length < 6 || groups.length > 8) throw new Error('member menu groups: ' + groups.join(', '));
+    for (const [old, now] of [['optionslab', 'options/optionslab'], ['fleet', 'signals/fleet'], ['risk', 'riskview/risk'], ['private', 'money/private'], ['rules', 'portfolios/rules'], ['taxpilot', 'tax/taxpilot'], ['leaders', 'scanner/leaders'], ['margin', 'riskview/margin'], ['aifunds', 'portfolios/aifunds'], ['hotline', 'text/hotline'], ['aibots', 'bots/aibots'], ['backtest', 'strategies/backtest']]) {
+      await p.goto(B + '/app#/' + old); await p.waitForFunction(h => location.hash === h, '#/' + now, { timeout: 10000 });
+      await p.waitForSelector(`.hubtabs a[aria-current="page"][href="#/${now}"]`, { timeout: 15000 });
+      if (!(await p.$(`#nav a.on[href="#/${now.split('/')[0]}"]`))) throw new Error(old + ': the menu does not mark its entry');
+    }
+    await p.goto(B + '/app#/aibots?tab=mine'); await p.waitForFunction(() => location.hash === '#/bots/aibots?tab=mine');
+  });
   await step('strategy builder: a design, my tickers, step a value with +, save, today\'s result', async () => {
     await p.goto(B + '/app#/strategies'); await p.waitForSelector('[data-use="bp_four_sleeve"]');
     await p.screenshot({ path: path.join(OUT, 'strategy-builder.png'), fullPage: true });
@@ -458,9 +470,9 @@ console.log('Settings → Language');
     await p.evaluate(() => localStorage.setItem('qp_account', 'paper')); await p.reload();
   });
   await step('marketplace section: overview, AI bots, top traders tabs', async () => {
-    await go('#/marketplace', '.mk-hub'); await p.waitForTimeout(1500); await p.screenshot({ path: path.join(OUT, 'marketplace.png'), fullPage: true }); await go('#/aimarket', '.viewtabs button.on');
-    await go('#/traders', '.viewtabs'); await p.goto(B + '/app#/aibots?tab=market'); await p.waitForFunction(() => location.hash === '#/aimarket', null, { timeout: 15000 });
-    await go('#/sharedstrategies', '.viewtabs'); await go('#/signalchannels', '.viewtabs');
+    await go('#/marketplace', '.mk-hub'); await p.waitForTimeout(1500); await p.screenshot({ path: path.join(OUT, 'marketplace.png'), fullPage: true }); await go('#/aimarket', '.hubtabs a.on[href="#/marketplace/aimarket"]');
+    await go('#/traders', '.hubtabs a.on'); await p.goto(B + '/app#/aibots?tab=market'); await p.waitForFunction(() => location.hash === '#/marketplace/aimarket', null, { timeout: 15000 });
+    await go('#/sharedstrategies', '.hubtabs a.on'); await go('#/signalchannels', '.hubtabs a.on');
   });
   await step('guides: one switch hides them on every page; setup notes are not shown to customers', async () => {
     await go('#/tax', '.pguide'); await p.click('.pguide [data-pg=off]'); await p.waitForFunction(() => !document.querySelector('.pguide'));

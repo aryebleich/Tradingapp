@@ -558,6 +558,8 @@ async function render(opts) {
   if (!quiet) render.startedAt = Date.now();
   while (cleanups.length) { try { cleanups.pop()(); } catch {} }
   const [route, q] = (location.hash.slice(2) || 'dashboard').split('?');
+  // A page that was merged into another: its old address opens its tab there (bookmarks keep working).
+  if (MERGED_INTO[route]) { location.replace(`#/${MERGED_INTO[route]}/${route}${q !== undefined ? '?' + q : ''}`); return; }
   const page = pageOf(route), entry = entryOf(route);
   if (PREFETCH && route === 'pf-wait') return; // the hidden copy waits until it is told to start
   // Each render gets a fresh container: requests still in flight from the previous page then
@@ -1393,7 +1395,7 @@ routes.backtest = async (view, q) => {
   let ran = false, tmr;
   f.addEventListener('submit', e => e.preventDefault());
   $('button', f).addEventListener('click', () => (ran = true));
-  f.addEventListener('input', () => { if (!ran) return; clearTimeout(tmr); tmr = setTimeout(() => { if (f.isConnected && /^#\/backtest/.test(location.hash)) $('button', f).click(); }, 700); });
+  f.addEventListener('input', () => { if (!ran) return; clearTimeout(tmr); tmr = setTimeout(() => { if (f.isConnected && /^#\/(strategies\/)?backtest/.test(location.hash)) $('button', f).click(); }, 700); });
   if (q.get('run')) $('button', f).click();
 };
 function resultHtml(r) {
@@ -1493,7 +1495,7 @@ routes.quantconnect = async view => {
     const b = await api(`/qc/projects/${pid}/backtests/${bid}`);
     out.innerHTML = `<div class="card"><h2>${esc(b.name)} ${b.completed ? '' : `<span class="pill">${num(b.progress * 100, 0)}%</span>`}</h2>${b.error ? `<pre class="err">${esc(b.error)}</pre>` : ''}
       <div class="stats">${Object.entries(b.statistics).map(([k, v]) => `<div class="stat"><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}</div></div>`;
-    if (!b.completed && !b.error) setTimeout(() => location.hash === '#/quantconnect' && show(pid, bid), 4000);
+    if (!b.completed && !b.error) setTimeout(() => /^#\/(developers\/)?quantconnect$/.test(location.hash) && show(pid, bid), 4000);
   };
   $$('button[data-do]', view).forEach(btn => (btn.onclick = async () => {
     const pid = btn.closest('tr').dataset.id;
@@ -2126,7 +2128,7 @@ const GEAR = {
   chart: ['Chart colors'], tax: ['Taxes'], taxpilot: ['Taxes'], quantconnect: ['QuantConnect'], brokers: ['Your brokerage'], accounts: ['Your brokerage'],
   money: ['Add-ons'], private: ['Add-ons'], brief: ['Add-ons'], text: ['Phone for SMS & hotline'], hotline: ['Phone for SMS & hotline', 'Add-ons'], news: ['News pop-ups'],
 };
-const MOVED = { 'Portfolio numbers': ['dashboard', 'Home'], 'Chart colors': ['chart', 'Chart'], 'Taxes': ['tax', 'Taxes'], 'QuantConnect': ['quantconnect', 'Cloud algorithms'], 'Your brokerage': ['brokers', 'Choose your brokerage'], 'News pop-ups': ['news', 'News & sentiment'] };
+const MOVED = { 'Portfolio numbers': ['dashboard', 'Home'], 'Chart colors': ['chart', 'Chart'], 'Taxes': ['tax', 'Taxes'], 'QuantConnect': ['developers/quantconnect', 'Cloud algorithms'], 'Your brokerage': ['accounts/brokers', 'Choose your brokerage'], 'News pop-ups': ['research/news', 'News & sentiment'] };
 const GEAR_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
 function addGear(view, route) {
   const want = GEAR[route]; if (!want || $('.pgear', view)) return;

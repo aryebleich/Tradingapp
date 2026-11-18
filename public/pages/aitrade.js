@@ -141,7 +141,7 @@ async function aibots(view, q) {
     H.$$('[data-del]', body).forEach(b => H.act(b, async () => { if (!confirm('Delete this bot? Positions it bought stay in the account.')) return ''; await H.api('/aibots/' + b.dataset.del, { method: 'DELETE' }); H.render(); }));
   } else {
     // The AI strategy marketplace lives in the Marketplace section now.
-    location.replace('#/aimarket');
+    location.replace('#/marketplace/aimarket');
   }
 }
 
