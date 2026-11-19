@@ -4,6 +4,45 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-19: Home with a clear priority order, one layout for every account type
+
+### What changed
+
+- **One Home for every account type.** Alpaca accounts no longer use their own portfolio page (`#/portfolio` redirects to Home). They see the same layout with their own data: intraday chart, margin card, today's change per position.
+- **New order, top to bottom:**
+  1. Title row: Portfolio, the account pill, the clock and an account switcher.
+  2. Action needed, only when there is something to do: approvals, trading blocked.
+  3. The welcome card, for a brand-new practice user.
+  4. The chart with 1D, 1W, 1M, 3M, 6M, 1Y and All, and the statement row.
+  5. One even row of key numbers: Total value, Today, Total P/L, Buying power, Cash, and Since you last looked when that setting is on.
+  6. The main grid. Left, about 2/3: Positions (count in the header, sorted by value, click-to-sort columns, % of portfolio, today's change), then Recent orders. Right, about 1/3: the quick ticket, My day, Why my P/L moved, and Balances & margin for Alpaca.
+  7. Get started (collapsible, and Hide is saved to the account), the page guide, the other accounts, and a small Paper account card holding Reset.
+- **Server:** `/account` positions carry `dayPl` (today's change) when market data is on.
+- **No layout shift:** My day, Why my P/L moved and Recent orders fill fixed slots with skeletons of their measured height.
+- **Fixes:** a resize redraws only the chart; "-$0.00" now shows as $0.00; the 16px gaps between Home's blocks now apply (the rule never matched before).
+- **Unchanged:** PREFS (hideToday, the chart mode and color), the live updates of every `[data-k]` value, the onboarding logic, approvals, the statement, the other-accounts boxes and Equalize.
+
+Decisions on unclear points: DECISIONS.md H-1 to H-16.
+
+### Tests
+
+- `npm test`: 389 pass, 0 fail, 3 todo. Two tests that read Home's code were pointed at the shared page, with the same checks:
+  - batch10: the chart draws the account's history without a legend;
+  - batch8: the numbers and chart refresh in place, not by redrawing the page.
+- Chromium against the mock broker, practice account (3 positions, My day on) and Alpaca account (connected with test keys), at 1280, 800 and 375px:
+  - the blocks are in the order above, and the grid is 664/332px at 1280px and one column at 375px;
+  - the key-number tiles are equal height, with 5, 3 and 2 per row;
+  - nothing is wider than the screen, and the positions table fits without scrolling at 1280px;
+  - sorting, the time ranges, the switch to Alpaca and Hide (still hidden after clearing the browser's copy) all work;
+  - no browser errors.
+- `npm run e2e` (with the pre-installed Chromium): 444 checks, exit 0, including the Alpaca home (Balances & margin), the quick ticket orders, My day on Home, and the other-accounts boxes with Equalize.
+
+### Rollback
+
+`git revert` this commit and push.
+
+---
+
 ## 2026-11-18: App structure: menu by goal, merged pages with tabs, redirects, Related links
 
 ### What changed

@@ -379,72 +379,11 @@ async function renderConfig(box) {
 // =====================================================================
 // Portfolio: balances, margin, equity history, positions summary
 // =====================================================================
-async function portfolio(view, q) {
-  const s = await needConnection(view, 'Portfolio');
-  if (!s) return;
-  const period = q.get('period') || localStorage.getItem('qp_period') || '1M';
-  // Everything at the same time (each is a call to the brokerage; one after another took seconds).
-  const [a, h, ps, clock, approvals, accts, groups] = await Promise.all([A('/account'), A('/portfolio/history?period=' + period).catch(() => ({ points: [] })), A('/positions'), A('/clock').catch(() => null), H.approvalsBanner().catch(() => ''), H.api('/accounts').catch(() => []), H.api('/combined/groups').catch(() => [])]);
-  const day = a.lastEquity ? a.equity - a.lastEquity : null;
-  const P = H.prefs();
-  // Several Alpaca accounts: switch between this account, all of them together, and the user's groups.
-  const alpacaIds = accts.filter(x => /^alpaca/.test(x.id) && x.connected);
-  const gs = alpacaIds.length > 1 ? groups : [];
-  const viewBar = alpacaIds.length > 1 ? `<div class="chips viewtabs"><button type="button" class="on">This account</button><a href="#/accounts"><button type="button">All accounts</button></a>${gs.map(g => `<a href="#/accounts?view=g:${g.id}"><button type="button">${H.esc(g.name)}</button></a>`).join('')}</div>` : '';
-  const since = P.mode !== 'live' ? H.sinceStat(await H.sinceLastLook('alpaca', a.equity)) : '';
-  view.innerHTML = `${approvals}<div class="row" style="justify-content:space-between"><h1>Portfolio <span class="pill ${a.connection.live ? 'warn' : ''}">${a.connection.live ? 'LIVE' : a.connection.type === 'broker' ? 'Sandbox' : 'Paper'}</span></h1></div>
-  ${viewBar}
-  ${clock ? `<p class="mu">Market is <b class="${clock.is_open ? 'pos' : ''}">${clock.is_open ? 'open' : 'closed'}</b> · ${clock.is_open ? 'closes ' + new Date(clock.next_close).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'opens ' + new Date(clock.next_open).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}</p>` : ''}
-  ${a.tradingBlocked ? '<div class="banner err">Trading is blocked on this account. Check your brokerage account status.</div>' : ''}
-  <div class="card">
-    <div class="stats">
-      <div class="stat"><span>Equity</span><b data-k="eq">${usd(a.equity)}</b></div>
-      ${P.hideToday ? '' : `<div class="stat"><span>Today</span><b data-k="day" class="${H.cls(day)}">${day == null ? '-' : `${usd(day)} (${H.pct(day / a.lastEquity * 100, 2)})`}</b></div>`}
-      ${since}
-      <div class="stat"><span>Buying power</span><b data-k="bp">${usd(a.buyingPower)}</b></div>
-      <div class="stat"><span>Cash</span><b data-k="cash">${usd(a.cash)}</b></div>
-    </div>
-    <div class="chips" id="periods" style="margin-top:12px">${['1D', '1W', '1M', '3M', '6M', '1A', 'all'].map(p => `<button data-p="${p}" class="${p === period ? 'on' : ''}">${p === '1A' ? '1Y' : p === 'all' ? 'All' : p}</button>`).join('')}</div>
-    <canvas id="eq"></canvas>
-    ${H.statementRow('alpaca')}
-    <p class="mu" id="eqUpdated" style="font-size:12px;margin:6px 0 0;text-align:end" aria-live="off" ${P.mode === 'since' ? 'hidden' : ''}>Updated ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</p>
-  </div>
-  <div id="acctBoxes"></div>
-  <div class="grid">
-    <div class="card"><h2>Balances & margin</h2><div class="kv">
-      <span>Long market value</span><span>${usd(a.longMarketValue)}</span><span>Short market value</span><span>${usd(a.shortMarketValue)}</span>
-      <span>Reg T buying power</span><span>${usd(a.regtBuyingPower)}</span><span>Day-trading buying power</span><span>${usd(a.daytradingBuyingPower)}</span>
-      <span>Non-marginable buying power</span><span>${usd(a.nonMarginableBuyingPower)}</span><span>Options buying power</span><span>${usd(a.optionsBuyingPower)}</span>
-      <span>Initial margin</span><span>${usd(a.initialMargin)}</span><span>Maintenance margin</span><span>${usd(a.maintenanceMargin)}</span>
-      <span>Margin multiplier</span><span>${a.multiplier ?? '-'}x</span><span>Day trades (5 days)</span><span>${a.daytradeCount ?? 0}${a.patternDayTrader ? ' · PDT' : ''}</span>
-      <span>Options level</span><span>${a.optionsLevel ?? '-'}</span><span>Crypto</span><span>${H.esc(a.cryptoStatus || '-')}</span></div></div>
-    <div class="card"><div class="row" style="justify-content:space-between"><h2>Positions</h2><a href="#/positions">All positions →</a></div>
-      <div class="tablewrap"><table><tr><th>Symbol</th><th class="num">Value</th><th class="num">Today</th><th class="num">Total P/L</th></tr>
-      ${ps.slice(0, 8).map(p => `<tr><td><a href="#/trade?symbol=${encodeURIComponent(p.symbol)}">${H.esc(p.symbol)}</a></td><td class="num">${usd(p.marketValue)}</td><td class="num ${H.cls(p.todayPl)}">${usd(p.todayPl)}</td><td class="num ${H.cls(p.unrealizedPl)}">${usd(p.unrealizedPl)} (${H.pct(p.unrealizedPlPct)})</td></tr>`).join('') || '<tr><td colspan="4" class="mu">No positions. <a href="#/trade">Place a trade</a></td></tr>'}</table></div></div>
-  </div>`;
-  let pts = h.points, hist = h;
-  const drawEq = () => H.drawChart(H.$('#eq', view), pts.map(p => p.equity), { base: hist.baseValue || pts[0]?.equity, dates: pts.map(p => p.t), time: ['1D', '1W'].includes(period), legend: false });
-  drawEq(); onResize(drawEq); H.wireStatement(view, 'alpaca'); H.accountBoxes(H.$('#acctBoxes', view)).catch(() => {});
-  H.$$('#periods button', view).forEach(b => (b.onclick = () => { try { localStorage.setItem('qp_period', b.dataset.p); } catch {} location.hash = '#/dashboard?period=' + b.dataset.p; }));
-  // Quiet refresh: numbers change in place and the chart redraws only when its data changed. Nothing
-  // updates while a finger or the mouse is on the chart, so it never shifts while you read it.
-  const chart = H.$('#eq', view); let holding = false;
-  chart.addEventListener('pointerenter', () => (holding = true)); chart.addEventListener('pointerleave', () => (holding = false));
-  chart.addEventListener('touchstart', () => (holding = true), { passive: true }); chart.addEventListener('touchend', () => setTimeout(() => (holding = false), 4000), { passive: true });
-  const stamp = H.$('#eqUpdated', view), statEl = k => H.$(`.stats [data-k=${k}]`, view);
-  const tick = async () => {
-    if (holding || P.mode === 'since') return;
-    const [a2, h2] = await Promise.all([A('/account'), A('/portfolio/history?period=' + period).catch(() => null)]).catch(() => []);
-    if (!a2 || !H.$('#eq', view)) return;
-    const d2 = a2.lastEquity ? a2.equity - a2.lastEquity : null;
-    const vals = { eq: usd(a2.equity), day: d2 == null ? '-' : `${usd(d2)} (${H.pct(d2 / a2.lastEquity * 100, 2)})`, bp: usd(a2.buyingPower), cash: usd(a2.cash) };
-    for (const [k, v] of Object.entries(vals)) { const b = statEl(k); if (b && b.textContent !== v) b.textContent = v; }
-    if (statEl('day')) statEl('day').className = H.cls(d2);
-    if (h2?.points && JSON.stringify(h2.points) !== JSON.stringify(pts)) { pts = h2.points; hist = h2; drawEq(); }
-    if (stamp) stamp.textContent = 'Updated ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-  };
-  every(60000, tick);
-}
+// Home for an Alpaca account is the same page as for every account type (routes.dashboard in
+// public/app.js). Before it loads, this shows the "connect Alpaca" notice when no account is ready
+// (and returns null); #/portfolio stays as an old address of Home.
+export const alpacaReady = view => needConnection(view, 'Portfolio');
+async function portfolio() { location.replace('#/dashboard'); }
 
 // =====================================================================
 // Trade: search, live quote, candlestick chart, news, order ticket

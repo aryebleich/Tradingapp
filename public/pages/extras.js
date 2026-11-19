@@ -34,7 +34,7 @@ export async function myDayCard(helpers, view) {
   // On the home grid the card goes into its own slot; elsewhere it follows the page heading.
   const slot = H.$('[data-slot=myday]', view);
   const anchor = slot ? null : H.$('#homeClock', view) || H.$('.pguide', view) || H.$('h1', view)?.closest('.row') || H.$('h1', view);
-  if (slot) slot.append(el); else if (anchor) anchor.after(el); else view.prepend(el);
+  if (slot) slot.replaceChildren(el); else if (anchor) anchor.after(el); else view.prepend(el); // on Home it takes the place of its skeleton
 }
 
 // ---------- Before an order: second opinion, your habits, the tax ----------

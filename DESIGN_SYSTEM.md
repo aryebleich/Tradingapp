@@ -88,7 +88,17 @@ When pages do one job together, the menu shows one entry and the page shows a ta
 
 ## Dashboard home
 
-The home page (`routes.dashboard`) runs in a fixed order: the title row (the clock sits in it), the portfolio chart at full width, the key numbers (`.stats.dash-kpis`), the page guide, notices and onboarding, and then `.dash-grid`. The grid has two columns, and one column under 768px. Gaps are `--s4` between blocks and cards and `--s3` between stat tiles. Grid cards use the theme's card padding (18px) and `--r`, and their first `h2` uses `--t-lg`. A card added later by another module goes into its own `[data-slot]` (`display: contents`, so an empty slot leaves no gap). It is never appended to the view. A wide card (a table with many columns) takes `.dash-span`.
+Home (`routes.dashboard`) is one page for every account type: practice, Alpaca and the other brokerages. Each type supplies the same shape of data (`homeBasic`, `homeAlpaca`). The order is fixed:
+
+1. Title row: "Portfolio", the account pill, the clock and the account switcher.
+2. "Action needed", one compact banner, only when there is something to do.
+3. The welcome card, only for a brand-new practice account.
+4. The chart, with time ranges and the statement row.
+5. One row of key numbers (`.dash-kpis`): 5 across on desktop (6 with "Since you last looked"), 3 on a tablet, 2 on a phone, every tile the same height.
+6. The main grid (`.dash-main`, about 2/3 and 1/3, one column under 768px). Left: Positions (count in the header, sorted by value, sortable columns), then Recent orders. Right: the quick ticket, My day, Why my P/L moved, and for Alpaca, Balances & margin.
+7. Get started (collapsible; Hide is saved to the account), the page guide slot, the other accounts (`#acctBoxes`) and, for practice money, the Paper account card with Reset.
+
+Cards that load later go into fixed slots holding a skeleton of their usual height, so nothing below them moves. Every card uses the theme's 18px padding and `--r`, and every card heading uses `--t-lg`.
 
 ## Mobile navigation pattern
 

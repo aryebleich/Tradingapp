@@ -53,6 +53,25 @@ Choices and assumptions made without asking, with the reason. Trading-tools work
 | D-19 | Position sizes round down to whole lots with a tiny tolerance (1e-9) so floating-point results like 9.999999999 count as 10. | Shown by a test; never rounds up past the risk budget. |
 | D-20 | Backtests and simulations: none were added. The tools only calculate from user inputs and read-only prices. | Rule 5 needs no new handling here. |
 
+## Home: one layout for every account, priority order (2026-11-19)
+
+- H-1: One renderer for every account type. Practice and the other brokerages read `/account` (homeBasic); Alpaca reads `/alpaca/account`, `/alpaca/positions` and `/alpaca/portfolio/history` (homeAlpaca), so it keeps intraday history, margin numbers and today's change per position. `#/portfolio` now redirects to Home.
+- H-2: The task text was cut off after "follow DESIGN_" and "Push deploy". I read these as "follow DESIGN_SYSTEM.md" and "push to main, which deploys".
+- H-3: Time ranges are 1D, 1W, 1M, 3M, 6M, 1Y and All. 6M was kept because Alpaca already had it and removing a range would drop a feature. Practice accounts have only one point a day, so their ranges filter the daily history, and 1D compares with the day before. The choice is remembered in this browser (qp_period), and `?period=` still works.
+- H-4: Total P/L means "since the account started" for practice and the other brokerages (as before), and "unrealized P/L on what you hold" for Alpaca, which reports no starting value. The tile's tooltip says which.
+- H-5: "Open positions" became a count next to the Positions heading. The positions table keeps its data in 6 columns, so it fits the wide column without scrolling: quantity and average cost sit under the symbol, the P/L percentage under the P/L. It shows the 10 largest, with "All N positions →" when there are more.
+- H-6: Today's change per position: a new `dayPl` on `/account` positions, from market-data snapshots (last price against the previous close). It is computed only when market data is on, and shows "-" otherwise. Alpaca uses its own intraday P/L.
+- H-7: The sort order is remembered in this browser (qp_home_sort), because it is a viewing convenience.
+- H-8: "Action needed" combines pending strategy approvals and "trading is blocked" (Alpaca) in one banner. Other pages keep their approvals banner (approvalsBanner, now built from approvalItems).
+- H-9: Hiding "Get started" is saved to the account (the portfolio preference onboardHidden) as well as this browser, so it stays hidden on every device. Settings now saves the portfolio preference with the existing value spread first, so it never clears that flag.
+- H-10: The account switcher in the title row lists the accounts you can trade. With several Alpaca accounts it adds "All accounts" and your groups, which open the All accounts page; this replaces the Alpaca "This account / All accounts / groups" chips. The header's Paper/Live switch is unchanged.
+- H-11: The Alpaca "Market is open · closes 4 PM" line was dropped, because the title-row clock shows the New York time and session for every account.
+- H-12: Alpaca accounts now have the quick ticket on Home (it already supports Alpaca orders, including real-money confirmation) and Recent orders. The Cancel button in Recent orders shows only for practice orders, because it cancels through the practice-order route.
+- H-13: Skeletons: My day reserves 290px and Why my P/L moved 370px, the heights measured in the browser with a few positions, and Recent orders 132px. A P/L card for many holdings can grow taller than its slot; only the Balances & margin card below it in the right column moves then.
+- H-14: Resizing the window redraws only the chart (an event Home listens to). It used to redraw the whole page, except on Alpaca, which redrew its own chart.
+- H-15: Values under half a cent are shown as zero, because float leftovers showed "-$0.00".
+- H-16: The Home spacing rule targeted `#view > .dash`, which never matched (pages sit in a wrapper inside #view). It is now `#view .dash`, so the 16px gaps apply.
+
 ## App structure: menu by goal, merged pages, redirects (2026-11-18)
 
 - M-1: The audit (STRUCTURE_AUDIT.md) lists all 94 pages. Its sources are the code, FEATURES.md, the page guides and a browser crawl of every page against the mock broker, because the guides describe what each page is for in the members' words.

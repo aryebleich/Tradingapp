@@ -165,10 +165,12 @@ test('a long PDF starts with contents that give the right page for each section'
 
 test('the portfolio chart refreshes quietly instead of rebuilding the page', async () => {
   const fs = await import('node:fs');
-  const tr = fs.readFileSync('public/pages/trading.js', 'utf8'), app = fs.readFileSync('public/app.js', 'utf8');
-  const portfolio = tr.slice(tr.indexOf('async function portfolio('), tr.indexOf('\n}\n', tr.indexOf('async function portfolio(')));
-  assert.doesNotMatch(portfolio, /every\(\d+, \(\) => H\.render\(\)\)/);
-  assert.match(portfolio, /if \(holding \|\| P\.mode === 'since'\) return/);
+  const app = fs.readFileSync('public/app.js', 'utf8');
+  // Home (every account type, Alpaca included) updates its numbers and chart in place.
+  const home = app.slice(app.indexOf('routes.dashboard = async'), app.indexOf('\n};\n', app.indexOf('routes.dashboard = async')));
+  assert.doesNotMatch(home, /setInterval\([^)]*render\(\)/);
+  assert.match(home, /if \(P\.mode !== 'since'\) \{/);
+  assert.match(home, /if \(document\.hidden \|\| holding \|\| !\$\('\[data-k=eq\]', view\)\) return;/);
   // The drawing animation plays only the first time a chart is shown.
   assert.match(app, /if \(calmMotion\(\) \|\| seen\) return frame\(1\)/);
 });

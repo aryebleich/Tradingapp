@@ -89,7 +89,7 @@ import * as PAY from './src/payments.js';
 import { router as alpacaRouter } from './src/routes/alpaca.js';
 import { oauthCallback, oauthEnabled, tradingFor } from './src/alpaca/connections.js';
 import { brokerEnabled } from './src/alpaca/broker.js';
-import { dataEnabled } from './src/alpaca/data.js';
+import { dataEnabled, snapshots as dataSnapshots } from './src/alpaca/data.js';
 import { router as googleRouter, googleEnabled } from './src/google.js';
 import { ownHosts, publicUrl } from './src/origin.js';
 import { edgeSecret } from './src/edgesetup.js';
@@ -823,6 +823,12 @@ api.post('/strategies/:id/deploy', U, wrap(async (req, res) => {
 
 api.get('/account', U, wrap(async (req, res) => {
   const a = acct(req), s = a === 'paper' ? await snapshotEquity(req.user.id) : await accountSummary(req.user.id, a);
+  // Today's change of each holding (last price against the previous close), for Home's positions
+  // table. Only with market data on; without it the column shows "-".
+  if (s?.positions?.length && dataEnabled()) {
+    const snaps = await dataSnapshots(s.positions.map(p => p.symbol)).catch(() => ({}));
+    for (const p of s.positions) { const prev = snaps[p.symbol]?.prevDailyBar?.c; p.dayPl = prev && p.price ? +(p.qty * (p.price - prev)).toFixed(2) : null; }
+  }
   res.json({ ...s, history: await portfolioHistory(req.user.id, a).catch(() => []) });
 }));
 api.get('/orders', U, wrap(async (req, res) => res.json(await listOrders(req.user.id, acct(req)))));

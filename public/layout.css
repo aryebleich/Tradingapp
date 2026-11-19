@@ -56,21 +56,56 @@ html.lv2 #view .related > span { color: var(--mu); font-weight: 600; }
 }
 
 /* ---------- app: dashboard home (DESIGN_SYSTEM.md, "Dashboard home") ---------- */
-/* chart first, then the key numbers, then a two-column card grid (one column under 768px); every card
-   shares the theme's padding, radius and heading style, and the gaps are --s4 */
-html.lv2 #view > .dash { display: flex; flex-direction: column; gap: var(--s4); margin-bottom: var(--s4); }
+/* title row, Action needed, (welcome), chart, one even row of key numbers, then the main grid: a wide
+   left column (positions, recent orders) and a narrow right one (ticket, My day, P/L); one column under
+   768px. Every card shares the theme's padding, radius and heading style; gaps are --s4 */
+html.lv2 #view .dash { display: flex; flex-direction: column; gap: var(--s4); margin-bottom: var(--s4); } /* the page sits in a wrapper inside #view */
 html.lv2 .dash > * { margin: 0; min-width: 0; max-width: 100%; }
-html.lv2 .dash-title { align-items: baseline; flex-wrap: wrap; gap: var(--s1) var(--s3); }
-html.lv2 .dash-title .homeclock { margin: 0; }
+html.lv2 .dash-title { align-items: center; flex-wrap: wrap; gap: var(--s2) var(--s3); }
+html.lv2 .dash-title h1 { margin: 0; flex: 0 0 auto; white-space: nowrap; display: flex; align-items: center; gap: var(--s2); }
+html.lv2 .dash-title .homeclock { margin: 0; flex: 1 1 auto; min-width: 0; } /* the clock's parts wrap inside it, so the switcher stays on the row */
+html.lv2 .dash-acct { margin-inline-start: auto; flex: 0 0 190px; }
+@media (min-width: 641px) { html.lv2 .dash-title { flex-wrap: nowrap; } }
+html.lv2 .dash-acct select { width: 100%; }
+html.lv2 .dash-action { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s1) var(--s3); padding: 10px 14px; }
+html.lv2 .dash-action .da-h { text-transform: uppercase; font-size: 12px; letter-spacing: .06em; }
+html.lv2 .dash-ranges { margin: 0 0 var(--s3); }
 html.lv2 .dash-chart canvas { height: 320px; }
-html.lv2 .dash-kpis { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--s3); }
-html.lv2 .dash-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4); align-items: stretch; }
-html.lv2 .dash-slot { display: contents; } /* empty until its card arrives, so it never leaves a gap */
-html.lv2 .dash-grid .card { margin: 0; min-width: 0; padding: 18px; border-radius: var(--r); }
-html.lv2 .dash-grid .card > h2:first-child, html.lv2 .dash-grid .pnlwhy .pw-head h2 { font-size: var(--t-lg); line-height: 1.3; margin: 0 0 var(--s3); }
-html.lv2 .dash-span { grid-column: 1 / -1; }
-@media (max-width: 767px) { html.lv2 .dash-grid { grid-template-columns: minmax(0, 1fr); } }
-@media (max-width: 640px) { html.lv2 .dash-chart canvas { height: 220px; } html.lv2 .dash-title .homeclock { gap: 0 var(--s2); font-size: var(--t-sm); } html.lv2 .dash-title .homeclock .hc-time { font-size: var(--t-lg); } }
+/* key numbers: 5 (or 6 with Since you last looked) across on desktop, 3 on a tablet, 2 on a phone; every tile the same height */
+html.lv2 #view .dash-kpis { display: grid; grid-template-columns: repeat(var(--n, 5), minmax(0, 1fr)); grid-auto-rows: 1fr; gap: var(--s3); margin: 0; }
+html.lv2 .dash-kpis .stat { display: flex; flex-direction: column; justify-content: flex-start; min-width: 0; }
+html.lv2 .dash-kpis .stat b { overflow-wrap: anywhere; }
+html.lv2 .dash-main { display: grid; grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); gap: var(--s4); align-items: start; }
+html.lv2 .dash-col { display: flex; flex-direction: column; gap: var(--s4); min-width: 0; }
+html.lv2 .dash .card { margin: 0; min-width: 0; padding: 18px; border-radius: var(--r); }
+html.lv2 .dash .card h2, html.lv2 .dash .pnlwhy .pw-head h2 { font-size: var(--t-lg); line-height: 1.3; margin: 0 0 var(--s3); }
+html.lv2 .dash-ch { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s3); margin: 0 0 var(--s3); }
+html.lv2 .dash-ch h2 { margin: 0 !important; display: flex; align-items: center; gap: var(--s2); }
+html.lv2 .dash-ch a { font-size: 14px; white-space: nowrap; }
+html.lv2 .dash .pill.count { font-size: 12px; padding: 1px 8px; }
+html.lv2 .postable .sortbtn { all: unset; cursor: pointer; display: inline-flex; gap: 4px; align-items: center; font: inherit; color: inherit; white-space: nowrap; }
+html.lv2 .postable .sortbtn:focus-visible { outline: var(--focus); outline-offset: 2px; }
+html.lv2 .postable .sortbtn.on { color: var(--tx); }
+html.lv2 .postable th.num .sortbtn { justify-content: flex-end; }
+/* cards that load later keep the space of their skeleton, so nothing below them moves */
+html.lv2 .dash-slot[data-slot=guide] { display: contents; }
+html.lv2 .dash-slot[data-slot=myday] { min-height: 290px; display: flex; flex-direction: column; }
+html.lv2 .dash-slot[data-slot=pnlwhy] { min-height: 370px; display: flex; flex-direction: column; }
+html.lv2 .postable .pos-sub { display: block; font-size: 12px; font-weight: 400; white-space: nowrap; }
+html.lv2 .dash-slot > .card { flex: 1 0 auto; }
+html.lv2 .dash-orders #orders { min-height: 132px; }
+html.lv2 .dash .onboard > summary { list-style: none; cursor: pointer; }
+html.lv2 .dash .onboard > summary::-webkit-details-marker { display: none; }
+@media (max-width: 1100px) { html.lv2 #view .dash-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 767px) { html.lv2 .dash-main { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) {
+  html.lv2 #view .dash-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html.lv2 #view .dash-ranges { flex-wrap: nowrap; overflow: visible; gap: 4px; justify-content: space-between; } /* all seven fit on a 375px phone */
+  html.lv2 #view .dash-ranges button { min-height: 36px; min-width: 0; padding: 4px 8px; font-size: 13px; flex: 1 1 0; }
+  html.lv2 .dash-chart canvas { height: 220px; }
+  html.lv2 .dash-title .homeclock { gap: 0 var(--s2); font-size: var(--t-sm); } html.lv2 .dash-title .homeclock .hc-time { font-size: var(--t-lg); }
+  html.lv2 .dash-acct { flex: 1 1 100%; margin: 0; }
+}
 
 /* tables: scroll inside their own box, never the page (tables are wrapped by layout.js) */
 html.lv2 .tablewrap { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%;

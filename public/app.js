@@ -6,7 +6,7 @@
 //   index.html, yi.html, terms.html ...   the public website; site.js, site.css, chartstates.js
 //   sw.js              keeps files on the device so repeat visits open at once
 // Brightolio single-page client. Hash routes, no framework.
-import { registerTrading } from './pages/trading.js';
+import { registerTrading, alpacaReady } from './pages/trading.js';
 import { chartStates, RICH_STATES, richStates, blendedColors } from './chartstates.js';
 import { registerBrokers } from './pages/brokers.js';
 import { registerProtect, getPasskey } from './pages/protect.js';
@@ -1149,10 +1149,12 @@ function wireStatement(view, account) {
   f.month.onchange = () => { $('#stmtGo', view).href = `/api/statement?account=${encodeURIComponent(account)}&month=${f.month.value}`; };
   f.onsubmit = e => e.preventDefault();
 }
-async function approvalsBanner() {
+// Strategies waiting for the user's approval: one line each (Home puts them in "Action needed").
+async function approvalItems() {
   const p = await api('/library/pending').catch(() => []);
-  return p.length ? `<div class="banner approvals">${p.map(x => `<span><b>${esc(x.name)}</b> is ready: ${x.orders.slice(0, 3).map(o => `${o.side.toUpperCase()} ${o.qty} <span data-no-tr>${esc(o.ticker)}</span>`).join(', ')}${x.orders.length > 3 ? '…' : ''} <a href="#/strategy?id=${x.id}">Review and approve</a></span>`).join('')}</div>` : '';
+  return p.map(x => `<span><b>${esc(x.name)}</b> is ready: ${x.orders.slice(0, 3).map(o => `${o.side.toUpperCase()} ${o.qty} <span data-no-tr>${esc(o.ticker)}</span>`).join(', ')}${x.orders.length > 3 ? '…' : ''} <a href="#/strategy?id=${x.id}">Review and approve</a></span>`).join('');
 }
+async function approvalsBanner() { const items = await approvalItems(); return items ? `<div class="banner approvals">${items}</div>` : ''; }
 // Home: one row of boxes (value, today, total P/L, cash) for every Alpaca account and every group
 // of accounts the user made, and the total of all of them. Filled in after the page shows.
 async function accountBoxes(box) {
@@ -1225,85 +1227,192 @@ function homeClock(view) {
   const stop = () => clearTimeout(timer);
   loop(); onLeave(stop);
 }
+// ---------- Home (every account type: practice, Alpaca and the other brokerages) ----------
+// Top to bottom: title row (account pill, clock, account switcher); "Action needed" when there is
+// something to do; the welcome card for a brand-new practice user; the chart with its time ranges and
+// the statement; one even row of key numbers; the main grid (positions and recent orders on the
+// left, the quick ticket, My day and Why my P/L changed on the right); then Get started, the page
+// guide, the other-accounts boxes and the practice-account card. Cards that arrive later fill fixed
+// slots that hold a skeleton of their size, so nothing below them moves. Each account type gives the
+// same shape of data (homeBasic, homeAlpaca); drawHome builds the page from it.
+const HOME_RANGES = [['1D', '1D'], ['1W', '1W'], ['1M', '1M'], ['3M', '3M'], ['6M', '6M'], ['1A', '1Y'], ['all', 'All']];
+const RANGE_DAYS = { '1D': 1, '1W': 7, '1M': 31, '3M': 92, '6M': 183, '1A': 366, all: Infinity };
+// A difference of less than half a cent is zero (float leftovers showed as "-$0.00").
+const cent = x => (Math.abs(x) < 0.005 ? 0 : x);
+const homeRange = q => { const r = q.get('period') || (() => { try { return localStorage.getItem('qp_period'); } catch { return null; } })(); return RANGE_DAYS[r] ? r : '1M'; };
+// Practice account and the other brokerages: one call has the account, its positions and its daily history.
+async function homeBasic() {
+  const a = await api('/account?account=' + state.account).catch(e => ({ error: e.message }));
+  if (a.error) return { error: a.error };
+  const base = a.startCash ?? a.history[0]?.equity ?? a.equity;
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+  const prevOf = b => b.lastEquity || [...(b.history || [])].reverse().find(x => x.day < today)?.equity;
+  const nums = b => { const prev = prevOf(b), pl = cent(b.equity - base); return { equity: b.equity, cash: b.cash, bp: b.buyingPower ?? b.cash, prev, day: prev ? cent(b.equity - prev) : null, pl, plPct: base ? pl / base * 100 : 0 }; };
+  // The chart: the daily snapshots in the chosen range (1D compares with the day before).
+  const history = async range => {
+    const days = RANGE_DAYS[range], h = a.history || [];
+    const from = days === Infinity ? '' : new Date(Date.now() - days * 864e5).toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+    let pts = h.filter(x => x.day >= from); const before = h.filter(x => x.day < from).at(-1);
+    if (before && pts.length < 2) pts = [before, ...pts];
+    return { values: pts.map(x => x.equity), dates: pts.map(x => x.day), base, time: false };
+  };
+  return {
+    a, live: !!a.live, paper: state.account === 'paper', acct: state.account,
+    pill: a.live ? '<span class="pill warn">LIVE MONEY</span>' : state.account === 'paper' ? '<span class="pill">Paper</span>' : '<span class="pill">Live account, test money</span>',
+    n: nums(a), plTitle: 'Profit or loss since the account started',
+    positions: a.positions.map(p => ({ symbol: p.symbol, qty: p.qty, avg: p.avgPrice, price: p.price, value: p.value, day: p.dayPl ?? null, pl: p.pnl, plPct: p.avgPrice && p.qty ? p.pnl / Math.abs(p.avgPrice * p.qty) * 100 : null })),
+    history, tick: async () => { const b = await api('/account?account=' + state.account).catch(() => null); return b && !b.error ? nums(b) : null; },
+    alerts: [], side: '',
+  };
+}
+// Alpaca: the account (with margin), positions with today's change, and intraday history by range.
+async function homeAlpaca(view) {
+  const s = await alpacaReady(view); if (!s) return null; // the "connect Alpaca" notice is on the page
+  const A = (p, o) => api('/alpaca' + p, o);
+  const [a, ps] = await Promise.all([A('/account'), A('/positions')]);
+  const pl = ps.reduce((t, p) => t + (p.unrealizedPl || 0), 0), cost = ps.reduce((t, p) => t + Math.abs(p.costBasis || 0), 0);
+  const nums = b => ({ equity: b.equity, cash: b.cash, bp: b.buyingPower, prev: b.lastEquity, day: b.lastEquity ? cent(b.equity - b.lastEquity) : null, pl: cent(pl), plPct: cost ? cent(pl) / cost * 100 : 0 });
+  const usd = x => (x == null || !isFinite(x) ? '-' : money(x));
+  return {
+    a: { ...a, live: a.connection.live }, live: a.connection.live, paper: false, acct: 'alpaca',
+    pill: a.connection.live ? '<span class="pill warn">LIVE MONEY</span>' : `<span class="pill">${a.connection.type === 'broker' ? 'Sandbox' : 'Paper'}</span>`,
+    n: nums(a), plTitle: 'Unrealized profit or loss on what you hold now',
+    positions: ps.map(p => ({ symbol: p.symbol, qty: p.qty, avg: p.avgEntry, price: p.price, value: p.marketValue, day: p.todayPl, pl: p.unrealizedPl, plPct: p.unrealizedPlPct })),
+    history: async range => { const h = await A('/portfolio/history?period=' + range).catch(() => ({ points: [] })), pts = h.points || []; return { values: pts.map(p => p.equity), dates: pts.map(p => p.t), base: h.baseValue || pts[0]?.equity, time: ['1D', '1W'].includes(range) }; },
+    tick: async () => { const b = await A('/account').catch(() => null); return b ? nums(b) : null; },
+    alerts: a.tradingBlocked ? ['<span><b>Trading is blocked on this account.</b> Check your brokerage account status.</span>'] : [],
+    side: `<div class="card"><h2>Balances & margin</h2><div class="kv">
+      <span>Long market value</span><span>${usd(a.longMarketValue)}</span><span>Short market value</span><span>${usd(a.shortMarketValue)}</span>
+      <span>Reg T buying power</span><span>${usd(a.regtBuyingPower)}</span><span>Day-trading buying power</span><span>${usd(a.daytradingBuyingPower)}</span>
+      <span>Non-marginable buying power</span><span>${usd(a.nonMarginableBuyingPower)}</span><span>Options buying power</span><span>${usd(a.optionsBuyingPower)}</span>
+      <span>Initial margin</span><span>${usd(a.initialMargin)}</span><span>Maintenance margin</span><span>${usd(a.maintenanceMargin)}</span>
+      <span>Margin multiplier</span><span>${a.multiplier ?? '-'}x</span><span>Day trades (5 days)</span><span>${a.daytradeCount ?? 0}${a.patternDayTrader ? ' · PDT' : ''}</span>
+      <span>Options level</span><span>${a.optionsLevel ?? '-'}</span><span>Crypto</span><span>${esc(a.cryptoStatus || '-')}</span></div></div>`,
+  };
+}
+// The account switcher in the title row: every account you can trade, and (with several Alpaca
+// accounts) all of them together and your groups, which open the All accounts page.
+async function homeSwitcher() {
+  const list = (await accounts()).filter(a => a.id === 'paper' || a.connected);
+  const alp = list.filter(a => /^alpaca/.test(a.id));
+  const groups = alp.length > 1 ? await api('/combined/groups').catch(() => []) : [];
+  const opts = list.map(a => `<option value="${esc(a.id)}" ${a.id === state.account ? 'selected' : ''}>${esc(acctLabel(a))}</option>`).join('')
+    + (alp.length > 1 ? `<optgroup label="Together"><option value="view:">All accounts</option>${groups.map(g => `<option value="view:g:${esc(g.id)}">${esc(g.name)}</option>`).join('')}</optgroup>` : '');
+  return list.length > 1 || alp.length > 1 ? `<label class="dash-acct"><select id="homeAcct" aria-label="Account">${opts}</select></label>` : '';
+}
+// Positions, largest first; the column headers sort (remembered in this browser).
+// Six columns so the table fits the wide column without scrolling: the quantity and average cost sit
+// under the symbol, and the P/L percentage under the P/L.
+const POS_COLS = [['symbol', 'Symbol'], ['price', 'Price'], ['value', 'Value'], ['weight', '% of portfolio'], ['day', 'Today'], ['pl', 'Total P/L']];
+function positionsTable(rows, equity, sort) {
+  const list = rows.map(p => ({ ...p, weight: equity ? Math.abs(p.value) / equity * 100 : null }));
+  const k = sort.k, dir = sort.dir === 'asc' ? 1 : -1;
+  list.sort((x, y) => (k === 'symbol' ? x.symbol.localeCompare(y.symbol) : (x[k] ?? -Infinity) - (y[k] ?? -Infinity)) * dir || y.value - x.value);
+  const shown = list.slice(0, 10), nc = c => (c === 'symbol' ? '' : ' class="num"');
+  const head = POS_COLS.map(([c, t]) => `<th${nc(c)} aria-sort="${c === k ? (dir === 1 ? 'ascending' : 'descending') : 'none'}"><button type="button" class="sortbtn${c === k ? ' on' : ''}" data-sort="${c}">${t}<span aria-hidden="true">${c === k ? (dir === 1 ? '▲' : '▼') : ''}</span></button></th>`).join('');
+  const body = shown.map(p => `<tr><td><a href="#/trade?symbol=${encodeURIComponent(p.symbol)}" data-no-tr><b>${esc(p.symbol)}</b></a><small class="mu pos-sub">${num(p.qty, 4)} · avg ${money(p.avg)}</small></td><td class="num">${money(p.price)}</td><td class="num">${money(p.value)}</td>
+    <td class="num">${p.weight == null ? '-' : pct(p.weight, 1).replace(/^\+/, '')}</td><td class="num ${cls(p.day)}">${p.day == null ? '-' : money(p.day)}</td><td class="num ${cls(p.pl)}">${money(p.pl)}${p.plPct == null ? '' : `<small class="mu pos-sub">${pct(p.plPct, 2)}</small>`}</td></tr>`).join('');
+  return `<div class="tablewrap"><table class="postable"><tr>${head}</tr>${body || `<tr><td colspan="${POS_COLS.length}" class="mu">No positions. <a href="#/trade">Place a trade</a></td></tr>`}</table></div>
+    ${list.length > shown.length ? `<p class="mu small-print" style="margin:8px 0 0"><a href="#/positions">All ${list.length} positions →</a></p>` : ''}`;
+}
 routes.dashboard = async (view, q) => {
   await accounts();
-  if (state.account === 'alpaca') { await routes.portfolio(view, q); return homeClock(view); }
-  const approvalsP = approvalsBanner().catch(() => '');
-  const a = await api('/account?account=' + state.account).catch(e => ({ error: e.message }));
-  if (a.error) {
-    view.innerHTML = `<h1>Portfolio</h1><div class="card"><p class="err">${esc(a.error)}</p><a href="#/settings">Open Settings</a></div>`;
-    return;
-  }
-  const base = a.startCash ?? a.history[0]?.equity ?? a.equity;
-  const pnl = a.equity - base, pnlPct = base ? pnl / base * 100 : 0;
-  // Today's change: Alpaca reports yesterday's close; for paper use the last snapshot before today.
-  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
-  const prev = a.lastEquity || [...a.history].reverse().find(x => x.day < today)?.equity;
-  const dayChg = prev ? a.equity - prev : null;
-  const steps = [[!!localStorage.getItem('qp_seen_strategies'), 'Try a ready-made strategy', '#/strategies'], [ME.totpEnabled, 'Turn on two-factor login', '#/settings'], [a.positions.length > 0 || state.account !== 'paper', 'Place your first paper trade', '#/dashboard'],
+  const src = state.account === 'alpaca' ? await homeAlpaca(view) : await homeBasic();
+  if (!src) return;
+  if (src.error) { view.innerHTML = `<h1>Portfolio</h1><div class="card"><p class="err">${esc(src.error)}</p><a href="#/settings">Open Settings</a></div>`; return; }
+  const P = PREFS.portfolio, range = homeRange(q), a = src.a, n = src.n;
+  const [approvals, switcher, since, START] = await Promise.all([approvalItems().catch(() => ''), homeSwitcher().catch(() => ''),
+    P.mode !== 'live' ? sinceLastLook(src.acct, n.equity).then(sinceStat) : '', import('./pages/start.js').then(m => m.startDone()).catch(() => true)]);
+  const fresh = !START && state.account === 'paper' && src.positions.length === 0;
+  const steps = [[!!localStorage.getItem('qp_seen_strategies'), 'Try a ready-made strategy', '#/strategies'], [ME.totpEnabled, 'Turn on two-factor login', '#/settings'], [src.positions.length > 0 || state.account !== 'paper', 'Place your first paper trade', '#/dashboard'],
     [ME.phoneVerified && ME.hasPin, 'Add your phone and PIN for SMS', '#/settings'], [!!sessionStorage.getItem('qp_strategy'), 'Backtest a strategy', '#/backtest']];
-  const START = await import('./pages/start.js').then(m => m.startDone()).catch(() => true);
-  const fresh = !START && state.account === 'paper' && a.positions.length === 0;
-  const todo = !fresh && steps.filter(x => !x[0]).length > 1 && !localStorage.getItem('qp_onboard_done');
-  const approvals = await approvalsP, P = PREFS.portfolio;
-  const since = P.mode !== 'live' ? sinceStat(await sinceLastLook(state.account, a.equity)) : '';
-  // Home layout (top to bottom): the portfolio chart, the key numbers, then a two-column grid of cards
-  // (one column under 768px). My day and the P/L explanation are added later by their own modules,
-  // into their slots ([data-slot]) so they land in the grid in order, not at the end of the view.
-  view.innerHTML = `<div class="row dash-title" style="justify-content:space-between"><h1>Portfolio ${a.live ? '<span class="pill warn">LIVE MONEY</span>' : state.account === 'paper' ? '<span class="pill">Paper</span>' : '<span class="pill">Live account, test money</span>'}</h1></div>
+  const hidden = P.onboardHidden || !!localStorage.getItem('qp_onboard_done');
+  const done = steps.filter(x => x[0]).length, todo = !fresh && steps.length - done > 1 && !hidden;
+  const action = approvals || src.alerts.length ? `<div class="banner dash-action" role="status"><b class="da-h">Action needed</b>${approvals}${src.alerts.join('')}</div>` : '';
+  const sort = (() => { try { return JSON.parse(localStorage.getItem('qp_home_sort')) || { k: 'value', dir: 'desc' }; } catch { return { k: 'value', dir: 'desc' }; } })();
+  const tile = (k, label, val, c = '', title = '') => `<div class="stat"${title ? ` title="${esc(title)}"` : ''}><span>${label}</span><b data-k="${k}" class="${c}">${val}</b></div>`;
+  const dayTxt = x => (x.day == null ? '-' : `${money(x.day)} (${pct(x.day / x.prev * 100, 2)})`), plTxt = x => `${money(x.pl)} (${pct(x.plPct, 2)})`;
+  const kpis = [tile('eq', 'Total value', money(n.equity)), P.hideToday ? '' : tile('day', 'Today', dayTxt(n), cls(n.day)), tile('pnl', 'Total P/L', plTxt(n), cls(n.pl), src.plTitle),
+    tile('bp', 'Buying power', money(n.bp)), tile('cash', 'Cash', money(n.cash)), since].filter(Boolean);
+  const mydaySlot = EXTRAS.myday ? '<div class="dash-slot" data-slot="myday"><div class="card skelcard" aria-hidden="true"><div class="skel"><div class="h1"></div><div></div><div></div><div class="w60"></div></div></div></div>' : '';
+  view.innerHTML = `<div class="row dash-title"><h1>Portfolio ${src.pill}</h1>${switcher}</div>
   <div class="dash">
-  <section class="card dash-chart" aria-label="Portfolio value over time">
-    <canvas id="eqc"></canvas>
-    ${statementRow(state.account)}
-  </section>
-  <div class="stats dash-kpis">
-    <div class="stat"><span>Total value</span><b data-k="eq">${money(a.equity)}</b></div>
-    ${P.hideToday ? '' : `<div class="stat"><span>Today</span><b data-k="day" class="${cls(dayChg)}">${dayChg == null ? '-' : `${money(dayChg)} (${pct(dayChg / prev * 100, 2)})`}</b></div>`}
-    <div class="stat"><span>Buying power</span><b data-k="bp">${money(a.buyingPower ?? a.cash)}</b></div>
-    <div class="stat"><span>Open positions</span><b>${a.positions.length}</b></div>
-    <div class="stat"><span>Profit / loss</span><b data-k="pnl" class="${cls(pnl)}">${money(pnl)} (${pct(pnlPct, 2)})</b></div>
-    ${since}
-    <div class="stat"><span>Cash</span><b data-k="cash">${money(a.cash)}</b></div>
-  </div>
-  <div class="dash-slot" data-slot="guide"></div>
-  ${approvals}
+  ${action}
   ${fresh ? `<div class="card onboard welcome-hero"><div><h2>Welcome! Let's get you started</h2><p class="mu" style="margin:0">A 2-minute guided setup: what you want to do, how practice money works, and your first practice purchase. Nothing uses real money.</p></div><a href="#/start"><button type="button">Start the guided setup</button></a></div>` : ''}
-  ${todo ? `<div class="card onboard"><div class="ob-head"><div><h2>Get started</h2><p class="mu">${steps.filter(x => x[0]).length} of ${steps.length} done</p></div><button class="ghost small" id="hideOnboard">Hide</button></div>
-    <div class="ob-bar"><i style="width:${Math.round(steps.filter(x => x[0]).length / steps.length * 100)}%"></i></div>
-    <div class="ob-list">${steps.map(([done, t, href]) => `<a class="ob-item${done ? ' done' : ''}" href="${href}"><span class="ob-check" aria-hidden="true"></span><span class="ob-t">${t}</span><span class="ob-go" aria-hidden="true">→</span></a>`).join('')}</div></div>` : ''}
-  <div id="acctBoxes"></div>
-  <div class="dash-grid">
-    <div class="card dash-positions"><h2>Positions</h2><div class="tablewrap"><table><tr><th>Symbol</th><th>Qty</th><th>Avg</th><th>Price</th><th>Value</th><th>P/L</th></tr>
-      ${a.positions.map(p => `<tr><td>${esc(p.symbol)}</td><td>${num(p.qty, 4)}</td><td>${money(p.avgPrice)}</td><td>${money(p.price)}</td><td>${money(p.value)}</td><td class="${cls(p.pnl)}">${money(p.pnl)}</td></tr>`).join('') || '<tr><td colspan="6" class="mu">No positions</td></tr>'}
-    </table></div></div>
-    <div class="dash-slot" data-slot="myday"></div>
-    <div class="dash-slot" data-slot="pnlwhy"></div>
-    ${ticketHtml(a)}
-    <div class="card dash-span"><h2>Recent orders</h2><div class="tablewrap" id="orders"><p class="mu">Loading…</p></div>
-    ${state.account === 'paper' ? '<button class="ghost small" id="reset">Reset paper account</button>' : ''}</div>
+  <section class="card dash-chart" aria-label="Portfolio value over time">
+    <div class="chips dash-ranges" id="periods" role="group" aria-label="Time range">${HOME_RANGES.map(([k, t]) => `<button type="button" data-p="${k}" class="${k === range ? 'on' : ''}" aria-pressed="${k === range}">${t}</button>`).join('')}</div>
+    <canvas id="eqc"></canvas>
+    ${statementRow(src.acct)}
+    <p class="mu small-print" id="eqUpdated" style="margin:6px 0 0;text-align:end" aria-live="off" ${P.mode === 'since' ? 'hidden' : ''}>Updated ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</p>
+  </section>
+  <div class="stats dash-kpis" style="--n:${kpis.length}">${kpis.join('')}</div>
+  <div class="dash-main">
+    <div class="dash-col">
+      <div class="card dash-positions"><div class="dash-ch"><h2>Positions <span class="pill count" aria-label="${src.positions.length} open positions">${src.positions.length}</span></h2><a href="#/positions">All positions →</a></div><div id="posBox">${positionsTable(src.positions, n.equity, sort)}</div></div>
+      <div class="card dash-orders"><div class="dash-ch"><h2>Recent orders</h2><a href="#/orders">All orders →</a></div><div class="tablewrap" id="orders"><div class="skel" role="status" aria-label="Loading"><div></div><div></div><div></div><div class="w60"></div></div></div></div>
+    </div>
+    <div class="dash-col">
+      ${ticketHtml(a)}
+      ${mydaySlot}
+      <div class="dash-slot" data-slot="pnlwhy"><div class="card skelcard" aria-hidden="true"><div class="skel"><div class="h1"></div><div></div><div></div><div></div><div class="w60"></div></div></div></div>
+      ${src.side}
+    </div>
   </div>
+  ${todo ? `<details class="card onboard" id="onboard" open><summary class="ob-head"><div><h2>Get started</h2><p class="mu">${done} of ${steps.length} done</p></div><button type="button" class="ghost small" id="hideOnboard" title="Hide this list for good">Hide</button></summary>
+    <div class="ob-bar"><i style="width:${Math.round(done / steps.length * 100)}%"></i></div>
+    <div class="ob-list">${steps.map(([d, t, href]) => `<a class="ob-item${d ? ' done' : ''}" href="${href}"><span class="ob-check" aria-hidden="true"></span><span class="ob-t">${t}</span><span class="ob-go" aria-hidden="true">→</span></a>`).join('')}</div></details>` : ''}
+  <div class="dash-slot" data-slot="guide"></div>
+  <div id="acctBoxes"></div>
+  ${src.paper ? '<div class="card dash-paper"><div class="dash-ch"><h2>Paper account</h2></div><p class="mu" style="margin-top:0">Practice money: start again from $100,000 at any time. Your orders and positions in the paper account are cleared.</p><button class="ghost small" id="reset">Reset paper account</button></div>' : ''}
   </div>`;
-  homeClock(view); if ($('#homeClock', view)) $('.dash-title', view).append($('#homeClock', view)); // the clock sits in the title row, so the chart stays at the top
-  if ($('#hideOnboard', view)) $('#hideOnboard', view).onclick = () => { try { localStorage.setItem('qp_onboard_done', '1'); } catch {} render(); };
-  drawChart($('#eqc', view), a.history.map(x => x.equity), { base, dates: a.history.map(x => x.day), legend: false });
-  wireStatement(view, state.account); accountBoxes($('#acctBoxes', view)).catch(() => {});
-  // Live mode: the numbers update quietly every minute (never the whole page).
+  homeClock(view); if ($('#homeClock', view)) $('h1', view).after($('#homeClock', view)); // the clock sits in the title row
+  const sw = $('#homeAcct', view);
+  if (sw) sw.onchange = () => { const v = sw.value; if (v.startsWith('view:')) { location.hash = '#/accounts' + (v.length > 5 ? '?view=' + encodeURIComponent(v.slice(5)) : ''); return; } setAccount(v); };
+  if ($('#hideOnboard', view)) $('#hideOnboard', view).onclick = async e => {
+    e.preventDefault(); e.stopPropagation(); try { localStorage.setItem('qp_onboard_done', '1'); } catch {}
+    $('#onboard', view)?.remove();
+    PREFS.portfolio = (await api('/prefs/portfolio', { method: 'PUT', body: { value: { ...PREFS.portfolio, onboardHidden: true } } }).catch(() => ({ value: { ...PREFS.portfolio, onboardHidden: true } }))).value;
+  };
+  // The chart: the chosen range, redrawn in place (the range is remembered in this browser).
+  let cur = range, hist = await src.history(range);
+  const canvas = $('#eqc', view), draw = () => drawChart(canvas, hist.values, { base: hist.base, dates: hist.dates, time: hist.time, legend: false });
+  draw(); addEventListener('qp:homeresize', draw); onLeave(() => removeEventListener('qp:homeresize', draw));
+  $$('#periods button', view).forEach(b => (b.onclick = async () => {
+    cur = b.dataset.p; try { localStorage.setItem('qp_period', cur); } catch {}
+    $$('#periods button', view).forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); });
+    hist = await src.history(cur); if (cur === b.dataset.p && canvas.isConnected) draw();
+  }));
+  wireStatement(view, src.acct); accountBoxes($('#acctBoxes', view)).catch(() => {});
+  // Sorting the positions keeps the rest of the page as it is.
+  const wireSort = () => $$('[data-sort]', view).forEach(b => (b.onclick = () => {
+    const k = b.dataset.sort; sort.dir = sort.k === k ? (sort.dir === 'desc' ? 'asc' : 'desc') : k === 'symbol' ? 'asc' : 'desc'; sort.k = k;
+    try { localStorage.setItem('qp_home_sort', JSON.stringify(sort)); } catch {}
+    $('#posBox', view).innerHTML = positionsTable(src.positions, n.equity, sort); wireSort(); $(`[data-sort="${k}"]`, view)?.focus();
+  }));
+  wireSort();
+  // Live mode: the numbers update quietly every minute (never the whole page), and the chart redraws
+  // only when its data changed. Nothing updates while a finger or the mouse is on the chart.
   if (P.mode !== 'since') {
-    const acct = state.account, t = setInterval(async () => {
-      if (document.hidden || !$('[data-k=eq]', view)) return;
-      const b = await api('/account?account=' + acct).catch(() => null); if (!b || b.error) return;
-      const pl = b.equity - base, prv = b.lastEquity || prev, dc = prv ? b.equity - prv : null;
-      const set = (k, txt, c) => { const el = $(`[data-k=${k}]`, view); if (el && el.textContent !== txt) el.textContent = txt; if (el && c !== undefined) el.className = c; };
-      set('eq', money(b.equity)); set('pnl', `${money(pl)} (${pct(base ? pl / base * 100 : 0, 2)})`, cls(pl)); set('cash', money(b.cash)); set('bp', money(b.buyingPower ?? b.cash));
-      if (dc != null) set('day', `${money(dc)} (${pct(dc / prv * 100, 2)})`, cls(dc));
+    let holding = false;
+    canvas.addEventListener('pointerenter', () => (holding = true)); canvas.addEventListener('pointerleave', () => (holding = false));
+    canvas.addEventListener('touchstart', () => (holding = true), { passive: true }); canvas.addEventListener('touchend', () => setTimeout(() => (holding = false), 4000), { passive: true });
+    const set = (k, txt, c) => { const el = $(`.dash-kpis [data-k=${k}]`, view); if (el && el.textContent !== txt) el.textContent = txt; if (el && c !== undefined) el.className = c; };
+    const t = setInterval(async () => {
+      if (document.hidden || holding || !$('[data-k=eq]', view)) return;
+      const b = await src.tick(); if (!b) return;
+      set('eq', money(b.equity)); set('pnl', plTxt(b), cls(b.pl)); set('cash', money(b.cash)); set('bp', money(b.bp));
+      if (b.day != null) set('day', dayTxt(b), cls(b.day));
+      const h2 = await src.history(cur).catch(() => null);
+      if (h2 && JSON.stringify(h2.values) !== JSON.stringify(hist.values) && canvas.isConnected) { hist = h2; draw(); }
+      if ($('#eqUpdated', view)) $('#eqUpdated', view).textContent = 'Updated ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     }, 60000);
     onLeave(() => clearInterval(t));
   }
-  const t = $('#ticket', view);
-  wireQuickTicket(t, view, a);
+  wireQuickTicket($('#ticket', view), view, a);
   if ($('#reset', view)) act($('#reset', view), async () => { if (confirm('Reset paper account to $100,000?')) { await api('/paper/reset', { body: {} }); render(); } });
-  const orders = await api('/orders?account=' + state.account).catch(() => []);
-  $('#orders', view).innerHTML = `<table><tr><th>Time</th><th>Symbol</th><th>Side</th><th>Qty</th><th>Price</th><th>Status</th><th>Source</th></tr>${orders.map(o => `<tr><td>${date(o.at)}</td><td>${esc(o.symbol)}</td><td>${o.side}</td><td>${o.qty ? num(o.qty, 4) : money(o.notional)}</td><td>${o.price ? money(o.price) : '-'}</td><td>${esc(o.status)}${o.orderId ? ` <button class="small ghost" data-pcancel="${o.orderId}">Cancel</button>` : ''}</td><td>${esc(o.source || '')}</td></tr>`).join('') || '<tr><td colspan="7" class="mu">None yet</td></tr>'}</table>`;
+  const orders = (await api('/orders?account=' + state.account).catch(() => [])).slice(0, 10);
+  if (!$('#orders', view)) return;
+  $('#orders', view).innerHTML = `<table><tr><th>Time</th><th>Symbol</th><th>Side</th><th>Qty</th><th>Price</th><th>Status</th><th>Source</th></tr>${orders.map(o => `<tr><td>${date(o.at)}</td><td>${esc(o.symbol)}</td><td>${o.side}</td><td>${o.qty ? num(o.qty, 4) : money(o.notional)}</td><td>${o.price ? money(o.price) : '-'}</td><td>${esc(o.status)}${o.orderId && state.account === 'paper' ? ` <button class="small ghost" data-pcancel="${o.orderId}">Cancel</button>` : ''}</td><td>${esc(o.source || '')}</td></tr>`).join('') || '<tr><td colspan="7" class="mu">None yet</td></tr>'}</table>`;
   $$('[data-pcancel]', view).forEach(b => act(b, async () => { await api('/paper/orders/' + b.dataset.pcancel, { method: 'DELETE' }); render(); return ''; }));
 };
 
@@ -1982,7 +2091,7 @@ routes.settings = async view => {
     const v = $('#delpw', view).value; await api('/auth/delete', { body: { password: v, confirm: v } }); location.href = '/';
   });
   if ($('#calmT', view)) $('#calmT', view).onchange = e => setCalm(e.target.checked);
-  const savePnl = async () => { PREFS.portfolio = (await api('/prefs/portfolio', { method: 'PUT', body: { value: { mode: $('[name=pnlMode]:checked', view)?.value, hideToday: $('#hideToday', view).checked } } })).value; };
+  const savePnl = async () => { PREFS.portfolio = (await api('/prefs/portfolio', { method: 'PUT', body: { value: { ...PREFS.portfolio, mode: $('[name=pnlMode]:checked', view)?.value, hideToday: $('#hideToday', view).checked } } })).value; };
   $$('[name=pnlMode]', view).forEach(r => (r.onchange = savePnl));
   const saveChart = async () => {
     const mode = $('[name=chartMode]:checked', view)?.value || 'colorful';
@@ -2324,6 +2433,6 @@ if (!PREFETCH) { pfFrameEarly(); setTimeout(() => prefetchAll(), 3000); }
   window.addEventListener('resize', () => {
     clearTimeout(window.__rt);
     const hash = location.hash;
-    window.__rt = setTimeout(() => { if (Math.abs(innerWidth - lastW) > 40 && location.hash === hash && /^#\/(dashboard)?$/.test(hash) && state.account !== 'alpaca') { lastW = innerWidth; render(); } }, 300);
+    window.__rt = setTimeout(() => { if (Math.abs(innerWidth - lastW) > 40 && location.hash === hash && /^#\/(dashboard)?$/.test(hash)) { lastW = innerWidth; dispatchEvent(new Event('qp:homeresize')); } }, 300); // Home redraws its chart, not the page
   });
 })();
