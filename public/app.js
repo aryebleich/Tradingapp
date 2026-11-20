@@ -343,22 +343,48 @@ let theme = (() => { try { return localStorage.getItem('qp_theme') || 'auto'; } 
 applyTheme(theme);
 $('#themeBtn').onclick = () => { theme = THEMES[(THEMES.indexOf(theme) + 1) % 3]; try { localStorage.setItem('qp_theme', theme); } catch {} applyTheme(theme); render(); };
 
-// ---------- upgrade window: shown whenever a Pro feature is used on the free plan ----------
+// ---------- upgrade window: shown when a paid feature or a plan limit is reached ----------
+// Honest and specific: it names the plan that unlocks the feature (the next plan up from the member's
+// own), shows that plan's real prices with a Monthly/Yearly choice, says what stays free, and offers
+// the free trial only to members who have not used it. Members who already pay change plan in the
+// billing portal (never a second checkout). Nothing that costs money is pre-selected.
+const PLAN_ORDER = ['free', 'pro', 'elite', 'ultimate'];
+const subscribed = () => !!ME && ME.plan !== 'free' && ['active', 'trialing', 'past_due'].includes(ME.planStatus);
 async function showUpgrade(feature) {
   if (document.querySelector('dialog.upgrade')) return;
   CFG ||= await api('/config').catch(() => null);
-  const p = CFG?.plans?.pro || { monthly: 29, yearly: 290, features: [] }, trial = !ME?.trialUsed, days = CFG?.trialDays || 14;
+  const plans = CFG?.plans || {}, mine = ME?.plan || 'free';
+  const nextKey = PLAN_ORDER.slice(PLAN_ORDER.indexOf(mine) + 1).find(k => plans[k]), p = plans[nextKey];
   const d = document.createElement('dialog'); d.className = 'upgrade';
-  d.innerHTML = `<div class="top"><h2>${esc(feature || 'This feature')} is a Pro feature</h2><div>${trial ? `Try every Pro feature free for ${days} days. Cancel anytime.` : 'Upgrade to unlock it, plus everything else in Pro.'}</div></div>
-    <div class="body"><ul style="padding-left:18px;margin:0 0 14px">${p.features.slice(1, 6).map(f => `<li>${esc(f)}</li>`).join('')}</ul>
-    <p class="mu" style="margin:0 0 14px">$${p.monthly}/month, or $${p.yearly}/year <span class="save">2 months free</span></p>
-    <div class="row" style="justify-content:flex-end"><button class="ghost" value="no">Not now</button><button value="yes">${trial ? `Start ${days}-day free trial` : 'See plans'}</button></div><div class="err"></div></div>`;
+  if (!p || ME?.planStatus === 'past_due') {
+    // No plan above (Ultimate), or a payment problem: say so plainly, without a sales pitch.
+    const due = ME?.planStatus === 'past_due';
+    d.innerHTML = `<div class="top"><h2>${due ? 'Your last payment failed' : "Reached your plan's limit"}</h2></div><div class="body"><p>${due ? 'Paid features pause until the card on file works again. Update it in Manage billing.' : `${esc(feature || 'This')} is at the most your plan allows. Contact support if you need more.`}</p>
+      <div class="row" style="justify-content:flex-end"><button class="ghost" value="no">Close</button><a href="#/funding" data-close><button type="button">See all plans</button></a></div></div>`;
+    d.querySelector('[value=no]').onclick = () => d.close(); d.querySelector('[data-close]').onclick = () => d.close();
+  } else {
+    const trial = !ME?.trialUsed && !subscribed(), days = CFG?.trialDays || 14;
+    let yearly = false;
+    const draw = () => {
+      const price = yearly ? `$${(p.yearly / 12).toFixed(2)}/month, billed $${p.yearly.toLocaleString('en-US')} yearly` : `$${p.monthly}/month`;
+      d.innerHTML = `<div class="top"><h2>${esc(feature || 'This feature')} needs ${esc(p.name)}</h2><div>${esc(p.tagline || '')}</div></div>
+      <div class="body"><ul class="ticks">${p.features.filter(f => !/^Everything in/.test(f)).slice(0, 5).map(f => `<li>${esc(f)}</li>`).join('')}</ul>
+        <div class="seg up-int" role="group" aria-label="Billing"><button type="button" data-i="month" class="${yearly ? '' : 'on'}" aria-pressed="${!yearly}">Monthly</button><button type="button" data-i="year" class="${yearly ? 'on' : ''}" aria-pressed="${yearly}">Yearly <span class="save">2 months free</span></button></div>
+        <p class="up-price"><b>${price}</b></p>
+        ${mine === 'free' ? '<p class="mu small-print" style="margin:0 0 10px"><b>What stays free:</b> your $100,000 paper account, backtests, the strategy library and everything you use now.</p>' : ''}
+        <p class="mu small-print" style="margin:0 0 14px">${trial ? "You won't be charged until the trial ends. Cancel anytime from Manage billing." : subscribed() ? 'Your plan changes in Manage billing; Stripe works out the difference for the rest of this period.' : 'Cancel anytime from Manage billing.'} <a href="#/funding" data-close>See all plans</a></p>
+        <div class="row" style="justify-content:flex-end"><button class="ghost" value="no">Not now</button><button value="yes">${trial ? `Start ${days}-day free trial of ${esc(p.name)}` : subscribed() ? `Unlock with ${esc(p.name)}` : `Choose ${esc(p.name)}`}</button></div><div class="err"></div></div>`;
+      d.querySelector('[value=no]').onclick = () => d.close();
+      d.querySelector('[data-close]').onclick = () => d.close();
+      d.querySelectorAll('.up-int [data-i]').forEach(b => (b.onclick = () => { yearly = b.dataset.i === 'year'; draw(); }));
+      act(d.querySelector('[value=yes]'), async () => {
+        if (!CFG?.stripe) { d.close(); location.hash = '#/funding'; return; }
+        location.href = subscribed() ? (await api('/billing/portal', { body: {} })).url : (await api('/billing/checkout', { body: { plan: nextKey, interval: yearly ? 'year' : 'month' } })).url;
+      });
+    };
+    draw();
+  }
   document.body.append(d);
-  d.querySelector('[value=no]').onclick = () => d.close();
-  act(d.querySelector('[value=yes]'), async () => {
-    if (!CFG?.stripe) { d.close(); location.hash = '#/funding'; return; }
-    location.href = (await api('/billing/checkout', { body: { plan: 'pro', interval: 'month' } })).url;
-  });
   d.onclose = () => d.remove();
   d.showModal();
 }
@@ -678,6 +704,8 @@ async function render(opts) {
     // Signing in for the Android app: back to the app once signed in here.
     if (sessionStorage.getItem('qp_next') === 'handoff') { sessionStorage.removeItem('qp_next'); location.href = '/api/auth/app-handoff'; return; }
     await Promise.all([accounts(), loadPrefs(), loadExtras()]); await defaultAccount();
+    // Signed out meanwhile (another tab, an expired session): the 401 handler already went to sign-in.
+    if (!ME) return;
     const groups = ME.role === 'admin' ? [adminNav(), ...NAV] : NAV;
     if (EXTRAS.voice || $('#voiceBtn')) import('./pages/extras.js').then(m => m.voiceButton(shared)).catch(() => {});
     // Groups start folded; their arrow opens them (remembered). The group holding the current page opens.
@@ -1944,15 +1972,18 @@ routes.funding = routes.billing = async (view, q) => {
     <div class="billing-toggle"><div class="seg" id="interval"><button data-i="month" class="${yearly ? '' : 'on'}">Monthly</button><button data-i="year" class="${yearly ? 'on' : ''}">Yearly <span class="save">2 months free</span></button></div></div>
     <div class="plans">${Object.entries(CFG.plans).map(([k, p]) => {
       const price = yearly ? p.yearly : p.monthly, cur = ME.plan === k;
-      return `<div class="card plan ${p.popular ? 'best' : ''}">${p.popular ? '<div class="ribbon">Most popular</div>' : ''}
+      // Yearly: the monthly amount large (what people compare), the yearly charge right under it.
+      return `<div class="card plan ${p.popular ? 'best' : ''}">${p.popular ? '<div class="ribbon">Recommended</div>' : ''}
         <h2 style="margin:0">${esc(p.name)} ${cur ? '<span class="pill">Current</span>' : ''}</h2><div class="mu" style="font-size:14px">${esc(p.tagline || '')}</div>
-        <div class="price">${price ? '$' + price : '$0'}<small>${price ? (yearly ? '/year' : '/month') : ' forever'}</small></div>
-        ${yearly && p.yearly ? `<div class="mu" style="font-size:13px">$${(p.yearly / 12).toFixed(2)}/month billed yearly</div>` : '<div style="height:19px"></div>'}
+        <div class="price">${price ? '$' + (yearly ? (p.yearly / 12).toFixed(2) : price) : '$0'}<small>${price ? '/month' : ' forever'}</small></div>
+        ${yearly && p.yearly ? `<div class="mu" style="font-size:13px">$${(p.yearly / 12).toFixed(2)}/month, billed $${p.yearly.toLocaleString('en-US')} yearly</div>` : p.monthly ? `<div class="mu" style="font-size:13px">or $${(p.yearly / 12).toFixed(2)}/month billed yearly</div>` : '<div style="height:19px"></div>'}
         <ul>${p.features.map(f => `<li>${esc(f)}</li>`).join('')}</ul>
-        ${p.monthly && !cur ? `<button data-plan="${k}" class="${p.popular ? '' : 'ghost'}">${trial ? `Start ${days}-day free trial` : `Choose ${esc(p.name)}`}</button>` : cur ? '<button class="ghost" disabled>Your plan</button>' : ''}</div>`;
+        ${p.monthly && !cur ? `<button data-plan="${k}" class="${p.popular ? '' : 'ghost'}">${trial && !subscribed() ? `Start ${days}-day free trial` : subscribed() ? `Switch to ${esc(p.name)}` : `Choose ${esc(p.name)}`}</button>` : cur ? '<button class="ghost" disabled>Your plan</button>' : ''}</div>`;
     }).join('')}</div>
     <div class="err" id="planErr"></div><p class="mu small-print">Payment is on Stripe's secure page. On a phone, if the card numbers you type don't show, turn off your browser's dark theme for websites (Chrome: Settings → Theme; Samsung Internet: dark mode off) or open the page in another browser.</p>
     <p class="mu" style="text-align:center;font-size:13px">Secure checkout by Stripe. Cancel anytime from "Manage billing". Prices in USD.</p>
+    ${CFG.compare ? `<details class="card compare" ${ME.plan === 'free' ? 'open' : ''}><summary><b>Compare plans</b></summary><div class="tablewrap" tabindex="0" role="region" aria-label="Compare plans"><table class="cmp"><thead><tr><th scope="col">Feature</th>${Object.entries(CFG.plans).map(([k, p]) => `<th scope="col" class="${k === ME.plan ? 'cur' : ''}${p.popular ? ' rec' : ''}">${esc(p.name)}${k === ME.plan ? ' <span class="pill">Your plan</span>' : ''}</th>`).join('')}</tr></thead>
+      <tbody>${CFG.compare.map(([label, ...v]) => `<tr><th scope="row">${esc(label)}</th>${v.map((x, i) => `<td class="${Object.keys(CFG.plans)[i] === ME.plan ? 'cur' : ''}">${x === true ? '<span class="yes" aria-label="Included">✓</span>' : x === false ? '<span class="no" aria-label="Not included">–</span>' : esc(x)}</td>`).join('')}</tr>`).join('')}</tbody></table></div></details>` : ''}
     ${aip ? `<details class="card aiplans"><summary><b>Intelligence and AI in each plan</b> <span class="mu">agents and API, AI bots, signals, market intelligence, chart co-pilot</span></summary><div class="tablewrap"><table><tr><th></th>${Object.values(aip.plans).map(n => `<th>${esc(n)}</th>`).join('')}</tr>${aip.rows.map(([n, ...v]) => `<tr><th scope="row">${esc(n)}</th>${v.map(x => `<td>${esc(x)}</td>`).join('')}</tr>`).join('')}</table></div></details>` : ''}
     ${cr ? `<div class="card" id="credits"><div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">Credits</h2><b class="credbal">${cr.balance.total.toLocaleString()} <span class="mu" style="font-weight:500;font-size:14px">credits</span></b></div>
       <div class="credbar" title="Monthly credits left"><i style="width:${cr.balance.allowance ? Math.min(100, cr.balance.monthly / cr.balance.allowance * 100) : 0}%"></i></div>
@@ -1978,7 +2009,8 @@ routes.funding = routes.billing = async (view, q) => {
     <div class="card tablewrap"><h2>Billing history</h2><table><tr><th>Date</th><th>Type</th><th>Amount</th><th>Status</th><th>Note</th></tr>
       ${ledger.map(l => `<tr><td>${date(l.at)}</td><td>${esc(l.kind.replace(/_/g, ' '))}</td><td>${money(l.amount)}</td><td>${esc(l.status)}</td><td>${esc(l.memo || '')}</td></tr>`).join('') || '<tr><td colspan="5" class="mu">Nothing yet</td></tr>'}</table></div>`;
     $$('#interval button', view).forEach(b => (b.onclick = () => { yearly = b.dataset.i === 'year'; draw(); }));
-    $$('[data-plan]', view).forEach(b => act(b, async () => { location.href = (await api('/billing/checkout', { body: { plan: b.dataset.plan, interval: yearly ? 'year' : 'month' } })).url; }, $('#planErr', view)));
+    // Members who already pay switch in the billing portal (one subscription, prorated), never a second checkout.
+    $$('[data-plan]', view).forEach(b => act(b, async () => { location.href = subscribed() ? (await api('/billing/portal', { body: {} })).url : (await api('/billing/checkout', { body: { plan: b.dataset.plan, interval: yearly ? 'year' : 'month' } })).url; }, $('#planErr', view)));
     $$('[data-pack]', view).forEach(b => act(b, async () => { location.href = (await api('/credits/buy', { body: { pack: b.dataset.pack } })).url; }, $('#credErr', view)));
     if ($('#portal', view)) act($('#portal', view), async () => { location.href = (await api('/billing/portal', { body: {} })).url; }, $('#planErr', view));
     act($('button', $('#dep', view)), async () => { await api('/funding/deposit', { body: form($('#dep', view)) }); setTimeout(render, 500); return 'Paper money added.'; });

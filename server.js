@@ -19,7 +19,7 @@ import crypto from 'node:crypto';
 import { backtest, projectAnnual, walkForward, optimize, warmupFor, compile, PRESETS } from './src/engine.js';
 import { getBars, getCred, accountSummary, placeOrder, listOrders, portfolioHistory, lastPrice, snapshotEquity, ACCOUNT_IDS } from './src/brokers.js';
 import * as QC from './src/quantconnect.js';
-import { PLANS, TRIAL_DAYS, isPaid, adjustForCashflow, revenueSummary } from './src/fees.js';
+import { PLANS, COMPARE, TRIAL_DAYS, isPaid, adjustForCashflow, revenueSummary } from './src/fees.js';
 import { llmEnabled, llmInfo } from './src/llm.js';
 import { securityRouter, passkeyLoginRouter, stepUpGuard } from './src/security.js';
 import { lessonsRouter } from './src/lessons.js';
@@ -743,7 +743,7 @@ const needPlan = feature => (req, res, next) => (isPaid(req.user) ? next() : nex
 const publicPlans = () => Object.fromEntries(Object.entries(PLANS).map(([k, { perfFee, ...p }]) => [k, p]));
 api.get('/config', async (req, res) => res.json({
   // Performance-fee rates are private: only admins receive them (Admin → Upgrades, Money & fees).
-  plans: req.user?.role === 'admin' ? PLANS : publicPlans(), trialDays: TRIAL_DAYS, presets: PRESETS, twilio: N.twilioEnabled(), stripe: N.stripeEnabled(), ai: llmEnabled(), aiModel: llmInfo(), email: N.emailEnabled(),
+  plans: req.user?.role === 'admin' ? PLANS : publicPlans(), compare: COMPARE, trialDays: TRIAL_DAYS, presets: PRESETS, twilio: N.twilioEnabled(), stripe: N.stripeEnabled(), ai: llmEnabled(), aiModel: llmInfo(), email: N.emailEnabled(),
   marketData: dataEnabled(), hotline: process.env.TWILIO_FROM || null, broker: brokerEnabled(), oauth: oauthEnabled(), google: googleEnabled(), github: githubEnabled(), assistant: aiEnabled(), adviser: adviserFor(req.user), version: version(),
   // The Google Play listing, once the app is published there (ANDROID_PLAY_URL, or ANDROID_PLAY=1 for the standard address).
   androidPlay: process.env.ANDROID_PLAY_URL || (process.env.ANDROID_PLAY === '1' ? 'https://play.google.com/store/apps/details?id=com.brightfolio.app' : null),
@@ -1113,6 +1113,11 @@ api.get('/command/help', U, async (req, res) => res.json({ help: HELP }));
 // --- billing, funding, fees ---
 api.post('/billing/checkout', U, wrap(async (req, res) => {
   if (!Object.hasOwn(PLANS, req.body.plan) || req.body.plan === 'free') throw new Error('Pick a paid plan');
+  // A member who already pays changes plan in the billing portal (one subscription, prorated). A second
+  // checkout would start a second subscription next to the first, and both would be charged.
+  if (req.user.plan !== 'free' && req.user.stripe_customer && ['active', 'trialing', 'past_due'].includes(req.user.plan_status)) {
+    throw Object.assign(new Error('You already have a plan. Change it in Manage billing, so you are never charged twice.'), { status: 409, portal: true });
+  }
   if (!N.stripeEnabled()) throw new Error('Payments are not configured (STRIPE_SECRET_KEY)');
   const interval = req.body.interval === 'year' ? 'year' : 'month';
   const s = await N.checkoutSubscription({

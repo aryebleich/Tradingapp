@@ -556,3 +556,4 @@ if _os.path.exists(_more):
     with open(_more, encoding='utf-8') as _f: YI.update(_json.load(_f))
 # Pro polish (2026-11-20): the risk line under the final sign-up box is the first sentence of the footer disclosure.
 YI.update({"Investing involves risk, including possible loss of principal.": "אינוועסטירן טראגט מיט זיך ריזיקע, אריינגערעכנט פארלירן דעם קרן."})
+YI.update({"Recommended": "רעקאמענדירט"})

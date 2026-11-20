@@ -204,3 +204,17 @@ html.lv2 td .empty { margin: 4px 0; }
 /* badges: AA contrast in light and dark (the accent and gain colours mixed toward the text colour) */
 html.lv2 .og-tag { color: color-mix(in srgb, var(--accent, #4f7cff) 55%, var(--tx)); }
 html.lv2 .save { color: color-mix(in srgb, var(--gr) 60%, var(--tx)); }
+/* plans: the comparison table on Plans & billing (the member's own plan column tinted) and the upgrade window */
+html.lv2 .compare > summary { cursor: pointer; font-size: var(--t-lg); }
+html.lv2 .compare table.cmp { width: 100%; margin-top: var(--s3); font-variant-numeric: tabular-nums; }
+html.lv2 table.cmp th[scope=row] { font-weight: 500; text-align: start; text-transform: none; letter-spacing: 0; font-size: 14px; color: var(--tx); }
+html.lv2 table.cmp td { text-align: center; white-space: nowrap; }
+html.lv2 table.cmp thead th { text-align: center; }
+html.lv2 table.cmp thead th:first-child { text-align: start; }
+html.lv2 table.cmp .cur { background: var(--acs); }
+html.lv2 table.cmp thead th.rec { box-shadow: inset 0 -2px 0 var(--ac); }
+html.lv2 table.cmp .yes { color: var(--gr); font-weight: 700; }
+html.lv2 table.cmp .no { color: var(--mu); }
+html.lv2 dialog.upgrade .ticks { margin: 0 0 var(--s3); }
+html.lv2 dialog.upgrade .up-int { margin: 0 0 var(--s2); }
+html.lv2 dialog.upgrade .up-price { margin: 0 0 var(--s2); font-size: 18px; }

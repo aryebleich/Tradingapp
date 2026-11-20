@@ -11,6 +11,26 @@ export const PLANS = {
   elite: { name: 'Elite', monthly: 109, yearly: 1090, perfFee: 0.05, tagline: 'For active traders', features: ['Everything in Pro', '4-chart layouts and pop-out windows', '25 automatic strategies & 25 webhooks', 'Option income bots & multi-leg orders', 'Market-neutral pairs (long + short)', 'Tax-loss harvesting & Schedule D', 'AI assistant: 1,000 messages a day', '3,000 credits every month'] },
   ultimate: { name: 'Ultimate', monthly: 320, yearly: 3200, perfFee: 0.025, tagline: 'For serious capital', features: ['Everything in Elite', '100 automatic strategies & 100 webhooks', 'Unlimited scanners and AI agents', 'AI assistant: 3,000 messages a day', 'Priority support', '10,000 credits every month'] },
 };
+// The plan comparison table (Starter, Pro, Elite, Ultimate): true / false for a tick or a dash, or the
+// limit as text. The homepage shows the same rows (scripts/home.py MATRIX); a test keeps them equal.
+export const COMPARE = [
+  ['$100,000 paper account', true, true, true, true],
+  ['Live trading on your own brokerage', true, true, true, true],
+  ['Strategy library and backtests', true, true, true, true],
+  ['Automatic strategies', '1 (paper)', '5', '25', '100'],
+  ['Alert webhooks', '1 (paper)', '10', '25', '100'],
+  ['Charts per layout', '1', '2', '4', '4'],
+  ['Scanners', '2, hourly', 'Every 5 minutes', 'Every 5 minutes', 'Unlimited'],
+  ['AI assistant messages a day', '30', '300', '1,000', '3,000'],
+  ['Credits every month', '100', '1,000', '3,000', '10,000'],
+  ['Automation on real accounts', false, true, true, true],
+  ['Reality Check auto-throttle', false, true, true, true],
+  ['Trading and alerts by text and phone', false, true, true, true],
+  ['Optimizer, walk-forward testing & code lab', false, true, true, true],
+  ['Option income bots & multi-leg orders', false, false, true, true],
+  ['Tax-loss harvesting & Schedule D', false, false, true, true],
+  ['Priority support', false, false, false, true],
+];
 // Paid plans start with a free trial once per user.
 export const TRIAL_DAYS = +process.env.TRIAL_DAYS || 14;
 export const PAID = ['pro', 'elite', 'ultimate'];

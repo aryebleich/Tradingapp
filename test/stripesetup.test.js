@@ -117,6 +117,10 @@ test('customers can pay: checkout, then the signed webhook switches the plan on'
   assert.equal(s.lastEvent.type, 'checkout.session.completed'); assert.ok(s.badSignature);
   const portal = await user('/billing/portal', {});
   assert.equal(portal.status, 200); assert.equal(db.sessions.at(-1).configuration, process.env.STRIPE_PORTAL_CONFIG);
+  // A member who already pays is never sent to a second checkout (it would start a second subscription):
+  // the change goes through the billing portal instead.
+  const sessions = db.sessions.length, again = await user('/billing/checkout', { plan: 'elite', interval: 'month' });
+  assert.equal(again.status, 409); assert.match(again.body.error, /Manage billing/); assert.equal(db.sessions.length, sessions);
 });
 
 test('deposits: a bank transfer waits, a debit card is received, a credit card is refunded', async () => {

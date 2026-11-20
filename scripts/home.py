@@ -297,7 +297,7 @@ def index(lang='en'):
     ldjson = _ld({'@context': 'https://schema.org', '@type': 'Organization', 'name': 'Brightolio', 'url': 'https://app.brightolio.com/', 'logo': 'https://app.brightolio.com/icon-512.png'}) + _ld({
         '@context': 'https://schema.org', '@type': 'FAQPage', 'inLanguage': lang,
         'mainEntity': [{'@type': 'Question', 'name': _strip(T(q)), 'acceptedAnswer': {'@type': 'Answer', 'text': _strip(T(a))}} for q, a in FAQ_AUTO + FAQ_ACCOUNT]})
-    plans = ''.join(f'''<div class="plan{' best' if best else ''}">{'<div class="ribbon">' + T('Most popular') + '</div>' if best else ''}<h3>{T(n)}</h3><p class="tag">{T(tg)}</p>
+    plans = ''.join(f'''<div class="plan{' best' if best else ''}">{'<div class="ribbon">' + T('Recommended') + '</div>' if best else ''}<h3>{T(n)}</h3><p class="tag">{T(tg)}</p>
       <div class="price"{f' data-m="{pm}" data-y="{py}"' if py else ''}>{pm}<small{f' data-m="{T(sm)}" data-y="{T(sy)}"' if sy else ''}>{T(sm)}</small></div>
       <ul>{''.join(f'<li>{T(x)}</li>' for x in feats_)}</ul><a class="btn{'' if best else ' ghost'}" data-app="#/register" href="app">{T(cta)}</a></div>''' for n, tg, pm, py, sm, sy, fee, feats_, cta, best in PLANS)
     body = f'''

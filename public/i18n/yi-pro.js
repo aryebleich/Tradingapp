@@ -11,13 +11,18 @@ export const strings = {
   'What stays free': 'וואס בלייבט אומזיסט', 'Not now': 'נישט יעצט', 'See all plans': 'זעט אלע פלענער', 'Monthly': 'חודשליך', 'Yearly': 'יערליך',
   "You won't be charged until the trial ends. Cancel anytime from Manage billing.": 'מען וועט אייך נישט פארעכענען ביז דער פראבע ענדיגט זיך. שטעלט אפ ווען איר ווילט פון "פירן באצאלן".',
   'Next step: try a ready-made strategy': 'קומענדיגער שריט: פרובירט א פארטיגע סטראטעגיע', 'Open the strategy library': 'עפנט די סטראטעגיע ביבליאטעק',
-  'Security': 'זיכערהייט', 'Your plan': 'אייער פלאן', 'Reached your plan\'s limit': 'איר האט דערגרייכט אייער פלאן\'ס גרענעץ',
+  'Security': 'זיכערהייט', 'Your last payment failed': 'אייער לעצטע צאלונג איז נישט דורכגעגאנגען', 'Close': 'צומאכן', 'Included': 'אריינגערעכנט', 'Not included': 'נישט אריינגערעכנט',
+  'Your plan changes in Manage billing; Stripe works out the difference for the rest of this period.': 'אייער פלאן טוישט זיך אין "פירן באצאלן"; Stripe רעכנט אויס דעם חילוק פאר די רעשט פון דער צייט.',
+  'Cancel anytime from Manage billing.': 'שטעלט אפ ווען איר ווילט פון "פירן באצאלן".', 'What stays free:': 'וואס בלייבט אומזיסט:',
+  'your $100,000 paper account, backtests, the strategy library and everything you use now.': 'אייער $100,000 פעיפער קאנטע, בעקטעסטס, די סטראטעגיע ביבליאטעק און אלץ וואס איר ניצט יעצט.', 'Your plan': 'אייער פלאן', 'Reached your plan\'s limit': 'איר האט דערגרייכט אייער פלאן\'ס גרענעץ',
 };
 export const patterns = [
   [/^(.+) needs (Pro|Elite|Ultimate)$/, m => `${m[1]} דארף ${m[2]}`],
   [/^Unlock with (Pro|Elite|Ultimate)$/, m => `עפנט מיט ${m[1]}`],
   [/^Start (\d+)-day free trial of (Pro|Elite|Ultimate)$/, m => `הייבט אן ${m[1]}-טאגיגע אומזיסטע פראבע פון ${m[2]}`],
   [/^Choose (Pro|Elite|Ultimate)$/, m => `קלייבט ${m[1]}`],
+  [/^Switch to (Pro|Elite|Ultimate)$/, m => `טוישט צו ${m[1]}`],
+  [/^or \$([\d.,]+)\/month billed yearly$/, m => `אדער $${m[1]} א חודש באצאלט יערליך`],
   [/^\$([\d.,]+)\/month, billed \$([\d,]+) yearly$/, m => `$${m[1]} א חודש, באצאלט $${m[2]} יערליך`],
   [/^Paid plans start with a (\d+)-day free trial; cancel anytime$/, m => `באצאלטע פלענער הייבן אן מיט א ${m[1]}-טאגיגע אומזיסטע פראבע; שטעלט אפ ווען איר ווילט`],
 ];
