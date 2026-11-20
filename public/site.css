@@ -572,3 +572,6 @@ section.dark .sub, section.dark .trust .feature p { color: #b6c4da; }
 .shot .ld-pause:hover { background: rgba(255, 255, 255, .16); }
 .shot .ld-pause:focus-visible { outline: 2px solid #a5b4fc; outline-offset: 2px; }
 
+/* the risk line under the final sign-up box: the footer disclosure's first sentence, readable on the band */
+.band.final .riskline { color: inherit; opacity: .92; text-align: start; margin: 12px 0 0; font-size: 13px; }
+.band.final .riskline a { color: inherit; text-decoration: underline; }

@@ -19,7 +19,7 @@ def T(s):
 def layout(title, desc, body, lang='en', home='index.html', banner=''):
     LANG['cur'] = lang
     rtl = lang == 'yi'
-    nav = ''.join(f'<a href="{home}#{a}">{T(t)}</a>' for a, t in [('how', 'How it works'), ('strategies', 'Strategies'), ('sp500', 'S&amp;P 500'), ('pricing', 'Pricing'), ('faq', 'FAQ')])
+    nav = ''.join(f'<a href="{home}#{a}">{T(t)}</a>' for a, t in [('how', 'How it works'), ('strategies', 'Strategies'), ('sp500', 'S&amp;P 500'), ('trust', 'Security'), ('pricing', 'Pricing'), ('faq', 'FAQ')])
     return f'''<!doctype html>
 <html lang="{lang}" dir="{'rtl' if rtl else 'ltr'}" class="lv2">
 <head>
@@ -508,6 +508,7 @@ def index(lang='en'):
     <div class="or" data-oauth hidden><span>{T('or')}</span></div>
     <a class="btn light wide" href="https://github.com/aryebleich/Tradingapp/releases/download/android-latest/brightfolio.apk" rel="noopener" style="margin-top:10px">{ic('phone', 18)} {T('Download the Android app')}</a>
     <form id="startForm"><input type="email" name="email" placeholder="{T('Email address')}" autocomplete="email" aria-label="{T('Email address')}" required dir="ltr"><button class="btn light">{T('Start free')}</button></form>
+    <p class="fine riskline">{T('Investing involves risk, including possible loss of principal.')} <a href="risk.html">{T('Risk Disclosure')}</a>.</p>
   </div>
 </div></div></section>
 <div class="stickycta"><a class="btn lg" data-app="#/register" href="app">{T('Start free')}</a></div>
