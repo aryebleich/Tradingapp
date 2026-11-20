@@ -159,3 +159,27 @@ html.lv2 .term .figcap { color: var(--cap-on-dark); }
 html.lv2:not([data-theme="dark"]) section.alt .kicker { color: var(--ac-ink); }
 html.lv2:not([data-theme="dark"]) .toggle em { color: var(--gr-ink); }
 @media (prefers-color-scheme: dark) { html.lv2 section.alt .kicker { color: var(--ac); } html.lv2 .toggle em { color: var(--gr); } }
+
+/* ---------- Equalize positions: choose the holdings (DESIGN_SYSTEM.md, "Confirm dialogs with a table") ---------- */
+html.lv2 dialog.secure.eqpdlg { --dlg-pad: 20px; padding: var(--dlg-pad); overflow-x: hidden; max-width: 640px; width: min(640px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); overflow-y: auto; }
+html.lv2 .eqp-sum { margin: 0 0 var(--s2); }
+html.lv2 .eqp-tools { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); margin: 0 0 var(--s2); font-size: 14px; color: var(--mu); }
+html.lv2 .eqp-t { width: 100%; font-variant-numeric: tabular-nums; }
+html.lv2 .eqp-t th.num, html.lv2 .eqp-t td.num { text-align: right; white-space: nowrap; }
+html.lv2 .eqp-t .eqp-c { width: 40px; text-align: center; padding-inline: 4px; }
+html.lv2 .eqp-t input[type=checkbox] { width: 18px; height: 18px; margin: 0; vertical-align: middle; accent-color: var(--ac); }
+html.lv2 .eqp-t tr.eqp-off td:not(.eqp-c) { color: var(--mu); }
+html.lv2 .eqp-t tr.eqp-off td b { font-weight: 500; }
+html.lv2 .eqp h3 { font-size: 15px; margin: var(--s4) 0 var(--s2); }
+/* the footer stays at the bottom of the dialog while the tables scroll: totals, then Cancel and Place */
+html.lv2 .eqp-foot { position: sticky; bottom: calc(-1 * var(--dlg-pad, 1em)); margin: var(--s3) calc(-1 * var(--dlg-pad, 1em)) calc(-1 * var(--dlg-pad, 1em)); padding: var(--s3) var(--dlg-pad, 1em); background: var(--card); border-top: 1px solid var(--bd); z-index: 1; }
+html.lv2 .eqp-foot .row { margin-top: var(--s2) !important; }
+html.lv2 .eqp-tools button.link { background: none; box-shadow: none; border: 0; padding: 0; min-height: 0; color: var(--ac); font-weight: 600; text-decoration: underline; }
+html.lv2 .eqp-totals { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s4); font-size: 14px; }
+html.lv2 .eqp-totals:empty { display: none; }
+@media (max-width: 640px) {
+  html.lv2 dialog.secure.eqpdlg { --dlg-pad: 16px; }
+  html.lv2 .eqp-t { font-size: 13px; }
+  html.lv2 .eqp-t th, html.lv2 .eqp-t td { padding: 6px 4px; }
+  html.lv2 .eqp-foot .row { justify-content: stretch !important; } html.lv2 .eqp-foot .row button { flex: 1; }
+}

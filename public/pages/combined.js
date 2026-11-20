@@ -167,28 +167,87 @@ export async function equalizeNow(helpers, out) {
   } catch (e) { out.innerHTML = `<p class="err">${H.esc(e.message)}</p>`; }
 }
 
-// Positions: the same dollar amount in every holding of one account.
-function positionsHtml(p) {
-  const rows = p.accounts[0]?.rows || [];
-  return `<p>Each holding gets about <b>${usd(p.each)}</b>${p.weights.length ? ` (${p.weights[0].pct}% of the account each)` : ''}.</p>
-    <div class="tablewrap"><table class="slim"><tr><th>Holding</th><th class="num">Now</th><th class="num">Target</th></tr>${rows.map(r => `<tr><td data-no-tr>${H.esc(r.symbol)}</td><td class="num">${usd(r.current)}</td><td class="num">${usd(r.target)}</td></tr>`).join('')}</table></div>
+// Positions: the same dollar amount in every included holding of one account. Each holding has a
+// tick box (all ticked at first, except the ones this account was last told to leave out); a change
+// asks the server again (debounced), and the targets, trades, totals and button follow. The server
+// rebuilds the plan from the account and the exclude list when the trades are placed.
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+function eqpRows(p, inc) {
+  const tgt = Object.fromEntries((p?.accounts[0]?.rows || []).map(r => [r.symbol, r.target]));
+  return p.holdings.map(h => {
+    const on = inc.has(h.symbol), t = on ? tgt[h.symbol] : null, d = t == null ? null : t - h.value;
+    return `<tr class="${on ? '' : 'eqp-off'}"><td class="eqp-c"><input type="checkbox" data-sym="${H.esc(h.symbol)}" ${on ? 'checked' : ''} aria-label="Include ${H.esc(h.symbol)}"></td>
+      <td data-no-tr><b>${H.esc(h.symbol)}</b></td><td class="num">${usd(h.value)}</td>
+      <td class="num">${on ? (t == null ? '-' : usd(t)) : '<span class="mu">Not changed</span>'}</td>
+      <td class="num ${d == null ? '' : d < 0 ? 'neg' : d > 0 ? 'pos' : ''}">${d == null || Math.abs(d) < 0.5 ? '<span class="mu">-</span>' : `${d > 0 ? '+' : '−'}${usd(Math.abs(d))}`}</td></tr>`;
+  }).join('');
+}
+const eqpTrades = p => (p.orders.length
+  ? `<div class="tablewrap"><table class="slim eqp-t"><thead><tr><th>Side</th><th>Symbol</th><th class="num">Amount</th></tr></thead><tbody>${p.orders.map(o => `<tr><td class="${o.side === 'sell' ? 'neg' : 'pos'}">${o.side === 'sell' ? 'Sell' : 'Buy'}${o.all ? ' all' : ''}</td><td data-no-tr>${H.esc(o.symbol)}</td><td class="num">${o.qty ? `${o.qty} sh · ` : ''}${usd(o.dollars)}</td></tr>`).join('')}</tbody></table></div>`
+  : '<p class="mu">No trades needed: the included holdings already have about the same amount.</p>');
+function positionsHtml(p, inc) {
+  return `<div class="eqp">
+    <p class="eqp-sum" id="eqpSum"></p>
+    <div class="eqp-tools"><span id="eqpCount" aria-live="polite"></span><button type="button" class="link small" id="eqpReset" hidden>Reset to all</button></div>
+    <div class="tablewrap"><table class="slim eqp-t"><thead><tr><th class="eqp-c"><input type="checkbox" id="eqpAll" aria-label="Select all / none" title="Select all / none"></th><th>Holding</th><th class="num">Now</th><th class="num">Target</th><th class="num">Change</th></tr></thead><tbody id="eqpRows">${eqpRows(p, inc)}</tbody></table></div>
     ${p.skipped?.length ? `<p class="mu small-print">Left as they are (options and short positions): <span data-no-tr>${p.skipped.map(H.esc).join(', ')}</span></p>` : ''}
-    <h3>${p.orders.length ? `${p.orders.length} trade${p.orders.length === 1 ? '' : 's'}` : 'No trades needed'}</h3>
-    ${p.orders.length ? `<div class="tablewrap"><table class="slim"><tr><th>Side</th><th>Symbol</th><th class="num">Amount</th></tr>${p.orders.map(o => `<tr><td class="${o.side === 'sell' ? 'neg' : 'pos'}">${o.side === 'sell' ? 'Sell' : 'Buy'}${o.all ? ' all' : ''}</td><td data-no-tr>${H.esc(o.symbol)}</td><td class="num">${o.qty ? `${o.qty} sh · ` : ''}${usd(o.dollars)}</td></tr>`).join('')}</table></div>` : ''}
-    <p class="mu small-print">Sells go first so their cash pays for the buys. Amounts use the latest prices; each order fills at the market price. Not investment advice.</p>`;
+    <h3 id="eqpTradesH"></h3><div id="eqpTrades"></div>
+    <p class="mu small-print">Sells go first so their cash pays for the buys. Amounts use the latest prices; each order fills at the market price. Not investment advice.</p>
+    <div class="eqp-totals" id="eqpTotals" aria-live="polite"></div></div>`;
 }
 export async function equalizePositions(helpers, account, out, opts = {}) {
   H = H || helpers;
   out.innerHTML = '<p class="mu">Working it out…</p>';
   try {
     const body = { account, ...opts };
-    const p = await H.api('/equalize/positions/preview', { body });
-    if (!p.orders.length) { out.innerHTML = `<p class="ok">Every holding already has about the same amount.</p>`; return false; }
+    let p = await H.api('/equalize/positions/preview', { body });
+    if (!p.orders.length && !p.excluded.length) { out.innerHTML = `<p class="ok">Every holding already has about the same amount.</p>`; return false; }
     out.innerHTML = '';
-    const c = await H.secureConfirm({ title: `Equalize the ${p.accounts[0]?.rows.length || ''} holdings in ${p.label}?`, html: positionsHtml(p), okText: `Place ${p.orders.length} trade${p.orders.length === 1 ? '' : 's'}` });
+    const all = p.holdings.map(h => h.symbol), inc = new Set(p.holdings.filter(h => h.included).map(h => h.symbol));
+    let ready = true, seq = 0, tmr = null;
+    const c = await H.secureConfirm({ title: `Equalize holdings in ${p.label}?`, className: 'eqpdlg', html: positionsHtml(p, inc), okText: `Place ${plural(p.orders.length, 'trade')}`,
+      onOpen: ({ dialog: d, ok }) => {
+        const $ = s => d.querySelector(s);
+        // A footer that stays in view: the totals, then Cancel and Place.
+        const foot = document.createElement('div'); foot.className = 'eqp-foot'; const btns = ok.closest('.row'); btns.before(foot); foot.append($('#eqpTotals'), btns);
+        const draw = (note = '') => {
+          const n = inc.size, few = n < 2;
+          $('#eqpCount').textContent = `${n} of ${all.length} included`;
+          const box = $('#eqpAll'); box.checked = n === all.length; box.indeterminate = n > 0 && n < all.length;
+          $('#eqpReset').hidden = n === all.length;
+          $('#eqpRows').innerHTML = eqpRows(few ? { ...p, accounts: [] } : p, inc);
+          $('#eqpSum').innerHTML = few ? '<span class="err">Pick at least two holdings.</span>'
+            : `Each included holding gets about <b>${usd(p.each)}</b>${p.weights.length ? ` (${(+p.weights[0].pct).toFixed(p.weights[0].pct < 1 ? 2 : 1)}% of the account)` : ''}. Holdings you leave out are not bought or sold.`;
+          $('#eqpTradesH').textContent = few ? '' : p.orders.length ? plural(p.orders.length, 'trade') : 'No trades needed';
+          $('#eqpTrades').innerHTML = few ? '' : eqpTrades(p);
+          $('#eqpTotals').innerHTML = few ? '' : `<span>To buy <b>${usd(p.totals.buy)}</b></span><span>To sell <b>${usd(p.totals.sell)}</b></span>${note ? `<span class="mu">${note}</span>` : ''}`;
+          ready = !few && !note && p.orders.length > 0;
+          ok.disabled = !ready; ok.textContent = few ? 'Pick at least two holdings' : note ? 'Updating…' : p.orders.length ? `Place ${plural(p.orders.length, 'trade')}` : 'No trades needed';
+        };
+        const changed = () => {
+          clearTimeout(tmr); if (inc.size < 2) return draw();
+          draw('Updating…');
+          tmr = setTimeout(async () => {
+            const my = ++seq;
+            try { const np = await H.api('/equalize/positions/preview', { body: { ...body, exclude: all.filter(x => !inc.has(x)), remember: true } }); if (my === seq && d.open) { p = np; draw(); } }
+            catch (e) { if (my === seq && d.open) { draw(); $('#eqpSum').innerHTML = `<span class="err">${H.esc(e.message)}</span>`; ok.disabled = true; ready = false; } }
+          }, 350);
+        };
+        d.addEventListener('change', e => {
+          const t = e.target;
+          if (t.id === 'eqpAll') { if (t.checked) all.forEach(x => inc.add(x)); else inc.clear(); changed(); }
+          else if (t.dataset?.sym) { t.checked ? inc.add(t.dataset.sym) : inc.delete(t.dataset.sym); changed(); }
+        });
+        $('#eqpReset').onclick = () => { all.forEach(x => inc.add(x)); changed(); };
+        // The tick boxes are not part of the confirm form's required fields; Enter never places trades while a recount is pending.
+        d.querySelector('form').addEventListener('submit', e => { if (e.submitter?.value === 'yes' && !ready) e.preventDefault(); });
+        draw();
+      } });
+    clearTimeout(tmr);
     if (!c) return false;
     out.innerHTML = '<p class="mu">Placing the trades…</p>';
-    out.innerHTML = results(await H.api('/equalize/positions/run', { body: { ...body, password: c.password, confirm: c.confirm } }));
+    out.innerHTML = results(await H.api('/equalize/positions/run', { body: { ...body, exclude: all.filter(x => !inc.has(x)), password: c.password, confirm: c.confirm } }));
     return true;
   } catch (e) { out.innerHTML = `<p class="err">${H.esc(e.message)}</p>`; return false; }
 }
+

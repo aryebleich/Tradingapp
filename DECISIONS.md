@@ -53,6 +53,19 @@ Choices and assumptions made without asking, with the reason. Trading-tools work
 | D-19 | Position sizes round down to whole lots with a tiny tolerance (1e-9) so floating-point results like 9.999999999 count as 10. | Shown by a test; never rounds up past the risk budget. |
 | D-20 | Backtests and simulations: none were added. The tools only calculate from user inputs and read-only prices. | Rule 5 needs no new handling here. |
 
+## Equalize positions: choose the holdings (2026-11-20)
+
+- E-1: Money for the included holdings. Without "cash to keep", it is what they are worth together now. With "cash to keep", it is the account value less that cash and less the excluded holdings' value. In both cases it is split evenly among them. Excluded holdings are never passed to the planner, so it cannot place an order for one.
+- E-2: The server validates `exclude`: it must be a list, at most 500 entries, upper-cased and de-duplicated, and every symbol must be held in the account. Otherwise the request is refused with "Not held in this account: …". Excluding an option or a short is accepted and changes nothing, because they are never traded anyway.
+- E-3: The run rebuilds the plan on the server from the account and the exclude list. An `orders` field sent by the browser is dropped. The password and "I understand" step is unchanged (secureConfirm only gained an optional onOpen hook to update its own content).
+- E-4: Remembered exclusions are kept per account on the server (setting `equalize:exclude`), so they follow the user across devices. They are saved when the user changes a box (preview with remember) and when trades are placed. Symbols no longer held are dropped. A remembered list that would leave fewer than two holdings is not applied automatically.
+- E-5: "Reset to all" shows only while something is left out. It does the same as Select all, and the next recount saves the empty list.
+- E-6: Recount is debounced by 350ms with a sequence number, so a late answer never overwrites a newer choice. While it runs, the button says "Updating…" and is disabled, and Enter cannot place trades.
+- E-7: With fewer than two boxes ticked, nothing is sent to the server. The summary says "Pick at least two holdings" and the button is disabled with the same words.
+- E-8: When the remembered list leaves nothing to trade, the dialog still opens (with "No trades needed"), so the user can tick holdings back in. Without exclusions the old "Every holding already has about the same amount" message is kept.
+- E-9: The sticky footer shows "To buy" and "To sell" totals (from the server plan) above Cancel and Place.
+- E-10: Translations: Yiddish strings and patterns in public/i18n/yi-equalize.js, and the button and label words in the eight simple languages. i18n/yiddish-labs is a retired one-time translation workspace (README RETIRED list), so it was not changed.
+
 ## Home: one layout for every account, priority order (2026-11-19)
 
 - H-1: One renderer for every account type. Practice and the other brokerages read `/account` (homeBasic); Alpaca reads `/alpaca/account`, `/alpaca/positions` and `/alpaca/portfolio/history` (homeAlpaca), so it keeps intraday history, margin numbers and today's change per position. `#/portfolio` now redirects to Home.

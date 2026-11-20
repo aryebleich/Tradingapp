@@ -4,6 +4,44 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-20: Equalize positions: choose which holdings to include
+
+### What changed
+
+- **The confirm dialog** (Positions → Equalize positions):
+  - Every holding has a tick box, all ticked at first, with Select all / none in the header and "X of Y included" above the table.
+  - Holdings left out are greyed and marked "Not changed"; they get no buys or sells.
+  - Every change recounts on the server (debounced): "each holding gets", the targets, the change per holding, the trades, the buy and sell totals and the "Place N trades" button.
+  - With fewer than two ticked, the button is disabled with "Pick at least two holdings".
+  - Options and shorts stay in the "Left as they are" note, with no tick box.
+  - A sticky footer holds the totals and buttons, and the layout works at 375px.
+- **Server** (src/equalize.js):
+  - `planPositions` takes `exclude`, and `cleanExclude` validates it: only held symbols, at most 500.
+  - The money is split only among the included holdings (DECISIONS.md E-1).
+  - Preview and run both accept `exclude`. Run rebuilds the plan and ignores any orders sent from the browser.
+  - Password and confirm are unchanged.
+- **Remembered per account**, on the server, with "Reset to all".
+- **Translations:** Yiddish (`public/i18n/yi-equalize.js`) and the eight simple languages.
+- **Tests:** `test/equalize-exclude.test.js` (4 tests):
+  - excluded holdings get no orders;
+  - the money is split only among the included holdings, with and without cash to keep;
+  - fewer than two included is refused;
+  - unknown symbols, more than 500 and non-lists are refused.
+
+### Tests
+
+- `npm test`: 393 pass, 0 fail, 3 todo. Security and clean checks pass.
+- Chromium against the mock broker (Alpaca account, 4 holdings), at 1280px and 375px, with no browser errors:
+  - leaving out AAPL drops its orders and splits the money among the other three;
+  - one or zero ticked disables the button;
+  - Select all and none work;
+  - the trades were placed with AAPL untouched;
+  - reopening shows AAPL still left out, and Reset to all brings it back;
+  - the unknown-symbol and too-few errors come from the server;
+  - the dialog fits the screen at 375px.
+
+---
+
 ## 2026-11-19: Home with a clear priority order, one layout for every account type
 
 ### What changed

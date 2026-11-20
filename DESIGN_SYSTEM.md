@@ -100,6 +100,16 @@ Home (`routes.dashboard`) is one page for every account type: practice, Alpaca a
 
 Cards that load later go into fixed slots holding a skeleton of their usual height, so nothing below them moves. Every card uses the theme's 18px padding and `--r`, and every card heading uses `--t-lg`.
 
+## Confirm dialogs with a table
+
+A confirm that lists what will change (Equalize positions) follows one pattern:
+- A one-line summary goes above the table.
+- Tick boxes sit in the first column, with Select all / none in the header and "X of Y included" above.
+- Numbers are right-aligned and use `tabular-nums`. Rows left out are greyed and say "Not changed".
+- A sticky footer holds the totals and the buttons. The confirm button says exactly what it does ("Place 3 trades") and is disabled while a recount is pending or the choice is not valid.
+- The password and "I understand" steps of `secureConfirm` are never changed. The dialog only adds content through `onOpen`.
+- On phones the dialog uses 16px padding and the buttons stretch full width.
+
 ## Mobile navigation pattern
 
 This is the existing pattern, which is kept:

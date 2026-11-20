@@ -13,6 +13,7 @@ import { loadAccounts, WHY } from './consolidate.js';
 import { tradingFor } from './alpaca/connections.js';
 import { notifyUser } from './notify-user.js';
 import { nyTime } from './time.js';
+import { getSetting, setSetting } from './settings.js';
 
 const bad = (msg, status = 400) => Object.assign(new Error(msg), { status });
 const r2 = x => +(+x || 0).toFixed(2);
@@ -61,30 +62,61 @@ export function planEqualize(rows, { model = 'combined', options = {}, fixed = n
   return { model, weights, accounts: view, orders, drift: +drift.toFixed(2), needed: orders.length > 0 && drift >= o.driftPct };
 }
 
-// Equalize positions: inside one account, every holding gets the same dollar amount. The money
-// for the holdings stays what it is now (or the account's value less the cash to keep), and is
-// split evenly among the stocks and funds held. Option contracts and short positions are left alone.
+// Equalize positions: inside one account, every included holding gets the same dollar amount. The
+// money for them is what they are worth together now (or the account's value less the cash to keep
+// and less the excluded holdings), split evenly. Excluded holdings, option contracts and short
+// positions are left exactly as they are: no order touches them.
+export const MAX_EXCLUDE = 500;
+// The symbols to leave out: upper-cased, each one held in this account, at most MAX_EXCLUDE.
+export function cleanExclude(row, list) {
+  if (list == null) return [];
+  if (!Array.isArray(list)) throw bad('exclude must be a list of symbols');
+  if (list.length > MAX_EXCLUDE) throw bad(`At most ${MAX_EXCLUDE} holdings can be left out`);
+  const held = new Set((row.positions || []).map(p => String(p.symbol).toUpperCase()));
+  const out = [...new Set(list.map(x => String(x ?? '').trim().toUpperCase()).filter(Boolean))];
+  const unknown = out.filter(x => !held.has(x));
+  if (unknown.length) throw bad(`Not held in this account: ${unknown.slice(0, 5).join(', ')}${unknown.length > 5 ? '…' : ''}`);
+  return out;
+}
 export function planPositions(row, options = {}) {
   const o = { ...DEFAULTS, ...options };
   const longs = (row.positions || []).filter(p => !OPTION.test(p.symbol) && +p.value > 0 && +p.qty > 0);
   const equity = +row.equity || 0;
   if (longs.length < 2) throw bad(longs.length ? 'There is only one holding to equalize' : 'This account has no stock or fund holdings to equalize');
   if (!(equity > 0)) throw bad('This account has no value to work with');
-  const invested = longs.reduce((s, p) => s + +p.value, 0);
-  const share = (o.cashPct == null ? invested / equity : Math.max(0, 1 - o.cashPct / 100)) / longs.length;
-  const fixed = Object.fromEntries(longs.map(p => [p.symbol, share]));
-  const p = planEqualize([{ ...row, positions: longs }], { model: 'combined', options: o, fixed });
+  const out = new Set(cleanExclude(row, options.exclude));
+  const included = longs.filter(p => !out.has(String(p.symbol).toUpperCase())), excluded = longs.filter(p => out.has(String(p.symbol).toUpperCase()));
+  if (included.length < 2) throw bad('Pick at least two holdings to equalize');
+  const invested = included.reduce((s, p) => s + +p.value, 0), kept = excluded.reduce((s, p) => s + +p.value, 0);
+  const share = (o.cashPct == null ? invested / equity : Math.max(0, 1 - o.cashPct / 100 - kept / equity)) / included.length;
+  const fixed = Object.fromEntries(included.map(p => [p.symbol, share]));
+  // Only the included holdings are given to the planner, so it cannot place an order for any other.
+  const p = planEqualize([{ ...row, positions: included }], { model: 'combined', options: o, fixed });
   const skipped = (row.positions || []).filter(x => !longs.includes(x)).map(x => x.symbol);
-  return { ...p, account: row.id, label: row.label, each: +(equity * share).toFixed(2), skipped };
+  const buy = p.orders.filter(x => x.side === 'buy').reduce((s, x) => s + x.dollars, 0), sell = p.orders.filter(x => x.side === 'sell').reduce((s, x) => s + x.dollars, 0);
+  return { ...p, account: row.id, label: row.label, each: +(equity * share).toFixed(2), skipped,
+    holdings: longs.map(x => ({ symbol: x.symbol, value: r2(x.value), included: !out.has(String(x.symbol).toUpperCase()) })).sort((x, y) => y.value - x.value),
+    excluded: excluded.map(x => x.symbol), totals: { buy: r2(buy), sell: r2(sell) } };
 }
-async function positionsPlan(userId, b = {}) {
+// Remembered exclusions, per account (settings key equalize:exclude → { accountId: [symbols] }).
+const EXKEY = 'equalize:exclude';
+async function positionsPlan(userId, b = {}, { save = false } = {}) {
   const id = String(b.account || 'alpaca');
   if (!(id === 'alpaca' || /^alpaca:\d{1,3}$/.test(id))) throw bad('Pick an Alpaca account');
   const list = await loadAccounts(userId), row = list.find(r => r.id === id);
   if (!row) throw bad('That account is not connected', 404);
   if (row.error) throw bad(row.error, 409);
   const n = (v, d, lo, hi) => (v === undefined || v === '' || v === null ? d : Math.min(hi, Math.max(lo, +v)));
-  return planPositions(row, { cashPct: b.cashPct === '' || b.cashPct == null ? null : n(b.cashPct, 0, 0, 90), minTrade: n(b.minTrade, 5, 1, 100000), wholeShares: !!b.wholeShares });
+  const saved = (await getSetting(userId, EXKEY, {})) || {};
+  // No list sent: the remembered one, without anything no longer held (sold since) or no longer equalizable.
+  const held = new Set((row.positions || []).map(p => String(p.symbol).toUpperCase()));
+  let exclude = b.exclude === undefined ? (saved[id] || []).filter(x => held.has(x)) : cleanExclude(row, b.exclude);
+  const longs = (row.positions || []).filter(p => !OPTION.test(p.symbol) && +p.value > 0 && +p.qty > 0);
+  // A remembered list that would leave fewer than two holdings is not applied by itself.
+  if (b.exclude === undefined && longs.filter(p => !exclude.includes(String(p.symbol).toUpperCase())).length < 2) exclude = [];
+  const p = planPositions(row, { cashPct: b.cashPct === '' || b.cashPct == null ? null : n(b.cashPct, 0, 0, 90), minTrade: n(b.minTrade, 5, 1, 100000), wholeShares: !!b.wholeShares, exclude });
+  if (save && b.exclude !== undefined) await setSetting(userId, EXKEY, { ...saved, [id]: exclude });
+  return { ...p, remembered: (saved[id] || []).length > 0 || (save && exclude.length > 0) };
 }
 
 // ---------- settings ----------
@@ -195,10 +227,13 @@ export const equalizeRouter = (() => {
     res.json({ results });
   });
   // Equalize positions in one account.
-  r.post('/positions/preview', async (req, res) => res.json(await positionsPlan(req.user.id, req.body || {})));
+  // Preview: an exclude list the user changed is remembered for this account (remember: true).
+  r.post('/positions/preview', async (req, res) => res.json(await positionsPlan(req.user.id, req.body || {}, { save: !!req.body?.remember })));
+  // Run: the plan is rebuilt here from the account and the exclude list; orders sent by the browser are never used.
   r.post('/positions/run', async (req, res) => {
     pw(req);
-    const p = await positionsPlan(req.user.id, req.body || {});
+    const { orders: _ignored, ...b } = req.body || {};
+    const p = await positionsPlan(req.user.id, b, { save: true });
     if (!p.orders.length) return res.json({ results: [], message: 'Every holding already has about the same amount.' });
     const results = await place(req.user.id, p.orders, 'equalize');
     await audit(req.user.id, 'equalize_positions', { account: p.account, orders: results.length, failed: results.filter(x => !x.ok).length }, req.ip);

@@ -144,6 +144,13 @@ const ROWS = [
   ['Security & protection', 'Seguridad y protección', 'Sécurité et protection', 'Sicherheit & Schutz', 'Segurança e proteção', 'Безопасность и защита', 'אבטחה והגנה', 'الأمان والحماية', '安全与保护'],
   ['My bots', 'Mis bots', 'Mes robots', 'Meine Bots', 'Meus robôs', 'Мои боты', 'הבוטים שלי', 'روبوتاتي', '我的机器人'],
   ['Related', 'Relacionado', 'Voir aussi', 'Verwandt', 'Relacionado', 'Связанное', 'קשור', 'ذو صلة', '相关'],
+  // Equalize positions: choosing the holdings (2026-11-20).
+  ['Reset to all', 'Restablecer todo', 'Tout réinitialiser', 'Alle zurücksetzen', 'Redefinir tudo', 'Сбросить всё', 'איפוס לכולם', 'إعادة تعيين الكل', '全部重置'],
+  ['Select all / none', 'Todos / ninguno', 'Tout / rien', 'Alle / keine', 'Todos / nenhum', 'Все / ни одного', 'הכול / כלום', 'الكل / لا شيء', '全选 / 全不选'],
+  ['Not changed', 'Sin cambios', 'Inchangé', 'Unverändert', 'Sem alteração', 'Без изменений', 'ללא שינוי', 'بدون تغيير', '不变'],
+  ['Pick at least two holdings', 'Elija al menos dos posiciones', 'Choisissez au moins deux positions', 'Mindestens zwei Positionen wählen', 'Escolha pelo menos duas posições', 'Выберите не менее двух позиций', 'בחרו לפחות שתי אחזקות', 'اختر مركزين على الأقل', '至少选择两项持仓'],
+  ['To buy', 'A comprar', 'À acheter', 'Zu kaufen', 'A comprar', 'Купить', 'לקנייה', 'للشراء', '买入'],
+  ['To sell', 'A vender', 'À vendre', 'Zu verkaufen', 'A vender', 'Продать', 'למכירה', 'للبيع', '卖出'],
   ['Simple translation: menus and main buttons are translated; the rest of the app stays in English.', 'Traducción sencilla: se traducen los menús y los botones principales; el resto queda en inglés.', "Traduction simple : les menus et les boutons principaux sont traduits ; le reste de l'application reste en anglais.", 'Einfache Übersetzung: Menüs und Hauptschaltflächen sind übersetzt; der Rest bleibt auf Englisch.', 'Tradução simples: menus e botões principais são traduzidos; o restante fica em inglês.', 'Упрощённый перевод: переведены меню и основные кнопки, остальное на английском.', 'תרגום בסיסי: התפריטים והכפתורים העיקריים מתורגמים; שאר האפליקציה באנגלית.', 'ترجمة مبسطة: القوائم والأزرار الرئيسية مترجمة، وبقية التطبيق بالإنجليزية.', '简单翻译：菜单和主要按钮已翻译，其余部分保持英文。'],
   ['The language of the app on this device.', 'El idioma de la aplicación en este dispositivo.', "La langue de l'application sur cet appareil.", 'Die Sprache der App auf diesem Gerät.', 'O idioma do aplicativo neste dispositivo.', 'Язык приложения на этом устройстве.', 'שפת האפליקציה במכשיר זה.', 'لغة التطبيق على هذا الجهاز.', '此设备上的应用语言。'],
 ];

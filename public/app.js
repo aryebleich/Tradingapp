@@ -1123,9 +1123,11 @@ routes.mfa = view => {
 // ---------- portfolio ----------
 // For changes that matter (upgrades, "View as"): the password (or email, for Google/GitHub
 // sign-ins), a tick box and, for upgrades, the word UPGRADE. Resolves with the fields or null.
-function secureConfirm({ title, html = '', word = null, okText = 'Confirm' }) {
+// onOpen({ dialog, ok }) lets a caller keep its part of the dialog up to date (Equalize positions);
+// the password, the tick box and the buttons stay the same for every caller.
+function secureConfirm({ title, html = '', word = null, okText = 'Confirm', className = '', onOpen = null }) {
   return new Promise(resolve => {
-    const d = document.createElement('dialog'); d.className = 'secure';
+    const d = document.createElement('dialog'); d.className = 'secure' + (className ? ' ' + className : '');
     const pw = ME?.hasPassword !== false;
     d.innerHTML = `<form method="dialog"><h2>${esc(title)}</h2>${html}
       ${pw ? '<label>Your password<input type="password" name="password" autocomplete="current-password" required></label>' : `<label>Type your email address<input type="email" name="confirm" autocomplete="off" required dir="ltr"></label>`}
@@ -1135,6 +1137,7 @@ function secureConfirm({ title, html = '', word = null, okText = 'Confirm' }) {
     document.body.append(d);
     d.onclose = () => { const f = form(d.querySelector('form')); resolve(d.returnValue === 'yes' ? { password: f.password, confirm: f.confirm, typed: f.typed } : null); d.remove(); };
     d.showModal();
+    if (onOpen) onOpen({ dialog: d, ok: d.querySelector('button[value=yes]') });
   });
 }
 // Ready-made strategies waiting for the user's approval today ("Approve each trade").
