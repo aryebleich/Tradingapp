@@ -416,6 +416,14 @@ const pageOf = route => { const [h, t] = route.split('/'); return t && HUBS[h]?.
 const PARENT = { playbook: 'strategies', strategy: 'strategies', luach: 'extras' };
 const entryOf = route => { const [h, t] = route.split('/'); return t && HUBS[h] ? h : PARENT[route] || route; };
 const hubHref = (h, k) => (k === h ? `#/${h}` : `#/${h}/${k}`);
+// The browser title of each screen (tabs, history, screen readers: WCAG 2.4.2): its menu or tab name,
+// else the text of its heading. Admin pages use their tab names.
+const PAGE_TITLES = { login: 'Sign in', 'login-phone': 'Sign in by phone', register: 'Create your account', forgot: 'Reset your password', reset: 'Choose a new password', mfa: 'Two-factor code', verify: 'Verify your email', start: 'Get started', playbook: 'Playbook', strategy: 'Strategy', extras: 'My tools', luach: 'Luach' };
+function pageTitle(view, page) {
+  const named = PAGE_TITLES[page] || CORE.find(([k]) => k === page)?.[1] || HUBS[page]?.[0] || Object.values(HUBS).flatMap(h => h[1]).find(([k]) => k === page)?.[1] || NAV.flatMap(g => g[1]).find(([k]) => k === page)?.[1];
+  const h = $('h1', view), own = h ? [...h.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join(' ').replace(/\s+/g, ' ').trim() : '';
+  return (named || own || '').replace(/[\u{1F300}-\u{1FAFF}]/gu, '').trim();
+}
 // The tab strip of a merged page (add-on tabs leave it while the add-on is off).
 function hubTabs(page) {
   const h = HUBS[page] ? page : MERGED_INTO[page]; if (!h) return '';
@@ -696,7 +704,7 @@ async function render(opts) {
   try {
     await loadPrefs();
     // Owner pages open only for admins (the server refuses their data to anyone else too).
-    try { await (routes[ownerOnly(page) ? 'dashboard' : page] || routes.dashboard)(view, new URLSearchParams(q)); if (render.seq === mine && view.isConnected) { addHubTabs(view, page); addRelated(view, page); addGear(view, page); if (render.tracked !== page) { render.tracked = page; api('/a/track', { body: { route: page } }).catch(() => {}); } } } finally { if (render.seq === mine) swrOn = false; }
+    try { await (routes[ownerOnly(page) ? 'dashboard' : page] || routes.dashboard)(view, new URLSearchParams(q)); if (render.seq === mine && view.isConnected) { addHubTabs(view, page); addRelated(view, page); addGear(view, page); { const t = pageTitle(view, page); document.title = t ? `${t} · Brightolio` : 'Brightolio'; } if (render.tracked !== page) { render.tracked = page; api('/a/track', { body: { route: page } }).catch(() => {}); } } } finally { if (render.seq === mine) swrOn = false; }
     if (!PREFETCH && ME) addGuide(view, ownerOnly(page) || !routes[page] ? 'dashboard' : page);
     if (swap) {
       if (!view.isConnected) return; // the user moved to another page meanwhile
@@ -1034,14 +1042,20 @@ routes.login = async (view, q) => {
 };
 routes.register = async (view, q) => {
   const g = await oauthButtons('Sign up');
-  view.innerHTML = `
-  <form class="card auth"><h2>Create account</h2>
+  CFG ||= await api('/config').catch(() => ({}));
+  const days = CFG?.trialDays || 14;
+  // A short, factual reminder of what the free account is (from the plan data and the risk pages).
+  view.innerHTML = `<div class="authwrap">
+  <form class="card auth"><h1 class="auth-h">Create your account</h1>
     ${g ? g.replace('<div class="or">', '<p class="mu small-print">By continuing with Google or GitHub you agree to the <a href="/terms" target="_blank">Terms</a> and <a href="/privacy" target="_blank">Privacy Policy</a> and have read the <a href="/risk" target="_blank">Risk Disclosure</a>.</p><div class="or">') : ''}
     <label>Email<input name="email" type="email" autocomplete="username" required></label>
     <label>Password (10+ chars, upper, lower, digit)<input name="password" type="password" autocomplete="new-password" required></label>
     <label><input type="checkbox" name="agree" style="width:auto"> I agree to the <a href="/terms" target="_blank">Terms</a> and <a href="/privacy" target="_blank">Privacy Policy</a> and have read the <a href="/risk" target="_blank">Risk Disclosure</a>.</label>
     <button>Create account</button><div class="err"></div>
-    <p class="mu">You start with a $100,000 paper account. <a href="#/login">Sign in instead</a></p></form>`;
+    <p class="mu">You start with a $100,000 paper account. <a href="#/login">Sign in instead</a></p></form>
+  <aside class="card auth-side" aria-label="About your account"><h2>What you get, free</h2>
+    <ul class="ticks"><li>$100,000 in practice money with real market prices</li><li>No card needed for the free plan</li><li>Paid plans start with a ${days}-day free trial; cancel anytime</li><li>Two-factor login and passkeys to protect your account</li></ul>
+    <p class="mu small-print">Brightolio is software, not a broker. Orders go to the brokerage account you choose. Trading involves risk of loss. <a href="/risk" target="_blank">Read the risk disclosure</a> · <a href="/security" target="_blank">How we protect your account</a></p></aside></div>`;
   if (q.get('email')) { view.querySelector('[name=email]').value = q.get('email'); view.querySelector('[name=password]').focus(); }
   act($('button', view), async () => {
     const f = form(view);
@@ -2009,7 +2023,7 @@ routes.referrals = async view => {
   view.innerHTML = `<h1>Invite & earn</h1>
   <div class="card" style="background:var(--grad);color:#fff;border:0"><h2 style="color:#fff;font-size:20px">Give your friends ${r.friendDays} days free. Get $${r.reward} for each one who subscribes.</h2>
     <p style="margin:0;opacity:.9">Share your link. Friends who sign up with it get a ${r.friendDays}-day free trial. When one starts a paid plan, $${r.reward} is credited to your account and taken off your next bill.</p></div>
-  <div class="card"><h2>Your invite link</h2><div class="refbox"><input id="reflink" readonly value="${esc(r.link)}"><button id="copy">Copy</button>${navigator.share ? '<button class="ghost" id="share">Share</button>' : ''}</div><div class="err"></div></div>
+  <div class="card"><h2>Your invite link</h2><div class="refbox"><input id="reflink" readonly value="${esc(r.link)}" aria-label="Your invite link"><button id="copy">Copy</button>${navigator.share ? '<button class="ghost" id="share">Share</button>' : ''}</div><div class="err"></div></div>
   <div class="card"><div class="stats">
     <div class="stat"><span>Friends who joined</span><b>${r.invited}</b></div>
     <div class="stat"><span>Friends who subscribed</span><b>${r.paying}</b></div>

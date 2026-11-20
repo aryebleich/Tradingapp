@@ -80,6 +80,14 @@ The new layout keeps every vertical distance of the old one: headings, margins b
 - **Disclosures** are never collapsed, hidden or moved further down than they were. Signed-in pages now show the footer disclosures under every page; the old layout hid them while signed in.
 - **Trading, order, payment, funding and sign-in pages.** Only the wrapping layout and spacing change. `layout.js` never touches forms, dialogs, the order ticket (`#tk`, `.ticket`) or the buy bar (`#tradeBar`). The order of controls and confirmation steps is unchanged.
 
+## Page titles, wording, badges and empty states
+
+- **Page titles.** Every app screen sets the browser title to "<menu or tab name> · Brightolio" (pageTitle in public/app.js, WCAG 2.4.2). A screen not in the menu uses PAGE_TITLES or the text of its `h1`.
+- **One word for practice money.** Use "Paper" on pills, switches and account names, and "practice money" in sentences. Do not write "test money" for the paper account. That phrase stays only for a live brokerage connection running on its sandbox ("Live account, test money").
+- **Badges** (`.save`, `.og-tag`, pills) mix their colour toward `--tx`, so they keep 4.5:1 contrast in light and dark themes. Never use the bare accent or gain colour as text on its own tint.
+- **Empty states** use `.empty`: the bold fact ("No orders yet."), then the next step as a link or a `data-go` jump on the same line. Never leave a bare "None" or an empty table body.
+- **Sign-up and sign-in** have an `h1`. Sign-up sits beside a short factual panel (`.auth-side`) on desktop and under it on phones. The panel says only what the plan data and the risk pages already say.
+
 ## Merged pages and tabs
 
 When pages do one job together, the menu shows one entry and the page shows a tab strip (`nav.hubtabs`) right under its title, above the page guide. The pages are listed in `HUBS` in `public/app.js`. Each tab stays its own page at `#/<entry>/<tab>`, and its old address redirects there. Tabs are chips: 36px tall, the current one filled (`--tx`) and marked `aria-current="page"`. On phones the strip scrolls sideways instead of wrapping, so the first card does not move down. A page's own inner tabs (`.seg`, `.chips`) stay below it. Tab labels are the pages' own names.
