@@ -6,7 +6,7 @@ export const strings = {
   'Brightolio is software, not a broker. Orders go to the brokerage account you choose. Trading involves risk of loss.': 'ברייטאליא איז א סאפטווער, נישט קיין בראוקער. ארדערס גייען צו דער בראוקער קאנטע וואס איר קלייבט. האנדלען איז פארבונדן מיט ריזיקע פון פארלוסט.',
   'Read the risk disclosure': 'לייענט די ריזיקע אנזאג', 'How we protect your account': 'ווי מיר שיצן אייער קאנטע',
   'No orders yet.': 'נאך קיין ארדערס.', 'Place a practice trade': 'מאכט א פראקטיק טרעיד', 'Place a trade with the ticket': 'מאכט א טרעיד מיטן טיקעט', 'No positions yet.': 'נאך קיין פאזיציעס.',
-  'Nothing billed yet.': 'נאך גארנישט פארעכנט.', 'Charges, refunds and credit purchases show here.': 'אפצאלן, צוריקגעצאלטס און קרעדיט קויפן ווייזן זיך דא.',
+  'Nothing billed yet.': 'נאך גארנישט פארעכנט.', 'No orders here.': 'קיין ארדערס דא.', 'Place a trade': 'מאכט א טרעיד', 'Charges, refunds and credit purchases show here.': 'אפצאלן, צוריקגעצאלטס און קרעדיט קויפן ווייזן זיך דא.',
   'Compare plans': 'פארגלייכט פלענער', 'Feature': 'מעגלעכקייט', 'Recommended': 'רעקאמענדירט', 'billed yearly': 'באצאלט יערליך',
   'What stays free': 'וואס בלייבט אומזיסט', 'Not now': 'נישט יעצט', 'See all plans': 'זעט אלע פלענער', 'Monthly': 'חודשליך', 'Yearly': 'יערליך',
   "You won't be charged until the trial ends. Cancel anytime from Manage billing.": 'מען וועט אייך נישט פארעכענען ביז דער פראבע ענדיגט זיך. שטעלט אפ ווען איר ווילט פון "פירן באצאלן".',

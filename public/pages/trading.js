@@ -684,7 +684,7 @@ async function orders(view, q) {
   const load = async () => {
     const list = await A('/orders?status=' + status + '&limit=200');
     const el = H.$('#list', view); if (!el) return;
-    el.innerHTML = list.length ? ordersTable(list) : '<p class="mu">No orders.</p>';
+    el.innerHTML = list.length ? ordersTable(list) : '<div class="empty"><b>No orders here.</b><a href="#/trade">Place a trade</a></div>';
     wireOrderActions(el, load);
   };
   await load();

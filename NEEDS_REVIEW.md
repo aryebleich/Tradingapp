@@ -25,3 +25,11 @@ These are items I skipped or left unchanged on purpose, to protect trading, paym
 | N-12 | **Lighthouse performance numbers are from a local machine** | Use them to compare old and new on the same machine, not as absolute scores. |
 | N-13 | **One server instance assumed for the automatic rollout** | Each instance counts its own traffic and decides on its own, so with several instances they could disagree and send duplicate e-mails. Render runs one instance (`render.yaml`). If you scale out, turn the automation off (`LAYOUT_V2_AUTOSTART=0`) and step the flag by hand. |
 | N-14 | **The live disclosure check reads the served HTML, not the rendered page** | It confirms the disclosure text and the layout are served on the live site. Visibility, fold position and contrast are covered by the pre-release suite (`test/layout/`). |
+
+## Pro review (2026-11-20)
+
+| # | Item | Why it was left | Suggested next step |
+|---|---|---|---|
+| N-15 | **Performance-fee rate per plan at the point of choice** (registered-adviser mode only) | The rates are private by an earlier owner decision (test/batch22); members see their own rate on Plans & billing. In the default software-only mode no fee is charged, so nothing is hidden today. | Before turning adviser mode on, decide whether each plan card shows its rate (PRO_REVIEW.md fix 15). |
+| N-16 | **Stripe billing portal must allow plan switches** | Members who already pay now change plan in the portal (a second checkout is refused, so nobody is charged twice). | In Stripe → Billing → Customer portal, turn on "Customers can switch plans" with all four prices, prorations on (STRIPE_PORTAL_CONFIG). |
+| N-17 | **N-4 is resolved for Create account** | Sign-up now has an `h1` ("Create your account"). Forgot password and Sign in by phone still use their card title. | Add an `h1` to those two in the same way. |

@@ -1358,7 +1358,7 @@ function positionsTable(rows, equity, sort) {
   const head = POS_COLS.map(([c, t]) => `<th${nc(c)} aria-sort="${c === k ? (dir === 1 ? 'ascending' : 'descending') : 'none'}"><button type="button" class="sortbtn${c === k ? ' on' : ''}" data-sort="${c}">${t}<span aria-hidden="true">${c === k ? (dir === 1 ? '▲' : '▼') : ''}</span></button></th>`).join('');
   const body = shown.map(p => `<tr><td><a href="#/trade?symbol=${encodeURIComponent(p.symbol)}" data-no-tr><b>${esc(p.symbol)}</b></a><small class="mu pos-sub">${num(p.qty, 4)} · avg ${money(p.avg)}</small></td><td class="num">${money(p.price)}</td><td class="num">${money(p.value)}</td>
     <td class="num">${p.weight == null ? '-' : pct(p.weight, 1).replace(/^\+/, '')}</td><td class="num ${cls(p.day)}">${p.day == null ? '-' : money(p.day)}</td><td class="num ${cls(p.pl)}">${money(p.pl)}${p.plPct == null ? '' : `<small class="mu pos-sub">${pct(p.plPct, 2)}</small>`}</td></tr>`).join('');
-  return `<div class="tablewrap"><table class="postable"><tr>${head}</tr>${body || `<tr><td colspan="${POS_COLS.length}" class="mu">No positions. <a href="#/trade">Place a trade</a></td></tr>`}</table></div>
+  return `<div class="tablewrap"><table class="postable"><tr>${head}</tr>${body || `<tr><td colspan="${POS_COLS.length}"><div class="empty"><b>No positions yet.</b><a href="#/dashboard" data-go="#ticket">${state.account === 'paper' ? 'Place a practice trade' : 'Place a trade with the ticket'}</a></div></td></tr>`}</table></div>
     ${list.length > shown.length ? `<p class="mu small-print" style="margin:8px 0 0"><a href="#/positions">All ${list.length} positions →</a></p>` : ''}`;
 }
 routes.dashboard = async (view, q) => {
@@ -1460,7 +1460,7 @@ routes.dashboard = async (view, q) => {
   if ($('#reset', view)) act($('#reset', view), async () => { if (confirm('Reset paper account to $100,000?')) { await api('/paper/reset', { body: {} }); render(); } });
   const orders = (await api('/orders?account=' + state.account).catch(() => [])).slice(0, 10);
   if (!$('#orders', view)) return;
-  $('#orders', view).innerHTML = `<table><tr><th>Time</th><th>Symbol</th><th>Side</th><th>Qty</th><th>Price</th><th>Status</th><th>Source</th></tr>${orders.map(o => `<tr><td>${date(o.at)}</td><td>${esc(o.symbol)}</td><td>${o.side}</td><td>${o.qty ? num(o.qty, 4) : money(o.notional)}</td><td>${o.price ? money(o.price) : '-'}</td><td>${esc(o.status)}${o.orderId && state.account === 'paper' ? ` <button class="small ghost" data-pcancel="${o.orderId}">Cancel</button>` : ''}</td><td>${esc(o.source || '')}</td></tr>`).join('') || '<tr><td colspan="7" class="mu">None yet</td></tr>'}</table>`;
+  $('#orders', view).innerHTML = `<table><tr><th>Time</th><th>Symbol</th><th>Side</th><th>Qty</th><th>Price</th><th>Status</th><th>Source</th></tr>${orders.map(o => `<tr><td>${date(o.at)}</td><td>${esc(o.symbol)}</td><td>${o.side}</td><td>${o.qty ? num(o.qty, 4) : money(o.notional)}</td><td>${o.price ? money(o.price) : '-'}</td><td>${esc(o.status)}${o.orderId && state.account === 'paper' ? ` <button class="small ghost" data-pcancel="${o.orderId}">Cancel</button>` : ''}</td><td>${esc(o.source || '')}</td></tr>`).join('') || `<tr><td colspan="7"><div class="empty"><b>No orders yet.</b><a href="#/dashboard" data-go="#ticket">${state.account === 'paper' ? 'Place a practice trade' : 'Place a trade with the ticket'}</a></div></td></tr>`}</table>`;
   $$('[data-pcancel]', view).forEach(b => act(b, async () => { await api('/paper/orders/' + b.dataset.pcancel, { method: 'DELETE' }); render(); return ''; }));
 };
 
@@ -2010,7 +2010,7 @@ routes.funding = routes.billing = async (view, q) => {
         ${fees.accounts.map(a => `<p class="mu">${esc(a.account)}: high-water mark ${money(a.high_water)}</p>`).join('')}</div>` : ''}
     </div>
     <div class="card tablewrap"><h2>Billing history</h2><table><tr><th>Date</th><th>Type</th><th>Amount</th><th>Status</th><th>Note</th></tr>
-      ${ledger.map(l => `<tr><td>${date(l.at)}</td><td>${esc(l.kind.replace(/_/g, ' '))}</td><td>${money(l.amount)}</td><td>${esc(l.status)}</td><td>${esc(l.memo || '')}</td></tr>`).join('') || '<tr><td colspan="5" class="mu">Nothing yet</td></tr>'}</table></div>`;
+      ${ledger.map(l => `<tr><td>${date(l.at)}</td><td>${esc(l.kind.replace(/_/g, ' '))}</td><td>${money(l.amount)}</td><td>${esc(l.status)}</td><td>${esc(l.memo || '')}</td></tr>`).join('') || '<tr><td colspan="5"><div class="empty"><b>Nothing billed yet.</b><span>Charges, refunds and credit purchases show here.</span></div></td></tr>'}</table></div>`;
     $$('#interval button', view).forEach(b => (b.onclick = () => { yearly = b.dataset.i === 'year'; draw(); }));
     // Members who already pay switch in the billing portal (one subscription, prorated), never a second checkout.
     $$('[data-plan]', view).forEach(b => act(b, async () => { location.href = subscribed() ? (await api('/billing/portal', { body: {} })).url : (await api('/billing/checkout', { body: { plan: b.dataset.plan, interval: yearly ? 'year' : 'month' } })).url; }, $('#planErr', view)));

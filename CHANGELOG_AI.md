@@ -4,6 +4,41 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-20: Pro polish: design system, landing, pricing, onboarding, empty states
+
+### What changed
+
+- **Review:** PRO_REVIEW.md covers first impression, consistency, trust, speed, accessibility and mobile, and revenue, with the 20 highest-impact fixes ranked against effort.
+- **Design system:**
+  - every app screen has its own browser title;
+  - AA contrast for the `.save` and `.og-tag` badges, and a label on the invite-link field;
+  - one `.empty` component;
+  - rules for wording, badges, titles and sign-up in DESIGN_SYSTEM.md.
+- **Landing:** a "Security" link in the header of every public page, and the footer's own risk sentence and the Risk Disclosure link under the final sign-up box (English and Yiddish). No new claims (LEGAL_REVIEW.md L13).
+- **Pricing:**
+  - a plan comparison table on Plans & billing, the same rows as the homepage (tested);
+  - yearly prices as a monthly amount with the yearly charge under it;
+  - "Recommended" instead of "Most popular".
+- **Upgrade window:** it names the plan that unlocks the feature, shows its real prices with Monthly/Yearly, says what stays free, and shows the trial terms. Paying members change plan in the billing portal, and a second subscription is refused (409, tested).
+- **Onboarding:**
+  - sign-up has an `h1` and a short factual panel;
+  - Get started puts the first trade first and jumps to the ticket;
+  - a next step to the strategy library appears after the first practice trade.
+- **Polish:** empty states with next steps on Home (positions, recent orders), Orders and Billing history; in-page jumps stop below the sticky header; a menu error when the session ends mid-load is fixed.
+- **Translations:** Yiddish for every new string (`public/i18n/yi-pro.js`, `scripts/yi_home.py`).
+- **Follow-ups for the owner:** NEEDS_REVIEW.md N-15 to N-17 and LEGAL_REVIEW.md L13 to L15.
+
+Decisions: DECISIONS.md P2-1 to P2-15.
+
+### Tests
+
+- `npm test`: 395 pass, 0 fail, 3 todo (new: test/pricing.test.js, the no-second-subscription check in test/stripesetup.test.js). Security and clean checks pass.
+- axe-core (WCAG 2.0/2.1 A and AA): 0 violations on the homepage (English and Yiddish), Security, Status, sign-in, sign-up, Get started, Home, Plans & billing, Invite & earn, Marketplace, AI bots, Developer API and Settings, at 1280px and 375px. Before: 3 failures and a missing `h1`.
+- Click-through of all 94 menu pages and tabs at 1280px and 375px: no browser errors, no page wider than the screen, every page with an h1.
+- `npm run e2e` (with the pre-installed Chromium): 444 checks, exit 0. Checked by hand in Chromium: sign-up, Plans & billing (Monthly and Yearly), the upgrade window, Get started and the next step, in English and Yiddish, signed in and signed out, at 1280px and 375px.
+
+---
+
 ## 2026-11-20: Equalize positions: choose which holdings to include
 
 ### What changed

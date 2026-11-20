@@ -53,6 +53,26 @@ Choices and assumptions made without asking, with the reason. Trading-tools work
 | D-19 | Position sizes round down to whole lots with a tiny tolerance (1e-9) so floating-point results like 9.999999999 count as 10. | Shown by a test; never rounds up past the risk budget. |
 | D-20 | Backtests and simulations: none were added. The tools only calculate from user inputs and read-only prices. | Rule 5 needs no new handling here. |
 
+## Pro polish: trust and revenue (2026-11-20)
+
+- P2-1: The review (PRO_REVIEW.md) found a mature landing page and pricing. The weak points were smaller and closer to the money: the upgrade window, the plan choice inside the app, sign-up, the first steps on Home, page titles and three accessibility failures. Those were fixed first; a rebuild of what works was not attempted.
+- P2-2: No new marketing claims on the homepage. LEGAL_REVIEW.md L9–L12 show that a redesigned homepage was held back for legal sign-off. This round only adds a header link to the existing Security section and, under the final sign-up box, the footer's own first risk sentence (L13). Product screenshots, a shorter phone layout and customer stories are listed in PRO_REVIEW.md for after sign-off; customer stories only with real, consenting members.
+- P2-3: "Most popular" became "Recommended" in the app and on the homepage. Nothing in the code backs "most popular", so it was an unverifiable claim; "Recommended" is an honest editorial label. A test keeps "Most popular" out.
+- P2-4: The comparison table has one source for the app (src/fees.js COMPARE, served in /config), and a test keeps it equal to the homepage's table (scripts/home.py MATRIX), so the two can never disagree. It is open by default for Starter members and folded for members who already pay.
+- P2-5: Yearly prices are shown as the monthly amount, large, with "billed $530 yearly" right under it, so the yearly charge is never hidden. In Monthly view each card says "or $44.17/month billed yearly".
+- P2-6: The upgrade window offers the next plan up from the member's own, with that plan's real prices from /config. It replaces the hard-coded $29 fallback and the "Pro feature" title that was wrong for Pro members. Monthly is selected by default, and the yearly choice is the member's.
+  - The trial is offered only to members who have not used one.
+  - A payment problem, or the top plan, gets a plain message with no sales pitch.
+- P2-7: Members who already pay (active, trialing or past_due) change plan in the Stripe billing portal. The app sends them there, and /billing/checkout refuses a second subscription (409). Before, a second checkout started a second subscription while the first kept billing. The portal must allow plan switches (NEEDS_REVIEW.md N-16).
+- P2-8: Upgrade prompts stay at the moment a paid feature is used (the server's 402), with no banners added elsewhere: an honest prompt at the point of need, never a random interruption.
+- P2-9: Sign-up has an `h1` and a short panel of facts already on the site (plan data, Security page, the not-a-broker line, the risk link). Logged as L14 for sign-off. This resolves N-4 for Create account (N-17).
+- P2-10: Page titles use the menu or tab name, so they match what the member clicked, rather than the h1, which can include a pill such as "Paper".
+- P2-11: Badge contrast is fixed by mixing the colour toward the text colour in the shared layer (layout.css), so it holds in light and dark themes without touching the theme palette.
+- P2-12: Empty states use one `.empty` component with the next step. On Home, the step jumps to the ticket. Others: "No orders here" on Orders, and "Nothing billed yet" on Billing history.
+- P2-13: Get started now leads to the first trade, then the first strategy, then a backtest, with security steps after. The first-trade step jumps to the ticket and puts the cursor in Symbol. After the first practice trade, one "Next step" line points to the strategy library until it is opened.
+- P2-14: The performance-fee rate per plan is not shown at the point of choice. It is charged only in registered-adviser mode (off by default), members see their own rate, and the owner made the rates private (test/batch22). Recorded for an owner decision (N-15).
+- P2-15: A menu error when the session ended mid-load (signed out in another tab) was fixed: render stops and the 401 handler's sign-in page shows.
+
 ## Equalize positions: choose the holdings (2026-11-20)
 
 - E-1: Money for the included holdings. Without "cash to keep", it is what they are worth together now. With "cash to keep", it is the account value less that cash and less the excluded holdings' value. In both cases it is split evenly among them. Excluded holdings are never passed to the planner, so it cannot place an order for one.
