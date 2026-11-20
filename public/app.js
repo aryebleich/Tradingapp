@@ -750,7 +750,8 @@ async function render(opts) {
 }
 window.addEventListener('hashchange', () => render());
 // In-page jumps in "Related" rows (data-go="#bt"): scroll to that part of the page without changing the address.
-addEventListener('click', e => { const b = e.target.closest?.('#view [data-go]'); if (!b) return; e.preventDefault(); $(b.dataset.go, b.closest('#view'))?.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+// A jump to a form (the trade ticket from Get started) also puts the cursor in its first field.
+addEventListener('click', e => { const b = e.target.closest?.('#view [data-go]'); if (!b) return; e.preventDefault(); const t = $(b.dataset.go, b.closest('#view')); if (!t) return; t.scrollIntoView({ behavior: 'smooth', block: 'start' }); if (t.matches('form')) t.querySelector('input:not([type=hidden]), select')?.focus({ preventScroll: true }); });
 // Menu groups open and close from one listener on the menu, so it works even right after a rebuild.
 $('#nav').addEventListener('click', e => {
   const b = e.target.closest('.grp.sec'); if (!b) return;
@@ -1369,8 +1370,9 @@ routes.dashboard = async (view, q) => {
   const [approvals, switcher, since, START] = await Promise.all([approvalItems().catch(() => ''), homeSwitcher().catch(() => ''),
     P.mode !== 'live' ? sinceLastLook(src.acct, n.equity).then(sinceStat) : '', import('./pages/start.js').then(m => m.startDone()).catch(() => true)]);
   const fresh = !START && state.account === 'paper' && src.positions.length === 0;
-  const steps = [[!!localStorage.getItem('qp_seen_strategies'), 'Try a ready-made strategy', '#/strategies'], [ME.totpEnabled, 'Turn on two-factor login', '#/settings'], [src.positions.length > 0 || state.account !== 'paper', 'Place your first paper trade', '#/dashboard'],
-    [ME.phoneVerified && ME.hasPin, 'Add your phone and PIN for SMS', '#/settings'], [!!sessionStorage.getItem('qp_strategy'), 'Backtest a strategy', '#/backtest']];
+  // Toward the first trade, then the first strategy: the trade step jumps to the ticket on this page.
+  const steps = [[src.positions.length > 0 || state.account !== 'paper', 'Place your first paper trade', '#/dashboard', '#ticket'], [!!localStorage.getItem('qp_seen_strategies'), 'Try a ready-made strategy', '#/strategies'],
+    [!!sessionStorage.getItem('qp_strategy'), 'Backtest a strategy', '#/strategies/backtest'], [ME.totpEnabled, 'Turn on two-factor login', '#/settings'], [ME.phoneVerified && ME.hasPin, 'Add your phone and PIN for SMS', '#/settings']];
   const hidden = P.onboardHidden || !!localStorage.getItem('qp_onboard_done');
   const done = steps.filter(x => x[0]).length, todo = !fresh && steps.length - done > 1 && !hidden;
   const action = approvals || src.alerts.length ? `<div class="banner dash-action" role="status"><b class="da-h">Action needed</b>${approvals}${src.alerts.join('')}</div>` : '';
@@ -1393,7 +1395,8 @@ routes.dashboard = async (view, q) => {
   <div class="stats dash-kpis" style="--n:${kpis.length}">${kpis.join('')}</div>
   <div class="dash-main">
     <div class="dash-col">
-      <div class="card dash-positions"><div class="dash-ch"><h2>Positions <span class="pill count" aria-label="${src.positions.length} open positions">${src.positions.length}</span></h2><a href="#/positions">All positions →</a></div><div id="posBox">${positionsTable(src.positions, n.equity, sort)}</div></div>
+      <div class="card dash-positions"><div class="dash-ch"><h2>Positions <span class="pill count" aria-label="${src.positions.length} open positions">${src.positions.length}</span></h2><a href="#/positions">All positions →</a></div><div id="posBox">${positionsTable(src.positions, n.equity, sort)}</div>
+        ${src.paper && src.positions.length && !localStorage.getItem('qp_seen_strategies') ? '<p class="empty dash-next"><b>Next step: try a ready-made strategy</b><a href="#/strategies">Open the strategy library</a></p>' : ''}</div>
       <div class="card dash-orders"><div class="dash-ch"><h2>Recent orders</h2><a href="#/orders">All orders →</a></div><div class="tablewrap" id="orders"><div class="skel" role="status" aria-label="Loading"><div></div><div></div><div></div><div class="w60"></div></div></div></div>
     </div>
     <div class="dash-col">
@@ -1405,7 +1408,7 @@ routes.dashboard = async (view, q) => {
   </div>
   ${todo ? `<details class="card onboard" id="onboard" open><summary class="ob-head"><div><h2>Get started</h2><p class="mu">${done} of ${steps.length} done</p></div><button type="button" class="ghost small" id="hideOnboard" title="Hide this list for good">Hide</button></summary>
     <div class="ob-bar"><i style="width:${Math.round(done / steps.length * 100)}%"></i></div>
-    <div class="ob-list">${steps.map(([d, t, href]) => `<a class="ob-item${d ? ' done' : ''}" href="${href}"><span class="ob-check" aria-hidden="true"></span><span class="ob-t">${t}</span><span class="ob-go" aria-hidden="true">→</span></a>`).join('')}</div></details>` : ''}
+    <div class="ob-list">${steps.map(([d, t, href, go]) => `<a class="ob-item${d ? ' done' : ''}" href="${href}"${go ? ` data-go="${go}"` : ''}><span class="ob-check" aria-hidden="true"></span><span class="ob-t">${t}</span><span class="ob-go" aria-hidden="true">→</span></a>`).join('')}</div></details>` : ''}
   <div class="dash-slot" data-slot="guide"></div>
   <div id="acctBoxes"></div>
   ${src.paper ? '<div class="card dash-paper"><div class="dash-ch"><h2>Paper account</h2></div><p class="mu" style="margin-top:0">Practice money: start again from $100,000 at any time. Your orders and positions in the paper account are cleared.</p><button class="ghost small" id="reset">Reset paper account</button></div>' : ''}

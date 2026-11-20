@@ -218,3 +218,6 @@ html.lv2 table.cmp .no { color: var(--mu); }
 html.lv2 dialog.upgrade .ticks { margin: 0 0 var(--s3); }
 html.lv2 dialog.upgrade .up-int { margin: 0 0 var(--s2); }
 html.lv2 dialog.upgrade .up-price { margin: 0 0 var(--s2); font-size: 18px; }
+/* Home: the next step after the first practice trade, under the positions */
+html.lv2 .dash-next { margin: var(--s3) 0 0; }
+html.lv2 #view .card, html.lv2 #view section { scroll-margin-top: 80px; } /* in-page jumps stop below the sticky header */
