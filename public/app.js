@@ -418,7 +418,7 @@ const HUBS = {
   options: ['Options', [['options', 'Options desk'], ['optionslab', 'Options lab']]],
   text: ['Phone & text', [['text', 'Text commands'], ['hotline', 'Phone hotline']]],
   wealth: ['Investing toolkit', [['wealth', 'Investing toolkit'], ['sp500', 'S&P 500 plan'], ['lowcost', 'Low-cost index & mutual funds']]],
-  portfolios: ['Portfolios', [['portfolios', 'Portfolios'], ['robo', 'Automated portfolios'], ['aifunds', 'AI hedge funds'], ['rules', 'Rules across accounts']]],
+  portfolios: ['Portfolios', [['portfolios', 'Portfolios'], ['robo', 'Automated portfolios'], ['aifunds', 'AI long/short portfolios'], ['rules', 'Rules across accounts']]],
   invest: ['Futures, bonds & more', [['invest', 'Futures, funds & savings'], ['alpaca-tools', 'Bonds, rates & crypto'], ['tokenized', 'Tokenized securities']]],
   strategies: ['Strategies', [['strategies', 'Strategy library'], ['playbooks', 'Playbooks'], ['backtest', 'Backtest']]],
   bots: ['Bots', [['bots', 'My bots'], ['aibots', 'AI bots'], ['agents', 'Forecasts & AI agents'], ['intraday', 'AI intraday']]],

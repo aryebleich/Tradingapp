@@ -11,6 +11,7 @@ import { UNIVERSE } from './fundamentals.js';
 import { leaders } from './invest.js';
 import { llmEnabled, jsonCall } from './llm.js';
 import { nyTime } from './time.js';
+import { stepUpGuard } from './security.js';
 
 const bad = (m, s = 400) => Object.assign(new Error(m), { status: s });
 const r2 = (x, d = 2) => +(+x || 0).toFixed(d);
@@ -118,6 +119,38 @@ async function memoFor(f, book) {
     return String(r.memo || plain).slice(0, 900);
   } catch { return plain; }
 }
+// The most any one position may weigh (default 25% of the money used); the excess is left in cash.
+export const MAX_WEIGHT = 0.25;
+export const capWeights = (book, max = MAX_WEIGHT) => book.map(b => (Math.abs(b.weight) > max ? { ...b, weight: Math.sign(b.weight) * max, why: `${b.why || ''}${b.why ? '; ' : ''}capped at ${Math.round(max * 100)}%` } : b));
+// Largest fall from a high, in % (negative), from a list of values.
+export function maxDrawdown(values) { let hi = -Infinity, dd = 0; for (const v of values) { hi = Math.max(hi, v); dd = Math.min(dd, v / hi - 1); } return values.length ? r2(dd * 100, 1) : null; }
+// The fees, in plain words: nothing on top of the plan; the brokerage's own costs still apply.
+export const FEES = 'No management or performance fee: it is part of your Brightolio plan. Your brokerage may charge for shorts (borrow fees), margin interest and options; the practice account has none of these, so real results can be lower.';
+export const RISKS = ['Shorts can lose more than the money put in when a stock rises sharply.', 'Rules that worked in the past can stop working; momentum can reverse quickly.', 'Hedges cost money in rising markets and do not cover every fall.', 'Rebuilt weekly: large moves can happen between turns.'];
+// A hypothetical backtest: the same rules rebuilt every 5 trading days over the price history there
+// is (about the last 6 months, because the rules need over a year of history to start), with 0.05% cost
+// on each change of weight. Shorts and the inverse fund are approximated from the closes.
+export function backtest(style, risk, series, { step = 5, cost = 0.0005, maxWeight = MAX_WEIGHT } = {}) {
+  const len = Math.min(...Object.values(series).map(c => c.length)); const start = 262;
+  if (!Number.isFinite(len) || len < start + step * 4) return null;
+  const tail = Object.fromEntries(Object.entries(series).map(([k, c]) => [k, c.slice(-len)]));
+  const spy = tail.SPY, nav = [100]; let prev = {}, worst = 0;
+  for (let i = start; i + step < len; i += step) {
+    const sub = Object.fromEntries(Object.entries(tail).map(([k, c]) => [k, c.slice(0, i + 1)]));
+    const book = capWeights(buildBook(style, risk, sub, { canShort: true, hedge: 'etf' }), maxWeight);
+    let ret = 0, turn = 0;
+    for (const b of book) {
+      const c = b.symbol === 'SH' ? (spy ? spy.map(x => 1 / x) : null) : tail[b.symbol]; if (!c) continue;
+      ret += b.weight * (c[i + step] / c[i] - 1); turn += Math.abs(b.weight - (prev[b.symbol] || 0));
+    }
+    for (const k of Object.keys(prev)) if (!book.some(b => b.symbol === k)) turn += Math.abs(prev[k]);
+    prev = Object.fromEntries(book.map(b => [b.symbol, b.weight]));
+    const r = ret - turn * cost; worst = Math.min(worst, r);
+    nav.push(r2(nav.at(-1) * (1 + r), 4));
+  }
+  const bench = spy ? r2((spy.at(-1) / spy[start] - 1) * 100, 1) : null;
+  return { nav, weeks: nav.length - 1, total: r2(nav.at(-1) - 100, 1), maxDrawdown: maxDrawdown(nav), worstWeek: r2(worst * 100, 1), spy: bench, note: 'Hypothetical: the rules applied to past prices, with an assumed 0.05% cost per change. Not a real record and not a prediction; it leaves out taxes, borrow fees and margin interest.' };
+}
 const parse = f => f && { ...f, book: JSON.parse(f.book || '[]'), held: JSON.parse(f.held || '{}'), pending: f.pending ? JSON.parse(f.pending) : null, hedgePlan: f.hedge_plan ? JSON.parse(f.hedge_plan) : null, hedge: f.hedge || 'etf', active: !!f.active };
 
 // One weekly turn: new book, memo, trades (placed on paper, waiting for approval on a real account).
@@ -128,7 +161,7 @@ export async function runFund(f, { force = false } = {}) {
   const canShort = await (await import('./shortdesk.js')).marginOn(f.user_id, f.account);
   const series = await seriesFor(f.style, f.user_id);
   const hedge = HEDGES[f.hedge] ? f.hedge : 'etf';
-  const book = buildBook(f.style, f.risk, series, { canShort, hedge });
+  const book = capWeights(buildBook(f.style, f.risk, series, { canShort, hedge }), f.max_weight || MAX_WEIGHT);
   const prices = {}; await Promise.all(book.map(async b => { prices[b.symbol] = await lastPrice(b.symbol, f.user_id).catch(() => null); }));
   const capital = Math.min(acct.equity, f.capital || acct.equity);
   const tgt = targets(book, capital, prices, f.account === 'paper'), trades = tradesFor(f.held, tgt);
@@ -149,9 +182,11 @@ export async function runFund(f, { force = false } = {}) {
     for (const t of trades) { try { await placeOrder(f.user_id, 'paper', { symbol: t.symbol, side: t.side, qty: t.qty, allowShort: true }, 'aifund'); done.push({ ...t, ok: true }); } catch (e) { done.push({ ...t, ok: false, error: e.message }); } }
     const held = { ...f.held }; for (const t of done.filter(x => x.ok)) held[t.symbol] = +((held[t.symbol] || 0) + (t.side === 'buy' ? t.qty : -t.qty)).toFixed(4);
     await run('UPDATE ai_funds SET book = ?, held = ?, nav = ?, memo = ?, last_run = ?, pending = NULL, hedge_plan = ? WHERE id = ?', JSON.stringify(newBook), JSON.stringify(held), nav, memo, now(), plan ? JSON.stringify(plan) : null, f.id);
+    await run('INSERT INTO ai_fund_nav (fund_id, at, nav) VALUES (?,?,?)', f.id, now(), nav);
     return { placed: done, memo, book: newBook, nav, hedgePlan: plan };
   }
   await run('UPDATE ai_funds SET pending = ?, nav = ?, memo = ?, last_run = ?, hedge_plan = ? WHERE id = ?', JSON.stringify({ trades, book: newBook, at: now() }), nav, memo, now(), plan ? JSON.stringify(plan) : null, f.id);
+  await run('INSERT INTO ai_fund_nav (fund_id, at, nav) VALUES (?,?,?)', f.id, now(), nav);
   return { pending: trades, memo, book: newBook, nav, hedgePlan: plan };
 }
 // Monday mornings after the open (New York), once a week per portfolio.
@@ -169,7 +204,19 @@ export const aiFundsRouter = (() => {
   const r = express.Router();
   r.use(requireUser);
   const mine = async req => { const f = await one('SELECT * FROM ai_funds WHERE id = ? AND user_id = ?', +req.params.id, req.user.id); if (!f) throw bad('Not found', 404); return f; };
-  r.get('/', async (req, res) => res.json({ styles: STYLES, hedges: HEDGES, exposure: EXPOSURE, funds: (await all('SELECT * FROM ai_funds WHERE user_id = ? ORDER BY id', req.user.id)).map(parse) }));
+  r.get('/', async (req, res) => {
+    const funds = (await all('SELECT * FROM ai_funds WHERE user_id = ? ORDER BY id', req.user.id)).map(parse);
+    for (const f of funds) { const h = (await all('SELECT at, nav FROM ai_fund_nav WHERE fund_id = ? ORDER BY at', f.id)); f.history = h; f.maxDrawdown = maxDrawdown([100, ...h.map(x => x.nav)]); f.maxWeight = f.max_weight || MAX_WEIGHT; }
+    res.json({ styles: STYLES, hedges: HEDGES, exposure: EXPOSURE, funds, fees: FEES, risks: RISKS, maxWeight: MAX_WEIGHT });
+  });
+  // The hypothetical backtest for a style and risk level (cached 12 hours per pair).
+  const btCache = new Map();
+  r.get('/backtest', async (req, res) => {
+    const style = STYLES[req.query.style] ? req.query.style : 'neutral', risk = Math.min(5, Math.max(1, Math.round(+req.query.risk || 3))), k = style + risk;
+    const c = btCache.get(k); if (c && Date.now() - c.at < 12 * 3600e3) return res.json(c.v);
+    const series = await seriesFor(style, req.user.id), v = { style, risk, ...(backtest(style, risk, series) || { nav: [], note: 'Not enough price history on this server for a backtest.' }) };
+    if (v.weeks) btCache.set(k, { at: Date.now(), v }); res.json(v);
+  });
   r.post('/', async (req, res) => {
     const b = req.body || {};
     if (!STYLES[b.style]) throw bad('Pick a style');
@@ -182,7 +229,7 @@ export const aiFundsRouter = (() => {
   });
   r.post('/:id/run', async (req, res) => res.json(await runFund(await mine(req), { force: true })));
   // A real account: the user approves the waiting trades, then they are placed.
-  r.post('/:id/approve', async (req, res) => {
+  r.post('/:id/approve', stepUpGuard, async (req, res) => {
     const f = parse(await mine(req)); if (!f.pending) throw bad('Nothing is waiting');
     const done = [], held = { ...f.held };
     for (const t of f.pending.trades) { if (t.option) { try { const { requireTradingFor } = await import('./alpaca/connections.js'); await (await requireTradingFor(req.user.id, f.account)).placeOrder({ symbol: t.symbol, qty: String(t.qty), side: t.side, type: 'limit', limit_price: (+t.limit).toFixed(2), time_in_force: 'day', position_intent: t.intent }); done.push({ ...t, ok: true }); } catch (e) { done.push({ ...t, ok: false, error: e.message }); } continue; }
@@ -191,7 +238,7 @@ export const aiFundsRouter = (() => {
     await audit(req.user.id, 'aifund_approved', { id: f.id, trades: done.length }, req.ip);
     res.json({ placed: done });
   });
-  r.put('/:id', async (req, res) => { const f = await mine(req); if (HEDGES[req.body?.hedge]) await run('UPDATE ai_funds SET hedge = ? WHERE id = ?', req.body.hedge, f.id); if (req.body?.active != null) await run('UPDATE ai_funds SET active = ? WHERE id = ?', req.body.active === false ? 0 : 1, f.id); res.json({ ok: true }); });
+  r.put('/:id', async (req, res) => { const f = await mine(req); if (req.body?.maxWeight != null) await run('UPDATE ai_funds SET max_weight = ? WHERE id = ?', Math.min(0.5, Math.max(0.05, +req.body.maxWeight || MAX_WEIGHT)), f.id); if (HEDGES[req.body?.hedge]) await run('UPDATE ai_funds SET hedge = ? WHERE id = ?', req.body.hedge, f.id); if (req.body?.active != null) await run('UPDATE ai_funds SET active = ? WHERE id = ?', req.body.active === false ? 0 : 1, f.id); res.json({ ok: true }); });
   r.delete('/:id', async (req, res) => { const f = await mine(req); await run('DELETE FROM ai_funds WHERE id = ?', f.id); res.json({ ok: true, note: 'The portfolio is removed; positions it opened stay in the account.' }); });
   return r;
 })();

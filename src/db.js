@@ -996,6 +996,10 @@ const MIGRATIONS = [
   'CREATE INDEX IF NOT EXISTS ai_compliance_log_at ON ai_compliance_log (at)',
   // Growth features: AI morning news picks (the engine's daily picks = its public track record, and each
   // member's orders) and the AI intraday engine's trade log.
+  // AI long/short portfolios: a cap on each position and the value history (drawdown, paper record).
+  'ALTER TABLE ai_funds ADD COLUMN max_weight REAL',
+  'CREATE TABLE IF NOT EXISTS ai_fund_nav (fund_id INTEGER NOT NULL REFERENCES ai_funds(id) ON DELETE CASCADE, at INTEGER NOT NULL, nav REAL NOT NULL)',
+  'CREATE INDEX IF NOT EXISTS ai_fund_nav_fund ON ai_fund_nav (fund_id, at)',
   'CREATE TABLE IF NOT EXISTS newspicks_log (day TEXT NOT NULL, symbol TEXT NOT NULL, rank INTEGER NOT NULL, score REAL, reasons TEXT, sources TEXT, open REAL, close REAL, ret REAL, PRIMARY KEY (day, symbol))',
   'CREATE TABLE IF NOT EXISTS newspicks_trades (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, day TEXT NOT NULL, account TEXT NOT NULL, symbol TEXT NOT NULL, dollars REAL, qty REAL, entry REAL, stop REAL, exit REAL, status TEXT NOT NULL, note TEXT, at INTEGER NOT NULL)',
   'CREATE INDEX IF NOT EXISTS newspicks_trades_user ON newspicks_trades (user_id, day)',
