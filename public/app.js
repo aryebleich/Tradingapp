@@ -400,7 +400,7 @@ const BIZ_NAV = ['My business', [['business', 'Business dashboard'], ['invoices'
 // together are merged into one entry with tabs (HUBS below); every old address still works.
 const NAV = [
   ['Research', [['analyze', 'Stock & fund analyzer'], ['research', 'Research & news'], ['scanner', 'Scanners'], ['ai', 'AI assistant'], ['calendar', 'Calendar & events']]],
-  ['Trade tools', [['chart', 'Chart'], ['options', 'Options'], ['short', 'Short selling'], ['tradetools', 'Planning tools'], ['workspace', 'Workspace'], ['text', 'Phone & text']]],
+  ['Trade tools', [['active', 'Active trading desk'], ['chart', 'Chart'], ['options', 'Options'], ['short', 'Short selling'], ['tradetools', 'Planning tools'], ['workspace', 'Workspace'], ['text', 'Phone & text']]],
   ['Invest', [['wealth', 'Investing toolkit'], ['portfolios', 'Portfolios'], ['invest', 'Futures, bonds & more'], ['values', 'Values investing'], ['spend', 'Invest as you spend']]],
   ['Automate', [['strategies', 'Strategies'], ['bots', 'Bots'], ['signals', 'Alerts & signals'], ['schedule', 'Scheduled trades'], ['pairs', 'Pairs & stat arb'], ['marketplace', 'Marketplace'], ['developers', 'Developers']]],
   ['Track & plan', [['insights', 'Performance'], ['riskview', 'Risk'], ['tax', 'Taxes'], ['money', 'All my money'], ['retirement', 'Retirement & IRAs'], ['brief', 'Weekly brief']]],
@@ -526,6 +526,7 @@ function addHubTabs(view, page) {
 }
 // Simple line icons (24x24 paths) for the menu.
 const ICONS = {
+  active: '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
   tradetools: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h2M12 11h2M16 11h0M8 15h2M12 15h2M8 19h8"/>',
   aimarket: '<path d="M3 9l2-5h14l2 5M3 9v11h18V9"/><circle cx="12" cy="15" r="2.5"/>', sharedstrategies: '<path d="M4 18l5-6 4 3 7-9"/><path d="M3 21h18"/>', sharedportfolios: '<circle cx="12" cy="12" r="9"/><path d="M12 3v9l7 4"/>', signalchannels: '<path d="M5 12a7 7 0 0 1 14 0M8 12a4 4 0 0 1 8 0"/><circle cx="12" cy="14" r="1.5"/><path d="M12 16v5"/>',
   aitools: '<path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/>', agenthub: '<rect x="4" y="7" width="16" height="12" rx="3"/><path d="M12 3v4M9 12h.01M15 12h.01M9 16h6"/>', aibots: '<path d="M4 17l5-5 4 4 7-8"/><circle cx="20" cy="8" r="1.5"/><path d="M4 21h16"/>', aisignals: '<path d="M2 12h4l3-8 4 16 3-8h6"/>', intel: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M8 11h6M11 8v6"/>',
@@ -2479,7 +2480,7 @@ lazyRoutes(() => import('./pages/sponsored.js'), 'registerSponsored', shared, ["
 lazyRoutes(() => import('./pages/aitrade.js'), 'registerAiTrade', shared, ["agenthub", "aibots", "aisignals", "intel"]);
 lazyRoutes(() => import('./pages/invest.js'), 'registerInvest', shared, ["analyze", "lowcost", "earnings", "leaders", "short", "margin", "aifunds"]);
 lazyRoutes(() => import('./pages/stock.js'), 'registerStock', shared, ["compare", "valuescan", "rates"]);
-lazyRoutes(() => import('./pages/growth.js'), 'registerGrowth', shared, ["diversify", "newspicks", "intraday", "dividends", "passive"]);
+lazyRoutes(() => import('./pages/growth.js'), 'registerGrowth', shared, ["diversify", "newspicks", "intraday", "dividends", "passive", "active"]);
 
 // Static files are cached for instant repeat visits (sw.js); pages and data always come fresh.
 if (!PREFETCH && 'serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});

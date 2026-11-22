@@ -79,6 +79,7 @@ import { diversifyRouter } from './src/diversify.js';
 import { newspicksRouter } from './src/newspicks.js';
 import { intradayRouter } from './src/intraday.js';
 import { incomeRouter } from './src/income.js';
+import { activeRouter } from './src/active.js';
 import { aiFundsRouter } from './src/aifunds.js';
 import { aiTeamRouter } from './src/aiteam.js';
 import { aiChatRouter } from './src/aichat/routes.js';
@@ -679,6 +680,7 @@ api.use('/diversify', diversifyRouter);
 api.use('/newspicks', newspicksRouter);
 api.use('/intraday', intradayRouter);
 api.use('/income', incomeRouter);
+api.use('/active', activeRouter);
 // AI trading: agents and API, AI bots, AI signals, market intelligence, the chart co-pilot.
 api.use('/agent', agentRouter(agentDeps));
 api.use('/aibots', aiBotsRouter);

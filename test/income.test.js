@@ -31,3 +31,16 @@ test('routes answer for an empty practice account', async () => {
   const d = await u('/income?account=paper'); assert.equal(d.status, 200); assert.deepEqual(d.body.rows, []); assert.equal(d.body.account, 'paper');
   const p = await u('/income/passive'); assert.equal(p.status, 200); assert.equal(p.body.mixes.length, 4); assert.ok(p.body.dragExample.high > p.body.dragExample.low);
 });
+
+test('active desk: the session and the day-trade status', async () => {
+  const { sessionState, pdtStatus } = await import('../src/active.js');
+  assert.equal(sessionState({ minutes: 600 }, true).state, 'open'); assert.equal(sessionState({ minutes: 600 }, true).minutesToClose, 360);
+  assert.equal(sessionState({ minutes: 500 }, true).state, 'pre'); assert.equal(sessionState({ minutes: 1000 }, true).state, 'after');
+  assert.equal(sessionState({ minutes: 600 }, false).state, 'closed');
+  assert.equal(pdtStatus({ account: 'paper', equity: 10 }).applies, false);
+  assert.equal(pdtStatus({ account: 'alpaca', equity: 30000, dayTrades: 9 }).applies, false);
+  const p = pdtStatus({ account: 'alpaca', equity: 5000, dayTrades: 2 }); assert.equal(p.left, 1); assert.equal(p.ok, true);
+  assert.equal(pdtStatus({ account: 'alpaca', equity: 5000, dayTrades: 3 }).ok, false);
+  assert.match(pdtStatus({ account: 'alpaca', equity: 5000 }).text, /official count/);
+  const d = await u('/active?account=paper'); assert.equal(d.status, 200); assert.equal(d.body.engines.length, 2); assert.equal(d.body.pdt.applies, false);
+});
