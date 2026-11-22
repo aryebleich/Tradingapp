@@ -35,6 +35,12 @@ export async function bars(symbols, { timeframe = '1Day', start, end, limit = 10
   return out;
 }
 
+// Historical top-of-book quotes of one stock (bid/ask price and size, every update), oldest first.
+export async function quotesRange(symbol, { start, end, limit = 20000 } = {}) {
+  const per = Math.min(10000, limit);
+  const q = await getPaged(`/v2/stocks/${encodeURIComponent(String(symbol).toUpperCase())}/quotes`, { start, end, limit: per, feed: feed(), sort: 'asc' }, 'quotes', Math.ceil(limit / per));
+  return (q || []).slice(0, limit);
+}
 // Latest quote and trade per symbol.
 export async function latest(symbols) {
   const { stocks, crypto } = split(list(symbols)), out = {};

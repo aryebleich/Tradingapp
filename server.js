@@ -80,6 +80,7 @@ import { newspicksRouter } from './src/newspicks.js';
 import { intradayRouter } from './src/intraday.js';
 import { incomeRouter } from './src/income.js';
 import { activeRouter } from './src/active.js';
+import { hfofiRouter } from './src/hfofilab.js';
 import { aiFundsRouter } from './src/aifunds.js';
 import { aiTeamRouter } from './src/aiteam.js';
 import { aiChatRouter } from './src/aichat/routes.js';
@@ -681,6 +682,7 @@ api.use('/newspicks', newspicksRouter);
 api.use('/intraday', intradayRouter);
 api.use('/income', incomeRouter);
 api.use('/active', activeRouter);
+api.use('/hfofi', hfofiRouter);
 // AI trading: agents and API, AI bots, AI signals, market intelligence, the chart co-pilot.
 api.use('/agent', agentRouter(agentDeps));
 api.use('/aibots', aiBotsRouter);

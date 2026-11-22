@@ -89,6 +89,9 @@ export function startMock() {
       const page = query.page_token ? 2 : 1;
       return { bars: Object.fromEntries(syms.map(s => [s, [bar(page * 2, 100), bar(page * 2 + 1, 100)]])), next_page_token: page === 1 ? 'p2' : null };
     }
+    // Historical quotes of one stock: a steady stream of top-of-book updates (the OFI lab).
+    const hq = path.match(/^\/v2\/stocks\/([A-Z.]+)\/quotes$/);
+    if (hq) { const t0 = Date.parse(query.start || '2026-11-24T15:00:00Z'); return { quotes: Array.from({ length: 400 }, (_, i) => ({ t: new Date(t0 + i * 1000).toISOString(), bp: 100 + Math.round(Math.sin(i / 9) * 4) / 100, ap: 100.02 + Math.round(Math.sin(i / 9) * 4) / 100, bs: 1 + (i * 7) % 9, as: 1 + (i * 5) % 8 })), next_page_token: null }; }
     if (/\/(stocks\/quotes|crypto\/us\/latest\/quotes|stocks\/quotes\/latest)/.test(path)) return { quotes: Object.fromEntries(syms.map(s => [s, { bp: 99.5, ap: 100.5, t: new Date().toISOString() }])) };
     if (/trades/.test(path)) return { trades: Object.fromEntries(syms.map(s => [s, { p: 100, s: 5, t: new Date().toISOString() }])) };
     if (path === '/v2/stocks/snapshots') return Object.fromEntries(syms.map(s => [s, { latestTrade: { p: 110 }, latestQuote: { bp: 109.9, ap: 110.1 }, dailyBar: bar(0, 108), prevDailyBar: { c: 100 } }]));
