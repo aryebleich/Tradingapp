@@ -32,8 +32,10 @@ export async function loadSite() {
   for (const r of await all('SELECT k, v FROM site_settings')) { try { cache.set(r.k, JSON.parse(r.v)); } catch {} }
   loadedAt = now();
 }
-// Other servers may have changed a setting: reread at most once a minute.
-export async function freshSite() { if (now() - loadedAt > 60e3) await loadSite().catch(() => {}); }
+// Read once at start, then at most every 5 minutes (another server may have saved a setting); a save
+// on this server updates the cache at once (siteSet). Every request calls this, so it must not read more.
+export const SITE_REFRESH_MS = 5 * 60e3;
+export async function freshSite() { if (now() - loadedAt > SITE_REFRESH_MS) { loadedAt = now(); await loadSite().catch(() => {}); } }
 export const siteGet = (k, dflt = null) => (cache.has(k) ? cache.get(k) : dflt);
 export async function siteSet(k, v) {
   await run('INSERT INTO site_settings (k, v, updated_at) VALUES (?,?,?) ON CONFLICT(k) DO UPDATE SET v = excluded.v, updated_at = excluded.updated_at', k, JSON.stringify(v), now());

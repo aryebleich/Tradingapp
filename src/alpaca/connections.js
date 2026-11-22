@@ -1,4 +1,5 @@
 // Which Alpaca account a user trades through, and the OAuth2 flow for linking an existing one.
+import { credRow } from '../memo.js';
 import crypto from 'node:crypto';
 import { one, all, run, now } from '../db.js';
 import { encrypt, decrypt } from '../crypto.js';
@@ -6,7 +7,7 @@ import { URLS } from './http.js';
 import { Trading } from './trading.js';
 
 async function cred(userId, provider) {
-  const r = await one('SELECT blob FROM credentials WHERE user_id = ? AND provider = ?', userId, provider);
+  const r = await credRow(userId, provider);
   if (!r) return null;
   try { return decrypt(r.blob); } catch { return null; }
 }

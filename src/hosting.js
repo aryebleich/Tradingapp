@@ -32,8 +32,11 @@ export const thisHost = () => process.env.HOST_ID || (process.env.RENDER ? 'rend
 // this one even when nobody visits it (siteGet alone refreshes on page requests).
 let synced = null;
 export function startHostingSync() {
+  // Read at start, then every 5 minutes (a switch made on another server reaches this one within 5
+  // minutes; a save on this server is immediate). Jobs stay single-run during a switch because every
+  // job claims its slot in the database first.
   const pull = () => one("SELECT v FROM site_settings WHERE k = 'hosting'").then(r => { synced = r ? JSON.parse(r.v) : {}; }).catch(() => {});
-  pull(); const t = setInterval(pull, 30e3); t.unref?.(); return t;
+  pull(); const t = setInterval(pull, 5 * 60e3); t.unref?.(); return t;
 }
 const cfg = () => ({ active: null, keepWarm: true, servers: [], ...((synced ?? siteGet('hosting', {})) || {}) });
 const save = async v => { await siteSet('hosting', v); synced = v; return v; };

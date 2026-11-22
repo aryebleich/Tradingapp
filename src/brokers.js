@@ -1,4 +1,5 @@
 // Market data + broker adapters: Alpaca (paper/live) and the built-in paper simulator.
+import { credRow } from './memo.js';
 import * as DS from './datasources.js';
 import { recordCommission } from './revenue.js';
 import { one, all, run, now, tx } from './db.js';
@@ -24,7 +25,7 @@ export const isExt = a => EXT_IDS.includes(a);
 export const DATA = (process.env.ALPACA_DATA_URL || 'https://data.alpaca.markets') + '/v2';
 
 export async function getCred(userId, provider) {
-  const r = await one('SELECT blob FROM credentials WHERE user_id = ? AND provider = ?', userId, provider);
+  const r = await credRow(userId, provider);
   if (!r) return null;
   // A changed ENCRYPTION_KEY makes stored keys unreadable; treat them as disconnected instead of failing every page.
   try { return decrypt(r.blob); } catch { console.warn(`credentials for user ${userId}/${provider} cannot be decrypted`); return null; }

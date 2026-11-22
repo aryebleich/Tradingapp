@@ -1,9 +1,13 @@
 // Small per-user settings (JSON values by key): routing preferences, trading speed bumps,
 // lessons finished, the workspace layout, the behavioral sign-in profile.
 import { one, run, now } from './db.js';
+import { tableCache } from './memo.js';
+// Read on nearly every request: cached 60 seconds per user and key (dropped on every write).
 
+const SETTINGS = tableCache({ tables: ['user_settings'] });
+export const settingsCache = SETTINGS;
 export async function getSetting(userId, k, dflt = null) {
-  const r = await one('SELECT v FROM user_settings WHERE user_id = ? AND k = ?', userId, k);
+  const r = await SETTINGS.get(`${userId}|${k}`, userId, () => one('SELECT v FROM user_settings WHERE user_id = ? AND k = ?', userId, k));
   if (!r) return dflt;
   try { return JSON.parse(r.v); } catch { return dflt; }
 }

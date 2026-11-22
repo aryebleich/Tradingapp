@@ -1,4 +1,5 @@
 // Accounts, sessions, TOTP two-factor, lockout, rate limits, CSRF guard.
+import { tableCache } from './memo.js';
 import express from 'express';
 import crypto from 'node:crypto';
 import { one, all, run, now, audit, tx } from './db.js';
@@ -50,17 +51,22 @@ export async function createSession(res, req, userId, mfaPending) {
 }
 
 // Attaches req.user for fully-authenticated sessions and req.pending for sessions awaiting 2FA.
+export const AUTH_CACHE = tableCache({ tables: ['sessions', 'users'], ttl: 60e3 });
 export async function sessionMiddleware(req, res, next) {
   const token = parseCookies(req)[COOKIE];
   if (token) {
-    const s = await one('SELECT * FROM sessions WHERE token_hash = ?', sha256(token));
+    // The session and its user, cached 60 seconds per session: every API call needs them. Logout,
+    // a password change or any change to the user drops the entry at once (src/memo.js).
+    const hash = sha256(token);
+    const row = await AUTH_CACHE.get(hash, v => v.s?.user_id, async () => { const s0 = await one('SELECT * FROM sessions WHERE token_hash = ?', hash); return { s: s0 || null, u: s0 ? (await one('SELECT * FROM users WHERE id = ?', s0.user_id)) || null : null }; });
+    const s = row.s && { ...row.s };
     if (s && s.expires_at > now()) {
       req.sessionHash = s.token_hash;
       if (!s.mfa_pending && s.expires_at - now() < SESSION_MS - RENEW_MS) {
         await run('UPDATE sessions SET expires_at = ? WHERE token_hash = ?', now() + SESSION_MS, s.token_hash);
         setCookie(res, token, SESSION_MS);
       }
-      const u = await one('SELECT * FROM users WHERE id = ?', s.user_id);
+      const u = row.u && { ...row.u }; // a copy: the "view as plan" preview changes it per request
       // ADMIN_EMAIL counts on every visit, so an account made before it was set becomes admin too.
       await freshSite();
       if (u && u.role !== 'admin' && (isAdminEmail(u.email) || (u.phone_verified && isAdminPhone(u.phone)))) { await run("UPDATE users SET role = 'admin' WHERE id = ?", u.id); u.role = 'admin'; }

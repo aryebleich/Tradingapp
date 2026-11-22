@@ -2,6 +2,7 @@
 // holdings of well-known managers, what changed since the previous quarter, and a one-tap mirror
 // that turns the top holdings into a rule-based portfolio. 13F data is reported up to 45 days
 // after each quarter ends, so it shows what a manager held then, not today.
+import { dbCached } from './memo.js';
 import express from 'express';
 import { one, run, now } from './db.js';
 import { requireUser, rateLimit } from './auth.js';
@@ -27,13 +28,8 @@ export async function get(url, type = 'json') {
   if (!r.ok) throw Object.assign(new Error(`SEC EDGAR answered ${r.status}`), { status: r.status === 404 ? 404 : 502 });
   return type === 'json' ? r.json() : r.text();
 }
-async function cached(key, ttl, fn) {
-  const c = await one('SELECT v, at FROM cache WHERE k = ?', key);
-  if (c && now() - c.at < ttl) return JSON.parse(c.v);
-  const v = await fn();
-  await run('INSERT INTO cache (k, v, at) VALUES (?,?,?) ON CONFLICT(k) DO UPDATE SET v = excluded.v, at = excluded.at', key, JSON.stringify(v), now());
-  return v;
-}
+// The cache table with an in-memory front (src/memo.js): repeat reads never reach the database.
+const cached = dbCached;
 
 export { DATA as secData, WWW as secWww, cached as secCached };
 const norm = s => ' ' + String(s || '').toUpperCase().replace(/&/g, ' AND ').replace(/[^A-Z0-9 ]/g, ' ').replace(/\b(THE|INC|INCORPORATED|CORP|CORPORATION|CO|COMPANY|LTD|LIMITED|PLC|HLDGS|HOLDINGS|HOLDING|GROUP|CL|CLASS|COM|NEW|DEL|SA|NV|AG|SE|ADR|SPONSORED|SHS|ORD|A|B|C)\b/g, ' ').replace(/\s+/g, ' ').trim();

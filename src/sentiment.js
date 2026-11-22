@@ -1,6 +1,7 @@
 // News and sentiment: headline sentiment from a finance word list, social sentiment from StockTwits
 // (bullish / bearish tags), an AI daily brief of the news for your symbols, and a short podcast
 // script of it that the browser reads aloud. Works without an AI key (simpler brief).
+import { dbCached } from './memo.js';
 import express from 'express';
 import { jsonCall, llmEnabled } from './llm.js';
 import { one, run, now } from './db.js';
@@ -24,13 +25,8 @@ export function scoreText(text) {
 }
 export const label = s => (s > 0.2 ? 'positive' : s < -0.2 ? 'negative' : 'neutral');
 
-async function cached(key, ttl, fn) {
-  const c = await one('SELECT v, at FROM cache WHERE k = ?', key);
-  if (c && now() - c.at < ttl) return JSON.parse(c.v);
-  const v = await fn();
-  await run('INSERT INTO cache (k, v, at) VALUES (?,?,?) ON CONFLICT(k) DO UPDATE SET v = excluded.v, at = excluded.at', key, JSON.stringify(v), now());
-  return v;
-}
+// The cache table with an in-memory front (src/memo.js): repeat reads never reach the database.
+const cached = dbCached;
 const STOCKTWITS = () => (process.env.STOCKTWITS_URL || 'https://api.stocktwits.com/api/2').replace(/\/$/, '');
 // Share of recent StockTwits posts tagged bullish, among those tagged at all.
 export async function social(symbol) {

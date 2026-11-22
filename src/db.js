@@ -1195,7 +1195,13 @@ const exec = async (sql, args) => { await ready; const a = args.map(x => (x === 
 
 export const one = async (sql, ...a) => plain(await exec(sql, a))[0];
 export const all = async (sql, ...a) => plain(await exec(sql, a));
-export const run = async (sql, ...a) => { const r = await exec(sql, a); return { changes: r.rowsAffected, lastInsertRowid: Number(r.lastInsertRowid ?? 0) }; };
+export const run = async (sql, ...a) => { const r = await exec(sql, a); wrote(sql, a); return { changes: r.rowsAffected, lastInsertRowid: Number(r.lastInsertRowid ?? 0) }; };
+// Every write tells the read caches (src/memo.js) which table changed and with which values, so a
+// cached session, user, setting or credential never outlives a change, whoever made it.
+const writeHooks = [];
+export const onWrite = fn => { writeHooks.push(fn); };
+const WRITE = /^\s*(?:INSERT(?:\s+OR\s+\w+)?\s+INTO|REPLACE\s+INTO|UPDATE(?:\s+OR\s+\w+)?|DELETE\s+FROM)\s+["`]?(\w+)/i;
+function wrote(sql, args) { const m = WRITE.exec(sql); if (!m) return; const t = m[1].toLowerCase(); for (const h of writeHooks) { try { h(t, args); } catch {} } }
 export const now = () => Date.now();
 
 export async function audit(userId, event, detail, ip) {
@@ -1210,7 +1216,7 @@ export async function tx(fn) {
   const h = {
     one: async (sql, ...a) => plain(await q(sql, a))[0],
     all: async (sql, ...a) => plain(await q(sql, a)),
-    run: async (sql, ...a) => { const r = await q(sql, a); return { changes: r.rowsAffected, lastInsertRowid: Number(r.lastInsertRowid ?? 0) }; },
+    run: async (sql, ...a) => { const r = await q(sql, a); wrote(sql, a); return { changes: r.rowsAffected, lastInsertRowid: Number(r.lastInsertRowid ?? 0) }; },
   };
   try { const r = await fn(h); await t.commit(); return r; } catch (e) { await t.rollback(); throw e; } finally { t.close(); }
 }

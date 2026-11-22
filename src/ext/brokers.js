@@ -8,6 +8,7 @@
 //
 // Credentials are stored encrypted per user (credentials table, provider = broker id), including
 // refreshed access tokens. Base URLs can be overridden with *_BASE_URL for testing.
+import { credRow } from '../memo.js';
 import crypto from 'node:crypto';
 import { one, run, now } from '../db.js';
 import { encrypt, decrypt } from '../crypto.js';
@@ -17,7 +18,7 @@ const appUrl = () => (env('PUBLIC_URL') || 'http://localhost:3000').replace(/\/$
 const bad = (msg, status = 400) => Object.assign(new Error(msg), { status });
 
 export async function getExtCred(userId, id) {
-  const r = await one('SELECT blob FROM credentials WHERE user_id = ? AND provider = ?', userId, id);
+  const r = await credRow(userId, id);
   if (!r) return null;
   try { return decrypt(r.blob); } catch { return null; }
 }
