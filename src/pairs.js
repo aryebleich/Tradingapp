@@ -152,6 +152,7 @@ export async function runPairBots(t, claim) {
   const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour12: false, hour: '2-digit', minute: '2-digit', weekday: 'short' }).formatToParts(new Date(t)).map(x => [x.type, x.value]));
   const mins = (+p.hour % 24) * 60 + +p.minute;
   if (['Sat', 'Sun'].includes(p.weekday) || mins < 945 || mins > 960) return 0;
+  if (!(await import('./market-calendar.js')).isTradingDay(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date(t)))) return 0; // holidays
   let n = 0;
   for (const bot of await all("SELECT * FROM pair_bots WHERE active = 1")) {
     if (!await claim(`pair:${bot.id}:${today()}`)) continue;

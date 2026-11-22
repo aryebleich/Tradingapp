@@ -132,8 +132,14 @@ export async function aiBuild(prompt, userId) {
 
 // ---------- the daily run (scheduler) ----------
 
+let prevChecked = null;
 export async function runPlaybooks(t = now(), claim) {
   const n = nyNow(t);
+  // The calendar first: the table is read only in the run window before the close on trading days,
+  // and once a day for a rebalance the server slept through (no reads on weekends and holidays).
+  const sess0 = sessionOf(n.day), inWindow = !!sess0 && n.minutes >= sess0.close - RUN_BEFORE_CLOSE_MIN - 1 && n.minutes <= sess0.close + 5;
+  if (!inWindow && !(sess0 && prevChecked !== n.day)) return 0;
+  prevChecked = n.day;
   const rows = await all("SELECT * FROM user_strategies WHERE template_id = ? AND mode IN ('auto', 'approve')", KIND);
   let ran = 0;
   for (const raw of rows) {

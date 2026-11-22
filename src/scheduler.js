@@ -15,6 +15,7 @@ import { getAccount, brokerEnabled, FINAL_STATUSES } from './alpaca/broker.js';
 import { applyStatus } from './alpaca/kyc.js';
 import { runAuto, checkStops, recordDaily } from './rotation/runner.js';
 import { runPairBots } from './pairs.js';
+import { isTradingDay, sessionOf } from './market-calendar.js';
 
 const DAY = 86400e3;
 
@@ -173,7 +174,8 @@ export async function runScheduledOrders(t = now()) {
 // Bots evaluate their rules once per trading day, in the last half hour before the 4 pm close.
 export async function runBots(t = now()) {
   const n = nyTime(t);
-  if (['Sat', 'Sun'].includes(n.weekday) || n.minutes < 930 || n.minutes >= 960) return 0;
+  // The calendar first (weekends, holidays, outside 15:30-16:00): no database read at all then.
+  if (!isTradingDay(n.day) || n.minutes < 930 || n.minutes >= 960) return 0;
   const bots = await all('SELECT s.*, u.plan, u.role, u.plan_status FROM strategies s JOIN users u ON u.id = s.user_id WHERE s.deployed IS NOT NULL AND (s.freq IS NULL OR s.freq = ?) AND (s.last_run IS NULL OR s.last_run != ?)', 'daily', n.day);
   let ran = 0;
   for (const b of bots) {
@@ -235,19 +237,28 @@ export async function assessAllFees() {
 
 // Once-per-period jobs are claimed in the database, so restarts (common on free hosts) and the
 // cron endpoint running alongside the in-process timer never repeat them.
-const claimOnce = async key => (await run('INSERT OR IGNORE INTO job_runs (k, at) VALUES (?, ?)', key, now())).changes > 0;
-let lastAlerts = 0, lastStops = 0;
+// A key this process already tried is not tried again (it is either ours or another process's), so a
+// 30-second timer asks the database once per slot, not twice a minute.
+const tried = new Map();
+export async function claimOnce(key) {
+  if (tried.has(key)) return false;
+  if (tried.size > 5000) tried.clear();
+  tried.set(key, 1);
+  return (await run('INSERT OR IGNORE INTO job_runs (k, at) VALUES (?, ?)', key, now())).changes > 0;
+}
+let lastAlerts = 0, lastStops = 0, lastAuto = 0;
 
 export async function runDueJobs(t = now()) {
-  const n = nyTime(t), out = { orders: await runScheduledOrders(t), bots: await runBots(t) };
+  const n = nyTime(t), trading = isTradingDay(n.day), out = { orders: await runScheduledOrders(t), bots: await runBots(t) };
   if (marketOpen(t) && t - lastAlerts > 5 * 60e3) { lastAlerts = t; await runAlerts(); }
-  // Library strategies: automatic rebalances, trailing stops, and the after-close record for Reality Check.
-  out.strategies = await runAuto(t, claimOnce).catch(e => (console.error('strategies', e), 0));
+  // Library strategies: automatic rebalances (checked every 5 minutes in the session on trading days;
+  // each runs once a day after its time), trailing stops, and the after-close record for Reality Check.
+  if (trading && n.minutes >= 570 && n.minutes <= 975 && t - lastAuto >= 5 * 60e3) { lastAuto = t; out.strategies = await runAuto(t, claimOnce).catch(e => (console.error('strategies', e), 0)); }
   out.playbooks = await (await import('./playbooks.js')).runPlaybooks(t, claimOnce).catch(e => (console.error('playbooks', e), 0));
   out.pairs = await runPairBots(t, claimOnce).catch(e => (console.error('pairs', e), 0));
   if (marketOpen(t) && t - lastStops > 5 * 60e3) { lastStops = t; await checkStops(t).catch(e => console.error('strategy stops', e)); }
-  if (n.minutes >= 975 && !['Sat', 'Sun'].includes(n.weekday) && await claimOnce('strategydays:' + n.day)) await recordDaily(t).catch(e => console.error('strategy days', e));
-  if (n.minutes >= 965 && !['Sat', 'Sun'].includes(n.weekday) && await claimOnce('snapshot:' + n.day)) await snapshotAll();
+  if (n.minutes >= 975 && trading && await claimOnce('strategydays:' + n.day)) await recordDaily(t).catch(e => console.error('strategy days', e));
+  if (n.minutes >= 965 && trading && await claimOnce('snapshot:' + n.day)) await snapshotAll();
   // Monthly fees on the 1st (days 2-3 cover an app that was asleep), never mid-month after a deploy.
   if (+n.day.slice(8) <= 3 && n.minutes >= 600 && await claimOnce('fees:' + n.day.slice(0, 7))) out.fees = (await assessAllFees()).length;
   if (await claimOnce('hourly:' + new Date(t).toISOString().slice(0, 13))) await hourly();
@@ -272,7 +283,8 @@ export async function refreshKyc() {
 // Housekeeping: drop expired sessions and import Alpaca fills placed outside the app.
 async function hourly() {
   await run('DELETE FROM sessions WHERE expires_at < ?', now());
-  await run('DELETE FROM job_runs WHERE at < ?', now() - 90 * DAY);
+  // Claims are only needed for their own slot; the monthly fee claim is the longest (a month), so 35 days.
+  await run('DELETE FROM job_runs WHERE at < ?', now() - 35 * DAY);
   const users = await all("SELECT user_id FROM credentials WHERE provider IN ('alpaca', 'alpaca_oauth') UNION SELECT user_id FROM broker_accounts");
   for (const c of users) await syncAlpacaFills(c.user_id).catch(e => console.warn('alpaca sync', c.user_id, e.message));
   for (const c of await all("SELECT user_id, provider FROM credentials WHERE provider LIKE 'alpaca:%'")) await syncAlpacaFills(c.user_id, c.provider).catch(e => console.warn('alpaca sync', c.user_id, c.provider, e.message));

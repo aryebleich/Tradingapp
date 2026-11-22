@@ -15,6 +15,18 @@ import { runDrip, rebalanceReminders } from './wealth.js';
 import { monthlyBooksEmail } from './books.js';
 
 const slot = (t, min) => Math.floor(t / (min * 60e3));
+// When a job may run, from the shared market calendar (no database): 'session' = the regular session
+// of a trading day, 'extended' = 4:00-20:00 on a trading day, 'tradingDay' = any time on a trading day.
+// Jobs without one run every day (crypto, housekeeping, reminders).
+import { marketStatus, isTradingDay, PRE_MIN, AFTER_END_MIN } from './market-calendar.js';
+export function jobWindowOpen(when, t) {
+  if (!when) return true;
+  const m = marketStatus(t);
+  if (when === 'session') return m.open;
+  if (!isTradingDay(m.day)) return false;
+  if (when === 'extended') return m.minutes >= PRE_MIN && m.minutes < AFTER_END_MIN;
+  return true; // 'tradingDay'
+}
 export const JOBS = [
   // Brokerage applications by text left unfinished for 7 days are deleted.
   ['textApplyPurge', 360, async () => (await import('./textapply.js')).purgeOld()],
@@ -28,19 +40,19 @@ export const JOBS = [
   // Market data sources: measure each one hourly so "fastest first" stays current.
   ['databench', 60, async () => (await import('./datasources.js')).benchmark('SPY')],
   // Paper limit / stop orders: fill the ones that reached their price.
-  ['paperorders', 1, async t => (await import('./paperorders.js')).runPaperOrders(t)],
+  ['paperorders', 1, async t => (await import('./paperorders.js')).runPaperOrders(t), 'extended'],
   // Tax rates on automatic move to the new year's tables in January.
   ['taxyear', 1440, async t => (await import('./taxrates.js')).yearlyUpdate(t)],
   ['status', 5, async t => (await import('./trust.js')).checkAll(t)],
   // Rules across accounts: check due rules on weekdays after 10:30 New York (approval needed).
-  ['rules', 30, async t => (await import('./rules.js')).runRules(t)],
+  ['rules', 30, async t => (await import('./rules.js')).runRules(t), 'tradingDay'],
   // Script alerts after the close (weekdays from 4:15 pm New York).
-  ['scriptalerts', 30, async t => (await import('./scripts.js')).runScriptAlerts(t)],
+  ['scriptalerts', 30, async t => (await import('./scripts.js')).runScriptAlerts(t), 'tradingDay'],
   // Business: recurring invoices go out, once a day.
-  ['aifunds', 30, async t => (await import('./aifunds.js')).runAiFunds(t)],
+  ['aifunds', 30, async t => (await import('./aifunds.js')).runAiFunds(t), 'tradingDay'],
   ['business', 1440, async t => (await import('./business/routes.js')).runBusiness(t)],
   // Equalize accounts at the market open (9:30 to 10:00 New York), for users who turned it on.
-  ['equalize', 5, async t => (await import('./equalize.js')).runEqualize(t)],
+  ['equalize', 5, async t => (await import('./equalize.js')).runEqualize(t), 'session'],
   // Optional features: family allowances on their schedule, and the monthly statement on the 1st.
   ['family', 15, async t => (await import('./extras.js')).runFamily(t)],
   ['statements', 60, async t => (await import('./extras.js')).runStatements(t)],
@@ -65,7 +77,7 @@ export const JOBS = [
   // minutes in the session, and whale wallets are read every 6 hours.
   ['aibots', 1, async t => (await import('./aibots.js')).runAiBots(t)],
   ['aisignals', 30, async t => (await import('./aisignals.js')).runSignals(t)],
-  ['signaltrades', 5, async t => (await import('./aisignals.js')).runSignalTrades(t)],
+  ['signaltrades', 5, async t => (await import('./aisignals.js')).runSignalTrades(t), 'session'],
   ['whales', 360, async t => (await import('./intel.js')).checkWhales(t)],
   // Scanners and intraday bots check every minute whether their own interval has come round.
   ['scanners', 1, t => runScanners(t)],
@@ -73,14 +85,16 @@ export const JOBS = [
   ['valueAlerts', 1440, async () => (await import('./stock.js')).runValueAlerts()],
   ['reminders', 15, async t => (await import('./income.js')).runReminders(t)],
   // AI morning news picks: picks at 9:00, members at 9:35, stops and the close (New York time).
-  ['newspicks', 5, async t => (await import('./newspicks.js')).tick(t)],
-  ['intraday', 5, async t => (await import('./intraday.js')).tick(t)],
-  ['livePairs', 1, async t => (await import('./pairslive.js')).tick(t)],
+  ['newspicks', 5, async t => (await import('./newspicks.js')).tick(t), 'tradingDay'],
+  // (Named ruleIntraday: it used to share the name 'intraday' with the intraday bots below, so the two
+  // could take each other's time slots.)
+  ['ruleIntraday', 5, async t => (await import('./intraday.js')).tick(t), 'session'],
+  ['livePairs', 1, async t => (await import('./pairslive.js')).tick(t), 'session'],
   ['intraday', 1, t => runIntradayBots(t)],
   // Rule-based portfolios: contributions and scheduled rebalances, from 10:00 New York time.
-  ['baskets', 15, t => runBaskets(t)],
+  ['baskets', 15, t => runBaskets(t), 'tradingDay'],
   // Option income bots: once a day from 10:30 New York time.
-  ['income', 15, t => runIncomeBots(t)],
+  ['income', 15, t => runIncomeBots(t), 'tradingDay'],
   // Card purchases sync every few hours; the week's buys go out on Monday during the session.
   ['roundups', 180, t => runRoundups(t)],
   // Queued automated orders (broker outage or load surge), every minute; the in-process timer drains faster.
@@ -92,7 +106,7 @@ export const JOBS = [
     const prev = globalThis.__volPrev; globalThis.__volPrev = px;
     if (prev) setVolatility({ spike: px / prev - 1 > +(process.env.VOL_SPIKE_PCT || 8) / 100, value: `${sym} ${px}` });
     return 1;
-  }],
+  }, 'session'],
   // Margin and buying-power snapshots for the liquidity forecast, once a day.
   ['margin', 1440, () => snapshotMargins()],
   // Dividends paid in the last week are bought back into the same stock (opt-in), every 6 hours.
@@ -104,7 +118,8 @@ export const JOBS = [
 ];
 export async function runExtraJobs(t, claimOnce) {
   const out = {};
-  for (const [name, every, fn] of JOBS) {
+  for (const [name, every, fn, when] of JOBS) {
+    if (!jobWindowOpen(when, t)) continue; // the market calendar says no: no claim, no query
     if (!jobAllowed(name)) continue; // paused while the server sheds load
     if (!(await claimOnce(`${name}:${slot(t, every)}`))) continue;
     out[name] = await fn(t).catch(e => (console.error(name, e), 'error'));
