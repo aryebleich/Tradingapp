@@ -22,6 +22,7 @@ import * as structure from './yi-structure.js';
 import * as equalize from './yi-equalize.js';
 import * as pro from './yi-pro.js';
 import * as growth from './yi-growth.js';
+import * as clock from './yi-clock.js';
 
 export const credit = '';
 
@@ -402,3 +403,5 @@ patterns.push(...pro.patterns);
 patterns.push(...growth.patterns);
 // The hand-written patterns are tried first.
 patterns.unshift(...heimish.patterns);
+// The market status labels come before every broader pattern.
+patterns.unshift(...clock.patterns);

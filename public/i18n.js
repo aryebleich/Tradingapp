@@ -30,7 +30,8 @@ function tr(s) {
   if (!/[A-Za-z]/.test(t)) return rtl && /[→⟶]/.test(t) ? s.replace(/→/g, '←').replace(/⟶/g, '⟵') : null;
   const key = t.replace(/\s+/g, ' '), hit = dict[key];
   if (hit) return s.replace(t, hit);
-  for (const [re, rep] of patterns) if (re.test(key)) return s.replace(t, key.replace(re, rep));
+  // A function pattern gets the match array (m[1] is the first group), as every translation file writes them.
+  for (const [re, rep] of patterns) { const m = key.match(re); if (m) return s.replace(t, typeof rep === 'function' ? key.slice(0, m.index) + rep(m) + key.slice(m.index + m[0].length) : key.replace(re, rep)); }
   return rtl && t.includes('→') ? s.replace(/→/g, '←') : null;
 }
 function translate(root) {

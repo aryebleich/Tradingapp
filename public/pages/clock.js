@@ -6,6 +6,7 @@
 //                                                   are greyed out, early-close days marked
 // Keyboard: the dial is a slider (arrows, Page Up/Down for 5 minutes, Enter to go from hour to minute);
 // the date grid moves with the arrow keys. Motion stops under prefers-reduced-motion (theme.css).
+import { closedDays } from '../market-calendar.js';
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const pad = n => String(n).padStart(2, '0');
 const KEY24 = 'qp_clock24';
@@ -95,12 +96,9 @@ export function timePicker(el, { value = '09:30', onChange = () => {}, label = '
 }
 
 // ---------- date picker ----------
-const cal = new Map();
-async function calendar(from, to) {
-  const k = from + to;
-  if (!cal.has(k)) cal.set(k, fetch(`/api/trading-calendar?from=${from}&to=${to}`).then(r => r.json()).catch(() => ({ days: [] })));
-  return cal.get(k);
-}
+// The shared market calendar (market-calendar.js, the same file the server uses), so there is no
+// request and no second list of holidays.
+async function calendar(from, to) { return { days: closedDays(from, to).map(d => (d.early ? { ...d, early: '13:00' } : d)) }; }
 const addDays = (day, k) => { const [y, m, d] = day.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d + k)).toISOString().slice(0, 10); };
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 export function datePicker(el, { value, min, onChange = () => {} } = {}) {

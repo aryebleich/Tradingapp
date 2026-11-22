@@ -53,6 +53,23 @@ Choices and assumptions made without asking, with the reason. Trading-tools work
 | D-19 | Position sizes round down to whole lots with a tiny tolerance (1e-9) so floating-point results like 9.999999999 count as 10. | Shown by a test; never rounds up past the risk budget. |
 | D-20 | Backtests and simulations: none were added. The tools only calculate from user inputs and read-only prices. | Rule 5 needs no new handling here. |
 
+## Four-phase job: clock, page help, OFI lab, live pairs (2026-11-22)
+
+### Phase 1: Home clock
+
+- C-1: **One market calendar for the server and the browser.** The calendar moved from src/market-calendar.js to public/market-calendar.js, unchanged (it has no imports, so the browser loads it as a module). src/market-calendar.js now only re-exports it, so the old server imports keep working.
+  - src/desk.js had its own hard-coded holiday and early-close lists for 2026–2027. They are gone; `HOLIDAYS` and `EARLY_CLOSE` are now built from the shared rules for older callers.
+  - The date picker (clock.js) and the schedule's first-day rule (when.js) use the same file, so they no longer fetch /api/trading-calendar. The route stays for anything else that calls it.
+- C-2: **One label, from one function.** `marketStatus()` in the shared calendar returns the status and the label ("Market closed: weekend · opens Monday 9:30 AM", "Market open · closes 4:00 PM", and so on). It is used by /desk/session, the Home clock, the order desk strip and the Market overview badge.
+  - On weekends and holidays the next open names the weekday, as in the brief's examples; on evenings it says "tomorrow" when it is.
+  - An early-close day says "closes 1:00 PM (early close)", and after hours end at 5 PM that day instead of 8 PM.
+- C-3: **The clock never shows "open" before the server answers.** The shared calendar gives the state at once, and the /desk/session answer replaces it until the next open or close (this covers unscheduled closures listed in EXTRA_CLOSED on the server).
+- C-4: **One clock and one timer.** `homeClock()` removes every #homeClock in the document and stops the previous timer before it draws. The timer lives in one module-level object (`CLOCK`), each loop only continues while it is the current clock, and it stops on leaving Home.
+  - The clock is made once, right after the title. The extra "move it into the title row" call is gone.
+  - On Home, the quick ticket's order desk strip leaves out its market-status part, so only the clock shows it. On the Trade page the strip keeps it.
+- C-5: **Yiddish patterns were broken in the browser.** `public/i18n.js` called function patterns through `String.replace`, which passes `(match, group1, …)`. Every translation file writes them as `m => m[1]`, so they printed wrong letters. The app now passes the match array, which fixes every existing function pattern, and the clock labels are translated in public/i18n/yi-clock.js.
+- C-6: **Where translations live.** i18n/ only holds the retired Yiddish label export (`RETIRED` in src/readme-auto.js); the live translations are in public/i18n/, which is where new text goes.
+
 ## Growth features: plan, data and menu (2026-11-22)
 
 - G-1: **Plan names.** The brief asks for Free, Pro and Premium; the product has Starter, Pro, Elite and Ultimate (prices and Stripe products exist). Free = Starter and Pro = Pro; Premium means Elite and Ultimate, shown as one "Premium" tier label next to the plan names on the pricing page. No plan was renamed, so subscriptions and Stripe prices are unchanged.

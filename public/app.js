@@ -12,6 +12,7 @@ import { registerBrokers } from './pages/brokers.js';
 import { registerProtect, getPasskey } from './pages/protect.js';
 import { registerAddons } from './pages/addons.js';
 import * as OD from './pages/orderdesk.js';
+import { marketStatus, marketState } from './market-calendar.js';
 import { whenHtml, wireWhen, reviewAndSchedule } from './pages/when.js';
 import { startBell } from './pages/bell.js';
 import { registerStart } from './pages/start.js';
@@ -1227,52 +1228,47 @@ async function accountBoxes(box) {
   if (eb) eb.onclick = async () => { eb.disabled = true; try { await (await import('./pages/combined.js')).equalizeNow(shared, $('#eqNowOut', box)); } finally { eb.disabled = false; } };
 }
 // A live clock on Home: the time here to the second, and the time at the New York exchange with
-// the market's state. The state comes from the server's market calendar (/desk/session: NYSE
-// holidays, 1 PM early closes, pre-market and after-hours), checked again whenever an open or a
-// close passes; until it answers, New York's weekday and time are worked out here.
-function nyParts(t) {
-  // The New York wall time as plain numbers (never a 12-hour hour some browsers return).
-  const w = new Date(new Date(t).toLocaleString('en-US', { timeZone: 'America/New_York' }));
-  return { weekday: w.getDay(), minutes: w.getHours() * 60 + w.getMinutes() };
-}
-function marketState(t, s) {
-  if (s && t < s.until) return s;
-  const { weekday, minutes } = nyParts(t), wd = weekday >= 1 && weekday <= 5;
-  return { status: wd && minutes >= 570 && minutes < 960 ? 'open' : wd && minutes >= 240 && minutes < 570 ? 'pre-market' : wd && minutes >= 960 && minutes < 1200 ? 'after-hours' : 'closed' };
-}
-const MKT_LABEL = { open: 'market open', 'pre-market': 'pre-market (regular hours from 9:30)', 'after-hours': 'after hours (market closed)', closed: 'market closed' };
+// the market's state. The state comes from the shared market calendar (market-calendar.js, the same
+// file the server uses: weekends, NYSE holidays, 1 PM early closes, pre-market and after hours) right
+// away, and /desk/session corrects it when it answers (for example an unscheduled closure). It never
+// shows "open" or "pre-market" on a weekend or holiday while the server has not answered.
+// There is only ever one clock in the document and one timer (CLOCK).
+const CLOCK = { timer: null, el: null };
+function stopClock() { clearTimeout(CLOCK.timer); CLOCK.timer = null; CLOCK.el = null; }
 function homeClock(view) {
-  if (!view || $('#homeClock', view)) return;
+  if (!view) return;
+  // One clock in the whole document: drop any earlier one (another render, a wrapper) and its timer.
+  stopClock(); document.querySelectorAll('#homeClock').forEach(x => x.remove());
   const el = document.createElement('div'); el.id = 'homeClock'; el.className = 'homeclock'; el.setAttribute('role', 'timer'); el.setAttribute('aria-label', 'Current time');
   el.innerHTML = '<b class="hc-time" dir="ltr"></b><span class="hc-date"></span><span class="hc-ny" dir="auto"></span>';
-  const anchor = $('h1', view)?.closest('.row') || $('h1', view);
-  anchor ? anchor.after(el) : view.prepend(el);
+  // In the title row, right after the title (part of the Home layout).
+  const h1 = $('h1', view); h1 ? h1.after(el) : view.prepend(el);
+  CLOCK.el = el;
   const t = el.querySelector('.hc-time'), d = el.querySelector('.hc-date'), ny = el.querySelector('.hc-ny');
-  // The calendar's answer holds until the next open or close; then it is asked again.
+  // The server's answer holds until the next open or close; then it is asked again.
   let sess = null, asking = false;
   const ask = () => {
     if (asking) return; asking = true;
     api('/desk/session').then(r => {
       const now = Date.now(), until = Math.min(...[r.nextOpen, r.nextClose].filter(x => x > now), now + 600e3);
-      const label = r.open ? 'market open' + (r.earlyClose ? ' (closes early, 1 PM)' : '') : r.holiday ? 'market closed (holiday)' : MKT_LABEL[r.status] || MKT_LABEL.closed;
-      sess = { status: r.open ? 'open' : r.status, label, until };
+      sess = { status: r.status, label: r.label || marketStatus(now).label, until };
     }).catch(() => {}).finally(() => { asking = false; });
   };
   ask();
   const tick = () => {
-    if (!el.isConnected) return stop();
+    if (!el.isConnected || CLOCK.el !== el) return;
     const n = new Date();
     t.textContent = n.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit' });
     const day = n.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }); if (d.textContent !== day) d.textContent = day;
     if (sess && n.getTime() >= sess.until) { sess = null; ask(); }
-    const m = marketState(n.getTime(), sess), open = m.status === 'open';
-    ny.textContent = 'New York ' + n.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', second: '2-digit' }) + ' · ' + (m.label || MKT_LABEL[m.status]);
-    ny.classList.toggle('open', open);
+    const m = marketState(n.getTime(), sess);
+    const txt = 'New York ' + n.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', second: '2-digit' }) + ' · ' + m.label;
+    if (ny.textContent !== txt) ny.textContent = txt;
+    ny.classList.toggle('open', m.status === 'open');
   };
   // Each tick lands just after the second changes, so the seconds never skip or lag.
-  let timer = null; const loop = () => { tick(); timer = setTimeout(loop, 1000 - Date.now() % 1000 + 5); };
-  const stop = () => clearTimeout(timer);
-  loop(); onLeave(stop);
+  const loop = () => { tick(); if (CLOCK.el === el && el.isConnected) CLOCK.timer = setTimeout(loop, 1000 - Date.now() % 1000 + 5); };
+  loop(); onLeave(() => { if (CLOCK.el === el) stopClock(); });
 }
 // ---------- Home (every account type: practice, Alpaca and the other brokerages) ----------
 // Top to bottom: title row (account pill, clock, account switcher); "Action needed" when there is
@@ -1414,7 +1410,7 @@ routes.dashboard = async (view, q) => {
   <div id="acctBoxes"></div>
   ${src.paper ? '<div class="card dash-paper"><div class="dash-ch"><h2>Paper account</h2></div><p class="mu" style="margin-top:0">Practice money: start again from $100,000 at any time. Your orders and positions in the paper account are cleared.</p><button class="ghost small" id="reset">Reset paper account</button></div>' : ''}
   </div>`;
-  homeClock(view); if ($('#homeClock', view)) $('h1', view).after($('#homeClock', view)); // the clock sits in the title row
+  homeClock(view); // the one clock, in the title row
   const sw = $('#homeAcct', view);
   if (sw) sw.onchange = () => { const v = sw.value; if (v.startsWith('view:')) { location.hash = '#/accounts' + (v.length > 5 ? '?view=' + encodeURIComponent(v.slice(5)) : ''); return; } setAccount(v); };
   if ($('#hideOnboard', view)) $('#hideOnboard', view).onclick = async e => {
@@ -1525,7 +1521,7 @@ function wireQuickTicket(t, view, a) {
     if (my !== seq || !$('#qGuide', t)) return;
     if (d.error) { $('#deskStrip', t).innerHTML = `<p class="err">${esc(d.error)}</p>`; return; }
     st.last = d.price; st.hold = d.holding;
-    $('#deskStrip', t).innerHTML = OD.deskStrip(d);
+    $('#deskStrip', t).innerHTML = OD.deskStrip(d, { session: !t.closest('#view')?.querySelector('#homeClock') });
     $('#qHold', t).innerHTML = OD.holdingLine(d.holding, sym, st.side);
     $('#qGuide', t).innerHTML = OD.guide(st.type, st.side, d.price, f.limit_price, f.stop_price);
     $('#qCost', t).innerHTML = OD.costBox(d.costs, st.side);

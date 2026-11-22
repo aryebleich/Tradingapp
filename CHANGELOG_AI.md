@@ -4,6 +4,35 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-22: Phase 1 of 4: Home clock
+
+### What changed
+
+- **Market status:** the Home clock, /desk/session, the order desk strip and the Market overview use one shared calendar (public/market-calendar.js) and one label. Weekends and holidays say "closed" with the holiday's name and the next open; early-close days close at 1 PM.
+- **One clock:** a single #homeClock in the title row and a single 1-second timer, however often Home is drawn. On Home the quick ticket no longer repeats the market state.
+- **Date picker and schedule:** both use the same calendar, with no request.
+- **Yiddish:** clock and status labels translated; function patterns in every translation file now work in the browser.
+
+### Tests
+
+test/market-clock.test.js:
+- weekends, and the 2026–2027 holidays (including the observed July 4, Juneteenth and Christmas);
+- early closes;
+- `marketState()` with no server answer;
+- /desk/session on holidays and weekends;
+- the Yiddish labels;
+- in Chromium: Home drawn 20 times leaves one clock and one timer, and the seconds move one at a time.
+
+`npm test`: 443 pass, 0 fail.
+
+Browser, with the date faked: Saturday, Sunday, Thanksgiving, the day after Thanksgiving at 2 PM and a Tuesday at 10 AM. Each was checked with no server answer and with one, and each label was right with one clock.
+
+### Rollback
+
+Revert the commit. No data changes.
+
+---
+
 ## 2026-11-22: Growth features, phase 2 (consistency, linking, revenue)
 
 ### What changed

@@ -785,7 +785,8 @@ async function markets(view, q) {
   const d = await H.api('/market/overview');
   const s = d.session, until = t => { const m = Math.max(0, Math.round((t - Date.now()) / 60000)); return m >= 1440 ? `${Math.floor(m / 1440)}d ${Math.floor(m % 1440 / 60)}h` : `${Math.floor(m / 60)}h ${m % 60}m`; };
   const STATUS = { open: ['Open', 'pos'], 'pre-market': ['Pre-market', 'warn'], 'after-hours': ['After hours', 'warn'], closed: ['Closed', ''] };
-  const [stT, stC] = s.holiday ? ['Holiday: closed', ''] : STATUS[s.status] || [s.status, ''];
+  // The same wording as the Home clock and the order desk (the shared calendar's label).
+  const [stT, stC] = [s.label ? s.label.split(' · ')[0] : (STATUS[s.status] || [s.status])[0], (STATUS[s.status] || ['', ''])[1]];
   const badge = r => r.freshness ? `<span class="fresh ${H.esc(r.freshness.level)}" data-fresh title="${H.esc((d.labels[r.freshness.level] || r.freshness.label) + (r.source ? ' · ' + r.source : ''))}">${H.esc(r.freshness.label)}</span>` : '';
   const chg = r => (r.changePct == null ? '<span class="mu">-</span>' : `<span class="${H.cls(r.changePct)}">${r.change >= 0 ? '+' : ''}${fmt(r.change)} (${H.pct(r.changePct, 2)})</span>`);
   const tile = r => `<a class="stat mtile" href="#/trade?symbol=${encodeURIComponent(r.symbol)}" data-s="${H.esc(r.symbol)}"><span>${H.esc(r.name || r.symbol)} <b class="mu" data-no-tr>${H.esc(r.symbol)}</b></span><b data-px>${r.price == null ? '-' : fmt(r.price)}</b><span data-chg>${chg(r)}</span>${badge(r)}</a>`;

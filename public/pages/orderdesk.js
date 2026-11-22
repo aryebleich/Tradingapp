@@ -4,6 +4,7 @@
 //  - costs: commission, SEC and FINRA fees on sales, half the spread and expected slippage;
 //  - ways to bet on a fall without a margin account (inverse funds, puts);
 //  - the desk strip: price, its data source and response time, bid/ask, spread, session clock.
+import { marketStatus } from '../market-calendar.js';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const usd = (x, d = 2) => (x == null || isNaN(x) ? '-' : (x < 0 ? '-$' : '$') + Math.abs(x).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }));
 
@@ -72,9 +73,10 @@ export function bearishAlternatives(symbol) {
       <li><b>Sell what you own</b> and wait in cash.</li></ul></details>`;
 }
 // The strip over the ticket: price, source, response time, bid/ask, spread and the session clock.
-export function deskStrip(d) {
+// On Home the clock already shows the market's state, so the strip leaves it out there ({ session: false }).
+export function deskStrip(d, { session = true } = {}) {
   const s = d.session, until = t => { const m = Math.max(0, Math.round((t - Date.now()) / 60000)); return m >= 1440 ? `${Math.floor(m / 1440)}d ${Math.floor(m % 1440 / 60)}h` : `${Math.floor(m / 60)}h ${m % 60}m`; };
-  return `<div class="deskstrip"><span class="sess ${s.open ? 'on' : ''}"><i></i>${s.open ? `Market open · closes in ${until(s.nextClose)}` : `${s.status === 'pre-market' ? 'Pre-market' : s.status === 'after-hours' ? 'After hours' : s.holiday ? 'Holiday: market closed' : 'Market closed'} · opens in ${until(s.nextOpen)}`}</span>
+  return `<div class="deskstrip">${session ? `<span class="sess ${s.open ? 'on' : ''}"><i></i>${esc((s.label || marketStatus().label))} <span class="mu">(${s.open ? `in ${until(s.nextClose)}` : `in ${until(s.nextOpen)}`})</span></span>` : ''}
     <span>Last <b class="num">${usd(d.price)}</b></span>${d.bid ? `<span>Bid <b class="num">${usd(d.bid)}</b> · Ask <b class="num">${usd(d.ask)}</b></span>` : ''}
     <span title="Where the price came from and how long it took">${esc(d.source)} · <b class="num">${d.latencyMs} ms</b></span>${d.orderLatency ? `<span title="Your orders: time from sending to the broker accepting it">Order ack <b class="num">${d.orderLatency.medianMs} ms</b> median</span>` : ''}</div>`;
 }

@@ -6,6 +6,7 @@
 //                                    New York and local time, a countdown, how precise the timing is, and
 //                                    the reminder that the price at run time may differ from the price now
 //   scheduleOrder(order, w, api)  saves it after the review
+import { nextTradingDay } from '../market-calendar.js';
 import { timePicker, datePicker, fmtTime } from './clock.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -38,9 +39,8 @@ export function whenHtml({ repeat = false, kinds = KINDS } = {}) {
 // The first weekday whose 9:30 AM New York open is still ahead (the date picker greys out holidays).
 function firstDay(t = Date.now()) {
   const hm = +new Intl.DateTimeFormat('en-GB', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(t)).replace(':', '');
-  let d = new Date(nyDay(t) + 'T12:00:00Z'); if (hm >= 930) d = new Date(+d + 864e5);
-  while ([0, 6].includes(d.getUTCDay())) d = new Date(+d + 864e5);
-  return d.toISOString().slice(0, 10);
+  // The first trading day (weekends and holidays skipped) whose open is still ahead.
+  return nextTradingDay(nyDay(t), hm < 930);
 }
 export function wireWhen(root, { api, order = () => ({}), onChange = () => {} } = {}) {
   const box = root.querySelector('fieldset.when');

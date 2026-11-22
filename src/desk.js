@@ -12,33 +12,32 @@ import { requireUser } from './auth.js';
 import { siteGet, siteSet } from './site.js';
 import { nyTime, nyAt } from './time.js';
 import * as DS from './datasources.js';
+import { isTradingDay, earlyClose as earlyCloseMin, holidays, addDays, nextTradingDay, marketStatus } from './market-calendar.js';
 
 const bad = (msg, status = 400) => Object.assign(new Error(msg), { status });
-// NYSE full holidays and 1 PM early closes.
-export const HOLIDAYS = new Set(['2026-01-01', '2026-01-19', '2026-02-16', '2026-04-03', '2026-05-25', '2026-06-19', '2026-07-03', '2026-09-07', '2026-11-26', '2026-12-25',
-  '2027-01-01', '2027-01-18', '2027-02-15', '2027-03-26', '2027-05-31', '2027-06-18', '2027-07-05', '2027-09-06', '2027-11-25', '2027-12-24']);
-export const EARLY_CLOSE = new Set(['2026-11-27', '2026-12-24', '2027-11-26']);
-const addDays = (iso, n) => new Date(Date.parse(iso + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
-const tradingDay = iso => { const wd = new Date(iso + 'T12:00:00Z').getUTCDay(); return wd !== 0 && wd !== 6 && !HOLIDAYS.has(iso); };
-export const closeMin = iso => (EARLY_CLOSE.has(iso) ? 780 : 960);
+// The market calendar is the shared one (public/market-calendar.js): weekends, NYSE holidays and
+// 1 PM early closes, computed by rule, the same in the browser. No second list is kept here.
+const tradingDay = isTradingDay;
+export const closeMin = iso => earlyCloseMin(iso) ?? 960;
+// Kept for older callers: the holidays and early-close days of this year and the next two.
+const yrs = (() => { const y = new Date().getUTCFullYear(); return [y - 1, y, y + 1, y + 2]; })();
+export const HOLIDAYS = new Set(yrs.flatMap(y => [...holidays(y).keys()]));
+export const EARLY_CLOSE = new Set(yrs.flatMap(y => { const out = []; for (let d = `${y}-01-01`; d <= `${y}-12-31`; d = addDays(d, 1)) if (earlyCloseMin(d)) out.push(d); return out; }));
 // The New York date of the session an order placed now belongs to: today until today's close,
 // after that (or on a weekend or holiday) the next trading day.
 export function orderDay(t = Date.now()) {
   const n = nyTime(t);
   if (tradingDay(n.day) && n.minutes < closeMin(n.day)) return n.day;
-  let d = addDays(n.day, 1); while (!tradingDay(d)) d = addDays(d, 1);
-  return d;
+  return nextTradingDay(n.day);
 }
 
+// The market session now: open or not, the next open and close, and the one label used everywhere
+// (marketStatus in the shared calendar). Weekends and holidays are "closed", with the holiday's name.
 export function session(t = Date.now()) {
-  const n = nyTime(t), today = n.day, open = tradingDay(today) && n.minutes >= 570 && n.minutes < closeMin(today);
-  let d = today;
-  // Next open: today if before 9:30 on a trading day, else the next trading day.
-  if (!(tradingDay(d) && n.minutes < 570)) { d = addDays(d, 1); while (!tradingDay(d)) d = addDays(d, 1); }
-  const nextOpen = nyAt(d, 570);
-  const nextClose = open ? nyAt(today, closeMin(today)) : nyAt(d, closeMin(d));
-  const status = open ? 'open' : tradingDay(today) && n.minutes >= 240 && n.minutes < 570 ? 'pre-market' : tradingDay(today) && n.minutes >= closeMin(today) && n.minutes < 1200 ? 'after-hours' : 'closed';
-  return { open, status, nextOpen, nextClose, earlyClose: EARLY_CLOSE.has(today), holiday: HOLIDAYS.has(today), now: t };
+  const m = marketStatus(t), today = m.day;
+  const nextOpen = nyAt(m.nextOpenDay, 570);
+  const nextClose = m.open ? nyAt(today, closeMin(today)) : nyAt(m.nextOpenDay, closeMin(m.nextOpenDay));
+  return { open: m.open, status: m.status, nextOpen, nextClose, earlyClose: m.earlyClose, holiday: m.holiday, holidayName: m.holidayName, weekend: m.weekend, nextOpenEarly: m.nextOpenEarly, label: m.label, now: t };
 }
 
 // Trading fees. Brightolio does not charge per trade; brokers like Alpaca charge no commission on
