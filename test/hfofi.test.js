@@ -87,3 +87,17 @@ test('the JavaScript matches R on the sample data (6 decimal places)', () => {
   }
   assert.match(O.NOTE, /Academic exercise\. Simulated results; not investment advice/);
 });
+
+test('server: the sample, the R project zip (no data), the PDF, Alpaca quotes as ticks', async () => {
+  const L = await import('../src/hfofilab.js');
+  const names = L.projectFiles().map(f => f.name);
+  assert.ok(names.includes('hf-ofi/hf.Rmd') && names.includes('hf-ofi/run.sh') && names.includes('hf-ofi/data/README.md'));
+  assert.ok(!names.some(n => /\.(Rds|csv|pdf)$/.test(n)), names.join(' '));
+  const z = L.zip([{ name: 'a.txt', data: Buffer.from('hello') }]); assert.equal(z.readUInt32LE(0), 0x04034b50);
+  const t = L.quotesToTicks([{ t: '2026-11-24T15:00:00Z', bp: 10, ap: 10.02, bs: 3, as: 5 }, { t: '2026-11-24T15:00:01Z', bp: 0, ap: 10, bs: 1, as: 1 }]);
+  assert.equal(t.length, 1); assert.equal(t[0].askVol, 5); close(t[0].last, 10.01);
+  const { serve } = await import('./client.js'); const s = await serve(); const u = s.client(); await u.signup('ofi@example.com');
+  assert.equal((await u('/hfofi/quotes?symbol=SPY&day=2026-11-26')).status, 400); // Thanksgiving: closed
+  assert.match((await u('/hfofi/quotes?symbol=SPY&day=2026-11-24')).body.error, /not set up|Alpaca/);
+  s.close();
+});

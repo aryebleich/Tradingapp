@@ -4,6 +4,43 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-22: Phase 3 of 4: Order flow (OFI) lab
+
+### What changed
+
+- **R project** (research/hf-ofi/): hf.Rmd, with the factors in R/ofi.R:
+  - spread, mid, microprice, volume imbalance, VOI, OFI, OFI-N and the rolling differences;
+  - the regressions on 4 horizons;
+  - the OFI-N strategy with the in-sample thresholds and costs, gross and net, in and out of sample;
+  - ggplot2 + patchwork figures.
+  It also has a README, DESCRIPTION, run.sh, data/README.md, a seeded synthetic sample, and the rendered out/hf.pdf and out/return.png. The real data file is git-ignored.
+- **App page** "Order flow (OFI) lab" (Automate → Pairs & stat arb):
+  - data: the sample, a CSV upload or Alpaca stock quotes;
+  - charts of price, bid/ask and microprice, OFI-N with its thresholds, imbalance and VOI;
+  - the regression table, and cumulative returns against buy and hold, in and out of sample, with statistics;
+  - settings for N, the percentiles, the split, the fee, slippage and tick size;
+  - downloads of the R project (zip, no data) and the PDF;
+  - the "i" panel explains each factor in plain words, with Yiddish throughout.
+
+### Tests
+
+- test/hfofi.test.js:
+  - every factor by hand, including VOI and OFI when the bid or ask rises, falls or stays;
+  - the rolling sum and percentiles, and no look-ahead;
+  - the backtest's positions, returns and costs;
+  - the upload checks (columns, 20 MB, numbers);
+  - JavaScript = R to 6 decimals on the sample;
+  - the zip without data, quote conversion, and the holiday refusal.
+- R: `./run.sh` rendered the PDF from the sample (checked page by page).
+- In the browser at 1280 and 375 px, with the sample, a good and a bad upload, Alpaca quotes (mock) and a holiday: no errors, no sideways scroll, axe clean.
+- `npm test`: 456 pass, 0 fail.
+
+### Left for you
+
+Put the real data file at research/hf-ofi/data/df_rb2305_am1.Rds and run `./run.sh` to get the report on real data. If you have the original hf.Rmd, compare it with this version: the factor definitions are listed in the README.
+
+---
+
 ## 2026-11-22: Phase 2 of 4: Page help behind an "i"
 
 ### What changed

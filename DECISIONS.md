@@ -93,6 +93,35 @@ Choices and assumptions made without asking, with the reason. Trading-tools work
     - the admin error explainer;
     - "The risks in plain words" and every risk or legal disclosure.
 
+### Phase 3: Order flow (OFI) lab
+
+- O-1: **Place in the menu:** Automate → Pairs & stat arb (the "Quant lab" pages: Pairs trading, Statistical arbitrage) gets a third tab, "Order flow (OFI) lab" (`#/pairs/ofi`).
+- O-2: **One copy of the math.** The math lives in public/hfofi.js, re-exported by src/hfofi.js (the same pattern as the market calendar), so the browser and the server run the same code. The R project's functions are in research/hf-ofi/R/ofi.R; test/hfofi.test.js checks the JavaScript against numbers exported from R (R/export_expected.R) to 6 decimal places:
+  - the first 60 values and the sums of every factor;
+  - all 32 regressions;
+  - the thresholds;
+  - the positions and the gross and net statistics in and out of sample.
+- O-3: **The original hf.Rmd is not in the repository**, so the brief is the specification. Where the brief left a choice, this is what was decided (in the README and the report too):
+  - VOI and OFI start at the second update;
+  - OFI-N is right-aligned (NA until N values);
+  - "rolling differences" means each factor minus its value N updates earlier;
+  - the position decided at an update earns the mid return to the next update;
+  - percentiles are R type 7.
+- O-4: **The look-ahead fix.** The 20th/80th percentiles come from the in-sample part (default: the first half) only, and the out-of-sample part is traded with them. A test shows that changing the out-of-sample data does not move the thresholds.
+- O-5: **Costs.** Every change of position pays a fee (1 bp of the price by default) plus slippage (1 tick of size 1).
+  - Statistics are shown gross and net: trades, hit rate, average per trade, total, max drawdown.
+  - Sharpe = mean / sd of per-update returns × √(updates per day × 252), with updates per day = the updates in the session.
+  - On the synthetic sample the strategy makes money gross and loses net, in and out of sample. The report and the page show that as it is.
+- O-6: **Data.**
+  - The real file (data/df_rb2305_am1.Rds) is git-ignored; the report stops with a clear message without it, or uses the synthetic sample (seeded, R/make_sample.R), which every figure labels.
+  - The app accepts CSV only (RDS is an R format a browser cannot read), up to 20 MB, checked in the browser before reading.
+  - Alpaca quotes come from the new `quotesRange()` (US equities, labelled so on the page), for 5–120 minutes of a trading day; weekends and holidays are refused with the shared calendar.
+- O-7: **Downloads.** The R project is zipped on the fly by a small zip writer (no new dependency), without any data or rendered output. The PDF rendered from the sample is committed at research/hf-ofi/out/hf.pdf.
+- O-8: **R was installed in this container** (R 4.3, tidyverse, rmarkdown, patchwork, RcppRoll, conflicted, pandoc and LaTeX from apt), and the report rendered.
+  - paletteer is not packaged for apt, so it is an optional dependency; without it the report uses a fixed Tableau palette.
+  - pdflatex needed the symbols − ≥ ≤ × √ Δ · declared in the report header.
+- O-9: **Simulation only.** The lab never places orders, and the page shows the brief's academic-exercise line at the top and at the end.
+
 ## Growth features: plan, data and menu (2026-11-22)
 
 - G-1: **Plan names.** The brief asks for Free, Pro and Premium; the product has Starter, Pro, Elite and Ultimate (prices and Stripe products exist). Free = Starter and Pro = Pro; Premium means Elite and Ultimate, shown as one "Premium" tier label next to the plan names on the pricing page. No plan was renamed, so subscriptions and Stripe prices are unchanged.
