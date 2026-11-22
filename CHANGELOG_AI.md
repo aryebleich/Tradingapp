@@ -4,6 +4,26 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-22: The four-phase job: summary
+
+| Phase | What changed | Tested |
+|---|---|---|
+| 1. Home clock | One market calendar for the server and the browser (public/market-calendar.js). One label everywhere: closed with the reason and the next open on weekends and holidays, 1 PM on early-close days. One clock and one timer on Home. Yiddish function patterns fixed. | test/market-clock.test.js (holidays 2026–2027, early closes, marketState without the server, /desk/session, one clock after 20 redraws in Chromium); faked dates checked in the browser |
+| 2. Page help | An "i" next to every page title (before the gear) opens the guide in a drawer (desktop) or a sheet (phone). The guide cards are gone from pages. A first-time dot and hint; 41 new guides; Yiddish. | test/page-help.test.js (all 93 pages and tabs in Chromium, panel, Esc and focus, seen, hint); light, dark, 375 px, RTL |
+| 3. OFI lab | The R project (hf.Rmd, R/ofi.R, sample data, rendered PDF), the JavaScript math matching R to 6 decimals, and the "Order flow (OFI) lab" page with the sample, an upload or Alpaca quotes. | test/hfofi.test.js; R rendered the PDF in this container; page checked at 1280 and 375 px |
+| 4. Live pairs | The "Live ratio" model and engine (stream or polling, two-leg safety, limits, kill switch, calendar hours, PDT, rate limit), Paper first with a real-money gate, an intraday backtest next to OLS, and the "Live ratio" tab. | test/pairslive.test.js (math, bars, time zones, thresholds, failed and partial legs, hours, limits, kill switch, account picker, real-money gate); a KO/PEP session simulated on Paper over a full day: 11 round trips, legs always paired, flat at the close |
+
+`npm test`: 470 pass, 0 fail. `npm run clean` passes, and the boot check passes.
+
+### Left for you
+
+- **Data:** put the licensed rb2305 file at research/hf-ofi/data/df_rb2305_am1.Rds and run `./run.sh` for the report on real data. If you have the original hf.Rmd, compare its factor definitions with DECISIONS O-3.
+- **Live pairs on a real account:** run a bot on Paper for the required days first. With an Alpaca key, the intraday backtest and live quotes work; without one the page says so and the engine polls prices.
+- **Legal:** LEGAL_REVIEW.md L16–L19 wait for sign-off; nothing new was added to the homepage.
+- **Page gate:** NEEDS_REVIEW.md N-18 (the golden baseline is out of date).
+
+---
+
 ## 2026-11-22: Phase 3 of 4: Order flow (OFI) lab
 
 ### What changed

@@ -122,6 +122,40 @@ Choices and assumptions made without asking, with the reason. Trading-tools work
   - pdflatex needed the symbols − ≥ ≤ × √ Δ · declared in the report header.
 - O-9: **Simulation only.** The lab never places orders, and the page shows the brief's academic-exercise line at the top and at the end.
 
+### Phase 4: Live ratio pair bots
+
+- P-1: **A second model in the pairs engine, not a separate project.** "Statistical (OLS z-score)" stays in src/pairs.js (daily bars, once a day). The new "Live ratio" model is in src/pairslive-math.js (pure functions) and src/pairslive.js (engine and routes). Both use placeOrder, the risk checks and the order queue, and the new page reuses the pair scanner for suggestions and the OLS daily backtest for the side-by-side comparison.
+  - The Python project's design was not in the repository, so its description was turned into exact rules:
+    - beta = mean(A) / mean(B) over the history window;
+    - volatility ratio = sd(% changes of A) / sd(% changes of B);
+    - divergence = A / (beta × B) − 1, in percent;
+    - enter at ±entry%, exit inside ±exit% (or when it crosses over), stop at ±stop%;
+    - the legs are sized by the volatility ratio (A gets 1 / (1 + ratio) of the money, B the rest), so both carry about the same risk.
+- P-2: **Live data.** History comes from 1-minute closes (Alpaca bars, standing in for midpoints). Live prices are quote midpoints from the Alpaca stream: `watch()` lets the server follow symbols like a browser does, on the one shared connection. When the stream is quiet or not available (another brokerage, no data key), the last price is polled at each run.
+  - Settings: the history window (30–1,440 minutes), the bar length (1, 5 or 15 minutes), recalculation every 1–15 minutes, and the thresholds.
+- P-3: **Accounts.** The picker lists only the member's connected accounts (accountsFor), and every order goes placeOrder → checkOrder → order queue.
+  - Before Start: the account must be connected and shorting allowed. That means margin switched on, even on Paper, because the practice account follows the same rule. On Alpaca the account must allow shorting and each symbol must be shortable and easy to borrow; another brokerage must support short sales. Otherwise nothing starts and the page lists why.
+- P-4: **Two legs.** Buying power and every risk limit are checked for both legs before either is sent. The short leg goes first, as it is the one most likely to be refused.
+  - If the second leg fails, the first is closed at once; if it fills partly, the first is reduced to the same fraction. The member is notified.
+  - A close that fails stays in the bot's state and is retried at the next run.
+- P-5: **Limits.**
+  - Per pair: max loss and max position.
+  - Per member: a daily loss over all live-ratio bots, and orders per minute (PAIRS_LIVE_MAX_ORDERS_PER_MIN, default 20, for brokers' rate limits).
+  - The pattern-day-trader rule on real margin accounts under $25,000.
+  - The kill switch: the bot pauses, and it sends no orders, because checkOrder blocks automated sells too. The member closes by hand.
+  - Hours: regular hours on trading days only (the shared calendar from Phase 1), no new positions and everything closed `closeBeforeMin` minutes before the close (1 PM on early-close days) unless "hold overnight" is on. Closing never waits for history: a bug found in the session test, fixed.
+- P-6: **Paper first.** A new bot is always created on Paper. Moving it to real money needs, as for Playbooks:
+  - Pro;
+  - a connected account;
+  - an intraday backtest in the last 30 days;
+  - at least PAIRS_LIVE_MIN_PAPER_DAYS trading days on Paper (default 5);
+  - no open positions;
+  - the step-up check, the password, and an explicit "I understand" confirm.
+  It then waits stopped until the member presses Start.
+- P-7: **Intraday backtest.** It uses Alpaca bars at the chosen bar length over 3–30 days, refits the model on past bars only, and charges a fee, slippage and a yearly borrow fee on the short leg. It is shown next to the OLS model's daily walk-forward backtest for the same pair, and labelled hypothetical.
+- P-8: **Settings documentation.** The two new variables are in render.yaml and the private README (src/readme-auto.js, Admin → README). The public README.md is checked after every push to name no setting or key (scripts/readme-check.mjs), so they are not there.
+- P-9: **The clean check keeps research/.** The R project is used offline and as a download, not imported by the app. The Phase 3 push had failed the CI clean check for that reason, which stopped the deploy for that push.
+
 ## Growth features: plan, data and menu (2026-11-22)
 
 - G-1: **Plan names.** The brief asks for Free, Pro and Premium; the product has Starter, Pro, Elite and Ultimate (prices and Stripe products exist). Free = Starter and Pro = Pro; Premium means Elite and Ultimate, shown as one "Premium" tier label next to the plan names on the pricing page. No plan was renamed, so subscriptions and Stripe prices are unchanged.
