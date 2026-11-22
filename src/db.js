@@ -994,6 +994,13 @@ const MIGRATIONS = [
   // Trading tools (src/tradetools): what each AI explainer was asked and answered, redacted, for compliance review.
   'CREATE TABLE IF NOT EXISTS ai_compliance_log (id INTEGER PRIMARY KEY, tool TEXT NOT NULL, user_ref TEXT NOT NULL, prompt TEXT, output TEXT, outcome TEXT NOT NULL, reason TEXT, model TEXT, at INTEGER NOT NULL)',
   'CREATE INDEX IF NOT EXISTS ai_compliance_log_at ON ai_compliance_log (at)',
+  // Growth features: AI morning news picks (the engine's daily picks = its public track record, and each
+  // member's orders) and the AI intraday engine's trade log.
+  'CREATE TABLE IF NOT EXISTS newspicks_log (day TEXT NOT NULL, symbol TEXT NOT NULL, rank INTEGER NOT NULL, score REAL, reasons TEXT, sources TEXT, open REAL, close REAL, ret REAL, PRIMARY KEY (day, symbol))',
+  'CREATE TABLE IF NOT EXISTS newspicks_trades (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, day TEXT NOT NULL, account TEXT NOT NULL, symbol TEXT NOT NULL, dollars REAL, qty REAL, entry REAL, stop REAL, exit REAL, status TEXT NOT NULL, note TEXT, at INTEGER NOT NULL)',
+  'CREATE INDEX IF NOT EXISTS newspicks_trades_user ON newspicks_trades (user_id, day)',
+  'CREATE TABLE IF NOT EXISTS intraday_log (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, account TEXT NOT NULL, symbol TEXT NOT NULL, side TEXT NOT NULL, qty REAL, price REAL, reason TEXT, pl REAL, at INTEGER NOT NULL)',
+  'CREATE INDEX IF NOT EXISTS intraday_log_user ON intraday_log (user_id, at)',
 ];
 
 // Migrations run on every start. Re-running one that is already applied ("duplicate column",
