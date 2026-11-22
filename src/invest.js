@@ -97,7 +97,17 @@ export const FUNDS = {
   FCNTX: ['Fidelity Contrafund', 'Mutual fund', 'Large US growth companies', 0.39, 0, 'Actively managed', 'Fidelity'],
   DODGX: ['Dodge & Cox Stock Fund', 'Mutual fund', 'Large US value companies', 0.51, 2500, 'Actively managed', 'Dodge & Cox'],
 };
-export const fundRows = () => Object.entries(FUNDS).map(([symbol, [name, kind, holds, cost, min, managed, family]]) => ({ symbol, name, kind, holds, cost, min, managed, family, per10k: r2(cost * 100, 2), cost30y: r2(100000 * (1.07 ** 30 - (1.07 - cost / 100) ** 30), 0) }));
+// The closest ETF that trades on Alpaca for each mutual fund (Alpaca has no mutual funds). Index funds
+// have a near twin tracking the same index; for target-date and actively managed funds the ETF is only
+// similar in mix or style, and the page says so.
+export const CLOSEST_ETF = {
+  FXAIX: ['IVV', 'same index'], SWPPX: ['SCHX', 'similar: large US companies'], VFIAX: ['VOO', 'same index'], FSKAX: ['ITOT', 'same market'], VTSAX: ['VTI', 'same index'],
+  FTIHX: ['IXUS', 'same market'], VTIAX: ['VXUS', 'same index'], FXNAX: ['AGG', 'same market'], VBTLX: ['BND', 'same index'],
+  VFIFX: ['AOA', 'similar mix (about 80% stocks), not the same glide path'], VWELX: ['AOR', 'similar mix (about 60% stocks), not the same managers'], PRWCX: ['AOR', 'similar mix only; an active fund cannot be copied'],
+  FCNTX: ['VUG', 'similar style (large US growth); an active fund cannot be copied'], DODGX: ['VTV', 'similar style (large US value); an active fund cannot be copied'],
+};
+export const fundRows = () => Object.entries(FUNDS).map(([symbol, [name, kind, holds, cost, min, managed, family]]) => ({ symbol, name, kind, holds, cost, min, managed, family, per10k: r2(cost * 100, 2), cost30y: r2(100000 * (1.07 ** 30 - (1.07 - cost / 100) ** 30), 0),
+  ...(kind === 'Mutual fund' && CLOSEST_ETF[symbol] ? { closestEtf: CLOSEST_ETF[symbol][0], closestHow: CLOSEST_ETF[symbol][1] } : {}) }));
 
 // ---------- new leaders ----------
 // A relative-strength score like the ones used by growth investors: the weighted 3/6/9/12-month
