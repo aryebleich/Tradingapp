@@ -53,6 +53,29 @@ Choices and assumptions made without asking, with the reason. Trading-tools work
 | D-19 | Position sizes round down to whole lots with a tiny tolerance (1e-9) so floating-point results like 9.999999999 count as 10. | Shown by a test; never rounds up past the risk budget. |
 | D-20 | Backtests and simulations: none were added. The tools only calculate from user inputs and read-only prices. | Rule 5 needs no new handling here. |
 
+## Growth features: plan, data and menu (2026-11-22)
+
+- G-1: **Plan names.** The brief asks for Free, Pro and Premium; the product has Starter, Pro, Elite and Ultimate (prices and Stripe products exist). Free = Starter and Pro = Pro; Premium means Elite and Ultimate, shown as one "Premium" tier label next to the plan names on the pricing page. No plan was renamed, so subscriptions and Stripe prices are unchanged.
+- G-2: **One stock page.** It extends the Stock & fund analyzer (`#/analyze?symbol=`) with sections: Overview, Valuation, Fundamentals, Earnings, Dividends, Technicals, Supply & demand. A section is chosen with `&view=`, so old links keep working. No second stock page was made. Data: `src/stock.js` (SEC company facts and submissions, bars, quotes, Finnhub when keyed).
+- G-3: **Menu placement** (STRUCTURE_AUDIT.md, "Growth features"):
+  - Research → Stock & fund analyzer: the stock page, plus a "Compare" tab (`#/analyze/compare`).
+  - Research → Scanners: a "Growth at a price" tab (`#/scanner/valuescan`).
+  - Research → Research & news: "Rates vs stocks" (`#/research/rates`).
+  - Track & plan → Risk: "Diversification" (`#/riskview/diversify`).
+  - Automate → Alerts & signals: "AI morning picks" (`#/signals/newspicks`).
+  - Automate → Bots: "AI intraday" (`#/bots/intraday`).
+  - Invest → Portfolios: the AI tab is renamed "AI long/short portfolios".
+  - Invest → Investing toolkit: "Passive investing" (`#/wealth/passive`) and "Dividends & income" (`#/wealth/dividends`).
+  - Trade tools: "Active trading desk" (`#/active`), a new entry (the group goes from 6 to 7 items).
+  - Funds compare lives on Low-cost funds, and futures specs on Futures, bonds & more.
+- G-4: **Honest limits.**
+  - No market depth: top of book only, said on the page.
+  - Buy and sell volume is estimated from where bars close.
+  - No futures or mutual-fund trading through the connected broker: research and paper, the closest ETF, and the brokers that do trade them.
+  - No HFT: an "AI intraday" engine every 5 minutes within rate limits and the pattern-day-trader rule.
+  - Forward P/E and expected EPS only with a Finnhub key; the next earnings date is estimated without one.
+- G-5: **Naming (LEGAL_REVIEW.md).** "AI hedge funds" becomes "AI long/short portfolios" in the menu and on the page. They are rule-based portfolios in the member's own account, not funds, not pooled money, and not regulated products. The route `#/aifunds` stays.
+
 ## Pro polish: trust and revenue (2026-11-20)
 
 - P2-1: The review (PRO_REVIEW.md) found a mature landing page and pricing. The weak points were smaller and closer to the money: the upgrade window, the plan choice inside the app, sign-up, the first steps on Home, page titles and three accessibility failures. Those were fixed first; a rebuild of what works was not attempted.

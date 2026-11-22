@@ -128,3 +128,20 @@ Core (always shown): Home, Get started, Trade, Positions, Orders, Watchlists, Ma
 | `#/payroll` | My business (admin) | Pay runs and W-2 totals | Admin | - | Keep (business tab) | Admin → My business |
 | `#/bizreports` | My business (admin) | P&L, balance sheet, cash flow | Admin | business | Keep (business tab) | Admin → My business |
 | `#/alpaca-dev` | (new) | Alpaca MCP server and CLI, connecting AI agents (split out of Bonds, rates & crypto) | Developer | agenthub, developers | New tab of Developers | Automate → Developers |
+
+## Growth features (2026-11-22)
+
+Where each feature from PLAN_GROWTH.md lives in the menu (DECISIONS.md G-3). Every new page is a tab of an existing merged page, except one new entry in Trade tools.
+
+| Page | Purpose | Overlaps with | Recommendation | New place |
+|---|---|---|---|---|
+| `#/analyze?symbol=…&view=` | One stock page: overview, valuation, fundamentals, earnings, dividends, technicals, supply & demand | earnings, chart, tradetools, news | Extend (one page, sections) | Research → Stock & fund analyzer |
+| `#/analyze/compare` | 2–4 stocks side by side | aitools (head to head) | New tab; links to head to head | Research → Stock & fund analyzer |
+| `#/scanner/valuescan` | Growth at a price: fundamental presets, saved filters, alerts | scanner, fundamentals screen | New tab | Research → Scanners |
+| `#/research/rates` | Rates vs stocks: Fed funds, 2y, 10y, curve against S&P 500 and sectors, next Fed meeting | alpaca-tools (rates card) | New tab; links both ways | Research → Research & news |
+| `#/riskview/diversify` | Diversification score and suggestions with previews | riskview, wealth (diversify tab) | New tab; the wealth tab links to it | Track & plan → Risk |
+| `#/signals/newspicks` | AI morning news picks with caps and a track record | aisignals, aitools (news to trades) | New tab | Automate → Alerts & signals |
+| `#/bots/intraday` | AI intraday engine (every 5 minutes, limits, trade log) | bots (15-minute bots) | New tab | Automate → Bots |
+| `#/wealth/passive` | Passive investing overview: portfolios by risk, rebalancing, deposits, fees | lowcost, sp500, robo, rules, longterm | New tab that connects them | Invest → Investing toolkit |
+| `#/wealth/dividends` | Dividends & income: calendar, 12-month forecast, DRIP | wealth DRIP tab | New tab | Invest → Investing toolkit |
+| `#/active` | Active trading desk: scanner, watchlists, ideas, journal, performance vs S&P 500 | scanner, watchlists, aisignals, insights | New entry that connects them | Trade tools |
