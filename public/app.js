@@ -424,7 +424,7 @@ const HUBS = {
   strategies: ['Strategies', [['strategies', 'Strategy library'], ['playbooks', 'Playbooks'], ['backtest', 'Backtest']]],
   bots: ['Bots', [['bots', 'My bots'], ['aibots', 'AI bots'], ['agents', 'Forecasts & AI agents'], ['intraday', 'AI intraday']]],
   signals: ['Alerts & signals', [['signals', 'Alerts to trades'], ['aisignals', 'AI signals'], ['fleet', 'Signal fleet'], ['newspicks', 'AI morning picks']]],
-  pairs: ['Pairs & stat arb', [['pairs', 'Pairs trading'], ['statarb', 'Statistical arbitrage'], ['ofi', 'Order flow (OFI) lab']]],
+  pairs: ['Pairs & stat arb', [['pairs', 'Pairs trading'], ['statarb', 'Statistical arbitrage'], ['livepairs', 'Live ratio'], ['ofi', 'Order flow (OFI) lab']]],
   marketplace: ['Marketplace', [['marketplace', 'Overview'], ['traders', 'Top traders'], ['aimarket', 'AI strategy marketplace'], ['sharedstrategies', 'Strategies'], ['sharedportfolios', 'Portfolios'], ['signalchannels', 'Signal channels']]],
   developers: ['Developers', [['developers', 'Developer API'], ['agenthub', 'Agents & API'], ['code', 'Code lab'], ['quantconnect', 'Cloud algorithms'], ['alpaca-dev', 'Alpaca AI & CLI tools']]],
   insights: ['Performance', [['insights', 'Insights & journal'], ['longterm', 'Long-term view'], ['execution', 'Execution & routing']]],
@@ -2322,7 +2322,7 @@ for (const [k] of ADMIN_TABS.filter(([k]) => !['admin-system', 'admin-analytics'
 lazyRoutes(() => import('./pages/strategies.js'), 'registerStrategies', { accounts, accountOptions, acctLabel, $, $$, esc, money, cls, date, api, form, act, render, drawChart, onLeave, me: () => ME }, ["strategies", "strategy"]);
 registerBrokers(routes, { $, $$, esc, money, api, form, act, render, accounts });
 lazyRoutes(() => import('./pages/sp500.js'), 'registerSp500', { accounts, accountOptions, acctLabel, $, $$, esc, money, cls, api, form, act, render, drawChart, me: () => ME }, ["sp500"]);
-lazyRoutes(() => import('./pages/pairs.js'), 'registerPairs', { accounts, accountOptions, acctLabel, $, $$, esc, money, cls, api, form, act, render, drawChart, me: () => ME }, ["pairs", "statarb"]);
+lazyRoutes(() => import('./pages/pairs.js'), 'registerPairs', { accounts, accountOptions, acctLabel, $, $$, esc, money, cls, api, form, act, render, drawChart, me: () => ME, secureConfirm, onLeave, related: (items, here) => relatedHtml(items, here || '') }, ["pairs", "statarb", "livepairs"]);
 lazyRoutes(() => import('./pages/signals.js'), 'registerSignals', { accounts, accountOptions, acctLabel, $, $$, esc, money, date, api, form, act, render, me: () => ME }, ["signals"]);
 // Page code loads when a page is first opened (one small file per area), not with the app: the
 // app itself downloads much less, and nobody downloads pages they cannot open (owner pages, the

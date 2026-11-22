@@ -312,3 +312,4 @@ html.lv2 .ofi-fig .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-
 html.lv2 .ofi-fig .legend .sw { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-inline-end: 6px; }
 html.lv2 .ofi-src { border: 0; padding: 0; margin: 0 0 var(--s3); display: grid; gap: 6px; }
 html.lv2 .ofi-reg td { white-space: nowrap; }
+html.lv2 .lp-sug { margin: 0; align-self: flex-end; } html.lv2 .lpbot .lp-act { flex-wrap: wrap; margin-top: var(--s3); }
