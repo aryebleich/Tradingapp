@@ -69,6 +69,8 @@ export const JOBS = [
   ['whales', 360, async t => (await import('./intel.js')).checkWhales(t)],
   // Scanners and intraday bots check every minute whether their own interval has come round.
   ['scanners', 1, t => runScanners(t)],
+  // Saved growth-at-a-price filters with alerts: new matches, once a day.
+  ['valueAlerts', 1440, async () => (await import('./stock.js')).runValueAlerts()],
   ['intraday', 1, t => runIntradayBots(t)],
   // Rule-based portfolios: contributions and scheduled rebalances, from 10:00 New York time.
   ['baskets', 15, t => runBaskets(t)],

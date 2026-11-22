@@ -73,6 +73,7 @@ import { combinedRouter } from './src/consolidate.js';
 import { profilesRouter } from './src/profiles.js';
 import { sponsoredRouter } from './src/sponsored.js';
 import { investRouter } from './src/invest.js';
+import { stockRouter } from './src/stock.js';
 import { aiFundsRouter } from './src/aifunds.js';
 import { aiTeamRouter } from './src/aiteam.js';
 import { aiChatRouter } from './src/aichat/routes.js';
@@ -667,6 +668,7 @@ api.use('/scripts', scriptsRouter);
 api.use('/profiles', profilesRouter);
 api.use('/sponsored', sponsoredRouter);
 api.use('/invest', investRouter);
+api.use('/stock', stockRouter);
 // AI trading: agents and API, AI bots, AI signals, market intelligence, the chart co-pilot.
 api.use('/agent', agentRouter(agentDeps));
 api.use('/aibots', aiBotsRouter);

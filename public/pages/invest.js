@@ -23,6 +23,13 @@ async function analyze(view, q) {
   H.$('#symf', view).onsubmit = e => { e.preventDefault(); location.hash = '#/analyze?symbol=' + encodeURIComponent(H.$('[name=s]', view).value.trim().toUpperCase()); };
   if (!sym) { H.$('#an', view).innerHTML = `<div class="card"><p class="mu">Try: ${['AAPL', 'MSFT', 'JPM', 'VOO', 'FXAIX', 'SCHD'].map(s => `<a href="#/analyze?symbol=${s}">${s}</a>`).join(' · ')}</p></div>`; return; }
   const out = H.$('#an', view);
+  // One stock page: the overview below, and a section for valuation, fundamentals, earnings,
+  // dividends, technicals and supply & demand (public/pages/stock.js).
+  const { VIEWS, stockSection } = await import('./stock.js');
+  const sec = VIEWS.some(([k]) => k === q.get('view')) ? q.get('view') : 'overview';
+  out.insertAdjacentHTML('beforebegin', `<nav class="chips secnav" aria-label="Sections of the stock page">${VIEWS.map(([k, t]) => `<a href="#/analyze?symbol=${encodeURIComponent(sym)}${k === 'overview' ? '' : '&view=' + k}" class="${k === sec ? 'on' : ''}"${k === sec ? ' aria-current="page"' : ''}>${t}</a>`).join('')}</nav>
+    <div class="row buyrow"><a href="#/trade?symbol=${encodeURIComponent(sym)}"><button type="button" class="small">Trade ${H.esc(sym)}</button></a><a href="#/analyze/compare?symbols=${encodeURIComponent(sym)},SPY" class="small-print">Compare →</a><a href="#/research/news" class="small-print">News →</a></div>`);
+  if (sec !== 'overview') return stockSection(H, out, sym, sec);
   let d; try { d = await H.api('/invest/analyze/' + encodeURIComponent(sym)); } catch (e) { out.innerHTML = `<div class="card err">${H.esc(e.message)}</div>`; return; }
   const p = d.profile || {}, rt = p.ratios || {}, fd = p.fundamentals || {}, t = d.technical, e = d.earnings;
   out.innerHTML = `<div class="card"><div class="row" style="justify-content:space-between;align-items:center"><div><h2 style="margin:0">${H.esc(p.name || p.company?.name || sym)} <span class="mu" data-no-tr>${H.esc(sym)}</span></h2><p class="mu" style="margin:4px 0 0">${H.esc(p.company?.industry || p.etf?.about || d.fund?.holds || '')}${rt.capClass ? ' · ' + H.esc(rt.capClass.name) : ''}</p></div><a href="#/trade?symbol=${encodeURIComponent(sym)}"><button type="button">Trade ${H.esc(sym)}</button></a></div>

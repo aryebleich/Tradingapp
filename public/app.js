@@ -411,9 +411,9 @@ const NAV = [
 // address (#/aibots) redirects there with its query string. Each tab is still its own page, so
 // every feature, setting and saved item stays exactly where it was.
 const HUBS = {
-  analyze: ['Stock & fund analyzer', [['analyze', 'Stock & fund analyzer'], ['earnings', 'Earnings vs expectations']]],
+  analyze: ['Stock & fund analyzer', [['analyze', 'Stock & fund analyzer'], ['earnings', 'Earnings vs expectations'], ['compare', 'Compare stocks']]],
   research: ['Research & news', [['research', 'Plain-language research'], ['news', 'News & sentiment'], ['intel', 'Market intelligence'], ['institutions', 'Institutional portfolios']]],
-  scanner: ['Scanners', [['scanner', 'Scanner'], ['leaders', 'New leaders']]],
+  scanner: ['Scanners', [['scanner', 'Scanner'], ['leaders', 'New leaders'], ['valuescan', 'Growth at a price']]],
   ai: ['AI assistant', [['ai', 'AI assistant'], ['aitools', 'AI tools']]],
   options: ['Options', [['options', 'Options desk'], ['optionslab', 'Options lab']]],
   text: ['Phone & text', [['text', 'Text commands'], ['hotline', 'Phone hotline']]],
@@ -1406,9 +1406,9 @@ routes.dashboard = async (view, q) => {
       ${src.side}
     </div>
   </div>
-  ${todo ? `<details class="card onboard" id="onboard" open><summary class="ob-head"><div><h2>Get started</h2><p class="mu">${done} of ${steps.length} done</p></div><button type="button" class="ghost small" id="hideOnboard" title="Hide this list for good">Hide</button></summary>
+  ${todo ? `<div class="ob-wrap" id="onboard"><button type="button" class="ghost small ob-hide" id="hideOnboard" title="Hide this list for good">Hide</button><details class="card onboard" open><summary class="ob-head"><div><h2>Get started</h2><p class="mu">${done} of ${steps.length} done</p></div></summary>
     <div class="ob-bar"><i style="width:${Math.round(done / steps.length * 100)}%"></i></div>
-    <div class="ob-list">${steps.map(([d, t, href, go]) => `<a class="ob-item${d ? ' done' : ''}" href="${href}"${go ? ` data-go="${go}"` : ''}><span class="ob-check" aria-hidden="true"></span><span class="ob-t">${t}</span><span class="ob-go" aria-hidden="true">→</span></a>`).join('')}</div></details>` : ''}
+    <div class="ob-list">${steps.map(([d, t, href, go]) => `<a class="ob-item${d ? ' done' : ''}" href="${href}"${go ? ` data-go="${go}"` : ''}><span class="ob-check" aria-hidden="true"></span><span class="ob-t">${t}</span><span class="ob-go" aria-hidden="true">→</span></a>`).join('')}</div></details></div>` : ''}
   <div class="dash-slot" data-slot="guide"></div>
   <div id="acctBoxes"></div>
   ${src.paper ? '<div class="card dash-paper"><div class="dash-ch"><h2>Paper account</h2></div><p class="mu" style="margin-top:0">Practice money: start again from $100,000 at any time. Your orders and positions in the paper account are cleared.</p><button class="ghost small" id="reset">Reset paper account</button></div>' : ''}
@@ -2300,7 +2300,7 @@ for (const k of ['trade', 'positions', 'orders']) {
 }
 // The tabs on top of every Marketplace page.
 const marketTabs = on => hubTabs(on); // the Marketplace tabs are a merged page's tabs (HUBS.marketplace)
-const shared = { safeUrl, related: (items, here) => relatedHtml(items, here || ''), extras: () => EXTRAS, setExtras: on => { EXTRAS = on; render.navKey = null; }, marketTabs, $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, refreshMe, accounts, accountOptions, acctLabel, state, adminTabs, adminPage, secureConfirm, me: () => ME, paid: () => isPaid(ME) };
+const shared = { safeUrl, upgrade: feature => showUpgrade(feature), related: (items, here) => relatedHtml(items, here || ''), extras: () => EXTRAS, setExtras: on => { EXTRAS = on; render.navKey = null; }, marketTabs, $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, refreshMe, accounts, accountOptions, acctLabel, state, adminTabs, adminPage, secureConfirm, me: () => ME, paid: () => isPaid(ME) };
 lazyRoutes(() => import('./pages/studio.js'), 'registerStudio', shared, ["ai", "agents", "code"]);
 lazyRoutes(() => import('./pages/aichat.js'), 'registerAiChat', shared, ["admin-aichat"]);
 lazyRoutes(() => import('./pages/tradetools.js'), 'registerTradeTools', shared, ["tradetools"]);
@@ -2440,6 +2440,7 @@ lazyRoutes(() => import('./pages/social.js'), 'registerSocial', shared, ["trader
 lazyRoutes(() => import('./pages/sponsored.js'), 'registerSponsored', shared, ["admin-sponsored"]);
 lazyRoutes(() => import('./pages/aitrade.js'), 'registerAiTrade', shared, ["agenthub", "aibots", "aisignals", "intel"]);
 lazyRoutes(() => import('./pages/invest.js'), 'registerInvest', shared, ["analyze", "lowcost", "earnings", "leaders", "short", "margin", "aifunds"]);
+lazyRoutes(() => import('./pages/stock.js'), 'registerStock', shared, ["compare", "valuescan"]);
 
 // Static files are cached for instant repeat visits (sw.js); pages and data always come fresh.
 if (!PREFETCH && 'serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});
