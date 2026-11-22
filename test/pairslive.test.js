@@ -111,11 +111,11 @@ test('the account picker lists only connected accounts; new bots start on Paper;
   assert.equal((await u('/pairslive', { a: 'KO', b: 'KO' })).status, 400);
   assert.equal((await u('/pairslive', { a: 'KO', b: 'PEP', entryPct: 0.5, exitPct: 0.6 })).status, 400);
   const bot = (await u('/pairslive', { a: 'KO', b: 'PEP', account: 'alpaca', dollars: 1000 })).body;
-  assert.equal(bot.account, 'paper'); assert.equal(bot.status, 'stopped'); assert.match((await u('/pairslive')).body.note, /not investment advice/);
+  assert.equal(bot.account, 'paper'); assert.equal(bot.status, 'stopped'); assert.match((await u('/pairslive')).body.note, /^For planning and education only\. Not investment advice and not an order: nothing is sent to your broker\./);
   const st = await u(`/pairslive/${bot.id}/start`, {}); assert.equal(st.status, 409); assert.match(st.body.error, /margin/); // shorting needs margin on, even on Paper
-  // Real money needs the backtest, paper days, Pro, the password and the confirm.
+  // No real-money path: the bot stays on the practice account.
   const live = await u(`/pairslive/${bot.id}/live`, { account: 'alpaca', understood: true, password: 'Str0ngPassword' });
-  assert.ok([402, 400, 409].includes(live.status), JSON.stringify(live.body));
+  assert.equal(live.status, 409); assert.match(live.body.error, /practice account only/);
 });
 
 test('the engine on Paper: opens both legs, closes at the cutoff, and the kill switch blocks it', async () => {
@@ -168,15 +168,15 @@ test('risk limits block the opening: the max position and the risk-control order
   await R.saveRisk(me.id, { maxOrderUsd: 0 });
 });
 
-test('real money: Pro, a connected account, a recent backtest, the paper days, the confirm and the password', async () => {
-  const { one, run } = await import('../src/db.js');
+test('the practice account only: real money is refused, and a bot on another account pauses without trading', async () => {
+  const { one, run } = await import('../src/db.js'), E = await import('../src/pairslive.js');
   const bot = (await u('/pairslive', { a: 'XOM', b: 'CVX' })).body;
-  assert.equal((await u(`/pairslive/${bot.id}/live`, { account: 'alpaca', understood: true, password: 'Str0ngPassword' })).status, 402); // not Pro
   await run("UPDATE users SET plan = 'pro', plan_status = 'active' WHERE email = 'lp@example.com'");
-  const nc = await u(`/pairslive/${bot.id}/live`, { account: 'alpaca', understood: true, password: 'Str0ngPassword' });
-  assert.equal(nc.status, 400); assert.match(nc.body.error, /not connected/);
-  assert.equal((await u(`/pairslive/${bot.id}/live`, { account: 'paper', understood: true })).status, 400);
-  assert.equal((await one('SELECT account FROM live_pairs WHERE id = ?', bot.id)).account, 'paper');
+  const r = await u(`/pairslive/${bot.id}/live`, { account: 'alpaca', understood: true, password: 'Str0ngPassword' });
+  assert.equal(r.status, 409); assert.equal((await one('SELECT account FROM live_pairs WHERE id = ?', bot.id)).account, 'paper');
+  await run("UPDATE live_pairs SET account = 'alpaca', status = 'running' WHERE id = ?", bot.id); // an older bot moved before this change
+  const x = await E.runPair(await one('SELECT * FROM live_pairs WHERE id = ?', bot.id), nyAt('2026-11-24', 600));
+  assert.equal(x.paused, 'practice account only'); assert.equal((await one('SELECT status FROM live_pairs WHERE id = ?', bot.id)).status, 'paused');
 });
 
 test('closing at the cutoff never waits for history', async () => {

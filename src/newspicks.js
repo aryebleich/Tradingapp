@@ -1,5 +1,5 @@
-// AI morning news picks (Automate → Alerts & signals → AI morning picks). Before the open the engine
-// reads the news and the pre-market moves of large US stocks, ranks the ones it expects to gain most
+// Morning news screen (route newspicks; Automate → Alerts & signals). Before the open the engine
+// reads the news and the pre-market moves of large US stocks, ranks them by headline tone and pre-market move
 // today and proposes an allocation, with the reasons and sources for each pick. Each member chooses
 // "approve each day" or "automatic", a daily budget, a per-stock limit, a stop loss and a daily loss
 // limit. The practice account is the default; a real account needs an explicit opt-in confirmed with
@@ -20,10 +20,13 @@ import { isPaid } from './fees.js';
 import { stepUpGuard } from './security.js';
 import { notifyUser } from './notify-user.js';
 import { pdtAllowed } from './pdt.js';
+import { TOOL_HYPOTHETICAL } from './disclosures.js';
 
 const r2 = (x, d = 2) => (x == null || !Number.isFinite(+x) ? null : +(+x).toFixed(d));
 const bad = (msg, status = 400) => Object.assign(new Error(msg), { status });
-export const NOT_ADVICE = 'AI picks are an experiment, not investment advice. They can and do lose money; the record on this page includes every loss.';
+// Reviewed wording only (public/disclosures.js). The screen runs on the practice account only: a real-money
+// trade is placed by the member in the order ticket, like any other order.
+export const NOT_ADVICE = TOOL_HYPOTHETICAL;
 export const UNIVERSE = ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL', 'META', 'TSLA', 'AVGO', 'JPM', 'V', 'LLY', 'UNH', 'XOM', 'MA', 'COST', 'HD', 'PG', 'NFLX', 'AMD', 'CRM', 'ORCL', 'ADBE', 'KO', 'PEP', 'WMT', 'BAC', 'DIS', 'INTC', 'CSCO', 'QCOM'];
 export const DEFAULTS = { enabled: false, mode: 'approve', account: 'paper', budget: 1000, perStock: 300, maxPicks: 3, stopPct: 3, dailyLoss: 200, live: false };
 const ELITE = u => u?.role === 'admin' || (['elite', 'ultimate'].includes(u?.plan) && isPaid(u));
@@ -35,7 +38,7 @@ export function cleanSettings(b = {}, prev = DEFAULTS) {
   const out = { enabled: b.enabled === undefined ? s.enabled : !!b.enabled, mode: (b.mode ?? s.mode) === 'auto' ? 'auto' : 'approve', account: String(b.account ?? s.account ?? 'paper'),
     budget: num(b.budget, s.budget, 10, 100000), perStock: num(b.perStock, s.perStock, 5, 100000), maxPicks: Math.round(num(b.maxPicks, s.maxPicks, 1, 5)), stopPct: num(b.stopPct, s.stopPct, 0.5, 20), dailyLoss: num(b.dailyLoss, s.dailyLoss, 1, 100000), live: b.live === undefined ? !!s.live : !!b.live };
   if (out.perStock > out.budget) out.perStock = out.budget;
-  if (out.account !== 'paper' && !out.live) out.account = 'paper';
+  out.account = 'paper'; out.live = false; // the practice account only (earlier real-money settings fall back to it)
   return out;
 }
 // candidates: [{ symbol, premarketPct, headlines: [{ title, source, url }], volumeRatio }]. Score:
@@ -100,7 +103,7 @@ async function dayTradesLast5(userId, account) { return (await one("SELECT COUNT
 export async function placeFor(userId, s, picks, { source = 'newspicks' } = {}) {
   const u = await one('SELECT * FROM users WHERE id = ?', userId); const day = nyTime().day;
   if (await killed(userId)) throw bad('The kill switch is on: no automatic orders.', 409);
-  if (s.account !== 'paper' && !(s.live && ELITE(u))) throw bad('Real-money picks need the live opt-in and the Elite plan.', 403);
+  if (s.account !== 'paper') throw bad('The morning news screen places orders on the practice account only. For real money, open a stock in the order ticket.', 403);
   if ((await one('SELECT COUNT(*) c FROM newspicks_trades WHERE user_id = ? AND day = ?', userId, day)).c) throw bad('Today\'s picks were already placed.', 409);
   const sum = await accountSummary(userId, s.account);
   const pl = (await all("SELECT dollars, entry, exit FROM newspicks_trades WHERE user_id = ? AND day = ? AND status = 'closed'", userId, day)).reduce((a, r) => a + (r.entry ? r.dollars * (r.exit / r.entry - 1) : 0), 0);
@@ -123,8 +126,8 @@ export async function runUsers(t = now()) {
   const users = await all("SELECT user_id FROM user_settings WHERE k = 'newspicks'"); let done = 0;
   for (const { user_id: uid } of users) {
     const s = cleanSettings((await getSetting(uid, 'newspicks', {})) || {}); if (!s.enabled) continue;
-    if (s.mode === 'approve') { if (!(await getSetting(uid, 'newspicks:told', null) === n.day)) { await setSetting(uid, 'newspicks:told', n.day); await notifyUser(uid, `Today's AI picks are ready for your approval: ${picks.map(p => p.symbol).join(', ')}. ${NOT_ADVICE}`).catch(() => {}); } continue; }
-    try { await placeFor(uid, s, picks); done++; } catch (e) { await notifyUser(uid, `AI picks were not placed today: ${e.message}`).catch(() => {}); }
+    if (s.mode === 'approve') { if (!(await getSetting(uid, 'newspicks:told', null) === n.day)) { await setSetting(uid, 'newspicks:told', n.day); await notifyUser(uid, `Today's morning news screen is ready for your approval (practice account): ${picks.map(p => p.symbol).join(', ')}. ${NOT_ADVICE}`).catch(() => {}); } continue; }
+    try { await placeFor(uid, s, picks); done++; } catch (e) { await notifyUser(uid, `The morning news screen was not placed today: ${e.message}`).catch(() => {}); }
   }
   return done;
 }
@@ -160,19 +163,16 @@ export const newspicksRouter = (() => {
     res.json({ day, picks, settings: s, record: record(hist), history: hist.slice(0, 40), mine, dataEnabled: D.dataEnabled(), elite: ELITE(req.user), paid: isPaid(req.user), placedToday: mine.some(m => m.day === day), note: NOT_ADVICE });
   }));
   // Saving settings. Turning on a real account needs the Elite plan, the password and the step-up check.
-  r.put('/settings', (req, res, next) => (req.body?.live || (req.body?.account && req.body.account !== 'paper') ? stepUpGuard(req, res, next) : next()), wrap(async (req, res) => {
-    if (!isPaid(req.user)) throw Object.assign(bad('AI morning picks are part of the Pro plan'), { status: 402, upgrade: true, feature: 'AI morning picks' });
+  r.put('/settings', wrap(async (req, res) => {
+    if (!isPaid(req.user)) throw Object.assign(bad('The morning news screen is part of the Pro plan'), { status: 402, upgrade: true, feature: 'Morning news screen' });
+    if (req.body?.live || (req.body?.account && req.body.account !== 'paper')) throw bad('The morning news screen runs on the practice account only. For real money, open a stock in the order ticket.', 400);
     const prev = (await getSetting(req.user.id, 'newspicks', {})) || {}, s = cleanSettings(req.body || {}, prev);
-    if (s.live && !prev.live) {
-      if (!ELITE(req.user)) throw Object.assign(bad('Real-money AI picks are part of the Elite plan'), { status: 402, upgrade: true, feature: 'AI picks on a real account' });
-      if (!confirmsIdentity(req.user, req.body)) throw bad(req.user.password_set === 0 ? 'Type your email address to confirm' : 'Enter your password to turn on real money', 401);
-      await audit(req.user.id, 'newspicks_live_on', { account: s.account }, req.ip);
-    }
-    await setSetting(req.user.id, 'newspicks', s); res.json({ settings: s });
+    await setSetting(req.user.id, 'newspicks', s); await audit(req.user.id, 'newspicks_settings', { enabled: s.enabled, mode: s.mode }, req.ip).catch(() => {});
+    res.json({ settings: s });
   }));
   // Approve today's proposal (approve mode): the same guards as automatic.
   r.post('/approve', stepUpGuard, wrap(async (req, res) => {
-    if (!isPaid(req.user)) throw Object.assign(bad('AI morning picks are part of the Pro plan'), { status: 402, upgrade: true, feature: 'AI morning picks' });
+    if (!isPaid(req.user)) throw Object.assign(bad('The morning news screen is part of the Pro plan'), { status: 402, upgrade: true, feature: 'Morning news screen' });
     const s = cleanSettings((await getSetting(req.user.id, 'newspicks', {})) || {}), picks = await todays(nyTime().day);
     if (!picks.length) throw bad('No picks today yet. They are made at 9:00 New York time on trading days.', 409);
     res.json(await placeFor(req.user.id, s, picks));

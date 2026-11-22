@@ -143,5 +143,5 @@ test('the company card before a buy: the essentials, never advice, and safe for 
   assert.ok(c.strength); assert.match(c.note, /never blocks/);
   const fund = buildCard({ symbol: 'VOO', name: 'VOO', etf: true });
   assert.equal(fund.etf, true); assert.equal(fund.pe, null);
-  assert.match(NOT_ADVICE, /not investment advice/);
+  assert.match(NOT_ADVICE, /^For planning and education only\. Not investment advice and not an order: nothing is sent to your broker\./);
 });

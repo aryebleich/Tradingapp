@@ -5,7 +5,7 @@
 //   leaders    New leaders (scanner)
 //   short      Short the market: every way to bet on a fall, for this account
 //   margin     Margin center: the account's numbers and rules, bid/ask and how market makers fill orders
-//   aifunds    AI long/short portfolios (hedge-fund style, in your own account)
+//   aifunds    Long/short rule portfolios (rule-based, in your own account)
 let H;
 export function registerInvest(routes, helpers) { H = helpers; Object.assign(routes, { analyze, lowcost, earnings: earningsPage, leaders: leadersPage, short: shortPage, margin: marginPage, aifunds }); }
 
@@ -213,13 +213,13 @@ async function marginPage(view, q) {
   H.$('#qf', view).onsubmit = e => { e.preventDefault(); location.hash = `#/margin?account=${account}&symbol=${encodeURIComponent(H.$('[name=s]', e.target).value.trim().toUpperCase())}`; };
 }
 
-// ---------- AI long/short portfolios ----------
+// ---------- Long/short rule portfolios ----------
 async function aifunds(view) {
   const [d, accts] = await Promise.all([H.api('/aifunds'), H.accounts()]);
   const spark = h => { const v = [100, ...h.map(x => x.nav)]; if (v.length < 3) return ''; const lo = Math.min(...v), hi = Math.max(...v), W = 300, Ht = 60, pts = v.map((x, i) => `${(i / (v.length - 1) * W).toFixed(1)},${(Ht - (x - lo) / ((hi - lo) || 1) * (Ht - 4) - 2).toFixed(1)}`).join(' ');
     return `<svg class="spark" viewBox="0 0 ${W} ${Ht}" width="100%" height="${Ht}" role="img" aria-label="Value since the start: ${n(v.at(-1), 2)}"><polyline fill="none" stroke="var(--ac)" stroke-width="2" points="${pts}"/></svg>`; };
-  view.innerHTML = head('AI long/short portfolios', 'Rules-based long/short books in your own account (not a pooled fund): long the strongest, short the weakest, a multi-strategy book, and protection with an inverse fund or S&P 500 puts. Rebuilt every week with an AI memo. Automatic on practice money; on a real account you approve each set of trades.')
-  + `<div class="card"><h2>Fees and risks</h2><p>${H.esc(d.fees)}</p><ul class="plain small-print">${d.risks.map(x => `<li>${H.esc(x)}</li>`).join('')}</ul></div>`
+  view.innerHTML = head('Long/short rule portfolios', 'Rules-based long/short books in your own account (not a pooled fund): long the strongest, short the weakest, a multi-strategy book, and protection with an inverse fund or S&P 500 puts. Rebuilt every week with an AI memo. Automatic on practice money; on a real account you approve each set of trades.')
+  + `<div class="card"><h2>Costs and risks</h2><p>${H.esc(d.fees)}</p><ul class="plain small-print">${d.risks.map(x => `<li>${H.esc(x)}</li>`).join('')}</ul></div>`
   + d.funds.map(f => `<div class="card"><div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">${H.esc(f.name)} <span class="mu">${H.esc(d.styles[f.style].name)} · risk ${f.risk}/5 · ${H.esc(f.account)}</span></h2><span>${f.active ? '<span class="pill pos">On</span>' : '<span class="pill">Paused</span>'}</span></div>
       <div class="stats">${stat('Value (start = 100)', n(f.nav, 2), pc(f.nav - 100))}${stat('Longs', f.book.filter(b => b.weight > 0).length)}${stat('Shorts / hedge', f.book.filter(b => b.weight < 0 || b.symbol === 'SH').length)}${stat('Largest fall', f.maxDrawdown == null || !f.history.length ? '-' : `${f.maxDrawdown}%`, 'from a high, real record')}${stat('Last turn', f.last_run ? new Date(f.last_run).toLocaleDateString() : 'not yet')}</div>
       ${spark(f.history || [])}${f.history?.length ? `<p class="mu small-print">${f.account === 'paper' ? 'Practice-money record' : 'Record'} over ${f.history.length} weekly turn${f.history.length === 1 ? '' : 's'}, gains and losses as they happened.</p>` : ''}

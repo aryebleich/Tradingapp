@@ -29,9 +29,8 @@ services:
       - { key: ALPACA_KEY_ID, sync: false }
       - { key: ALPACA_SECRET, sync: false }
       - { key: ALPACA_TRADING_URL, value: "https://paper-api.alpaca.markets" }
-      # Live ratio pair bots (src/pairslive.js): trading days on Paper before real money, and the most
-      # orders a member's live-ratio bots may send in a minute (the brokers' rate limits).
-      - { key: PAIRS_LIVE_MIN_PAPER_DAYS, value: "5" }
+      # Live ratio pair bots (src/pairslive.js, practice account only): the most orders a member's
+      # live-ratio bots may send in a minute.
       - { key: PAIRS_LIVE_MAX_ORDERS_PER_MIN, value: "20" }
       - { key: ALPACA_OAUTH_CLIENT_ID, sync: false }
       - { key: ALPACA_OAUTH_CLIENT_SECRET, sync: false }

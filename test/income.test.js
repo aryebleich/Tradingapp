@@ -11,7 +11,7 @@ test('forecast: each payment of the last 12 months is expected again, in its mon
   assert.equal(f.months.find(m => m.month === '2027-04').income, 5); assert.equal(f.months.find(m => m.month === '2027-10').income, 5);
   assert.equal(f.total, 10); // XX is not held
   assert.equal(yearlyDps(pay, 'KO'), 1);
-  assert.match(NOTE, /cut or stop/); assert.match(NOTE, /not investment advice/);
+  assert.match(NOTE, /^Forecast from the dividends of the last 12 months\. For planning and education only\. Not investment advice/);
 });
 
 test('passive check: broad funds, other funds, single stocks and cash, with the average fund fee', () => {

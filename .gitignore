@@ -8,8 +8,9 @@ android/brightfolio.apk
 screenshots/
 .comms-sim-key.pem
 
-# OFI lab: the real tick data may be licensed; never commit it
+# OFI lab: tick files of your own stay private (only the synthetic sample is published)
 !research/hf-ofi/data/
 research/hf-ofi/data/*.Rds
 !research/hf-ofi/data/sample.Rds
-research/hf-ofi/data/df_*
+research/hf-ofi/data/*.csv
+!research/hf-ofi/data/sample.csv

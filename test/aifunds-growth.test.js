@@ -25,7 +25,7 @@ test('backtest: weekly turns over past prices, labelled hypothetical, with the d
   const b = backtest('neutral', 3, series);
   assert.ok(b.weeks >= 20, String(b.weeks)); assert.equal(b.nav[0], 100); assert.equal(b.nav.length, b.weeks + 1);
   assert.ok(b.maxDrawdown <= 0); assert.ok(b.worstWeek <= 0 || b.worstWeek >= -100); assert.equal(typeof b.spy, 'number');
-  assert.match(b.note, /Hypothetical/); assert.match(b.note, /not a prediction/);
+  assert.match(b.note, /Backtests and projections are hypothetical\./); assert.match(b.note, /0\.05% cost/);
   assert.equal(backtest('neutral', 3, { A: mk(i => i + 1).slice(0, 200) }), null); // too little history
-  assert.match(FEES, /No management or performance fee/); assert.ok(RISKS.some(r => /Shorts can lose more/.test(r)));
+  assert.match(FEES, /Plans & billing/); assert.ok(RISKS.some(r => /Shorts can lose more/.test(r)));
 });

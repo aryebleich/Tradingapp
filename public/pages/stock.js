@@ -1,3 +1,4 @@
+import { TOOL } from '../disclosures.js';
 // The stock page sections (Research → Stock & fund analyzer, #/analyze?symbol=X&view=…), the
 // comparison (#/analyze/compare) and the growth-at-a-price scanner (#/scanner/valuescan).
 // Data: /api/stock (src/stock.js). Every figure says where it comes from; estimates and indicative
@@ -22,7 +23,8 @@ async function ratesPage(view) {
 }
 
 export const VIEWS = [['overview', 'Overview'], ['valuation', 'Valuation'], ['fundamentals', 'Fundamentals'], ['earnings', 'Earnings'], ['dividends', 'Dividends'], ['technicals', 'Technicals'], ['supply', 'Supply & demand']];
-const NOTE = '<p class="mu small-print">Information and education only, not investment advice. Labels compare the stock with its own history and its sector; they do not predict the price.</p>';
+// The reviewed wording (public/disclosures.js), in English in every language.
+const NOTE = `<p class="mu small-print disclosure" lang="en" dir="ltr" data-no-tr>${TOOL}</p>`;
 const n = (v, d = 2) => (v == null || !isFinite(v) ? '-' : (+v).toLocaleString('en-US', { maximumFractionDigits: d }));
 const big = v => (v == null || !isFinite(v) ? '-' : Math.abs(v) >= 1e12 ? `$${n(v / 1e12, 2)}T` : Math.abs(v) >= 1e9 ? `$${n(v / 1e9, 1)}B` : Math.abs(v) >= 1e6 ? `$${n(v / 1e6, 1)}M` : `$${n(v, 0)}`);
 const pct = (v, d = 1) => (v == null ? '-' : `${(+v).toFixed(d)}%`);
@@ -70,7 +72,7 @@ function related(el, sym, view) {
     fundamentals: [[`analyze/compare?symbols=${q}`, 'Compare with others'], ['scanner/valuescan', 'Stock scanner']],
     earnings: [['calendar', 'Earnings calendar'], ['analyze/earnings', 'Earnings vs expectations']],
     dividends: [['wealth/dividends', 'Your dividend income'], ['wealth?tab=drip', 'Reinvest dividends']],
-    technicals: [[`chart?symbol=${q}`, 'Full chart'], ['bots/intraday', 'AI intraday']], supply: [[`chart?symbol=${q}`, 'Full chart'], ['active', 'Active trading desk']],
+    technicals: [[`chart?symbol=${q}`, 'Full chart'], ['bots/intraday', 'Intraday rule bot']], supply: [[`chart?symbol=${q}`, 'Full chart'], ['active', 'Active trading desk']],
   }[view];
   if (REL && H.related) el.insertAdjacentHTML('beforeend', H.related(REL));
   H.$$('[data-upgrade]', el).forEach(b => (b.onclick = () => H.upgrade?.(b.dataset.upgrade)));

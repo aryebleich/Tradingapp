@@ -42,9 +42,9 @@ export const GROWTH_COMPARE = [
   ['Growth-at-a-price scanner', 'Presets', 'Saved filters + daily alerts', 'Saved filters + daily alerts', 'Saved filters + daily alerts'],
   ['Diversification suggestions with previews', '1', 'All', 'All', 'All'],
   ['Dividend safety scores', 'First 3 holdings', 'All holdings', 'All holdings', 'All holdings'],
-  ['AI morning picks', 'Read picks and record', 'Paper, approve or automatic', 'Paper or real money', 'Paper or real money'],
-  ['AI intraday trading', 'Read rules and record', false, 'Paper or real money', 'Paper or real money'],
-  ['AI long/short portfolios', true, true, true, true],
+  ['Morning news screen', 'Read the screen and record', 'Practice account, approve or automatic', 'Practice account, approve or automatic', 'Practice account, approve or automatic'],
+  ['Intraday rule bot', 'Read rules and record', false, 'Practice account', 'Practice account'],
+  ['Long/short rule portfolios', true, true, true, true],
 ];
 // Paid plans start with a free trial once per user.
 export const TRIAL_DAYS = +process.env.TRIAL_DAYS || 14;

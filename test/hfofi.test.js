@@ -85,7 +85,7 @@ test('the JavaScript matches R on the sample data (6 decimal places)', () => {
     const s = a[seg].stats[r.basis];
     for (const k of ['trades', 'hit_rate', 'avg_trade', 'total', 'max_dd', 'sharpe']) close(s[k], r[k], 1e-6, `${seg} ${r.basis} ${k}`);
   }
-  assert.match(O.NOTE, /Academic exercise\. Simulated results; not investment advice/);
+  assert.match(O.NOTE, /^For planning and education only\. Not investment advice and not an order: nothing is sent to your broker\./);
 });
 
 test('server: the sample, the R project zip (no data), the PDF, Alpaca quotes as ticks', async () => {

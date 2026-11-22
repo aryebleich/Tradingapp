@@ -1,4 +1,4 @@
-// AI intraday trading (Automate → Bots → AI intraday). An honest, slow intraday engine: every few
+// Intraday rule bot (route intraday; Automate → Bots → Intraday rule bot). A slow intraday rule bot: every few
 // minutes (5 at the fastest) it looks at 5-minute bars of a short list of stocks the member chose and
 // buys or sells within hard limits. It is not high-frequency trading and is never called that: one
 // decision per stock per run, market orders through the member's own account, no co-location.
@@ -22,11 +22,13 @@ import { isPaid } from './fees.js';
 import { stepUpGuard } from './security.js';
 import { notifyUser } from './notify-user.js';
 import { pdtAllowed } from './pdt.js';
+import { TOOL_HYPOTHETICAL } from './disclosures.js';
 
 const r2 = (x, d = 2) => (x == null || !Number.isFinite(+x) ? null : +(+x).toFixed(d));
 const bad = (msg, status = 400) => Object.assign(new Error(msg), { status });
 const ELITE = u => u?.role === 'admin' || (['elite', 'ultimate'].includes(u?.plan) && isPaid(u));
-export const NOT_ADVICE = 'An automatic experiment within your limits, not investment advice. Intraday trading often loses money; every order, win and loss is in the log below.';
+// Reviewed wording only (public/disclosures.js). The rule bot trades the practice account only.
+export const NOT_ADVICE = TOOL_HYPOTHETICAL;
 // Large US companies known for paying dividends (a starting list, not a recommendation).
 export const HIGH_DIVIDEND = ['KO', 'PEP', 'PG', 'JNJ', 'XOM', 'CVX', 'VZ', 'T', 'MO', 'PM', 'ABBV', 'PFE', 'IBM', 'O', 'DUK', 'SO', 'KMB', 'MRK'];
 export const DEFAULTS = { enabled: false, account: 'paper', live: false, list: 'dividend', symbols: [], everyMin: 15, maxTrades: 10, maxPosition: 500, maxOpen: 3, stopPct: 1.5, targetPct: 2, dailyLoss: 100, holdExDiv: false };
@@ -42,7 +44,7 @@ export function cleanSettings(b = {}, prev = DEFAULTS) {
     everyMin: Math.round(num(b.everyMin, s.everyMin, 5, 60)), maxTrades: Math.round(num(b.maxTrades, s.maxTrades, 1, 40)), maxPosition: num(b.maxPosition, s.maxPosition, 10, 100000),
     maxOpen: Math.round(num(b.maxOpen, s.maxOpen, 1, 10)), stopPct: num(b.stopPct, s.stopPct, 0.3, 10), targetPct: num(b.targetPct, s.targetPct, 0.3, 20), dailyLoss: num(b.dailyLoss, s.dailyLoss, 1, 100000),
     holdExDiv: b.holdExDiv === undefined ? !!s.holdExDiv : !!b.holdExDiv };
-  if (out.account !== 'paper' && !out.live) out.account = 'paper';
+  out.account = 'paper'; out.live = false; // the practice account only
   if (out.list === 'custom' && !out.symbols.length) out.list = 'dividend';
   return out;
 }
@@ -114,7 +116,7 @@ async function dayTrades(userId, account, t) {
 // One member, one run. closes: { SYM: [5-minute closes] } shared across members in the same run.
 export async function runFor(userId, s, closes, { t = now(), exDates = {} } = {}) {
   const n = nyTime(t), acted = [];
-  if (s.account !== 'paper') { const u = await one('SELECT * FROM users WHERE id = ?', userId); if (!(s.live && ELITE(u))) return [{ skipped: 'Real money needs the live opt-in and the Elite plan.' }]; }
+  if (s.account !== 'paper') return [{ skipped: 'The intraday rule bot runs on the practice account only.' }];
   const pos = (await getSetting(userId, POS, {})) || {};
   const isKilled = await killed(userId), closing = n.minutes >= CLOSE_MIN, next = nextTradingDay(n.day);
   const sell = async (sym, p, px, reason) => {
@@ -171,7 +173,7 @@ export async function tick(t = now()) {
   for (const m of members) {
     lastRun[m.uid] = t;
     const acted = await runFor(m.uid, m.s, closes, { t, exDates }).catch(e => [{ error: e.message }]);
-    const errs = acted.filter(a => a.error); if (errs.length) await notifyUser(m.uid, `AI intraday: ${errs.map(e => `${e.symbol || ''} ${e.error}`).join('; ')}`).catch(() => {});
+    const errs = acted.filter(a => a.error); if (errs.length) await notifyUser(m.uid, `Intraday rule bot: ${errs.map(e => `${e.symbol || ''} ${e.error}`).join('; ')}`).catch(() => {});
   }
   return members.length;
 }
@@ -187,18 +189,12 @@ export const intradayRouter = (() => {
       killed: await killed(req.user.id), paid: isPaid(req.user), elite: ELITE(req.user), dataEnabled: D.dataEnabled(), note: NOT_ADVICE,
       limits: { fastest: 5, hours: '9:45 to 15:45 New York for new positions; everything closed at 15:50', pdt: 'Margin accounts under $25,000: at most 3 day trades in 5 trading days' } });
   }));
-  r.put('/settings', (req, res, next) => (req.body?.live || (req.body?.account && req.body.account !== 'paper') ? stepUpGuard(req, res, next) : next()), wrap(async (req, res) => {
-    if (!ELITE(req.user)) throw Object.assign(bad('AI intraday trading is part of the Elite plan. You can read how it works, its limits and its log for free.', 402), { upgrade: true, feature: 'AI intraday trading' });
+  r.put('/settings', wrap(async (req, res) => {
+    if (!ELITE(req.user)) throw Object.assign(bad('The intraday rule bot is part of the Elite plan. You can read how it works, its limits and its log for free.', 402), { upgrade: true, feature: 'Intraday rule bot' });
+    if (req.body?.live || (req.body?.account && req.body.account !== 'paper')) throw bad('The intraday rule bot runs on the practice account only.', 400);
     const prev = cleanSettings((await getSetting(req.user.id, 'intraday', {})) || {}), s = cleanSettings(req.body || {}, prev);
-    const goingLive = (s.live && !prev.live) || (s.account !== 'paper' && s.account !== prev.account);
-    if (s.live || s.account !== 'paper') {
-      if (!ELITE(req.user)) throw Object.assign(bad('Real money with AI intraday trading needs the Elite plan.', 402), { upgrade: true, feature: 'AI intraday with real money' });
-      if (goingLive) {
-        if (!(await confirmsIdentity(req.user, req.body || {}))) throw bad('Enter your password to turn on real money.', 401);
-      }
-    }
     await setSetting(req.user.id, 'intraday', s);
-    await audit(req.user.id, 'intraday_settings', { enabled: s.enabled, account: s.account, live: s.live, maxTrades: s.maxTrades, maxPosition: s.maxPosition }, req.ip).catch(() => {});
+    await audit(req.user.id, 'intraday_settings', { enabled: s.enabled, maxTrades: s.maxTrades, maxPosition: s.maxPosition }, req.ip).catch(() => {});
     res.json({ settings: s });
   }));
   // Stop: turn the engine off. Open positions stay as they are (sell them from Positions, or the

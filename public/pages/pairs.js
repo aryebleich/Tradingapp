@@ -257,8 +257,8 @@ async function livePairs(view, q) {
   const D0 = d.defaults, liveAccts = accts.filter(a => a.id !== 'paper');
   const field = (name, label, v, extra = '') => `<label>${label}<input name="${name}" type="number" value="${v}" ${extra}></label>`;
   view.innerHTML = `<div class="pagehead"><h1>Live ratio pairs</h1><p class="mu" style="margin:4px 0 0">The intraday model: every few minutes it compares A with its fair value (beta × B, from the ratio of their average prices) and, past your thresholds, buys the cheap one and sells the rich one, sized by their volatility ratio. It closes them when they converge. The daily OLS z-score model is on the Pairs trading tab.</p></div>
-    <div class="banner warn" role="note"><b>${H.esc(d.note)}</b></div>
-    <form class="card" id="lpf"><h2>New live-ratio bot <span class="pill">starts on Paper</span></h2>
+    <div class="banner" role="note"><b>Practice account only.</b> Live-ratio bots trade pretend money; to trade a pair with real money, place each leg in the <a href="#/trade">order ticket</a>. <span class="disclosure" lang="en" dir="ltr" data-no-tr>${H.esc(d.note)}</span></div>
+    <form class="card" id="lpf"><h2>New live-ratio bot <span class="pill">Practice account</span></h2>
       <div class="pairrow"><label>Stock A<input name="a" value="${H.esc(q.get('a') || 'KO')}" maxlength="10" autocomplete="off" data-no-tr></label><label>Stock B<input name="b" value="${H.esc(q.get('b') || 'PEP')}" maxlength="10" autocomplete="off" data-no-tr></label>
         <p class="lp-sug"><button type="button" class="ghost small" id="lpSug">Suggest pairs from the scanner</button> <span id="lpSugOut"></span></p></div>
       <div class="row">${field('dollars', 'Position size $', D0.dollars, 'min="100"')}${field('maxPositionUsd', 'Max position $', D0.maxPositionUsd, 'min="100"')}
@@ -267,12 +267,12 @@ async function livePairs(view, q) {
       <div class="row">${field('entryPct', 'Enter at divergence %', D0.entryPct, 'step="0.05" min="0.05"')}${field('exitPct', 'Exit at %', D0.exitPct, 'step="0.05" min="0"')}${field('stopPct', 'Stop at %', D0.stopPct, 'step="0.1"')}
         ${field('maxLossUsd', 'Max loss per pair $', D0.maxLossUsd, 'min="1"')}${field('dailyLossUsd', 'Daily loss limit $', D0.dailyLossUsd, 'min="1"')}${field('closeBeforeMin', 'Close minutes before the close', D0.closeBeforeMin, 'min="1"')}
         <label class="chk"><input type="checkbox" name="holdOvernight"> Hold overnight</label></div>
-      <button>Create on Paper</button><div class="err"></div></form>
+      <button>Create</button><div class="err"></div></form>
     <div id="lpBots">${d.bots.length ? '' : '<div class="card empty"><b>No live-ratio bots yet.</b><span>Create one above; it starts on the practice account.</span></div>'}</div>
-    <p class="mu small-print">Live prices: ${d.stream ? 'the Alpaca stream (bid/ask midpoint), with the last price polled when it is quiet' : 'the last price, polled at each run (no live stream on this server)'}. Trades only in regular hours on trading days (the shared market calendar), at least ${H.esc(String(d.minPaperDays))} trading days on Paper before real money. ${H.esc(d.note)}</p>
+    <p class="mu small-print">Live prices: ${d.stream ? 'the Alpaca stream (bid/ask midpoint), with the last price polled when it is quiet' : 'the last price, polled at each run (no live stream on this server)'}. Trades only in regular hours on trading days (the shared market calendar).</p>
     ${H.related ? H.related([['pairs', 'Pairs trading'], ['risk', 'Risk controls'], ['riskview/margin', 'Margin center']]) : ''}`;
   const f = H.$('#lpf', view);
-  H.act(H.$('button:not([type])', f), async () => { const b = H.form(f); await H.api('/pairslive', { body: b }); H.render(); return 'Created on Paper'; }, H.$('.err', f));
+  H.act(H.$('button:not([type])', f), async () => { const b = H.form(f); await H.api('/pairslive', { body: b }); H.render(); return 'Created'; }, H.$('.err', f));
   H.$('#lpSug', view).onclick = async () => {
     const o = H.$('#lpSugOut', view); o.textContent = 'Scanning…';
     try { const r = (await H.api('/pairs/scan', { body: {} })).filter(x => !x.error).slice(0, 6); o.innerHTML = r.map(x => `<button type="button" class="chip small" data-a="${H.esc(x.a)}" data-b="${H.esc(x.b)}">${H.esc(x.a)}/${H.esc(x.b)}${x.cointegrated ? ' ✓' : ''}</button>`).join(' ') || 'No pairs found.';
@@ -284,17 +284,16 @@ async function livePairs(view, q) {
     const st = b.state || {}, ch = st.chart || [], p = b.params, L = st.last, legs = [[b.a, st.qa, st.ea, L?.pa], [b.b, st.qb, st.eb, L?.pb]];
     const el = document.createElement('div'); el.className = 'card lpbot';
     const status = b.status === 'running' ? '<span class="pill pos">Running</span>' : b.status === 'paused' ? '<span class="pill">Paused</span>' : '<span class="pill">Stopped</span>';
-    el.innerHTML = `<div class="dash-ch"><h2><span data-no-tr>${H.esc(b.a)} / ${H.esc(b.b)}</span> ${status} <span class="pill ${b.account === 'paper' ? '' : 'neg'}">${b.account === 'paper' ? 'Paper' : 'Real money: ' + H.esc(b.account)}</span></h2></div>
+    el.innerHTML = `<div class="dash-ch"><h2><span data-no-tr>${H.esc(b.a)} / ${H.esc(b.b)}</span> ${status} <span class="pill">${b.account === 'paper' ? 'Practice account' : 'Paused: move back to Paper'}</span></h2></div>
       <div class="stats">${[['Beta (fair ratio)', L ? L.beta.toFixed(4) : '-'], ['Volatility ratio', L?.volRatio != null ? L.volRatio.toFixed(3) : '-'], ['Divergence', L ? pct2(L.divergence) : '-', `enter ±${p.entryPct}%, exit ±${p.exitPct}%`], ['Open P&L', usd(st.unrealized)], ['Realized today', usd(st.realizedDay)], ['Realized in total', usd(st.realizedTotal)]].map(([k, v, s]) => `<div class="stat"><span>${k}</span><b>${v}</b>${s ? `<small class="mu">${s}</small>` : ''}</div>`).join('')}</div>
       ${svgLines([{ name: `${b.a} (scaled)`, ys: ch.map(x => x.pa / (ch[0]?.pa || 1) * 100), cls: 's1' }, { name: `${b.b} (scaled)`, ys: ch.map(x => x.pb / (ch[0]?.pb || 1) * 100), cls: 's2' }], { label: `${b.a} and ${b.b}, scaled to 100 at the start of the chart`, h: 130 })}
       ${svgLines([{ name: 'Divergence %', ys: ch.map(x => x.div), cls: 's1' }], { label: 'Divergence from the fair value with the thresholds', h: 110, hlines: [{ y: p.entryPct, name: 'Enter', cls: 'dn' }, { y: -p.entryPct, name: 'Enter', cls: 'dn' }, { y: p.exitPct, name: 'Exit', cls: 'up' }, { y: -p.exitPct, name: 'Exit', cls: 'up' }] })}
       <div class="grid">${svgLines([{ name: 'Beta', ys: ch.map(x => x.beta), cls: 's2' }], { label: 'Beta over time', h: 80 })}${svgLines([{ name: 'Volatility ratio', ys: ch.map(x => x.vr), cls: 's3' }], { label: 'Volatility ratio over time', h: 80 })}</div>
       <div class="tablewrap"><table class="slim"><thead><tr><th>Leg</th><th class="num">Shares</th><th class="num">Entry</th><th class="num">Now</th><th class="num">P&amp;L</th></tr></thead><tbody>${legs.map(([s, qn, e, now]) => `<tr><td data-no-tr>${H.esc(s)} ${qn > 0 ? '<span class="pill pos">long</span>' : qn < 0 ? '<span class="pill neg">short</span>' : ''}</td><td class="num">${qn || 0}</td><td class="num">${qn ? usd(e) : '-'}</td><td class="num">${usd(now)}</td><td class="num">${qn && now ? usd(qn * (now - e)) : '-'}</td></tr>`).join('')}</tbody></table></div>
       <div class="row lp-act" style="gap:8px">${b.status === 'running' ? '<button type="button" class="ghost small" data-do="pause">Pause</button>' : '<button type="button" class="small" data-do="start">Start</button>'}<button type="button" class="ghost small" data-do="stop">Stop and close</button><button type="button" class="ghost small" data-do="backtest">Intraday backtest</button>
-        ${b.account === 'paper' ? '<button type="button" class="ghost small" data-do="live">Use real money…</button>' : '<button type="button" class="ghost small" data-do="paper">Back to Paper</button>'}<button type="button" class="ghost small" data-do="delete">Delete</button></div>
+        ${b.account === 'paper' ? '' : '<button type="button" class="ghost small" data-do="paper">Back to Paper</button>'}<button type="button" class="ghost small" data-do="delete">Delete</button></div>
       <p class="ok" role="status"></p><div class="err" role="alert"></div><div class="lp-bt"></div>
       ${st.backtest ? `<p class="small-print">Last intraday backtest (${new Date(st.backtest.at).toLocaleDateString()}): ${pct2(st.backtest.total * 100)} over ${st.backtest.bars} bars, ${st.backtest.trades} trades, largest fall ${pct2(st.backtest.maxDrawdown * 100)}. Hypothetical.</p>` : ''}
-      ${b.account === 'paper' ? `<p class="mu small-print">Days on Paper: ${(st.paperDays || []).length} of the ${b.minPaperDays} needed before real money.</p>` : ''}
       <details><summary>Trade log (${b.log.length})</summary><div class="tablewrap"><table class="slim"><thead><tr><th>When</th><th>What</th><th>Detail</th></tr></thead><tbody>${b.log.map(l => { let x = l.detail; try { const j = JSON.parse(l.detail); x = [j.why, j.realized != null ? `P&L ${usd(j.realized)}` : '', j.qa != null ? `${b.a} ${j.qa}, ${b.b} ${j.qb}` : '', ...(j.notes || [])].filter(Boolean).join(' · '); } catch {} return `<tr><td>${new Date(l.at).toLocaleString()}</td><td>${H.esc(l.kind)}</td><td class="small-print">${H.esc(x)}</td></tr>`; }).join('')}</tbody></table></div></details>`;
     box.append(el);
     const ok = H.$('.ok', el), err = H.$('.err', el), say = (m, bad) => { ok.textContent = bad ? '' : m; err.textContent = bad ? m : ''; };
@@ -309,16 +308,8 @@ async function livePairs(view, q) {
           H.$('.lp-bt', el).innerHTML = `<div class="tablewrap"><table class="slim"><thead><tr><th></th><th class="num">Total</th><th class="num">Trades</th><th class="num">Hit rate</th><th class="num">Largest fall</th><th class="num">Sharpe</th></tr></thead><tbody>
             <tr><th scope="row">Live ratio (intraday, ${L2.bars} bars)</th><td class="num">${pct2(L2.total * 100)}</td><td class="num">${L2.trades}</td><td class="num">${L2.hitRate == null ? '-' : Math.round(L2.hitRate * 100) + '%'}</td><td class="num">${pct2(L2.maxDrawdown * 100)}</td><td class="num">${L2.sharpe == null ? '-' : L2.sharpe.toFixed(2)}</td></tr>
             <tr><th scope="row">OLS z-score (daily${r.ols?.from ? `, ${H.esc(r.ols.from)} to ${H.esc(r.ols.to)}` : ''})</th>${O ? `<td class="num">${pct2(O.m?.ret)}</td><td class="num">${O.trades ?? '-'}</td><td class="num">${O.winRate != null ? Math.round(O.winRate) + '%' : '-'}</td><td class="num">${pct2(O.m?.dd != null ? -Math.abs(O.m.dd) : null)}</td><td class="num">${Number.isFinite(O.m?.sharpe) ? O.m.sharpe.toFixed(2) : '-'}</td>` : `<td colspan="5" class="mu">${H.esc(r.ols?.error || 'not available')}</td>`}</tr></tbody></table></div>
-            ${svgLines([{ name: 'Live ratio, cumulative', ys: L2.curve.map(v => v * 100), cls: 's1' }], { label: 'Intraday backtest cumulative return', h: 100 })}<p class="mu small-print">${H.esc(r.note)}</p>`;
+            ${svgLines([{ name: 'Live ratio, cumulative', ys: L2.curve.map(v => v * 100), cls: 's1' }], { label: 'Intraday backtest cumulative return', h: 100 })}<p class="mu small-print disclosure" lang="en" dir="ltr" data-no-tr>${H.esc(d.note)}</p>`;
           return;
-        }
-        if (act === 'live') {
-          if (!liveAccts.length) return say('Connect a brokerage account first (Accounts).', true);
-          const sel = `<label>Account<select name="acct">${liveAccts.map(a => `<option value="${H.esc(a.id)}">${H.esc(a.name)}${a.live ? ' (live)' : ' (paper)'}</option>`).join('')}</select></label>`;
-          const c = await H.secureConfirm({ title: `Run ${b.a}/${b.b} with real money?`, okText: 'Move to this account', html: `<p>${H.esc(d.note)}</p><p class="mu">It needs a recent intraday backtest and at least ${b.minPaperDays} trading days on Paper. Orders still pass your risk limits and the kill switch.</p>${sel}`, onOpen: ({ dialog }) => { dialog.dataset.acct = liveAccts[0].id; dialog.querySelector('[name=acct]').onchange = e => (dialog.dataset.acct = e.target.value); } });
-          if (!c) return;
-          const acct = document.querySelector('dialog.secure')?.dataset.acct || liveAccts[0].id;
-          await H.api(`/pairslive/${b.id}/live`, { body: { account: acct, understood: true, password: c.password, confirm: c.confirm } }); return H.render();
         }
         await H.api(`/pairslive/${b.id}/${act}`, { body: {} }); H.render();
       } catch (e) { btn.disabled = false; say(e.message + (e.problems?.length > 1 ? ' ' + e.problems.slice(1).join(' ') : ''), true); }

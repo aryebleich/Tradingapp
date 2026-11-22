@@ -88,7 +88,9 @@ test('the panel shows the page\'s guide, closes with Esc and returns focus; the 
 
 test('Yiddish for every new guide text and the help wording', async () => {
   const yi = await import('../public/i18n/yi.js'), { MORE } = await import('../public/pages/guides-more.js');
-  const miss = Object.values(MORE).flatMap(([t, w, st, c]) => [t, w, ...st, c]).filter(x => !yi.strings[x]);
+  // The reviewed disclosure sentences (public/disclosures.js) stay in English in every language.
+  const { TOOL, HYPOTHETICAL } = await import('../public/disclosures.js');
+  const miss = Object.values(MORE).flatMap(([t, w, st, c]) => [t, w, ...st, c]).filter(x => !yi.strings[x] && ![TOOL, HYPOTHETICAL].includes(x));
   assert.deepEqual(miss, []);
   for (const k of ['How this page works', 'New here? Tap i']) assert.ok(yi.strings[k], k);
 });

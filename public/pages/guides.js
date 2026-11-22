@@ -68,7 +68,7 @@ const G = {
   portfolios: ['Portfolios', 'A ready set of investments with target weights (for example 60% stocks, 40% bonds). Rebalancing brings it back to the targets after prices move.',
     ['Pick a portfolio and the amount to invest.', 'Review the trades it would place before confirming.'],
     'Even a diversified portfolio can fall in value.'],
-  aifunds: ['AI long/short portfolios', 'An AI builds a portfolio that owns some stocks (long) and bets against others (short), aiming to depend less on whether the whole market rises or falls.',
+  aifunds: ['Long/short rule portfolios', 'An AI builds a portfolio that owns some stocks (long) and bets against others (short), aiming to depend less on whether the whole market rises or falls.',
     ['Read the reasons it gives for each holding.', 'Nothing is traded until you approve it.', 'Try it in the practice account first.'],
     'The short side can lose without limit and AI picks can be wrong. This is software, not personal investment advice.'],
   pairs: ['Pairs trading', 'Finds two stocks that usually move together. When the gap between them gets unusually wide, it buys the cheaper one and shorts the dearer one, expecting the gap to close.',

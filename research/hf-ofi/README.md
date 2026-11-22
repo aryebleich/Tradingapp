@@ -1,6 +1,6 @@
 # Order-flow imbalance (OFI) lab: the R research project
 
-An **academic exercise**: building order-flow factors from intraday market-book data for a futures contract (rb2305, the morning session), testing whether they predict the next mid-price moves, and backtesting a simple OFI-10 strategy. Simulated results; not investment advice. Real high-frequency trading needs exchange co-location and direct market data, which this project and the Brightolio app do not provide.
+An **academic exercise**: building order-flow factors from intraday market-book data (shaped like a futures contract's morning session, rb2305), testing whether they predict the next mid-price moves, and backtesting a simple OFI-10 strategy. Simulated results; not investment advice. Real high-frequency trading needs exchange co-location and direct market data, which this project and the Brightolio app do not provide.
 
 The same math runs interactively in the app (Automate → Pairs & stat arb → Order flow (OFI) lab), in `src/hfofi.js`, and is tested against this project's output to 6 decimal places (`test/hfofi.test.js`).
 
@@ -12,7 +12,7 @@ Rscript R/make_sample.R      # the synthetic sample (data/sample.Rds and data/sa
 ./run.sh                     # renders hf.Rmd to out/hf.pdf (and out/return.png)
 ```
 
-Put the real data file at `data/df_rb2305_am1.Rds` (see `data/README.md`). Without it the report uses the synthetic sample and says so on every figure. Packages: see `DESCRIPTION` (conflicted, tidyverse, lubridate, patchwork, paletteer, RcppRoll, rmarkdown; jsonlite for the export). paletteer is optional: without it a fixed Tableau palette is used. A PDF needs pandoc and a LaTeX installation.
+It runs on the bundled synthetic sample, so no market data or data licence is needed. To use tick data of your own in the same columns, pass it: `Rscript -e 'rmarkdown::render("hf.Rmd", params = list(data = "data/your_file.Rds"), output_dir = "out")'` (see `data/README.md`). The R packages are all open source (CRAN). Packages: see `DESCRIPTION` (conflicted, tidyverse, lubridate, patchwork, paletteer, RcppRoll, rmarkdown; jsonlite for the export). paletteer is optional: without it a fixed Tableau palette is used. A PDF needs pandoc and a LaTeX installation.
 
 ## The factors
 

@@ -6,6 +6,8 @@
 // A tick: { t (ms), last, bid, ask, bidVol, askVol, volume, turnover }. Missing values are null,
 // the way R's NA flows through lag() and comparisons.
 
+import { TOOL_HYPOTHETICAL } from './disclosures.js';
+
 export const COLUMNS = ['datetime', 'last', 'bid', 'ask', 'bid_vol', 'ask_vol', 'volume', 'turnover'];
 const ALIASES = { UpdateTime: 'datetime', time: 'datetime', LastPrice: 'last', BidPrice1: 'bid', AskPrice1: 'ask', BidVolume1: 'bid_vol', AskVolume1: 'ask_vol', Volume: 'volume', Turnover: 'turnover' };
 export const MAX_BYTES = 20 * 1024 * 1024, MAX_ROWS = 400000;
@@ -140,4 +142,5 @@ export function analyze(ticks, { n = 10, hi = 0.8, lo = 0.2, inSample = 0.5, fee
   const run = seg => { const bt = backtest(seg.mid, seg.ofi_n, thi, tlo, costs); return { bt, stats: summarize(bt, perDay), curve: { t: seg.t, gross: cum(bt.gross), net: cum(bt.net), hold: seg.mid.map(m => m / seg.mid[0] - 1) } }; };
   return { n, ticks: ticks.length, f, regressions: regressions(f, horizons), thresholds: { hi: thi, lo: tlo, split, pHi: hi, pLo: lo }, inSample: run(ins), outOfSample: run(oos), costs };
 }
-export const NOTE = 'Academic exercise. Simulated results; not investment advice. Real high-frequency trading needs exchange co-location and direct market data, which this app doesn\'t provide.';
+// Reviewed wording only (public/disclosures.js); the page adds that it is a simulation.
+export const NOTE = TOOL_HYPOTHETICAL;
