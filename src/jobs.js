@@ -73,6 +73,7 @@ export const JOBS = [
   ['valueAlerts', 1440, async () => (await import('./stock.js')).runValueAlerts()],
   // AI morning news picks: picks at 9:00, members at 9:35, stops and the close (New York time).
   ['newspicks', 5, async t => (await import('./newspicks.js')).tick(t)],
+  ['intraday', 5, async t => (await import('./intraday.js')).tick(t)],
   ['intraday', 1, t => runIntradayBots(t)],
   // Rule-based portfolios: contributions and scheduled rebalances, from 10:00 New York time.
   ['baskets', 15, t => runBaskets(t)],

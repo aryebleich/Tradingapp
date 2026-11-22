@@ -421,7 +421,7 @@ const HUBS = {
   portfolios: ['Portfolios', [['portfolios', 'Portfolios'], ['robo', 'Automated portfolios'], ['aifunds', 'AI hedge funds'], ['rules', 'Rules across accounts']]],
   invest: ['Futures, bonds & more', [['invest', 'Futures, funds & savings'], ['alpaca-tools', 'Bonds, rates & crypto'], ['tokenized', 'Tokenized securities']]],
   strategies: ['Strategies', [['strategies', 'Strategy library'], ['playbooks', 'Playbooks'], ['backtest', 'Backtest']]],
-  bots: ['Bots', [['bots', 'My bots'], ['aibots', 'AI bots'], ['agents', 'Forecasts & AI agents']]],
+  bots: ['Bots', [['bots', 'My bots'], ['aibots', 'AI bots'], ['agents', 'Forecasts & AI agents'], ['intraday', 'AI intraday']]],
   signals: ['Alerts & signals', [['signals', 'Alerts to trades'], ['aisignals', 'AI signals'], ['fleet', 'Signal fleet'], ['newspicks', 'AI morning picks']]],
   pairs: ['Pairs & stat arb', [['pairs', 'Pairs trading'], ['statarb', 'Statistical arbitrage']]],
   marketplace: ['Marketplace', [['marketplace', 'Overview'], ['traders', 'Top traders'], ['aimarket', 'AI strategy marketplace'], ['sharedstrategies', 'Strategies'], ['sharedportfolios', 'Portfolios'], ['signalchannels', 'Signal channels']]],
@@ -2479,7 +2479,7 @@ lazyRoutes(() => import('./pages/sponsored.js'), 'registerSponsored', shared, ["
 lazyRoutes(() => import('./pages/aitrade.js'), 'registerAiTrade', shared, ["agenthub", "aibots", "aisignals", "intel"]);
 lazyRoutes(() => import('./pages/invest.js'), 'registerInvest', shared, ["analyze", "lowcost", "earnings", "leaders", "short", "margin", "aifunds"]);
 lazyRoutes(() => import('./pages/stock.js'), 'registerStock', shared, ["compare", "valuescan", "rates"]);
-lazyRoutes(() => import('./pages/growth.js'), 'registerGrowth', shared, ["diversify", "newspicks"]);
+lazyRoutes(() => import('./pages/growth.js'), 'registerGrowth', shared, ["diversify", "newspicks", "intraday"]);
 
 // Static files are cached for instant repeat visits (sw.js); pages and data always come fresh.
 if (!PREFETCH && 'serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});

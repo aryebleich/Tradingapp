@@ -72,3 +72,40 @@ PAGES.newspicks = async view => {
   }
   if (H.$('#npApprove', out)) H.act(H.$('#npApprove', out), async () => { const r = await H.api('/newspicks/approve', { body: {} }); setTimeout(H.render, 800); return `${r.results.filter(x => x.ok).length} of ${r.results.length} placed`; }, H.$('#npErr', out));
 };
+
+// ---------- AI intraday trading ----------
+PAGES.intraday = async view => {
+  view.innerHTML = head('AI intraday trading', 'An automatic engine that checks a short list of stocks every few minutes and buys or sells within your limits. Slow and rule-based, not high-frequency trading. Practice money by default.') + `<div id="ido">${skel}</div>`;
+  const out = H.$('#ido', view);
+  let d; try { d = await H.api('/intraday'); } catch (e) { out.innerHTML = `<div class="card"><p class="err">${H.esc(e.message)}</p></div>`; return; }
+  const s = d.settings, S = d.stats, accts = (await H.accounts()).filter(a => a.id === 'paper' || a.connected), open = Object.entries(d.open || {});
+  const status = d.killed ? '<span class="pill neg">Stopped by the kill switch</span>' : s.enabled ? `<span class="pill pos">On · ${H.esc(s.account === 'paper' ? 'practice account' : s.account)} · every ${s.everyMin} min</span>` : '<span class="pill">Off</span>';
+  out.innerHTML = card('Status', `<p>${status}</p>${d.dataEnabled ? '' : '<p class="mu">Needs 5-minute market data, which is not set up on this server, so the engine is idle.</p>'}
+      <div class="stats">${stat('Orders', String(S.orders))}${stat('Closed trades', String(S.closed))}${stat('Hit rate', S.hitRate == null ? '-' : `${S.hitRate}%`, `${S.wins} wins · ${S.losses} losses`)}${stat('Result', S.pl == null ? '-' : H.money(S.pl))}${stat('Worst trade', S.worst == null ? '-' : H.money(S.worst))}</div>
+      ${open.length ? `<p><b>Open now:</b> ${open.map(([k, p]) => `<span data-no-tr>${H.esc(k)}</span> ${p.qty} @ ${H.money(p.entry)}${p.held ? ' (held over ex-dividend)' : ''}`).join(' · ')}</p>` : ''}
+      ${s.enabled ? '<p><button type="button" class="ghost" id="idStop">Turn off</button> <a href="#/risk">Kill switch →</a></p>' : ''}<div class="err" id="idErr"></div>`)
+    + card('How it decides', `<ul class="plain small-print"><li><b>Buy</b> when the price is above its 20-bar (100-minute) average, the last 5-minute bar rose and RSI is between 50 and 70.</li><li><b>Sell</b> at your stop loss, at your target, when RSI goes over 75 or when the price falls back under the average.</li>
+        <li><b>Hours:</b> ${H.esc(d.limits.hours)}.</li><li><b>Pattern-day-trader rule:</b> ${H.esc(d.limits.pdt)}; the engine stops buying when it would break it.</li>
+        <li><b>Ex-dividend option:</b> for stocks on the dividend list, it can keep a position overnight to receive the dividend. The price usually drops by about the dividend on the ex-date, so this is not free money, and holding overnight carries gap risk.</li></ul>
+        <p class="small-print">Dividend list: <span data-no-tr>${d.dividendList.map(H.esc).join(', ')}</span> (large US dividend payers, not a recommendation).</p>`)
+    + card('Your settings', d.paid ? `<form id="idf"><div class="row"><label class="chk"><input type="checkbox" name="enabled" ${s.enabled ? 'checked' : ''}> Turn on</label>
+        <label>Account<select name="account">${accts.map(a => `<option value="${H.esc(a.id)}" ${a.id === s.account ? 'selected' : ''}>${H.esc(H.acctLabel(a))}</option>`).join('')}</select></label>
+        <label>Stocks<select name="list"><option value="dividend" ${s.list === 'dividend' ? 'selected' : ''}>The dividend list</option><option value="custom" ${s.list === 'custom' ? 'selected' : ''}>My own list</option></select></label>
+        <label>My own list (up to 10)<input name="symbols" value="${H.esc(s.symbols.join(', '))}" placeholder="AAPL, MSFT" data-no-tr></label></div>
+      <div class="row"><label>Check every (minutes)<input name="everyMin" type="number" min="5" max="60" value="${s.everyMin}"></label><label>Most orders a day<input name="maxTrades" type="number" min="1" max="40" value="${s.maxTrades}"></label><label>Most per position $<input name="maxPosition" type="number" min="10" value="${s.maxPosition}"></label><label>Most open positions<input name="maxOpen" type="number" min="1" max="10" value="${s.maxOpen}"></label></div>
+      <div class="row"><label>Stop loss %<input name="stopPct" type="number" min="0.3" max="10" step="0.1" value="${s.stopPct}"></label><label>Target %<input name="targetPct" type="number" min="0.3" max="20" step="0.1" value="${s.targetPct}"></label><label>Daily loss limit $<input name="dailyLoss" type="number" min="1" value="${s.dailyLoss}"></label><label class="chk"><input type="checkbox" name="holdExDiv" ${s.holdExDiv ? 'checked' : ''}> Hold dividend stocks over the ex-dividend date</label></div>
+      <fieldset class="live"><legend>Real money</legend><label class="chk"><input type="checkbox" name="live" ${s.live ? 'checked' : ''} ${d.elite ? '' : 'disabled'}> Allow a real brokerage account ${d.elite ? '' : '(Elite plan)'}</label>
+        <label class="pw" hidden>Your password, to turn on real money<input name="password" type="password" autocomplete="current-password"></label>
+        <p class="mu small-print">Off by default. Try it on the practice account first. With real money on, orders go to your brokerage within the limits above; the kill switch stops new orders at once.</p></fieldset>
+      <button>Save</button><div class="err"></div></form>` : `<p>Turning the engine on, with your own limits, is part of Pro. How it works and its limits are free to read.</p>${lock('Run AI intraday trading on the practice account.', 'AI intraday trading')}`)
+    + card('Trade log', d.log.length ? `<div class="tablewrap" tabindex="0" role="region" aria-label="Trade log"><table class="slim"><thead><tr><th>When</th><th>Account</th><th>Symbol</th><th>Side</th><th class="num">Qty</th><th class="num">Price</th><th class="num">Result</th><th>Why</th></tr></thead><tbody>${d.log.map(l => `<tr><td>${H.date(l.at)}</td><td>${H.esc(l.account)}</td><td data-no-tr>${H.esc(l.symbol)}</td><td>${l.side}</td><td class="num">${l.qty}</td><td class="num">${H.money(l.price)}</td><td class="num ${l.pl > 0 ? 'pos' : l.pl < 0 ? 'neg' : ''}">${l.pl == null ? '' : H.money(l.pl)}</td><td class="small-print">${H.esc(l.reason)}</td></tr>`).join('')}</tbody></table></div>`
+      : '<div class="empty"><b>No orders yet.</b><span>Every order the engine places, and why, is listed here, losses included.</span></div>')
+    + `<p class="mu small-print">${H.esc(d.note)}</p>`;
+  wireUpgrade(out);
+  const f = H.$('#idf', out);
+  if (f) {
+    f.live.onchange = () => { H.$('.pw', f).hidden = !f.live.checked || s.live; };
+    H.act(H.$('button', f), async () => { const v = H.form(f); const r = await H.api('/intraday/settings', { method: 'PUT', body: v }); H.render(); return r.settings.account !== v.account ? 'Saved on the practice account (real money is off)' : 'Saved'; }, H.$('.err', f));
+  }
+  if (H.$('#idStop', out)) H.act(H.$('#idStop', out), async () => { await H.api('/intraday/stop', { body: {} }); H.render(); return 'Turned off'; }, H.$('#idErr', out));
+};
