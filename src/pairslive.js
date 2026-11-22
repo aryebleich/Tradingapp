@@ -131,7 +131,7 @@ export async function openPair({ a, b, qa, qb, pa, pb }, deps) {
   // Balance: the first leg is reduced to the share of the second that filled (all of it when none did).
   const keepFirst = Math.floor(f1 * (f2 / Math.abs(second.qty))), undo = f1 - keepFirst;
   if (undo > 0) {
-    try { await deps.place({ ...M.orderOf(first.symbol, -Math.sign(first.qty) * undo), close: true }); done[first.symbol] = Math.sign(first.qty) * keepFirst; notes.push(`${err || `${second.symbol} filled ${f2} of ${Math.abs(second.qty)}`}: ${undo} ${first.symbol} closed again to keep the pair balanced.`); }
+    try { await deps.place({ ...M.orderOf(first.symbol, -Math.sign(first.qty) * undo), close: true }); done[first.symbol] = Math.sign(first.qty) * keepFirst || 0; notes.push(`${err || `${second.symbol} filled ${f2} of ${Math.abs(second.qty)}`}: ${undo} ${first.symbol} closed again to keep the pair balanced.`); }
     catch (e) { notes.push(`${err || 'Partial fill'}; closing ${undo} ${first.symbol} also failed (${e.message}). Close it by hand.`); }
   }
   const ok = !!done[a] && !!done[b];
@@ -175,13 +175,16 @@ export async function runPair(pair, t = Date.now()) {
   const m = M.model(g.ca, g.cb);
   // Paper results count per day the bot ran on paper in regular hours.
   if (pair.account === 'paper') { st.paperDays = [...new Set([...(st.paperDays || []), day])].slice(-60); }
-  if (!m) { st.chart = (st.chart || []).slice(-299); await save(pair, st); return { skip: `history: ${g.ca.length} of 20 bars` }; }
-  st.chart = [...(st.chart || []), { t, pa: A.price, pb: B.price, beta: m.beta, vr: m.volRatio, div: m.divergence }].slice(-300);
-  st.last = { ...m, pa: A.price, pb: B.price, via: A.via === 'stream' && B.via === 'stream' ? 'stream' : 'poll', at: t };
-  const pos = st.pos || 0, open = pos && (st.qa || st.qb);
+  const pos = st.pos || 0, open = !!(st.qa || st.qb);
   const unreal = open ? pnlOf(st, A.price, B.price) : 0; st.unrealized = unreal;
+  // Without enough history the model waits, but closing (the cutoff, a loss limit) never does.
+  if (!m && !(open && (w.flatten || unreal <= -p.maxLossUsd))) { await save(pair, st); return { skip: `history: ${g.ca.length} of 20 bars` }; }
+  if (m) {
+    st.chart = [...(st.chart || []), { t, pa: A.price, pb: B.price, beta: m.beta, vr: m.volRatio, div: m.divergence }].slice(-300);
+    st.last = { ...m, pa: A.price, pb: B.price, via: A.via === 'stream' && B.via === 'stream' ? 'stream' : 'poll', at: t };
+  }
   // Limits: the pair's max loss, the member's daily loss over all live-ratio bots, then the signal.
-  let want = M.signal(m.divergence, pos, p), why = want.why; want = want.want;
+  let want = m ? M.signal(m.divergence, pos, p) : { want: 0, why: 'closing' }, why = want.why; want = want.want;
   if (open && unreal <= -p.maxLossUsd) { want = 0; why = `max loss for this pair reached ($${unreal.toFixed(2)})`; }
   const mine = await all("SELECT state FROM live_pairs WHERE user_id = ? AND status = 'running'", pair.user_id);
   const dayPl = mine.reduce((s, r) => { const x = J(r.state, {}); return s + (x.day === day ? (x.realizedDay || 0) : 0) + (x.unrealized || 0); }, 0);
@@ -190,7 +193,7 @@ export async function runPair(pair, t = Date.now()) {
   if (!w.enter && !open) want = 0;
   if (want === pos || (want && !w.enter)) { await save(pair, st); return { hold: why }; }
   if (open) {
-    if (!rateOk(pair.user_id, 2)) { await save(pair, st); await log(pair, 'skip', 'Order rate limit: waiting for the next run'); return { skip: 'rate' }; }
+    if (!rateOk(pair.user_id, 2, t)) { await save(pair, st); await log(pair, 'skip', 'Order rate limit: waiting for the next run'); return { skip: 'rate' }; }
     const c = await closePair({ a: pair.a, b: pair.b, qa: st.qa, qb: st.qb }, deps);
     const realized = pnlOf(st, A.price, B.price);
     const sameDay = M.utcToNy(st.openedAt || 0).day === day;
@@ -204,7 +207,7 @@ export async function runPair(pair, t = Date.now()) {
     const pdt = pdtAllowed({ account: pair.account, equity: s.equity, dayTrades: (await dayTrades(pair.user_id, pair.account, t)) + (p.holdOvernight ? 0 : 1) });
     if (!pdt.ok) { await log(pair, 'skip', pdt.why); await save(pair, st); return { skip: 'pdt' }; }
   }
-  if (!rateOk(pair.user_id, 2)) { await log(pair, 'skip', 'Order rate limit: waiting for the next run'); await save(pair, st); return { skip: 'rate' }; }
+  if (!rateOk(pair.user_id, 2, t)) { await log(pair, 'skip', 'Order rate limit: waiting for the next run'); await save(pair, st); return { skip: 'rate' }; }
   const q = M.legQty(Math.min(p.dollars, p.maxPositionUsd), A.price, B.price, m.volRatio, want);
   const r = await openPair({ a: pair.a, b: pair.b, qa: q.qa, qb: q.qb, pa: A.price, pb: B.price }, deps);
   if (r.qa || r.qb) Object.assign(st, { pos: r.ok ? want : 0, qa: r.qa || 0, qb: r.qb || 0, ea: A.price, eb: B.price, openedAt: t });
@@ -291,7 +294,7 @@ export const liveRouter = (() => {
     if (!(st.backtest?.at > Date.now() - 30 * 864e5)) throw bad('Run the intraday backtest first (in the last 30 days).', 409);
     const days = (st.paperDays || []).length; if (days < MIN_PAPER_DAYS()) throw bad(`Run it on Paper for at least ${MIN_PAPER_DAYS()} trading days first (${days} so far).`, 409);
     if (x.status === 'running' || st.qa || st.qb) throw bad('Stop the paper bot first (it must hold no positions).', 409);
-    if (req.body?.confirm !== true) throw bad('Confirm that you understand this is experimental and can lose money.', 400);
+    if (req.body?.understood !== true) throw bad('Confirm that you understand this is experimental and can lose money.', 400);
     if (!confirmsIdentity(req.user, req.body || {})) throw bad('Enter your password to turn on real money.', 401);
     const problems = await shortability(req.user.id, account, [x.a, x.b]); if (problems.length) throw bad('This account cannot run the pair: ' + problems[0], 409, { problems });
     await run("UPDATE live_pairs SET account = ?, status = 'stopped', updated_at = ? WHERE id = ?", account, now(), x.id);
