@@ -1464,6 +1464,36 @@ routes.dashboard = async (view, q) => {
   $$('[data-pcancel]', view).forEach(b => act(b, async () => { await api('/paper/orders/' + b.dataset.pcancel, { method: 'DELETE' }); render(); return ''; }));
 };
 
+// The company card shown before a buy (ticket, Trade page, Equalize, Playbooks, bots): what the
+// company does, sector, size, P/E vs its sector, earnings, dividend, 52-week range, headlines, one
+// strength and one risk. It loads on its own with a skeleton and never holds up the order; the
+// member can hide it for a symbol. Cached per symbol for the visit.
+const CARD_CACHE = new Map();
+function preBuyCard(box, symbol, { compact = false } = {}) {
+  if (!box) return;
+  symbol = String(symbol || '').trim().toUpperCase();
+  if (!/^[A-Z][A-Z0-9.\-]{0,9}$/.test(symbol)) { box.innerHTML = ''; return; }
+  if (box.dataset.sym === symbol && box.firstElementChild) return;
+  box.dataset.sym = symbol;
+  box.innerHTML = `<div class="precard skel-card" aria-busy="true"><div class="skel"><div class="w60"></div><div></div></div></div>`;
+  const draw = c => {
+    if (box.dataset.sym !== symbol) return;
+    if (!c || c.hidden || c.error) { box.innerHTML = c?.hidden ? '' : ''; return; }
+    const m = v => (v == null ? '-' : v >= 1e12 ? `$${(v / 1e12).toFixed(2)}T` : v >= 1e9 ? `$${(v / 1e9).toFixed(1)}B` : `$${(v / 1e6).toFixed(0)}M`);
+    const ne = c.nextEarnings ? `${esc(c.nextEarnings.date)}${c.nextEarnings.estimated ? ' (estimated)' : ''}` : '-';
+    box.innerHTML = `<aside class="precard" aria-label="About ${esc(symbol)}"><div class="pc-head"><b data-no-tr>${esc(symbol)}</b> <span>${esc(c.name || '')}</span><button type="button" class="link small pc-hide" title="Don't show this card for ${esc(symbol)}">Don't show for this stock</button></div>
+      ${c.about ? `<p class="pc-about">${esc(c.about)}</p>` : ''}
+      ${c.etf ? '' : `<div class="pc-facts"><span><em>Market value</em> ${m(c.marketCap)}</span><span><em>P/E</em> ${c.pe ?? '-'}${c.sectorPE ? ` <small>vs sector ${c.sectorPE}</small>` : ''}</span><span><em>Dividend</em> ${c.dividendYield ? c.dividendYield + '%' : 'none'}</span>
+        <span><em>52-week</em> ${c.range52 ? `${money(c.range52.low)}–${money(c.range52.high)}` : '-'}</span><span><em>Last earnings</em> ${esc(c.lastEarnings || '-')}</span><span><em>Next earnings</em> ${ne}</span></div>`}
+      ${!compact && (c.strength || c.risk) ? `<p class="pc-sr">${c.strength ? `<span class="pos">+ ${esc(c.strength)}</span>` : ''}${c.risk ? `<span class="neg">− ${esc(c.risk)}</span>` : ''}</p>` : ''}
+      ${!compact && c.headlines?.length ? `<ul class="pc-news">${c.headlines.map(h => `<li><a href="${esc(safeUrl(h.url))}" target="_blank" rel="noopener">${esc(h.title)}</a></li>`).join('')}</ul>` : ''}
+      <p class="pc-note">${esc(c.note || '')} <a href="#/analyze?symbol=${encodeURIComponent(symbol)}">Full stock page →</a></p></aside>`;
+    box.querySelector('.pc-hide').onclick = async () => { box.innerHTML = ''; CARD_CACHE.set(symbol, { hidden: true }); await api('/stock/card/hidden', { body: { symbol } }).catch(() => {}); };
+  };
+  if (CARD_CACHE.has(symbol)) return draw(CARD_CACHE.get(symbol));
+  api(`/stock/${encodeURIComponent(symbol)}/card`).then(c => { CARD_CACHE.set(symbol, c); draw(c); }, () => draw(null));
+}
+
 // The order ticket used on Home and on the simple Trade page (paper and the other brokerages).
 const ticketHtml = (a, symbol = 'SPY') => `<form class="card ticket" id="ticket"><h2>Trade</h2>
       <div id="deskStrip"></div>
@@ -1476,6 +1506,7 @@ const ticketHtml = (a, symbol = 'SPY') => `<form class="card ticket" id="ticket"
       <label class="check qshort" hidden><input type="checkbox" name="allow_short"> ${state.account === 'paper' ? 'Sell short (practice money: no minimum balance)' : 'Sell short (I do not own it; margin account with $2,000+ needed)'}</label>
       <div id="qGuide"></div><div id="qCost"></div><div id="qBear"></div>
       ${whenHtml()}
+      <div id="qCard" class="qcard"></div>
       <button id="qPlace">Review order</button> <button type="button" class="ghost" id="quote">Quote</button><div class="err"></div>
       ${a.live ? '<p class="warn">This sends a real order with real money.</p>' : ''}
     </form>`;
@@ -1487,6 +1518,8 @@ function wireQuickTicket(t, view, a) {
   const refresh = async () => {
     const f = form(t), sym = f.symbol.trim().toUpperCase(); if (!sym) return;
     const my = ++seq;
+    // Buying: the company card above the button. It loads on its own and never holds up the order.
+    const qc = $('#qCard', t); if (qc) { if (st.side === 'buy') preBuyCard(qc, sym); else { qc.innerHTML = ''; delete qc.dataset.sym; } }
     const d = await api(`/desk/quote/${encodeURIComponent(sym)}?account=${state.account}&side=${st.side}&type=${st.type}&qty=${+f.qty || (f.notional && st.last ? f.notional / st.last : 0)}&price=${+f.limit_price || +f.stop_price || ''}`).catch(e => ({ error: e.message }));
     if (my !== seq || !$('#qGuide', t)) return;
     if (d.error) { $('#deskStrip', t).innerHTML = `<p class="err">${esc(d.error)}</p>`; return; }
@@ -1672,7 +1705,12 @@ routes.bots = async view => {
     const tr = b.closest('tr'), id = tr.dataset.id || tr.dataset.for, s = list.find(x => x.id == id), d = b.dataset.do;
     try {
       if (d === 'test') { sessionStorage.setItem('qp_strategy', JSON.stringify(s)); location.hash = '#/backtest?run=1'; return; }
-      if (d === 'run') { const r = $(`tr[data-for="${id}"]`, view); r.hidden = !r.hidden; return; }
+      if (d === 'run') {
+        const r = $(`tr[data-for="${id}"]`, view); r.hidden = !r.hidden;
+        // The bot buys this symbol: its company card above the Start button (never holds it up).
+        if (!r.hidden && !$('.botcard', r)) { const c = document.createElement('div'); c.className = 'botcard qcard'; $('td', r).prepend(c); preBuyCard(c, s.symbol, { compact: true }); }
+        return;
+      }
       if (d === 'del') { if (!confirm('Delete?')) return; await api('/strategies/' + id, { method: 'DELETE' }); }
       else if (d === 'pub') {
         const desc = s.public ? undefined : prompt('Describe this strategy for others (optional)', s.description || '');
@@ -2291,7 +2329,7 @@ function lazyRoutes(load, fn, helpers, keys) {
   }).catch(e => { loading = null; throw e; }));
   for (const k of keys) routes[k] = Object.assign(async (view, q) => { await ensure(); return routes[k](view, q); }, { lazyOf: fn });
 }
-registerTrading(routes, { accountBoxes, secureConfirm, accounts, $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, approvalsBanner, statementRow, wireStatement, prefs: () => PREFS.portfolio, sinceLastLook, sinceStat, onLeave, render, updateBadge, me: () => ME, refreshMe, state });
+registerTrading(routes, { accountBoxes, preBuyCard, secureConfirm, accounts, $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, approvalsBanner, statementRow, wireStatement, prefs: () => PREFS.portfolio, sinceLastLook, sinceStat, onLeave, render, updateBadge, me: () => ME, refreshMe, state });
 // Trade, Positions and Orders follow the account chosen in the side panel: the full screens for an
 // Alpaca account, simple pages (pages/simple.js) for practice money and the other brokerages.
 for (const k of ['trade', 'positions', 'orders']) {
@@ -2300,7 +2338,7 @@ for (const k of ['trade', 'positions', 'orders']) {
 }
 // The tabs on top of every Marketplace page.
 const marketTabs = on => hubTabs(on); // the Marketplace tabs are a merged page's tabs (HUBS.marketplace)
-const shared = { safeUrl, upgrade: feature => showUpgrade(feature), related: (items, here) => relatedHtml(items, here || ''), extras: () => EXTRAS, setExtras: on => { EXTRAS = on; render.navKey = null; }, marketTabs, $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, refreshMe, accounts, accountOptions, acctLabel, state, adminTabs, adminPage, secureConfirm, me: () => ME, paid: () => isPaid(ME) };
+const shared = { safeUrl, preBuyCard, upgrade: feature => showUpgrade(feature), related: (items, here) => relatedHtml(items, here || ''), extras: () => EXTRAS, setExtras: on => { EXTRAS = on; render.navKey = null; }, marketTabs, $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, refreshMe, accounts, accountOptions, acctLabel, state, adminTabs, adminPage, secureConfirm, me: () => ME, paid: () => isPaid(ME) };
 lazyRoutes(() => import('./pages/studio.js'), 'registerStudio', shared, ["ai", "agents", "code"]);
 lazyRoutes(() => import('./pages/aichat.js'), 'registerAiChat', shared, ["admin-aichat"]);
 lazyRoutes(() => import('./pages/tradetools.js'), 'registerTradeTools', shared, ["tradetools"]);

@@ -394,7 +394,7 @@ export async function cardFor(symbol, userId) {
     const s = await stockData(symbol, userId, { sector: true }).catch(() => null);
     if (!s) return buildCard({ symbol, name: symbol });
     const sr = s.kind === 'stock' ? strengthsRisks({ ratios: s.ratios, val: s.valuation, div: s.dividends }) : null;
-    const about = s.kind === 'stock' ? `${s.name}${s.sector ? ` · ${s.sector}` : ''}${s.exchange ? ` · listed on ${s.exchange}` : ''}.` : s.note;
+    const about = s.kind === 'stock' ? `${s.name}${s.sector ? ` · ${s.sector}` : ''}${s.exchange ? ` · listed on ${s.exchange}` : ''}.` : 'A fund, or a company without US SEC filings: no company figures to show. Its cost and holdings are on its fund page.';
     return buildCard({ symbol, name: s.name, about, sector: s.sector, val: s.valuation, div: s.dividends, earn: { last: s.earnings?.last, next: s.earnings?.next }, range52: s.range52, headlines: await headlines(symbol), sr, etf: s.kind !== 'stock' });
   });
 }

@@ -577,9 +577,12 @@ function renderTicket(box, symbol, kind, acct, lastPx, q, onPlaced) {
         <div class="kv" style="margin-top:12px"><span>Estimated ${st.side === 'buy' ? 'cost' : 'proceeds'}</span><span id="est">-</span>
           ${acct ? `<span>Buying power</span><span>${usd(kind === 'option' ? acct.optionsBuyingPower ?? acct.buyingPower : kind === 'crypto' ? acct.nonMarginableBuyingPower ?? acct.cash : acct.buyingPower)}</span>` : ''}</div>
         ${kind === 'stock' ? whenHtml() : ''}
+        ${st.side === 'buy' && kind === 'stock' ? '<div id="tkCard" class="qcard"></div>' : ''}
         <button style="width:100%;margin-top:12px" class="${st.side === 'sell' ? 'danger' : 'buyact'}" id="review">${st.side === 'sell' ? 'Review sell order' : 'Review buy order'}</button><div class="err" id="tkErr"></div>
       </form>`;
     const f = H.$('#tk', box);
+    // Buying a stock: the company card above the review button (loads on its own, never holds up the order).
+    if (H.$('#tkCard', box)) H.preBuyCard?.(H.$('#tkCard', box), symbol);
     H.$$('#sideSeg button', box).forEach(b => (b.onclick = () => { st.side = b.dataset.s; draw(); }));
     H.$$('[data-m]', box).forEach(b => (b.onclick = () => { st.mode = b.dataset.m; draw(); }));
     f.type.onchange = () => { st.type = f.type.value; draw(); };

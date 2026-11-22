@@ -192,6 +192,7 @@ function positionsHtml(p, inc) {
     <div class="tablewrap"><table class="slim eqp-t"><thead><tr><th class="eqp-c"><input type="checkbox" id="eqpAll" aria-label="Select all / none" title="Select all / none"></th><th>Holding</th><th class="num">Now</th><th class="num">Target</th><th class="num">Change</th></tr></thead><tbody id="eqpRows">${eqpRows(p, inc)}</tbody></table></div>
     ${p.skipped?.length ? `<p class="mu small-print">Left as they are (options and short positions): <span data-no-tr>${p.skipped.map(H.esc).join(', ')}</span></p>` : ''}
     <h3 id="eqpTradesH"></h3><div id="eqpTrades"></div>
+    <details class="eqp-co" id="eqpCo"><summary>About the companies you are buying</summary><div id="eqpCards" class="eqp-cards"></div></details>
     <p class="mu small-print">Sells go first so their cash pays for the buys. Amounts use the latest prices; each order fills at the market price. Not investment advice.</p>
     <div class="eqp-totals" id="eqpTotals" aria-live="polite"></div></div>`;
 }
@@ -222,6 +223,7 @@ export async function equalizePositions(helpers, account, out, opts = {}) {
           $('#eqpTrades').innerHTML = few ? '' : eqpTrades(p);
           $('#eqpTotals').innerHTML = few ? '' : `<span>To buy <b>${usd(p.totals.buy)}</b></span><span>To sell <b>${usd(p.totals.sell)}</b></span>${note ? `<span class="mu">${note}</span>` : ''}`;
           ready = !few && !note && p.orders.length > 0;
+          if (!note) cards();
           ok.disabled = !ready; ok.textContent = few ? 'Pick at least two holdings' : note ? 'Updating…' : p.orders.length ? `Place ${plural(p.orders.length, 'trade')}` : 'No trades needed';
         };
         const changed = () => {
@@ -233,6 +235,10 @@ export async function equalizePositions(helpers, account, out, opts = {}) {
             catch (e) { if (my === seq && d.open) { draw(); $('#eqpSum').innerHTML = `<span class="err">${H.esc(e.message)}</span>`; ok.disabled = true; ready = false; } }
           }, 350);
         };
+        // Company cards for the buys, loaded only when the member opens the section (never holds up the trades).
+        const cards = () => { const box = $('#eqpCards'); if (!box || !$('#eqpCo').open) return; const buys = [...new Set(p.orders.filter(o => o.side === 'buy').map(o => o.symbol))].slice(0, 6);
+          box.replaceChildren(...buys.map(s => { const el = document.createElement('div'); H.preBuyCard?.(el, s, { compact: true }); return el; })); if (!buys.length) box.innerHTML = '<p class="mu">No buys in this plan.</p>'; };
+        $('#eqpCo').addEventListener('toggle', cards);
         d.addEventListener('change', e => {
           const t = e.target;
           if (t.id === 'eqpAll') { if (t.checked) all.forEach(x => inc.add(x)); else inc.clear(); changed(); }

@@ -266,3 +266,18 @@ html.lv2 .hb-avg span { position: absolute; inset-inline-end: 0; bottom: 2px; fo
 html.lv2 .ob-wrap { position: relative; } html.lv2 .ob-wrap .ob-hide { position: absolute; top: 18px; inset-inline-end: 18px; z-index: 1; }
 html.lv2 .hb-plot i { font-style: normal; }
 html.lv2 .hb-plot i.neg b { top: auto; bottom: 100%; padding: 0 0 2px; } /* a loss shows its value above the zero line, clear of the axis labels */
+/* the company card shown before a buy (DESIGN_SYSTEM.md, "Company card before a buy") */
+html.lv2 .qcard:empty { display: none; }
+html.lv2 .precard { border: 1px solid var(--bd); border-radius: var(--r-sm); background: var(--bg2); padding: 10px 12px; margin: var(--s3) 0; font-size: 13.5px; }
+html.lv2 .precard.skel-card { min-height: 64px; }
+html.lv2 .pc-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+html.lv2 .pc-head span { color: var(--mu); flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.lv2 .pc-hide { background: none !important; border: 0; box-shadow: none; padding: 0; min-height: 0; color: var(--mu); font-size: 12px; text-decoration: underline; }
+html.lv2 .pc-about { margin: 4px 0 6px; color: var(--tx); }
+html.lv2 .pc-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 4px 12px; font-variant-numeric: tabular-nums; }
+html.lv2 .pc-facts em { display: block; font-style: normal; font-size: 11px; color: var(--mu); text-transform: uppercase; letter-spacing: .04em; }
+html.lv2 .pc-facts small { color: var(--mu); }
+html.lv2 .pc-sr { display: grid; gap: 2px; margin: 6px 0 0; }
+html.lv2 .pc-news { margin: 6px 0 0; padding-inline-start: 18px; } html.lv2 .pc-news li { margin: 2px 0; }
+html.lv2 .pc-note { margin: 6px 0 0; font-size: 12px; color: var(--mu); }
+html.lv2 .eqp-co { margin: var(--s3) 0; } html.lv2 .eqp-co > summary { cursor: pointer; font-weight: 600; } html.lv2 .eqp-cards .precard { margin: var(--s2) 0; }

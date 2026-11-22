@@ -253,6 +253,10 @@ async function more(el, id, m) {
     H.$('#pvOut', el).innerHTML = `<p class="warn">${H.esc(r.estimate)}</p><p class="mu">${r.rebalanceDue ? 'Today is a rebalance day' : 'Not a rebalance day today'}${r.runsAtNy ? `; it runs at about ${r.runsAtNy} New York time` : ''}.</p>
       <div class="tablewrap"><table><tr><th>Ticker</th><th>Price</th><th>Now</th><th>Target</th><th>Shares now → target</th><th>Change</th><th>About</th></tr>${r.trades.map(t => `<tr><td data-no-tr>${H.esc(t.ticker)}</td><td>${H.money(t.price)}</td><td>${pct(t.currentPct)}</td><td>${pct(t.targetPct)}</td><td>${t.currentShares} → ${t.targetShares}</td><td>${t.action} ${Math.abs(t.change)}</td><td>${H.money(Math.abs(t.dollars))}</td></tr>`).join('')}</table></div>
       ${r.trace.length ? `<p class="mu small">Why: ${r.trace.map(x => H.esc(`${x.rule} → ${x.result}`)).join(' · ')}</p>` : ''}`;
+    // The companies this rebalance would buy, each with its company card (loaded on its own).
+    const buys = [...new Set(r.trades.filter(t => t.change > 0).map(t => t.ticker))].slice(0, 6);
+    if (buys.length && H.preBuyCard) { const det = document.createElement('details'); det.className = 'eqp-co'; det.innerHTML = '<summary>About the companies this would buy</summary><div class="eqp-cards"></div>'; H.$('#pvOut', el).append(det);
+      det.addEventListener('toggle', () => { if (det.open && !det.dataset.done) { det.dataset.done = '1'; for (const s of buys) { const c = document.createElement('div'); det.lastElementChild.append(c); H.preBuyCard(c, s, { compact: true }); } } }); }
     return '';
   });
   H.$$('[data-v]', el).forEach(b => H.act(b, async () => { await H.api(`/playbooks/${id}/restore`, { body: { version: +b.dataset.v } }); location.reload(); return ''; }));
