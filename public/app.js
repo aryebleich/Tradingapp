@@ -412,7 +412,7 @@ const NAV = [
 // every feature, setting and saved item stays exactly where it was.
 const HUBS = {
   analyze: ['Stock & fund analyzer', [['analyze', 'Stock & fund analyzer'], ['earnings', 'Earnings vs expectations'], ['compare', 'Compare stocks']]],
-  research: ['Research & news', [['research', 'Plain-language research'], ['news', 'News & sentiment'], ['intel', 'Market intelligence'], ['institutions', 'Institutional portfolios']]],
+  research: ['Research & news', [['research', 'Plain-language research'], ['news', 'News & sentiment'], ['intel', 'Market intelligence'], ['institutions', 'Institutional portfolios'], ['rates', 'Rates vs stocks']]],
   scanner: ['Scanners', [['scanner', 'Scanner'], ['leaders', 'New leaders'], ['valuescan', 'Growth at a price']]],
   ai: ['AI assistant', [['ai', 'AI assistant'], ['aitools', 'AI tools']]],
   options: ['Options', [['options', 'Options desk'], ['optionslab', 'Options lab']]],
@@ -427,7 +427,7 @@ const HUBS = {
   marketplace: ['Marketplace', [['marketplace', 'Overview'], ['traders', 'Top traders'], ['aimarket', 'AI strategy marketplace'], ['sharedstrategies', 'Strategies'], ['sharedportfolios', 'Portfolios'], ['signalchannels', 'Signal channels']]],
   developers: ['Developers', [['developers', 'Developer API'], ['agenthub', 'Agents & API'], ['code', 'Code lab'], ['quantconnect', 'Cloud algorithms'], ['alpaca-dev', 'Alpaca AI & CLI tools']]],
   insights: ['Performance', [['insights', 'Insights & journal'], ['longterm', 'Long-term view'], ['execution', 'Execution & routing']]],
-  riskview: ['Risk', [['riskview', 'Portfolio & risk'], ['risk', 'Risk controls'], ['margin', 'Margin center']]],
+  riskview: ['Risk', [['riskview', 'Portfolio & risk'], ['risk', 'Risk controls'], ['margin', 'Margin center'], ['diversify', 'Diversification']]],
   tax: ['Taxes', [['tax', 'Taxes'], ['taxpilot', 'Tax autopilot']]],
   money: ['All my money', [['money', 'All my money'], ['private', 'Private markets'], ['currencies', 'Currencies']]],
   accounts: ['Accounts', [['accounts', 'All accounts'], ['brokers', 'Choose your brokerage'], ['account', 'Alpaca account']]],
@@ -2478,7 +2478,8 @@ lazyRoutes(() => import('./pages/social.js'), 'registerSocial', shared, ["trader
 lazyRoutes(() => import('./pages/sponsored.js'), 'registerSponsored', shared, ["admin-sponsored"]);
 lazyRoutes(() => import('./pages/aitrade.js'), 'registerAiTrade', shared, ["agenthub", "aibots", "aisignals", "intel"]);
 lazyRoutes(() => import('./pages/invest.js'), 'registerInvest', shared, ["analyze", "lowcost", "earnings", "leaders", "short", "margin", "aifunds"]);
-lazyRoutes(() => import('./pages/stock.js'), 'registerStock', shared, ["compare", "valuescan"]);
+lazyRoutes(() => import('./pages/stock.js'), 'registerStock', shared, ["compare", "valuescan", "rates"]);
+lazyRoutes(() => import('./pages/growth.js'), 'registerGrowth', shared, ["diversify"]);
 
 // Static files are cached for instant repeat visits (sw.js); pages and data always come fresh.
 if (!PREFETCH && 'serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});

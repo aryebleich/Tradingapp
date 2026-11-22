@@ -3,7 +3,23 @@
 // Data: /api/stock (src/stock.js). Every figure says where it comes from; estimates and indicative
 // numbers are labelled; nothing here is advice.
 let H;
-export function registerStock(routes, helpers) { H = helpers; Object.assign(routes, { compare: comparePage, valuescan: valuescanPage }); }
+export function registerStock(routes, helpers) { H = helpers; Object.assign(routes, { compare: comparePage, valuescan: valuescanPage, rates: ratesPage }); }
+
+// ---------- rates vs stocks ----------
+async function ratesPage(view) {
+  view.innerHTML = `<div class="pagehead"><h1>Rates vs stocks</h1><p class="mu" style="margin:4px 0 0">The Fed funds rate, Treasury yields and the yield curve, against the S&amp;P 500 and the sectors that react to rates most.</p></div><div id="rvo"><div class="card"><div class="skel"><div class="h1"></div><div></div><div class="box"></div></div></div></div>`;
+  const out = H.$('#rvo', view);
+  try {
+    const d = await H.api('/rates'), L = d.latest, f = d.fomc;
+    const last = s => (s?.length ? s.at(-1)[1] : null), v = x => (x == null ? '-' : `${(+x).toFixed(2)}%`);
+    out.innerHTML = card('Today', `<div class="stats">${stat('Fed funds rate', v(L?.fed?.[1]))}${stat('2-year Treasury', v(L?.two?.[1]))}${stat('10-year Treasury', v(L?.ten?.[1]))}${stat('Yield curve (10y − 2y)', L?.curve == null ? '-' : `${L.curve > 0 ? '+' : ''}${L.curve.toFixed(2)} pts`, L?.curve < 0 ? '<b class="neg">inverted</b>' : 'normal')}${stat('Next Fed decision', f.date ? H.esc(f.date) : '-', f.date ? `in ${f.days} days` : H.esc(f.note || ''))}</div><p class="mu small-print">${H.esc(d.note)}${f.date ? ' Meeting date from the Federal Reserve\'s published calendar.' : ''}</p>`)
+      + (d.rates ? card('Rates over 6 years', svgLines([{ name: 'Fed funds', values: d.rates.fed.map(x => x[1]), cls: 'a3' }, { name: '2-year', values: d.rates.two.map(x => x[1]), cls: 'a1' }, { name: '10-year', values: d.rates.ten.map(x => x[1]), cls: 'p' }], { label: 'Fed funds rate, 2-year and 10-year yields, month ends' })
+        + `<h3>Yield curve (10-year minus 2-year)</h3>${svgLines([{ name: '10y − 2y', values: d.curve.map(x => x[1]), cls: 'p' }], { h: 120, label: 'Yield curve, month ends', levels: [{ v: 0, kind: 'res' }] })}<p class="mu small-print">Below the red line the curve is inverted.</p>`) : '')
+      + card('How rates tend to affect stocks', `<div class="cards rates-sec">${d.sectors.map(s => `<div class="card"><h3>${H.esc(s.name)} <span class="mu" data-no-tr>${H.esc(s.symbol)}</span></h3>${s.prices ? svgLines([{ name: s.symbol, values: s.prices.map(x => x[1]), cls: 'p' }], { h: 90, label: `${s.name} price, month ends` }) : '<p class="mu">No price history right now.</p>'}
+          <p class="small-print">${H.esc(s.why)}</p>${s.corr10y != null ? `<p class="mu small-print">Over the last 6 years, its monthly returns moved ${Math.abs(s.corr10y) < 0.15 ? 'about independently of' : s.corr10y < 0 ? 'opposite to' : 'with'} monthly changes in the 10-year yield (correlation ${s.corr10y}).</p>` : ''}<p><a href="#/analyze?symbol=${encodeURIComponent(s.symbol)}">Open ${H.esc(s.symbol)} →</a></p></div>`).join('')}</div>
+        <ul class="plain">${d.explain.map(x => `<li>${H.esc(x)}</li>`).join('')}</ul><p><a href="#/invest/alpaca-tools">Bonds, rates and crypto →</a> · <a href="#/calendar">Calendar →</a></p>${NOTE}`);
+  } catch (e) { out.innerHTML = `<div class="card"><p class="err">${H.esc(e.message)}</p></div>`; }
+}
 
 export const VIEWS = [['overview', 'Overview'], ['valuation', 'Valuation'], ['fundamentals', 'Fundamentals'], ['earnings', 'Earnings'], ['dividends', 'Dividends'], ['technicals', 'Technicals'], ['supply', 'Supply & demand']];
 const NOTE = '<p class="mu small-print">Information and education only, not investment advice. Labels compare the stock with its own history and its sector; they do not predict the price.</p>';

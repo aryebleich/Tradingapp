@@ -281,3 +281,11 @@ html.lv2 .pc-sr { display: grid; gap: 2px; margin: 6px 0 0; }
 html.lv2 .pc-news { margin: 6px 0 0; padding-inline-start: 18px; } html.lv2 .pc-news li { margin: 2px 0; }
 html.lv2 .pc-note { margin: 6px 0 0; font-size: 12px; color: var(--mu); }
 html.lv2 .eqp-co { margin: var(--s3) 0; } html.lv2 .eqp-co > summary { cursor: pointer; font-weight: 600; } html.lv2 .eqp-cards .precard { margin: var(--s2) 0; }
+/* growth pages: bar rows, suggestions, account picker */
+html.lv2 .bar-row { display: grid; grid-template-columns: minmax(0, 1fr) 2fr auto; gap: var(--s2); align-items: center; font-size: 14px; margin: 6px 0; }
+html.lv2 .bar-row i { display: block; height: 10px; border-radius: 999px; background: color-mix(in srgb, var(--ac) 60%, transparent); }
+html.lv2 .bar-row b { font-variant-numeric: tabular-nums; min-width: 48px; text-align: end; }
+html.lv2 .sugg { border-top: 1px solid var(--bd); padding: var(--s3) 0; } html.lv2 .sugg:first-child { border-top: 0; padding-top: 0; }
+html.lv2 .sugg h3 { margin: 0 0 var(--s1) !important; }
+html.lv2 .pv { margin-top: var(--s3); }
+html.lv2 .acctpick { max-width: 280px; }

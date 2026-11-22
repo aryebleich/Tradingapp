@@ -45,7 +45,7 @@ async function fundRecords(userId) {
 }
 
 // ---------- sectors and regions ----------
-const ETF_CLASS = {
+export const ETF_CLASS = {
   VTI: ['Broad US market', 'United States'], ITOT: ['Broad US market', 'United States'], VOO: ['Broad US market', 'United States'], SPY: ['Broad US market', 'United States'], IVV: ['Broad US market', 'United States'], SPLG: ['Broad US market', 'United States'],
   QQQ: ['Technology', 'United States'], QQQM: ['Technology', 'United States'], VT: ['Broad world market', 'Global'], VXUS: ['Broad world market', 'International'], VEA: ['Broad world market', 'Developed markets'],
   IEFA: ['Broad world market', 'Developed markets'], EFA: ['Broad world market', 'Developed markets'], VWO: ['Broad world market', 'Emerging markets'], EEM: ['Broad world market', 'Emerging markets'],
@@ -84,7 +84,7 @@ async function cikMap() {
     return m;
   });
 }
-async function classify(symbol) {
+export async function classify(symbol) {
   if (symbol.includes('/')) return ['Crypto', 'Global'];
   if (ETF_CLASS[symbol]) return ETF_CLASS[symbol];
   if (SECTOR_OF[symbol]) return [SECTOR_OF[symbol], 'United States'];
