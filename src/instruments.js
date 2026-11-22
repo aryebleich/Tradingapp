@@ -33,6 +33,35 @@ export const FUTURES = {
   ZC: ['Corn', 'ZC=F', 50, 0.25, 'CBOT', 'Grains'], ZS: ['Soybeans', 'ZS=F', 50, 0.25, 'CBOT', 'Grains'], ZW: ['Wheat', 'ZW=F', 50, 0.25, 'CBOT', 'Grains'],
   BTC: ['Bitcoin futures', 'BTC=F', 5, 5, 'CME', 'Crypto'], MBT: ['Micro bitcoin futures', 'MBT=F', 0.1, 5, 'CME', 'Crypto'],
 };
+// Contract months (exchange month codes) by root. Equity-index futures expire on the third Friday of
+// March, June, September and December, and most traders roll about 8 days before (the Thursday of
+// the week before). For the others the months are shown and the exact last-trading and first-notice
+// days are left to the exchange calendar, which changes with holidays.
+const CODES = 'FGHJKMNQUVXZ', MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const QUARTERLY = [3, 6, 9, 12], MONTHLY = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+export const CYCLES = { ES: QUARTERLY, MES: QUARTERLY, NQ: QUARTERLY, MNQ: QUARTERLY, YM: QUARTERLY, MYM: QUARTERLY, RTY: QUARTERLY, M2K: QUARTERLY, ZN: QUARTERLY, ZB: QUARTERLY, '6E': QUARTERLY, '6J': QUARTERLY,
+  CL: MONTHLY, MCL: MONTHLY, NG: MONTHLY, BTC: MONTHLY, MBT: MONTHLY, GC: [2, 4, 6, 8, 10, 12], MGC: [2, 4, 6, 8, 10, 12], SI: [3, 5, 7, 9, 12], HG: [3, 5, 7, 9, 12], ZC: [3, 5, 7, 9, 12], ZS: [1, 3, 5, 7, 8, 9, 11], ZW: [3, 5, 7, 9, 12] };
+const thirdFriday = (y, m) => { const d = new Date(Date.UTC(y, m - 1, 1)); const first = (5 - d.getUTCDay() + 7) % 7 + 1; return new Date(Date.UTC(y, m - 1, first + 14)); };
+const day = d => d.toISOString().slice(0, 10);
+export function rollCalendar(root, from = new Date(), count = 3) {
+  const cyc = CYCLES[root]; if (!cyc) return [];
+  const index = FUTURES[root]?.[5] === 'Index', out = [];
+  let y = from.getUTCFullYear(), m = from.getUTCMonth() + 1;
+  for (let k = 0; out.length < count && k < 30; k++) {
+    if (cyc.includes(m)) {
+      const exp = index ? thirdFriday(y, m) : null, roll = exp ? new Date(+exp - 8 * 864e5) : null;
+      if (!exp || exp >= new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate()))) out.push({ code: `${root}${CODES[m - 1]}${String(y).slice(2)}`, month: `${MONTH_NAMES[m - 1]} ${y}`, expires: exp ? day(exp) : null, roll: roll ? day(roll) : null });
+    }
+    m++; if (m > 12) { m = 1; y++; }
+  }
+  return out;
+}
+// Brokerages that offer futures to US customers (each needs a futures approval; fees differ). Alpaca,
+// the brokerage connected here, does not, so futures stay practice-only in Brightolio.
+export const FUTURES_BROKERS = [
+  ['Interactive Brokers', 'Futures on most US and world exchanges'], ['tastytrade', 'US futures, including micros'], ['Tradovate / NinjaTrader', 'US futures, flat-rate plans'],
+  ['Charles Schwab (thinkorswim)', 'US futures with approval'], ['E*TRADE', 'US futures with approval'], ['Webull', 'US futures, including micros'],
+];
 export const MARGIN_RATE = 0.08; // a practice estimate of initial margin; exchanges set the real one
 export async function futuresQuote(root) {
   const f = FUTURES[root]; if (!f) throw bad('Unknown contract');
@@ -147,7 +176,7 @@ export const instrumentsRouter = (() => {
   r.use(requireUser);
   r.get('/futures', async (req, res) => {
     const quotes = await Promise.all(Object.keys(FUTURES).map(async k => { const q = await futuresQuote(k).catch(() => null); return { root: k, name: FUTURES[k][0], exchange: FUTURES[k][4], group: FUTURES[k][5], price: q?.price ?? null, ...(q ? contractMath(k, q.price) : { pointValue: FUTURES[k][2], tick: FUTURES[k][3] }) }; }));
-    res.json({ contracts: quotes, positions: await futuresPositions(req.user.id), marginRate: MARGIN_RATE });
+    res.json({ contracts: quotes.map(c => ({ ...c, months: rollCalendar(c.root) })), positions: await futuresPositions(req.user.id), marginRate: MARGIN_RATE, brokers: FUTURES_BROKERS.map(([name, about]) => ({ name, about })), alpaca: false, rollNote: 'Equity-index contracts expire on the third Friday of the month; most traders roll about 8 days before. For the others, check the exchange calendar for the last trading and first notice days.' });
   });
   r.post('/futures/trade', async (req, res) => res.json(await tradeFutures(req.user.id, String(req.body?.root || '').toUpperCase(), req.body?.contracts)));
   r.get('/funds', async (req, res) => {
