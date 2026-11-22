@@ -12,7 +12,7 @@ import compression from 'compression';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { one, all, run, now, audit, persistentDb, needsHostedDb, schemaReport } from './src/db.js';
+import { one, all, run, now, audit, persistentDb, needsHostedDb, schemaReport, dbStats, resetDbStats } from './src/db.js';
 import { encrypt, hashSecret, verifySecret, safeEqual, publicName } from './src/crypto.js';
 import * as auth from './src/auth.js';
 import crypto from 'node:crypto';
@@ -649,6 +649,9 @@ api.use('/public', trustPublicRouter);
 // added later can never be reached by a regular user. (The business books have their own gate:
 // only the currency converter there is for everyone.)
 api.use('/admin', auth.requireUser, auth.requireAdmin);
+// Database read statistics (DB_READ_STATS=1): the top 30 statements by estimated rows read.
+api.get('/admin/dbstats', (req, res) => res.json(dbStats(Math.min(100, +req.query.limit || 30))));
+api.post('/admin/dbstats/reset', (req, res) => { resetDbStats(); res.json({ ok: true }); });
 api.use('/admin/trust', trustAdminRouter);
 api.use('/luach', luachRouter);
 api.use('/desk', deskRouter);

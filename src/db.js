@@ -1040,7 +1040,62 @@ export async function schemaReport() {
 }
 
 const plain = rs => rs.rows.map(r => Object.fromEntries(rs.columns.map((c, i) => [c, r[i]])));
-const exec = async (sql, args) => { await ready; return db.execute({ sql, args: args.map(a => (a === undefined ? null : a)) }); };
+
+// ---------- read statistics (DB_READ_STATS=1) ----------
+// Turso bills "rows read": every row a query scans, not just the rows it returns. With
+// DB_READ_STATS=1 every query is counted by its normalized SQL: calls, rows returned, time, and an
+// estimate of the rows it reads (from EXPLAIN QUERY PLAN, worked out once per statement: a full
+// table scan reads the whole table, an index search about the rows it returns). Admin → GET
+// /api/admin/dbstats shows the top 30. Off by default: nothing is measured or stored.
+export const statsOn = () => process.env.DB_READ_STATS === '1';
+const STATS = new Map(), PLANS = new Map(), SIZES = new Map();
+let statsSince = Date.now();
+export const normalizeSql = sql => String(sql).replace(/\s+/g, ' ').replace(/'(?:[^']|'')*'/g, '?').replace(/\b\d+(\.\d+)?\b/g, '?').replace(/\(\s*\?(\s*,\s*\?)+\s*\)/g, '(?…)').trim().slice(0, 240);
+async function tableSize(t) {
+  const c = SIZES.get(t);
+  if (c && Date.now() - c.at < 60e3) return c.n;
+  const n = Number((await db.execute(`SELECT COUNT(*) n FROM "${t.replace(/"/g, '')}"`).catch(() => ({ rows: [[0]] }))).rows[0][0]) || 0;
+  SIZES.set(t, { n, at: Date.now() }); return n;
+}
+// The plan of a statement: the tables it scans in full (SCAN without an index) and the ones it searches.
+async function planOf(sql, args) {
+  if (PLANS.has(sql)) return PLANS.get(sql);
+  let plan = { scans: [], searches: [] };
+  if (/^\s*(SELECT|UPDATE|DELETE|INSERT|WITH)/i.test(sql)) {
+    try {
+      const r = await db.execute({ sql: 'EXPLAIN QUERY PLAN ' + sql, args });
+      for (const row of r.rows) {
+        const d = String(row.detail ?? row[3] ?? '');
+        const m = /^(SCAN|SEARCH) (?:TABLE )?(\w+)/.exec(d); if (!m || /^sqlite_|^json_each/.test(m[2])) continue;
+        if (m[1] === 'SCAN' && !/USING (COVERING )?INDEX|USING INTEGER PRIMARY KEY/.test(d)) plan.scans.push(m[2]); else plan.searches.push(m[2]);
+      }
+    } catch { plan = { scans: [], searches: [], unknown: true }; }
+  }
+  PLANS.set(sql, plan); return plan;
+}
+async function record(sql, args, rows, ms) {
+  const k = normalizeSql(sql), plan = await planOf(sql, args);
+  let read = Math.max(1, rows);
+  for (const t of plan.scans) read += await tableSize(t);
+  const x = STATS.get(k) || { sql: k, calls: 0, rows: 0, ms: 0, read: 0, scans: plan.scans };
+  x.calls++; x.rows += rows; x.ms += ms; x.read += read; STATS.set(k, x);
+}
+// Top statements by estimated rows read, with calls and reads per minute since the counters started.
+export function dbStats(limit = 30) {
+  const minutes = Math.max(1 / 60, (Date.now() - statsSince) / 60e3), list = [...STATS.values()];
+  const total = list.reduce((a, x) => ({ calls: a.calls + x.calls, read: a.read + x.read }), { calls: 0, read: 0 });
+  return { on: statsOn(), minutes: +minutes.toFixed(2), callsPerMin: +(total.calls / minutes).toFixed(1), readsPerMin: +(total.read / minutes).toFixed(1), readsPerDay: Math.round(total.read / minutes * 1440),
+    top: list.sort((a, b) => b.read - a.read).slice(0, limit).map(x => ({ sql: x.sql, calls: x.calls, callsPerMin: +(x.calls / minutes).toFixed(2), rows: x.rows, readEstimate: x.read, readsPerMin: +(x.read / minutes).toFixed(1), avgMs: +(x.ms / x.calls).toFixed(2), fullScans: x.scans })) };
+}
+export const resetDbStats = () => { STATS.clear(); statsSince = Date.now(); };
+const timed = async (sql, args, run) => {
+  if (!statsOn()) return run();
+  const t0 = performance.now(), r = await run();
+  await record(sql, args, r.rows?.length ?? 0, performance.now() - t0).catch(() => {});
+  return r;
+};
+
+const exec = async (sql, args) => { await ready; const a = args.map(x => (x === undefined ? null : x)); return timed(sql, a, () => db.execute({ sql, args: a })); };
 
 export const one = async (sql, ...a) => plain(await exec(sql, a))[0];
 export const all = async (sql, ...a) => plain(await exec(sql, a));
@@ -1055,7 +1110,7 @@ export async function audit(userId, event, detail, ip) {
 export async function tx(fn) {
   await ready;
   const t = await db.transaction('write');
-  const q = async (sql, a) => t.execute({ sql, args: a.map(x => (x === undefined ? null : x)) });
+  const q = async (sql, a) => { const args = a.map(x => (x === undefined ? null : x)); return timed(sql, args, () => t.execute({ sql, args })); };
   const h = {
     one: async (sql, ...a) => plain(await q(sql, a))[0],
     all: async (sql, ...a) => plain(await q(sql, a)),
