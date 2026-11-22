@@ -120,7 +120,8 @@ PAGES.dividends = async (view, q) => {
   if (!d.rows.length) { out.innerHTML = card('Nothing held yet', '<div class="empty"><b>No holdings in this account.</b><a href="#/scanner/valuescan">Find dividend payers with the stock scanner →</a></div>'); return; }
   const max = Math.max(1, ...(d.monthly || []).map(m => m.income));
   const safe = s => (s ? `<span class="pill ${s.score >= 70 ? 'pos' : s.score >= 45 ? '' : 'neg'}">${s.score} · ${H.esc(s.label)}</span>` : '');
-  out.innerHTML = `<div class="stats card">${stat('Yearly income, expected', H.money(d.total))}${stat('Yield on the account', pct(d.yieldOnValue, 2))}${stat('Paying holdings', String(d.rows.filter(r => r.dps).length) + ' of ' + d.rows.length)}${stat('Reinvesting (DRIP)', d.drip ? 'On' : 'Off', `<a href="#/wealth?tab=drip">${d.drip ? 'Change' : 'Turn on'} →</a>`)}</div>`
+  out.innerHTML = `<div class="stats card">${stat('Yearly income, expected', H.money(d.total))}${stat('Yield on the account', pct(d.yieldOnValue, 2))}${stat('Paying holdings', String(d.rows.filter(r => r.dps).length) + ' of ' + d.rows.length)}${stat('Reinvesting (DRIP)', d.drip ? 'On' : 'Off', `<a href="#/wealth?tab=drip">${d.drip ? 'Change' : 'Turn on'} →</a>`)}</div>
+      <p class="card"><label class="chk"><input type="checkbox" id="dvdRem" ${d.reminders ? 'checked' : ''}> Remind me the day before a holding goes ex-dividend or reports earnings</label></p>`
     + (d.monthly ? card('Income by month, next 12 months', `<div class="mbars" role="img" aria-label="Expected income by month: ${d.monthly.map(m => `${m.month} ${H.money(m.income)}`).join(", ")}">${d.monthly.map(m => `<div class="mb"><i style="height:${(m.income / max * 100).toFixed(1)}%" title="${H.esc(m.month)}: ${H.money(m.income)}"></i><span>${H.esc(m.month.slice(5))}</span></div>`).join('')}</div>
         <div class="tablewrap"><table class="slim"><thead><tr><th>Month</th><th class="num">Expected</th><th>From</th></tr></thead><tbody>${d.monthly.filter(m => m.income).map(m => `<tr><td>${H.esc(m.month)}</td><td class="num">${H.money(m.income)}</td><td class="small-print" data-no-tr>${m.items.map(i => `${H.esc(i.symbol)} ${H.money(i.amount)}`).join(', ')}</td></tr>`).join('')}</tbody></table></div>
         ${d.notMonthly?.length ? `<p class="mu small-print">Not in the months above (no payment dates listed, yearly amount from annual reports): <span data-no-tr>${d.notMonthly.map(H.esc).join(', ')}</span>. They are in the yearly total.</p>` : ''}`) : '')
@@ -131,6 +132,7 @@ PAGES.dividends = async (view, q) => {
       <p class="mu small-print">Safety score: payout ratio, free cash flow cover, years of increases, debt and profit, from SEC annual reports. Source of payments: ${H.esc(d.source)}. ${H.esc(d.note)}</p>`)
     + H.related([['wealth?tab=drip', 'Reinvest dividends'], ['scanner/valuescan', 'Stock scanner'], ['wealth/passive', 'Passive investing'], ['tax', 'Taxes']]);
   wireUpgrade(out);
+  const rem = H.$('#dvdRem', out); if (rem) rem.onchange = () => H.api('/income/reminders', { method: 'PUT', body: { on: rem.checked } }).catch(e => { rem.checked = !rem.checked; alert(e.message); });
 };
 
 // ---------- Passive investing ----------

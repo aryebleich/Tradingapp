@@ -71,6 +71,7 @@ export const JOBS = [
   ['scanners', 1, t => runScanners(t)],
   // Saved growth-at-a-price filters with alerts: new matches, once a day.
   ['valueAlerts', 1440, async () => (await import('./stock.js')).runValueAlerts()],
+  ['reminders', 15, async t => (await import('./income.js')).runReminders(t)],
   // AI morning news picks: picks at 9:00, members at 9:35, stops and the close (New York time).
   ['newspicks', 5, async t => (await import('./newspicks.js')).tick(t)],
   ['intraday', 5, async t => (await import('./intraday.js')).tick(t)],

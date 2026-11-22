@@ -67,7 +67,7 @@ export async function incomeFor(userId, account, paid = false) {
   const calendar = (ahead || []).filter(p => syms.includes(p.symbol) && p.ex_date >= iso(now)).sort((a, b) => a.ex_date.localeCompare(b.ex_date)).map(p => ({ ...p, amount: r2((hold.find(h => h.symbol === p.symbol)?.qty || 0) * p.rate) }));
   const inMonthly = new Set((fc?.months || []).flatMap(m => m.items.map(i => i.symbol))), notMonthly = rows.filter(r => r.dps && !inMonthly.has(r.symbol)).map(r => r.symbol);
   return { account, rows, total, notMonthly, yieldOnValue: value ? r2(total / value * 100) : null, monthly: fc?.months || null, calendar, calendarNote: ahead ? null : 'Upcoming ex-dividend dates need market data (Alpaca), which is not set up on this server.', source, locked,
-    drip: (((await getSetting(userId, 'drip', { accounts: [] })) || {}).accounts || []).includes(account), note: NOTE };
+    drip: (((await getSetting(userId, 'drip', { accounts: [] })) || {}).accounts || []).includes(account), reminders: !!((await getSetting(userId, 'reminders', {})) || {}).on, note: NOTE };
 }
 
 export const incomeRouter = (() => {
@@ -75,6 +75,10 @@ export const incomeRouter = (() => {
   r.get('/', async (req, res) => {
     const account = ACCOUNT_IDS.includes(req.query.account) ? req.query.account : 'paper';
     try { res.json(await incomeFor(req.user.id, account, isPaid(req.user))); } catch (e) { res.status(e.status || 500).json({ error: e.status ? e.message : 'Not available right now.' }); }
+  });
+  r.put('/reminders', async (req, res) => {
+    const { setSetting } = await import('./settings.js'), cur = (await getSetting(req.user.id, 'reminders', {})) || {};
+    await setSetting(req.user.id, 'reminders', { ...cur, on: !!req.body?.on }); res.json({ on: !!req.body?.on });
   });
   r.get('/passive', async (req, res) => {
     const account = ACCOUNT_IDS.includes(req.query.account) ? req.query.account : 'paper';
@@ -117,4 +121,32 @@ export async function passiveFor(userId, account) {
   return { account, check, mixes: MIXES.map(m => ({ ...m, fee: r2(m.parts.reduce((a, [s, w]) => a + (INDEX_FUNDS.find(f => f.symbol === s)?.fee || 0) * w / 100, 0), 3) })), funds: INDEX_FUNDS.slice(0, 8),
     dragExample: { amount: 10000, years: 30, ret: 7, low: feeDrag(10000, 30, 7, 0.03), high: feeDrag(10000, 30, 7, 1.0) },
     note: 'Examples to learn from, not advice for your situation. Returns are not guaranteed and index funds fall when markets fall.' };
+}
+
+// ---------- reminders: ex-dividend and earnings of holdings ----------
+// Opt-in (Dividends & income page). Once a day after the close: a note the day before a holding goes
+// ex-dividend (buy before it to receive the dividend) or reports earnings.
+export function remindersDue(symbols, { exdivs = [], earnings = [] }, tomorrow) {
+  const held = new Set(symbols), out = [];
+  for (const e of exdivs) if (held.has(e.symbol) && e.ex_date === tomorrow) out.push({ symbol: e.symbol, kind: 'exdiv', text: `${e.symbol} goes ex-dividend tomorrow (${e.rate ? '$' + (+e.rate).toFixed(2) + ' a share' : 'dividend'}). You keep it if you hold the shares at today's close.` });
+  for (const e of earnings) if (held.has(e.symbol) && e.date === tomorrow) out.push({ symbol: e.symbol, kind: 'earnings', text: `${e.symbol} reports earnings tomorrow${e.when ? ' ' + e.when : ''}. Prices can move a lot around reports.` });
+  return out;
+}
+export async function runReminders(t = Date.now()) {
+  const { nyTime } = await import('./time.js'), { isTradingDay } = await import('./market-calendar.js'), { all: dbAll } = await import('./db.js');
+  const n = nyTime(t); if (n.minutes < 990 || n.minutes > 1080 || !isTradingDay(n.day)) return 0;
+  let next = new Date(n.day + 'T12:00:00Z'); do next = new Date(+next + 864e5); while (!isTradingDay(iso(next)));
+  const tomorrow = iso(next), users = await dbAll("SELECT user_id, v FROM user_settings WHERE k = 'reminders'"); let sent = 0;
+  const { notifyUser } = await import('./notify-user.js'), { setSetting } = await import('./settings.js'), ev = await import('./events.js');
+  for (const { user_id: uid } of users) {
+    const s = (await getSetting(uid, 'reminders', {})) || {}; if (!s.on || s.last === n.day) continue;
+    const syms = new Set(); for (const a of ['paper', 'alpaca']) (await accountSummary(uid, a).catch(() => ({ positions: [] }))).positions.forEach(p => p.qty > 0 && syms.add(p.symbol));
+    if (!syms.size) continue;
+    const list = [...syms], exdivs = (await payments(list, tomorrow, tomorrow)) || [];
+    const earnings = ev.eventsEnabled() ? await ev.earningsCalendar(tomorrow, tomorrow, list).catch(() => []) : [];
+    const due = remindersDue(list, { exdivs, earnings }, tomorrow);
+    await setSetting(uid, 'reminders', { ...s, last: n.day });
+    if (due.length) { await notifyUser(uid, due.map(d => d.text).join(' ')).catch(() => {}); sent++; }
+  }
+  return sent;
 }

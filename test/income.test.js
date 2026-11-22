@@ -44,3 +44,12 @@ test('active desk: the session and the day-trade status', async () => {
   assert.match(pdtStatus({ account: 'alpaca', equity: 5000 }).text, /official count/);
   const d = await u('/active?account=paper'); assert.equal(d.status, 200); assert.equal(d.body.engines.length, 2); assert.equal(d.body.pdt.applies, false);
 });
+
+test('reminders: only holdings, only the day before', async () => {
+  const { remindersDue } = await import('../src/income.js');
+  const due = remindersDue(['KO', 'AAPL'], { exdivs: [{ symbol: 'KO', rate: 0.51, ex_date: '2026-11-24' }, { symbol: 'PEP', ex_date: '2026-11-24' }, { symbol: 'AAPL', ex_date: '2026-12-01' }], earnings: [{ symbol: 'AAPL', date: '2026-11-24', when: 'after the close' }] }, '2026-11-24');
+  assert.deepEqual(due.map(d => d.kind + ':' + d.symbol), ['exdiv:KO', 'earnings:AAPL']);
+  assert.match(due[0].text, /\$0\.51/);
+  const r = await u('/income/reminders', { on: true }, 'PUT'); assert.equal(r.status, 200);
+  assert.equal((await u('/income?account=paper')).body.rows.length, 0);
+});
