@@ -4,6 +4,36 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-22: Growth features, phase 1
+
+### What changed
+
+- **Plan first:** PLAN_GROWTH.md: what exists, what the data and the broker really allow, 18 features with plan tiers, and the build order ranked by effect on revenue and trust against effort.
+- **One stock page:** the analyzer gained Valuation (P/E against its own 5-year average and its sector, PEG, P/S, EV/EBITDA), Fundamentals (5 years, with an AI summary for Pro), Earnings (beats, misses, price moves after reports), Dividends (safety score), Technicals and Supply & demand (labelled indicative, no depth). There is also a Compare tab. Old `#/analyze?symbol=` links work.
+- **Scanner:** "Growth at a price" presets, saved filters and daily alerts (Pro).
+- **Rates vs stocks:** Fed funds, 2y, 10y and the curve against SPY and sectors, with the next Fed meeting.
+- **Company card before every buy:** on the quick ticket, the Trade page, Equalize, Playbooks and bots. It loads in the background, never blocks the order, and can be hidden per stock.
+- **Diversification:** a score in six parts, fund overlap, correlation, and up to 3 suggestions with "why" and a preview (never an order).
+- **AI morning picks:** ranked picks with reasons and sources. Approve each day or let them run automatically, within a daily budget, a per-stock limit, a stop and a daily loss limit. Paper by default; real money needs Elite, the password and step-up. The public record includes every loss.
+- **AI intraday:** a slow, rule-based engine (every 5 minutes at the fastest). It has hours, interval, order, position, loss and PDT limits, the kill switch, an optional ex-dividend hold for a dividend list, paper by default and a full trade log.
+- **AI long/short portfolios** (renamed from "AI hedge funds"): a cap on each position, the value history with its largest fall, a hypothetical backtest against SPY, fees and risks in plain words, and step-up before real-account approvals.
+- **Dividends & income:** income by month, coming ex-dates, safety per holding, DRIP status, and opt-in reminders before ex-dividend dates and earnings.
+- **Passive investing:** an account check (funds against single stocks, average fee), four steps linking the existing tools, example mixes and a fee example.
+- **Active trading desk** (`#/active`): session, buying power, the day-trade rule, positions, movers and the automatic engines.
+- **Fund compare:** 2 to 4 funds side by side; each mutual fund shows its closest ETF.
+- **Futures research:** contract months, the roll calendar for equity-index contracts, and brokerages that offer futures.
+- **Translations:** Yiddish (`public/i18n/yi-growth.js`) and simple translations of the new menu labels in 8 languages.
+
+### Tests
+
+`npm test`: 435 pass, 0 fail (3 existing TODO items are marked for review, as before). New: test/stock.test.js, stock-routes, rates, diversify, newspicks, intraday, aifunds-growth, income, futures-roll. Checked in the browser at 1280 and 375 px, signed in: no console errors, no horizontal scroll, axe (WCAG 2 A/AA) clean on each new page.
+
+### Rollback
+
+Revert the commits from `55306d4` (PLAN_GROWTH.md) to this entry. The new tables (newspicks_log, newspicks_trades, intraday_log, ai_fund_nav) and the `ai_funds.max_weight` column are additive and can stay.
+
+---
+
 ## 2026-11-20: Pro polish: design system, landing, pricing, onboarding, empty states
 
 ### What changed

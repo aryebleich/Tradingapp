@@ -74,16 +74,15 @@ before(async () => {
 });
 after(() => s?.close());
 
-test('routes: free reads, Pro saves, real money needs Elite and the password; stop turns it off', async () => {
+test('routes: free reads, Elite saves, real money needs Elite and the password; stop turns it off', async () => {
   const g = await free('/intraday'); assert.equal(g.status, 200); assert.equal(g.body.settings.account, 'paper'); assert.match(g.body.limits.pdt, /25,000/);
   assert.equal((await free('/intraday/settings', { enabled: true }, 'PUT')).status, 402);
-  const ok = await pro('/intraday/settings', { enabled: true, maxTrades: 3 }, 'PUT'); assert.equal(ok.status, 200); assert.equal(ok.body.settings.enabled, true);
-  assert.equal((await pro('/intraday/settings', { live: true, account: 'alpaca', password: 'Str0ngPassword' }, 'PUT')).status, 402);
+  assert.equal((await pro('/intraday/settings', { enabled: true }, 'PUT')).status, 402); // Elite feature
   const { run, one } = await import('../src/db.js');
   await run("UPDATE users SET plan = 'elite' WHERE email = 'id-pro@example.com'");
+  const ok = await pro('/intraday/settings', { enabled: true, maxTrades: 3 }, 'PUT'); assert.equal(ok.status, 200); assert.equal(ok.body.settings.enabled, true); assert.equal(ok.body.settings.account, 'paper');
   assert.equal((await pro('/intraday/settings', { live: true, account: 'alpaca' }, 'PUT')).status, 401);
   assert.equal((await pro('/intraday/settings', { live: true, account: 'alpaca', password: 'Str0ngPassword' }, 'PUT')).status, 200);
-  await run("UPDATE users SET plan = 'pro' WHERE email = 'id-pro@example.com'");
   const st = await pro('/intraday/stop', {}); assert.equal(st.status, 200); assert.equal(st.body.settings.enabled, false);
   // The engine itself on the practice account: buys within the position limit, logs the reason, then the kill switch stops new buys.
   const u = await one("SELECT id FROM users WHERE email = 'id-pro@example.com'");

@@ -76,6 +76,38 @@ Choices and assumptions made without asking, with the reason. Trading-tools work
   - Forward P/E and expected EPS only with a Finnhub key; the next earnings date is estimated without one.
 - G-5: **Naming (LEGAL_REVIEW.md).** "AI hedge funds" becomes "AI long/short portfolios" in the menu and on the page. They are rule-based portfolios in the member's own account, not funds, not pooled money, and not regulated products. The route `#/aifunds` stays.
 
+- G-6: **What free members see (the sample before the paywall).** Free members see the real thing with less of it, never a fake preview:
+  - stock page: two years of statements instead of five, and no AI summary;
+  - supply & demand: no volume profile;
+  - diversification: one suggestion of up to three;
+  - dividends: safety scores for the first three holdings;
+  - AI morning picks and AI intraday: the picks, the rules and the full record are free to read; using AI morning picks is Pro (real money Elite), using AI intraday is Elite, as PLAN_GROWTH.md set;
+  - saved scanner filters and alerts: Pro.
+  Each locked part names the plan that unlocks it and opens the upgrade window (the server answers 402 with `upgrade` and `feature`).
+- G-7: **AI morning picks.** Ranked at 9:00 New York time from today's headlines and the pre-market move of 30 large US stocks. They are placed at 9:35 (automatic mode) or when the member approves. All are closed by 15:50 or at the stop.
+  - Guards, all on the server: the kill switch, once a day, the daily budget (never above cash), the per-stock limit, a stop under each entry, the daily loss limit and the pattern-day-trader rule.
+  - The practice account is the default. A real account needs the Elite plan, the password and the step-up check.
+  - The public record keeps every pick and its open-to-close result, losses included, and shows the hit rate, the losing picks and the worst day.
+- G-8: **AI intraday is a separate, ready-made engine, not a second copy of Bots.** The existing intraday bots (src/scanner.js) run rules the member writes, every 15 minutes or hourly. AI intraday is one fixed, published rule set (20-bar average, last bar and RSI 50–70 to enter; stop, target, RSI above 75 or back under the average to exit). It shares placeOrder, the kill switch and the risk limits with Bots and sits in the same Bots hub.
+  - It runs every 5 minutes at the fastest (each member picks 5–60), with one decision per stock per run, so it is never called high-frequency trading.
+  - Limits: new positions only from 9:45 to 15:45, everything closed at 15:50. Plus a minimum time between orders, a daily order cap, a cap per position and on open positions, a stop, a target, the daily loss limit and the pattern-day-trader rule (checked before a buy, so a protective sell is never blocked).
+  - The kill switch stops buys, never a protective sell.
+  - The ex-dividend option holds a stock from the dividend list overnight only when its ex-date is the next trading day. The page says the price usually drops by about the dividend that day.
+- G-9: **AI long/short portfolios.** Each position is capped at 25% by default (the member can choose 10–50%) and the excess stays in cash.
+  - Every weekly turn records the value, so the page shows the real record and its largest fall.
+  - The backtest is labelled hypothetical. It covers about 6 months, because the rules need over a year of history to start; it assumes 0.05% cost per change and is compared with SPY.
+  - Fees in plain words: no management or performance fee; brokerage borrow fees, margin interest and options costs still apply.
+  - Approving real-account trades now passes the step-up check.
+- G-10: **Mutual funds: the closest ETF.** Index mutual funds map to an ETF on the same index or market. For target-date and actively managed funds the ETF is only "similar in mix" or "similar in style", and the compare table says an active fund cannot be copied.
+- G-11: **Futures stay research and practice only** (Alpaca has no futures).
+  - Equity-index expiries are computed exactly (third Friday of the quarter), with the usual roll about 8 days before.
+  - For the other contracts only the contract months are shown; their last-trading and first-notice days are left to the exchange calendar instead of being guessed.
+  - The list of brokerages that offer futures names no fees or approvals.
+- G-12: **Dividends & income.** Payments come from Alpaca corporate actions when market data is set up (funds included), otherwise from the dividend per share in SEC annual reports. The source is shown on each row.
+  - The monthly forecast repeats the last 12 months of payments. Holdings with only a yearly figure are listed under the chart and counted in the yearly total, never spread over invented months.
+  - Reminders the day before an ex-dividend date or an earnings report are opt-in.
+- G-13: **Active trading desk.** It uses the brokerage's own day-trade count where Alpaca reports one; otherwise it says the brokerage keeps the official count. The risk line is "Day trading is risky and often loses money", with no statistic Brightolio cannot source.
+
 ## Pro polish: trust and revenue (2026-11-20)
 
 - P2-1: The review (PRO_REVIEW.md) found a mature landing page and pricing. The weak points were smaller and closer to the money: the upgrade window, the plan choice inside the app, sign-up, the first steps on Home, page titles and three accessibility failures. Those were fixed first; a rebuild of what works was not attempted.

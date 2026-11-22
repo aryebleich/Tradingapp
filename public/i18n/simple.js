@@ -153,6 +153,16 @@ const ROWS = [
   ['To sell', 'A vender', 'À vendre', 'Zu verkaufen', 'A vender', 'Продать', 'למכירה', 'للبيع', '卖出'],
   ['Simple translation: menus and main buttons are translated; the rest of the app stays in English.', 'Traducción sencilla: se traducen los menús y los botones principales; el resto queda en inglés.', "Traduction simple : les menus et les boutons principaux sont traduits ; le reste de l'application reste en anglais.", 'Einfache Übersetzung: Menüs und Hauptschaltflächen sind übersetzt; der Rest bleibt auf Englisch.', 'Tradução simples: menus e botões principais são traduzidos; o restante fica em inglês.', 'Упрощённый перевод: переведены меню и основные кнопки, остальное на английском.', 'תרגום בסיסי: התפריטים והכפתורים העיקריים מתורגמים; שאר האפליקציה באנגלית.', 'ترجمة مبسطة: القوائم والأزرار الرئيسية مترجمة، وبقية التطبيق بالإنجليزية.', '简单翻译：菜单和主要按钮已翻译，其余部分保持英文。'],
   ['The language of the app on this device.', 'El idioma de la aplicación en este dispositivo.', "La langue de l'application sur cet appareil.", 'Die Sprache der App auf diesem Gerät.', 'O idioma do aplicativo neste dispositivo.', 'Язык приложения на этом устройстве.', 'שפת האפליקציה במכשיר זה.', 'لغة التطبيق على هذا الجهاز.', '此设备上的应用语言。'],
+  ['Compare stocks', 'Comparar acciones', 'Comparer des actions', 'Aktien vergleichen', 'Comparar ações', 'Сравнить акции', 'השוואת מניות', 'مقارنة الأسهم', '比较股票'],
+  ['Growth at a price', 'Crecimiento a buen precio', 'Croissance à bon prix', 'Wachstum zum fairen Preis', 'Crescimento a bom preço', 'Рост по разумной цене', 'צמיחה במחיר סביר', 'نمو بسعر معقول', '合理价格的成长股'],
+  ['Rates vs stocks', 'Tasas vs. acciones', 'Taux et actions', 'Zinsen und Aktien', 'Juros vs. ações', 'Ставки и акции', 'ריבית מול מניות', 'الفائدة مقابل الأسهم', '利率与股票'],
+  ['Diversification', 'Diversificación', 'Diversification', 'Diversifikation', 'Diversificação', 'Диверсификация', 'פיזור', 'التنويع', '分散投资'],
+  ['AI morning picks', 'Selección matinal de IA', 'Sélection matinale IA', 'KI-Morgenauswahl', 'Escolhas matinais da IA', 'Утренний выбор ИИ', 'בחירות בוקר של AI', 'اختيارات الصباح بالذكاء الاصطناعي', 'AI 早盘精选'],
+  ['AI intraday', 'IA intradía', 'IA intrajournalière', 'KI-Intraday', 'IA intradiária', 'ИИ внутри дня', 'AI תוך-יומי', 'الذكاء الاصطناعي خلال اليوم', 'AI 日内交易'],
+  ['AI long/short portfolios', 'Carteras largo/corto con IA', 'Portefeuilles long/short IA', 'KI-Long/Short-Portfolios', 'Carteiras long/short com IA', 'Портфели лонг/шорт с ИИ', 'תיקי לונג/שורט של AI', 'محافظ شراء/بيع على المكشوف بالذكاء الاصطناعي', 'AI 多空组合'],
+  ['Passive investing', 'Inversión pasiva', 'Investissement passif', 'Passives Investieren', 'Investimento passivo', 'Пассивное инвестирование', 'השקעה פסיבית', 'الاستثمار السلبي', '被动投资'],
+  ['Dividends & income', 'Dividendos e ingresos', 'Dividendes et revenus', 'Dividenden & Einkommen', 'Dividendos e renda', 'Дивиденды и доход', 'דיבידנדים והכנסה', 'الأرباح والدخل', '股息与收入'],
+  ['Active trading desk', 'Mesa de trading activo', 'Bureau de trading actif', 'Aktiver Handelsplatz', 'Mesa de trading ativo', 'Стол активной торговли', 'שולחן מסחר פעיל', 'مكتب التداول النشط', '主动交易台'],
 ];
 export function forLang(code) {
   const i = CODES.indexOf(code) + 1;

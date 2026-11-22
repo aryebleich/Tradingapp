@@ -1238,7 +1238,7 @@ export const strings = {
   "Brokerage accounts →": "בראקערידזש אקאונטס ←",
   "Options desk": "אפציעס טיש",
   "AI tools": "AI געצייג",
-  "AI hedge funds": "AI העדזש פאנדס",
+  "AI hedge funds": "AI העדזש פאנדס", "AI long/short portfolios": "AI לאנג/שארט פארטפאליאס",
   "Analytics": "אנאליטיקס",
   "Settings for this page": "סעטינגס פאר דעם בלאט",
   "All settings →": "אלע סעטינגס ←",

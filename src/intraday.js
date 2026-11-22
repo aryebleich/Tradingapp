@@ -188,7 +188,7 @@ export const intradayRouter = (() => {
       limits: { fastest: 5, hours: '9:45 to 15:45 New York for new positions; everything closed at 15:50', pdt: 'Margin accounts under $25,000: at most 3 day trades in 5 trading days' } });
   }));
   r.put('/settings', (req, res, next) => (req.body?.live || (req.body?.account && req.body.account !== 'paper') ? stepUpGuard(req, res, next) : next()), wrap(async (req, res) => {
-    if (!isPaid(req.user)) throw Object.assign(bad('AI intraday trading is part of Pro. You can read how it works and its limits for free.', 402), { upgrade: true, feature: 'AI intraday trading' });
+    if (!ELITE(req.user)) throw Object.assign(bad('AI intraday trading is part of the Elite plan. You can read how it works, its limits and its log for free.', 402), { upgrade: true, feature: 'AI intraday trading' });
     const prev = cleanSettings((await getSetting(req.user.id, 'intraday', {})) || {}), s = cleanSettings(req.body || {}, prev);
     const goingLive = (s.live && !prev.live) || (s.account !== 'paper' && s.account !== prev.account);
     if (s.live || s.account !== 'paper') {

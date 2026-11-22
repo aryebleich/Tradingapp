@@ -100,3 +100,7 @@ Left out on purpose: analyst price targets and ratings (need a paid feed, and th
 - Provider calls are cached, with clean fallbacks that say what is missing.
 - No routes removed.
 - Tests cover the valuation math, the scanner filters, the news-allocation caps, the intraday limits and the pre-buy card.
+
+## 7. Status (2026-11-22, end of phase 1)
+
+All 18 features are built in the ranked order; decisions G-6 to G-13 in DECISIONS.md, changes in CHANGELOG_AI.md. Of the gaps in section 5, 1 (reminders), 2 (Compare tab) and 4 (52-week range in the card and on the stock page) are done, and 3 (fundamental alerts) is the saved-filter daily alert. Phase 2 (site-wide consistency, linking, the Free/Pro/Premium labels on pricing) follows.

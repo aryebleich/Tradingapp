@@ -21,6 +21,7 @@ import * as playbooks from './yi-playbooks.js';
 import * as structure from './yi-structure.js';
 import * as equalize from './yi-equalize.js';
 import * as pro from './yi-pro.js';
+import * as growth from './yi-growth.js';
 
 export const credit = '';
 
@@ -357,7 +358,7 @@ export const strings = {
   'Admin user update': 'אדמין האט געטוישט א באניצער',
 };
 
-Object.assign(strings, features.strings, protect.strings, wealth.strings, batch5.strings, batch6.strings, { ...pro.strings, ...equalize.strings, ...structure.strings, ...playbooks.strings, ...schedule.strings, ...batch17.strings, ...batch16.strings, ...batch15.strings, ...batch14.strings, ...batch13.strings, ...batch12.strings, ...batch11.strings, ...batch9.strings, ...batch8.strings, ...strings }, more, heimish.strings);
+Object.assign(strings, features.strings, protect.strings, wealth.strings, batch5.strings, batch6.strings, { ...growth.strings, ...pro.strings, ...equalize.strings, ...structure.strings, ...playbooks.strings, ...schedule.strings, ...batch17.strings, ...batch16.strings, ...batch15.strings, ...batch14.strings, ...batch13.strings, ...batch12.strings, ...batch11.strings, ...batch9.strings, ...batch8.strings, ...strings }, more, heimish.strings);
 
 // Sentences that contain numbers or names.
 export const patterns = [
@@ -398,5 +399,6 @@ patterns.push(...schedule.patterns);
 patterns.push(...playbooks.patterns);
 patterns.push(...equalize.patterns);
 patterns.push(...pro.patterns);
+patterns.push(...growth.patterns);
 // The hand-written patterns are tried first.
 patterns.unshift(...heimish.patterns);
