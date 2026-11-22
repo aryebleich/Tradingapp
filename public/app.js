@@ -639,11 +639,20 @@ function hideSetupNotes() {
 new MutationObserver(() => { clearTimeout(setupTimer); setupTimer = setTimeout(hideSetupNotes, 60); }).observe(document.body, { childList: true, subtree: true });
 let GUIDES = null;
 const guidesP = import('./pages/guides.js').then(m => (GUIDES = m)).catch(() => null);
-function addGuide(view, route) {
+// Page help: the round "i" next to the title (and its gear) opens the page's guide (pages/guides.js).
+// A page that redraws its own title (live pages) gets its "i" back from the watcher below.
+let INFO_ROUTE = null, infoTimer = null;
+function addInfo(view, route) {
+  INFO_ROUTE = { view, route };
   const opts = { practice: state.account === 'paper' };
-  if (GUIDES) return GUIDES.pageGuide(view, route, opts);
-  guidesP.then(m => m && view.isConnected && m.pageGuide(view, route, opts));
+  if (GUIDES) return GUIDES.addInfo(view, route, opts);
+  guidesP.then(m => m && view.isConnected && m.addInfo(view, route, opts));
 }
+const addGuide = addInfo; // older name
+new MutationObserver(() => {
+  clearTimeout(infoTimer);
+  infoTimer = setTimeout(() => { const c = INFO_ROUTE; if (!c || !GUIDES || !c.view.isConnected) return; const h1 = $('.pagehead h1', c.view) || $('h1', c.view); if (h1 && !h1.querySelector('.pinfo')) GUIDES.addInfo(c.view, c.route, { practice: state.account === 'paper' }); }, 80);
+}).observe(document.body, { childList: true, subtree: true });
 const SKELETON = '<div class="skel"><div class="h1"></div><div class="box"></div><div class="w60"></div><div></div><div class="box"></div></div>';
 async function render(opts) {
   const quiet = opts?.quiet === true;
@@ -1406,7 +1415,6 @@ routes.dashboard = async (view, q) => {
   ${todo ? `<div class="ob-wrap" id="onboard"><button type="button" class="ghost small ob-hide" id="hideOnboard" title="Hide this list for good">Hide</button><details class="card onboard" open><summary class="ob-head"><div><h2>Get started</h2><p class="mu">${done} of ${steps.length} done</p></div></summary>
     <div class="ob-bar"><i style="width:${Math.round(done / steps.length * 100)}%"></i></div>
     <div class="ob-list">${steps.map(([d, t, href, go]) => `<a class="ob-item${d ? ' done' : ''}" href="${href}"${go ? ` data-go="${go}"` : ''}><span class="ob-check" aria-hidden="true"></span><span class="ob-t">${t}</span><span class="ob-go" aria-hidden="true">→</span></a>`).join('')}</div></details></div>` : ''}
-  <div class="dash-slot" data-slot="guide"></div>
   <div id="acctBoxes"></div>
   ${src.paper ? '<div class="card dash-paper"><div class="dash-ch"><h2>Paper account</h2></div><p class="mu" style="margin-top:0">Practice money: start again from $100,000 at any time. Your orders and positions in the paper account are cleared.</p><button class="ghost small" id="reset">Reset paper account</button></div>' : ''}
   </div>`;
@@ -2113,8 +2121,8 @@ routes.settings = async view => {
   const pw = ME.hasPassword, confirmLabel = what => pw ? `Password to ${what}` : `Type your email to ${what}`, confirmType = pw ? 'password' : 'email';
   view.innerHTML = `<h1>Settings</h1>
   <div class="grid masonry">
-    <div class="card" id="helpCard"><h2>Help for beginners</h2><label class="chk"><input type="checkbox" id="helpT" ${helpOn() ? 'checked' : ''}> Show help for beginners</label><p class="mu small-print">Switch it off to hide every explanation at once: the page guides, the "?" next to words, the Get started page and the welcome cards on Home.</p></div>
-    <div class="card"><h2>Page guides</h2><label class="chk"><input type="checkbox" id="guidesT" ${(() => { try { return localStorage.getItem('qp_guides') !== 'off'; } catch { return true; } })() ? 'checked' : ''}> Show the "How this page works" guide on each page</label><p class="mu small-print">Switch it off to hide every guide on every page.</p></div>
+    <div class="card" id="helpCard"><h2>Help for beginners</h2><label class="chk"><input type="checkbox" id="helpT" ${helpOn() ? 'checked' : ''}> Show help for beginners</label><p class="mu small-print">Switch it off to hide the beginner extras at once: the hint on the "i", the "?" next to words, the Get started page and the welcome cards on Home. The "i" next to each page title always stays, so help is one tap away.</p></div>
+    <div class="card"><h2>Page guides</h2><label class="chk"><input type="checkbox" id="guidesT" ${(() => { try { return localStorage.getItem('qp_guides') !== 'off'; } catch { return true; } })() ? 'checked' : ''}> Point out the "i" on pages I have not opened yet</label><p class="mu small-print">Every page has a round "i" next to its title that explains how the page works. This switch only turns off the dot and the "New here? Tap i" hint; the "i" always stays.</p></div>
     <div class="card"><h2>News pop-ups</h2><label class="chk"><input type="checkbox" id="newsT" ${toastsOn() ? 'checked' : ''}> Show today's headlines about the stocks I own</label></div>
     <div class="card" id="pnlPrefs"><h2>Portfolio numbers</h2>
       <p class="mu" style="margin-top:0">How your account value changes on the screen.</p>

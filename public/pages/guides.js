@@ -1,7 +1,11 @@
-// "How this page works": a short plain-language guide at the top of the more advanced pages, for
-// people new to investing. Each guide says what the page is for, how to use it in a few steps, and
-// what to watch out for, with a link to practice safely first. Guides start open; "Got it" folds
-// one away for good (it stays one tap away), and they can be turned off for every page at once.
+// "How this page works": a short plain-language guide for every page, for people new to investing.
+// Each guide says what the page is for, how to use it in a few steps, and what to watch out for,
+// with a link to practice safely first. It sits behind the round "i" next to the page title (and
+// its gear): addInfo() draws the button, and the button opens the guide in a panel (a drawer on the
+// right on desktop, a sheet from the bottom on a phone). A page that has not been opened yet shows a
+// small dot on its "i" and, once, "New here? Tap i"; the Settings switch turns those hints off, never
+// the "i" itself. A page can add its own beginner text with <template data-info> (shown in the panel).
+import { MORE } from './guides-more.js';
 
 const G = {
   dashboard: ['Your home base', 'Home shows what your account is worth, how it changed today and since you started, and the shares you own.',
@@ -151,50 +155,63 @@ const G = {
 const key = r => 'qp_guide_' + r;
 const get = k => { try { return localStorage.getItem(k); } catch { return null; } };
 const put = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} };
-const shown = {};
+for (const [k, v] of Object.entries(MORE)) if (!G[k]) G[k] = v;
 export const GUIDE_PAGES = Object.keys(G);
+export const guideFor = route => G[route] || null;
 export const hasGuide = route => !!G[route];
-export const guidesOff = () => get('qp_guides') === 'off';
+// The Settings switch: off hides the first-time hints (the dot and "New here? Tap i"); the "i" always stays.
+export const guidesOff = () => get('qp_guides') === 'off' || get('qp_help') === 'off';
+export const seenGuide = route => get(key(route)) === 'seen';
 export const setGuides = on => put('qp_guides', on ? null : 'off');
-// A short message at the bottom of the screen that leaves by itself.
-function note(text) {
-  const n = document.createElement('div'); n.className = 'pg-note'; n.setAttribute('role', 'status'); n.textContent = text;
-  document.body.append(n); setTimeout(() => n.remove(), 5000);
-}
+// Kept for older callers: the guide is no longer drawn into the page (it lives behind the "i").
+export function pageGuide() {}
 
-// Adds the guide under the page's title. `practice` says whether the practice account is in use.
-export function pageGuide(view, route, { practice = true } = {}) {
-  const g = G[route]; if (!g || !view || view.querySelector('.pguide')) return;
-  // Switched off (in a guide, or in Settings): no guide is drawn on any page.
-  if (guidesOff() || get('qp_help') === 'off') return;
-  const [title, what, steps, caution] = g;
-  // A page that redraws itself (every 20 seconds on live pages) keeps the guide as the user left it.
-  const open = shown[route] ?? (!guidesOff() && get(key(route)) !== 'seen');
-  const box = document.createElement('details');
-  box.className = 'pguide card'; box.open = open;
-  box.innerHTML = `<summary><span class="pg-ic" aria-hidden="true">i</span><span class="pg-h">${open && get(key(route)) !== 'seen' ? 'New to this? ' : ''}How this page works</span><span class="pg-sub">${title}</span></summary>
-    <div class="pg-body"><p>${what}</p>
-      ${steps?.length ? `<ol>${steps.map(s => `<li>${s}</li>`).join('')}</ol>` : ''}
+const INFO_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="7.6" r=".6" fill="currentColor"/></svg>';
+// The round "i" in the title row: title, then "i", then the gear. One per page, also after a redraw.
+export function addInfo(view, route, { practice = true } = {}) {
+  const g = G[route]; if (!g || !view) return null;
+  const h1 = view.querySelector('.pagehead h1') || view.querySelector('h1'); if (!h1) return null;
+  view.querySelectorAll('.pinfo, .pinfo-hint').forEach(x => { if (!h1.contains(x)) x.remove(); });
+  let b = h1.querySelector('.pinfo');
+  if (!b) {
+    b = document.createElement('button'); b.type = 'button'; b.className = 'ghost pinfo'; b.title = 'How this page works'; b.setAttribute('aria-label', 'How this page works'); b.setAttribute('aria-haspopup', 'dialog'); b.innerHTML = INFO_SVG;
+    const gear = h1.querySelector('.pgear'); gear ? gear.before(b) : h1.append(b);
+  }
+  b.dataset.route = route;
+  const fresh = !seenGuide(route) && !guidesOff();
+  b.classList.toggle('new', fresh);
+  // "New here? Tap i" once per page, the first time it is opened.
+  if (fresh && !get(key(route) + '_hinted')) {
+    put(key(route) + '_hinted', '1');
+    const tip = document.createElement('span'); tip.className = 'pinfo-hint'; tip.setAttribute('role', 'status'); tip.textContent = 'New here? Tap i';
+    b.after(tip); setTimeout(() => tip.remove(), 6000);
+  }
+  b.onclick = () => openInfo(view, route, b, { practice });
+  return b;
+}
+// The panel: everything the old guide card had, plus the page's own beginner notes.
+export function openInfo(view, route, btn, { practice = true } = {}) {
+  const g = G[route]; if (!g) return null;
+  const [title, what, steps, caution, extra] = g;
+  document.querySelectorAll('#infoDlg').forEach(d => d.remove());
+  const own = [...(view?.querySelectorAll('template[data-info]') || [])].map(t => t.innerHTML).join('');
+  const dlg = document.createElement('dialog'); dlg.id = 'infoDlg'; dlg.className = 'infodlg'; dlg.setAttribute('aria-labelledby', 'infoDlgH');
+  dlg.innerHTML = `<div class="info-in"><div class="info-head"><div><span class="kicker">How this page works</span><h2 id="infoDlgH">${title}</h2></div><button type="button" class="ghost small" data-x aria-label="Close">✕</button></div>
+    <div class="info-body"><p>${what}</p>
+      ${steps?.length ? `<ol>${steps.map(x => `<li>${x}</li>`).join('')}</ol>` : ''}
+      ${extra ? `<p>${extra}</p>` : ''}${own ? `<div class="info-own">${own}</div>` : ''}
       ${caution ? `<p class="pg-warn"><b>Good to know:</b> ${caution}</p>` : ''}
-      <div class="pg-act"><button type="button" class="small" data-pg="seen">Got it</button>
-        ${practice ? '' : '<span class="pg-tip">Tip: switch the Trading mode in the menu to Practice to try this with pretend money.</span>'}
-        <a class="pg-link" href="#/learn">Learning center</a><a class="pg-link" href="#/ai">Ask the AI assistant</a>
-        <button type="button" class="link small" data-pg="off">Hide guides on every page</button></div></div>`;
-  box.addEventListener('toggle', () => { shown[route] = box.open; });
-  box.addEventListener('click', e => {
-    const b = e.target.closest('[data-pg]'); if (!b) return;
-    if (b.dataset.pg === 'seen') { put(key(route), 'seen'); box.open = false; box.querySelector('.pg-h').textContent = 'How this page works'; }
-    else { put('qp_guides', 'off'); box.remove(); note('Guides are hidden on every page. Turn them back on in Settings.'); }
-  });
-  // Right under the page title (and the Home clock); before the first card when the title sits
-  // inside one, and at the top when the page has no title. Always a direct part of the page.
-  // Home keeps its chart and key numbers at the top: the guide has its own place under them.
-  const slot = view.querySelector('[data-slot=guide]'); if (slot) return slot.append(box);
-  const h1 = view.querySelector('h1'), top = h1 && [...view.children].find(c => c === h1 || c.contains(h1));
-  if (!top) return view.prepend(box);
-  if (top !== h1 && !top.classList.contains('row') && !top.classList.contains('pagehead')) return top.before(box);
-  const clock = top.nextElementSibling?.id === 'homeClock' ? top.nextElementSibling : null;
-  // A merged page's tabs stay right under the title; the guide follows them.
-  const after = clock || top, tabs = after.nextElementSibling?.classList.contains('hubtabs') ? after.nextElementSibling : null;
-  (tabs || after).after(box);
+      ${practice ? '' : '<p class="pg-tip">Tip: switch the Trading mode in the menu to Practice to try this with pretend money.</p>'}
+      <p class="info-links"><a class="pg-link" href="#/learn">Learning center</a><a class="pg-link" href="#/ai">Ask the AI assistant</a></p></div></div>`;
+  document.body.append(dlg);
+  const close = () => dlg.close();
+  dlg.querySelector('[data-x]').onclick = close;
+  dlg.querySelectorAll('a').forEach(a => a.addEventListener('click', close));
+  // A click on the backdrop (outside the panel) closes it.
+  dlg.addEventListener('click', e => { if (e.target === dlg) close(); }); // the panel has no padding of its own, so only the backdrop is the dialog itself
+  dlg.addEventListener('close', () => { dlg.remove(); if (btn?.isConnected) btn.focus(); });
+  dlg.showModal();
+  // Opening the panel marks the page as seen: no more dot or hint for it.
+  put(key(route), 'seen'); btn?.classList.remove('new'); document.querySelectorAll('.pinfo-hint').forEach(x => x.remove());
+  return dlg;
 }

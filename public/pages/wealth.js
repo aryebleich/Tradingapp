@@ -24,7 +24,7 @@ async function wealth(view, q) {
   const tab = q.get('tab') || 'funds';
   view.innerHTML = `<h1>Investing toolkit</h1><p class="mu">Ten long-term investing habits, each with a tool to do it. Education only, not advice for your situation.</p>
     <div class="chips wtabs">${TABS.map(([k, t]) => `<a href="#/wealth?tab=${k}"><button type="button" class="${k === tab ? 'on' : ''}">${t}</button></a>`).join('')}</div>
-    <div class="card lesson"><b>${TABS.find(t => t[0] === tab)?.[1] || ''}</b><p>${LESSON[tab] || ''}</p></div><div id="wbody"></div>`;
+    <template data-info><h3>${TABS.find(t => t[0] === tab)?.[1] || ''}</h3><p>${LESSON[tab] || ''}</p></template><div id="wbody"></div>`;
   const body = H.$('#wbody', view);
   await ({ funds, compound, auto, hold, drip, understand, tax, core, diversify }[tab] || funds)(body);
 }

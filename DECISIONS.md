@@ -70,6 +70,29 @@ Choices and assumptions made without asking, with the reason. Trading-tools work
 - C-5: **Yiddish patterns were broken in the browser.** `public/i18n.js` called function patterns through `String.replace`, which passes `(match, group1, …)`. Every translation file writes them as `m => m[1]`, so they printed wrong letters. The app now passes the match array, which fixes every existing function pattern, and the clock labels are translated in public/i18n/yi-clock.js.
 - C-6: **Where translations live.** i18n/ only holds the retired Yiddish label export (`RETIRED` in src/readme-auto.js); the live translations are in public/i18n/, which is where new text goes.
 
+### Phase 2: Page help (the "i")
+
+- H-1: **The guide moved from the page to a panel behind an "i".**
+  - `addInfo(view, route)` in pages/guides.js draws a round "i" inside the page title, before the gear: title, then "i", then gear. It is the same size as the gear.
+  - It is idempotent, and a watcher in app.js puts it back when a page redraws its own title, so a page always has exactly one.
+  - The old `pageGuide()` is kept as a no-op for older callers, and Home's empty guide slot is gone.
+- H-2: **The panel is a `<dialog>`: a drawer on the right on desktop, a sheet from the bottom on phones.**
+  - It is mirrored in right-to-left languages: the drawer opens on the left.
+  - A drawer keeps the page visible beside the help, which reads more professional than a centered pop-up on a wide screen. On a phone a bottom sheet is the platform's norm.
+  - It is a modal dialog, so focus stays inside. It closes with ✕, Esc or a click on the backdrop, and focus returns to the "i".
+- H-3: **First-time hint instead of an open card.** A page not yet opened shows a dot on its "i" (a gentle pulse, off under reduced motion) and, once, "New here? Tap i". Opening the panel marks the page as seen (the same `qp_guide_<route>` key as before, so pages people already dismissed stay quiet).
+  - The Settings switches (`qp_guides`, `qp_help`) now only turn off the hint, never the "i"; the wording in Settings says so.
+- H-4: **Every page has guide text.** 41 menu pages and tabs had none. Short plain-language guides were written for them in pages/guides-more.js, merged into the guides; an existing guide wins.
+- H-5: **What moved and what stayed.**
+  - Moved to the panel, through `<template data-info>` (a page can add its own beginner notes to its panel this way):
+    - the Investing toolkit's per-tab lesson card;
+    - Portfolio & risk's "Why it matters" note.
+  - Stayed on the page, because none of them is beginner help:
+    - the Playbooks API reference (technical reference);
+    - the security lessons (they are that page's content);
+    - the admin error explainer;
+    - "The risks in plain words" and every risk or legal disclosure.
+
 ## Growth features: plan, data and menu (2026-11-22)
 
 - G-1: **Plan names.** The brief asks for Free, Pro and Premium; the product has Starter, Pro, Elite and Ultimate (prices and Stripe products exist). Free = Starter and Pro = Pro; Premium means Elite and Ultimate, shown as one "Premium" tier label next to the plan names on the pricing page. No plan was renamed, so subscriptions and Stripe prices are unchanged.

@@ -4,6 +4,31 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-22: Phase 2 of 4: Page help behind an "i"
+
+### What changed
+
+- **The "i":** a round "i" next to every page title (before the settings gear) opens "How this page works" in a drawer (desktop) or a bottom sheet (phone). The panel holds the title, what the page is for, the steps, "Good to know", the practice-mode tip and the links to the Learning center and the AI assistant.
+- **No more guide cards in pages:** the guide card and Home's guide slot are gone. The toolkit's lesson cards and the risk page's "Why it matters" moved into the panel.
+- **First-time hint:** a dot and, once, "New here? Tap i" until the page's panel is opened. The Settings switch now only turns off the hint.
+- **Guide text for all 93 menu pages and tabs:** 41 new guides, all in Yiddish too.
+
+### Tests
+
+test/page-help.test.js:
+- every menu page and tab has guide text and Yiddish;
+- in Chromium, every one of the 93 pages has exactly one "i" in its title (before the gear) after rendering and after a redraw, with no guide card;
+- the panel shows the page's guide, closes with Esc or a click outside, returns focus and marks the page seen;
+- the hint goes away once seen and with the Settings switch.
+
+`npm test`: 448 pass, 0 fail. Screenshots checked at 1280 and 375 px, in light and dark mode and in Yiddish (RTL).
+
+### Rollback
+
+Revert the commit. Only browser-side "seen" keys are involved.
+
+---
+
 ## 2026-11-22: Phase 1 of 4: Home clock
 
 ### What changed

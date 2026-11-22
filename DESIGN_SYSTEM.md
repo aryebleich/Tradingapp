@@ -137,6 +137,12 @@ Layout v2 keeps the last disclosures clear of the tab bar (bottom padding plus t
 - **AI and automation pages:** the not-advice line is at the end of the page, the record shows losses, paper is the default, and the "Real money" fieldset asks for the password before it turns on.
 - **Related links:** every new page ends with `H.related([...])` to the tools that go with it, and each stock-page section links to its matching tools.
 
+## Page help (the "i")
+
+- Every page title ends with the round "i" (`.pinfo`), before the gear (`.pgear`) when there is one. Never draw a guide or beginner card into the page; put the text in `G[route]` (pages/guides.js) or a `<template data-info>` on the page.
+- The panel is `dialog.infodlg`: a right-hand drawer at desktop widths (left in RTL), a bottom sheet under 600px. Warnings, legal and risk text stay on the page.
+- New pages need guide text: test/page-help.test.js fails for a menu page without one.
+
 ## Always on
 
 The layout layer is part of every page (`<html class="lv2">`, `layout.css`, `layout.js`). There is no flag. It is checked on every merge by `test/layout/gate.sh` against the golden baseline (`test/golden/`).
