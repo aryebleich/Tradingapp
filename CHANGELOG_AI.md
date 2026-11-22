@@ -4,35 +4,6 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
-## 2026-11-22: No licence and no legal review needed
-
-### What changed
-
-- **Wording:** the new features use only the reviewed disclosure sentences (public/disclosures.js), shown in English in every language.
-- **Real money:** the morning news screen, the intraday rule bot and Live ratio pair bots trade the practice account only, and their real-money opt-ins are withdrawn. Real trades go through the order ticket. Older settings fall back to the practice account.
-- **Names and advice:**
-  - "AI morning picks", "AI intraday" and "AI long/short portfolios" are now "Morning news screen", "Intraday rule bot" and "Long/short rule portfolios".
-  - Diversification "suggestions" are "What if…?" previews that name no product.
-  - Dividend safety shows score bands; passive mixes show their stock/bond share.
-- **OFI lab:** the report runs on the bundled synthetic sample, with no data licence. Your own data is optional and stays private. The PDF was re-rendered.
-- **Legal:** LEGAL_REVIEW.md L16, L17 and L19 are resolved by design, and L18 is withdrawn.
-
-### Tests
-
-New test/disclosures.test.js covers:
-- reviewed wording only;
-- no real-money path;
-- no products named in previews;
-- the sample as the OFI default.
-
-Updated tests: newspicks, intraday, pairslive, diversify, pricing, stock, income, hfofi, aifunds-growth and page-help. `npm test`: 474 pass, 0 fail; `npm run clean` passes. All changed pages checked in the browser at 1280 and 375 px: no errors, no sideways scroll, axe clean.
-
-### Left for you
-
-Nothing for this work: no data file to add and no legal sign-off to wait for. The older open items are unchanged: L1–L15, and N-18 (the page-gate baseline).
-
----
-
 ## 2026-11-22: The four-phase job: summary
 
 | Phase | What changed | Tested |

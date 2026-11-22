@@ -5,11 +5,11 @@ import assert from 'node:assert/strict';
 import { cleanSettings, rankPicks, allocate, lossGuard, record, DEFAULTS, NOT_ADVICE } from '../src/newspicks.js';
 import { pdtAllowed } from '../src/pdt.js';
 
-test('settings: clamped, per-stock never above the budget, the practice account only', () => {
+test('settings: clamped, per-stock never above the budget, real money only with the opt-in', () => {
   const s = cleanSettings({ budget: 500, perStock: 900, maxPicks: 12, stopPct: 50, account: 'alpaca' });
   assert.equal(s.perStock, 500); assert.equal(s.maxPicks, 5); assert.equal(s.stopPct, 20);
   assert.equal(s.account, 'paper'); // no live opt-in: back to the practice account
-  assert.equal(cleanSettings({ account: 'alpaca', live: true }).account, 'paper'); assert.equal(cleanSettings({ live: true }).live, false);
+  assert.equal(cleanSettings({ account: 'alpaca', live: true }).account, 'alpaca');
   assert.equal(cleanSettings({}).mode, 'approve'); assert.equal(DEFAULTS.account, 'paper');
   assert.throws(() => cleanSettings({ budget: 'lots' }), /Check the numbers/);
 });
@@ -51,7 +51,7 @@ test('the record shows every pick, losses included', () => {
   const r = record([{ day: 'd1', ret: 2 }, { day: 'd1', ret: -1 }, { day: 'd2', ret: -3 }, { day: 'd3', ret: null }]);
   assert.equal(r.days, 2); assert.equal(r.picks, 3); assert.equal(r.hitRate, 33); assert.equal(r.losses, 2); assert.equal(r.worst, -3);
   assert.equal(record([]).hitRate, null);
-  assert.match(NOT_ADVICE, /^For planning and education only\. Not investment advice and not an order: nothing is sent to your broker\./);
+  assert.match(NOT_ADVICE, /lose money/);
 });
 
 let s, owner, free, pro;
@@ -65,14 +65,16 @@ before(async () => {
 });
 after(() => s?.close());
 
-test('routes: Pro to use, the practice account only, one placement a day, the kill switch', async () => {
+test('routes: Pro to use, Elite and the password for real money, one placement a day, the kill switch', async () => {
   assert.equal((await free('/newspicks/settings', { enabled: true }, 'PUT')).status, 402);
   const ok = await pro('/newspicks/settings', { enabled: true, mode: 'approve', budget: 500, perStock: 200 }, 'PUT');
   assert.equal(ok.status, 200); assert.equal(ok.body.settings.account, 'paper');
-  // No real-money path: a real account is refused, even on Elite with the password.
+  const live = await pro('/newspicks/settings', { live: true, account: 'alpaca', password: 'Str0ngPassword' }, 'PUT');
+  assert.equal(live.status, 402); assert.match(live.body.error, /Elite/);
   const { run, one } = await import('../src/db.js'); const { nyTime } = await import('../src/time.js');
   await run("UPDATE users SET plan = 'elite' WHERE email = 'np-pro@example.com'");
-  for (const b of [{ live: true, account: 'alpaca', password: 'Str0ngPassword' }, { account: 'alpaca' }]) { const r = await pro('/newspicks/settings', b, 'PUT'); assert.equal(r.status, 400); assert.match(r.body.error, /practice account only/); }
+  assert.equal((await pro('/newspicks/settings', { live: true, account: 'alpaca' }, 'PUT')).status, 401); // no password
+  assert.equal((await pro('/newspicks/settings', { live: true, account: 'alpaca', password: 'wrong' }, 'PUT')).status, 401);
   await run("UPDATE users SET plan = 'pro' WHERE email = 'np-pro@example.com'");
   assert.equal((await pro('/newspicks/approve', {})).status, 409); // no picks today yet
   const day = nyTime().day;
@@ -83,7 +85,7 @@ test('routes: Pro to use, the practice account only, one placement a day, the ki
   assert.ok(placed.body.orders.reduce((a, o) => a + o.dollars, 0) <= 500);
   assert.equal((await pro('/newspicks/approve', {})).status, 409); // not twice a day
   const g = (await pro('/newspicks')).body;
-  assert.equal(g.placedToday, true); assert.equal(g.picks.length, 2); assert.match(g.note, /^For planning and education only\. Not investment advice and not an order: nothing is sent to your broker\./);
+  assert.equal(g.placedToday, true); assert.equal(g.picks.length, 2); assert.match(g.note, /not investment advice/);
   // the kill switch stops it
   const u = await one("SELECT id FROM users WHERE email = 'np-pro@example.com'");
   await run('DELETE FROM newspicks_trades WHERE user_id = ?', u.id);

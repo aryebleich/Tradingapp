@@ -3,7 +3,6 @@
 // with "why" and a preview of the account before and after: it is never an order. Pro gets every
 // suggestion; free members see the score and the first suggestion. Education, not advice.
 import express from 'express';
-import { TOOL } from './disclosures.js';
 import { requireUser } from './auth.js';
 import { accountSummary, getBars } from './brokers.js';
 import { classify } from './wealth.js';
@@ -15,7 +14,7 @@ const BROAD = new Set(['Broad US market', 'Broad world market']);
 const INDEX_OF = { SPY: 'S&P 500', VOO: 'S&P 500', IVV: 'S&P 500', SPLG: 'S&P 500', VTI: 'US total market', ITOT: 'US total market', QQQ: 'Nasdaq-100', QQQM: 'Nasdaq-100', VT: 'World', VXUS: 'World ex-US', VEA: 'Developed ex-US', IEFA: 'Developed ex-US', EFA: 'Developed ex-US' };
 const CONTAINS = { 'US total market': ['S&P 500', 'Nasdaq-100'], 'S&P 500': ['Nasdaq-100'], World: ['S&P 500', 'US total market', 'Nasdaq-100', 'World ex-US', 'Developed ex-US'], 'World ex-US': ['Developed ex-US'] };
 const typeOf = (sym, sector) => (sym.includes('/') ? 'Crypto' : sector === 'Bonds' ? 'Bonds' : sector === 'Cash & T-bills' ? 'Cash' : sector === 'Gold & commodities' ? 'Commodities' : sector === 'Real estate' ? 'Real estate' : 'Stocks');
-export const NOTE = TOOL; // reviewed wording (public/disclosures.js)
+export const NOTE = 'Education, not investment advice. A preview shows what the account would look like; it never places an order.';
 
 // Overlapping funds: the same index held twice, or a fund that already contains another.
 export function overlaps(symbols) {
@@ -54,22 +53,19 @@ export function score(holdings, { correlation = null } = {}) {
   const s = parts.reduce((a, p) => a + p.points, 0);
   return { score: s, label: s >= 75 ? 'Well spread' : s >= 50 ? 'Partly spread' : 'Concentrated', parts, sectors, regions, types, overlaps: ov, single: single ? { symbol: single.symbol, pct: r1(maxOne) } : null, us: r1(us), total };
 }
-// Up to three what-if previews, the clearest first (calculations, not suggestions: they name a kind of
-// fund, never a product). A preview moves dollars from one holding to another
+// Up to three suggestions, the clearest first. A preview moves dollars from one holding to another
 // on paper and scores the result.
 export function suggestions(holdings, sc) {
   const total = sc.total, out = [], has = s => holdings.some(h => h.symbol === s);
-  if (sc.single && sc.single.pct > 25) { const dollars = Math.round(total * (sc.single.pct - 20) / 100); out.push({ title: `What if ${sc.single.symbol} were about 20%?`, why: `${sc.single.symbol} is ${sc.single.pct}% of the account.`, sell: { symbol: sc.single.symbol, dollars }, buy: { symbol: '_WORLD', dollars } }); }
+  if (sc.single && sc.single.pct > 25) { const dollars = Math.round(total * (sc.single.pct - 20) / 100); out.push({ title: `Trim ${sc.single.symbol} to about 20%`, why: `${sc.single.symbol} is ${sc.single.pct}% of the account: one company's bad news would hit most of your money.`, sell: { symbol: sc.single.symbol, dollars }, buy: { symbol: has('VTI') ? 'VTI' : 'VT', dollars } }); }
   const top = sc.sectors.find(s => !BROAD.has(s.name) && s.name !== 'Bonds');
-  if (top && top.pct > 40 && !out.length) { const from = holdings.filter(h => h.sector === top.name).sort((a, b) => b.value - a.value)[0]; out.push({ title: `What if less were in ${top.name}?`, why: `${top.pct}% is in ${top.name}.`, sell: { symbol: from.symbol, dollars: Math.round(total * 0.1) }, buy: { symbol: '_WORLD', dollars: Math.round(total * 0.1) } }); }
-  if (sc.us > 95 && !has('VXUS') && !has('VT')) out.push({ title: 'What if part were outside the US?', why: `${sc.us}% is in US companies.`, sell: null, buy: { symbol: '_INTL', dollars: Math.round(total * 0.15) }, fromCash: true });
-  for (const o of sc.overlaps.slice(0, 1)) { const b = holdings.find(h => h.symbol === o.b); if (b) out.push({ title: `What if ${o.b} and ${o.a} were one holding?`, why: o.why, sell: { symbol: o.b, dollars: Math.round(b.value) }, buy: { symbol: o.a, dollars: Math.round(b.value) } }); }
-  if (!sc.types.some(t => t.name === 'Bonds') && out.length < 3) out.push({ title: 'What if part were in bonds?', why: 'Nothing in the account is a bond fund.', sell: null, buy: { symbol: '_BOND', dollars: Math.round(total * 0.1) }, fromCash: true });
-  return out.slice(0, 3).map(s => ({ ...s, buy: { ...s.buy, name: KIND_NAMES[s.buy.symbol] || s.buy.symbol }, preview: preview(holdings, s) }));
+  if (top && top.pct > 40 && !out.length) { const from = holdings.filter(h => h.sector === top.name).sort((a, b) => b.value - a.value)[0]; out.push({ title: `Spread out of ${top.name}`, why: `${top.pct}% is in ${top.name}; a downturn in one industry would hit most of the account.`, sell: { symbol: from.symbol, dollars: Math.round(total * 0.1) }, buy: { symbol: 'VT', dollars: Math.round(total * 0.1) } }); }
+  if (sc.us > 95 && !has('VXUS') && !has('VT')) out.push({ title: 'Add countries outside the US', why: `${sc.us}% is in US companies. An international fund spreads the risk across countries.`, sell: null, buy: { symbol: 'VXUS', dollars: Math.round(total * 0.15) }, fromCash: true });
+  for (const o of sc.overlaps.slice(0, 1)) { const b = holdings.find(h => h.symbol === o.b); if (b) out.push({ title: `Combine ${o.b} into ${o.a}`, why: o.why + ' Combining them keeps the same exposure with fewer moving parts.', sell: { symbol: o.b, dollars: Math.round(b.value) }, buy: { symbol: o.a, dollars: Math.round(b.value) } }); }
+  if (!sc.types.some(t => t.name === 'Bonds') && out.length < 3) out.push({ title: 'Consider a bond fund for steadier swings', why: 'Everything is in stocks (or similar). Bonds usually swing less, so a slice of them softens drops, at the cost of lower expected growth.', sell: null, buy: { symbol: 'BND', dollars: Math.round(total * 0.1) }, fromCash: true });
+  return out.slice(0, 3).map(s => ({ ...s, preview: preview(holdings, s) }));
 }
-// The what-if previews move money into a kind of fund, never a named one (no product is suggested).
-const CLASSES = { _WORLD: ['Broad world market', 'Global'], _INTL: ['Broad world market', 'International'], _BOND: ['Bonds', 'United States'], VT: ['Broad world market', 'Global'], VTI: ['Broad US market', 'United States'], VXUS: ['Broad world market', 'International'], BND: ['Bonds', 'United States'] };
-export const KIND_NAMES = { _WORLD: 'a broad world stock fund', _INTL: 'an international stock fund', _BOND: 'a bond fund' };
+const CLASSES = { VT: ['Broad world market', 'Global'], VTI: ['Broad US market', 'United States'], VXUS: ['Broad world market', 'International'], BND: ['Bonds', 'United States'] };
 export function preview(holdings, s) {
   const after = holdings.map(h => ({ ...h }));
   if (s.sell) { const h = after.find(x => x.symbol === s.sell.symbol); if (h) h.value = Math.max(0, h.value - s.sell.dollars); }

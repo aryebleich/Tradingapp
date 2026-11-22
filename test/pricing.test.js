@@ -23,9 +23,8 @@ test('Free / Pro / Premium labels and the research & AI rows match the server ch
   assert.deepEqual(TIERS, { free: 'Free', pro: 'Pro', elite: 'Premium', ultimate: 'Premium' });
   for (const r of GROWTH_COMPARE) assert.equal(r.length, 1 + Object.keys(PLANS).length, r[0]);
   const row = name => GROWTH_COMPARE.find(r => r[0] === name).slice(1);
-  assert.equal(row('Intraday rule bot')[1], false); assert.ok(row('Intraday rule bot')[2]); // Elite, not Pro (src/intraday.js)
-  assert.match(row('Morning news screen')[0], /Read/); assert.match(row('Morning news screen')[1], /Practice account/); // Pro uses the practice account (src/newspicks.js)
-  assert.ok(!GROWTH_COMPARE.flat().some(x => typeof x === 'string' && /real money/i.test(x))); // the new features trade the practice account only
+  assert.equal(row('AI intraday trading')[1], false); assert.ok(row('AI intraday trading')[2]); // Elite, not Pro (src/intraday.js)
+  assert.match(row('AI morning picks')[0], /Read/); assert.match(row('AI morning picks')[1], /Paper/); // Pro uses paper (src/newspicks.js)
   assert.equal(row('Diversification suggestions with previews')[0], '1'); // free gets one (src/diversify.js)
   assert.ok(!GROWTH_COMPARE.flat().some(x => typeof x === 'string' && /guarantee|risk-free/i.test(x)));
 });

@@ -11,11 +11,10 @@ import { getSetting } from './settings.js';
 import * as D from './alpaca/data.js';
 import { stockData } from './stock.js';
 import { isPaid } from './fees.js';
-import { TOOL_HYPOTHETICAL } from './disclosures.js';
 
 const r2 = (x, d = 2) => (x == null || !Number.isFinite(+x) ? null : +(+x).toFixed(d));
 const iso = t => new Date(t).toISOString().slice(0, 10);
-export const NOTE = `Forecast from the dividends of the last 12 months. ${TOOL_HYPOTHETICAL}`; // reviewed wording (public/disclosures.js)
+export const NOTE = 'Forecast from the dividends of the last 12 months. Companies can raise, cut or stop dividends; this is not investment advice.';
 
 // payments: [{ symbol, rate, ex_date, payable_date }] over the last 12 months. Each payment is
 // expected again 12 months later; returns 12 months from `from` with the expected income.
@@ -89,12 +88,12 @@ export const incomeRouter = (() => {
 })();
 
 // ---------- passive investing ----------
-// Index-fund mixes by their stock and bond share (a description of each mix, not a recommendation).
+// Model mixes of low-cost index funds (examples to learn from, not advice for anyone's situation).
 export const MIXES = [
-  { id: 'cautious', name: '40% stocks, 60% bonds', parts: [['VT', 40], ['BND', 60]], about: 'Stock and bond index funds' },
-  { id: 'balanced', name: '70% stocks, 30% bonds', parts: [['VTI', 45], ['VXUS', 25], ['BND', 30]], about: 'US, international and bond index funds' },
-  { id: 'growth', name: '90% stocks, 10% bonds', parts: [['VTI', 60], ['VXUS', 30], ['BND', 10]], about: 'US, international and bond index funds' },
-  { id: 'allstock', name: '100% stocks', parts: [['VT', 100]], about: 'One world stock index fund' },
+  { id: 'cautious', name: 'Cautious', parts: [['VT', 40], ['BND', 60]], about: 'More bonds: smaller falls, slower growth.' },
+  { id: 'balanced', name: 'Balanced', parts: [['VTI', 45], ['VXUS', 25], ['BND', 30]], about: 'The classic three-fund mix.' },
+  { id: 'growth', name: 'Growth', parts: [['VTI', 60], ['VXUS', 30], ['BND', 10]], about: 'Mostly stocks: bigger swings, for long horizons.' },
+  { id: 'allstock', name: 'All stocks', parts: [['VT', 100]], about: 'One fund holding the whole world\'s stock market.' },
 ];
 // What part of an account is in broad funds, single stocks and cash, and the weighted yearly fund fee.
 // funds: { SYMBOL: { fee, broad } } for the funds known to the toolkit.
@@ -121,7 +120,7 @@ export async function passiveFor(userId, account) {
   const check = passiveCheck(sum.positions || [], sum.cash, funds);
   return { account, check, mixes: MIXES.map(m => ({ ...m, fee: r2(m.parts.reduce((a, [s, w]) => a + (INDEX_FUNDS.find(f => f.symbol === s)?.fee || 0) * w / 100, 0), 3) })), funds: INDEX_FUNDS.slice(0, 8),
     dragExample: { amount: 10000, years: 30, ret: 7, low: feeDrag(10000, 30, 7, 0.03), high: feeDrag(10000, 30, 7, 1.0) },
-    note: TOOL_HYPOTHETICAL };
+    note: 'Examples to learn from, not advice for your situation. Returns are not guaranteed and index funds fall when markets fall.' };
 }
 
 // ---------- reminders: ex-dividend and earnings of holdings ----------

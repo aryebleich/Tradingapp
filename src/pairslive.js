@@ -8,8 +8,9 @@
 // broker call. Two legs: both are checked (buying power, shortability, risk limits) before either is
 // sent; if one fails or fills only partly, the other is closed or balanced at once and the member is
 // told. Limits per pair (max loss, max position) and per member (daily loss, orders per minute, the
-// pattern-day-trader rule). Bots trade the practice account only.
-// Practice account only: a member places any real-money trade in the order ticket.
+// pattern-day-trader rule). New bots start on Paper; real money needs an intraday backtest, N days of
+// paper results, the password, the step-up check and a clear confirm.
+// Experimental and educational: not proven profitable, not investment advice.
 import express from 'express';
 import { one, all, run, now, audit } from './db.js';
 import { requireUser, confirmsIdentity } from './auth.js';
@@ -21,11 +22,9 @@ import { notifyUser } from './notify-user.js';
 import { pdtAllowed } from './pdt.js';
 import * as D from './alpaca/data.js';
 import * as M from './pairslive-math.js';
-import { TOOL_HYPOTHETICAL, HYPOTHETICAL } from './disclosures.js';
 
 const bad = (m, s = 400, extra = {}) => Object.assign(new Error(m), { status: s, ...extra });
-// Reviewed wording only (public/disclosures.js). Live-ratio bots trade the practice account only.
-export const NOTE = TOOL_HYPOTHETICAL;
+export const NOTE = 'Experimental and educational: this model has not been shown to make money, and it is not investment advice. Do not use it with real money before backtesting it, running it on paper and reviewing the risks.';
 export const MIN_PAPER_DAYS = () => Math.max(1, +process.env.PAIRS_LIVE_MIN_PAPER_DAYS || 5);
 export const MAX_ORDERS_PER_MIN = () => Math.max(2, +process.env.PAIRS_LIVE_MAX_ORDERS_PER_MIN || 20);
 export const DEFAULTS = { dollars: 2000, historyMin: 120, barMin: 5, everyMin: 1, entryPct: 0.6, exitPct: 0.1, stopPct: 2, maxLossUsd: 100, dailyLossUsd: 250, maxPositionUsd: 5000, closeBeforeMin: 10, holdOvernight: false };
@@ -164,7 +163,6 @@ async function dayTrades(userId, account, t) { return 2 * (await one("SELECT COU
 // One pair, one run. Returns what it did.
 export async function runPair(pair, t = Date.now()) {
   const p = JSON.parse(pair.params), st = J(pair.state, {}), source = `livepair:${pair.id}`, deps = depsFor(pair, source);
-  if (pair.account !== 'paper') { await save(pair, st, 'paused'); await log(pair, 'paused', 'Live-ratio bots run on the practice account only: move it back to Paper.'); return { paused: 'practice account only' }; }
   const day = M.utcToNy(t).day; if (st.day !== day) { st.day = day; st.realizedDay = 0; }
   const w = M.tradingWindow(t, p);
   if (await killed(pair.user_id)) { await save(pair, st, 'paused'); await log(pair, 'paused', 'The kill switch is on: the bot is paused and sends no orders. Close any open legs by hand.'); return { paused: 'kill switch' }; }
@@ -284,11 +282,26 @@ export const liveRouter = (() => {
     const window = Math.max(20, Math.round(p.historyMin / p.barMin)), live = M.backtest(g.ca, g.cb, { window, entryPct: p.entryPct, exitPct: p.exitPct, stopPct: p.stopPct, costBps: +req.body?.costBps || 1, slipBps: +req.body?.slipBps || 2, borrowPct: +req.body?.borrowPct || 3, barsPerDay: Math.round(390 / p.barMin) });
     let ols = null; try { const P = await import('./pairs.js'); const d = await P.loadPair(x.a, x.b, req.user.id); const bt = P.backtestPair(d); ols = { from: bt.from, to: bt.to, neutral: bt.neutral }; } catch (e) { ols = { error: e.message }; }
     const st = J(x.state, {}); st.backtest = { at: Date.now(), days, bars: live.bars, total: live.total, trades: live.trades, hitRate: live.hitRate, maxDrawdown: live.maxDrawdown, sharpe: live.sharpe };
-    await save(x, st); res.json({ live: { ...live, curve: live.curve.filter((_, i, a) => i % Math.ceil(a.length / 300) === 0) }, ols, note: `Past bars, with the costs, slippage and short borrow fee shown. ${HYPOTHETICAL}` });
+    await save(x, st); res.json({ live: { ...live, curve: live.curve.filter((_, i, a) => i % Math.ceil(a.length / 300) === 0) }, ols, note: 'Hypothetical: past bars, with the costs, slippage and short borrow fee shown. Not a prediction.' });
   }));
-  // Real money is not offered: live-ratio bots trade the practice account only. A member who wants a
-  // real trade places it in the order ticket, like any other order.
-  r.post('/:id/live', wrap(async () => { throw bad('Live-ratio bots run on the practice account only. To trade a pair with real money, place each leg in the order ticket.', 409); }));
+  // Real money: an intraday backtest in the last 30 days, at least N days on Paper, Pro, the
+  // password, the step-up check and a clear confirm.
+  r.post('/:id/live', stepUpGuard, wrap(async (req, res) => {
+    const x = await mine(req), st = J(x.state, {}), account = String(req.body?.account || '');
+    if (!isPaid(req.user)) throw bad('Real-money pair bots are part of the Pro plan', 402, { upgrade: true, feature: 'Live pair bots on your brokerage account' });
+    if (!ACCOUNT_IDS.includes(account) || account === 'paper') throw bad('Pick a brokerage account');
+    const { accountsFor } = await import('./ext/routes.js'); if (!(await accountsFor(req.user.id)).some(a => a.id === account && a.connected)) throw bad('That account is not connected');
+    if (!(st.backtest?.at > Date.now() - 30 * 864e5)) throw bad('Run the intraday backtest first (in the last 30 days).', 409);
+    const days = (st.paperDays || []).length; if (days < MIN_PAPER_DAYS()) throw bad(`Run it on Paper for at least ${MIN_PAPER_DAYS()} trading days first (${days} so far).`, 409);
+    if (x.status === 'running' || st.qa || st.qb) throw bad('Stop the paper bot first (it must hold no positions).', 409);
+    if (req.body?.understood !== true) throw bad('Confirm that you understand this is experimental and can lose money.', 400);
+    if (!confirmsIdentity(req.user, req.body || {})) throw bad('Enter your password to turn on real money.', 401);
+    const problems = await shortability(req.user.id, account, [x.a, x.b]); if (problems.length) throw bad('This account cannot run the pair: ' + problems[0], 409, { problems });
+    await run("UPDATE live_pairs SET account = ?, status = 'stopped', updated_at = ? WHERE id = ?", account, now(), x.id);
+    await audit(req.user.id, 'live_pair_real_money', { id: x.id, account, a: x.a, b: x.b }, req.ip).catch(() => {});
+    await log(x, 'live', `Moved to ${account} (real money) after ${days} days on Paper. Press Start to run it.`);
+    res.json(await view(await mine(req)));
+  }));
   // Back to Paper at any time.
   r.post('/:id/paper', wrap(async (req, res) => { const x = await mine(req), st = J(x.state, {}); if (st.qa || st.qb || x.status === 'running') throw bad('Stop the bot first', 409); await run("UPDATE live_pairs SET account = 'paper', updated_at = ? WHERE id = ?", now(), x.id); res.json(await view(await mine(req))); }));
   return r;

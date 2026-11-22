@@ -18,13 +18,12 @@ import * as D from './alpaca/data.js';
 import { eventsEnabled, earnings as fhEarnings } from './events.js';
 import { getSetting, setSetting } from './settings.js';
 import { isPaid } from './fees.js';
-import { TOOL } from './disclosures.js';
 
 const DAY = 864e5;
 const r2 = (x, d = 2) => (x == null || !Number.isFinite(+x) ? null : +(+x).toFixed(d));
 const bad = (msg, status = 400) => Object.assign(new Error(msg), { status });
 const SYM = /^[A-Z][A-Z0-9.\-]{0,9}$/;
-export const NOT_ADVICE = TOOL; // reviewed wording (public/disclosures.js)
+export const NOT_ADVICE = 'Information and education only, not investment advice. Labels compare the stock with its own history and its sector; they do not predict the price.';
 const mean = a => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : null);
 const median = a => { const s = [...a].sort((x, y) => x - y); return s.length ? (s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2) : null; };
 const cagr = (first, last, years) => (first > 0 && last > 0 && years > 0 ? ((last / first) ** (1 / years) - 1) * 100 : null);
@@ -160,7 +159,7 @@ export function dividendView(rows, price, { exDate = null, payDate = null, cash 
   ];
   const score = parts.reduce((s, p) => s + p[1], 0);
   return { pays: true, dps: last.dps, year: last.year, yieldPct, payout, fcfCover, growth, streak, history: paying.map(x => ({ year: x.year, dps: x.dps })), exDate, payDate, cash,
-    safety: { score, label: score >= 70 ? 'High score' : score >= 45 ? 'Middle score' : 'Low score', parts: parts.map(([name, points, detail]) => ({ name, points, detail })) } };
+    safety: { score, label: score >= 70 ? 'Looks well covered' : score >= 45 ? 'Watch it' : 'At risk of a cut', parts: parts.map(([name, points, detail]) => ({ name, points, detail })) } };
 }
 // 12-month income forecast for holdings: shares × the latest yearly dividend per share.
 export function incomeForecast(positions, dpsBySymbol) {
@@ -228,7 +227,7 @@ export function supplyDemand(bars, quote = null) {
     control: gauge >= 15 ? 'Buyers in control' : gauge <= -15 ? 'Sellers in control' : 'Balanced', profile, poc: { from: poc.from, to: poc.to },
     unusual: avg20 ? { ratio: r2(lastV / avg20, 1), flag: lastV > 2 * avg20 } : null,
     top: quote ? { bid: quote.bid ?? null, ask: quote.ask ?? null, bidSize: quote.bidSize ?? null, askSize: quote.askSize ?? null, spread: quote.bid && quote.ask ? r2(quote.ask - quote.bid, 4) : null } : null,
-    depth: null, note: 'Indicative. Buy and sell volume are estimated from daily bars; market depth (level 2) is not offered by the connected data, so only the top of book is shown.' };
+    depth: null, note: 'Indicative, not a prediction. Buy and sell volume are estimated from daily bars; market depth (level 2) is not offered by the connected data, so only the top of book is shown.' };
 }
 
 // ---------- earnings ----------
@@ -301,7 +300,7 @@ export function buildCard(x) {
     pe: v.pe ?? null, sectorPE: v.sectorPE ?? null, peLabel: v.label?.id || 'na',
     lastEarnings: e.last || null, nextEarnings: e.next || null, dividendYield: d.pays ? d.yieldPct : 0,
     range52: x.range52 || null, headlines: (x.headlines || []).slice(0, 3), strength: x.sr?.strengths?.[0] || null, risk: x.sr?.risks?.[0] || null,
-    etf: !!x.etf, note: `It never blocks your order. ${TOOL}`,
+    etf: !!x.etf, note: 'Information, not advice. It never blocks your order.',
   };
 }
 export function range52(closes) { const c = closes.slice(-252); return c.length ? { low: r2(Math.min(...c)), high: r2(Math.max(...c)), at: c.at(-1) ? r2((c.at(-1) - Math.min(...c)) / ((Math.max(...c) - Math.min(...c)) || 1) * 100, 0) : null } : null; }
@@ -496,7 +495,7 @@ export async function runValueAlerts() {
     const rows = await scanRows(uid).catch(() => []);
     for (const f of list.filter(x => x.alert)) {
       const now = applyFilters(rows, f.filters).map(x => x.symbol), fresh = now.filter(x => !(f.seen || []).includes(x));
-      if (fresh.length) { await notifyUser(uid, `Scanner "${f.name}": new matches ${fresh.slice(0, 8).join(', ')}.`).catch(() => {}); sent++; }
+      if (fresh.length) { await notifyUser(uid, `Scanner "${f.name}": new matches ${fresh.slice(0, 8).join(', ')}. Information, not advice.`).catch(() => {}); sent++; }
       f.seen = now;
     }
     await setSetting(uid, 'valuescan:saved', list);

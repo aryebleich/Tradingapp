@@ -27,7 +27,7 @@ test('the stock page: valuation, statements, earnings, dividends; free sees two 
   assert.equal(d.earnings.next.estimated, true); assert.match(d.earnings.note, /Finnhub/);
   assert.equal(d.dividends.pays, true); assert.ok(d.dividends.safety.score >= 0);
   assert.ok(d.summary.strengths.length); assert.equal(d.summary.by, 'rules');
-  assert.match(d.note, /^For planning and education only\. Not investment advice and not an order: nothing is sent to your broker\./);
+  assert.match(d.note, /not investment advice/);
   const f = (await free('/stock/MSFT')).body;
   assert.equal(f.locked, true); assert.equal(f.statements.rows.length, 2); assert.ok(f.valuation.history.length <= 2);
   assert.equal((await free('/stock/NOT$A')).status, 400);

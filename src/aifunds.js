@@ -12,7 +12,6 @@ import { leaders } from './invest.js';
 import { llmEnabled, jsonCall } from './llm.js';
 import { nyTime } from './time.js';
 import { stepUpGuard } from './security.js';
-import { HYPOTHETICAL } from './disclosures.js';
 
 const bad = (m, s = 400) => Object.assign(new Error(m), { status: s });
 const r2 = (x, d = 2) => +(+x || 0).toFixed(d);
@@ -126,7 +125,7 @@ export const capWeights = (book, max = MAX_WEIGHT) => book.map(b => (Math.abs(b.
 // Largest fall from a high, in % (negative), from a list of values.
 export function maxDrawdown(values) { let hi = -Infinity, dd = 0; for (const v of values) { hi = Math.max(hi, v); dd = Math.min(dd, v / hi - 1); } return values.length ? r2(dd * 100, 1) : null; }
 // The fees, in plain words: nothing on top of the plan; the brokerage's own costs still apply.
-export const FEES = 'Plan prices are on Plans & billing. Your brokerage may charge its own costs.';
+export const FEES = 'No management or performance fee: it is part of your Brightolio plan. Your brokerage may charge for shorts (borrow fees), margin interest and options; the practice account has none of these, so real results can be lower.';
 export const RISKS = ['Shorts can lose more than the money put in when a stock rises sharply.', 'Rules that worked in the past can stop working; momentum can reverse quickly.', 'Hedges cost money in rising markets and do not cover every fall.', 'Rebuilt weekly: large moves can happen between turns.'];
 // A hypothetical backtest: the same rules rebuilt every 5 trading days over the price history there
 // is (about the last 6 months, because the rules need over a year of history to start), with 0.05% cost
@@ -150,7 +149,7 @@ export function backtest(style, risk, series, { step = 5, cost = 0.0005, maxWeig
     nav.push(r2(nav.at(-1) * (1 + r), 4));
   }
   const bench = spy ? r2((spy.at(-1) / spy[start] - 1) * 100, 1) : null;
-  return { nav, weeks: nav.length - 1, total: r2(nav.at(-1) - 100, 1), maxDrawdown: maxDrawdown(nav), worstWeek: r2(worst * 100, 1), spy: bench, note: `The rules applied to past prices, with an assumed 0.05% cost per change; taxes, borrow fees and margin interest are left out. ${HYPOTHETICAL}` };
+  return { nav, weeks: nav.length - 1, total: r2(nav.at(-1) - 100, 1), maxDrawdown: maxDrawdown(nav), worstWeek: r2(worst * 100, 1), spy: bench, note: 'Hypothetical: the rules applied to past prices, with an assumed 0.05% cost per change. Not a real record and not a prediction; it leaves out taxes, borrow fees and margin interest.' };
 }
 const parse = f => f && { ...f, book: JSON.parse(f.book || '[]'), held: JSON.parse(f.held || '{}'), pending: f.pending ? JSON.parse(f.pending) : null, hedgePlan: f.hedge_plan ? JSON.parse(f.hedge_plan) : null, hedge: f.hedge || 'etf', active: !!f.active };
 

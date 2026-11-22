@@ -27,7 +27,7 @@ function lines(series, { h = 180, hlines = [], label = '' } = {}) {
 async function ofiPage(view, q) {
   const today = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
   view.innerHTML = `<div class="pagehead"><h1>Order flow (OFI) lab</h1><p class="mu" style="margin:4px 0 0">Build order-flow factors from top-of-book data, test whether they predict the next price moves, and backtest an OFI strategy with costs, in-sample and out-of-sample.</p></div>
-    <div class="banner" role="note"><b>A simulation for study.</b> It never places orders. <span class="disclosure" lang="en" dir="ltr" data-no-tr>${H.esc(O.NOTE)}</span></div>
+    <div class="banner warn" role="note"><b>${H.esc(O.NOTE)}</b></div>
     <form class="card" id="ofiF">
       <fieldset class="ofi-src"><legend>Data</legend>
         <label class="chk"><input type="radio" name="src" value="sample" checked> Synthetic sample (rb2305-like futures ticks, generated)</label>
@@ -86,7 +86,7 @@ async function ofiPage(view, q) {
         ${O.FACTOR_NAMES.map(k => `<tr><th scope="row" data-no-tr>${k}</th>${horizons.map(h => { const r = a.regressions.find(x => x.factor === k && x.horizon === h); return `<td class="num">${n(r.beta, 4)} · <b class="${Math.abs(r.t) > 2 ? '' : 'mu'}">${n(r.t, 1)}</b> · ${n(r.r2, 4)}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>`)
       + `<p class="small-print">Thresholds from the in-sample part only (the first ${Math.round(a.thresholds.split / a.ticks * 100)}%): buy above ${n(a.thresholds.hi, 2)}, sell below ${n(a.thresholds.lo, 2)}. Costs per change of position: ${n(a.costs.fee * 1e4, 2)} bp fee plus ${a.costs.slip} tick(s) of ${a.costs.tick}.</p>`
       + `<div class="grid">${seg(a.inSample, 'In-sample')}${seg(a.outOfSample, 'Out-of-sample')}</div>`
-      + `<p class="mu small-print">Fills are at the mid plus a fixed slippage; queue position, latency and partial fills are not modelled.</p><p class="mu small-print disclosure" lang="en" dir="ltr" data-no-tr>${H.esc(O.NOTE)}</p>`
+      + `<p class="mu small-print">${H.esc(O.NOTE)} Fills at the mid plus a fixed slippage are optimistic; queue position, latency and partial fills are ignored.</p>`
       + H.related([['pairs', 'Pairs trading'], ['statarb', 'Statistical arbitrage'], ['backtest', 'Backtest']]);
   }
 }

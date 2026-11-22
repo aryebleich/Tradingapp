@@ -53,31 +53,6 @@ Choices and assumptions made without asking, with the reason. Trading-tools work
 | D-19 | Position sizes round down to whole lots with a tiny tolerance (1e-9) so floating-point results like 9.999999999 count as 10. | Shown by a test; never rounds up past the risk budget. |
 | D-20 | Backtests and simulations: none were added. The tools only calculate from user inputs and read-only prices. | Rule 5 needs no new handling here. |
 
-## Designed to need no licence and no new legal review (2026-11-22)
-
-The owner asked that the new work need neither a data licence nor a legal review. LEGAL_REVIEW.md L16–L19 asked Legal about three things: new disclaimer wording, product names that sound like advice, and automated real-money trading by the new engines. Each was removed by design rather than left for sign-off.
-
-- N-1: **Only reviewed wording.**
-  - public/disclosures.js holds the two sentences already in reviewed code: the trading tools' "For planning and education only. Not investment advice and not an order: nothing is sent to your broker. Investing involves risk, including the loss of the money you invest." (src/tradetools, COMPLIANCE_REVIEW.md), and the footer's "Backtests and projections are hypothetical."
-  - Every new feature (morning news screen, intraday rule bot, Live ratio, OFI lab, diversification, dividends, passive, stock page, company card) uses them word for word.
-  - Labels that describe data stay: "Indicative", "Forecast from the dividends of the last 12 months", the record "losses included".
-  - Disclosure lines are shown in the reviewed English in every language (`lang="en"`, not translated): the Yiddish risk text is itself pending review (L7), so a new translation would be new legal copy.
-  - test/disclosures.test.js keeps any other disclaimer wording out of the new files.
-- N-2: **Practice account only for the new automated engines.**
-  - The morning news screen (was "AI morning picks"), the intraday rule bot (was "AI intraday") and Live ratio pair bots trade the practice account only.
-  - The real-money opt-ins (Elite + password + step-up, and for Live ratio the paper-days gate) are withdrawn. Settings saved earlier fall back to the practice account, and a Live ratio bot that had been moved pauses itself.
-  - A member who wants a real trade places it in the order ticket like any other order: the screen shows an "Order ticket" link next to each stock, and the Live ratio page says to place each leg there.
-  - The features themselves stay; only automated real-money trading is gone from them.
-  - Features that already ran on real accounts before this work (pair bots with the OLS model, Playbooks, AI long/short portfolios with approval) are unchanged.
-- N-3: **No advice-like names or product suggestions.**
-  - Names: "Morning news screen", "Intraday rule bot", "Long/short rule portfolios" (the routes stay). The screen's description says what it does (ranked by the tone of today's headlines and the pre-market move) instead of what it "expects to gain".
-  - Diversification suggestions are now "What if…?" previews. They move money into a kind of fund ("a broad world stock fund", "a bond fund"), never a named product, and link to the fund comparison instead of an order ticket.
-  - Dividend safety shows a score band (High / Middle / Low score) instead of "At risk of a cut".
-  - Passive "example mixes" are described by their stock/bond share only.
-  - The pricing table's research rows no longer mention real money.
-- N-4: **No data licence.** The OFI report renders on the bundled synthetic sample by default (`params$data = data/sample.Rds`). A member can pass tick data of their own, which git keeps private. The R packages are open source (CRAN), and the app's Alpaca quotes come under the market-data access the app already uses.
-- N-5: **No homepage change.** L18 (new rows on the homepage) is withdrawn: the rows stay in the app only.
-
 ## Four-phase job: clock, page help, OFI lab, live pairs (2026-11-22)
 
 ### Phase 1: Home clock

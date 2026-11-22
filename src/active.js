@@ -54,8 +54,8 @@ export async function desk(userId, account) {
     money: { equity: r2(sum.equity), cash: r2(sum.cash), buyingPower: r2(sum.buyingPower ?? sum.cash), dayBuyingPower: broker?.dayBuyingPower ?? null, today: sum.lastEquity ? r2(sum.equity - sum.lastEquity) : null, todayPct: sum.lastEquity ? r2((sum.equity / sum.lastEquity - 1) * 100) : null },
     pdt: pdtStatus({ account, equity: sum.equity || 0, dayTrades: broker?.dayTrades ?? null, margin: broker?.margin ?? true }),
     positions, movers: await movers(),
-    engines: [{ id: 'intraday', name: 'Intraday rule bot', on: !!intr.enabled, account: intr.account || 'paper', href: 'bots/intraday' }, { id: 'newspicks', name: 'Morning news screen', on: !!np.enabled, account: np.account || 'paper', href: 'signals/newspicks' }],
-    note: 'Prices may be delayed depending on your data plan. Trading involves risk of loss.', // the footer's wording
+    engines: [{ id: 'intraday', name: 'AI intraday', on: !!intr.enabled, account: intr.account || 'paper', href: 'bots/intraday' }, { id: 'newspicks', name: 'AI morning picks', on: !!np.enabled, account: np.account || 'paper', href: 'signals/newspicks' }],
+    note: 'Prices may be delayed depending on your data plan. Day trading is risky and often loses money.',
   };
 }
 

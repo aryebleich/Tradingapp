@@ -14,7 +14,7 @@ header-includes:
   - \DeclareUnicodeCharacter{0394}{\ensuremath{\Delta}}
   - \DeclareUnicodeCharacter{00B7}{\ensuremath{\cdot}}
 params:
-  data: "data/sample.Rds"
+  data: "data/df_rb2305_am1.Rds"
   n: 10
   in_sample: 0.5
   hi: 0.8
@@ -35,20 +35,18 @@ source("R/ofi.R")
 ```
 
 ```{r data}
-# The bundled synthetic sample by default (no data licence needed); any tick file of your own in the
-# same columns with params = list(data = "data/your_file.Rds").
-src <- params$data
-if (!file.exists(src)) stop("No data at ", src, ": run Rscript R/make_sample.R for the synthetic sample, or pass your own file (see data/README.md).")
-real <- !isTRUE(attr(readRDS(src), "synthetic")) && basename(src) != "sample.Rds"
+real <- file.exists(params$data)
+src <- if (real) params$data else "data/sample.Rds"
+if (!file.exists(src)) stop("No data: put the tick file at ", params$data, " (see data/README.md), or run Rscript R/make_sample.R for the synthetic sample.")
 ticks <- standardize_ticks(readRDS(src)) %>% arrange(datetime)
-tag <- if (real) "your data file" else "SYNTHETIC SAMPLE (not market data)"
+tag <- if (real) "rb2305, morning session" else "SYNTHETIC SAMPLE (not market data)"
 cap <- labs(caption = if (real) NULL else "Synthetic sample: generated data, not market data")
 ```
 
 **Data:** `r src` (`r tag`), `r nrow(ticks)` top-of-book updates from `r format(min(ticks$datetime))` to `r format(max(ticks$datetime))`.
-`r if (!real) "**This report uses the generated synthetic sample, so it needs no market data or data licence. Every figure is marked as such.**"`
+`r if (!real) "**The real file was not found, so this report uses the generated synthetic sample. Every figure is marked as such.**"`
 
-For planning and education only. Not investment advice and not an order: nothing is sent to your broker. Investing involves risk, including the loss of the money you invest. Backtests and projections are hypothetical.
+This is an academic exercise. Results are simulated and are not investment advice. Real high-frequency trading needs exchange co-location and direct market data.
 
 # Factors
 

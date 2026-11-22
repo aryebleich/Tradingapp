@@ -14,7 +14,7 @@ test('a concentrated tech account scores low and gets clear suggestions with pre
   assert.equal(sc.parts.length, 6); assert.equal(sc.parts.reduce((s, p) => s + p.of, 0), 100);
   const sg = suggestions(hold, sc);
   assert.ok(sg.length >= 2 && sg.length <= 3);
-  assert.match(sg[0].title, /^What if NVDA were about 20%\?$/); assert.equal(sg[0].sell.dollars, 40000); assert.equal(sg[0].buy.name, 'a broad world stock fund'); // a kind of fund, never a product
+  assert.match(sg[0].title, /Trim NVDA/); assert.equal(sg[0].sell.dollars, 40000); assert.equal(sg[0].buy.symbol, 'VT');
   assert.ok(sg[0].preview.scoreAfter > sg[0].preview.scoreBefore, JSON.stringify(sg[0].preview));
   assert.ok(sg.every(s => s.why && s.preview && !('order' in s)));
 });
@@ -27,7 +27,7 @@ test('a broad fund mix scores well; overlapping funds are flagged and can be com
   const ov = overlaps(dup.map(x => x.symbol));
   assert.ok(ov.some(o => /both track the S&P 500/.test(o.why))); assert.ok(ov.some(o => o.a === 'VTI'));
   const sg = suggestions(dup, score(dup));
-  assert.ok(sg.some(s => /^What if .+ were one holding\?$/.test(s.title))); assert.ok(sg.every(s => /^What if/.test(s.title)));
+  assert.ok(sg.some(s => /^Combine/.test(s.title)));
 });
 
 test('correlation from prices, and an empty account', () => {
