@@ -994,6 +994,10 @@ const MIGRATIONS = [
   // Trading tools (src/tradetools): what each AI explainer was asked and answered, redacted, for compliance review.
   'CREATE TABLE IF NOT EXISTS ai_compliance_log (id INTEGER PRIMARY KEY, tool TEXT NOT NULL, user_ref TEXT NOT NULL, prompt TEXT, output TEXT, outcome TEXT NOT NULL, reason TEXT, model TEXT, at INTEGER NOT NULL)',
   'CREATE INDEX IF NOT EXISTS ai_compliance_log_at ON ai_compliance_log (at)',
+  // Live ratio pair bots (src/pairslive.js): each bot and its trade log.
+  'CREATE TABLE IF NOT EXISTS live_pairs (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, a TEXT NOT NULL, b TEXT NOT NULL, account TEXT NOT NULL, params TEXT NOT NULL, status TEXT NOT NULL, state TEXT, created_at INTEGER NOT NULL, updated_at INTEGER)',
+  'CREATE TABLE IF NOT EXISTS live_pair_log (id INTEGER PRIMARY KEY, pair_id INTEGER NOT NULL REFERENCES live_pairs(id) ON DELETE CASCADE, user_id INTEGER NOT NULL, kind TEXT NOT NULL, detail TEXT, at INTEGER NOT NULL)',
+  'CREATE INDEX IF NOT EXISTS live_pair_log_pair ON live_pair_log (pair_id, id)',
   // Growth features: AI morning news picks (the engine's daily picks = its public track record, and each
   // member's orders) and the AI intraday engine's trade log.
   // AI long/short portfolios: a cap on each position and the value history (drawdown, paper record).
