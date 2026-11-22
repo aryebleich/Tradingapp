@@ -417,7 +417,7 @@ const HUBS = {
   ai: ['AI assistant', [['ai', 'AI assistant'], ['aitools', 'AI tools']]],
   options: ['Options', [['options', 'Options desk'], ['optionslab', 'Options lab']]],
   text: ['Phone & text', [['text', 'Text commands'], ['hotline', 'Phone hotline']]],
-  wealth: ['Investing toolkit', [['wealth', 'Investing toolkit'], ['sp500', 'S&P 500 plan'], ['lowcost', 'Low-cost index & mutual funds']]],
+  wealth: ['Investing toolkit', [['wealth', 'Investing toolkit'], ['sp500', 'S&P 500 plan'], ['lowcost', 'Low-cost index & mutual funds'], ['passive', 'Passive investing'], ['dividends', 'Dividends & income']]],
   portfolios: ['Portfolios', [['portfolios', 'Portfolios'], ['robo', 'Automated portfolios'], ['aifunds', 'AI long/short portfolios'], ['rules', 'Rules across accounts']]],
   invest: ['Futures, bonds & more', [['invest', 'Futures, funds & savings'], ['alpaca-tools', 'Bonds, rates & crypto'], ['tokenized', 'Tokenized securities']]],
   strategies: ['Strategies', [['strategies', 'Strategy library'], ['playbooks', 'Playbooks'], ['backtest', 'Backtest']]],
@@ -2479,7 +2479,7 @@ lazyRoutes(() => import('./pages/sponsored.js'), 'registerSponsored', shared, ["
 lazyRoutes(() => import('./pages/aitrade.js'), 'registerAiTrade', shared, ["agenthub", "aibots", "aisignals", "intel"]);
 lazyRoutes(() => import('./pages/invest.js'), 'registerInvest', shared, ["analyze", "lowcost", "earnings", "leaders", "short", "margin", "aifunds"]);
 lazyRoutes(() => import('./pages/stock.js'), 'registerStock', shared, ["compare", "valuescan", "rates"]);
-lazyRoutes(() => import('./pages/growth.js'), 'registerGrowth', shared, ["diversify", "newspicks", "intraday"]);
+lazyRoutes(() => import('./pages/growth.js'), 'registerGrowth', shared, ["diversify", "newspicks", "intraday", "dividends", "passive"]);
 
 // Static files are cached for instant repeat visits (sw.js); pages and data always come fresh.
 if (!PREFETCH && 'serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});

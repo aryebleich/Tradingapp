@@ -109,3 +109,46 @@ PAGES.intraday = async view => {
   }
   if (H.$('#idStop', out)) H.act(H.$('#idStop', out), async () => { await H.api('/intraday/stop', { body: {} }); H.render(); return 'Turned off'; }, H.$('#idErr', out));
 };
+
+// ---------- Dividends & income ----------
+PAGES.dividends = async (view, q) => {
+  const account = q.get('account') || H.state.account || 'paper';
+  view.innerHTML = head('Dividends & income', 'What your holdings pay: yearly income, yield, how safe each dividend looks, the next dates and a 12-month forecast by month.') + `<form class="row card" style="align-items:flex-end">${await acctSel('dvdAcct', account)}</form><div id="dvdo">${skel}</div>`;
+  H.$('#dvdAcct', view).onchange = e => (location.hash = '#/wealth/dividends?account=' + encodeURIComponent(e.target.value));
+  const out = H.$('#dvdo', view);
+  let d; try { d = await H.api('/income?account=' + encodeURIComponent(account)); } catch (e) { out.innerHTML = `<div class="card"><p class="err">${H.esc(e.message)}</p></div>`; return; }
+  if (!d.rows.length) { out.innerHTML = card('Nothing held yet', '<div class="empty"><b>No holdings in this account.</b><a href="#/scanner/valuescan">Find dividend payers with the stock scanner →</a></div>'); return; }
+  const max = Math.max(1, ...(d.monthly || []).map(m => m.income));
+  const safe = s => (s ? `<span class="pill ${s.score >= 70 ? 'pos' : s.score >= 45 ? '' : 'neg'}">${s.score} · ${H.esc(s.label)}</span>` : '');
+  out.innerHTML = `<div class="stats card">${stat('Yearly income, expected', H.money(d.total))}${stat('Yield on the account', pct(d.yieldOnValue, 2))}${stat('Paying holdings', String(d.rows.filter(r => r.dps).length) + ' of ' + d.rows.length)}${stat('Reinvesting (DRIP)', d.drip ? 'On' : 'Off', `<a href="#/wealth?tab=drip">${d.drip ? 'Change' : 'Turn on'} →</a>`)}</div>`
+    + (d.monthly ? card('Income by month, next 12 months', `<div class="mbars" role="img" aria-label="Expected income by month: ${d.monthly.map(m => `${m.month} ${H.money(m.income)}`).join(", ")}">${d.monthly.map(m => `<div class="mb"><i style="height:${(m.income / max * 100).toFixed(1)}%" title="${H.esc(m.month)}: ${H.money(m.income)}"></i><span>${H.esc(m.month.slice(5))}</span></div>`).join('')}</div>
+        <div class="tablewrap"><table class="slim"><thead><tr><th>Month</th><th class="num">Expected</th><th>From</th></tr></thead><tbody>${d.monthly.filter(m => m.income).map(m => `<tr><td>${H.esc(m.month)}</td><td class="num">${H.money(m.income)}</td><td class="small-print" data-no-tr>${m.items.map(i => `${H.esc(i.symbol)} ${H.money(i.amount)}`).join(', ')}</td></tr>`).join('')}</tbody></table></div>
+        ${d.notMonthly?.length ? `<p class="mu small-print">Not in the months above (no payment dates listed, yearly amount from annual reports): <span data-no-tr>${d.notMonthly.map(H.esc).join(', ')}</span>. They are in the yearly total.</p>` : ''}`) : '')
+    + card('Coming up', d.calendar.length ? `<div class="tablewrap"><table class="slim"><thead><tr><th>Ex-dividend</th><th>Paid</th><th>Symbol</th><th class="num">Per share</th><th class="num">You get</th></tr></thead><tbody>${d.calendar.map(c => `<tr><td>${H.esc(c.ex_date)}</td><td>${H.esc(c.payable_date || '-')}</td><td data-no-tr>${H.esc(c.symbol)}</td><td class="num">${H.money(c.rate)}</td><td class="num">${H.money(c.amount)}</td></tr>`).join('')}</tbody></table></div><p class="mu small-print">Own the shares before the ex-dividend date to receive the payment. The price usually drops by about the dividend that morning.</p>`
+      : `<div class="empty"><b>${H.esc(d.calendarNote || 'No announced dividends in the next four months.')}</b></div>`)
+    + card('Your holdings', `<div class="tablewrap" tabindex="0" role="region" aria-label="Dividends of your holdings"><table class="slim"><thead><tr><th>Symbol</th><th class="num">Shares</th><th class="num">Yearly per share</th><th class="num">Yield</th><th class="num">Yearly income</th><th>Next ex-date</th><th>Safety</th></tr></thead><tbody>${d.rows.map(r => `<tr><td><a href="#/analyze?symbol=${encodeURIComponent(r.symbol)}&view=dividends" data-no-tr>${H.esc(r.symbol)}</a></td><td class="num">${n(r.qty, 4)}</td><td class="num">${r.dps ? H.money(r.dps) : '-'}${r.dpsSource === 'filings' ? ' <span class="mu" title="From the last annual report">(report)</span>' : ''}</td><td class="num">${pct(r.yieldPct, 2)}</td><td class="num">${H.money(r.income)}</td><td>${H.esc(r.nextEx || '-')}</td><td>${r.locked ? '<button type="button" class="link" data-upgrade="Dividend safety scores">Pro</button>' : r.kind === 'stock' ? safe(r.safety) || '<span class="mu">no dividend</span>' : '<span class="mu">fund</span>'}</td></tr>`).join('')}</tbody></table></div>
+      ${d.locked ? lock(`Safety scores for ${d.locked} more holding${d.locked === 1 ? '' : 's'} are in Pro.`, 'Dividend safety scores') : ''}
+      <p class="mu small-print">Safety score: payout ratio, free cash flow cover, years of increases, debt and profit, from SEC annual reports. Source of payments: ${H.esc(d.source)}. ${H.esc(d.note)}</p>`)
+    + H.related([['wealth?tab=drip', 'Reinvest dividends'], ['scanner/valuescan', 'Stock scanner'], ['wealth/passive', 'Passive investing'], ['tax', 'Taxes']]);
+  wireUpgrade(out);
+};
+
+// ---------- Passive investing ----------
+PAGES.passive = async (view, q) => {
+  const account = q.get('account') || H.state.account || 'paper';
+  view.innerHTML = head('Passive investing', 'Buy a few low-cost index funds, add money regularly and hold. Everything Brightolio has for it, in one place.') + `<form class="row card" style="align-items:flex-end">${await acctSel('psAcct', account)}</form><div id="pso">${skel}</div>`;
+  H.$('#psAcct', view).onchange = e => (location.hash = '#/wealth/passive?account=' + encodeURIComponent(e.target.value));
+  const out = H.$('#pso', view);
+  let d; try { d = await H.api('/income/passive?account=' + encodeURIComponent(account)); } catch (e) { out.innerHTML = `<div class="card"><p class="err">${H.esc(e.message)}</p></div>`; return; }
+  const c = d.check, X = d.dragExample;
+  out.innerHTML = card('Your account today', c.total ? `<p><span class="pill">${H.esc(c.label)}</span></p>${bar('Broad index funds', c.broadPct, 'pos')}${bar('Other funds', c.fundsPct)}${bar('Single stocks', c.stocksPct)}${bar('Cash', c.cashPct)}
+      <p class="small-print">${c.fee != null ? `Average yearly fee of the index funds you hold: <b>${c.fee}%</b>.` : 'None of the funds you hold are in the toolkit\'s fee list.'} <a href="#/riskview/diversify?account=${encodeURIComponent(account)}">Check how spread out it is →</a></p>` : '<div class="empty"><b>This account is empty.</b><span>Start with one of the example mixes below.</span></div>')
+    + `<div class="card"><div class="dash-ch"><h2>Four steps</h2></div><ol class="steps">
+        <li><b>Pick a mix.</b> One to three broad funds. <a href="#/lowcost">Compare index and mutual funds →</a></li>
+        <li><b>Set a plan.</b> How much each month, and what it could grow to. <a href="#/wealth/sp500">S&amp;P 500 plan →</a></li>
+        <li><b>Automate it.</b> Buy the mix every week or month by itself. <a href="#/wealth?tab=auto">Automatic investing →</a> or let a <a href="#/portfolios/robo">automated portfolio</a> rebalance it.</li>
+        <li><b>Hold and reinvest.</b> Reinvest dividends and check twice a year. <a href="#/wealth?tab=drip">Reinvest dividends →</a> · <a href="#/insights/longterm">Long-term view →</a></li></ol></div>`
+    + card('Example mixes', `<div class="grid">${d.mixes.map(m => `<div class="sugg"><h3>${H.esc(m.name)}</h3><p class="mu">${H.esc(m.about)}</p><p data-no-tr>${m.parts.map(([s, w]) => `<a href="#/analyze?symbol=${s}">${s}</a> ${w}%`).join(' · ')}</p><p class="small-print">Yearly fee about ${m.fee}%</p></div>`).join('')}</div><p class="mu small-print">${H.esc(d.note)}</p>`)
+    + card('Why fees matter', `<p>${H.money(X.amount)} for ${X.years} years at ${X.ret}% a year: a 0.03% fee costs about <b>${H.money(X.low)}</b>; a 1% fee costs about <b>${H.money(X.high)}</b>.</p><p class="mu small-print">An example with a steady return to show the effect of fees; real returns go up and down and are not guaranteed.</p>`)
+    + H.related([['lowcost', 'Low-cost index & mutual funds'], ['wealth/sp500', 'S&P 500 plan'], ['portfolios/robo', 'Automated portfolios'], ['wealth/dividends', 'Dividends & income']]);
+};

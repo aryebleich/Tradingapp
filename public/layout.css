@@ -289,3 +289,9 @@ html.lv2 .sugg { border-top: 1px solid var(--bd); padding: var(--s3) 0; } html.l
 html.lv2 .sugg h3 { margin: 0 0 var(--s1) !important; }
 html.lv2 .pv { margin-top: var(--s3); }
 html.lv2 .acctpick { max-width: 280px; }
+/* Dividends & income: income by month */
+html.lv2 .mbars { display: flex; gap: 4px; align-items: flex-end; height: 120px; margin: var(--s3) 0; }
+html.lv2 .mbars .mb { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 0; }
+html.lv2 .mbars .mb i { display: block; width: 100%; max-width: 36px; min-height: 2px; background: var(--ac); border-radius: 4px 4px 0 0; }
+html.lv2 .mbars .mb span { font-size: 11px; color: var(--mu); margin-top: 4px; }
+html.lv2 ol.steps { padding-left: 1.2em; } html.lv2 ol.steps li { margin: 0 0 var(--s2); }
