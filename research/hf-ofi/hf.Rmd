@@ -1,0 +1,112 @@
+---
+title: "Order-flow imbalance (OFI) on intraday market-book data"
+subtitle: "An academic exercise: factors, predictive regressions and an OFI-10 strategy, with costs and an out-of-sample test"
+output:
+  pdf_document:
+    fig_width: 7
+    fig_height: 3.6
+header-includes:
+  - \DeclareUnicodeCharacter{2212}{\ensuremath{-}}
+  - \DeclareUnicodeCharacter{2265}{\ensuremath{\geq}}
+  - \DeclareUnicodeCharacter{2264}{\ensuremath{\leq}}
+  - \DeclareUnicodeCharacter{00D7}{\ensuremath{\times}}
+  - \DeclareUnicodeCharacter{221A}{\ensuremath{\surd}}
+  - \DeclareUnicodeCharacter{0394}{\ensuremath{\Delta}}
+  - \DeclareUnicodeCharacter{00B7}{\ensuremath{\cdot}}
+params:
+  data: "data/df_rb2305_am1.Rds"
+  n: 10
+  in_sample: 0.5
+  hi: 0.8
+  lo: 0.2
+  tick: 1
+  fee: 0.0001
+  slip: 1
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+library(conflicted)
+suppressPackageStartupMessages({ library(tidyverse); library(lubridate); library(patchwork); library(RcppRoll) })
+conflicts_prefer(dplyr::filter, dplyr::lag, dplyr::lead)
+has_paletteer <- requireNamespace("paletteer", quietly = TRUE)
+pal <- if (has_paletteer) as.character(paletteer::paletteer_d("ggthemes::Tableau_10")) else c("#4E79A7", "#F28E2B", "#E15759", "#76B7B2", "#59A14F")
+source("R/ofi.R")
+```
+
+```{r data}
+real <- file.exists(params$data)
+src <- if (real) params$data else "data/sample.Rds"
+if (!file.exists(src)) stop("No data: put the tick file at ", params$data, " (see data/README.md), or run Rscript R/make_sample.R for the synthetic sample.")
+ticks <- standardize_ticks(readRDS(src)) %>% arrange(datetime)
+tag <- if (real) "rb2305, morning session" else "SYNTHETIC SAMPLE (not market data)"
+cap <- labs(caption = if (real) NULL else "Synthetic sample: generated data, not market data")
+```
+
+**Data:** `r src` (`r tag`), `r nrow(ticks)` top-of-book updates from `r format(min(ticks$datetime))` to `r format(max(ticks$datetime))`.
+`r if (!real) "**The real file was not found, so this report uses the generated synthetic sample. Every figure is marked as such.**"`
+
+This is an academic exercise. Results are simulated and are not investment advice. Real high-frequency trading needs exchange co-location and direct market data.
+
+# Factors
+
+For each update: quoted spread = ask − bid; mid = (bid + ask) / 2; microprice = (bid × askVol + ask × bidVol) / (bidVol + askVol); volume imbalance = (bidVol − askVol) / (bidVol + askVol).
+VOI (Shen 2015) = ΔVbid − ΔVask, where ΔVbid is bidVol if the bid rose, bidVol − previous bidVol if it was unchanged, and 0 if it fell (and the mirror image for the ask).
+OFI (Cont, Kukanov and Stoikov 2014): e = 1{bid ≥ prev bid}·bidVol − 1{bid ≤ prev bid}·prev bidVol − 1{ask ≤ prev ask}·askVol + 1{ask ≥ prev ask}·prev askVol, and OFI-`r params$n` is the rolling sum of e over `r params$n` updates (RcppRoll::roll_sum).
+
+```{r factors, fig.height = 5.2}
+f <- factors(ticks, params$n)
+p1 <- ggplot(f, aes(datetime)) + geom_line(aes(y = bid), colour = pal[1], linewidth = .25) + geom_line(aes(y = ask), colour = pal[3], linewidth = .25) +
+  geom_line(aes(y = micro), colour = pal[2], linewidth = .3) + labs(title = "Bid, ask and microprice", x = NULL, y = "Price") + cap
+p2 <- ggplot(f, aes(datetime, ofi_n)) + geom_line(colour = pal[4], linewidth = .25) + labs(title = paste0("OFI-", params$n), x = NULL, y = NULL) + cap
+p3 <- ggplot(f, aes(datetime, imbalance)) + geom_line(colour = pal[5], linewidth = .2) + labs(title = "Volume imbalance", x = NULL, y = NULL) + cap
+p1 / (p2 | p3)
+```
+
+# Do the factors predict the next mid-price changes?
+
+Each row regresses the mid-price change over the next h updates on one factor (OLS with an intercept).
+
+```{r regressions}
+reg <- tidyr::expand_grid(factor = c("spread", "imbalance", "micro_dev", "voi", "ofi", "ofi_n", "d_imbalance", "d_micro_dev"), horizon = c(1, 5, 10, 20)) %>%
+  purrr::pmap_dfr(function(factor, horizon) regress(f, factor, horizon))
+knitr::kable(reg %>% mutate(across(c(beta, t, r2), ~ signif(.x, 4))), caption = "Factor regressions: future mid change on each factor")
+```
+
+# OFI-`r params$n` strategy
+
+Long when OFI-`r params$n` is above its `r params$hi * 100`th percentile; back to cash when it is below its `r params$lo * 100`th percentile; otherwise hold. The position chosen at an update earns the mid-price return to the next update.
+
+**Look-ahead fix.** Using percentiles of the whole session would let the rule see the future. Here the percentiles come from the first `r params$in_sample * 100`% of the updates only (in-sample), and the strategy is then tested on the rest (out-of-sample) with those thresholds. Both are shown.
+
+**Costs.** Every change of position pays the exchange fee (`r params$fee * 1e4` bp of the price) plus `r params$slip` tick(s) of slippage (tick = `r params$tick`). Results are shown gross and net of costs. The Sharpe ratio is the mean over the standard deviation of per-update returns, times √(updates per day × 252).
+
+```{r backtest}
+split <- floor(nrow(f) * params$in_sample)
+ins <- f[seq_len(split), ]; oos <- f[(split + 1):nrow(f), ]
+hi <- q7(ins$ofi_n, params$hi); lo <- q7(ins$ofi_n, params$lo)
+per_day <- nrow(f)
+bt_in <- backtest(ins$mid, ins$ofi_n, hi, lo, params$fee, params$tick, params$slip)
+bt_out <- backtest(oos$mid, oos$ofi_n, hi, lo, params$fee, params$tick, params$slip)
+tab <- bind_rows(`in-sample` = summarise_bt(bt_in, per_day), `out-of-sample` = summarise_bt(bt_out, per_day), .id = "segment")
+knitr::kable(tab %>% mutate(across(where(is.numeric), ~ signif(.x, 4))), caption = sprintf("Thresholds from the in-sample data: 80th percentile %.4g, 20th percentile %.4g", hi, lo))
+```
+
+```{r return, fig.height = 4.2}
+curve <- function(seg, bt, name) tibble(datetime = seg$datetime, segment = name,
+  `OFI strategy (gross)` = cumprod(1 + bt$gross) - 1, `OFI strategy (net)` = cumprod(1 + bt$net) - 1, `Buy and hold` = seg$mid / seg$mid[1] - 1)
+cv <- bind_rows(curve(ins, bt_in, "in-sample"), curve(oos, bt_out, "out-of-sample")) %>% pivot_longer(-c(datetime, segment))
+g <- ggplot(cv, aes(datetime, value, colour = name)) + geom_line(linewidth = .35) + facet_wrap(~segment, scales = "free_x") +
+  scale_colour_manual(values = pal[c(4, 3, 1)]) + scale_y_continuous(labels = scales::percent) +
+  labs(title = paste0("Cumulative return: OFI-", params$n, " against buy and hold"), x = NULL, y = NULL, colour = NULL) + cap + theme(legend.position = "bottom")
+dir.create("out", showWarnings = FALSE)
+ggsave("out/return.png", g, width = 8, height = 4.2, dpi = 150)
+g
+```
+
+# Limits
+
+- One session of one contract: too little data to conclude anything.
+- Updates are snapshots (often 500 ms apart), not every order book event, so OFI is measured coarsely.
+- Fills at the mid with a fixed slippage are optimistic for a strategy that trades this often; queue position, latency and partial fills are ignored.
+- Differences from the original hf.Rmd: the original file is not in this repository, so this report follows the written description. It adds the in-sample/out-of-sample split (look-ahead fix), costs, and the gross and net statistics.

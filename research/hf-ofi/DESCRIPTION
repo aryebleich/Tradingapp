@@ -1,0 +1,10 @@
+Package: hfofi
+Title: Order-Flow Imbalance on Intraday Market-Book Data (Academic Exercise)
+Version: 0.1.0
+Description: Factors (spread, microprice, imbalance, VOI, OFI, OFI-N), predictive regressions and an
+    OFI-N backtest with costs and an in-sample/out-of-sample split. Rendered with rmarkdown.
+License: file LICENSE
+Encoding: UTF-8
+Depends: R (>= 4.1)
+Imports: conflicted, tidyverse, dplyr, tibble, tidyr, purrr, ggplot2, scales, lubridate, patchwork, RcppRoll, rmarkdown, knitr, jsonlite
+Suggests: paletteer

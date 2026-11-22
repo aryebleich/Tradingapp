@@ -7,3 +7,8 @@ android/project/
 android/brightfolio.apk
 screenshots/
 .comms-sim-key.pem
+
+# OFI lab: the real tick data may be licensed; never commit it
+research/hf-ofi/data/*.Rds
+!research/hf-ofi/data/sample.Rds
+research/hf-ofi/data/df_*
