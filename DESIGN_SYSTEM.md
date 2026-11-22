@@ -127,6 +127,16 @@ This is the existing pattern, which is kept:
 
 Layout v2 keeps the last disclosures clear of the tab bar (bottom padding plus the safe-area inset).
 
+## Research, AI and growth pages (2026-11-22)
+
+- **Page frame:** `pagehead` (h1 plus a one-line plain-words purpose), then an account picker card where the page is about one account, then cards. Loading uses the shared `.skel`; nothing loaded yet uses `.empty` with the next step as a link.
+- **Numbers:** `.stats` with `.stat` tiles (label, value, an optional `small` line). Signed values use `.pos` and `.neg`; tables use `table.slim` inside `.tablewrap` (focusable, with an `aria-label` when it can scroll).
+- **Charts:** bar charts are HTML (`.hbars`, `.mbars`); line charts are SVG with a legend (`svg.lines`, `.legend`). Every chart has `role="img"` and an `aria-label` that reads the numbers. There are no colour-only signals: each bar or line also has a label or a legend entry.
+- **Locks:** a paid part shows `.empty.lock` with what it unlocks and "Unlock with <plan>", which opens the upgrade window. The free part always shows real data (the sample before the paywall), never a blurred or fake preview.
+- **Company card before a buy:** `.qcard` above the confirm. It loads in the background, never blocks the order, and can be hidden per stock.
+- **AI and automation pages:** the not-advice line is at the end of the page, the record shows losses, paper is the default, and the "Real money" fieldset asks for the password before it turns on.
+- **Related links:** every new page ends with `H.related([...])` to the tools that go with it, and each stock-page section links to its matching tools.
+
 ## Always on
 
 The layout layer is part of every page (`<html class="lv2">`, `layout.css`, `layout.js`). There is no flag. It is checked on every merge by `test/layout/gate.sh` against the golden baseline (`test/golden/`).

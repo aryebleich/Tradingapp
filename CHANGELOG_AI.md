@@ -4,6 +4,25 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-22: Growth features, phase 2 (consistency, linking, revenue)
+
+### What changed
+
+- **Pricing:** Free / Pro / Premium tier labels on the plan cards and the comparison table, plus a "Research and AI" group of rows (in the app; the homepage waits for sign-off, LEGAL_REVIEW.md L18). A test ties each row to the server's own checks.
+- **Linking:** related links under every stock-page section, and "Save these matches as a watchlist" on the scanner.
+- **Design system:** rules for the research, AI and growth pages in DESIGN_SYSTEM.md (frame, numbers, charts, locks, the company card, AI pages, related links).
+- **Translations:** Yiddish for the new pricing rows, links and buttons.
+
+### Tests
+
+`npm test`: 436 pass, 0 fail. Checked in the browser at 1280 and 375 px, signed in and signed out: no console errors, no horizontal scroll, axe clean.
+
+### Rollback
+
+Revert this entry's commit. No data changes.
+
+---
+
 ## 2026-11-22: Growth features, phase 1
 
 ### What changed

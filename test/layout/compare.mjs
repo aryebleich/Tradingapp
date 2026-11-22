@@ -70,7 +70,7 @@ for (const pg of pages) for (const w of widths) {
 }
 
 // Visual differences, measured in a browser canvas (no image library needed).
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.env.PW_CHROME ? { executablePath: process.env.PW_CHROME } : {});
 const p = await browser.newPage();
 const visual = [];
 for (const pg of pages) for (const w of widths) {

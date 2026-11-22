@@ -34,7 +34,7 @@ if (!B) {
   server.stderr.on('data', () => {});
   for (let i = 0; i < 60; i++) { if (await fetch(B + '/healthz').then(r => r.ok, () => false)) break; await new Promise(r => setTimeout(r, 200)); }
 }
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.env.PW_CHROME ? { executablePath: process.env.PW_CHROME } : {}); // PW_CHROME: a preinstalled Chromium when the pinned one is missing
 const base = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
 const host = new URL(B).hostname;
 const p0 = await base.newPage(); p0.on('dialog', d => d.accept());

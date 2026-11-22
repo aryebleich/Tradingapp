@@ -56,11 +56,23 @@ export async function stockSection(helpers, el, sym, view) {
   H = H || helpers;
   el.innerHTML = '<div class="card"><div class="skel" role="status" aria-label="Loading"><div class="h1"></div><div></div><div></div><div class="w60"></div><div class="box"></div></div></div>';
   try {
-    if (view === 'technicals' || view === 'supply') return drawTech(el, sym, view, await H.api(`/stock/${encodeURIComponent(sym)}/technicals`));
+    if (view === 'technicals' || view === 'supply') { drawTech(el, sym, view, await H.api(`/stock/${encodeURIComponent(sym)}/technicals`)); return related(el, sym, view); }
     const d = await H.api('/stock/' + encodeURIComponent(sym));
     if (d.kind !== 'stock') { el.innerHTML = card('Not available', `<p class="mu">${H.esc(d.note || 'No company filings for this symbol.')}</p><p><a href="#/analyze?symbol=${encodeURIComponent(sym)}&view=technicals">Technicals still work →</a></p>`); return; }
     ({ valuation: drawValuation, fundamentals: drawFundamentals, earnings: drawEarnings, dividends: drawDividends })[view]?.(el, d, sym);
   } catch (e) { el.innerHTML = `<div class="card"><p class="err">${H.esc(e.message)}</p></div>`; }
+  related(el, sym, view);
+}
+// Each section links to the tools that go with it (STRUCTURE_AUDIT.md, related links).
+function related(el, sym, view) {
+  const q = encodeURIComponent(sym), REL = {
+    valuation: [['scanner/valuescan', 'Growth-at-a-price scanner'], ['research/rates', 'Rates vs stocks'], [`analyze/compare?symbols=${q}`, 'Compare with others']],
+    fundamentals: [[`analyze/compare?symbols=${q}`, 'Compare with others'], ['scanner/valuescan', 'Stock scanner']],
+    earnings: [['calendar', 'Earnings calendar'], ['analyze/earnings', 'Earnings vs expectations']],
+    dividends: [['wealth/dividends', 'Your dividend income'], ['wealth?tab=drip', 'Reinvest dividends']],
+    technicals: [[`chart?symbol=${q}`, 'Full chart'], ['bots/intraday', 'AI intraday']], supply: [[`chart?symbol=${q}`, 'Full chart'], ['active', 'Active trading desk']],
+  }[view];
+  if (REL && H.related) el.insertAdjacentHTML('beforeend', H.related(REL));
   H.$$('[data-upgrade]', el).forEach(b => (b.onclick = () => H.upgrade?.(b.dataset.upgrade)));
 }
 function drawValuation(el, d, sym) {
@@ -169,7 +181,13 @@ async function valuescanPage(view, q) {
       const d = await H.api('/stock/scan', { body }); fill(d.filters);
       out.innerHTML = card(`${d.rows.length} match${d.rows.length === 1 ? '' : 'es'} <span class="mu">of ${d.scanned} checked</span>`, d.rows.length ? `<div class="tablewrap" tabindex="0" role="region" aria-label="Matches"><table class="slim"><thead><tr><th>Symbol</th><th class="num">P/E</th><th class="num">EPS growth</th><th class="num">Revenue growth</th><th class="num">Net margin</th><th>Revenue trend</th><th>Valuation</th><th></th></tr></thead><tbody>
         ${d.rows.map(r => `<tr><td><a href="#/analyze?symbol=${encodeURIComponent(r.symbol)}" data-no-tr><b>${H.esc(r.symbol)}</b></a><small class="mu pos-sub">${H.esc(r.name || '')}</small></td><td class="num">${n(r.pe, 1)}</td><td class="num">${pct(r.epsGrowth)}</td><td class="num">${pct(r.revenueGrowth)}</td><td class="num">${pct(r.netMargin)}</td><td>${H.esc(r.revenueTrend || '-')}</td><td>${(LABEL[r.peLabel] || LABEL.na)[0]}</td><td><a href="#/analyze?symbol=${encodeURIComponent(r.symbol)}&view=valuation">Valuation →</a></td></tr>`).join('')}</tbody></table></div>
-        <p class="mu small-print">Add matches to a <a href="#/watchlists">watchlist</a>, or set a <a href="#/schedule">price alert</a>.</p>` : '<div class="empty"><b>No matches.</b><span>Loosen a filter, or try another preset.</span></div>') + NOTE;
+        <p class="row" style="align-items:center;gap:8px"><button type="button" class="small ghost" id="vsWl">Save these ${d.rows.length} as a watchlist</button><span class="mu small-print">or set a <a href="#/schedule">price alert</a>; saved filters can alert you daily.</span></p><p class="small-print" id="vsWlMsg" role="status"></p>` : '<div class="empty"><b>No matches.</b><span>Loosen a filter, or try another preset.</span></div>') + NOTE;
+      const wl = H.$('#vsWl', out);
+      if (wl) wl.onclick = async () => {
+        const msg = H.$('#vsWlMsg', out), name = `Scanner ${new Date().toISOString().slice(0, 10)}`;
+        try { const w = await H.api('/alpaca/watchlists', { body: { name, symbols: d.rows.slice(0, 50).map(r => r.symbol) } }); msg.innerHTML = `Saved as "${H.esc(name)}". <a href="#/watchlists?id=${encodeURIComponent(w.id)}">Open it →</a>`; }
+        catch (e) { msg.innerHTML = /connect|No Alpaca|not connected|409/i.test(e.message) ? 'Watchlists are kept in your Alpaca account. <a href="#/accounts">Connect Alpaca →</a>' : `<span class="err">${H.esc(e.message)}</span>`; }
+      };
     } catch (e) { out.innerHTML = `<div class="card"><p class="err">${H.esc(e.message)}</p></div>`; }
   };
   H.$$('[data-preset]', view).forEach(b => (b.onclick = () => { H.$$('[data-preset]', view).forEach(x => x.classList.toggle('on', x === b)); if (b.dataset.preset === 'custom') { fill({}); out.innerHTML = ''; } else runScan({ preset: b.dataset.preset }); }));

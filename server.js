@@ -19,7 +19,7 @@ import crypto from 'node:crypto';
 import { backtest, projectAnnual, walkForward, optimize, warmupFor, compile, PRESETS } from './src/engine.js';
 import { getBars, getCred, accountSummary, placeOrder, listOrders, portfolioHistory, lastPrice, snapshotEquity, ACCOUNT_IDS } from './src/brokers.js';
 import * as QC from './src/quantconnect.js';
-import { PLANS, COMPARE, TRIAL_DAYS, isPaid, adjustForCashflow, revenueSummary } from './src/fees.js';
+import { PLANS, COMPARE, GROWTH_COMPARE, TIERS, TRIAL_DAYS, isPaid, adjustForCashflow, revenueSummary } from './src/fees.js';
 import { llmEnabled, llmInfo } from './src/llm.js';
 import { securityRouter, passkeyLoginRouter, stepUpGuard } from './src/security.js';
 import { lessonsRouter } from './src/lessons.js';
@@ -757,7 +757,7 @@ const needPlan = feature => (req, res, next) => (isPaid(req.user) ? next() : nex
 const publicPlans = () => Object.fromEntries(Object.entries(PLANS).map(([k, { perfFee, ...p }]) => [k, p]));
 api.get('/config', async (req, res) => res.json({
   // Performance-fee rates are private: only admins receive them (Admin → Upgrades, Money & fees).
-  plans: req.user?.role === 'admin' ? PLANS : publicPlans(), compare: COMPARE, trialDays: TRIAL_DAYS, presets: PRESETS, twilio: N.twilioEnabled(), stripe: N.stripeEnabled(), ai: llmEnabled(), aiModel: llmInfo(), email: N.emailEnabled(),
+  plans: req.user?.role === 'admin' ? PLANS : publicPlans(), compare: COMPARE, growthCompare: GROWTH_COMPARE, tiers: TIERS, trialDays: TRIAL_DAYS, presets: PRESETS, twilio: N.twilioEnabled(), stripe: N.stripeEnabled(), ai: llmEnabled(), aiModel: llmInfo(), email: N.emailEnabled(),
   marketData: dataEnabled(), hotline: process.env.TWILIO_FROM || null, broker: brokerEnabled(), oauth: oauthEnabled(), google: googleEnabled(), github: githubEnabled(), assistant: aiEnabled(), adviser: adviserFor(req.user), version: version(),
   // The Google Play listing, once the app is published there (ANDROID_PLAY_URL, or ANDROID_PLAY=1 for the standard address).
   androidPlay: process.env.ANDROID_PLAY_URL || (process.env.ANDROID_PLAY === '1' ? 'https://play.google.com/store/apps/details?id=com.brightfolio.app' : null),

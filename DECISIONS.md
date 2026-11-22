@@ -108,6 +108,17 @@ Choices and assumptions made without asking, with the reason. Trading-tools work
   - Reminders the day before an ex-dividend date or an earnings report are opt-in.
 - G-13: **Active trading desk.** It uses the brokerage's own day-trade count where Alpaca reports one; otherwise it says the brokerage keeps the official count. The risk line is "Day trading is risky and often loses money", with no statistic Brightolio cannot source.
 
+- G-14: **Free / Pro / Premium on Plans & billing.** Each plan card and the comparison header show the tier (Free under Starter, Premium under Elite and Ultimate). A second group of rows, "Research and AI", lists the growth features by plan. A test keeps each row equal to the server's own check (for example, AI intraday is Elite, and free members get one diversification suggestion).
+  - The homepage table is unchanged, because homepage copy waits for sign-off (LEGAL_REVIEW.md L18).
+  - Annual plans and the trial were already on the page (P2-5, P2-6).
+- G-15: **Linking.** Each stock-page section links to its matching tools:
+  - Valuation → the scanner, Rates vs stocks and Compare;
+  - Earnings → the calendar;
+  - Dividends → the member's dividend income and DRIP;
+  - Technicals → the full chart and AI intraday.
+  Scanner matches can be saved as an Alpaca watchlist in one click; without a connection the page says watchlists live in Alpaca and links to Accounts. Saved filters already alert daily.
+- G-16: **Upgrade prompts stay at the point of need** (P2-8). Every new paid action returns 402 with `upgrade` and `feature`, which opens the upgrade window naming the plan. No banners were added.
+
 ## Pro polish: trust and revenue (2026-11-20)
 
 - P2-1: The review (PRO_REVIEW.md) found a mature landing page and pricing. The weak points were smaller and closer to the money: the upgrade window, the plan choice inside the app, sign-up, the first steps on Home, page titles and three accessibility failures. Those were fixed first; a rebuild of what works was not attempted.

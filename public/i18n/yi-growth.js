@@ -2,6 +2,16 @@
 // stocks, diversification, AI morning picks, AI intraday, AI long/short portfolios, dividends & income,
 // passive investing, the active trading desk, the company card, fund compare and futures research.
 export const strings = {
+  // plans & billing: research and AI rows
+  'Research and AI': 'פארשונג און AI', 'Free': 'אומזיסט', 'Premium': 'פרימיום',
+  'Stock page: valuation, earnings, dividends, technicals': 'סטאק בלאט: ווערט, פארדינסטן, דיווידענדן, טעכנישע', '2 years': '2 יאר', '5 years + AI summary': '5 יאר + AI צוזאמפאסונג',
+  'Company card before every buy': 'פירמע קארטל פאר יעדן קויף', 'Growth-at-a-price scanner': 'וואוקס-פאר-א-פרייז סקענער', 'Presets': 'פארטיגע', 'Saved filters + daily alerts': 'אפגעהיטענע פילטערס + טעגליכע אלערטס',
+  'Diversification suggestions with previews': 'פארשפרייטונג פארשלאגן מיט פאראויסבליקן', 'All': 'אלע', 'Dividend safety scores': 'דיווידענד זיכערקייט צייכנס', 'First 3 holdings': 'ערשטע 3 האלדינגס', 'All holdings': 'אלע האלדינגס',
+  'Read picks and record': 'לייענט אויסוואלן און רעקארד', 'Paper, approve or automatic': 'פעיפער, באשטעטיגן אדער אויטאמאטיש', 'Paper or real money': 'פעיפער אדער עכטע געלט', 'Read rules and record': 'לייענט כללים און רעקארד',
+  'Free is Starter; Premium is Elite and Ultimate. AI picks, scores and forecasts are not investment advice, and every record shows its losses.': 'אומזיסט איז Starter; פרימיום איז Elite און Ultimate. AI אויסוואלן, צייכנס און פאראויסזאגונגען זענען נישט קיין אינוועסטמענט עצה, און יעדער רעקארד ווייזט זיינע פארלוסטן.',
+  // related links on the stock page
+  'Rates vs stocks': 'אינטערעס ראטעס קעגן סטאקס', 'Compare with others': 'פארגלייכט מיט אנדערע', 'Stock scanner': 'סטאק סקענער', 'Earnings calendar': 'פארדינסטן קאלענדאר',
+  'Your dividend income': 'אייער דיווידענד איינקונפט', 'Reinvest dividends': 'אינוועסטירט צוריק דיווידענדן', 'Full chart': 'פולע טשארט',
   // menu, tabs and page titles
   'Compare stocks': 'פארגלייכט סטאקס', 'Growth at a price': 'וואוקס פאר א גוטן פרייז', 'Rates vs stocks': 'אינטערעס ראטעס קעגן סטאקס',
   'Diversification': 'פארשפרייטונג', 'AI morning picks': 'AI פרימארגן אויסוואלן', 'AI intraday': 'AI אינעם טאג', 'AI intraday trading': 'AI טרעידינג אינעם טאג',
@@ -39,6 +49,7 @@ export const strings = {
   'Unlock with Pro': 'עפנט מיט Pro', 'Sources': 'מקורות', 'Related': 'פארבונדן',
 };
 export const patterns = [
+  [/^Save these (\d+) as a watchlist$/, m => `היט אפ די ${m[1]} אלס א וואטש-ליסטע`],
   [/^Approve and place today's picks on (.+)$/, m => `באשטעטיגט און שטעלט אריין היינטיגע אויסוואלן אויף ${m[1]}`],
   [/^(\d+) of (\d+) placed$/, m => `${m[1]} פון ${m[2]} אריינגעשטעלט`],
   [/^(\d+) picks over (\d+) days$/, m => `${m[1]} אויסוואלן איבער ${m[2]} טעג`],

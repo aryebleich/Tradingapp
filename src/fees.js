@@ -31,6 +31,21 @@ export const COMPARE = [
   ['Tax-loss harvesting & Schedule D', false, false, true, true],
   ['Priority support', false, false, false, true],
 ];
+// The three tiers the plans are grouped in on Plans & billing: Free (Starter), Pro, Premium (Elite and
+// Ultimate). The plan names, prices and Stripe products are unchanged (DECISIONS.md G-1).
+export const TIERS = { free: 'Free', pro: 'Pro', elite: 'Premium', ultimate: 'Premium' };
+// Research and AI features by plan (in the app only; the homepage table waits for sign-off, LEGAL_REVIEW.md
+// L18). Each row matches the server's own check (test/pricing.test.js).
+export const GROWTH_COMPARE = [
+  ['Stock page: valuation, earnings, dividends, technicals', '2 years', '5 years + AI summary', '5 years + AI summary', '5 years + AI summary'],
+  ['Company card before every buy', true, true, true, true],
+  ['Growth-at-a-price scanner', 'Presets', 'Saved filters + daily alerts', 'Saved filters + daily alerts', 'Saved filters + daily alerts'],
+  ['Diversification suggestions with previews', '1', 'All', 'All', 'All'],
+  ['Dividend safety scores', 'First 3 holdings', 'All holdings', 'All holdings', 'All holdings'],
+  ['AI morning picks', 'Read picks and record', 'Paper, approve or automatic', 'Paper or real money', 'Paper or real money'],
+  ['AI intraday trading', 'Read rules and record', false, 'Paper or real money', 'Paper or real money'],
+  ['AI long/short portfolios', true, true, true, true],
+];
 // Paid plans start with a free trial once per user.
 export const TRIAL_DAYS = +process.env.TRIAL_DAYS || 14;
 export const PAID = ['pro', 'elite', 'ultimate'];
