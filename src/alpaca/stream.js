@@ -58,15 +58,23 @@ class Feed {
 }
 const feeds = { stocks: new Feed('stocks', `/v2/${process.env.ALPACA_STOCK_FEED || 'iex'}`), crypto: new Feed('crypto', '/v1beta3/crypto/us') };
 
+// Server-side listeners (the live pairs engine): symbols they follow are streamed like a browser's.
+const watchers = new Set(); // { symbols: Set, fn }
+export function watch(symbols, fn) {
+  const w = { symbols: new Set(symbols.map(x => String(x).toUpperCase())), fn };
+  watchers.add(w); syncAll();
+  return () => { watchers.delete(w); syncAll(); };
+}
 function wanted(name) {
   if (!usingAlpaca()) return new Set();
   const all = new Set();
+  for (const w of watchers) for (const s of w.symbols) if ((name === 'crypto') === s.includes('/')) all.add(s);
   for (const c of clients) for (const s of c.symbols) if ((name === 'crypto') === s.includes('/')) all.add(s);
   for (const s of alertSet) if ((name === 'crypto') === s.includes('/')) all.add(s);
   return new Set([...all].slice(0, MAX_SYMBOLS));
 }
 // Every symbol any browser or alert follows, for the other providers' stream.
-function wantedAll() { const all = new Set(alertSet); for (const c of clients) for (const s of c.symbols) all.add(s); return all; }
+function wantedAll() { const all = new Set(alertSet); for (const c of clients) for (const s of c.symbols) all.add(s); for (const w of watchers) for (const s of w.symbols) all.add(s); return all; }
 function syncAll() { feeds.stocks.sync(); feeds.crypto.sync(); hub.sync(); }
 hub.configure({ sink: u => push(u), want: wantedAll, alpacaReady });
 
@@ -77,6 +85,7 @@ function dispatch(m) {
 // One update from any stream: to the browsers following it, and to the price alerts.
 export function push(update) {
   if (update.price > 0) checkTick(update.symbol, update.price, notify).catch(() => {});
+  for (const w of watchers) if (w.symbols.has(update.symbol)) { try { w.fn(update); } catch {} }
   for (const c of clients) {
     const m = { S: update.symbol };
     if (!c.symbols.has(m.S)) continue;
