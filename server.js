@@ -297,7 +297,9 @@ app.get('/internal/verify', internalAuth, async (req, res) => {
     const sch = await schemaReport(); out.schema = { ok: sch.ok, checkedColumns: sch.checkedColumns, missingColumns: sch.missingColumns, failedMigrations: sch.failedMigrations };
     if (!sch.ok) out.problems.push('schema: ' + (sch.missingColumns || []).join(', '));
     out.credentials = await A.credentialCheck(); if (!out.credentials.ok) out.problems.push('stored credentials do not open with this ENCRYPTION_KEY');
-    out.users = Number((await one('SELECT COUNT(*) AS n FROM users')).n); out.mergePending = process.env.TURSO_MERGE_PENDING === '1'; if (!out.users && !out.mergePending) out.problems.push('no users in the database');
+    out.users = Number((await one('SELECT COUNT(*) AS n FROM users')).n);
+    out.mergePending = process.env.TURSO_MERGE_PENDING === '1'; // merge-only
+    if (!out.users && !out.mergePending) out.problems.push('no users in the database');
   } catch (e) { out.problems.push('database: ' + e.message); }
   out.keys = A.keyReport().missingRequired; if (out.keys.length) out.problems.push('missing settings: ' + out.keys.join(', '));
   out.ok = !out.problems.length; res.status(out.ok ? 200 : 500).json(out);
@@ -1350,7 +1352,7 @@ api.get('/admin/setup', U, auth.requireAdmin, async (req, res) => {
   res.json({ admins: auth.allAdminEmails(), emailError: siteGet('emailError'), googleRedirects: ownHosts().filter(h => !/^(localhost|127\.)/.test(h)).map(h => `https://${h}/auth/google/callback`), githubRedirect: publicUrl() + '/auth/github/callback', items: [
     ['Admin email', 'ADMIN_EMAIL', auth.allAdminEmails().length > 0],
     [`Node.js ${runtime.version} (patched: ${runtime.min} or later)`, 'NODE_VERSION / .node-version', runtime.ok],
-    ['Database (Turso)', 'DATABASE_URL', has('DATABASE_URL')],
+    ['Database (a lasting file on this server, or a shared server)', 'PERSISTENT_DISK or DATABASE_URL', persistentDb],
     ['Encryption key', 'ENCRYPTION_KEY', has('ENCRYPTION_KEY')],
     ['Alpaca Broker API (account opening)', 'BROKER_API_KEY, BROKER_API_SECRET', brokerEnabled()],
     ['Alpaca market data', 'ALPACA_KEY_ID, ALPACA_SECRET', dataEnabled()],

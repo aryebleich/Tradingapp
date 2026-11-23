@@ -266,10 +266,10 @@ router.post('/app-exchange', async (req, res) => {
 // In-app notices shown as a banner to a signed-in user (never sent by email or text): the move to the
 // new server while the old data is still to be merged, and a notice saved for this user (the merge
 // leaves one when it paused their automations).
-export const MOVED_NOTICE = 'We moved to a new server. Your account history from before November 22 will be back by December 2.';
+export const MOVED_NOTICE = 'We moved to a new server. Your account history from before November 22 will be back by December 2.'; // merge-only
 async function noticesFor(u) {
   const out = [];
-  if (process.env.TURSO_MERGE_PENDING === '1') out.push({ id: 'moved', text: MOVED_NOTICE });
+  if (process.env.TURSO_MERGE_PENDING === '1') out.push({ id: 'moved', text: MOVED_NOTICE }); // merge-only
   const { getSetting } = await import('./settings.js');
   const n = await getSetting(u.id, 'notice').catch(() => null);
   if (n?.text) out.push({ id: 'notice', text: String(n.text).slice(0, 300), at: n.at || null });

@@ -3,8 +3,8 @@
 //   node scripts/fresh-db.mjs <dest.db> [offset]
 // 1. the app's own migrations create every table and index in <dest.db>
 // 2. every empty table with an INTEGER PRIMARY KEY is rebuilt with AUTOINCREMENT and its counter
-//    set to <offset> (default 10,000,000), so rows made from now on never take an id the old
-//    database already uses; scripts/turso-merge.mjs can later bring the old rows in with their ids.
+//    set to <offset> (default 10,000,000), so rows made from now on never take an id an older
+//    database already uses, and its rows can be brought in later with their own ids.
 // Prints one JSON line: { ok, file, tables, converted, offset }.
 import fs from 'node:fs';
 import path from 'node:path';
