@@ -29,6 +29,7 @@
 #   verify           /internal/verify: database, schema, row counts, credentials, keys (JSON)
 #   point-domain <domain> <ip>  the domain's Cloudflare record → this server (CLOUDFLARE_API_TOKEN)
 #   diagnose-load    load, heap, event-loop delay, in flight, refused requests, container memory
+#   deploy-now       a deploy in the open, with the deploy log and the app's start-up log
 #   check-trade      a paper trade end to end (/internal/check-trade: buy and sell 1 SPY on paper)
 #   report           the last pull and merge report (JSON) # merge-only
 #   activate <url>   register this server in its own database and make it the active server
@@ -194,6 +195,14 @@ case "$step" in
     ;;
 # <<< merge-only
   check-trade) call POST /internal/check-trade; echo ;;
+  deploy-now)
+    # A deploy of the newest commit in the open: its whole output, the deploy log, and the app's own
+    # start-up log (lines that could hold a value are left out).
+    echo "--- deploy"; FORCE=1 /usr/local/bin/brightfolio-update 2>&1 | tail -40 || true
+    echo "--- deploy log"; tail -25 "$DATA/host-actions.log" 2>/dev/null || true; cat "$DATA/.host.json" 2>/dev/null; echo
+    echo "--- images: $(docker images brightfolio --format '{{.Tag}}={{.ID}} {{.CreatedSince}}' | paste -sd' ' -); running: $(docker inspect -f '{{.Image}}' brightfolio-app-1 2>/dev/null | cut -c8-19)"
+    echo "--- app start-up log"; (cd "$APP" && docker compose logs --tail 60 app 2>&1) | grep -viE 'key|secret|token|password|authorization' | tail -40
+    ;;
   diagnose-load)
     # Six samples, ten seconds apart: the load and its parts, heap and its real limit, the event-loop
     # delay, in flight, refused requests; then the container's memory and CPU, and /metrics.
