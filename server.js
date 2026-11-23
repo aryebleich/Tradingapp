@@ -310,6 +310,7 @@ app.post('/internal/check-trade', internalAuth, async (req, res) => {
   try {
     let u = await one('SELECT id FROM users WHERE email = ?', email);
     if (!u) { await run("INSERT INTO users (email, pass_hash, role, plan, created_at, password_set) VALUES (?, ?, 'user', 'free', ?, 0)", email, 'disabled:' + Date.now(), now()); u = await one('SELECT id FROM users WHERE email = ?', email); }
+    await run('INSERT OR IGNORE INTO paper_accounts (user_id, cash, start_cash) VALUES (?, 100000, 100000)', u.id);
     const { placeOrder } = await import('./src/brokers.js'), out = {};
     for (const side of ['buy', 'sell']) { const r = await placeOrder(u.id, 'paper', { symbol: 'SPY', side, qty: 1, type: 'market' }, 'check'); out[side] = { status: r.status || 'ok', price: r.fill_price ?? r.price ?? null }; }
     res.json({ ok: true, ...out });
