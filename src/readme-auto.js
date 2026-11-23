@@ -26,7 +26,7 @@ Everything that is waiting on you, in order. This list is kept up to date by the
 - [ ] Run every step of docs/STRIPE_TEST_PLAN.md with Stripe's test cards.
 - [ ] Decide D1 to D5 in docs/STRIPE_AUDIT.md: newer API version, a refund button in Admin, take credits back on refund, what to do on a dispute, separate test and live databases.
 - [ ] Choose who answers disputes (each one sends an e-mail to the admins with the deadline).
-- [ ] Going live: live keys only in Render (or Admin → Keys), a live-mode webhook with its own secret, NODE_ENV=production, STRIPE_TEST_ONLY empty.
+- [ ] Going live: live keys only in the server's settings (Admin → Keys, or the ORACLE_ENV secret), a live-mode webhook with its own secret, NODE_ENV=production, STRIPE_TEST_ONLY empty.
 
 ### 5. SMS and voice drawer (only if you want it)
 - [ ] Open a Telnyx account; put TELNYX_API_KEY and TELNYX_PUBLIC_KEY in Admin → Keys.
@@ -47,7 +47,7 @@ Everything that is waiting on you, in order. This list is kept up to date by the
 - [ ] Decide whether the existing AI tools ("News to trades", AI signals, AI bots) should get the same advice filter (needs legal review).
 
 ### 7. Keys and safety
-- [ ] ENCRYPTION_KEY is set in Render **and saved somewhere safe**. This README, saved keys and waiting texts are encrypted with it; if it changes, they cannot be read (this README would look empty: use Import below to bring the guide back).
+- [ ] ENCRYPTION_KEY is set on the server **and saved somewhere safe**. This README, saved keys and waiting texts are encrypted with it; if it changes, they cannot be read (this README would look empty: use Import below to bring the guide back).
 - [ ] After any test with a public tunnel (ngrok, Cloudflare), change the keys that were used.
 
 ### 8. So Claude can check the official documentation
@@ -64,7 +64,7 @@ Brightolio never sends orders to an exchange itself. Orders go to the brokerage 
 Then, for both ways:
 - Turn on real-time consolidated prices (an Alpaca market-data subscription; set ALPACA_STOCK_FEED to sip).
 - Make one small live trade and check it in Execution & routing: the quote at sending, the fill and the time are all recorded.
-- For speed, run the server in a US East region (Render: Virginia or Ohio), close to Alpaca's trading servers. Admin → Market data shows how fast each price source answers.
+- For speed, run the server in a US East region (Oracle: Ashburn), close to Alpaca's trading servers. Admin → Market data shows how fast each price source answers.
 
 ### 2. Who is my Alpaca account manager, and how do I ask about the partner revenue share?
 Alpaca assigns a partner or account manager to Broker API partners after onboarding. Their name and email appear in the Broker dashboard (and in the onboarding emails). Before that, or if you do not know who it is:
@@ -100,9 +100,9 @@ Only admins can open these pages or reach their data: every /api/admin route sit
 - **Homepage text:** scripts/home.py (English) and scripts/yi_home.py (Yiddish), built with python3 scripts/pages.py.
 ` },
   { id: 'setup', title: 'Setup information', md: `
-- **Servers:** the Oracle Cloud VM (deploy/vm/, set up by the "Oracle server setup" workflow) is the active server since 2026-11-23; Render (render.yaml, free plan) is a standby with STANDBY=1 that serves pages only. Admin → Hosting shows each server's health, CPU, memory, disk and version, with Deploy now, Restart and Make active; only the active server runs scheduled jobs. MIGRATION_ORACLE.md has the move and the way back.
-- **Database:** a SQLite file on the VM's disk (DB_FILE=/app/data/quantpocket.db with PERSISTENT_DISK=1), backed up every hour (48 hourly and 30 daily kept, a daily encrypted copy to Oracle Object Storage when OCI_BACKUP_PAR_URL is set). Admin → Database shows its size, tables and backups, makes a backup, downloads or restores one, and switches maintenance mode. Render still points at the old Turso database (DATABASE_URL). Migrations run on every start; any failure other than "already applied" is logged.
-- **Keys and settings:** in the Render environment or Admin → Keys (names are listed in the Product overview above; values are never in the code, the README or chat). ENCRYPTION_KEY must never change once data exists.
+- **Servers:** the Oracle Cloud VM (deploy/vm/, set up by the "Oracle server setup" workflow) is the active server since 2026-11-23; Render (render.yaml) only redirects every old link to it (301), with no database and no jobs. Admin → Hosting shows each server's health, CPU, memory, disk and version, with Deploy now, Restart and Make active; only the active server runs scheduled jobs. MIGRATION_ORACLE.md has the move, backups, restoring one and rebuilding the server.
+- **Database:** a SQLite file on the VM's disk (DB_FILE=/app/data/quantpocket.db with PERSISTENT_DISK=1), backed up every hour (48 hourly and 30 daily kept, a daily encrypted copy to Oracle Object Storage when OCI_BACKUP_PAR_URL is set). Admin → Database shows its size, tables and backups, makes a backup, downloads or restores one, and switches maintenance mode. Migrations run on every start; any failure other than "already applied" is logged.
+- **Keys and settings:** in the server's .env (from the ORACLE_ENV secret; changed with the Oracle database move workflow, step set-env) or Admin → Keys (names are listed in the Product overview above; values are never in the code, the README or chat). ENCRYPTION_KEY must never change once data exists.
 - **Health checks:** /healthz (the server answers; it runs no query and reports what the database last did), /healthz/routing (paper orders go to paper and real money to live), /healthz/full (hosted database, complete schema and routing together). The deploy workflow checks routing and the database on the live site after every push.
 - **GitHub:** repository variable APP_URL (the live site) and secret CRON_SECRET for the scheduler; the Render deploy hook as a repository secret. CI, end-to-end tests and the clean check run on every push.
 - **First steps for a new server:** set the keys, open /healthz/full until it answers ok, then place one small paper order and one small live order and check them in Execution & routing.
@@ -111,7 +111,7 @@ Only admins can open these pages or reach their data: every /api/admin route sit
 - **What Brightolio is, legally:** software, not a broker-dealer and not an investment adviser. It does not hold customer money; orders go to the user's own brokerage. Admin → Upgrades (Business mode tab) switches between software-only mode and registered-adviser mode, which changes fees, wording and what strategies may do.
 - **Public legal pages:** Terms (/terms), Privacy (/privacy), Risk disclosure (/risk), Security (/security), Investor protection and insurance (/insurance), Contact (/contact) and Status (/status). The homepage, the app menu and the legal pages carry the "software, not a broker or adviser" notice, and a test checks the public pages for wording that promises returns.
 - **Required disclosures in the app:** backtests and projections are hypothetical; real-money orders need the user's confirmation; sponsored news on the free plan is labeled as paid promotion and only covers companies listed on an exchange; beginner guides and the AI assistant give education, not personal advice.
-- **Integrations (keys in Admin → Keys):** Alpaca (Broker API, OAuth and trading/data keys), Charles Schwab, TradeStation, Tradier and tastytrade; Plaid (bank links and round-ups); Stripe (subscriptions, billing portal, ACH, Treasury), Helcim and Square (card processing); Twilio (texts, phone line) and Resend (email); Google and GitHub sign-in, Google Drive (this README as a PDF); AI providers (Groq, Gemini, OpenRouter, Anthropic); market data (Finnhub, Twelve Data, Tiingo, Alpha Vantage, FMP, Polygon, FRED); QuickBooks; Cloudflare (edge server); Turso (database).
+- **Integrations (keys in Admin → Keys):** Alpaca (Broker API, OAuth and trading/data keys), Charles Schwab, TradeStation, Tradier and tastytrade; Plaid (bank links and round-ups); Stripe (subscriptions, billing portal, ACH, Treasury), Helcim and Square (card processing); Twilio (texts, phone line) and Resend (email); Google and GitHub sign-in, Google Drive (this README as a PDF); AI providers (Groq, Gemini, OpenRouter, Anthropic); market data (Finnhub, Twelve Data, Tiingo, Alpha Vantage, FMP, Polygon, FRED); QuickBooks; Cloudflare (edge server).
 - **Privacy rules kept in the code:** the owner's real emails and phone appear only as fingerprints in the source; keys are stored encrypted and shown masked.
 ` },
   { id: 'business', title: 'Business information', md: `

@@ -10,7 +10,7 @@ const labels = new Set([...(literal(app, 'CORE') || []), ...(literal(app, 'NAV')
 const groups = new Set([...(literal(app, 'NAV') || []).map(g => g[0].toLowerCase()), 'accounts', 'settings', 'admin', 'menu', 'home']);
 export const PUBLIC_PRIVATE = [
   [/\badmin\b/i, 'admin pages'], [/being built|under construction/i, 'the site being built'], [/yiddish/i, 'the Yiddish language'],
-  [/\b[A-Z][A-Z0-9]*_(?:KEY|SECRET|TOKEN|URL|ID|SID)\b/, 'a setting or key name'], [/\b(?:Render|Turso|Oracle|Cloudflare)\b|render\.yaml|healthz/, 'hosting or setup'],
+  [/\b[A-Z][A-Z0-9]*_(?:KEY|SECRET|TOKEN|URL|ID|SID)\b/, 'a setting or key name'], [/\b(?:Render|Oracle|Cloudflare)\b|render\.yaml|healthz/, 'hosting or setup'],
   [/\b(?:Stripe|Helcim|Square|Twilio|Resend|Plaid|QuickBooks)\b/, 'business integrations'], [/revenue|performance fee|% of (?:new )?profits|payroll|bookkeeping|interchange/i, 'business information'],
   [/npm (?:install|run|test)|git clone|\.env\b|environment variable/i, 'setup steps'], [/@[a-z0-9-]+\.[a-z]{2,}/i, 'an email address'],
 ];
