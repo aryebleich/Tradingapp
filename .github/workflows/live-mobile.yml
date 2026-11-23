@@ -20,7 +20,7 @@ permissions:
   contents: read
 concurrency:
   group: live-mobile
-  cancel-in-progress: true
+  cancel-in-progress: false # a skipped automatic run must not cancel a running check
 jobs:
   phones:
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
