@@ -200,7 +200,7 @@ case "$step" in
     echo "--- app container started: $(docker inspect -f '{{.State.StartedAt}}' brightfolio-app-1 2>/dev/null) (image $(cut -c1-7 "$APP/.deployed" 2>/dev/null))"
     mt=$(val METRICS_TOKEN)
     for i in 1 2 3; do echo "--- /metrics now ($i)"; curl -sS --max-time 10 ${mt:+-H "authorization: Bearer $mt"} http://127.0.0.1:3000/metrics | grep -E '^qp_(load|inflight|event_loop|heap|requests|shed|jobs)' | paste -sd' ' -; sleep 3; done
-    for i in 1 2 3 4 5 6; do echo "--- sample $i"; call GET /internal/load | jq -c '{at, load: .stats.load, parts, lagNow2s, heap, rssMb, inflight: .stats.inflight, shed: .stats.shed, requests: .stats.requests, uptimeSec: .stats.uptimeSec, nodeOptions}' || true; [ "$i" -lt 6 ] && sleep 8; done
+    for i in 1 2 3 4 5 6; do echo "--- sample $i"; r=$(call GET /internal/load || true); echo "$r" | jq -c '{at, load: .stats.load, parts, lagNow2s, heap, rssMb, inflight: .stats.inflight, shed: .stats.shed, requests: .stats.requests, uptimeSec: .stats.uptimeSec, nodeOptions}' 2>/dev/null || echo "  (not JSON: $(printf '%s' "$r" | head -c 160 | tr -d '\n'))"; [ "$i" -lt 6 ] && sleep 8; done
     echo "--- last refused requests"; call GET /internal/load | jq -c '.shed[]?' | tail -20 || true
     echo "--- database file (names and sizes only, never values)"
     db="$DATA/quantpocket.db"; stat -c '%s %n' "$db" "$db-wal" 2>/dev/null
