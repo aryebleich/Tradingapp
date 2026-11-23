@@ -36,6 +36,16 @@ jobs:
       - run: npm ci
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
+      - name: Which build the live site serves
+        env:
+          URL: ${{ inputs.url || 'https://app.brightolio.com' }}
+          ORACLE_HOST: ${{ vars.ORACLE_HOST }}
+        run: |
+          for u in "$URL" "https://$(echo "${ORACLE_HOST:-138.2.233.183}" | tr . -).sslip.io"; do
+            echo "--- $u/app"
+            curl -sS -D - -o page.html --max-time 30 "$u/app" | grep -iE '^(HTTP|x-qp-build|cf-cache-status|age|x-render|server|location)' | tr -d '\r' || true
+            grep -oE '(href|src)="/(bundle/[^"]+|[a-z]+\.(css|js)[^"]*)"' page.html | head -6 || true
+          done
       - name: Every page on phone sizes, on the live site (read-only)
         env:
           URL: ${{ inputs.url || 'https://app.brightolio.com' }}
