@@ -10,7 +10,7 @@ import { requireUser } from './auth.js';
 import { getBars, accountSummary, placeOrder, ACCOUNT_IDS } from './brokers.js';
 import { isPaid } from './fees.js';
 import { getSetting, setSetting } from './settings.js';
-import { get, secData, secWww, secCached } from './institutions.js';
+import { get, secData, secWww, secCached, companyFacts } from './institutions.js';
 import { tradingForAccount } from './alpaca/connections.js';
 import { notifyUser } from './notify-user.js';
 import { nyTime } from './time.js';
@@ -136,7 +136,7 @@ export async function fundamentals(symbol) {
   if (!/^[A-Z.\-]{1,10}$/.test(symbol)) throw bad('Enter a stock ticker');
   const cik = (await cikMap())[symbol.replace('.', '-')];
   if (!cik) throw bad(`No SEC filer found for ${symbol}. Funds and foreign companies may not file here.`, 404);
-  const d = await secCached('sec:facts:' + cik, 7 * 864e5, () => get(`${secData()}/api/xbrl/companyfacts/CIK${cik}.json`));
+  const d = await companyFacts(cik, 7 * 864e5); // trimmed to the figures used (src/institutions.js)
   const f = d.facts;
   const revenue = annual(f, ['RevenueFromContractWithCustomerExcludingAssessedTax', 'Revenues', 'SalesRevenueNet']);
   const eps = annual(f, ['EarningsPerShareDiluted', 'EarningsPerShareBasic'], 'USD/shares');

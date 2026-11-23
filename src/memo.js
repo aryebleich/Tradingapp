@@ -38,17 +38,29 @@ export const credRow = (userId, provider) => CREDS.get(`${userId}|${provider}`, 
 // `ttl` never reach the database, and many users asking at once share one load (news, SEC filings).
 import { run, now } from './db.js';
 const MEM = new Map(), INFLIGHT = new Map();
+const BIG = 1 << 20, MEM_MAX = (+process.env.MEM_CACHE_MAX_MB || 64) * 1048576; // bytes of JSON
+let memBytes = 0;
+const warned = new Set();
+const bigOnce = (key, n) => { const p = key.split(':').slice(0, 2).join(':'); if (!warned.has(p)) { warned.add(p); console.warn(`cache: ${p}… is ${Math.round(n / 1048576)} MB, not kept in memory (trim it before caching)`); } };
+function remember(key, e) {
+  const old = MEM.get(key); if (old) { memBytes -= old.size || 0; MEM.delete(key); }
+  MEM.set(key, e); memBytes += e.size || 0;
+  for (const [k, x] of MEM) { if (memBytes <= MEM_MAX && MEM.size <= 2000) break; MEM.delete(k); memBytes -= x.size || 0; } // oldest first
+}
+export const memCacheStats = () => ({ entries: MEM.size, mb: +(memBytes / 1048576).toFixed(1), maxMb: MEM_MAX / 1048576 });
 export async function dbCached(key, ttl, fn) {
   const m = MEM.get(key);
   if (m && now() - m.at < ttl) return m.v;
   if (INFLIGHT.has(key)) return INFLIGHT.get(key);
   const p = (async () => {
     const c = await one('SELECT v, at FROM cache WHERE k = ?', key);
-    if (c && now() - c.at < ttl) { const v = JSON.parse(c.v); MEM.set(key, { v, at: c.at }); return v; }
-    const v = await fn();
-    await run('INSERT INTO cache (k, v, at) VALUES (?,?,?) ON CONFLICT(k) DO UPDATE SET v = excluded.v, at = excluded.at', key, JSON.stringify(v), now());
-    if (MEM.size > 2000) MEM.clear();
-    MEM.set(key, { v, at: now() }); return v;
+    if (c && now() - c.at < ttl) { const v = JSON.parse(c.v); if (c.v.length <= BIG) remember(key, { v, at: c.at, size: c.v.length }); return v; }
+    const v = await fn(), json = JSON.stringify(v);
+    await run('INSERT INTO cache (k, v, at) VALUES (?,?,?) ON CONFLICT(k) DO UPDATE SET v = excluded.v, at = excluded.at', key, json, now());
+    // A big value is not kept in memory too (a parsed object takes several times its JSON size), and
+    // the memory front holds at most MEM_MAX_MB of JSON in all: the heap can never fill up from here.
+    if (json.length > BIG) { bigOnce(key, json.length); return v; }
+    remember(key, { v, at: now(), size: json.length }); return v;
   })();
   INFLIGHT.set(key, p);
   try { return await p; } finally { INFLIGHT.delete(key); }

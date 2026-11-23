@@ -1128,7 +1128,20 @@ export const ready = (async () => {
     migrationProblems.push({ migration: m.replace(/\s+/g, ' ').slice(0, 120), error: String(e?.message || e).slice(0, 200) });
     console.error('DATABASE MIGRATION FAILED:', m.replace(/\s+/g, ' ').slice(0, 120), '->', e?.message || e);
   });
+  if (url.startsWith('file:')) await compactFile().catch(e => console.warn('compact:', e.message));
 })();
+// Whole SEC company-facts documents (5-10 MB each) were cached under sec:facts: until 2026-11-23 and
+// filled the file; they are trimmed now (sec:facts2:). The old ones are removed, and when most of the
+// file is free space it is compacted once (VACUUM rewrites only the live data: a second or two).
+async function compactFile() {
+  await db.execute("DELETE FROM cache WHERE k LIKE 'sec:facts:%'");
+  const n = q => db.execute(q).then(r => Number(Object.values(r.rows[0])[0]));
+  const pages = await n('PRAGMA page_count'), free = await n('PRAGMA freelist_count'), size = await n('PRAGMA page_size');
+  if (free * size > 100 * 1048576 && free > pages / 2) {
+    const t0 = Date.now(); await db.execute('VACUUM');
+    console.log(`Database compacted: ${Math.round(pages * size / 1048576)} MB → ${Math.round((await n('PRAGMA page_count')) * size / 1048576)} MB in ${Date.now() - t0} ms`);
+  }
+}
 
 // Every column the migrations add must exist afterwards (checked against the live database).
 export async function schemaReport() {

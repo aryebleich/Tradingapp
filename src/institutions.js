@@ -32,6 +32,33 @@ export async function get(url, type = 'json') {
 const cached = dbCached;
 
 export { DATA as secData, WWW as secWww, cached as secCached };
+// SEC company facts, trimmed before they are kept: the full document is 5-10 MB per company (every
+// figure the company ever reported), and keeping a few dozen whole ones in the cache table and in
+// memory filled the heap (941 MB) and the database (526 MB). Only the figures the app reads are kept
+// (stock.js statements and series, wealth.js fundamentals), from 10-K and 10-Q reports of the last
+// 12 years, with only the fields those read: a few KB per company.
+export const FACT_CONCEPTS = new Set(['RevenueFromContractWithCustomerExcludingAssessedTax', 'Revenues', 'SalesRevenueNet', 'RevenueFromContractWithCustomerIncludingAssessedTax',
+  'GrossProfit', 'OperatingIncomeLoss', 'NetIncomeLoss', 'ProfitLoss', 'DepreciationDepletionAndAmortization', 'DepreciationAndAmortization', 'DepreciationAmortizationAndAccretionNet',
+  'NetCashProvidedByUsedInOperatingActivities', 'PaymentsToAcquirePropertyPlantAndEquipment', 'PaymentsOfDividendsCommonStock', 'PaymentsOfDividends',
+  'Assets', 'Liabilities', 'StockholdersEquity', 'StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest', 'AssetsCurrent', 'LiabilitiesCurrent',
+  'CashAndCashEquivalentsAtCarryingValue', 'CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents', 'LongTermDebtNoncurrent', 'LongTermDebt', 'LongTermDebtAndCapitalLeaseObligations',
+  'EarningsPerShareDiluted', 'EarningsPerShareBasic', 'CommonStockDividendsPerShareDeclared', 'CommonStockDividendsPerShareCashPaid',
+  'WeightedAverageNumberOfDilutedSharesOutstanding', 'WeightedAverageNumberOfSharesOutstandingBasic']);
+const FACT_FIELDS = ['start', 'end', 'val', 'form', 'filed', 'fy', 'fp', 'frame'];
+export function trimFacts(doc, now = Date.now()) {
+  const since = new Date(now - 12 * 365.25 * 864e5).toISOString().slice(0, 10), out = {};
+  for (const [name, c] of Object.entries(doc?.facts?.['us-gaap'] || {})) {
+    if (!FACT_CONCEPTS.has(name)) continue;
+    const units = {};
+    for (const [u, rows] of Object.entries(c.units || {})) {
+      const keep = rows.filter(r => /^10-[KQ]/.test(r.form || '') && (r.end ? String(r.end) >= since : +r.fy >= +since.slice(0, 4))).map(r => Object.fromEntries(FACT_FIELDS.filter(k => r[k] != null).map(k => [k, r[k]])));
+      if (keep.length) units[u] = keep;
+    }
+    if (Object.keys(units).length) out[name] = { units };
+  }
+  return { cik: doc?.cik ?? null, entityName: doc?.entityName ?? null, facts: { 'us-gaap': out } };
+}
+export const companyFacts = (cik, ttl = 2 * 864e5) => cached('sec:facts2:' + cik, ttl, async () => trimFacts(await get(`${DATA()}/api/xbrl/companyfacts/CIK${cik}.json`)));
 const norm = s => ' ' + String(s || '').toUpperCase().replace(/&/g, ' AND ').replace(/[^A-Z0-9 ]/g, ' ').replace(/\b(THE|INC|INCORPORATED|CORP|CORPORATION|CO|COMPANY|LTD|LIMITED|PLC|HLDGS|HOLDINGS|HOLDING|GROUP|CL|CLASS|COM|NEW|DEL|SA|NV|AG|SE|ADR|SPONSORED|SHS|ORD|A|B|C)\b/g, ' ').replace(/\s+/g, ' ').trim();
 // Company names to tickers, from the SEC's own ticker file.
 async function tickerMap() {
