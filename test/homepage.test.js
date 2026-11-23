@@ -54,7 +54,14 @@ test('server: / and /yi serve the homepage, no cookie is set, and the layout fil
     assert.ok(h.includes('layout.css') && h.includes('layout.js'), u);
   }
   const app = await (await fetch(S.base + '/app')).text();
-  assert.match(app, /class="lv2"/); assert.match(app, /layout\.css\?v=/); assert.match(app, /layout\.js\?v=/);
+  assert.match(app, /class="lv2"/); assert.match(app, /layout\.js\?v=/);
+  // The style sheets: one minified bundle (styles, theme, layout) when the bundler runs, else the three files.
+  const css = app.match(/href="(\/bundle\/app-[0-9a-f]{10}\.css)"/)?.[1];
+  if (css) { const r = await fetch(S.base + css); assert.equal(r.status, 200); assert.match(r.headers.get('content-type'), /text\/css/); assert.match(await r.text(), /url\(\/fonts\/inter-latin\.woff2\)[\s\S]*body>footer:not\(\.site\)/); assert.doesNotMatch(app, /href="\/(styles|theme|layout)\.css/); }
+  else assert.match(app, /layout\.css\?v=/);
+  // A session cookie: the header and menu keep their place from the first paint (no layout shift).
+  assert.doesNotMatch(app, /was-in/);
+  assert.match(await (await fetch(S.base + '/app', { headers: { Cookie: 'qp_sid=anything' } })).text(), /<html lang="en" class="lv2 was-in">/);
   for (const f of ['/layout.css', '/layout.js']) assert.equal((await fetch(S.base + f)).status, 200, f);
 });
 

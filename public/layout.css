@@ -357,3 +357,7 @@ html.lv2 .notice-banner, .notice-banner { display: flex; gap: 10px; align-items:
 @media (max-width: 900px) {
   #pfbar { z-index: 26; left: 12px; bottom: calc(72px + env(safe-area-inset-bottom)); }
 }
+/* a session cookie came with the page (server.js, GET /app): the header and side menu hold their place from the first paint, so
+   nothing jumps when the app shows them (a layout shift Lighthouse counted on every load) */
+html.was-in header#top[hidden] { display: flex; visibility: hidden; }
+@media (min-width: 901px) { html.was-in #nav[hidden] { display: block; visibility: hidden; } }

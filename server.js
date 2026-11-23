@@ -1509,7 +1509,16 @@ const BUNDLE = await (async () => {
     const esbuild = await import('esbuild');
     const r = await esbuild.build({ entryPoints: [path.join(pub, 'app.js')], bundle: true, splitting: true, format: 'esm', outdir: '/bundle', write: false, minify: true, target: 'es2022', chunkNames: 'c-[hash]', entryNames: '[name]-[hash]', logLevel: 'silent', legalComments: 'none' });
     const files = new Map(r.outputFiles.map(f => [path.basename(f.path), f.text]));
-    return { files, entry: [...files.keys()].find(k => k.startsWith('app-')) };
+    // The app's three style sheets as one minified file: one render-blocking request instead of three
+    // (a phone's first paint waits for them). Font paths are made absolute for the /bundle/ address.
+    let css = null;
+    try {
+      const src = (await Promise.all(['styles', 'theme', 'layout'].map(n => fs.readFile(path.join(pub, n + '.css'), 'utf8')))).join('\n')
+        .replace(/url\((['"]?)(?!data:|\/|https?:)/g, 'url($1/');
+      const out = (await esbuild.transform(src, { loader: 'css', minify: true, logLevel: 'silent' })).code;
+      css = `app-${crypto.createHash('sha256').update(out).digest('hex').slice(0, 10)}.css`; files.set(css, out);
+    } catch (e) { console.warn('bundle: separate style sheets,', e.message); }
+    return { files, css, entry: [...files.keys()].find(k => k.startsWith('app-') && k.endsWith('.js')) };
   } catch (e) { console.warn('bundle: using separate files,', e.message); return null; }
 })();
 // Each app file is also kept compressed at the strongest Brotli level (done once, in the background
@@ -1525,14 +1534,15 @@ if (BUNDLE) setTimeout(async () => {
 }, 500).unref?.();
 app.get('/bundle/:file', (req, res, next) => {
   const body = BUNDLE?.files.get(req.params.file); if (!body) return next();
-  res.type('application/javascript').set({ 'Cache-Control': 'public, max-age=31536000, immutable', Vary: 'Accept-Encoding' });
+  res.type(req.params.file.endsWith('.css') ? 'text/css' : 'application/javascript').set({ 'Cache-Control': 'public, max-age=31536000, immutable', Vary: 'Accept-Encoding' });
   const br = BUNDLE_BR.get(req.params.file);
   if (br && /\bbr\b/.test(String(req.headers['accept-encoding'] || ''))) return res.set('Content-Encoding', 'br').send(br);
   res.send(body);
 });
 async function appPage() {
   const html = await fs.readFile(path.join(pub, 'app.html'), 'utf8');
-  if (BUNDLE) return html.replace('src="/app.js"', `src="/bundle/${BUNDLE.entry}"`).replace(/href="\/(styles|theme|layout)\.css"/g, `href="/$1.css?v=${ASSET_V}"`).replace('src="/layout.js"', `src="/layout.js?v=${ASSET_V}"`)
+  if (BUNDLE) return html.replace('src="/app.js"', `src="/bundle/${BUNDLE.entry}"`)
+    .replace(/(\s*<link rel="stylesheet" href="\/(styles|theme|layout)\.css">)+/, m => BUNDLE.css ? `\n  <link rel="stylesheet" href="/bundle/${BUNDLE.css}">` : m.replace(/href="\/(styles|theme|layout)\.css"/g, `href="/$1.css?v=${ASSET_V}"`)).replace('src="/layout.js"', `src="/layout.js?v=${ASSET_V}"`)
     .replace('</head>', `  <link rel="modulepreload" href="/bundle/${BUNDLE.entry}">\n</head>`);
   // Every module the app imports, followed through public/pages/ and back (static imports only).
   const mods = new Set(), todo = ['app.js'];
@@ -1552,7 +1562,11 @@ app.get('/app', async (req, res) => {
   // The background loader (the app's own hidden, read-only copy) may be framed by the app itself;
   // every other page still refuses to be framed by anyone.
   if ('prefetch' in req.query) res.set({ 'X-Frame-Options': 'SAMEORIGIN', 'Content-Security-Policy': String(res.getHeader('Content-Security-Policy') || '').replace("frame-ancestors 'none'", "frame-ancestors 'self'") });
-  res.type('html').set({ 'Cache-Control': 'no-cache', 'X-QP-Build': BUILD }).send(appHtml);
+  // A request with a session cookie (most likely signed in): the header and side menu hold their
+  // place from the first paint (layout.css, html.was-in), so the page does not jump when the app shows
+  // them. Only the cookie's presence is read here; the session itself is checked by the API as always.
+  const was = /(?:^|;\s*)qp_sid=[^;]/.test(String(req.headers.cookie || ''));
+  res.type('html').set({ 'Cache-Control': 'no-cache', 'X-QP-Build': BUILD, Vary: 'Cookie' }).send(was ? appHtml.replace('<html lang="en" class="lv2">', '<html lang="en" class="lv2 was-in">') : appHtml);
 });
 // Admin → Analytics: page views and visitors of the public pages (counted privately, see src/analytics.js).
 { const A = await import('./src/analytics.js'); app.use(A.webMiddleware); A.start(); }
