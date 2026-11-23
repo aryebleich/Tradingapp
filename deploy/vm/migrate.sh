@@ -199,6 +199,10 @@ case "$step" in
     # delay, in flight, refused requests; then the container's memory and CPU, and /metrics.
     echo "--- app container started: $(docker inspect -f '{{.State.StartedAt}}' brightfolio-app-1 2>/dev/null) (image $(cut -c1-7 "$APP/.deployed" 2>/dev/null))"
     mt=$(val METRICS_TOKEN)
+    echo "--- code: checkout $(sudo -u brightfolio git -C "$APP/src" log -1 --format='%h %cd' --date=iso 2>/dev/null); checkout has it: $(grep -c "internal/load" "$APP/src/server.js")"
+    echo "    images: $(docker images brightfolio --format '{{.Tag}}={{.ID}} {{.CreatedSince}}' | paste -sd' ' -)"
+    echo "    container runs image: $(docker inspect -f '{{.Image}}' brightfolio-app-1 2>/dev/null | cut -c8-19); latest is $(docker image inspect -f '{{.Id}}' brightfolio:latest 2>/dev/null | cut -c8-19)"
+    echo "    shed code live: $( (cd "$APP" && docker compose exec -T app grep -c "makeHysteresis" /app/src/reliability.js) 2>&1 | head -1); trimmed SEC facts live: $( (cd "$APP" && docker compose exec -T app grep -c "trimFacts" /app/src/institutions.js) 2>&1 | head -1)"
     echo "--- the running code has /internal/load: $( (cd "$APP" && docker compose exec -T app grep -c "internal/load" /app/server.js) 2>&1 | head -1)"
     cs=$(val CRON_SECRET); echo "--- /internal/load answer:"; curl -sS -i --max-time 15 -H "authorization: Bearer $cs" http://127.0.0.1:3000/internal/load 2>&1 | head -12 | cut -c1-200 | grep -viE 'set-cookie|authorization'
     for i in 1 2 3; do echo "--- /metrics now ($i)"; curl -sS --max-time 10 ${mt:+-H "authorization: Bearer $mt"} http://127.0.0.1:3000/metrics | grep -E '^qp_(load|inflight|event_loop|heap|requests|shed|jobs)' | paste -sd' ' -; sleep 3; done
