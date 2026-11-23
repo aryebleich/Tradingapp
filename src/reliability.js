@@ -7,51 +7,93 @@
 // - /metrics exposes the numbers in Prometheus format for the Kubernetes autoscaler, and
 //   recommendedReplicas() scales ahead of known busy moments (open, close, macro events, VIX spikes).
 import { monitorEventLoopDelay } from 'node:perf_hooks';
+import v8 from 'node:v8';
 import { nyTime } from './time.js';
 
-const MAX_INFLIGHT = +process.env.MAX_INFLIGHT || 200;
-const LAG_LIMIT_MS = +process.env.LAG_LIMIT_MS || 500;
-const HEAP_LIMIT_MB = +process.env.HEAP_LIMIT_MB || 450;
-const SHED_ENV = () => +process.env.SHED_AT || 0.85;
+// Limits (settings, .env.example). The heap limit is V8's real one (heap_size_limit, which follows
+// --max-old-space-size; the Oracle image sets 1536 MB for its 2 GB container), not a fixed number:
+// the fixed 450 MB was Render's, and on a machine where V8 may grow the heap to 1.5 GB before it
+// collects, a heap of 440 MB is normal, not "full".
+const num = (v, d) => (Number.isFinite(+v) && +v > 0 ? +v : d);
+export const limits = () => ({
+  maxInflight: num(process.env.MAX_INFLIGHT, 400),
+  lagLimitMs: num(process.env.LAG_LIMIT_MS, 500),
+  heapLimitMb: num(process.env.HEAP_LIMIT_MB, Math.round(v8.getHeapStatistics().heap_size_limit / 1048576)),
+  shedAt: num(process.env.SHED_AT, 0.85),
+  // Shedding starts only after the load stayed at or above SHED_AT this long, and stops after it
+  // stayed below for SHED_CALM_MS: one slow moment never turns people away.
+  sustainMs: num(process.env.SHED_SUSTAIN_MS, 5000),
+  calmMs: num(process.env.SHED_CALM_MS, 3000),
+});
+const SHED_ENV = () => limits().shedAt;
 export let SHED_AT = SHED_ENV();
 
+// The event-loop delay over the last 2 seconds (a fresh window every 2 s), so a single slow moment
+// counts for 2 seconds, not 10.
 const lag = monitorEventLoopDelay({ resolution: 20 }); lag.enable();
+let lagP90 = 0, lagP99 = 0, lagP50 = 0;
+setInterval(() => { lagP50 = lag.percentile(50) / 1e6; lagP90 = lag.percentile(90) / 1e6; lagP99 = lag.percentile(99) / 1e6; lag.reset(); }, 2000).unref();
 let inflight = 0, forced = null;
 const counters = { requests: 0, shed: 0, errors5xx: 0, jobsSkipped: 0, unhandledRejections: 0 };
 
-// The three parts of the load, for diagnosis (/internal/load).
+// The three parts of the load (0 = idle, 1 = full), for diagnosis (/internal/load).
 export function loadParts() {
-  const lagMs = lag.percentile(90) / 1e6, heap = process.memoryUsage().heapUsed / 1048576;
-  return { inflight: +(inflight / MAX_INFLIGHT).toFixed(3), lag: +(lagMs / LAG_LIMIT_MS).toFixed(3), heap: +(heap / HEAP_LIMIT_MB).toFixed(3), lagP90Ms: +lagMs.toFixed(1), heapMb: Math.round(heap) };
+  const L = limits(), heap = process.memoryUsage().heapUsed / 1048576;
+  return { inflight: +(inflight / L.maxInflight).toFixed(3), lag: +(lagP90 / L.lagLimitMs).toFixed(3), heap: +(heap / L.heapLimitMb).toFixed(3), lagP50Ms: +lagP50.toFixed(1), lagP90Ms: +lagP90.toFixed(1), lagP99Ms: +lagP99.toFixed(1), heapMb: Math.round(heap), heapLimitMb: L.heapLimitMb };
 }
 const shedLog = []; // the last 50 refused requests: when, which route, why
 export const shedEvents = () => shedLog.slice();
 export function load() {
   if (forced != null) return forced;
-  const lagMs = lag.percentile(90) / 1e6, heap = process.memoryUsage().heapUsed / 1048576;
-  return Math.min(1, Math.max(inflight / MAX_INFLIGHT, lagMs / LAG_LIMIT_MS, heap / HEAP_LIMIT_MB));
+  const p = loadParts();
+  return Math.min(1, Math.max(p.inflight, p.lag, p.heap));
 }
-// Tests and chaos drills can pin the load level.
+// Tests and chaos drills can pin the load level (a pinned load counts as sustained at once).
 export const forceLoad = v => { forced = v == null ? null : +v; };
-setInterval(() => lag.reset(), 10e3).unref();
-export const shedding = () => load() >= SHED_ENV();
 
-// Never shed: trading, risk controls, the account lock, sign-in, webhooks that carry orders, health.
-const CRITICAL = [/^\/api\/orders/, /^\/api\/alpaca\/orders/, /^\/api\/alpaca\/positions/, /^\/api\/risk/, /^\/api\/security/, /^\/api\/auth/, /^\/hook\//, /^\/api\/fleet\/inbox/, /^\/healthz/, /^\/readyz/, /^\/metrics/, /^\/api\/exec/];
+// Hysteresis: how long the load has stayed at or above each level. observe() is fed every 500 ms;
+// a level turns on after sustainMs at or above it, and off after calmMs below it.
+export function makeHysteresis() {
+  const over = { shed: null, normal: null }, under = { shed: null, normal: null }, active = { shed: false, normal: false };
+  return {
+    active,
+    observe(l, t = Date.now()) {
+      const L = limits();
+      for (const [k, at] of [['shed', L.shedAt], ['normal', Math.max(L.shedAt, 0.97)]]) {
+        if (l >= at) { under[k] = null; over[k] ??= t; if (t - over[k] >= L.sustainMs) active[k] = true; }
+        else { over[k] = null; under[k] ??= t; if (t - under[k] >= L.calmMs) active[k] = false; }
+      }
+      return { ...active };
+    },
+  };
+}
+const H = makeHysteresis();
+setInterval(() => H.observe(load()), 500).unref();
+const level = k => (forced != null ? forced >= (k === 'shed' ? SHED_ENV() : Math.max(SHED_ENV(), 0.97)) : H.active[k]);
+export const shedding = () => level('shed');
+
+// Never shed: anything that is not an API call (the pages, the app shell, scripts, styles, images,
+// fonts, the manifest, the service worker, sign-in with Google), and these API calls: trading, risk
+// controls, the account lock, sign-in, webhooks that carry orders, health.
+const CRITICAL = [/^\/api\/orders/, /^\/api\/alpaca\/orders/, /^\/api\/alpaca\/positions/, /^\/api\/risk/, /^\/api\/security/, /^\/api\/auth/, /^\/hook\//, /^\/api\/fleet\/inbox/, /^\/healthz/, /^\/readyz/, /^\/metrics/, /^\/api\/exec/, /^\/api\/me\b/, /^\/api\/v1\/orders/];
 // Shed first: heavy reads that can wait.
 const OPTIONAL = [/^\/api\/insights/, /^\/api\/news/, /^\/api\/institutions/, /^\/api\/ml/, /^\/api\/scanners\/run/, /^\/api\/baskets\/backtest/, /^\/api\/backtest/, /^\/api\/alpaca\/data\/(bars|news|movers|most-actives)/,
   /^\/api\/code\/prices/, /^\/api\/ai\//, /^\/api\/options\/(scan|template)/, /^\/api\/values\/(screen|portfolio)/, /^\/api\/market/, /^\/api\/tax/, /^\/api\/longterm/];
-export const classify = path => (CRITICAL.some(r => r.test(path)) ? 'critical' : OPTIONAL.some(r => r.test(path)) ? 'optional' : 'normal');
+export const classify = path => (!/^\/api(\/|$)/.test(path) || CRITICAL.some(r => r.test(path)) ? 'critical' : OPTIONAL.some(r => r.test(path)) ? 'optional' : 'normal');
 
+export const SHED_MESSAGE = 'This is taking longer than usual. Trying again…';
+// A browser that opens a refused address itself gets a small page that tries again by itself.
+const retryPage = seconds => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="${seconds}"><title>Brightolio</title><style>body{font:16px/1.5 system-ui,sans-serif;display:grid;place-items:center;min-height:90vh;margin:0;color:#1f2937;background:#f8fafc}@media(prefers-color-scheme:dark){body{color:#e5e7eb;background:#0f172a}}p{max-width:30em;padding:0 16px;text-align:center}</style></head><body><p>${SHED_MESSAGE}</p></body></html>`;
 export function shedMiddleware(req, res, next) {
   counters.requests++;
-  const kind = classify(req.path), l = load();
-  const at = SHED_ENV();
-  if (kind === 'optional' && l >= at || kind === 'normal' && l >= Math.max(at, 0.97)) {
+  const kind = classify(req.path);
+  if (kind === 'optional' && level('shed') || kind === 'normal' && level('normal')) {
     counters.shed++;
-    shedLog.push({ at: Date.now(), method: req.method, path: req.path.slice(0, 80), kind, load: +l.toFixed(3), parts: loadParts() }); if (shedLog.length > 50) shedLog.shift();
-    res.setHeader('Retry-After', '15');
-    return res.status(503).json({ error: 'The market is very busy right now. Trading stays available; this page will be back in a few seconds.', shed: true });
+    shedLog.push({ at: Date.now(), method: req.method, path: req.path.slice(0, 80), kind, load: +load().toFixed(3), parts: loadParts() }); if (shedLog.length > 50) shedLog.shift();
+    const wait = 3 + Math.floor(Math.random() * 3); // spread the retries out
+    res.setHeader('Retry-After', String(wait));
+    if (req.method === 'GET' && !req.get('x-requested-with') && req.accepts(['json', 'html']) === 'html') return res.status(503).type('html').send(retryPage(wait));
+    return res.status(503).json({ error: SHED_MESSAGE, shed: true, retryAfter: wait });
   }
   inflight++;
   let done = false;
@@ -123,7 +165,8 @@ export function recommendedReplicas(t = Date.now(), { base = +process.env.BASE_R
 export const countUnhandled = () => { counters.unhandledRejections++; };
 export function stats() {
   const mem = process.memoryUsage();
-  return { load: +load().toFixed(3), shedding: shedding(), shedAt: SHED_ENV(), inflight, maxInflight: MAX_INFLIGHT, eventLoopP99Ms: +(lag.percentile(99) / 1e6).toFixed(1), heapMb: Math.round(mem.heapUsed / 1048576), heapLimitMb: HEAP_LIMIT_MB, uptimeSec: Math.round(process.uptime()), ...counters, breakers: breakerStates() };
+  const L = limits();
+  return { load: +load().toFixed(3), shedding: shedding(), shedAt: L.shedAt, inflight, maxInflight: L.maxInflight, eventLoopP90Ms: +lagP90.toFixed(1), eventLoopP99Ms: +lagP99.toFixed(1), lagLimitMs: L.lagLimitMs, heapMb: Math.round(mem.heapUsed / 1048576), heapLimitMb: L.heapLimitMb, uptimeSec: Math.round(process.uptime()), ...counters, breakers: breakerStates() };
 }
 // Prometheus text format, for the Horizontal Pod Autoscaler (through a metrics adapter) and dashboards.
 export function metricsText(extra = {}) {

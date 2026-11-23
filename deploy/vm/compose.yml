@@ -4,6 +4,9 @@ services:
   app:
     image: brightfolio:latest
     env_file: .env
+    # The heap may use 1.5 GB of the 2 GB container (V8's limit; load shedding reads it from V8).
+    environment:
+      NODE_OPTIONS: --max-old-space-size=1536
     ports: ['127.0.0.1:3000:3000']
     restart: unless-stopped
     read_only: true
