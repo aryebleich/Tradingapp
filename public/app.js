@@ -6,6 +6,7 @@
 //   index.html, yi.html, terms.html ...   the public website; site.js, site.css, chartstates.js
 //   sw.js              keeps files on the device so repeat visits open at once
 // Brightolio single-page client. Hash routes, no framework.
+import { withShedRetry, SHED_TEXT } from './shed-retry.js';
 import { registerTrading, alpacaReady } from './pages/trading.js';
 import { chartStates, RICH_STATES, richStates, blendedColors } from './chartstates.js';
 import { registerBrokers } from './pages/brokers.js';
@@ -110,12 +111,15 @@ function noticeBanners() {
   }
 }
 async function apiCall(path, opts = {}, retried) {
-  const r = await fetch('/api' + path, {
-    method: opts.method || (opts.body ? 'POST' : 'GET'),
-    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' },
-    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  // A call the overloaded server refused (503, shed) is tried again quietly (public/shed-retry.js).
+  const { r, data: d } = await withShedRetry(async () => {
+    const r = await fetch('/api' + path, {
+      method: opts.method || (opts.body ? 'POST' : 'GET'),
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' },
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+    });
+    return { r, status: r.status, retryAfter: r.headers.get('retry-after'), data: await r.json().catch(() => ({})) };
   });
-  const d = await r.json().catch(() => ({}));
   maintenanceBanner(r.headers.get('x-maintenance') === '1');
   // Session expired (or signed out in another tab): go back to sign-in instead of showing errors.
   if (r.status === 401 && ME && !path.startsWith('/auth/')) { keepClear(); ME = null; location.hash = '#/login'; }
@@ -125,6 +129,7 @@ async function apiCall(path, opts = {}, retried) {
   if (d.needsLesson && confirm(d.error + ' Open the lesson now?')) location.hash = '#/learn';
   // Step-up: the session must confirm it is the account holder before trading or moving money.
   if (d.stepUp && !retried && await stepUpBox()) return apiCall(path, opts, true);
+  if (r.status === 503 && d.shed) throw Object.assign(new Error(SHED_TEXT), { status: 503, shed: true });
   if (!r.ok) throw Object.assign(new Error(d.error || (r.status >= 500 ? 'The server is busy, please try again.' : r.statusText)), { status: r.status, addonOff: d.addonOff });
   return d;
 }
@@ -792,7 +797,9 @@ async function render(opts) {
   catch (e) {
     if (quiet) { view.remove(); return; }
     if (swap && (!view.isConnected || render.seq !== mine)) { view.remove(); return; }
-    view.innerHTML = `<div class="card err">${esc(e.message)}</div>`;
+    // The server stayed busy through the quiet retries: a calm note with a way to try again, not an error.
+    view.innerHTML = e.shed ? `<div class="card" role="status"><p class="mu" style="margin:0">${esc(SHED_TEXT)}</p><button class="small ghost" style="margin-top:8px" data-shed-retry>Try again</button></div>` : `<div class="card err">${esc(e.message)}</div>`;
+    view.querySelector('[data-shed-retry]')?.addEventListener('click', () => render());
     if (swap) show();
   }
   finally { if (PREFETCH) parent.postMessage({ qpRendered: route }, location.origin); }

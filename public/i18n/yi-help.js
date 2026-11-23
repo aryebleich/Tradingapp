@@ -1,6 +1,8 @@
 // Yiddish for page help: the "i" button and panel, the Settings wording, and the guide texts of the
 // pages that got one in public/pages/guides-more.js.
 export const strings = {
+  'This is taking longer than usual. Trying again…': 'דאס נעמט לענגער ווי געווענליך. מען פרובירט נאכאמאל…',
+  'Try again': 'פרובירט נאכאמאל',
   'Brightolio is under maintenance: trading is paused for safety. Your data is safe; please try again shortly.': 'ברייטאליא ווערט יעצט פארריכט: טרעידינג איז אפגעשטעלט צוליב זיכערהייט. אייערע דאטא איז זיכער; פרובירט ביטע נאכאמאל באלד.',
   'How this page works': 'ווי דער בלאט ארבעט', 'New here? Tap i': 'נייע דא? דריקט i', 'Close': 'צומאכן',
   'Point out the "i" on pages I have not opened yet': 'ווייזט אן דעם "i" אויף בלעטער וואס איך האב נאך נישט געעפנט',
