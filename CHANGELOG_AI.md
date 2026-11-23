@@ -4,6 +4,35 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-23: "The market is very busy" on every page: the cause, then the fix
+
+### Findings on the live server (before any change; oracle-migrate diagnose-load runs 45248546870 and 45249014849)
+
+| | 19:24 UTC, app up since 17:34 | 19:25, right after a restart |
+|---|---|---|
+| load (worst of the three parts) | **1.0, constant** (three samples 3 s apart) | 0.07 |
+| heap in use / limit used by load() | **941 MB / 450 MB** (= 2.09, capped at 1) | 31 MB |
+| V8's real heap limit (heap_size_limit) | 1048 MB (no --max-old-space-size set) | 1048 MB |
+| event-loop delay p99 | 21 ms (limit 500 ms) | 21 ms |
+| requests in flight | 3 of 200 | 1 |
+| refused (shed) | 42 of 572 requests; 374 background jobs skipped | 0 |
+| container memory | (not sampled before the restart) | 187 MB of 2 GB |
+| database file | **553 MB**, of which the `cache` table **526 MB** | |
+
+- It was **constant, not spikes**: the heap part alone kept the load at 1.0, so every "normal"
+  route, pages included (/, /app.html, scripts and styles are "normal" and shedMiddleware runs before
+  express.static), got the raw JSON 503 at load ≥ 0.97, and optional API calls at ≥ 0.85.
+- The heap was really full, not only misjudged: 941 of 1048 MB is a leak heading for a crash; the
+  container's start at 17:34, 17 minutes after the 17:16 deploy, was most likely that crash.
+- **The leak**: SEC company-facts documents. `sec:facts:<CIK>` entries in the `cache` table are
+  7–9 MB each (the full XBRL "every figure ever reported" file: 0001099219 9.3 MB, 0000831001 9.1 MB,
+  0000019617 8.2 MB, …), written by stock.js and wealth.js, and `dbCached` also kept every one parsed in
+  memory (a parsed object is several times its JSON size), up to 2000 entries. A page or scan that
+  looks at a few dozen companies fills the heap and the file. The 18:49 backup was 1.45 MB, so this
+  all came within the hour before.
+- Event-loop delay and requests in flight were fine; no route was slow or stuck.
+
+
 ## 2026-11-23: Google sign-in works again: everything on app.brightolio.com
 
 Google refused sign-ins because the server called itself 138-2-233-183.sslip.io. Now the server's
