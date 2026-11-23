@@ -4,6 +4,121 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-23: One disclaimer, the mobile website and the Android app
+
+### Part 1: one disclaimer, never two
+- **Found**: signed-in users saw the disclaimer twice.
+  - The page `<footer>` in public/app.html was shown again by layout.css after theme.css had hidden it.
+  - The side menu also built its own copy (`.navfoot` in app.js).
+  - The sign-up page repeated part of it ("Brightolio is software, not a broker… Trading involves risk of loss").
+- **Now**: the app.html footer is the only copy, for signed-in and signed-out users, desktop and phone.
+  - The wording, the four links and `#siteVer` are unchanged.
+  - The menu copy and its CSS are gone.
+  - The sign-up page keeps its links (risk disclosure, security) without the repeated sentence.
+  - Every footer rule is in layout.css. It is hidden in popouts and sits above the tab bar with room for the safe area.
+  - The marketing site's `footer.site` is untouched.
+- **Guards**:
+  - `test/footer.test.js` fails on any second copy in the app sources, or on footer rules outside layout.css.
+  - `test/e2e/mobile.mjs` counts the disclaimer on every page, signed in and out, in English and Yiddish (hidden copies count too).
+
+### Part 2: the mobile website
+The new mobile suite (`npm run e2e:mobile`, its own job in e2e.yml) covers:
+- every menu page, signed out and in (76 pages);
+- 360, 375, 390, 393 and 414 px portrait, and 740 px landscape;
+- dark mode and Yiddish (right to left) on two phones;
+- a screenshot of each page.
+
+It fails on:
+- sideways overflow;
+- a second (or missing) disclaimer;
+- the footer under the tab bar;
+- fields under 16 px;
+- app buttons under 44 px;
+- dialogs that can't scroll.
+
+Phone flows: sign up, add a passkey, sign out from the menu, sign in by password, sign in by passkey, the menu closing after a tap, the order ticket and its review, equalize with its checkboxes, alerts, Playbooks, settings, admin.
+
+Before (first run, 4 variants): 879 failures. What they were:
+- Every signed-in page had 2 disclaimers.
+- The header ran off the right edge at 375 px: the search and theme buttons were cut off, and the owner's "View as" picker squeezed everything (`docs/screens/before-dashboard-top.png`, `before-trade-top.png`).
+- The header buttons (34–36 px) and the menu group buttons were under 44 px.
+- The "View as" field was 14 px (iOS zooms in).
+
+The second run added landscape at 740 px and found:
+- The phone rules stopped at 640 px wide, so a phone held sideways had small buttons and 49 fields under 16 px.
+- The flows found the "Whole shares only" checkbox row was 17 px tall.
+- The background-loading card ("0%") covered the open side menu (`before-menu-bottom.png`).
+
+Fixes (public/layout.css):
+- On phones and all touch screens, the header, tab bar, menu, the page title's "i" and gear, and the page tabs are 44 px.
+- On phones the header buttons are icons only. The connection badge leaves the header unless it says LIVE (real money), and "View as" shows only while in use.
+- Touch screens get 16 px fields at any width, and 44 px checkbox rows.
+- The loading card sits above the tab bar and under the menu.
+- Page content keeps the theme's sizes (D-13).
+
+After: **PASS** on all 76 pages × 10 variants (550 s) and all phone flows. No page is wider than the screen on any phone (none was before either).
+
+Screenshots at 375 px, in `docs/screens/`:
+- before: `before-menu-bottom.png` (the second disclaimer and the loading card over the menu), `before-dashboard-top.png`, `before-trade-top.png` (the header cut off), `before-dashboard-bottom.png`;
+- after: `after-menu-bottom.png`, `after-dashboard-top.png`, `after-trade-top.png`, `after-dashboard-bottom.png` (one disclaimer, above the tab bar).
+
+**Speed (Lighthouse mobile, slow 4G emulation, median of 3, production mode, local):**
+
+| Page | Before (perf / a11y / best practices) | After |
+|---|---|---|
+| Sign-in | 94 / 100 / 100 | **95 / 100 / 100** |
+| Dashboard | 88–89 / 100 / 100 | **90 / 100 / 100** |
+| Trade | 92–93 / 97 / 100 | 94 / 97 / 100 |
+| Home (marketing) | 80*–98 / 100 / 100 | 98 / 100 / 100 |
+
+\* That run overlapped the mobile suite.
+
+The worst problems on the dashboard were:
+- three unminified stylesheets blocking the first paint;
+- a layout shift (0.074) when the header and side menu appeared after start.
+
+Now:
+- The three stylesheets are one minified bundle, 137 KB instead of 170 KB, hashed and cached for a year.
+- A page request that carries a session cookie gets `html.was-in`, so the header and menu hold their place from the first paint.
+- The JS was already one bundle, and images already have sizes.
+
+Fixed along the way: the "i" help button now joins a page title as soon as it is drawn. Research and Compare showed it only after their data loaded, which took over 8 s on a slow runner. That made the end-to-end run fail (`test/page-help.test.js`), including on the commit before this work.
+
+The golden page gate (`test/layout/gate.sh`) fails with the same counts before and after this work: 248 disclosures, 108 figures, 468 controls, 3 axe. That's older drift in the marketing and admin pages against the committed baseline. The only effect of this work is 8 px (the 44 px header) in the "moved further down" entries.
+
+### Part 3: the Android app
+- **Address**: the `APP_URL` repository variable is still `https://quantpocket.onrender.com`, the old Render address.
+  - The app's own default was that address too, and the workflow fell back to the raw server address.
+  - Now the app uses `https://app.brightolio.com` when the variable is empty, Render, or sslip.
+  - The build log says "The app talks to: https://app.brightolio.com".
+- **API**: every call the app makes still exists on the Oracle server: auth me, login, mfa, logout and app-exchange; accounts; account; desk quote; orders; quote. The session cookie `qp_sid` matches.
+- **Busy server**: a 503 with `shed` is retried quietly up to 3 times, like the website (Retry-After, at most 8 s, a little longer each time). Then it shows "This is taking longer than usual. Trying again…" with Try again. A refused call never ran, so retrying an order is safe.
+- **Legal**: the disclaimer and Terms, Privacy, Risk Disclosure, Support appear once, on More under About, in the site's exact wording. Before it was a different sentence. A unit test compares it with app.html's footer.
+- **Phone fit**:
+  - edge to edge (required from Android 15), with system-bar, cutout and keyboard insets on every screen;
+  - Back returns to Home before it leaves the app, and cancels the two-factor step;
+  - order chips wrap at large font sizes (200%);
+  - one-line tab labels;
+  - Try again when there is no connection;
+  - dark mode follows the system as before.
+- **Build**: android.yml run 9 succeeded. `testReleaseUnitTest` passed, then the APK and bundle were built.
+  - Google Play upload now happens only when the workflow is run by hand with "Upload to Google Play" ticked; nothing was published.
+  - `ANDROID_KEY_PASSWORD` is not set, so each build is signed with a one-time key, and phones cannot update in place until it is set.
+
+### Tests
+- `npm test`: 503 pass, 0 fail (3 TODOs as before).
+- Mobile suite: PASS.
+- Android unit tests: pass.
+- Lighthouse: no score dropped.
+
+### Live check
+`.github/workflows/live-mobile.yml` runs the mobile suite read-only against https://app.brightolio.com:
+- It never creates an account.
+- It signs in only with the optional `SMOKE_EMAIL`/`SMOKE_PASSWORD` test account, otherwise it checks the signed-out pages.
+- Its result is below.
+
+---
+
 ## 2026-11-23: "The market is very busy" on every page: the cause, then the fix
 
 ### Findings on the live server (before any change; oracle-migrate diagnose-load runs 45248546870 and 45249014849)

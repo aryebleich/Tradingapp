@@ -2,6 +2,24 @@
 
 > **Update 2026-11-16:** the feature flag system was removed and the flagged features are permanently on (CHANGELOG_AI.md). Rows below that mention a flag describe the earlier design.
 
+## One disclaimer, the mobile website, the Android app (2026-11-23)
+
+| # | Decision | Reason |
+|---|---|---|
+| D-FOOT-1 | **The `<footer>` in public/app.html is the app's only copy** of the legal links and disclaimer, signed in and out, desktop and phone, with every rule for it in layout.css (hidden until the app knows who is signed in, never in popouts, above the tab bar with the safe area). The menu's `.navfoot` and the sign-up page's repeated sentence are gone; the sign-up page keeps its risk and security links. | Three style sheets fought over it (theme.css hid it, layout.css showed it, styles.css set it again) and the menu built a second copy, so signed-in users saw it twice. One copy in one place cannot drift. |
+| D-FOOT-2 | Guarded twice: `test/footer.test.js` (no second copy in any app source, footer rules only in layout.css) and the mobile suite (the disclaimer counted on every page in the browser, signed in and out, English and Yiddish; hidden copies count too). | A source test catches a copy before it ships; the browser test catches one built at run time or translated. A hidden copy is one CSS rule away from showing twice. |
+| D-MOB-1 | **44 px for the app's own controls** (header, tab bar, menu, the title's "i" and gear, page tabs) on phones and on every touch screen (`pointer: coarse`, so a phone held sideways too); fields 16 px on touch screens; checkbox rows 44 px on touch screens only. Page content keeps the theme's sizes (D-13). | These are the controls used on every page. Growing all content buttons pushed disclosures 100–290 px lower (D-13); touch-only checkbox rows leave desktop layouts and the golden gate (mouse) unchanged. |
+| D-MOB-2 | Phone header: icons only; the connection badge leaves it except its **LIVE** warning; the owner's "View as" picker shows only while in use. | At 375 px the header ran off the screen (search and theme cut off). The mode button already says paper or live; a real-money warning must stay in view. |
+| D-MOB-3 | The background-loading card sits under the side menu and above the tab bar on phones. | It covered the menu's last items. |
+| D-MOB-4 | **Mobile suite** `test/e2e/mobile.mjs`: 6 phone sizes (360–414 portrait, 740 landscape), dark and Yiddish on two, plus the phone flows; its own CI job. `--base URL` is read-only (no account created; signs in only with the SMOKE test account), run by `live-mobile.yml`. Small targets inside page content are reported, not failed. | Every page and the main flows on real phone sizes in every push; the live check can never change data or write to a customer. |
+| D-MOB-5 | **One minified style sheet** for the app page (built at start with the JS bundle), and `html.was-in` when the page request carries a session cookie (only its presence is read), so the header and menu hold their place from the first paint. | The dashboard's mobile score was 88–89: three render-blocking unminified sheets and a 0.074 layout shift on every load. Now 90 (sign-in 95), accessibility and best practices 100. |
+| D-MOB-6 | The "i" joins a page's title as soon as the title is drawn, not after the page's data. | On a slow phone Research and Compare had no "i" for 8+ s (it also failed CI before this work). |
+| AN-1 | The Android app talks to **https://app.brightolio.com** whenever `APP_URL` is empty, Render or sslip (the variable still holds the Render address). | The main address, served by the Oracle server; the old fallback was the raw server address and the default the Render one. |
+| AN-2 | A **503 with `shed`** is retried quietly up to 3 times (Retry-After, max 8 s, growing), then a calm note with Try again; same rules and wording as the website, unit-tested. | The server refuses only non-critical calls and a refused call did not run, so a retry never doubles an order. |
+| AN-3 | The disclaimer and the four links appear **once in the app** (More → About), worded exactly as the site's footer; a JVM test reads app.html and fails on a difference or a second use. | Same wording everywhere; the old app text named one broker and differed from the site. |
+| AN-4 | Edge to edge with safe-drawing insets on every screen, Back returns to Home first (and cancels two-factor), wrapping chips at large font sizes, Try again when offline. | Android 15 draws apps edge to edge; without insets the sign-in screen sat under the status bar and the keyboard covered fields. |
+| AN-5 | **Google Play upload only on a manual run with "Upload to Google Play" ticked**; pushes build, run the unit tests and refresh the APK download. | Nothing should reach Play by accident from an ordinary push. |
+
 ## Finishing the move to Oracle Cloud (2026-11-23)
 
 Supersedes OR-12 (no rollback to Turso any more: restore a backup or rebuild the server instead) and
