@@ -319,3 +319,41 @@ html.lv2 .lp-sug { margin: 0; align-self: flex-end; } html.lv2 .lpbot .lp-act { 
 html.lv2 .maint-banner, .maint-banner { position: sticky; top: 0; z-index: 1000; padding: 10px 16px; text-align: center; font-weight: 600; background: color-mix(in srgb, var(--warn, #b7791f) 22%, var(--bg, #fff)); color: var(--tx, #111); border-bottom: 1px solid var(--bd, #ddd); }
 html.lv2 .notice-banner, .notice-banner { display: flex; gap: 10px; align-items: center; justify-content: center; font-weight: 500; background: color-mix(in srgb, var(--ac, #2563eb) 14%, var(--bg, #fff)); }
 .notice-banner button { min-width: 32px; }
+
+/* ---------- phones and touch screens: the app's own chrome is finger-sized (44 px), the header always
+   fits, and no field is under 16 px (iOS zooms into smaller ones) (D-MOB-1) ----------
+   Header: the logo, trading mode, search, close-all and theme buttons are 44 px squares. On narrow
+   screens they are icons only, and the connection badge (except its LIVE warning: the mode button
+   already says paper or live) and the owner's "View as" picker (unless it is in use) leave the header;
+   both stay on wider screens. Touch screens of any width (a phone held sideways, a tablet) get the
+   44 px sizes too. Page content keeps the theme's sizes (D-13). */
+@media (max-width: 640px), (pointer: coarse) {
+  html.lv2 header#top .hdrbtn, html.lv2 header#top #themeBtn.hdrbtn, html.lv2 header#top .closeall, html.lv2 header#top #menuBtn { height: 44px; min-height: 44px; min-width: 44px; justify-content: center; flex-shrink: 0; }
+  html.lv2 header#top .brand { display: inline-flex; align-items: center; min-width: 44px; min-height: 44px; }
+  html.lv2 header#top .viewas { height: 44px; min-height: 44px; font-size: 16px; }
+  html.lv2 #nav button.grp.sec { min-height: 44px; }
+  html.lv2 #nav a { min-height: 44px; display: flex; align-items: center; }
+  html.lv2 button.pinfo, html.lv2 button.pgear { width: 44px; height: 44px; min-height: 44px; margin-inline-start: 4px; }
+  html.lv2 #view .hubtabs a { min-height: 44px; }
+  html.lv2 #tabs a { min-height: 44px; }
+  html.lv2 :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]), select, textarea) { font-size: 16px !important; }
+}
+@media (max-width: 640px) {
+  html.lv2 header#top { gap: 4px; padding-inline: 8px; flex-wrap: nowrap; overflow: hidden; }
+  html.lv2 header#top .hdrbtn, html.lv2 header#top #menuBtn { padding: 0 10px; font-size: 16px; }
+  html.lv2 header#top .closeall, html.lv2 header#top #themeBtn.hdrbtn { width: 44px; padding: 0; }
+  html.lv2 header#top .long { display: none; }
+  html.lv2 header#top .viewas:not(.on) { display: none; }
+  html.lv2 header#top #connBadge:not(.warn) { display: none; } /* "LIVE" (real money) always stays in view */
+  html.lv2 header#top #connBadge.warn { flex-shrink: 0; max-width: none; }
+}
+/* touch screens: a checkbox or radio row is a 44 px target (the label is tappable), the box itself 20 px */
+@media (pointer: coarse) {
+  html.lv2 label.chk, html.lv2 label.chk2, html.lv2 label.check { min-height: 44px; }
+  html.lv2 label:is(.chk, .chk2, .check) input:is([type=checkbox], [type=radio]) { width: 20px; height: 20px; flex: none; }
+}
+/* phones: the background-loading card sits above the bottom tab bar and under the side menu and its
+   scrim (it used to cover the menu's last items) */
+@media (max-width: 900px) {
+  #pfbar { z-index: 26; left: 12px; bottom: calc(72px + env(safe-area-inset-bottom)); }
+}
