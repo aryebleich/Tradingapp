@@ -160,5 +160,10 @@ jobs:
         run: |
           ~/vm status 2>&1 | sed -E 's/[A-Za-z0-9_-]{40,}/[hidden]/g' || true
           echo "--- public: $(curl -sS --max-time 20 "$VM_URL/healthz" || echo 'no answer')"
+          # The main address: where its DNS points, and who answers it (this server, Render, Cloudflare).
+          for d in app.brightolio.com brightolio.com; do
+            echo "--- $d: DNS $(dig +short "$d" A | paste -sd, -) $(dig +short "$d" CNAME | paste -sd, -) (this server: $HOST)"
+            curl -sS -o /dev/null -D - --max-time 20 "https://$d/healthz" 2>&1 | grep -iE '^(HTTP|server|location|x-render|cf-ray|via)' | tr -d '\r' | sed 's/^/    /' || true
+          done
           ssh -i ~/.ssh/oracle ubuntu@"$HOST" 'rm -f /tmp/migrate.sh' || true
           rm -f ~/.ssh/oracle ~/vm

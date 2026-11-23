@@ -213,6 +213,7 @@ case "$step" in
   status)
     echo "--- health"; curl -sS --max-time 10 http://127.0.0.1:3000/healthz || true; echo
     grep -q '^TURSO_MERGE_PENDING=1' "$ENVF" && echo "The data from before November 22 is still to be merged (oracle-merge-scheduled.yml)." # merge-only
+    echo "--- address: PUBLIC_URL=$(val PUBLIC_URL)"
     echo "--- database settings"; for k in DATABASE_URL DB_FILE PERSISTENT_DISK MAINTENANCE STANDBY; do if grep -q "^$k=" "$ENVF"; then echo "$k: set"; else echo "$k: -"; fi; done
     echo "--- data"; find "$DATA" -maxdepth 1 -type f -printf '%s %f\n' | sort -k2
     echo "--- backups"; find "$DATA/backups" -maxdepth 1 -name '*.db' -printf '%T@ %f\n' 2>/dev/null | sort -rn | head -5 | cut -d' ' -f2; head -30 "$DATA/backups/status.json" 2>/dev/null || true
