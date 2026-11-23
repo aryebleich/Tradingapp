@@ -92,24 +92,14 @@ test('turso-pull: a refused sync is reported clearly (and the token is never pri
   assert.equal(none.ok, false); assert.equal(none.refused, false); assert.match(none.error, /DATABASE_URL/);
 });
 
-test('fresh-db starts new ids at 10,000,000, and turso-merge brings old rows in later (same email = one account)', () => {
+test('fresh-db starts every id counter at 10,000,000 (the merge is in test/merge.test.js)', () => {
   const dir = path.join(tmp, 'fresh'); fs.mkdirSync(dir);
   const env = { ...process.env, DATABASE_URL: '', DATABASE_AUTH_TOKEN: '' };
-  const node = (code, file) => execFileSync(process.execPath, ['--input-type=module', '-e', code], { cwd: root, env: { ...env, DB_FILE: file }, encoding: 'utf8' });
-  const fresh = JSON.parse(execFileSync(process.execPath, ['scripts/fresh-db.mjs', path.join(dir, 'live.db')], { cwd: root, env, encoding: 'utf8' }).trim().split('\n').pop());
+  const live = path.join(dir, 'live.db');
+  const fresh = JSON.parse(execFileSync(process.execPath, ['scripts/fresh-db.mjs', live], { cwd: root, env, encoding: 'utf8' }).trim().split('\n').pop());
   assert.equal(fresh.ok, true); assert.ok(fresh.converted > 50, String(fresh.converted));
-  const add = "const D = await import('./src/db.js'); await D.ready; const r = await D.run(\"INSERT INTO users (email, pass_hash, created_at) VALUES (?, 'x', 1)\", process.env.EMAIL); await D.run(\"INSERT INTO user_settings (user_id, k, v, updated_at) VALUES (?, 'drip', '1', 1)\", Number(r.lastInsertRowid)); console.log(Number(r.lastInsertRowid)); process.exit(0)";
-  const live = path.join(dir, 'live.db'), old = path.join(dir, 'old.db');
-  const newId = +execFileSync(process.execPath, ['--input-type=module', '-e', add], { cwd: root, env: { ...env, DB_FILE: live, EMAIL: 'back@example.com' }, encoding: 'utf8' }).trim().split('\n').pop();
-  assert.equal(newId, 10_000_001);
-  for (const e of ['old@example.com', 'BACK@example.com']) execFileSync(process.execPath, ['--input-type=module', '-e', add], { cwd: root, env: { ...env, DB_FILE: old, EMAIL: e } });
-  const m = JSON.parse(execFileSync(process.execPath, ['scripts/turso-merge.mjs', live, old], { cwd: root, env, encoding: 'utf8' }).trim().split('\n').pop());
-  assert.equal(m.ok, true); assert.equal(m.joinedAccounts, 1); assert.equal(m.added.users, 1); assert.equal(m.added.user_settings, 1);
-  const out = JSON.parse(node("const D = await import('./src/db.js'); await D.ready; console.log(JSON.stringify({ u: await D.all('SELECT id, email FROM users ORDER BY id'), s: await D.all('SELECT user_id FROM user_settings ORDER BY user_id') })); process.exit(0)", live).trim().split('\n').pop());
-  assert.deepEqual(out.u.map(x => [x.id, x.email]), [[1, 'old@example.com'], [10_000_001, 'back@example.com']]);
-  assert.deepEqual(out.s.map(x => x.user_id), [1, 10_000_001]);
-  const again = JSON.parse(execFileSync(process.execPath, ['scripts/turso-merge.mjs', live, old], { cwd: root, env, encoding: 'utf8' }).trim().split('\n').pop());
-  assert.equal(again.rowsAdded, 0, 'running it twice adds nothing');
+  const add = "const D = await import('./src/db.js'); await D.ready; const r = await D.run(\"INSERT INTO users (email, pass_hash, created_at) VALUES ('new@example.com', 'x', 1)\"); console.log(Number(r.lastInsertRowid)); process.exit(0)";
+  assert.equal(+execFileSync(process.execPath, ['--input-type=module', '-e', add], { cwd: root, env: { ...env, DB_FILE: live }, encoding: 'utf8' }).trim().split('\n').pop(), 10_000_001);
 });
 
 // ---------- through the server ----------
@@ -197,4 +187,15 @@ test('keyReport: names only, and a missing required key is a warning', async () 
   assert.deepEqual(r.missingRequired, ['ENCRYPTION_KEY']);
   assert.ok(r.warnings.some(w => w.key === 'OCI_BACKUP_PAR_URL' && w.level === 'warn'));
   assert.doesNotMatch(JSON.stringify(r), /abc|x\.example/);
+});
+
+test('Render is a redirect only: every path 301 to the same path on Oracle, /healthz 200', async () => {
+  const { redirectHandler } = await import('../src/render-redirect.js');
+  const call = url => { const out = {}; redirectHandler({ url }, { writeHead: (s, h) => { out.status = s; out.headers = h; }, end: b => { out.body = b; } }); return out; };
+  const a = call('/app?x=1');
+  assert.equal(a.status, 301); assert.equal(a.headers.location, 'https://138-2-233-183.sslip.io/app?x=1');
+  assert.equal(call('//evil.example/x').headers.location, 'https://138-2-233-183.sslip.io/', 'no open redirect');
+  assert.equal(call('/healthz').status, 200);
+  const y = fs.readFileSync(new URL('../render.yaml', import.meta.url), 'utf8');
+  assert.match(y, /startCommand: node src\/render-redirect\.js/); assert.doesNotMatch(y, /DATABASE_URL|ENCRYPTION_KEY|CRON_SECRET/);
 });
