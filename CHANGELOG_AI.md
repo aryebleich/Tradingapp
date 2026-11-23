@@ -4,6 +4,36 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-23: Finishing the move to Oracle Cloud (Phase 1 now, merge after Turso's reset)
+
+**What runs where:** the site and its database on the Oracle VM (https://138-2-233-183.sslip.io),
+hourly backups there; Render is a 301 redirect only; Turso is blocked until 2026-12-01 and holds
+only the data from before November 22, which the scheduled merge brings back and then deletes.
+
+**Changed**
+- Phase 1 (done, verified): the VM is active, out of maintenance, backed up hourly; verify and a
+  paper trade pass. Render redirects every path (render-redirect.yml run 45213426249). Workflows use
+  the Oracle address. Signed-in people see "We moved to a new server…" until the merge.
+- Phase 2: `oracle-merge-scheduled.yml` (every 6 hours from 2026-12-01 00:30 UTC); a safe
+  `turso-merge.mjs` (ids, one account per person, paused automations with their old values, missed
+  schedules, in-app notices, no sessions or tokens, credential check, integrity and foreign-key
+  checks, counts) with a rehearsal and an exact copy in `migrate.sh merge-turso`.
+- Phase 3 (automatic after the merge): the final encrypted copy (90 days), the Turso database
+  deleted through the API or one issue with three steps, the old settings removed from the VM, the
+  merge-only code removed by `scripts/old-db-cleanup.sh`. Turso wording elsewhere is already gone.
+- Removed: the rollback to Turso, the `turso db export` fallback, Render deploys and Render's weekly
+  rebuild; replaced by "restore a backup" and "rebuild the server from a backup" (MIGRATION_ORACLE.md).
+
+**Tests:** test/merge.test.js (two sample databases: id ranges, one account, a past scheduled order,
+an active bot and a Playbook paused, foreign keys, a failure leaves the file byte-for-byte as it was,
+a second run changes nothing), test/oracle.test.js (+ the Render redirect), test/old-db.test.js.
+`npm test`: 489 pass, 0 fail; after the clean-up script on a copy: 486 pass, 0 fail. shellcheck
+clean for deploy/vm and scripts; actionlint clean for the workflows changed.
+
+**Rollback:** restore a backup (Admin → Database, or oracle-migrate `restore`); a bad deploy goes
+back to the previous image automatically (post-deploy.yml).
+
+
 ## 2026-11-23: Move to Oracle Cloud Always Free (app, database, keys)
 
 **Why:** Turso refused every SQL read after the monthly read limit, which took production down. The
