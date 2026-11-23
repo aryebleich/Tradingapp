@@ -1,0 +1,54 @@
+name: Live site on phones
+# The mobile suite (test/e2e/mobile.mjs) against the live site, read-only: every page on iPhone and
+# Pixel sizes, light and dark, English and Yiddish. Fails on sideways overflow, a second disclaimer,
+# the footer under the tab bar, fields under 16 px or app buttons under 44 px. It never creates an
+# account and never changes anything: with the optional SMOKE_EMAIL and SMOKE_PASSWORD secrets (a
+# TEST account, never a customer) it signs in and opens the menu pages, else it checks the signed-out
+# pages. Run by hand (Actions → Live site on phones), or after every "Verify live site" run.
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'The site (default: the main address)'
+        required: false
+        default: 'https://app.brightolio.com'
+  workflow_run:
+    workflows: [Verify live site]
+    types: [completed]
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: live-mobile
+  cancel-in-progress: true
+jobs:
+  phones:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          check-latest: true
+          cache: npm
+      - run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Every page on phone sizes, on the live site (read-only)
+        env:
+          URL: ${{ inputs.url || 'https://app.brightolio.com' }}
+          SMOKE_EMAIL: ${{ secrets.SMOKE_EMAIL }}
+          SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
+        run: node test/e2e/mobile.mjs --base "$URL" --jobs 2 --out e2e-output/live-mobile
+      - name: Report
+        if: always()
+        run: '[ -f e2e-output/live-mobile/REPORT.md ] && cat e2e-output/live-mobile/REPORT.md >> "$GITHUB_STEP_SUMMARY" || true'
+      - name: Upload the screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: live-mobile
+          path: e2e-output/live-mobile/
+          retention-days: 14

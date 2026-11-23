@@ -49,19 +49,29 @@ const PHONES = QUICK
   : [['Galaxy 360', D('Galaxy S8', 360, 740)], ['iPhone SE', D('iPhone SE', 375, 667)], ['iPhone 13', D('iPhone 13', 390, 664)],
     ['Pixel 5', D('Pixel 5', 393, 727)], ['iPhone Plus 414', D('iPhone 8 Plus', 414, 736)], ['Landscape 740', D('Pixel 5', 740, 360)]];
 
-// One test account (sandbox data only; the first account is the owner, so admin pages are covered).
+// Locally: one test account (sandbox data only; the first account is the owner, so admin pages are
+// covered). Against a live site (--base): no account is ever created and nothing is changed; with a
+// TEST account in SMOKE_EMAIL and SMOKE_PASSWORD it signs in and only opens pages, else it checks the
+// signed-out pages and the public site.
+const LIVE = !!arg('--base', '');
 const setup = await browser.newContext({ viewport: { width: 390, height: 844 } });
-const p0 = await setup.newPage(); p0.on('dialog', d => d.accept());
-const email = `mobile-${Date.now()}@example.com`;
-await p0.goto(B + '/app#/register'); await p0.fill('input[name=email]', email); await p0.fill('input[name=password]', 'Str0ngPassword');
-await p0.check('input[name=agree]'); await p0.click('form.auth button:not([type=button])'); await p0.waitForSelector('#nav a', { state: 'attached' });
-const routes = (await p0.$$eval('#nav a[href^="#/"]', as => [...new Set(as.map(a => a.getAttribute('href').slice(2)))]));
-const session = await setup.cookies();
+const p0 = await setup.newPage(); p0.on('dialog', d => d.dismiss());
+let routes = [], session = [];
+if (!LIVE) {
+  const email = `mobile-${Date.now()}@example.com`;
+  await p0.goto(B + '/app#/register'); await p0.fill('input[name=email]', email); await p0.fill('input[name=password]', 'Str0ngPassword');
+  await p0.check('input[name=agree]'); await p0.click('form.auth button:not([type=button])'); await p0.waitForSelector('#nav a', { state: 'attached' });
+} else if (process.env.SMOKE_EMAIL && process.env.SMOKE_PASSWORD) {
+  await p0.goto(B + '/app#/login'); await p0.fill('input[name=email]', process.env.SMOKE_EMAIL); await p0.fill('input[name=password]', process.env.SMOKE_PASSWORD);
+  await p0.click('form.auth button:not([type=button])'); await p0.waitForSelector('#nav a', { state: 'attached', timeout: 30000 });
+}
+if (await p0.$('#nav a')) { routes = await p0.$$eval('#nav a[href^="#/"]', as => [...new Set(as.map(a => a.getAttribute('href').slice(2)))]); session = await setup.cookies(); }
 await setup.close();
+if (LIVE) console.log(routes.length ? `live: signed in as the test account, ${routes.length} menu pages` : 'live: signed-out pages only (no SMOKE_EMAIL / SMOKE_PASSWORD)');
 
 const PAGES = [
   ...['login', 'register', 'forgot'].map(r => ({ id: 'out-' + r, url: '/app#/' + r, auth: false })),
-  ...['dashboard', ...routes.filter(r => r !== 'dashboard')].map(r => ({ id: r.replace(/\W+/g, '_'), url: '/app#/' + r, auth: true })),
+  ...(routes.length ? ['dashboard', ...routes.filter(r => r !== 'dashboard')] : []).map(r => ({ id: r.replace(/\W+/g, '_'), url: '/app#/' + r, auth: true })),
 ].filter(pg => !ONLY || ONLY.some(o => pg.id === o || pg.id === 'out-' + o));
 // Variants: every page in light English on every phone; dark and Yiddish on two phones (not --quick: one).
 const VARIANTS = [];
@@ -145,7 +155,7 @@ for (const v of VARIANTS) {
 }
 // ---------- the important flows on a phone, start to finish (iPhone SE size) ----------
 const flowLog = [];
-if (!ONLY) {
+if (!ONLY && !LIVE) {
   const ctx = await browser.newContext({ ...D('iPhone SE', 375, 667), reducedMotion: 'reduce' });
   await ctx.addInitScript(() => { try { localStorage.setItem('qp_guides', 'off'); } catch {} });
   const p = await ctx.newPage();
