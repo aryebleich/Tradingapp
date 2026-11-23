@@ -1,12 +1,18 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 
 package com.brightfolio.app
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -67,6 +73,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
@@ -112,7 +119,7 @@ fun App(handoff: MutableState<String?>) {
         }
     }
     when (phase) {
-        Phase.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        Phase.Loading -> Box(Modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         Phase.SignedOut -> SignIn(error) { scope.launch { error = null; refreshMe() } }
         Phase.Mfa -> MfaScreen(onDone = { scope.launch { refreshMe() } }, onCancel = { Api.forget(); phase = Phase.SignedOut })
         Phase.SignedIn -> Main(user ?: JSONObject(), onSignedOut = { Api.forget(); user = null; phase = Phase.SignedOut })
@@ -129,7 +136,7 @@ private fun SignIn(initialError: String?, onSignedIn: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var err by remember { mutableStateOf(initialError) }
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
+        Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.Center,
     ) {
         Text("Brightolio", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
@@ -167,7 +174,8 @@ private fun MfaScreen(onDone: () -> Unit, onCancel: () -> Unit) {
     val scope = rememberCoroutineScope()
     var code by remember { mutableStateOf("") }
     var err by remember { mutableStateOf<String?>(null) }
-    Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center) {
+    BackHandler { onCancel() }
+    Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.Center) {
         Text("Two-factor code", fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Text("Enter the 6-digit code from your authenticator app.", color = MaterialTheme.colorScheme.secondary)
         Spacer(Modifier.height(16.dp))
@@ -186,6 +194,7 @@ private fun Main(user: JSONObject, onSignedOut: () -> Unit) {
     var account by remember { mutableStateOf("paper") }
     var accounts by remember { mutableStateOf<List<JSONObject>>(listOf(JSONObject().put("id", "paper").put("name", "Paper account").put("connected", true))) }
     var tradeSymbol by remember { mutableStateOf("SPY") }
+    BackHandler(enabled = tab != Tab.Home) { tab = Tab.Home }
     LaunchedEffect(Unit) {
         try {
             val a = Api.arr("/accounts").objects().filter { it.optBoolean("connected") }
@@ -195,7 +204,7 @@ private fun Main(user: JSONObject, onSignedOut: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(tab.label, fontWeight = FontWeight.SemiBold) },
+                title = { Text(tab.label, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 actions = { AccountPicker(accounts, account) { account = it } },
             )
         },
@@ -203,7 +212,7 @@ private fun Main(user: JSONObject, onSignedOut: () -> Unit) {
             NavigationBar {
                 for (t in Tab.values()) {
                     NavigationBarItem(
-                        selected = tab == t, onClick = { tab = t }, label = { Text(t.label) },
+                        selected = tab == t, onClick = { tab = t }, label = { Text(t.label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                         icon = {
                             Icon(
                                 when (t) {
@@ -218,7 +227,7 @@ private fun Main(user: JSONObject, onSignedOut: () -> Unit) {
             }
         },
     ) { pad ->
-        Box(Modifier.padding(pad).fillMaxSize()) {
+        Box(Modifier.padding(pad).consumeWindowInsets(pad).imePadding().fillMaxSize()) {
             when (tab) {
                 Tab.Home -> HomeScreen(account) { tradeSymbol = it; tab = Tab.Trade }
                 Tab.Trade -> TradeScreen(account, accounts.firstOrNull { it.optString("id") == account }, tradeSymbol) { tradeSymbol = it }
@@ -264,7 +273,12 @@ private fun Loadable(load: suspend () -> Unit, key: Any, content: @Composable (r
     }
     Column(Modifier.fillMaxSize()) {
         if (busy) Box(Modifier.fillMaxWidth().padding(8.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(Modifier.width(24.dp).height(24.dp)) }
-        err?.let { Text(it, color = Down, modifier = Modifier.padding(16.dp)) }
+        err?.let {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(it, color = if (it == Shed.TEXT) MaterialTheme.colorScheme.secondary else Down, modifier = Modifier.weight(1f))
+                TextButton(onClick = { n++ }) { Text("Try again") }
+            }
+        }
         content { n++ }
     }
 }
@@ -407,7 +421,7 @@ private fun TradeScreen(account: String, acct: JSONObject?, symbolIn: String, on
             Button(onClick = { side = "buy" }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = if (side == "buy") Up else MaterialTheme.colorScheme.surfaceVariant, contentColor = if (side == "buy") Color.White else MaterialTheme.colorScheme.onSurface)) { Text("Buy") }
             Button(onClick = { side = "sell" }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = if (side == "sell") Down else MaterialTheme.colorScheme.surfaceVariant, contentColor = if (side == "sell") Color.White else MaterialTheme.colorScheme.onSurface)) { Text("Sell") }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(selected = type == "market", onClick = { type = "market" }, label = { Text("Market") })
             FilterChip(selected = type == "limit", onClick = { type = "limit"; byDollars = false }, label = { Text("Limit") })
             if (type == "market") {
@@ -424,7 +438,7 @@ private fun TradeScreen(account: String, acct: JSONObject?, symbolIn: String, on
         if (side == "sell" && held > 0) TextButton(onClick = { byDollars = false; amount = Fmt.qty(held) }) { Text("Sell all (${Fmt.qty(held)} shares)") }
         if (type == "limit") {
             OutlinedTextField(limit, { limit = it.filter { c -> c.isDigit() || c == '.' }.take(12) }, label = { Text("Limit price") }, singleLine = true, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(selected = !gtc, onClick = { gtc = false }, label = { Text("Today only") })
                 FilterChip(selected = gtc, onClick = { gtc = true }, label = { Text("Until cancelled") })
             }
@@ -554,7 +568,15 @@ private fun MoreScreen(user: JSONObject, onSignedOut: () -> Unit) {
             Spacer(Modifier.height(16.dp))
             OutlinedButton(onClick = { scope.launch { try { Api.post("/auth/logout") } catch (_: ApiException) {}; onSignedOut() } }, modifier = Modifier.fillMaxWidth()) { Text("Sign out") }
             Spacer(Modifier.height(8.dp))
-            Text("Brightolio ${BuildConfig.VERSION_NAME}. Brightolio is software, not a broker; brokerage accounts are held at Alpaca Securities LLC, member FINRA/SIPC.", fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary)
+            Spacer(Modifier.height(20.dp))
+            // About: the app's only copy of the legal links and disclaimer (the website's footer wording).
+            Text("About", fontWeight = FontWeight.SemiBold)
+            FlowRow {
+                for ((label, path) in Legal.LINKS) TextButton(onClick = { openWeb(ctx, path) }) { Text(label) }
+            }
+            Text(Legal.DISCLAIMER, fontSize = 13.sp, color = MaterialTheme.colorScheme.secondary)
+            Spacer(Modifier.height(6.dp))
+            Text("Brightolio ${BuildConfig.VERSION_NAME}", fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
         }
     }
 }

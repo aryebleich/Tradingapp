@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.runtime.mutableStateOf
 
@@ -14,6 +15,8 @@ class MainActivity : ComponentActivity() {
     private val handoff = mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Edge to edge (required from Android 15): the screens pad themselves for the system bars.
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         Api.init(this)
         readCode(intent)

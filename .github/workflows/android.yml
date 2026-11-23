@@ -9,14 +9,23 @@ name: Android app
 # Repository variable APP_URL: the site's address (the scheduler uses the same one).
 # Google Play (installs and updates like any other app): the same run builds an Android App Bundle
 # (brightfolio.aab), signed with the same key as the upload key. Add the repository secret
-# PLAY_SERVICE_ACCOUNT_JSON (a Google Cloud service account with release rights in Play Console)
-# and every build is uploaded to the Play track in the PLAY_TRACK variable (default: internal).
+# PLAY_SERVICE_ACCOUNT_JSON (a Google Cloud service account with release rights in Play Console);
+# a build is uploaded to the Play track in the PLAY_TRACK variable (default: internal) only when the
+# workflow is run by hand with "Upload to Google Play" ticked. Pushes build, test and refresh the
+# download only, so nothing reaches Play by accident.
+# The app talks to APP_URL; when it is empty or still the old Render address it uses the main
+# address, https://app.brightolio.com (the Oracle server).
 # The very first upload has to be done by hand in Play Console (Google's rule); see android/play/.
 on:
   push:
     branches: [main]
     paths: ['android/**', 'public/icon-512.png', 'public/manifest.webmanifest', '.github/workflows/android.yml']
   workflow_dispatch:
+    inputs:
+      play:
+        description: 'Upload to Google Play too (needs PLAY_SERVICE_ACCOUNT_JSON)'
+        type: boolean
+        default: false
 permissions:
   contents: write
 concurrency:
@@ -63,10 +72,11 @@ jobs:
           ORACLE_HOST: ${{ vars.ORACLE_HOST }}
           VERSION_CODE: ${{ github.run_number }}
         run: |
-          APP_URL="${APP_URL_VAR:-}"; case "$APP_URL" in ""|*onrender.com*) APP_URL="https://$(echo "${ORACLE_HOST:-138.2.233.183}" | tr . -).sslip.io";; esac
+          APP_URL="${APP_URL_VAR:-}"; case "$APP_URL" in ""|*onrender.com*|*sslip.io*) APP_URL="https://app.brightolio.com";; esac
           APP_HOST="$APP_URL"; export APP_HOST
+          echo "The app talks to: $APP_HOST"
           cd android
-          gradle --no-daemon assembleRelease bundleRelease
+          gradle --no-daemon testReleaseUnitTest assembleRelease bundleRelease
           BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
           "$BT/zipalign" -f -p 4 app/build/outputs/apk/release/app-release-unsigned.apk aligned.apk
           "$BT/apksigner" sign --ks release.keystore --ks-key-alias brightfolio --ks-pass env:KEY_PASS --key-pass env:KEY_PASS --out brightfolio.apk aligned.apk
@@ -75,6 +85,13 @@ jobs:
           cp app/build/outputs/bundle/release/app-release.aab brightfolio.aab
           jarsigner -keystore release.keystore -storepass:env KEY_PASS -keypass:env KEY_PASS -sigalg SHA256withRSA -digestalg SHA-256 brightfolio.aab brightfolio
           jarsigner -verify brightfolio.aab >/dev/null && ls -l brightfolio.aab
+      - name: Unit test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-test-reports
+          path: android/app/build/reports/tests/
+          retention-days: 14
       - name: Publish the download
         env:
           GH_TOKEN: ${{ github.token }}
@@ -85,7 +102,9 @@ jobs:
         id: play
         env:
           PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          WANT: ${{ github.event_name == 'workflow_dispatch' && inputs.play }}
         run: |
+          if [ "$WANT" != "true" ]; then echo "::notice::Google Play upload skipped: run this workflow by hand with 'Upload to Google Play' ticked to publish there."; exit 0; fi
           if [ -n "$PLAY_JSON" ] && [ "$ONE_TIME_KEY" != "1" ]; then echo "ready=1" >> "$GITHUB_OUTPUT"; else echo "::notice::Google Play upload skipped: add the PLAY_SERVICE_ACCOUNT_JSON secret (and ANDROID_KEY_PASSWORD) to publish there."; fi
       - name: Upload to Google Play
         if: steps.play.outputs.ready == '1'

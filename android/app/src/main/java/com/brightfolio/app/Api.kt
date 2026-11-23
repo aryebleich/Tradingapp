@@ -5,6 +5,7 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -18,6 +19,7 @@ import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
+import kotlin.random.Random
 
 class ApiException(message: String, val status: Int) : Exception(message)
 
@@ -48,7 +50,33 @@ object Api {
         store?.save(t)
     }
 
+    /** One call. A "busy" answer (503 with shed) is tried again quietly up to [Shed.TRIES] times. */
     suspend fun call(method: String, path: String, body: JSONObject? = null): Any? = withContext(Dispatchers.IO) {
+        for (attempt in 0..Shed.TRIES) {
+            val r = once(method, path, body)
+            if (Shed.isShed(r.status, r.text)) {
+                if (attempt < Shed.TRIES) delay(Shed.waitMs(r.retryAfter, attempt, Random.nextLong(0, 400)))
+                continue
+            }
+            val t = r.text.trim()
+            val parsed: Any? = when {
+                t.startsWith("{") -> runCatching { JSONObject(t) }.getOrNull()
+                t.startsWith("[") -> runCatching { JSONArray(t) }.getOrNull()
+                else -> null
+            }
+            if (r.status >= 400) {
+                val msg = (parsed as? JSONObject)?.optString("error").orEmpty()
+                throw ApiException(msg.ifBlank { "Something went wrong (${r.status})" }, r.status)
+            }
+            return@withContext parsed
+        }
+        // Still busy after every retry: a calm note (the screen offers Try again), never an error code.
+        throw ApiException(Shed.TEXT, 503)
+    }
+
+    private class Answer(val status: Int, val text: String, val retryAfter: String?)
+
+    private fun once(method: String, path: String, body: JSONObject?): Answer {
         val c = URL(base + "/api" + path).openConnection() as HttpURLConnection
         try {
             c.requestMethod = method
@@ -76,17 +104,7 @@ object Api {
             }
             val stream = if (status >= 400) c.errorStream else c.inputStream
             val text = stream?.bufferedReader()?.use { it.readText() } ?: ""
-            val t = text.trim()
-            val parsed: Any? = when {
-                t.startsWith("{") -> runCatching { JSONObject(t) }.getOrNull()
-                t.startsWith("[") -> runCatching { JSONArray(t) }.getOrNull()
-                else -> null
-            }
-            if (status >= 400) {
-                val msg = (parsed as? JSONObject)?.optString("error").orEmpty()
-                throw ApiException(msg.ifBlank { "Something went wrong ($status)" }, status)
-            }
-            parsed
+            return Answer(status, text, c.getHeaderField("Retry-After"))
         } catch (e: IOException) {
             throw ApiException("Could not reach Brightolio. Check your internet connection.", 0)
         } finally {

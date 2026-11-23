@@ -5,7 +5,8 @@ plugins {
 }
 
 // The site the app talks to (the APP_URL repository variable) and the build number.
-val appHost: String = (System.getenv("APP_HOST") ?: "").ifBlank { "quantpocket.onrender.com" }.trimEnd('/')
+// Default: the main address, served by the Oracle server (never the old Render one).
+val appHost: String = (System.getenv("APP_HOST") ?: "").ifBlank { "app.brightolio.com" }.trimEnd('/')
     .let { if (it.startsWith("http")) it else "https://$it" }
 val versionNumber: Int = (System.getenv("VERSION_CODE") ?: "1").toIntOrNull() ?: 1
 
@@ -29,6 +30,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
+    testOptions { unitTests.isReturnDefaultValues = true }
 }
 
 dependencies {
@@ -43,4 +45,5 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.browser:browser:1.8.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+    testImplementation("junit:junit:4.13.2")
 }
