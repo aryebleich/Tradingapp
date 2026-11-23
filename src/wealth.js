@@ -10,7 +10,7 @@ import { requireUser } from './auth.js';
 import { getBars, accountSummary, placeOrder, ACCOUNT_IDS } from './brokers.js';
 import { isPaid } from './fees.js';
 import { getSetting, setSetting } from './settings.js';
-import { get, secData, secWww, secCached, companyFacts } from './institutions.js';
+import { get, secData, secWww, secCached, companyFacts, companySubmissions } from './institutions.js';
 import { tradingForAccount } from './alpaca/connections.js';
 import { notifyUser } from './notify-user.js';
 import { nyTime } from './time.js';
@@ -91,7 +91,7 @@ export async function classify(symbol) {
   try {
     const cik = (await cikMap())[symbol.replace('.', '-')];
     if (!cik) return ['Other', 'Unknown'];
-    const sub = await secCached('sec:sub:' + cik, 30 * 864e5, () => get(`${secData()}/submissions/CIK${cik}.json`));
+    const sub = await companySubmissions(cik, 30 * 864e5); // trimmed; its own key (fundamentals.js keeps a different shape under sec:sub:)
     const country = sub.addresses?.business?.stateOrCountry, us = !country || /^[A-Z]{2}$/.test(country) && !['A0', 'A1', 'A2'].includes(country);
     return [sicSector(sub.sic) || 'Other', sub.addresses?.business?.isForeignLocation ? 'International' : us ? 'United States' : 'International'];
   } catch { return ['Other', 'Unknown']; }

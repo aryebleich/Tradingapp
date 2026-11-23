@@ -1134,7 +1134,7 @@ export const ready = (async () => {
 // filled the file; they are trimmed now (sec:facts2:). The old ones are removed, and when most of the
 // file is free space it is compacted once (VACUUM rewrites only the live data: a second or two).
 async function compactFile() {
-  await db.execute("DELETE FROM cache WHERE k LIKE 'sec:facts:%'");
+  await db.execute("DELETE FROM cache WHERE k LIKE 'sec:facts:%' OR k LIKE 'sec:subs2:%' OR (k LIKE 'sec:sub:%' AND length(v) > 200000)");
   const n = q => db.execute(q).then(r => Number(Object.values(r.rows[0])[0]));
   const pages = await n('PRAGMA page_count'), free = await n('PRAGMA freelist_count'), size = await n('PRAGMA page_size');
   if (free * size > 100 * 1048576 && free > pages / 2) {

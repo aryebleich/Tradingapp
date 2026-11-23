@@ -87,3 +87,16 @@ test('SEC company facts are trimmed before they are cached (the 941 MB heap and 
   assert.equal(t.entityName, 'Big Co');
   assert.ok(JSON.stringify(t).length < JSON.stringify(big).length / 100, `${JSON.stringify(t).length} vs ${JSON.stringify(big).length}`);
 });
+
+test('SEC submissions are trimmed too: company details and only the earnings-report filings', async () => {
+  const { trimSubmissions } = await import('../src/institutions.js');
+  const n = 20000, recent = { form: [], items: [], filingDate: [], accessionNumber: [], primaryDocument: [] };
+  for (let i = 0; i < n; i++) { recent.form.push(i % 50 ? '4' : '8-K'); recent.items.push(i % 100 ? '' : '2.02,9.01'); recent.filingDate.push('2025-01-01'); recent.accessionNumber.push('x'.repeat(20)); recent.primaryDocument.push('doc.htm'); }
+  const doc = { cik: '1', name: 'Big Co', sic: '3571', sicDescription: 'Computers', exchanges: ['Nasdaq'], fiscalYearEnd: '0930', addresses: { business: { stateOrCountry: 'CA', isForeignLocation: 0, street1: 'x' } }, filings: { recent } };
+  const t = trimSubmissions(doc);
+  assert.equal(t.sic, '3571'); assert.equal(t.sicDescription, 'Computers'); assert.deepEqual(t.exchanges, ['Nasdaq']); assert.equal(t.addresses.business.stateOrCountry, 'CA');
+  assert.equal(t.filings.recent.form.length, n / 100); assert.ok(t.filings.recent.items.every(x => x.includes('2.02')));
+  const { reportDatesFrom } = await import('../src/stock.js');
+  assert.deepEqual(reportDatesFrom(t), ['2025-01-01']);
+  assert.ok(JSON.stringify(t).length < JSON.stringify(doc).length / 100);
+});

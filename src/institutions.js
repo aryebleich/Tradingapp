@@ -58,6 +58,16 @@ export function trimFacts(doc, now = Date.now()) {
   }
   return { cik: doc?.cik ?? null, entityName: doc?.entityName ?? null, facts: { 'us-gaap': out } };
 }
+// SEC submissions (2-5 MB each: every filing ever made), trimmed the same way: the company details the
+// app reads, and of the filings only the earnings reports (8-K item 2.02) with form, items and date.
+export function trimSubmissions(doc) {
+  const r = doc?.filings?.recent || {}, keep = { form: [], items: [], filingDate: [] };
+  for (let i = 0; i < (r.form || []).length; i++) if (r.form[i] === '8-K' && String(r.items?.[i] || '').split(',').includes('2.02')) { keep.form.push('8-K'); keep.items.push(r.items[i]); keep.filingDate.push(r.filingDate?.[i]); }
+  const b = doc?.addresses?.business || {};
+  return { cik: doc?.cik ?? null, name: doc?.name ?? null, sic: doc?.sic ?? null, sicDescription: doc?.sicDescription ?? null, exchanges: doc?.exchanges || [], fiscalYearEnd: doc?.fiscalYearEnd ?? null,
+    stateOfIncorporation: doc?.stateOfIncorporation ?? null, addresses: { business: { stateOrCountry: b.stateOrCountry ?? null, isForeignLocation: b.isForeignLocation ?? null } }, filings: { recent: keep } };
+}
+export const companySubmissions = (cik, ttl = 864e5) => cached('sec:subs3:' + cik, ttl, async () => trimSubmissions(await get(`${DATA()}/submissions/CIK${cik}.json`)));
 export const companyFacts = (cik, ttl = 2 * 864e5) => cached('sec:facts2:' + cik, ttl, async () => trimFacts(await get(`${DATA()}/api/xbrl/companyfacts/CIK${cik}.json`)));
 const norm = s => ' ' + String(s || '').toUpperCase().replace(/&/g, ' AND ').replace(/[^A-Z0-9 ]/g, ' ').replace(/\b(THE|INC|INCORPORATED|CORP|CORPORATION|CO|COMPANY|LTD|LIMITED|PLC|HLDGS|HOLDINGS|HOLDING|GROUP|CL|CLASS|COM|NEW|DEL|SA|NV|AG|SE|ADR|SPONSORED|SHS|ORD|A|B|C)\b/g, ' ').replace(/\s+/g, ' ').trim();
 // Company names to tickers, from the SEC's own ticker file.

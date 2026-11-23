@@ -11,7 +11,7 @@
 // history and its sector and never predict a price.
 import express from 'express';
 import { requireUser } from './auth.js';
-import { get, secData, secCached, companyFacts as secCompanyFacts } from './institutions.js';
+import { get, secData, secCached, companyFacts as secCompanyFacts, companySubmissions as secSubmissions } from './institutions.js';
 import { tickerCiks, UNIVERSE } from './fundamentals.js';
 import { getBars, lastPrice } from './brokers.js';
 import * as D from './alpaca/data.js';
@@ -316,7 +316,7 @@ async function cikOf(symbol) {
   const hit = map[symbol] || map[symbol.replace('.', '-')]; return hit ? { cik: String(hit.cik).padStart(10, '0'), name: hit.name } : null;
 }
 export const companyFacts = cik => secCompanyFacts(cik, 2 * DAY); // trimmed (src/institutions.js)
-async function submissions(cik) { return secCached(`sec:subs2:${cik}`, DAY, () => get(`${secData()}/submissions/CIK${cik}.json`)); }
+const submissions = cik => secSubmissions(cik, DAY); // trimmed (src/institutions.js)
 // Earnings report dates: 8-K filings with item 2.02 (Results of Operations), newest last.
 export function reportDatesFrom(subs, n = 12) {
   const r = subs?.filings?.recent; if (!r?.form) return [];
