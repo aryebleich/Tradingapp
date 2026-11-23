@@ -12,6 +12,7 @@
     "dev": "node --watch server.js",
     "test": "node --import ./test/setup.js --test --test-force-exit test/*.test.js",
     "e2e": "node test/e2e/run.mjs",
+    "e2e:mobile": "node test/e2e/mobile.mjs",
     "security:check": "node scripts/security-check.mjs",
     "clean": "node scripts/clean-check.mjs && node scripts/readme-check.mjs",
     "aichat:ui": "node test/aichat-ui.mjs",
