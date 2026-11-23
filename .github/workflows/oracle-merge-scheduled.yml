@@ -1,0 +1,167 @@
+name: Oracle merge (scheduled)
+# Brings the data from before November 22 back, by itself, once the old database (Turso) can be read
+# again after its monthly reset. From 2026-12-01 00:30 UTC it runs every 6 hours:
+#   gate            skipped before 2026-12-01 00:30 UTC, and once TURSO_MERGE_PENDING is gone from the
+#                   server (after one success: from then on nothing runs)
+#   merge, verify   oracle-migrate merge-turso, then verify (any failure leaves the live database
+#                   exactly as it was and the flag set: the next run tries again)
+#   final copy      the encrypted last copy of the old database on the server (and off-site), 90 days
+#   delete          the old database itself: with a TURSO_API_TOKEN secret through the Turso Platform
+#                   API (only the database DATABASE_URL named, its tokens, then that API token);
+#                   without one, one GitHub issue with the three steps to do it in the dashboard
+#   clean up        the old settings removed from the server's .env; the merge-only code removed from
+#                   the repository (scripts/old-db-cleanup.sh, one commit); this workflow turned off
+#   on failure      one GitHub issue (not one per run): later failures add a comment to it
+# Never prints a secret: the old database's address is masked as soon as it is read.
+on:
+  schedule:
+    - cron: '30 0,6,12,18 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: oracle-merge-scheduled
+  cancel-in-progress: false
+env:
+  START: '2026-12-01T00:30:00Z'
+  ORG: thecompountproject
+  ISSUE_TITLE: 'Oracle: bringing back the data from before November 22 failed'
+jobs:
+  gate:
+    runs-on: ubuntu-24.04
+    outputs:
+      go: ${{ steps.check.outputs.go }}
+    steps:
+      - name: Is it time, and is the merge still to do?
+        id: check
+        env:
+          HOST: ${{ vars.ORACLE_HOST }}
+          KEY: ${{ secrets.ORACLE_SSH_KEY }}
+        run: |
+          if [ "$(date -u +%s)" -lt "$(date -u -d "$START" +%s)" ]; then echo "Before $START: nothing to do yet."; echo "go=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          mkdir -p ~/.ssh && printf '%s\n' "$KEY" | tr -d '\r' > ~/.ssh/oracle && chmod 600 ~/.ssh/oracle
+          ssh-keyscan -T 15 -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          if ssh -i ~/.ssh/oracle -o BatchMode=yes ubuntu@"$HOST" "sudo grep -q '^TURSO_MERGE_PENDING=1' /opt/brightfolio/.env"; then echo "go=true" >> "$GITHUB_OUTPUT"; echo "The merge is still to do."
+          else echo "go=false" >> "$GITHUB_OUTPUT"; echo "Nothing pending: the merge is done (this workflow is skipped from now on)."; fi
+          rm -f ~/.ssh/oracle
+
+  merge:
+    needs: gate
+    if: needs.gate.outputs.go == 'true'
+    uses: ./.github/workflows/oracle-migrate.yml
+    with:
+      step: merge-turso
+    secrets: inherit
+  verify:
+    needs: merge
+    uses: ./.github/workflows/oracle-migrate.yml
+    with:
+      step: verify
+    secrets: inherit
+  final-copy:
+    needs: verify
+    uses: ./.github/workflows/oracle-migrate.yml
+    with:
+      step: final-copy
+    secrets: inherit
+
+  delete-old-database:
+    needs: final-copy
+    runs-on: ubuntu-24.04
+    permissions:
+      issues: write
+    env:
+      HOST: ${{ vars.ORACLE_HOST }}
+      KEY: ${{ secrets.ORACLE_SSH_KEY }}
+      TURSO_API_TOKEN: ${{ secrets.TURSO_API_TOKEN }}
+      TOKEN_NAME: ${{ vars.TURSO_API_TOKEN_NAME || 'brightolio-migrate' }}
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Delete the old database (or ask for it once)
+        run: |
+          mkdir -p ~/.ssh && printf '%s\n' "$KEY" | tr -d '\r' > ~/.ssh/oracle && chmod 600 ~/.ssh/oracle
+          ssh-keyscan -T 15 -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          scp -q -i ~/.ssh/oracle deploy/vm/migrate.sh ubuntu@"$HOST":/tmp/migrate.sh
+          H=$(ssh -i ~/.ssh/oracle -o BatchMode=yes ubuntu@"$HOST" sudo bash /tmp/migrate.sh old-db-host)
+          [ -n "$H" ] && echo "::add-mask::$H"
+          ssh -i ~/.ssh/oracle ubuntu@"$HOST" 'rm -f /tmp/migrate.sh'; rm -f ~/.ssh/oracle
+          gh_issue() { # one issue with this title: comment on it if it is open, otherwise open it
+            n=$(curl -fsS -H "authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$REPO/issues?state=open&per_page=100" | jq -r --arg t "$1" '[.[] | select(.title == $t)][0].number // empty')
+            if [ -n "$n" ]; then jq -n --arg b "$2" '{body:$b}' | curl -fsS -X POST -H "authorization: Bearer $GH_TOKEN" --data @- "https://api.github.com/repos/$REPO/issues/$n/comments" >/dev/null; echo "Commented on issue #$n."
+            else jq -n --arg t "$1" --arg b "$2" '{title:$t, body:$b}' | curl -fsS -X POST -H "authorization: Bearer $GH_TOKEN" --data @- "https://api.github.com/repos/$REPO/issues" | jq -r '"Opened issue #\(.number)."'; fi
+          }
+          if [ -z "$TURSO_API_TOKEN" ]; then
+            gh_issue "Delete the old Turso database (the data is on the Oracle server now)" "The data from the old Turso database was merged into the Oracle server and verified, and a final encrypted copy is kept on the server for 90 days (MIGRATION_ORACLE.md). No TURSO_API_TOKEN secret is set, so the database was not deleted automatically. Three steps:
+
+          1. Turso dashboard (app.turso.tech) → organization thecompountproject → Databases → the Brightolio database → Settings → Delete database.
+          2. Same organization → Settings → API Tokens (and the database's tokens): revoke every token made for Brightolio.
+          3. Optional: delete the organization, or the whole Turso account (Settings → Delete).
+
+          Also remove DATABASE_URL and DATABASE_AUTH_TOKEN from the ORACLE_ENV secret (GitHub → Settings → Secrets and variables → Actions → ORACLE_ENV → edit)."
+            exit 0
+          fi
+          [ -n "$H" ] || { echo "::error::The server has no old database address any more; nothing to match."; exit 1; }
+          api() { curl -fsS -H "authorization: Bearer $TURSO_API_TOKEN" "$@"; }
+          list=$(api "https://api.turso.tech/v1/organizations/$ORG/databases")
+          echo "Databases in the organization: $(echo "$list" | jq '.databases | length')"
+          names=$(echo "$list" | jq -r --arg h "$H" '.databases[] | select(.Hostname == $h or .hostname == $h) | (.Name // .name)')
+          [ "$(printf '%s\n' "$names" | grep -c .)" = 1 ] || { echo "::error::Not exactly one database matches DATABASE_URL; nothing was deleted."; exit 1; }
+          echo "::add-mask::$names"
+          api -X POST "https://api.turso.tech/v1/organizations/$ORG/databases/$names/auth/rotate" >/dev/null && echo "The database's tokens were revoked."
+          api -X DELETE "https://api.turso.tech/v1/organizations/$ORG/databases/$names" >/dev/null && echo "The database was deleted."
+          api -X DELETE "https://api.turso.tech/v1/auth/api-tokens/$TOKEN_NAME" >/dev/null && echo "The API token was revoked." || echo "::warning::The API token $TOKEN_NAME could not be revoked; revoke it in the Turso dashboard."
+
+  clean-old-settings:
+    needs: delete-old-database
+    uses: ./.github/workflows/oracle-migrate.yml
+    with:
+      step: clean-old-settings
+    secrets: inherit
+
+  clean-up:
+    needs: clean-old-settings
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          check-latest: true
+      - name: Remove the merge-only code (one commit) and turn this workflow off
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          bash scripts/old-db-cleanup.sh
+          npm ci --omit=optional >/dev/null 2>&1 || npm ci >/dev/null
+          npm test
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A && git commit -q -m "After the merge: remove the merge-only code (scripts/old-db-cleanup.sh)" && git push && echo "Clean-up committed."
+          curl -fsS -X PUT -H "authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$REPO/actions/workflows/oracle-merge-scheduled.yml/disable" && echo "This workflow is turned off."
+
+  report-failure:
+    needs: [gate, merge, verify, final-copy, delete-old-database, clean-old-settings, clean-up]
+    if: failure()
+    runs-on: ubuntu-24.04
+    permissions:
+      issues: write
+    steps:
+      - name: One issue for the failure
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          failed=$(echo "$RESULTS" | jq -r 'to_entries[] | select(.value.result == "failure") | .key' | paste -sd, -)
+          report=$(echo "$RESULTS" | jq -r '.merge.outputs.report // empty' | jq -r '(.merge.error // .rehearsal.error // .pull.error // "see the run log")' 2>/dev/null || echo "see the run log")
+          body="The scheduled merge failed at: ${failed:-unknown} ($RUN). Reason: ${report}. The live database was left exactly as it was and TURSO_MERGE_PENDING is still set, so the next run (every 6 hours) tries again. Nothing is needed from you unless this keeps failing."
+          n=$(curl -fsS -H "authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$REPO/issues?state=open&per_page=100" | jq -r --arg t "$ISSUE_TITLE" '[.[] | select(.title == $t)][0].number // empty')
+          if [ -n "$n" ]; then jq -n --arg b "$body" '{body:$b}' | curl -fsS -X POST -H "authorization: Bearer $GH_TOKEN" --data @- "https://api.github.com/repos/$REPO/issues/$n/comments" >/dev/null; echo "Commented on #$n."
+          else jq -n --arg t "$ISSUE_TITLE" --arg b "$body" '{title:$t, body:$b}' | curl -fsS -X POST -H "authorization: Bearer $GH_TOKEN" --data @- "https://api.github.com/repos/$REPO/issues" | jq -r '"Opened #\(.number)."'; fi

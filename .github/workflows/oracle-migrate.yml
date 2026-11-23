@@ -7,7 +7,8 @@ name: Oracle database move
 #   pull             copy the old database to the server by sync only (a check; merge-turso does it too)
 #   merge-turso      bring the old data in (maintenance, pull, rehearsal, merge, verify; any failure
 #                    puts the live database back exactly as it was)
-#   finalize         after the merge: the final encrypted copy, then the old settings removed
+#   final-copy       after the merge: the final encrypted copy (90 days);  clean-old-settings  the
+#                    old database settings removed from .env;  finalize  both
 #   verify           health, schema, rows, credentials, a paper trade, the order guard
 #   activate         make this server the active one
 #   set-env          change settings in the server's .env (values masked; secret values go in the
@@ -31,7 +32,7 @@ on:
         description: 'Which step'
         type: choice
         default: status
-        options: [status, maintenance-on, maintenance-off, fresh-db, pull, merge-turso, finalize, verify, activate, set-env, backup, restore]
+        options: [status, maintenance-on, maintenance-off, fresh-db, pull, merge-turso, final-copy, clean-old-settings, finalize, verify, activate, set-env, backup, restore]
       settings:
         description: 'set-env only: KEY=value pairs separated by ";" (masked in the log). KEY= removes a key.'
         required: false
@@ -97,9 +98,9 @@ jobs:
       - name: Bring the old data in
         if: env.STEP == 'merge-turso'
         run: ~/vm merge-turso
-      - name: The final copy, then the old settings removed
-        if: env.STEP == 'finalize'
-        run: ~/vm finalize
+      - name: After the merge (final copy, old settings removed)
+        if: contains(fromJSON('["final-copy","clean-old-settings","finalize"]'), env.STEP)
+        run: ~/vm "$STEP"
       - name: Make this the active server
         if: env.STEP == 'activate'
         run: ~/vm activate "$VM_URL" | jq -c . || true
