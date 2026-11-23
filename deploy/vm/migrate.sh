@@ -28,6 +28,7 @@
 # <<< merge-only
 #   verify           /internal/verify: database, schema, row counts, credentials, keys (JSON)
 #   point-domain <domain> <ip>  the domain's Cloudflare record → this server (CLOUDFLARE_API_TOKEN)
+#   diagnose-load    load, heap, event-loop delay, in flight, refused requests, container memory
 #   check-trade      a paper trade end to end (/internal/check-trade: buy and sell 1 SPY on paper)
 #   report           the last pull and merge report (JSON) # merge-only
 #   activate <url>   register this server in its own database and make it the active server
@@ -193,6 +194,18 @@ case "$step" in
     ;;
 # <<< merge-only
   check-trade) call POST /internal/check-trade; echo ;;
+  diagnose-load)
+    # Six samples, ten seconds apart: the load and its parts, heap and its real limit, the event-loop
+    # delay, in flight, refused requests; then the container's memory and CPU, and /metrics.
+    echo "--- app container started: $(docker inspect -f '{{.State.StartedAt}}' brightfolio-app-1 2>/dev/null) (image $(cut -c1-7 "$APP/.deployed" 2>/dev/null))"
+    mt=$(val METRICS_TOKEN)
+    for i in 1 2 3; do echo "--- /metrics now ($i)"; curl -sS --max-time 10 ${mt:+-H "authorization: Bearer $mt"} http://127.0.0.1:3000/metrics | grep -E '^qp_(load|inflight|event_loop|heap|requests|shed|jobs)' | paste -sd' ' -; sleep 3; done
+    for i in 1 2 3 4 5 6; do echo "--- sample $i"; call GET /internal/load | jq -c '{at, load: .stats.load, parts, lagNow2s, heap, rssMb, inflight: .stats.inflight, shed: .stats.shed, requests: .stats.requests, uptimeSec: .stats.uptimeSec, nodeOptions}' || true; [ "$i" -lt 6 ] && sleep 8; done
+    echo "--- last refused requests"; call GET /internal/load | jq -c '.shed[]?' | tail -20 || true
+    echo "--- container"; docker stats --no-stream --format '{{.Name}} cpu {{.CPUPerc}} mem {{.MemUsage}} ({{.MemPerc}})' 2>/dev/null || true
+    echo "--- /metrics"; curl -sS --max-time 10 ${mt:+-H "authorization: Bearer $mt"} http://127.0.0.1:3000/metrics | grep -v '^#' | head -20
+    echo "--- recent app log (warnings and errors, no values)"; (cd "$APP" && docker compose logs --since 30m app 2>/dev/null | grep -iE 'slow|error|warn|heap|memory|lag' | grep -viE 'key|secret|token|password' | tail -15) || true
+    ;;
   point-domain)
     # point-domain <domain> <server ip>: the domain's Cloudflare record → this server. First DNS only
     # (so Caddy can get its certificate directly), then, once https://<domain> answers from here with

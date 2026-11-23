@@ -351,6 +351,17 @@ app.post('/internal/check-trade', internalAuth, async (req, res) => {
     res.json({ ok: true, ...out });
   } catch (e) { res.status(e.status || 500).json({ ok: false, error: e.message }); }
 });
+// Load diagnosis (CRON_SECRET): the load and its three parts, the V8 heap and its real limit, the
+// event-loop delay, requests in flight, the last refused requests and the process memory.
+app.get('/internal/load', internalAuth, async (req, res) => {
+  const R = await import('./src/reliability.js'), v8 = await import('node:v8'), { monitorEventLoopDelay } = await import('node:perf_hooks');
+  const h = monitorEventLoopDelay({ resolution: 10 }); h.enable(); await new Promise(r => setTimeout(r, 2000)); h.disable();
+  const hs = v8.getHeapStatistics(), mb = n => Math.round(n / 1048576), m = process.memoryUsage();
+  res.json({ at: new Date().toISOString(), stats: (({ breakers, ...x }) => x)(R.stats()), parts: R.loadParts(),
+    lagNow2s: { p50: +(h.percentile(50) / 1e6).toFixed(1), p90: +(h.percentile(90) / 1e6).toFixed(1), p99: +(h.percentile(99) / 1e6).toFixed(1), max: +(h.max / 1e6).toFixed(1) },
+    heap: { usedMb: mb(hs.used_heap_size), totalMb: mb(hs.total_heap_size), limitMb: mb(hs.heap_size_limit) }, rssMb: mb(m.rss), externalMb: mb(m.external), arrayBuffersMb: mb(m.arrayBuffers),
+    nodeOptions: process.env.NODE_OPTIONS || null, shed: R.shedEvents().slice(-20) });
+});
 app.post('/internal/backup', internalAuth, async (req, res) => {
   const B = await import('./src/backup.js');
   try { const b = await B.backupNow({ kind: 'manual' }); res.json({ ok: true, file: b.file, bytes: b.bytes, tables: b.tables, rows: b.rows }); } catch (e) { res.status(e.status || 500).json({ ok: false, error: e.message }); }

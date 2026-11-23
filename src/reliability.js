@@ -19,6 +19,13 @@ const lag = monitorEventLoopDelay({ resolution: 20 }); lag.enable();
 let inflight = 0, forced = null;
 const counters = { requests: 0, shed: 0, errors5xx: 0, jobsSkipped: 0, unhandledRejections: 0 };
 
+// The three parts of the load, for diagnosis (/internal/load).
+export function loadParts() {
+  const lagMs = lag.percentile(90) / 1e6, heap = process.memoryUsage().heapUsed / 1048576;
+  return { inflight: +(inflight / MAX_INFLIGHT).toFixed(3), lag: +(lagMs / LAG_LIMIT_MS).toFixed(3), heap: +(heap / HEAP_LIMIT_MB).toFixed(3), lagP90Ms: +lagMs.toFixed(1), heapMb: Math.round(heap) };
+}
+const shedLog = []; // the last 50 refused requests: when, which route, why
+export const shedEvents = () => shedLog.slice();
 export function load() {
   if (forced != null) return forced;
   const lagMs = lag.percentile(90) / 1e6, heap = process.memoryUsage().heapUsed / 1048576;
@@ -42,6 +49,7 @@ export function shedMiddleware(req, res, next) {
   const at = SHED_ENV();
   if (kind === 'optional' && l >= at || kind === 'normal' && l >= Math.max(at, 0.97)) {
     counters.shed++;
+    shedLog.push({ at: Date.now(), method: req.method, path: req.path.slice(0, 80), kind, load: +l.toFixed(3), parts: loadParts() }); if (shedLog.length > 50) shedLog.shift();
     res.setHeader('Retry-After', '15');
     return res.status(503).json({ error: 'The market is very busy right now. Trading stays available; this page will be back in a few seconds.', shed: true });
   }
