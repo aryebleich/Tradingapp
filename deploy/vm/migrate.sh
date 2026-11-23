@@ -208,6 +208,10 @@ case "$step" in
     sqlite3 -readonly "$db" "SELECT name, SUM(pgsize)/1048576 AS mb FROM dbstat GROUP BY name ORDER BY mb DESC LIMIT 8;" 2>&1 | head -10
     for t in cache site_settings user_settings; do echo "  largest in $t:"; sqlite3 -readonly "$db" "SELECT k, length(v) FROM $t ORDER BY length(v) DESC LIMIT 5;" 2>&1 | sed 's/^/    /' | head -6; done
     echo "  rows per table (largest):"; for t in $(sqlite3 -readonly "$db" "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"); do printf '%s %s\n' "$(sqlite3 -readonly "$db" "SELECT COUNT(*) FROM \"$t\"")" "$t"; done | sort -rn | head -8 | sed 's/^/    /'
+    echo "--- the main address (pages must be 200 HTML, API calls never a 503)"
+    for p in / /app /app.html /app.js /styles.css /manifest.webmanifest /sw.js /api/news /api/insights /api/market/overview /api/auth/me; do
+      printf '  %-24s %s\n' "$p" "$(curl -sS -o /dev/null -w '%{http_code} %{content_type} %{time_total}s' --max-time 30 "https://app.brightolio.com$p")"
+    done
     echo "--- container"; docker stats --no-stream --format '{{.Name}} cpu {{.CPUPerc}} mem {{.MemUsage}} ({{.MemPerc}})' 2>/dev/null || true
     echo "--- /metrics"; curl -sS --max-time 10 ${mt:+-H "authorization: Bearer $mt"} http://127.0.0.1:3000/metrics | grep -v '^#' | head -20
     echo "--- recent app log (warnings and errors, no values)"; (cd "$APP" && docker compose logs --since 30m app 2>/dev/null | grep -iE 'slow|error|warn|heap|memory|lag' | grep -viE 'key|secret|token|password' | tail -15) || true
