@@ -28,7 +28,7 @@ APP=/opt/brightfolio
 echo "== System updates and basics"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y && apt-get upgrade -y
-apt-get install -y --no-install-recommends ca-certificates curl git ufw fail2ban unattended-upgrades docker.io docker-compose-v2 debian-keyring debian-archive-keyring apt-transport-https gnupg
+apt-get install -y --no-install-recommends ca-certificates curl git ufw fail2ban unattended-upgrades docker.io docker-compose-v2 debian-keyring debian-archive-keyring apt-transport-https gnupg sqlite3
 
 echo "== Automatic security updates"
 cat >/etc/apt/apt.conf.d/52brightfolio <<'EOF'
@@ -44,9 +44,10 @@ ufw allow OpenSSH && ufw allow 80/tcp && ufw allow 443/tcp && ufw allow 443/udp
 ufw --force enable
 # Oracle images also filter with iptables, ending in a REJECT rule: the web ports must come first.
 # Any older copies of these rules (possibly placed after the REJECT) are removed, then put on top.
+# shellcheck disable=SC2086 # the spec is split into protocol and port on purpose
 for spec in "tcp 80" "tcp 443" "udp 443"; do set -- $spec
-  while iptables -D INPUT -p $1 --dport $2 -j ACCEPT 2>/dev/null; do :; done
-  iptables -I INPUT 1 -p $1 --dport $2 -j ACCEPT
+  while iptables -D INPUT -p "$1" --dport "$2" -j ACCEPT 2>/dev/null; do :; done
+  iptables -I INPUT 1 -p "$1" --dport "$2" -j ACCEPT
 done
 (command -v netfilter-persistent >/dev/null && netfilter-persistent save >/dev/null 2>&1) || true
 
