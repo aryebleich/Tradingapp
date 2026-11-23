@@ -4,6 +4,37 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-23: Move to Oracle Cloud Always Free (app, database, keys)
+
+**Why:** Turso refused every SQL read after the monthly read limit, which took production down. The
+VM was already set up (oracle.yml) but used the same Turso database.
+
+**What changed**
+- Database: a SQLite file on the VM's disk (`DB_FILE`, `PERSISTENT_DISK=1`), WAL, busy_timeout,
+  synchronous=NORMAL. The start-up check and `/healthz/full` accept it.
+- `/healthz` runs no query (it reports what the app's statements saw last); `/healthz/full` still checks.
+- Backups (`src/backup.js`): hourly `VACUUM INTO`, integrity-checked, 48 hourly + 30 daily, encrypted
+  daily upload to Oracle Object Storage when `OCI_BACKUP_PAR_URL` is set. `deploy/vm/restore.sh`.
+- Copy out of Turso without SQL reads: `scripts/turso-pull.mjs` (embedded replica, `sync()` only),
+  `turso db export` as fallback b, overages as c.
+- Maintenance mode (env or Admin or `/internal/maintenance`): jobs paused, orders refused (503), banner.
+- `STANDBY=1`: a server that never runs jobs (Render from now on; also in render.yaml).
+- Admin → Database (new): type, size, tables, backups (now, download, restore), maintenance, keys by
+  name. Admin → Hosting: CPU, memory, disk, version, last deploy, deploy now, restart. Admin → Keys:
+  "Required on this server". All need the admin role and a password confirmed within 15 minutes; all audited.
+- `update.sh` installs its own new copy, carries out Admin's deploy/restart/restore requests, installs sqlite3.
+- `.github/workflows/oracle-migrate.yml` + `deploy/vm/migrate.sh`: maintenance-on, pull, switch-db,
+  verify, activate, maintenance-off, rollback, set-env, backup, status. `oracle.yml settings` keeps the move.
+
+**Tests:** test/oracle.test.js (PERSISTENT_DISK start-up check, backup → restore.sh row counts,
+retention and encryption, turso-pull with a fake sync source and a refused sync, query-free /healthz,
+maintenance blocks orders and pauses jobs, STANDBY, Admin Database/Keys need admin + step-up and never
+show values). `npm test`: 486 pass, 0 fail. shellcheck and actionlint clean.
+
+**Rollback:** oracle-migrate.yml step `rollback` (the VM goes back to Turso); going back to Render:
+MIGRATION_ORACLE.md → "Going back to Render".
+
+
 ## 2026-11-22: The four-phase job: summary
 
 | Phase | What changed | Tested |

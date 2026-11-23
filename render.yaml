@@ -1,3 +1,8 @@
+# STANDBY since 2026-11-23: the site runs on the Oracle Cloud VM with its own database file
+# (MIGRATION_ORACLE.md). This Render service is kept as a standby that serves pages only:
+# STANDBY=1 below means it never runs bots, scheduled trades or alerts. Its Turso database is the
+# state before the move. To switch back to Render, follow "Going back to Render" in MIGRATION_ORACLE.md
+# (it starts by removing STANDBY here).
 # Free hosting on Render. Click "Deploy to Render" in the README, or: Render > New > Blueprint > this repo.
 # The free plan has no persistent disk, so data lives in a free Turso database (DATABASE_URL).
 services:
@@ -11,6 +16,8 @@ services:
     autoDeploy: true
     envVars:
       - { key: NODE_ENV, value: production }
+      # Standby: pages only, never jobs (src/hosting.js isActiveHost).
+      - { key: STANDBY, value: "1" }
       # The newest Node.js 22 at every build (security fixes); the build refuses anything older
       # than the patched release (package.json engines + .npmrc engine-strict).
       - { key: NODE_VERSION, value: "22" }
