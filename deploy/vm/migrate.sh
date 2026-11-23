@@ -2,6 +2,7 @@
 # The database on the Oracle VM, one step at a time (run as root by
 # .github/workflows/oracle-migrate.yml, also from oracle-merge-scheduled.yml; by hand:
 # sudo bash migrate.sh <step>). Never prints a value from .env.
+#   repair           the app back up after an interrupted deploy (leftover containers removed)
 #   prep             newest code, this repo's update.sh and compose.yml installed, sqlite3, deploy
 #   status           health, database settings (names only), data files, backups, host actions
 #   maintenance-on   MAINTENANCE=1 in .env (holds across restarts) and the switch on the running app
@@ -70,6 +71,13 @@ maint_off() { # a restart only when the running app has MAINTENANCE=1 in its env
 }
 
 case "$step" in
+  repair)
+    # The app back up after an interrupted deploy: leftover renamed containers removed, the app
+    # started from the current image, then a normal deploy of the newest commit.
+    for c in $(docker ps -a --format '{{.Names}}' | grep -E '^[0-9a-f]{12}_brightfolio-app-1$' || true); do docker rm -f "$c" >/dev/null && echo "removed leftover container $c"; done
+    (cd "$APP" && docker compose up -d app >/dev/null 2>&1) || true
+    healthy && echo "The app answers."
+    ;;
   prep)
     sudo -u brightfolio git -C "$APP/src" fetch -q --depth 1 origin main
     sudo -u brightfolio git -C "$APP/src" reset -q --hard origin/main
@@ -77,7 +85,9 @@ case "$step" in
     cp "$APP/src/deploy/vm/compose.yml" "$APP/compose.yml"
     command -v sqlite3 >/dev/null || apt-get install -y -qq sqlite3 >/dev/null
     want=$(sudo -u brightfolio git -C "$APP/src" rev-parse HEAD)
+    for c in $(docker ps -a --format '{{.Names}}' | grep -E '^[0-9a-f]{12}_brightfolio-app-1$' || true); do docker rm -f "$c" >/dev/null 2>&1 || true; done
     if [ "$(cat "$APP/.deployed" 2>/dev/null)" != "$want" ]; then FORCE=1 /usr/local/bin/brightfolio-update || true; fi
+    curl -fs http://127.0.0.1:3000/healthz >/dev/null || { (cd "$APP" && docker compose up -d app >/dev/null 2>&1) || true; healthy || true; }
     echo "Code: ${want:0:7}, deployed: $(cut -c1-7 "$APP/.deployed" 2>/dev/null)"
     ;;
   maintenance-on)

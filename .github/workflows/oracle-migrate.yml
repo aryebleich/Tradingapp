@@ -33,7 +33,7 @@ on:
         description: 'Which step'
         type: choice
         default: status
-        options: [status, maintenance-on, maintenance-off, fresh-db, pull, merge-turso, final-copy, clean-old-settings, finalize, verify, activate, point-domain, set-env, backup, restore]
+        options: [status, repair, maintenance-on, maintenance-off, fresh-db, pull, merge-turso, final-copy, clean-old-settings, finalize, verify, activate, point-domain, set-env, backup, restore]
       settings:
         description: 'set-env only: KEY=value pairs separated by ";" (masked in the log). KEY= removes a key.'
         required: false
@@ -79,6 +79,9 @@ jobs:
           scp -q -i ~/.ssh/oracle deploy/vm/migrate.sh ubuntu@"$HOST":/tmp/migrate.sh
           # shellcheck disable=SC2016 # $HOST and $@ expand when the helper runs
           printf '%s\n' '#!/usr/bin/env bash' 'exec ssh -i ~/.ssh/oracle -o BatchMode=yes ubuntu@"$HOST" sudo bash /tmp/migrate.sh "$@"' > ~/vm && chmod 755 ~/vm
+      - name: The app back up first (an interrupted deploy)
+        if: env.STEP == 'repair'
+        run: ~/vm repair
       - name: Newest code on the server
         if: env.STEP != 'status'
         run: |
