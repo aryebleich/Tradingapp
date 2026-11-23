@@ -1,4 +1,6 @@
 // Brightolio web server: JSON API + static single-page app.
+// First, before any module that opens the database: on Render this only redirects to Oracle.
+import './src/render-redirect.js';
 import * as SEO from './src/seo.js';
 import { agentsRouter } from './src/agents.js';
 import { overviewRouter } from './src/overview.js';
@@ -299,6 +301,19 @@ app.get('/internal/verify', internalAuth, async (req, res) => {
   } catch (e) { out.problems.push('database: ' + e.message); }
   out.keys = A.keyReport().missingRequired; if (out.keys.length) out.problems.push('missing settings: ' + out.keys.join(', '));
   out.ok = !out.problems.length; res.status(out.ok ? 200 : 500).json(out);
+});
+// A paper trade end to end (buy 1 SPY, sell 1 SPY) by a check account made here directly in the
+// database: its address is on the reserved .invalid domain and no welcome email is sent. Paper
+// orders never reach a broker.
+app.post('/internal/check-trade', internalAuth, async (req, res) => {
+  const email = 'paper-check@brightolio.invalid';
+  try {
+    let u = await one('SELECT id FROM users WHERE email = ?', email);
+    if (!u) { await run("INSERT INTO users (email, pass_hash, role, plan, created_at, password_set) VALUES (?, ?, 'user', 'free', ?, 0)", email, 'disabled:' + Date.now(), now()); u = await one('SELECT id FROM users WHERE email = ?', email); }
+    const { placeOrder } = await import('./src/brokers.js'), out = {};
+    for (const side of ['buy', 'sell']) { const r = await placeOrder(u.id, 'paper', { symbol: 'SPY', side, qty: 1, type: 'market' }, 'check'); out[side] = { status: r.status || 'ok', price: r.fill_price ?? r.price ?? null }; }
+    res.json({ ok: true, ...out });
+  } catch (e) { res.status(e.status || 500).json({ ok: false, error: e.message }); }
 });
 app.post('/internal/backup', internalAuth, async (req, res) => {
   const B = await import('./src/backup.js');
@@ -1506,7 +1521,7 @@ app.use(express.static(pub, {
 }));
 app.use(async (req, res) => res.status(404).sendFile(path.join(pub, '404.html')));
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (process.argv[1] === fileURLToPath(import.meta.url) && process.env.REDIRECT_ONLY !== '1') {
   // A promise somebody forgot to catch (a background job, a fire-and-forget email) is logged and
   // counted, instead of stopping the whole server as Node.js does by default.
   process.on('unhandledRejection', e => { countUnhandled(); console.error('Unhandled promise rejection (server keeps running):', e?.stack || e); });

@@ -263,7 +263,24 @@ router.post('/app-exchange', async (req, res) => {
   res.json({ token: res.locals.sessionToken, user: publicUser(u) });
 });
 
-router.get('/me', async (req, res) => res.json({ user: req.user ? { ...publicUser(req.user), addons: await (await import('./addons.js')).addonsFor(req.user.id) } : null, mfaPending: !!req.pending }));
+// In-app notices shown as a banner to a signed-in user (never sent by email or text): the move to the
+// new server while the old data is still to be merged, and a notice saved for this user (the merge
+// leaves one when it paused their automations).
+export const MOVED_NOTICE = 'We moved to a new server. Your account history from before November 22 will be back by December 2.';
+async function noticesFor(u) {
+  const out = [];
+  if (process.env.TURSO_MERGE_PENDING === '1') out.push({ id: 'moved', text: MOVED_NOTICE });
+  const { getSetting } = await import('./settings.js');
+  const n = await getSetting(u.id, 'notice').catch(() => null);
+  if (n?.text) out.push({ id: 'notice', text: String(n.text).slice(0, 300), at: n.at || null });
+  return out;
+}
+router.get('/me', async (req, res) => res.json({ user: req.user ? { ...publicUser(req.user), addons: await (await import('./addons.js')).addonsFor(req.user.id), notices: await noticesFor(req.user) } : null, mfaPending: !!req.pending }));
+router.delete('/notice', requireUser, async (req, res) => {
+  const { setSetting } = await import('./settings.js');
+  await setSetting(req.user.id, 'notice', null);
+  res.json({ ok: true });
+});
 
 router.post('/totp/setup', requireUser, async (req, res) => {
   const secret = newTotpSecret();

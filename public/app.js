@@ -95,6 +95,20 @@ function maintenanceBanner(on) {
   b.textContent = 'Brightolio is under maintenance: trading is paused for safety. Your data is safe; please try again shortly.';
   document.body.prepend(b);
 }
+// Notices for the signed-in user (the move to the new server, paused automations): one banner each,
+// with a close button. "moved" is hidden on this device; a saved notice is cleared on the server.
+function noticeBanners() {
+  const list = (ME?.notices || []).filter(n => { try { return !(n.id === 'moved' && localStorage.getItem('qp_notice_moved') === '1'); } catch { return true; } });
+  document.querySelectorAll('.notice-banner').forEach(b => { if (!list.some(n => 'notice-' + n.id === b.id)) b.remove(); });
+  for (const n of list) {
+    if (document.getElementById('notice-' + n.id)) continue;
+    const b = document.createElement('div'); b.id = 'notice-' + n.id; b.className = 'maint-banner notice-banner'; b.setAttribute('role', 'status');
+    const t = document.createElement('span'); t.textContent = n.text;
+    const x = document.createElement('button'); x.type = 'button'; x.className = 'small ghost'; x.textContent = '×'; x.setAttribute('aria-label', 'Close');
+    x.onclick = () => { b.remove(); if (n.id === 'moved') { try { localStorage.setItem('qp_notice_moved', '1'); } catch {} } else api('/auth/notice', { method: 'DELETE' }).catch(() => {}); ME.notices = (ME.notices || []).filter(y => y.id !== n.id); };
+    b.append(t, x); document.body.prepend(b);
+  }
+}
 async function apiCall(path, opts = {}, retried) {
   const r = await fetch('/api' + path, {
     method: opts.method || (opts.body ? 'POST' : 'GET'),
@@ -642,7 +656,7 @@ const onLeave = fn => cleanups.push(fn);
 // quiet: the same page drawn again in the background with fresh data (live refresh); the page on
 // screen stays until the new one is ready, then they swap at the same scroll position.
 // Reloads the signed-in user (plan, settings) after a change saved on any page.
-const refreshMe = async () => { ME = (await api('/auth/me')).user; };
+const refreshMe = async () => { ME = (await api('/auth/me')).user; noticeBanners(); };
 // The page's outline shown while a new page loads (it keeps the footer at the bottom too).
 // Beginner guides ("How this page works") on the more advanced pages: the small text file loads once
 // in the background, then each page adds its guide before it is shown.
@@ -681,6 +695,7 @@ async function render(opts) {
   const quiet = opts?.quiet === true;
   swrOn = !quiet; // a normal draw may use remembered data (see api); a quiet redraw always fetches
   if (!quiet) render.startedAt = Date.now();
+  noticeBanners();
   while (cleanups.length) { try { cleanups.pop()(); } catch {} }
   const [route, q] = (location.hash.slice(2) || 'dashboard').split('?');
   // A page that was merged into another: its old address opens its tab there (bookmarks keep working).
