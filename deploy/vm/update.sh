@@ -55,7 +55,16 @@ if ! docker compose up -d --force-recreate app; then
   for c in $(stale); do docker rm -f "$c" >/dev/null 2>&1 || true; done
   docker compose up -d --force-recreate app || true
 fi
-for _ in $(seq 1 30); do
+# A deploy counts only when the app container really runs the new image and answers /healthz: if the
+# recreate failed, the old container still answers, and that must not be logged as "Deployed".
+want=$(docker image inspect -f '{{.Id}}' brightfolio:new)
+running() { docker inspect -f '{{.Image}}' "$(docker compose ps -q app 2>/dev/null | head -1)" 2>/dev/null || true; }
+for i in $(seq 1 30); do
+  if [ "$(running)" != "$want" ]; then
+    # Still the old container after 10 s: one more recreate (leftovers removed first).
+    if [ "$i" = 5 ]; then for c in $(stale); do docker rm -f "$c" >/dev/null 2>&1 || true; done; docker compose up -d --force-recreate app || true; fi
+    sleep 2; continue
+  fi
   if curl -fs http://127.0.0.1:3000/healthz >/dev/null; then echo "$NEW" > "$APP/.deployed"; log "Deployed ${NEW:0:7}"; hostjson "$NEW" true deploy; docker image prune -f >/dev/null; exit 0; fi
   sleep 2
 done

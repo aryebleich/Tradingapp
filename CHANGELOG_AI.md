@@ -32,6 +32,45 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
   all came within the hour before.
 - Event-loop delay and requests in flight were fine; no route was slow or stuck.
 
+### The fix (DECISIONS.md LS-1..LS-8)
+
+- **The leak**: SEC company facts are trimmed to the ~30 concepts the app reads, 10-K/10-Q of the
+  last 12 years (`trimFacts`, key `sec:facts2:`); submissions to the few fields used (`trimSubmissions`,
+  `sec:subs3:`, which also ends a key clash between wealth.js and fundamentals.js). The in-memory front
+  of `dbCached` keeps no value over 1 MB and at most `MEM_CACHE_MAX_MB` (64) in all. At start the old
+  big entries are deleted and the file is vacuumed when most of it is free.
+- **The heap limit** comes from V8 (`heap_size_limit`), or `HEAP_LIMIT_MB`; the container runs
+  with `NODE_OPTIONS=--max-old-space-size=1536`.
+- **Event-loop delay** is measured over a 2 s window (p50/p90/p99), not since start.
+- **Never shed**: pages, scripts, styles and anything outside /api are always critical, as are
+  orders, risk and sign-in. Shedding starts only after the load stays over `SHED_AT` for 5 s, and
+  stops after 3 s under it. A browser gets a small page that tries again by itself, not JSON. Every
+  refusal carries Retry-After.
+- **The front end**: a refused call is retried quietly up to 3 times (Retry-After, growing).
+  Only then a small note "This is taking longer than usual. Trying again…" with a Try again button,
+  never a popup. It is translated, including Yiddish.
+- **Settings**: `MAX_INFLIGHT`, `LAG_LIMIT_MS`, `HEAP_LIMIT_MB`, `SHED_AT`, `SHED_SUSTAIN_MS`,
+  `SHED_CALM_MS`, `MEM_CACHE_MAX_MB` (.env.example). Tests are in test/shed.test.js.
+- **The deploy that only looked done**: several deploys were logged "Deployed" while the container
+  still ran the 4-hour-old image. update.sh accepted any /healthz answer, and the old container answers
+  too when a recreate fails. Now a deploy counts only when the container runs the new image ID (one
+  more recreate after 10 s, else a rollback). oracle-migrate has a `deploy-now` step that deploys in
+  the open with its log.
+
+### After (diagnose-load run 45267262829, 21:12 UTC, new code bd06d35 confirmed in the container)
+
+| | before | after |
+|---|---|---|
+| load | 1.0, constant | **0.04** (six samples over a minute; SHED_AT 0.85) |
+| heap in use / limit | 941 MB / 450 MB | **32 MB / 1560 MB** (V8's limit with --max-old-space-size=1536) |
+| event-loop delay p50 / p90 / p99 | – / – / 21 ms | 20 / 20 / 21 ms (2 s window: 10 / 10 / 11 ms) |
+| requests in flight | 3 of 200 | 1 of 400 |
+| refused (shed) | 42 of 572 | **0** |
+| container memory, CPU | – | 134 MB of 2 GB, 0.25% |
+| database file | 553 MB (cache 526 MB) | **36.8 MB**; largest cache value 0.58 MB (sec:tickercik) |
+| app.brightolio.com /, /app, /app.html, /app.js, /styles.css, /sw.js | raw JSON 503 | **200**, HTML/JS/CSS, 0.07–0.45 s |
+| /api/news, /api/insights, /api/market/overview (signed out) | 503 | 401 (sign-in needed), never 503 |
+
 
 ## 2026-11-23: Google sign-in works again: everything on app.brightolio.com
 
