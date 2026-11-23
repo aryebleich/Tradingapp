@@ -23,6 +23,18 @@ OR-13 (Render is no longer a standby app but a redirect).
 | OR-25 | **Before deleting anything**: the final copy of `pull.db`, encrypted like the backups, checked by decrypting it, kept 90 days on the server (and off-site when set). The Turso database is deleted only by matching its host name to the old `DATABASE_URL`, tokens revoked first; without `TURSO_API_TOKEN`, one issue with the three dashboard steps. | The brief; never delete the wrong database. |
 | OR-26 | **Turso-only code is marked `merge-only`** and removed after the merge by `scripts/old-db-cleanup.sh` in one commit (tested: the suite passes after it). Workflow files keep their merge steps (inert), because a workflow's own token may not edit workflow files. Turso wording everywhere else (examples, labels, private README, privacy page, setup checklist) was replaced now; the libSQL client stays for the local file and for a shared server (deploy/k8s). | The merge tooling is needed until December; everything else had no reason to wait. |
 
+## Load shedding and the memory leak (2026-11-23)
+
+| # | Decision | Reason |
+|---|---|---|
+| LS-1 | **Fix the leak at its source**: SEC company facts are trimmed (only the ~30 figures the app reads, 10-K/10-Q of the last 12 years, 8 fields per row) before they are cached, under a new key (`sec:facts2:`); the old `sec:facts:` rows are deleted at start and the file is compacted once when most of it is free. | Whole documents were 7–9 MB each and filled the heap to 941 of 1048 MB and the database to 553 MB; raising limits alone would only have moved the crash. |
+| LS-2 | `dbCached`'s memory front holds at most 64 MB of JSON (`MEM_CACHE_MAX_MB`) and never a value over 1 MB (logged once per key prefix). | A size cap, not just a count cap (2000 entries), so no cached value can fill the heap again. |
+| LS-3 | The heap limit is **V8's real `heap_size_limit`** (`HEAP_LIMIT_MB` overrides), and the Oracle container runs with `--max-old-space-size=1536` (2 GB container). | 450 MB was Render's; on the VM V8 lets the heap grow towards its own limit before collecting, so 450 MB said "full" while the process had room. |
+| LS-4 | **Only API calls can be shed.** Everything else (pages, the app shell, scripts, styles, images, fonts, the manifest, the service worker, Google sign-in) is critical; orders, risk, security, sign-in and webhooks stay critical as before. | A page that does not load is worse than any slowness, and static files cost almost nothing to serve. |
+| LS-5 | **Hysteresis**: a level turns on only after the load stayed at or above it for 5 s (`SHED_SUSTAIN_MS`) and off after 3 s below (`SHED_CALM_MS`), sampled every 500 ms; the event-loop delay is the p90 of the last 2 s (not 10 s). Tests and drills that pin the load skip the wait. | One garbage-collection pause or slow query must not turn people away for 10 seconds. |
+| LS-6 | A refused call gets `Retry-After` of 3–5 s (spread out). The front end retries it quietly up to 3 times (`public/shed-retry.js`), then shows "This is taking longer than usual. Trying again…" with a Try again button on the page, never an error popup. A browser opening a refused address directly gets a small HTML page that reloads itself. | The server is busy, not the market; people should not see raw JSON or a scary message. |
+| LS-7 | `MAX_INFLIGHT` default 400 (was 200), `LAG_LIMIT_MS` 500, `SHED_AT` 0.85, all settings in `.env.example`; `/internal/load` and oracle-migrate `diagnose-load` show the parts of the load. | The VM has 2 CPUs and 2 GB for the app alone, more than Render's free instance; the diagnosis made the cause visible in minutes. |
+
 ## One address: app.brightolio.com (2026-11-23)
 
 | # | Decision | Reason |
