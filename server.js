@@ -295,7 +295,7 @@ app.get('/internal/verify', internalAuth, async (req, res) => {
     const sch = await schemaReport(); out.schema = { ok: sch.ok, checkedColumns: sch.checkedColumns, missingColumns: sch.missingColumns, failedMigrations: sch.failedMigrations };
     if (!sch.ok) out.problems.push('schema: ' + (sch.missingColumns || []).join(', '));
     out.credentials = await A.credentialCheck(); if (!out.credentials.ok) out.problems.push('stored credentials do not open with this ENCRYPTION_KEY');
-    out.users = Number((await one('SELECT COUNT(*) AS n FROM users')).n); if (!out.users) out.problems.push('no users in the database');
+    out.users = Number((await one('SELECT COUNT(*) AS n FROM users')).n); out.mergePending = process.env.TURSO_MERGE_PENDING === '1'; if (!out.users && !out.mergePending) out.problems.push('no users in the database');
   } catch (e) { out.problems.push('database: ' + e.message); }
   out.keys = A.keyReport().missingRequired; if (out.keys.length) out.problems.push('missing settings: ' + out.keys.join(', '));
   out.ok = !out.problems.length; res.status(out.ok ? 200 : 500).json(out);

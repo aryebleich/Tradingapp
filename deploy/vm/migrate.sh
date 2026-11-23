@@ -8,6 +8,11 @@
 #   switch-db        data/pull.db becomes data/quantpocket.db; DATABASE_URL and DATABASE_AUTH_TOKEN
 #                    are commented out in .env (kept, marked #TURSO#, for going back), DB_FILE and
 #                    PERSISTENT_DISK=1 are added; the app restarts
+#   fresh-db         when Turso cannot be read: a new database file with the full schema and ids from
+#                    10,000,000 (scripts/fresh-db.mjs) becomes data/quantpocket.db, same .env change
+#                    as switch-db; the old Turso data comes in later with merge-turso
+#   merge-turso      copy Turso by sync (pull), then add its rows to the live file
+#                    (scripts/turso-merge.mjs); the live file is backed up first and put back on failure
 #   verify           /internal/verify: database, schema, row counts, credentials, keys (JSON)
 #   report           the pull report (JSON: method, time, row counts)
 #   activate <url> [render-url]  register this server (and Render) in its database and make it active
@@ -84,6 +89,57 @@ case "$step" in
     timer start
     echo "Switched: the app now uses $DATA/quantpocket.db ($(du -h "$DATA/quantpocket.db" | cut -f1)); the Turso settings are kept, commented out."
     ;;
+  fresh-db)
+    [ -f "$DATA/quantpocket.db" ] && [ "$(val PERSISTENT_DISK)" = 1 ] && { echo "This server already runs on its own database file; nothing to do." ; exit 0; }
+    timer stop
+    (cd "$APP" && docker compose stop app >/dev/null 2>&1) || true
+    mkdir -p "$DATA" && chown 1000:1000 "$DATA"
+    rm -f "$DATA/fresh.db" "$DATA/fresh.db-wal" "$DATA/fresh.db-shm"
+    out=$(cd "$APP" && docker compose run --rm -T --no-deps -e DATABASE_URL= -e DATABASE_AUTH_TOKEN= app node scripts/fresh-db.mjs /app/data/fresh.db 2>/dev/null | tail -1)
+    echo "$out"
+    case "$out" in *'"ok":true'*) ;; *) echo "The new database could not be made; nothing was changed." >&2; timer start; (cd "$APP" && docker compose start app >/dev/null 2>&1) || true; exit 1 ;; esac
+    if [ -f "$DATA/quantpocket.db" ]; then
+      old="$DATA/quantpocket.db.before-switch-$(date -u +%Y%m%dT%H%M%S)"
+      sqlite3 "$DATA/quantpocket.db" 'PRAGMA wal_checkpoint(TRUNCATE);' >/dev/null 2>&1 || true
+      echo "The earlier local file had: $(sqlite3 -readonly "$DATA/quantpocket.db" "SELECT COUNT(*) FROM users;" 2>/dev/null || echo '?') users (kept as $(basename "$old"))"
+      mv -f "$DATA/quantpocket.db" "$old"; rm -f "$DATA/quantpocket.db-wal" "$DATA/quantpocket.db-shm"
+    fi
+    mv -f "$DATA/fresh.db" "$DATA/quantpocket.db"; rm -f "$DATA/fresh.db-wal" "$DATA/fresh.db-shm"
+    chown -R 1000:1000 "$DATA"
+    for k in DATABASE_URL DATABASE_AUTH_TOKEN; do sed -i "s/^$k=/#TURSO# $k=/" "$ENVF"; done
+    setv DB_FILE /app/data/quantpocket.db
+    setv PERSISTENT_DISK 1
+    setv TURSO_MERGE_PENDING 1
+    restart
+    timer start
+    echo "Started on a new database file; the Turso data is merged in later (merge-turso)."
+    ;;
+  merge-turso)
+    [ "$(val TURSO_MERGE_PENDING)" = 1 ] || { echo "Nothing to merge (TURSO_MERGE_PENDING is not set)."; exit 0; }
+    [ "$(val PERSISTENT_DISK)" = 1 ] || { echo "Run fresh-db (or switch-db) first." >&2; exit 1; }
+    turl=$(grep -m1 '^#TURSO# DATABASE_URL=' "$ENVF" | sed -e 's/^#TURSO# DATABASE_URL=//' -e 's/^"//' -e 's/"$//')
+    ttok=$(grep -m1 '^#TURSO# DATABASE_AUTH_TOKEN=' "$ENVF" | sed -e 's/^#TURSO# DATABASE_AUTH_TOKEN=//' -e 's/^"//' -e 's/"$//')
+    [ -n "$turl" ] || { echo "No Turso address kept in .env (#TURSO# DATABASE_URL)." >&2; exit 1; }
+    set +e
+    out=$(cd "$APP" && DATABASE_URL="$turl" DATABASE_AUTH_TOKEN="$ttok" docker compose run --rm -T --no-deps -e DATABASE_URL -e DATABASE_AUTH_TOKEN app node scripts/turso-pull.mjs /app/data/pull.db 2>/dev/null | tail -1); code=$?
+    set -e
+    printf '%s\n' "$out" > "$DATA/pull-report.json"; chown 1000:1000 "$DATA/pull-report.json"
+    echo "$out" | sed -E 's/"counts":\{[^}]*\}/"counts":{…}/'
+    [ "$code" = 0 ] || { echo "Turso still refuses the copy (exit $code); the live database is unchanged." >&2; exit "$code"; }
+    timer stop
+    (cd "$APP" && docker compose stop app >/dev/null 2>&1) || true
+    keep="$DATA/quantpocket.db.before-merge-$(date -u +%Y%m%dT%H%M%S)"
+    sqlite3 "$DATA/quantpocket.db" "VACUUM INTO '$keep'"
+    set +e
+    m=$(cd "$APP" && docker compose run --rm -T --no-deps app node scripts/turso-merge.mjs /app/data/quantpocket.db /app/data/pull.db 2>/dev/null | tail -1)
+    set -e
+    echo "$m"
+    case "$m" in *'"ok":true'*) unsetv TURSO_MERGE_PENDING; echo "Merged; the file before the merge is kept as $(basename "$keep")." ;;
+      *) echo "The merge failed: the live file goes back as it was." >&2; rm -f "$DATA/quantpocket.db-wal" "$DATA/quantpocket.db-shm"; cp "$keep" "$DATA/quantpocket.db"; chown 1000:1000 "$DATA/quantpocket.db"; restart || true; timer start; exit 1 ;; esac
+    chown -R 1000:1000 "$DATA"
+    restart
+    timer start
+    ;;
   verify) call GET /internal/verify; echo ;;
   report) cat "$DATA/pull-report.json" ;;
   activate)
@@ -101,7 +157,7 @@ case "$step" in
   rollback)
     timer stop
     sed -i 's/^#TURSO# //' "$ENVF"
-    unsetv DB_FILE; unsetv PERSISTENT_DISK
+    unsetv DB_FILE; unsetv PERSISTENT_DISK; unsetv TURSO_MERGE_PENDING
     restart || true
     timer start
     echo "Rolled back: the app uses Turso again (DATABASE_URL). The local file stays in $DATA for later."

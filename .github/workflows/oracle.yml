@@ -100,7 +100,7 @@ jobs:
           # After the database move (PERSISTENT_DISK=1 on the server), the server keeps its own database
           # file: the Turso lines stay commented out (#TURSO#) and DB_FILE, PERSISTENT_DISK, MAINTENANCE
           # and STANDBY are carried over from the server's current settings.
-          ssh -i ~/.ssh/oracle ubuntu@"$HOST" 'E=/opt/brightfolio/.env; if sudo grep -q "^PERSISTENT_DISK=1" "$E" 2>/dev/null; then sed -i -E "s/^(DATABASE_URL|DATABASE_AUTH_TOKEN)=/#TURSO# \1=/; /^(DB_FILE|PERSISTENT_DISK|MAINTENANCE|STANDBY)=/d" /tmp/app.env; sudo grep -E "^(DB_FILE|PERSISTENT_DISK|MAINTENANCE|STANDBY)=" "$E" >> /tmp/app.env; echo "Kept the database move: own database file"; fi; sudo install -m 600 -o brightfolio -g brightfolio /tmp/app.env "$E" && rm -f /tmp/app.env && echo "Settings saved (/opt/brightfolio/.env, readable by the app only)"'
+          ssh -i ~/.ssh/oracle ubuntu@"$HOST" 'E=/opt/brightfolio/.env; if sudo grep -q "^PERSISTENT_DISK=1" "$E" 2>/dev/null; then sed -i -E "s/^(DATABASE_URL|DATABASE_AUTH_TOKEN)=/#TURSO# \1=/; /^(DB_FILE|PERSISTENT_DISK|MAINTENANCE|STANDBY|TURSO_MERGE_PENDING)=/d" /tmp/app.env; sudo grep -E "^(DB_FILE|PERSISTENT_DISK|MAINTENANCE|STANDBY|TURSO_MERGE_PENDING)=" "$E" >> /tmp/app.env; echo "Kept the database move: own database file"; fi; sudo install -m 600 -o brightfolio -g brightfolio /tmp/app.env "$E" && rm -f /tmp/app.env && echo "Settings saved (/opt/brightfolio/.env, readable by the app only)"'
           rm -f /tmp/app.env
       - name: Start the app
         if: inputs.step != 'check'

@@ -9,13 +9,16 @@ name: Oracle database move
 # ORACLE_SET_ENV (KEY=value lines for set-env, so secret values never appear in the run's inputs).
 # No secret value is ever printed: the server-side script reads its own CRON_SECRET from its .env.
 on:
+  # Every day: merge the old Turso data in once Turso allows it (does nothing when nothing is pending).
+  schedule:
+    - cron: '23 7 * * *'
   workflow_dispatch:
     inputs:
       step:
         description: 'Which step'
         type: choice
         default: status
-        options: [status, maintenance-on, pull, switch-db, verify, activate, maintenance-off, rollback, set-env, backup]
+        options: [status, maintenance-on, pull, switch-db, fresh-db, merge-turso, verify, activate, maintenance-off, rollback, set-env, backup]
       settings:
         description: 'set-env only: KEY=value pairs separated by ";" (masked in the log; use the ORACLE_SET_ENV secret for secret values). KEY= removes a key.'
         required: false
@@ -39,10 +42,10 @@ jobs:
     timeout-minutes: 45
     env:
       HOST: ${{ vars.ORACLE_HOST }}
-      STEP: ${{ inputs.step }}
-      RENDER_URL: ${{ inputs.render_url }}
+      STEP: ${{ inputs.step || 'merge-turso' }}
+      RENDER_URL: ${{ inputs.render_url || 'https://quantpocket.onrender.com' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Connect
         env:
           KEY: ${{ secrets.ORACLE_SSH_KEY }}
@@ -60,12 +63,12 @@ jobs:
           # shellcheck disable=SC2016 # $HOST and $@ expand when the helper runs
           printf '%s\n' '#!/usr/bin/env bash' 'exec ssh -i ~/.ssh/oracle -o BatchMode=yes ubuntu@"$HOST" sudo bash /tmp/migrate.sh "$@"' > ~/vm && chmod 755 ~/vm
       - name: Newest code on the VM
-        if: inputs.step != 'status'
+        if: env.STEP != 'status'
         run: |
           ~/vm prep 2>&1 | tail -8
 
       - name: Maintenance on (VM and Render)
-        if: inputs.step == 'maintenance-on'
+        if: env.STEP == 'maintenance-on'
         env:
           CS: ${{ secrets.CRON_SECRET }}
         run: |
@@ -78,7 +81,7 @@ jobs:
           else echo "::warning::No CRON_SECRET secret: Render was not told (it serves pages only once STANDBY=1 is set there)."; fi
 
       - name: Copy the data out of Turso (a. sync, b. export, c. report)
-        if: inputs.step == 'pull'
+        if: env.STEP == 'pull'
         env:
           TURSO_API_TOKEN: ${{ secrets.TURSO_API_TOKEN }}
         run: |
@@ -108,13 +111,25 @@ jobs:
             exit 1
           fi
 
+      - name: Start the VM on a new database file (Turso cannot be read)
+        if: env.STEP == 'fresh-db'
+        run: |
+          ~/vm fresh-db
+
+      - name: Merge the old Turso data in
+        if: env.STEP == 'merge-turso'
+        run: |
+          set +e; ~/vm merge-turso; code=$?; set -e
+          if [ "$code" = 3 ]; then echo "::notice::Turso still refuses the copy (read limit); tried again tomorrow."; exit 0; fi
+          exit "$code"
+
       - name: Switch the VM to its own database file
-        if: inputs.step == 'switch-db'
+        if: env.STEP == 'switch-db'
         run: |
           ~/vm switch-db
 
       - name: Verify (health, schema, rows, credentials, login, order guard)
-        if: inputs.step == 'verify' || inputs.step == 'switch-db'
+        if: env.STEP == 'verify' || env.STEP == 'switch-db' || env.STEP == 'fresh-db'
         env:
           SMOKE_EMAIL: ${{ secrets.SMOKE_EMAIL }}
           SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
@@ -131,6 +146,11 @@ jobs:
           [ "$(jq length lost.json)" = 0 ] || { echo "::error::rows missing: $(jq -c . lost.json)"; ok=false; }
           if [ -n "$SMOKE_EMAIL" ] && [ -n "$SMOKE_PASSWORD" ]; then
             code=$(jq -n --arg e "$SMOKE_EMAIL" --arg p "$SMOKE_PASSWORD" '{email:$e,password:$p}' | curl -sS -o login.json -w '%{http_code}' -c jar -H 'content-type: application/json' -H 'x-requested-with: qp' --data @- "$VM_URL/api/auth/login")
+            if [ "$code" != 200 ] && [ "$(jq -r .mergePending verify.json)" = true ]; then
+              # A new database: the check account is made here (it joins its old account at the merge).
+              code=$(jq -n --arg e "$SMOKE_EMAIL" --arg p "$SMOKE_PASSWORD" '{email:$e,password:$p}' | curl -sS -o login.json -w '%{http_code}' -c jar -H 'content-type: application/json' -H 'x-requested-with: qp' --data @- "$VM_URL/api/auth/register")
+              echo "check account created on the new database: $code"
+            fi
             echo "login: $code"; [ "$code" = 200 ] || { echo "::error::login on the VM failed ($code)"; ok=false; }
             o=$(curl -sS -o order.json -w '%{http_code}' -b jar -H 'content-type: application/json' -H 'x-requested-with: qp' --data '{"account":"paper","symbol":"SPY","side":"buy","qty":1,"type":"market"}' "$VM_URL/api/orders")
             m=$(jq -r .maintenance.on verify.json)
@@ -142,12 +162,12 @@ jobs:
           echo "Verify OK."
 
       - name: Make Oracle the active server (edge or DNS when set up)
-        if: inputs.step == 'activate'
+        if: env.STEP == 'activate'
         run: |
           ~/vm activate "$VM_URL" "$RENDER_URL" | jq -c . || true
 
       - name: Maintenance off (VM) and a paper trade
-        if: inputs.step == 'maintenance-off'
+        if: env.STEP == 'maintenance-off'
         env:
           SMOKE_EMAIL: ${{ secrets.SMOKE_EMAIL }}
           SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
@@ -161,7 +181,7 @@ jobs:
           echo "Render keeps maintenance and STANDBY on: it serves pages only."
 
       - name: Roll back to Turso
-        if: inputs.step == 'rollback'
+        if: env.STEP == 'rollback'
         env:
           CS: ${{ secrets.CRON_SECRET }}
         run: |
@@ -170,7 +190,7 @@ jobs:
           echo "To make Render active again: Admin → Hosting → Render → Make active (see MIGRATION_ORACLE.md)."
 
       - name: Change settings in the VM's .env
-        if: inputs.step == 'set-env'
+        if: env.STEP == 'set-env'
         env:
           PAIRS: ${{ inputs.settings }}
           FROM_SECRET: ${{ secrets.ORACLE_SET_ENV }}
@@ -182,7 +202,7 @@ jobs:
           ~/vm set-env < set.env; rm -f set.env
 
       - name: Backup now
-        if: inputs.step == 'backup'
+        if: env.STEP == 'backup'
         run: |
           ~/vm backup
 

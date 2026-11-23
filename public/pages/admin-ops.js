@@ -401,6 +401,7 @@ async function databasePage(view) {
   const db = d.database, b = db.backups || {}, mt = db.maintenance || {};
   const files = (b.files || []).slice(0, 30);
   view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-database')}
+  ${db.mergePending ? '<p class="banner">This server started on a new database on 2026-11-23 because Turso refused every read. The old data (accounts, trades, settings) is merged in automatically once Turso allows it again (tried every day, or Actions → Oracle database move → merge-turso). Anyone who signs up again with the same email keeps one account with both.</p>' : ''}
   ${mt.on ? `<p class="banner">Maintenance is on${mt.reason ? ': ' + H.esc(mt.reason) : ''}. Trading is paused and new orders are refused.</p>` : ''}
   ${k.warnings.filter(w => w.level === 'error').map(w => `<p class="banner err">${H.esc(w.text)}</p>`).join('')}
   <div class="card"><h2>Database</h2><div class="stats">

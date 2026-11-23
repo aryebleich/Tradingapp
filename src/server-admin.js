@@ -55,7 +55,7 @@ export async function databaseStatus() {
     kind: dbKind(), file: dbFile ? path.basename(dbFile) : null, persistentDisk: persistentDisk(), health: dbHealth(),
     bytes: dbFile ? fileSize(dbFile) : null, walBytes: dbFile ? fileSize(dbFile + '-wal') : null,
     sizes: await tableSizes().catch(e => ({ counted: false, reason: e.message, tables: [] })),
-    backups: backupStatus(), maintenance: maintenance(),
+    backups: backupStatus(), maintenance: maintenance(), mergePending: process.env.TURSO_MERGE_PENDING === '1',
   };
 }
 // Names only. "Required" are the ones this server cannot work without; "recommended" are warned about.
