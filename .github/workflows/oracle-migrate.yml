@@ -11,6 +11,7 @@ name: Oracle database move
 #                    old database settings removed from .env;  finalize  both
 #   verify           health, schema, rows, credentials, a paper trade, the order guard
 #   activate         make this server the active one
+#   point-domain     the main address (input settings, default app.brightolio.com) → this server, through Cloudflare
 #   set-env          change settings in the server's .env (values masked; secret values go in the
 #                    ORACLE_SET_ENV secret, because workflow inputs are visible in the run's details)
 #   backup           one backup now;  restore  put the named backup back (input: backup)
@@ -32,7 +33,7 @@ on:
         description: 'Which step'
         type: choice
         default: status
-        options: [status, maintenance-on, maintenance-off, fresh-db, pull, merge-turso, final-copy, clean-old-settings, finalize, verify, activate, set-env, backup, restore]
+        options: [status, maintenance-on, maintenance-off, fresh-db, pull, merge-turso, final-copy, clean-old-settings, finalize, verify, activate, point-domain, set-env, backup, restore]
       settings:
         description: 'set-env only: KEY=value pairs separated by ";" (masked in the log). KEY= removes a key.'
         required: false
@@ -104,6 +105,11 @@ jobs:
       - name: Make this the active server
         if: env.STEP == 'activate'
         run: ~/vm activate "$VM_URL" | jq -c . || true
+      - name: Point the main address at this server (Cloudflare)
+        if: env.STEP == 'point-domain'
+        env:
+          D: ${{ inputs.settings || 'app.brightolio.com' }}
+        run: ~/vm point-domain "$D" "$HOST"
       - name: Change settings in the server's .env
         if: env.STEP == 'set-env'
         env:

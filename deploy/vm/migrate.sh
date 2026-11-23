@@ -26,6 +26,7 @@
 #   old-db-host      the old database's host name, for the workflow that deletes it (never logged there)
 # <<< merge-only
 #   verify           /internal/verify: database, schema, row counts, credentials, keys (JSON)
+#   point-domain <domain> <ip>  the domain's Cloudflare record → this server (CLOUDFLARE_API_TOKEN)
 #   check-trade      a paper trade end to end (/internal/check-trade: buy and sell 1 SPY on paper)
 #   report           the last pull and merge report (JSON) # merge-only
 #   activate <url>   register this server in its own database and make it the active server
@@ -182,6 +183,37 @@ case "$step" in
     ;;
 # <<< merge-only
   check-trade) call POST /internal/check-trade; echo ;;
+  point-domain)
+    # point-domain <domain> <server ip>: the domain's Cloudflare record → this server. First DNS only
+    # (so Caddy can get its certificate directly), then, once https://<domain> answers from here with
+    # a valid certificate, through Cloudflare again (proxied). Uses CLOUDFLARE_API_TOKEN from .env.
+    d=${2:?domain}; ip=${3:?server ip}; tok=$(val CLOUDFLARE_API_TOKEN)
+    [ -n "$tok" ] || { echo "No CLOUDFLARE_API_TOKEN in this server's settings." >&2; exit 4; }
+    cf() { curl -sS --max-time 30 -H "authorization: Bearer $tok" -H 'content-type: application/json' "$@"; }
+    apex=$(echo "$d" | awk -F. '{print $(NF-1)"."$NF}')
+    zone=$(val CLOUDFLARE_ZONE_ID); [ -n "$zone" ] || zone=$(cf "https://api.cloudflare.com/client/v4/zones?name=$apex" | jq -r '.result[0].id // empty')
+    [ -n "$zone" ] || { echo "Cloudflare: no zone for $apex that this token can see (it needs Zone → DNS → Edit)." >&2; exit 4; }
+    recs=$(cf "https://api.cloudflare.com/client/v4/zones/$zone/dns_records?name=$d")
+    echo "Before: $(echo "$recs" | jq -c '[.result[] | {type, content, proxied}]')"
+    set_rec() { # proxied true|false
+      local body id; body=$(jq -n --arg n "$d" --arg ip "$ip" --argjson p "$1" '{type:"A", name:$n, content:$ip, proxied:$p, ttl:1, comment:"Brightolio: the Oracle server"}')
+      for id in $(echo "$recs" | jq -r '.result[] | select(.type=="CNAME" or .type=="AAAA" or (.type=="A" and .content!=$ip)) | .id' --arg ip "$ip"); do cf -X DELETE "https://api.cloudflare.com/client/v4/zones/$zone/dns_records/$id" >/dev/null; done
+      id=$(cf "https://api.cloudflare.com/client/v4/zones/$zone/dns_records?name=$d&type=A" | jq -r '.result[0].id // empty')
+      if [ -n "$id" ]; then cf -X PUT --data "$body" "https://api.cloudflare.com/client/v4/zones/$zone/dns_records/$id" | jq -c '{success, errors}'
+      else cf -X POST --data "$body" "https://api.cloudflare.com/client/v4/zones/$zone/dns_records" | jq -c '{success, errors}'; fi
+      recs=$(cf "https://api.cloudflare.com/client/v4/zones/$zone/dns_records?name=$d")
+    }
+    set_rec false
+    grep -q "$d" /etc/caddy/Caddyfile || { echo "Caddy does not serve $d yet (oracle.yml with domain=$d adds it)." >&2; exit 1; }
+    systemctl reload caddy || true
+    for _ in $(seq 1 30); do
+      if curl -fsS --max-time 10 --resolve "$d:443:127.0.0.1" "https://$d/healthz" >/dev/null 2>&1; then echo "Caddy has a valid certificate for $d."; break; fi
+      sleep 10
+    done
+    curl -fsS --max-time 10 --resolve "$d:443:127.0.0.1" "https://$d/healthz" >/dev/null || { echo "No certificate for $d yet; the record stays DNS only (Caddy keeps trying)." >&2; exit 1; }
+    set_rec true
+    echo "After: $(echo "$recs" | jq -c '[.result[] | {type, content, proxied}]')"
+    ;;
   verify) call GET /internal/verify; echo ;;
   report) cat "$DATA/pull-report.json" ;; # merge-only
   activate)

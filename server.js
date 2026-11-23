@@ -160,6 +160,20 @@ await loadSite().catch(e => console.warn('site settings', e.message));
 await applySavedEnv();
 export const app = express();
 app.set('trust proxy', 1);
+// One address for the site (PUBLIC_URL, e.g. https://app.brightolio.com): a page asked for on any of
+// the server's other addresses (its sslip.io address, an old link) gets a 301 to the same path there,
+// so sign-in with Google (registered for that address only), cookies and links all use one address.
+// Not redirected: health checks and the workflows' /internal calls, this computer, and anything but
+// GET/HEAD (a form post or an app's API call must not be turned into a GET). CANONICAL_REDIRECT=0 turns it off.
+const canonicalHost = () => { try { return new URL(process.env.PUBLIC_URL).host.toLowerCase(); } catch { return null; } };
+app.use((req, res, next) => {
+  const want = canonicalHost(), host = String(req.get('host') || '').toLowerCase();
+  if (!want || process.env.CANONICAL_REDIRECT === '0' || !host || host === want) return next();
+  if (/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(host) || !/^https:/.test(process.env.PUBLIC_URL)) return next();
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  if (/^\/(healthz|readyz|internal|metrics)(\/|$)/.test(req.path)) return next();
+  res.redirect(301, process.env.PUBLIC_URL.replace(/\/+$/, '') + req.originalUrl);
+});
 // Behind the Cloudflare edge (edge/worker.js) every request comes from Cloudflare: the edge passes
 // the visitor's own address, signed with EDGE_SECRET, so rate limits and the security log see the
 // real visitor. Without the secret the header is ignored (nobody can fake their address).

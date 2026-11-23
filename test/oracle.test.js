@@ -161,11 +161,30 @@ test('keyReport: names only, and a missing required key is a warning', async () 
 
 test('Render is a redirect only: every path 301 to the same path on Oracle, /healthz 200', async () => {
   const { redirectHandler } = await import('../src/render-redirect.js');
-  const call = url => { const out = {}; redirectHandler({ url }, { writeHead: (s, h) => { out.status = s; out.headers = h; }, end: b => { out.body = b; } }); return out; };
+  const call = (url, host = 'quantpocket.onrender.com') => { const out = {}; redirectHandler({ url, headers: { host } }, { writeHead: (s, h) => { out.status = s; out.headers = h; }, end: b => { out.body = b; } }); return out; };
   const a = call('/app?x=1');
-  assert.equal(a.status, 301); assert.equal(a.headers.location, 'https://138-2-233-183.sslip.io/app?x=1');
-  assert.equal(call('//evil.example/x').headers.location, 'https://138-2-233-183.sslip.io/', 'no open redirect');
+  assert.equal(a.status, 301); assert.equal(a.headers.location, 'https://app.brightolio.com/app?x=1');
+  assert.equal(call('//evil.example/x').headers.location, 'https://app.brightolio.com/', 'no open redirect');
+  assert.equal(call('/app', 'app.brightolio.com').headers.location, 'https://138-2-233-183.sslip.io/app', 'never a loop while the domain still points at Render');
   assert.equal(call('/healthz').status, 200);
   const y = fs.readFileSync(new URL('../render.yaml', import.meta.url), 'utf8');
   assert.match(y, /startCommand: node src\/render-redirect\.js/); assert.doesNotMatch(y, /DATABASE_URL|ENCRYPTION_KEY|CRON_SECRET/);
+});
+
+test('one address: pages on another address of ours go to PUBLIC_URL (health, internal calls and posts do not)', async () => {
+  const keep = process.env.PUBLIC_URL; process.env.PUBLIC_URL = 'https://app.brightolio.com';
+  try {
+    const http = await import('node:http'), u = new URL(base);
+    const get = (p, host, method = 'GET') => new Promise((ok, no) => {
+      const r = http.request({ host: u.hostname, port: u.port, path: p, method, headers: { host, 'content-type': 'application/json' } }, res => { res.resume(); ok({ status: res.statusCode, headers: { get: k => res.headers[k] } }); });
+      r.on('error', no); if (method === 'POST') r.write('{}'); r.end();
+    });
+    const r = await get('/app?x=1', '138-2-233-183.sslip.io');
+    assert.equal(r.status, 301); assert.equal(r.headers.get('location'), 'https://app.brightolio.com/app?x=1');
+    assert.equal((await get('/auth/google', '138-2-233-183.sslip.io')).headers.get('location'), 'https://app.brightolio.com/auth/google');
+    assert.equal((await get('/healthz', '138-2-233-183.sslip.io')).status, 200);
+    assert.notEqual((await get('/internal/maintenance', '138-2-233-183.sslip.io')).status, 301);
+    assert.notEqual((await get('/api/auth/login', '138-2-233-183.sslip.io', 'POST')).status, 301);
+    assert.notEqual((await get('/app', 'app.brightolio.com')).status, 301);
+  } finally { if (keep === undefined) delete process.env.PUBLIC_URL; else process.env.PUBLIC_URL = keep; }
 });

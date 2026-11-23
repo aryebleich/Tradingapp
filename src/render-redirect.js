@@ -11,7 +11,8 @@
 import http from 'node:http';
 import { fileURLToPath } from 'node:url';
 
-export const TARGET = () => (process.env.REDIRECT_TO || 'https://138-2-233-183.sslip.io').replace(/\/+$/, '');
+export const TARGET = () => (process.env.REDIRECT_TO || 'https://app.brightolio.com').replace(/\/+$/, '');
+export const FALLBACK = () => (process.env.REDIRECT_FALLBACK || 'https://138-2-233-183.sslip.io').replace(/\/+$/, '');
 export function redirectHandler(req, res) {
   const url = req.url || '/';
   if (url === '/healthz' || url.startsWith('/healthz?')) {
@@ -20,8 +21,11 @@ export function redirectHandler(req, res) {
   }
   // Only the path and query are kept (no host header or other input goes into the address).
   const p = url.startsWith('/') && !url.startsWith('//') ? url : '/';
-  res.writeHead(301, { location: TARGET() + p, 'cache-control': 'public, max-age=3600', 'content-type': 'text/plain' });
-  res.end('Brightolio moved to ' + TARGET() + p + '\n');
+  // Never a loop: a request that is already for the target's own address (its DNS still points
+  // here) goes to the server's direct address instead.
+  const host = String(req.headers?.host || '').toLowerCase(), to = host && host === new URL(TARGET()).host ? FALLBACK() : TARGET();
+  res.writeHead(301, { location: to + p, 'cache-control': 'public, max-age=3600', 'content-type': 'text/plain' });
+  res.end('Brightolio moved to ' + to + p + '\n');
 }
 export function startRedirect(port = +process.env.PORT || 10000) {
   const s = http.createServer(redirectHandler);

@@ -14,4 +14,6 @@ services:
     envVars:
       # The newest Node.js 22 at every build (security fixes).
       - { key: NODE_VERSION, value: "22" }
-      - { key: REDIRECT_TO, value: "https://138-2-233-183.sslip.io" }
+      - { key: REDIRECT_TO, value: "https://app.brightolio.com" }
+      # Used only if app.brightolio.com itself still points at Render (no loop).
+      - { key: REDIRECT_FALLBACK, value: "https://138-2-233-183.sslip.io" }
