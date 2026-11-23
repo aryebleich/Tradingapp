@@ -8,7 +8,7 @@ name: Deep check
 # check at a time; skipped when a newer commit is on main. Uses the same secrets as autofix.yml.
 on:
   workflow_run:
-    workflows: ["Deploy to Render"]
+    workflows: ["Deploy"]
     types: [completed]
     branches: [main]
   workflow_dispatch:

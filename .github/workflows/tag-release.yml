@@ -3,7 +3,7 @@ name: Tag release
 #   git checkout v2026.11.16-1   or   redeploy it with the deploy hook (ref=<tag commit>).
 on:
   workflow_run:
-    workflows: [Deploy to Render]
+    workflows: [Deploy]
     types: [completed]
     branches: [main]
   workflow_dispatch:

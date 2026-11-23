@@ -1,22 +1,22 @@
-// Storage via libSQL: a local SQLite file by default, or a free hosted Turso database when
-// DATABASE_URL (libsql://...) and DATABASE_AUTH_TOKEN are set.
+// Storage via libSQL: a SQLite file (DB_FILE; on the Oracle server with PERSISTENT_DISK=1), or a
+// shared libSQL server when DATABASE_URL and DATABASE_AUTH_TOKEN are set (several replicas, deploy/k8s).
 import { createClient } from '@libsql/client';
 import fs from 'node:fs';
 import path from 'node:path';
 
 const url = process.env.DATABASE_URL || 'file:' + (process.env.DB_FILE || path.resolve('data/quantpocket.db'));
 if (url.startsWith('file:')) fs.mkdirSync(path.dirname(url.slice(5)), { recursive: true });
-// A hosted database keeps accounts and trading data across restarts; a local file on a host
-// without a lasting disk (Render's free plan) is wiped on every restart and deploy. A local file on a
+// A shared database keeps accounts and trading data across restarts; a local file on a host
+// without a lasting disk is wiped on every restart and deploy. A local file on a
 // server with a lasting disk (the Oracle VM: a Docker volume on the boot volume) is just as lasting:
 // PERSISTENT_DISK=1 says so, and it is then backed up every hour (src/backup.js).
 export const dbFile = url.startsWith('file:') ? url.slice(5) : null;
 export const persistentDisk = () => process.env.PERSISTENT_DISK === '1';
 export const persistentDb = !url.startsWith('file:') || persistentDisk();
-export const dbKind = () => (dbFile ? 'file' : 'turso');
+export const dbKind = () => (dbFile ? 'file' : 'remote');
 export const needsHostedDb = () => (!!process.env.RENDER || process.env.REQUIRE_HOSTED_DB === '1') && !persistentDisk();
-if (!persistentDb && needsHostedDb()) console.error('DATABASE ERROR: DATABASE_URL is not set, so this server uses a local SQLite file that is lost on restart. Set DATABASE_URL and DATABASE_AUTH_TOKEN (Render → Environment) before relying on it for accounts or trading data.');
-if (persistentDb && !process.env.DATABASE_AUTH_TOKEN && /^libsql:|^https:/.test(url)) console.error('DATABASE WARNING: DATABASE_URL is set but DATABASE_AUTH_TOKEN is empty; a Turso database refuses connections without it.');
+if (!persistentDb && needsHostedDb() && process.env.REDIRECT_ONLY !== '1') console.error('DATABASE ERROR: DATABASE_URL is not set, so this server uses a local SQLite file that is lost on restart. Set PERSISTENT_DISK=1 on a server with a lasting disk, or DATABASE_URL for a shared database.');
+if (persistentDb && !process.env.DATABASE_AUTH_TOKEN && /^libsql:|^https:/.test(url)) console.error('DATABASE WARNING: DATABASE_URL is set but DATABASE_AUTH_TOKEN is empty; a libSQL server refuses connections without it.');
 export const db = createClient({ url, authToken: process.env.DATABASE_AUTH_TOKEN });
 
 const SCHEMA = `
@@ -1014,7 +1014,7 @@ const MIGRATIONS = [
   'CREATE INDEX IF NOT EXISTS newspicks_trades_user ON newspicks_trades (user_id, day)',
   'CREATE TABLE IF NOT EXISTS intraday_log (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, account TEXT NOT NULL, symbol TEXT NOT NULL, side TEXT NOT NULL, qty REAL, price REAL, reason TEXT, pl REAL, at INTEGER NOT NULL)',
   'CREATE INDEX IF NOT EXISTS intraday_log_user ON intraday_log (user_id, at)',
-  // Rows read (Turso bills every row a query scans): an index for every WHERE column the app filters
+  // Rows read (every row a query scans costs time): an index for every WHERE column the app filters
   // on. user_id on every table that has it, then the scheduler's, housekeeping's and lookups' columns
   // (READS_AUDIT.md lists the full scans these remove).
   'CREATE INDEX IF NOT EXISTS ix_sessions_user ON sessions (user_id)',
@@ -1146,7 +1146,7 @@ export async function schemaReport() {
 const plain = rs => rs.rows.map(r => Object.fromEntries(rs.columns.map((c, i) => [c, r[i]])));
 
 // ---------- read statistics (DB_READ_STATS=1) ----------
-// Turso bills "rows read": every row a query scans, not just the rows it returns. With
+// Rows read: every row a query scans, not just the rows it returns. With
 // DB_READ_STATS=1 every query is counted by its normalized SQL: calls, rows returned, time, and an
 // estimate of the rows it reads (from EXPLAIN QUERY PLAN, worked out once per statement: a full
 // table scan reads the whole table, an index search about the rows it returns). Admin → GET

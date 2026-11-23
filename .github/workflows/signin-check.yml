@@ -14,11 +14,11 @@ jobs:
         run: |
           bad=0
           dec() { python3 -c 'import sys,urllib.parse;print(urllib.parse.unquote(sys.argv[1]))' "$1"; }
-          for A in https://quantpocket.onrender.com https://app.brightolio.com https://138-2-233-183.sslip.io; do
+          for A in https://app.brightolio.com https://138-2-233-183.sslip.io; do
             echo "=================== $A"
             # Follow our own hops (e.g. to PUBLIC_URL) until the step that leaves for Google.
             url="$A/auth/google"; to=""
-            for i in 1 2 3 4; do
+            for _ in 1 2 3 4; do
               to=$(curl -s -o /dev/null -w '%{redirect_url}' --max-time 60 "$url")
               case "$to" in https://accounts.google.com/*|"") break;; esac
               echo "  hop: $url -> $to"; url="$to"

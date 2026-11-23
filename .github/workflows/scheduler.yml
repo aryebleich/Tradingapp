@@ -1,6 +1,7 @@
-# Free hosts put idle apps to sleep. This wakes the app every 10 minutes and runs due jobs
-# (scheduled trades, bots, price alerts), plus a daily equity snapshot after the US close.
-# Setup: repository variable APP_URL and repository secret CRON_SECRET (same value as on the host).
+# A backup clock for the Oracle server, which also runs its own scheduler: every 10 minutes it asks
+# the server to run due jobs (each job claims its slot in the database first, so nothing runs twice),
+# plus a daily equity snapshot after the US close. The address is the Oracle server's (APP_URL when it
+# is set and is not the old Render address, otherwise https://<ORACLE_HOST with dashes>.sslip.io).
 name: App scheduler
 on:
   schedule:
@@ -14,9 +15,11 @@ jobs:
     steps:
       - name: Run due jobs
         env:
-          APP_URL: ${{ vars.APP_URL }}
+          APP_URL_VAR: ${{ vars.APP_URL }}
+          ORACLE_HOST: ${{ vars.ORACLE_HOST }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then echo "APP_URL or CRON_SECRET not set; skipping."; exit 0; fi
+          APP_URL="${APP_URL_VAR:-}"; case "$APP_URL" in ""|*onrender.com*) APP_URL="https://$(echo "${ORACLE_HOST:-138.2.233.183}" | tr . -).sslip.io";; esac
+          if [ -z "$CRON_SECRET" ]; then echo "CRON_SECRET not set; skipping."; exit 0; fi
           q=""; if [ "${{ github.event.schedule }}" = "15 21 * * 1-5" ]; then q="?snapshot=1"; fi
           curl -fsS --retry 3 --retry-delay 20 --max-time 90 -X POST -H "Authorization: Bearer $CRON_SECRET" "${APP_URL%/}/internal/tick$q"

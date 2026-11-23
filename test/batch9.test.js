@@ -124,8 +124,9 @@ test('a monthly statement PDF on every plan', async () => {
   } finally { s.close(); }
 });
 
-test('Render deploys after every push whose checks pass', () => {
+test('after every push whose checks pass, the deploy check waits for the Oracle server (Render is a redirect)', () => {
   const y = fs.readFileSync('.github/workflows/deploy.yml', 'utf8');
-  assert.match(y, /workflows: \[CI\]/); assert.match(y, /conclusion == 'success'/); assert.match(y, /secrets\.RENDER_DEPLOY_HOOK_URL/);
+  assert.match(y, /workflows: \[CI\]/); assert.match(y, /conclusion == 'success'/); assert.match(y, /ORACLE_HOST/);
+  assert.doesNotMatch(y, /RENDER_DEPLOY_HOOK_URL/);
   assert.doesNotMatch(y, /echo "\$HOOK"|echo \$\{\{ secrets/);
 });

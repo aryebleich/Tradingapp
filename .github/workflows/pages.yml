@@ -1,7 +1,7 @@
 # Publishes the public homepage, pricing and legal pages to GitHub Pages (free).
 # One-time setup: Settings > Pages > Source: "GitHub Actions".
 # Set the repository variable APP_URL (Settings > Secrets and variables > Actions > Variables)
-# to your app's address, e.g. https://quantpocket.onrender.com, so buttons and the demo use it.
+# to your app's address, e.g. https://138-2-233-183.sslip.io, so buttons and the demo use it.
 name: Deploy homepage to GitHub Pages
 on:
   push:
@@ -25,8 +25,11 @@ jobs:
       - uses: actions/checkout@v7
       - name: Build static site
         env:
-          APP_URL: ${{ vars.APP_URL }}
+          APP_URL_VAR: ${{ vars.APP_URL }}
+          ORACLE_HOST: ${{ vars.ORACLE_HOST }}
         run: |
+          APP_URL="${APP_URL_VAR:-}"; case "$APP_URL" in ""|*onrender.com*) APP_URL="https://$(echo "${ORACLE_HOST:-138.2.233.183}" | tr . -).sslip.io";; esac
+          export APP_URL
           mkdir -p _site
           cd public
           cp index.html yi.html terms.html privacy.html risk.html contact.html status.html security.html insurance.html trust-page.js 404.html site.css site.js layout.css layout.js favicon.svg icon-512.png og-brightolio.png hero-brightolio.webp manifest.webmanifest chartstates.js ../_site/

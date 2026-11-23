@@ -59,9 +59,12 @@ jobs:
           gradle-version: '8.14.3'
       - name: Build and sign
         env:
-          APP_HOST: ${{ vars.APP_URL }}
+          APP_URL_VAR: ${{ vars.APP_URL }}
+          ORACLE_HOST: ${{ vars.ORACLE_HOST }}
           VERSION_CODE: ${{ github.run_number }}
         run: |
+          APP_URL="${APP_URL_VAR:-}"; case "$APP_URL" in ""|*onrender.com*) APP_URL="https://$(echo "${ORACLE_HOST:-138.2.233.183}" | tr . -).sslip.io";; esac
+          APP_HOST="$APP_URL"; export APP_HOST
           cd android
           gradle --no-daemon assembleRelease bundleRelease
           BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"

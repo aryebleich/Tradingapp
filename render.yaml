@@ -1,77 +1,17 @@
-# STANDBY since 2026-11-23: the site runs on the Oracle Cloud VM with its own database file
-# (MIGRATION_ORACLE.md). This Render service is kept as a standby that serves pages only:
-# STANDBY=1 below means it never runs bots, scheduled trades or alerts. Its Turso database is the
-# state before the move. To switch back to Render, follow "Going back to Render" in MIGRATION_ORACLE.md
-# (it starts by removing STANDBY here).
-# Free hosting on Render. Click "Deploy to Render" in the README, or: Render > New > Blueprint > this repo.
-# The free plan has no persistent disk, so data lives in a free Turso database (DATABASE_URL).
+# Render is a redirect only (since 2026-11-23). Brightolio runs on the Oracle Cloud VM with its own
+# database (MIGRATION_ORACLE.md). This service has no database, no keys and runs no jobs: every path
+# gets a 301 to the same path on the Oracle server, so old links and bookmarks keep working and
+# nothing can run twice. src/render-redirect.js uses only Node.js itself, so nothing is installed.
 services:
   - type: web
     name: quantpocket
     runtime: node
     plan: free
-    buildCommand: npm ci --omit=dev
-    startCommand: node server.js
+    buildCommand: echo "redirect only, nothing to build"
+    startCommand: node src/render-redirect.js
     healthCheckPath: /healthz
     autoDeploy: true
     envVars:
-      - { key: NODE_ENV, value: production }
-      # Standby: pages only, never jobs (src/hosting.js isActiveHost).
-      - { key: STANDBY, value: "1" }
-      # The newest Node.js 22 at every build (security fixes); the build refuses anything older
-      # than the patched release (package.json engines + .npmrc engine-strict).
+      # The newest Node.js 22 at every build (security fixes).
       - { key: NODE_VERSION, value: "22" }
-      - { key: ENCRYPTION_KEY, generateValue: true }
-      - { key: CRON_SECRET, generateValue: true }
-      - { key: PUBLIC_URL, sync: false }
-      - { key: ADMIN_EMAIL, sync: false }
-      - { key: DATABASE_URL, sync: false }
-      - { key: DATABASE_AUTH_TOKEN, sync: false }
-      - { key: PUBLIC_ORIGINS, value: "https://aryebleich.github.io" }
-      - { key: BROKER_API_KEY, sync: false }
-      - { key: BROKER_API_SECRET, sync: false }
-      - { key: BROKER_BASE_URL, value: "https://broker-api.sandbox.alpaca.markets" }
-      - { key: BROKER_CLIENT_ID, sync: false }
-      - { key: BROKER_CLIENT_SECRET, sync: false }
-      - { key: ALPACA_KEY_ID, sync: false }
-      - { key: ALPACA_SECRET, sync: false }
-      - { key: ALPACA_TRADING_URL, value: "https://paper-api.alpaca.markets" }
-      # Live ratio pair bots (src/pairslive.js): trading days on Paper before real money, and the most
-      # orders a member's live-ratio bots may send in a minute (the brokers' rate limits).
-      - { key: PAIRS_LIVE_MIN_PAPER_DAYS, value: "5" }
-      - { key: PAIRS_LIVE_MAX_ORDERS_PER_MIN, value: "20" }
-      - { key: ALPACA_OAUTH_CLIENT_ID, sync: false }
-      - { key: ALPACA_OAUTH_CLIENT_SECRET, sync: false }
-      - { key: ALPACA_OAUTH_ENV, value: paper }
-      - { key: GOOGLE_CLIENT_ID, sync: false }
-      - { key: GOOGLE_CLIENT_SECRET, sync: false }
-      - { key: GITHUB_CLIENT_ID, sync: false }
-      - { key: GITHUB_CLIENT_SECRET, sync: false }
-      - { key: ADMIN_PHONE, sync: false }
-      - { key: RENDER_API_KEY, sync: false }
-      - { key: HELCIM_API_TOKEN, sync: false }
-      - { key: FINNHUB_API_KEY, sync: false }
-      - { key: SQUARE_ACCESS_TOKEN, sync: false }
-      - { key: SQUARE_LOCATION_ID, sync: false }
-      - { key: SQUARE_WEBHOOK_SIGNATURE_KEY, sync: false }
-      - { key: ANET_LOGIN_ID, sync: false }
-      - { key: ANET_TRANSACTION_KEY, sync: false }
-      - { key: ANET_SIGNATURE_KEY, sync: false }
-      - { key: DEPOSIT_FEE_PERCENT, value: "0" }
-      - { key: DEPOSIT_FEE_FIXED, value: "0" }
-      - { key: SCHWAB_APP_KEY, sync: false }
-      - { key: SCHWAB_APP_SECRET, sync: false }
-      - { key: TRADESTATION_CLIENT_ID, sync: false }
-      - { key: TRADESTATION_CLIENT_SECRET, sync: false }
-      - { key: ANTHROPIC_API_KEY, sync: false }
-      - { key: RESEND_API_KEY, sync: false }
-      - { key: EMAIL_FROM, sync: false }
-      - { key: TWILIO_ACCOUNT_SID, sync: false }
-      - { key: TWILIO_AUTH_TOKEN, sync: false }
-      - { key: TWILIO_FROM, sync: false }
-      - { key: STRIPE_SECRET_KEY, sync: false }
-      - { key: STRIPE_WEBHOOK_SECRET, sync: false }
-      - { key: STRIPE_PRICE_PRO, sync: false }
-      - { key: STRIPE_PRICE_ELITE, sync: false }
-      - { key: STRIPE_PRICE_PRO_YEARLY, sync: false }
-      - { key: STRIPE_PRICE_ELITE_YEARLY, sync: false }
+      - { key: REDIRECT_TO, value: "https://138-2-233-183.sslip.io" }
