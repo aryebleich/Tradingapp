@@ -202,6 +202,12 @@ case "$step" in
     for i in 1 2 3; do echo "--- /metrics now ($i)"; curl -sS --max-time 10 ${mt:+-H "authorization: Bearer $mt"} http://127.0.0.1:3000/metrics | grep -E '^qp_(load|inflight|event_loop|heap|requests|shed|jobs)' | paste -sd' ' -; sleep 3; done
     for i in 1 2 3 4 5 6; do echo "--- sample $i"; call GET /internal/load | jq -c '{at, load: .stats.load, parts, lagNow2s, heap, rssMb, inflight: .stats.inflight, shed: .stats.shed, requests: .stats.requests, uptimeSec: .stats.uptimeSec, nodeOptions}' || true; [ "$i" -lt 6 ] && sleep 8; done
     echo "--- last refused requests"; call GET /internal/load | jq -c '.shed[]?' | tail -20 || true
+    echo "--- database file (names and sizes only, never values)"
+    db="$DATA/quantpocket.db"; stat -c '%s %n' "$db" "$db-wal" 2>/dev/null
+    sqlite3 -readonly "$db" "SELECT 'pages', (SELECT page_count FROM pragma_page_count), 'free', (SELECT freelist_count FROM pragma_freelist_count), 'page size', (SELECT page_size FROM pragma_page_size);" 2>&1 | head -2
+    sqlite3 -readonly "$db" "SELECT name, SUM(pgsize)/1048576 AS mb FROM dbstat GROUP BY name ORDER BY mb DESC LIMIT 8;" 2>&1 | head -10
+    for t in cache site_settings user_settings; do echo "  largest in $t:"; sqlite3 -readonly "$db" "SELECT k, length(v) FROM $t ORDER BY length(v) DESC LIMIT 5;" 2>&1 | sed 's/^/    /' | head -6; done
+    echo "  rows per table (largest):"; for t in $(sqlite3 -readonly "$db" "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"); do printf '%s %s\n' "$(sqlite3 -readonly "$db" "SELECT COUNT(*) FROM \"$t\"")" "$t"; done | sort -rn | head -8 | sed 's/^/    /'
     echo "--- container"; docker stats --no-stream --format '{{.Name}} cpu {{.CPUPerc}} mem {{.MemUsage}} ({{.MemPerc}})' 2>/dev/null || true
     echo "--- /metrics"; curl -sS --max-time 10 ${mt:+-H "authorization: Bearer $mt"} http://127.0.0.1:3000/metrics | grep -v '^#' | head -20
     echo "--- recent app log (warnings and errors, no values)"; (cd "$APP" && docker compose logs --since 30m app 2>/dev/null | grep -iE 'slow|error|warn|heap|memory|lag' | grep -viE 'key|secret|token|password' | tail -15) || true
