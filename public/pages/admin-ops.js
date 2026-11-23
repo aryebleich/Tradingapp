@@ -4,7 +4,7 @@ let H;
 export function registerAdminOps(routes, helpers) {
   H = helpers;
   const guard = fn => (view, q) => (H.me()?.role === 'admin' ? fn(view, q) : (location.hash = '#/dashboard'));
-  Object.assign(routes, { 'admin-data': guard(dataPage), 'admin-comms': guard(commsPage), 'admin-strategies': guard(originalsPage), 'admin-seo': guard(seoPage), 'admin-agents': guard(agentsPage), 'admin-hosting': guard(hostingPage) });
+  Object.assign(routes, { 'admin-data': guard(dataPage), 'admin-comms': guard(commsPage), 'admin-strategies': guard(originalsPage), 'admin-seo': guard(seoPage), 'admin-agents': guard(agentsPage), 'admin-hosting': guard(hostingPage), 'admin-database': guard(databasePage) });
 }
 
 async function dataPage(view) {
@@ -313,7 +313,7 @@ async function codingAgentsPage(view) {
 // Admin → Hosting: the servers the site runs on, live health and speed, deploys, switching the
 // active server, keep-warm, and the free Cloudflare edge in front.
 async function hostingPage(view) {
-  const d = await H.api('/admin/hosting');
+  const [d, m] = await Promise.all([H.api('/admin/hosting'), H.api('/admin/server/metrics').catch(() => null)]);
   const health = h => !h ? '' : h.up ? `<span class="pill pos">Up</span> <b>${h.ms} ms</b>${h.cold ? ' <span class="pill warn">was asleep</span>' : ''}${h.commit ? ` · version <code>${H.esc(h.commit)}</code>` : ''}${h.routingOk === false ? ' <span class="pill neg">paper/live check failed</span>' : ''}` : `<span class="pill neg">Down</span> <span class="mu">${H.esc(h.error || String(h.status || ''))}</span>`;
   const kindOpts = sel => Object.entries(d.kinds).map(([k, v]) => `<option value="${k}" ${sel === k ? 'selected' : ''}>${H.esc(v.name)}</option>`).join('');
   view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-hosting')}
@@ -323,6 +323,7 @@ async function hostingPage(view) {
       <td><a href="${H.esc(H.safeUrl(s.url))}" target="_blank" rel="noopener" data-no-tr>${H.esc(s.url.replace('https://', ''))}</a></td><td>${health(s.health)}</td>
       <td><div class="row" style="gap:6px;flex-wrap:wrap">${d.active === s.id ? '' : `<button class="small" data-switch="${H.esc(s.id)}">Make active</button>`}${s.hook ? `<button class="small ghost" data-deploy="${H.esc(s.id)}">Deploy now</button>` : ''}<button class="small ghost" data-edit="${H.esc(s.id)}">Edit</button>${d.active === s.id ? '' : `<button class="small ghost" data-rm="${H.esc(s.id)}">Remove</button>`}</div></td></tr>`).join('') || '<tr><td colspan="4" class="mu">No servers yet. Add the one you use now (for Render: id <b>render</b>, its onrender.com address and its deploy hook).</td></tr>'}</table></div>
     <div class="err" id="hErr"></div><div id="hOut"></div>
+    ${m ? serverCard(m) : ''}
     <label class="chk"><input type="checkbox" id="warm" ${d.keepWarm ? 'checked' : ''}> Keep the active server awake (it calls itself every 9 minutes, so a free host never makes the next visitor wait while it wakes up)</label></div>
   <form class="card" id="srv"><h2>Add or edit a server</h2>
     <div class="row"><label>Id <span class="mu">(= HOST_ID on that server)</span><input name="id" placeholder="oracle" required data-no-tr></label><label>Kind<select name="kind">${kindOpts('oracle-vm')}</select></label><label>Name<input name="name" placeholder="Oracle Cloud"></label></div>
@@ -371,5 +372,78 @@ async function hostingPage(view) {
     try { const r = await H.api('/admin/hosting/edge', { body: { domain, password: c.password, confirm: c.confirm } }); eo.innerHTML = `<ul class="plain">${r.steps.map(x => `<li>✓ ${H.esc(x)}</li>`).join('')}</ul>`; setTimeout(H.render, 4000); }
     catch (x) { eo.innerHTML = ''; ee.textContent = x.message; }
   };
+  H.$$('[data-vm]', view).forEach(b => H.act(b, async () => { const k = b.dataset.vm; if (!confirm(k === 'deploy' ? 'Build and start the newest version on this server now?' : 'Restart the app on this server? It is away for about 20 seconds.')) return ''; return (await H.adminUnlocked('/admin/server/' + k, { body: {} })).message; }, out));
   H.$('#warm', view).onchange = e => H.api('/admin/hosting/settings', { method: 'PUT', body: { keepWarm: e.target.checked } }).catch(x => (err.textContent = x.message));
+}
+
+// ---------- the server's own numbers (Hosting) and Admin → Database ----------
+const gb = n => (n == null ? '-' : n >= 1e9 ? (n / 1e9).toFixed(1) + ' GB' : n >= 1e6 ? (n / 1e6).toFixed(1) + ' MB' : Math.round(n / 1e3) + ' KB');
+const ago = t => { if (!t) return 'never'; const s = Math.round((Date.now() - t) / 1000); return s < 90 ? s + ' s ago' : s < 5400 ? Math.round(s / 60) + ' min ago' : s < 172800 ? Math.round(s / 3600) + ' h ago' : Math.round(s / 86400) + ' days ago'; };
+const pctUsed = (used, total) => (total ? Math.round(used / total * 100) + '%' : '-');
+function serverCard(m) {
+  const mem = m.memory || {}, disk = m.disk || {};
+  return `<div class="card" style="margin:12px 0 0"><h3 style="margin-top:0">This server: <span data-no-tr>${H.esc(m.host)}</span> ${m.standby ? '<span class="pill warn">Standby (STANDBY=1): pages only</span>' : m.active ? '<span class="pill pos">Runs the jobs</span>' : '<span class="pill">Pages only</span>'}</h3>
+    <div class="stats"><div class="stat"><span>CPU load (1, 5, 15 min)</span><b>${m.load.join(' · ')}</b><span class="mu">${m.cpus} CPUs</span></div>
+      <div class="stat"><span>Memory used</span><b>${pctUsed(mem.total - mem.available, mem.total)}</b><span class="mu">of ${gb(mem.total)}</span></div>
+      <div class="stat"><span>Disk used</span><b>${disk.total ? pctUsed(disk.total - disk.free, disk.total) : '-'}</b><span class="mu">${gb(disk.free)} free</span></div>
+      <div class="stat"><span>Version</span><b data-no-tr>${H.esc(m.version || '-')}</b><span class="mu">up ${Math.round(m.appUptimeSec / 60)} min</span></div>
+      <div class="stat"><span>Last deploy</span><b>${m.lastDeploy ? (m.lastDeploy.ok ? '<span class="pos">OK</span>' : '<span class="neg">' + H.esc(m.lastDeploy.action) + '</span>') : '-'}</b><span class="mu">${m.lastDeploy ? ago(m.lastDeploy.at) : ''}</span></div></div>
+    ${m.canRequest ? `<div class="row" style="gap:6px;flex-wrap:wrap"><button class="small" data-vm="deploy">Deploy now</button><button class="small ghost" data-vm="restart">Restart</button>${m.pending.length ? `<span class="pill warn">Waiting: ${m.pending.map(H.esc).join(', ')}</span>` : ''}</div>
+      <p class="mu small-print">The server's update script carries these out within 2 minutes (it also deploys every new version by itself). <a href="#/admin-database">Database and backups</a></p>` : ''}
+    ${m.hostActions?.length ? `<details><summary class="mu">Recent host actions</summary><pre class="logbox" data-no-tr>${H.esc(m.hostActions.join('\n'))}</pre></details>` : ''}</div>`;
+}
+
+async function databasePage(view) {
+  view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-database')}<div class="card"><p class="mu">Loading…</p></div>`;
+  let d, k;
+  try { [d, k] = await Promise.all([H.adminUnlocked('/admin/server'), null]); k = await H.adminUnlocked('/admin/server/keys'); }
+  catch (e) { view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-database')}<div class="card"><p class="err">${H.esc(e.message)}</p><button id="retry">Try again</button></div>`; H.$('#retry', view).onclick = () => H.render(); return; }
+  const db = d.database, b = db.backups || {}, mt = db.maintenance || {};
+  const files = (b.files || []).slice(0, 30);
+  view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-database')}
+  ${mt.on ? `<p class="banner">Maintenance is on${mt.reason ? ': ' + H.esc(mt.reason) : ''}. Trading is paused and new orders are refused.</p>` : ''}
+  ${k.warnings.filter(w => w.level === 'error').map(w => `<p class="banner err">${H.esc(w.text)}</p>`).join('')}
+  <div class="card"><h2>Database</h2><div class="stats">
+    <div class="stat"><span>Type</span><b>${db.kind === 'file' ? 'SQLite file on this server' : 'Turso (hosted)'}</b><span class="mu" data-no-tr>${H.esc(db.file || '')}</span></div>
+    <div class="stat"><span>Size</span><b>${gb(db.bytes)}</b><span class="mu">${db.walBytes ? 'log ' + gb(db.walBytes) : ''}</span></div>
+    <div class="stat"><span>Lasting disk</span><b>${db.persistentDisk ? '<span class="pos">Yes</span>' : db.kind === 'file' ? '<span class="neg">No</span>' : '-'}</b></div>
+    <div class="stat"><span>Last statement</span><b>${db.health.ok ? '<span class="pos">OK</span>' : '<span class="neg">Failed</span>'}</b><span class="mu">${ago(db.health.okAt)}</span></div></div>
+    ${db.sizes.counted ? `<details><summary><b>Tables</b> (${db.sizes.tables.length})</summary><div class="tablewrap"><table class="slim"><tr><th>Table</th><th>Rows</th></tr>${db.sizes.tables.map(t => `<tr><td data-no-tr>${H.esc(t.name)}</td><td>${t.rows.toLocaleString()}</td></tr>`).join('')}</table></div></details>` : `<p class="mu">${H.esc(db.sizes.reason || '')}</p>`}</div>
+  <div class="card"><div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">Backups</h2>${b.enabled ? '<button class="small" id="bkNow">Back up now</button>' : ''}</div>
+    ${!b.enabled ? `<p class="mu">${H.esc(b.reason || '')}</p>` : `
+    <p class="mu">Every hour, an online copy (the app keeps running), checked before it counts. Kept here: 48 hourly and 30 daily. ${b.offsite ? 'Each daily copy is also encrypted and sent to ' + H.esc(b.offsite) + '.' : '<b class="neg">No off-site copy:</b> add OCI_BACKUP_PAR_URL (Oracle Object Storage → bucket → pre-authenticated request, write) in Keys.'}</p>
+    <ul class="plain"><li>Last backup: ${b.last ? `${b.last.ok ? '<span class="pill pos">OK</span>' : '<span class="pill neg">Failed</span>'} <span data-no-tr>${H.esc(b.last.file || '')}</span> · ${ago(b.last.at)}${b.last.ok ? ` · ${gb(b.last.bytes)} · ${b.last.tables} tables · ${(b.last.rows || 0).toLocaleString()} rows` : ` · ${H.esc(b.last.error || '')}`}` : 'none yet (the first runs a few minutes after start)'}</li>
+      <li>Last off-site upload: ${b.lastUpload ? (b.lastUpload.ok ? `<span class="pill pos">OK</span> ${ago(b.lastUpload.at)}` : `<span class="pill warn">${H.esc(b.lastUpload.warning || b.lastUpload.error || 'failed')}</span>`) : 'none yet'}</li></ul>
+    <div class="tablewrap"><table class="slim"><tr><th>File</th><th>Kind</th><th>Size</th><th>Made</th><th></th></tr>${files.map(f => `<tr><td data-no-tr>${H.esc(f.name)}</td><td>${H.esc(f.kind)}</td><td>${gb(f.bytes)}</td><td>${ago(f.at)}</td>
+      <td><div class="row" style="gap:6px"><button class="small ghost" data-dl="${H.esc(f.name)}">Download</button><button class="small ghost" data-restore="${H.esc(f.name)}">Restore</button></div></td></tr>`).join('') || '<tr><td colspan="5" class="mu">No backups yet.</td></tr>'}</table></div>`}
+    <div class="err" id="dbErr"></div><div id="dbOut"></div></div>
+  <div class="card"><h2>Maintenance mode</h2><p class="mu" style="margin-top:0">Pauses every trading job (bots, scheduled trades, Playbooks, pairs) and refuses new orders, with a banner for everyone. Pages and data stay available.</p>
+    <div class="row" style="align-items:flex-end"><label style="flex:2">Reason<input id="mtReason" value="${H.esc(mt.reason || '')}" placeholder="Database maintenance"></label><button id="mtToggle" class="${mt.on ? '' : 'ghost'}">${mt.on ? 'Turn maintenance off' : 'Turn maintenance on'}</button></div>
+    ${mt.source === 'env' ? '<p class="mu small-print">On because MAINTENANCE=1 is in the server settings: remove it there to turn it off.</p>' : ''}</div>
+  <div class="card tablewrap"><h2>Keys on this server</h2><p class="mu" style="margin-top:0">Names only: set or missing. Values are never shown here (change them in <a href="#/admin-keys">Keys</a>).</p>
+    ${k.warnings.length ? `<ul class="plain">${k.warnings.map(w => `<li><span class="pill ${w.level === 'error' ? 'neg' : 'warn'}">${w.level === 'error' ? 'Required' : 'Check'}</span> ${H.esc(w.text)}</li>`).join('')}</ul>` : '<p><span class="pill pos">All required keys are set</span></p>'}
+    <details><summary>Every key</summary>${k.groups.map(g => `<h3>${H.esc(g.name)}</h3><p data-no-tr>${g.keys.map(x => `<span class="pill ${x.set ? 'pos' : x.required ? 'neg' : ''}">${H.esc(x.name)} ${x.set ? '✓' : '·'}</span>`).join(' ')}</p>`).join('')}</details></div>`;
+  const out = H.$('#dbOut', view), err = H.$('#dbErr', view);
+  if (H.$('#bkNow', view)) H.act(H.$('#bkNow', view), async () => { const r = await H.adminUnlocked('/admin/server/backup', { body: {} }); setTimeout(H.render, 1200); return `Backed up: ${r.file} (${gb(r.bytes)})`; }, out);
+  H.$$('[data-dl]', view).forEach(btn => (btn.onclick = async () => {
+    err.textContent = '';
+    try {
+      await H.adminUnlocked('/admin/server/keys'); // opens the window first when it closed
+      const r = await fetch('/api/admin/server/download', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ name: btn.dataset.dl }) });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
+      const url = URL.createObjectURL(await r.blob()), a = document.createElement('a'); a.href = url; a.download = btn.dataset.dl; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch (x) { err.textContent = x.message; }
+  }));
+  H.$$('[data-restore]', view).forEach(btn => (btn.onclick = async () => {
+    const name = btn.dataset.restore;
+    const c = await H.secureConfirm({ title: `Restore ${name}?`, word: 'RESTORE', okText: 'Restore', html: `<p>The app stops for about a minute, the current database is kept on the server (quantpocket.db.before-restore-…), and this backup becomes the live database. Anything saved after it was made is not in it.</p>` });
+    if (!c) return;
+    try { const r = await H.adminUnlocked('/admin/server/restore', { body: { name, typed: String(c.typed || '').toUpperCase() } }); err.textContent = ''; out.innerHTML = `<p class="banner">${H.esc(r.message)}</p>`; }
+    catch (x) { err.textContent = x.message; }
+  }));
+  H.$('#mtToggle', view).onclick = async () => {
+    const on = !mt.on;
+    if (on && !confirm('Pause all trading and refuse new orders until you turn it off?')) return;
+    try { await H.adminUnlocked('/admin/server/maintenance', { body: { on, reason: H.$('#mtReason', view).value } }); H.render(); } catch (x) { err.textContent = x.message; }
+  };
 }

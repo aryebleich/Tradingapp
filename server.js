@@ -12,7 +12,7 @@ import compression from 'compression';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { one, all, run, now, audit, persistentDb, needsHostedDb, schemaReport, dbStats, resetDbStats } from './src/db.js';
+import { one, all, run, now, audit, persistentDb, needsHostedDb, schemaReport, dbStats, resetDbStats, dbKind, persistentDisk, dbHealth } from './src/db.js';
 import { encrypt, hashSecret, verifySecret, safeEqual, publicName } from './src/crypto.js';
 import * as auth from './src/auth.js';
 import crypto from 'node:crypto';
@@ -217,11 +217,13 @@ app.get('/vm.sh', (req, res) => res.redirect(302, 'https://raw.githubusercontent
 app.get('/healthz/routing', async (req, res) => { const { routingReport } = await import('./src/routingcheck.js'); const r = routingReport(); res.status(r.ok ? 200 : 500).json(r); });
 // Company logos next to tickers (served from this site; see src/logos.js).
 (await import('./src/logos.js')).logoRoute(app);
-app.get('/healthz', async (req, res) => {
-  try { await one('SELECT 1 AS ok'); res.json({ ok: true, time: new Date().toISOString() }); }
-  catch (e) { res.status(503).json({ ok: false }); }
+app.get('/healthz', (req, res) => {
+  const d = dbHealth();
+  res.json({ ok: true, time: new Date().toISOString(), database: { kind: dbKind(), ok: d.ok, lastOkAt: d.okAt, lastErrorAt: d.errAt } });
 });
-// /healthz only says the server answers and reaches its database (Render restarts it otherwise).
+// /healthz says the server process answers; it runs no query (a check that reads spends database
+// reads, and a restart would not fix a database outage). The database part is what the app's own
+// statements saw last. /healthz/full does query the database.
 // /healthz/full is the production check: lasting database, complete schema and paper/live
 // routing, all at once (run by the deploy workflow after every push). Names only, never secrets.
 app.get('/healthz/full', async (req, res) => {
@@ -229,7 +231,7 @@ app.get('/healthz/full', async (req, res) => {
   const problems = [];
   let reachable = false, schema = null;
   try { await one('SELECT 1 AS ok'); reachable = true; } catch { problems.push('The database does not answer.'); }
-  if (!persistentDb && needsHostedDb()) problems.push('DATABASE_URL is not set: accounts and trading data are kept in a local file that is lost on restart.');
+  if (!persistentDb && needsHostedDb()) problems.push('DATABASE_URL is not set and PERSISTENT_DISK is not 1: accounts and trading data are kept in a local file that is lost on restart.');
   if (reachable) {
     schema = await schemaReport().catch(e => ({ ok: false, error: e.message }));
     if (schema.missingColumns?.length) problems.push(`Database columns missing after migrations: ${schema.missingColumns.join(', ')}.`);
@@ -240,13 +242,68 @@ app.get('/healthz/full', async (req, res) => {
   problems.push(...routing.problems);
   res.status(problems.length ? 500 : 200).json({
     ok: !problems.length, commit: routing.commit, checkedAt: new Date().toISOString(),
-    database: { reachable, lasting: persistentDb, schemaOk: !!schema?.ok, checkedColumns: schema?.checkedColumns ?? null },
+    database: { reachable, kind: dbKind(), lasting: persistentDb, persistentDisk: persistentDisk(), schemaOk: !!schema?.ok, checkedColumns: schema?.checkedColumns ?? null },
     routing: { ok: routing.ok, alpacaPaper: routing.paper.alpacaPaper, alpacaLive: routing.live.alpacaLive },
     problems,
   });
 });
 
 // Free hosts sleep idle apps, so a GitHub Actions cron calls this to run due jobs.
+// Maintenance on or off, for the migration workflow (the same CRON_SECRET as the tick). It works while
+// the database refuses reads: the switch is kept in memory first.
+app.post('/internal/maintenance', express.json(), async (req, res) => {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || !safeEqual(req.headers.authorization || '', `Bearer ${secret}`)) return res.status(401).json({ error: 'unauthorized' });
+  const M = await import('./src/maintenance.js');
+  res.json(await M.setMaintenance(req.body?.on === true, req.body?.reason || 'migration'));
+});
+app.get('/internal/maintenance', async (req, res) => res.json((await import('./src/maintenance.js')).maintenance()));
+// The migration workflow's other calls (deploy/vm, .github/workflows/oracle-migrate.yml), all behind
+// CRON_SECRET and none returning a secret value:
+//   POST /internal/standby {on}            this server stops (or resumes) running jobs; on Render it
+//                                          is also saved as STANDBY=1 in Render's settings when the
+//                                          Render API key is there, so it holds after a restart
+//   POST /internal/hosting {servers, active} register servers in this server's own database
+//   POST /internal/hosting/activate {id}   the switch (edge or DNS when set up), as Admin → Hosting
+//   GET  /internal/verify                  database, schema, row counts, credentials open, maintenance
+//   POST /internal/backup                  one backup now
+const internalAuth = (req, res, next) => { const secret = process.env.CRON_SECRET; if (!secret || !safeEqual(req.headers.authorization || '', `Bearer ${secret}`)) return res.status(401).json({ error: 'unauthorized' }); next(); };
+app.post('/internal/standby', express.json(), internalAuth, async (req, res) => {
+  const on = req.body?.on !== false;
+  if (on) process.env.STANDBY = '1'; else delete process.env.STANDBY;
+  let saved = 'memory only (until the next restart)';
+  const S = await import('./src/site.js');
+  if (process.env.RENDER && S.renderEnabled()) saved = await S.renderPut({ STANDBY: on ? '1' : null }).then(() => 'saved on Render too', e => 'not saved on Render: ' + e.message);
+  res.json({ host: thisHost(), standby: on, saved });
+});
+app.post('/internal/hosting', express.json(), internalAuth, async (req, res) => {
+  const H = await import('./src/hosting.js'), c = H.hostingConfig();
+  const list = (Array.isArray(req.body?.servers) ? req.body.servers : []).filter(x => /^[a-z0-9-]{2,30}$/.test(x?.id || '') && H.KINDS[x.kind] && /^https:\/\/[a-z0-9.-]+$/i.test(x.url || ''));
+  const servers = [...c.servers.filter(x => !list.some(y => y.id === x.id)), ...list.map(x => ({ id: x.id, name: String(x.name || H.KINDS[x.kind].name).slice(0, 40), kind: x.kind, url: x.url, hook: c.servers.find(y => y.id === x.id)?.hook || null, added: Date.now() }))];
+  await H.saveHosting({ ...c, servers, active: req.body?.active && servers.some(x => x.id === req.body.active) ? req.body.active : c.active });
+  res.json({ servers: servers.map(x => x.id), active: H.hostingConfig().active, thisHostActive: H.isActiveHost() });
+});
+app.post('/internal/hosting/activate', express.json(), internalAuth, async (req, res) => {
+  const H = await import('./src/hosting.js');
+  try { res.json(await H.switchTo(String(req.body?.id || ''))); } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
+});
+app.get('/internal/verify', internalAuth, async (req, res) => {
+  const A = await import('./src/server-admin.js'), M = await import('./src/maintenance.js'), H = await import('./src/hosting.js');
+  const out = { host: thisHost(), active: H.isActiveHost(), standby: H.standby(), maintenance: M.maintenance(), database: {}, problems: [] };
+  try {
+    const d = await A.databaseStatus(); out.database = { kind: d.kind, bytes: d.bytes, persistentDisk: d.persistentDisk, tables: d.sizes.tables.length, counts: Object.fromEntries(d.sizes.tables.map(t => [t.name, t.rows])), backups: { last: d.backups.last || null, offsite: d.backups.offsite } };
+    const sch = await schemaReport(); out.schema = { ok: sch.ok, checkedColumns: sch.checkedColumns, missingColumns: sch.missingColumns, failedMigrations: sch.failedMigrations };
+    if (!sch.ok) out.problems.push('schema: ' + (sch.missingColumns || []).join(', '));
+    out.credentials = await A.credentialCheck(); if (!out.credentials.ok) out.problems.push('stored credentials do not open with this ENCRYPTION_KEY');
+    out.users = Number((await one('SELECT COUNT(*) AS n FROM users')).n); if (!out.users) out.problems.push('no users in the database');
+  } catch (e) { out.problems.push('database: ' + e.message); }
+  out.keys = A.keyReport().missingRequired; if (out.keys.length) out.problems.push('missing settings: ' + out.keys.join(', '));
+  out.ok = !out.problems.length; res.status(out.ok ? 200 : 500).json(out);
+});
+app.post('/internal/backup', internalAuth, async (req, res) => {
+  const B = await import('./src/backup.js');
+  try { const b = await B.backupNow({ kind: 'manual' }); res.json({ ok: true, file: b.file, bytes: b.bytes, tables: b.tables, rows: b.rows }); } catch (e) { res.status(e.status || 500).json({ ok: false, error: e.message }); }
+});
 app.post('/internal/tick', async (req, res) => {
   const secret = process.env.CRON_SECRET;
   if (!secret || !safeEqual(req.headers.authorization || '', `Bearer ${secret}`)) return res.status(401).json({ error: 'unauthorized' });
@@ -256,7 +313,7 @@ app.post('/internal/tick', async (req, res) => {
   if (req.query.snapshot) await snapshotAll();
   // Whether accounts and sign-ins live in a lasting database (a local file on Render is wiped on
   // every restart and deploy, which signs everyone out).
-  res.json({ ...out, database: process.env.DATABASE_URL ? 'lasting (DATABASE_URL)' : 'local file: wiped on restart' });
+  res.json({ ...out, database: process.env.DATABASE_URL ? 'lasting (DATABASE_URL)' : persistentDisk() ? 'lasting (local file on a persistent disk)' : 'local file: wiped on restart' });
 });
 
 // What crawlers and AI tools may read (Admin → AI & privacy): AI crawlers blocked unless allowed.
@@ -605,6 +662,8 @@ api.use('/public', (req, res, next) => {
   next();
 });
 api.use((req, res, next) => { freshSite().then(() => next(), next); });
+// Maintenance (src/maintenance.js): every API answer says so, so the pages show the banner at once.
+api.use(async (req, res, next) => { const M = await import('./src/maintenance.js'); if (M.inMaintenance()) res.set('X-Maintenance', '1'); next(); });
 api.use(auth.csrfGuard);
 // Only API calls look up the session; static files and pages skip the database round trip.
 api.use(auth.sessionMiddleware);
@@ -713,6 +772,7 @@ api.use('/portfolio-risk', portfolioRiskRouter);
 api.use('/admin/users', adminUsersRouter);
 api.use('/retirement', retirementRouter);
 api.use('/admin/hosting', hostingRouter);
+api.use('/admin/server', (await import('./src/server-admin.js')).serverAdminRouter);
 api.use('/plain-research', plainResearchRouter);
 // Live market-data stream (Admin → Market data → Live stream).
 api.get('/admin/streams', auth.requireUser, auth.requireAdmin, async (req, res) => { const S = await import('./src/streams.js'); res.json(S.hub.status()); });
@@ -1466,6 +1526,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }, 1500).unref();
   startHostingSync();
   const timer = startScheduler(isActiveHost);
+  (await import('./src/backup.js')).startBackups();
   startKeepWarm();
   const stopKyc = startKycEvents();
   // Each deploy brings the private README's generated overview up to date (a few seconds after start).

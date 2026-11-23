@@ -221,8 +221,10 @@ async function admins(view) {
 
 async function keys(view) {
   const d = await H.api('/admin/site/env');
+  setTimeout(() => { const b = H.$('#reqCheck', view); if (b) H.act(b, async () => { const k = await H.adminUnlocked('/admin/server/keys'); H.$('#reqOut', view).innerHTML = k.warnings.length ? `<ul class="plain">${k.warnings.map(w => `<li><span class="pill ${w.level === 'error' ? 'neg' : 'warn'}">${w.level === 'error' ? 'Required' : 'Check'}</span> ${H.esc(w.text)}</li>`).join('')}</ul>` : '<span class="pill pos">All required keys are set</span>'; return ''; }); });
   const pw = H.me()?.hasPassword !== false;
   view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-keys')}
+  <div class="card" id="reqKeys"><div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">Required on this server</h2><button class="small ghost" id="reqCheck">Check (names only)</button></div><div id="reqOut" class="mu">Which keys this server needs and which are missing, by name only. Asks your password.</div></div>
   <div class="card"><h2>Render</h2>
     ${d.render.enabled ? '<p><span class="pill pos">Connected</span> Saving a key here also saves it on Render, so it stays after restarts.</p>'
       : '<p class="mu">Not connected. Add <code>RENDER_API_KEY</code> below (Render → Account settings → API keys)' + (d.render.onRender ? '' : ' and <code>RENDER_SERVICE_ID</code> (srv-…, from the service URL)') + '. Until then, keys saved here work at once and are kept encrypted in the database, but values set on Render win after a restart.</p>'}
