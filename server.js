@@ -160,20 +160,6 @@ await loadSite().catch(e => console.warn('site settings', e.message));
 await applySavedEnv();
 export const app = express();
 app.set('trust proxy', 1);
-// One address for the site (PUBLIC_URL, e.g. https://app.brightolio.com): a page asked for on any of
-// the server's other addresses (its sslip.io address, an old link) gets a 301 to the same path there,
-// so sign-in with Google (registered for that address only), cookies and links all use one address.
-// Not redirected: health checks and the workflows' /internal calls, this computer, and anything but
-// GET/HEAD (a form post or an app's API call must not be turned into a GET). CANONICAL_REDIRECT=0 turns it off.
-const canonicalHost = () => { try { return new URL(process.env.PUBLIC_URL).host.toLowerCase(); } catch { return null; } };
-app.use((req, res, next) => {
-  const want = canonicalHost(), host = String(req.get('host') || '').toLowerCase();
-  if (!want || process.env.CANONICAL_REDIRECT === '0' || !host || host === want) return next();
-  if (/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(host) || !/^https:/.test(process.env.PUBLIC_URL)) return next();
-  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
-  if (/^\/(healthz|readyz|internal|metrics)(\/|$)/.test(req.path)) return next();
-  res.redirect(301, process.env.PUBLIC_URL.replace(/\/+$/, '') + req.originalUrl);
-});
 // Behind the Cloudflare edge (edge/worker.js) every request comes from Cloudflare: the edge passes
 // the visitor's own address, signed with EDGE_SECRET, so rate limits and the security log see the
 // real visitor. Without the secret the header is ignored (nobody can fake their address).
@@ -183,10 +169,43 @@ app.use((req, res, next) => {
   const sec = edgeSecret(), ip = req.headers['x-edge-client-ip'];
   if (sec && req.headers['x-edge-secret'] && safeEqual(String(req.headers['x-edge-secret']), sec)) {
     if (ip && /^[0-9a-f:.]{3,45}$/i.test(String(ip))) Object.defineProperty(req, 'ip', { value: String(ip), configurable: true });
-    const fh = String(req.headers['x-forwarded-host'] || '').toLowerCase();
+    // x-edge-host first: Caddy on the Oracle server replaces X-Forwarded-Host with its own name.
+    const fh = String(req.headers['x-edge-host'] || req.headers['x-forwarded-host'] || '').toLowerCase();
     if (/^[a-z0-9.-]+(:\d+)?$/.test(fh)) req.headers.host = fh;
+    req.viaEdge = true;
   }
   next();
+});
+// Is this request's edge secret the right one? Render asks before it forwards the main address here
+// (src/render-redirect.js); the answer is only yes or no.
+const BOOT_ID = crypto.randomBytes(8).toString('hex');
+app.get('/internal/edge-check', (req, res) => res.json({ trusted: req.viaEdge === true, host: req.viaEdge ? req.headers.host : null, boot: BOOT_ID }));
+// The one-address redirect below is on only while PUBLIC_URL really reaches this app (its edge-check
+// answers with this process's id): if the main address pointed anywhere else, redirecting there could
+// send visitors round in a loop. Checked at start and every 5 minutes.
+let mainReachesUs = false;
+const checkMain = async () => {
+  try { const u = new URL(process.env.PUBLIC_URL); if (u.protocol !== 'https:') return (mainReachesUs = false); const r = await fetch(u.origin + '/internal/edge-check', { signal: AbortSignal.timeout(20000), headers: { 'user-agent': 'Brightolio-self-check' } }); mainReachesUs = r.ok && (await r.json()).boot === BOOT_ID; }
+  catch { mainReachesUs = false; }
+  return mainReachesUs;
+};
+export const mainAddressCheck = checkMain;
+export const setMainReaches = v => { mainReachesUs = v === true; }; // for the tests
+// One address for the site (PUBLIC_URL, e.g. https://app.brightolio.com): a page asked for on any of
+// the server's other addresses (its sslip.io address, an old link) gets a 301 to the same path there,
+// so sign-in with Google (registered for that address only), cookies and links all use one address.
+// Not redirected: health checks and the workflows' /internal calls, this computer, and anything but
+// GET/HEAD (a form post or an app's API call must not be turned into a GET). CANONICAL_REDIRECT=0 turns it off.
+const canonicalHost = () => { try { return new URL(process.env.PUBLIC_URL).host.toLowerCase(); } catch { return null; } };
+app.use((req, res, next) => {
+  const want = canonicalHost(), host = String(req.get('host') || '').toLowerCase();
+  if (!want || process.env.CANONICAL_REDIRECT === '0' || !host || host === want || !mainReachesUs) return next();
+  // A request from a forwarder whose secret did not match: never redirected (it would come back here).
+  if (req.headers['x-edge-secret'] && !req.viaEdge) return next();
+  if (/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(host) || !/^https:/.test(process.env.PUBLIC_URL)) return next();
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  if (/^\/(healthz|readyz|internal|metrics)(\/|$)/.test(req.path)) return next();
+  res.redirect(301, process.env.PUBLIC_URL.replace(/\/+$/, '') + req.originalUrl);
 });
 app.disable('x-powered-by');
 // Server-Sent Events must not be buffered by compression.
@@ -1557,6 +1576,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url) && process.env.REDIRECT_O
     } catch (e) { console.error('STARTUP CHECK could not run:', e.message); }
   }, 1500).unref();
   startHostingSync();
+  checkMain().then(ok => console.log('One address (' + (process.env.PUBLIC_URL || '-') + '):', ok ? 'reaches this server, other addresses redirect there' : 'does not reach this server yet, no redirect')); setInterval(checkMain, 5 * 60e3).unref();
   const timer = startScheduler(isActiveHost);
   (await import('./src/backup.js')).startBackups();
   startKeepWarm();

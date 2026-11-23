@@ -1,5 +1,6 @@
 name: Render redirect
-# Render is only a redirect to the Oracle server (render.yaml, src/render-redirect.js). Run by hand
+# Render runs no app (render.yaml, src/render-redirect.js): old links redirect to app.brightolio.com,
+# and app.brightolio.com (while its DNS still points at Render) is passed on to the Oracle server. Run by hand
 # after a change to either file: it starts one Render deploy with the RENDER_DEPLOY_HOOK_URL secret
 # (never printed) and checks that Render answers every path with a 301 to the same path on Oracle.
 # Nothing else in the repository calls Render.
@@ -22,16 +23,22 @@ jobs:
         run: |
           if [ -z "$HOOK" ]; then echo "::warning::No RENDER_DEPLOY_HOOK_URL secret: Render deploys by itself on push (Auto-Deploy) or not at all."; exit 0; fi
           curl -fsS -X POST "${HOOK}&ref=${SHA}" -o /dev/null && echo "Render deploy started for ${SHA:0:7}."
-      - name: Every path answers 301 to the same path on Oracle
+      - name: Old Render links go to app.brightolio.com; app.brightolio.com reaches the Oracle app
         run: |
-          want="https://$(echo "${ORACLE_HOST:-138.2.233.183}" | tr . -).sslip.io"
+          want="https://app.brightolio.com"
+          ok=""
           for _ in $(seq 1 40); do
             got=$(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' --max-time 60 "$RENDER_URL/app?from=render" || true)
             echo "Render: $got"
-            if [ "$got" = "301 $want/app?from=render" ]; then
-              for p in / /terms /api/auth/me; do echo "  $p: $(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' --max-time 60 "$RENDER_URL$p")"; done
-              echo "OK: Render redirects to $want."; exit 0
-            fi
+            if [ "$got" = "301 $want/app?from=render" ]; then ok=1; break; fi
             sleep 30
           done
-          echo "::error::Render does not redirect yet (last answer: $got)."; exit 1
+          [ -n "$ok" ] || { echo "::error::Render does not redirect yet (last answer: $got)."; exit 1; }
+          for p in / /terms /api/auth/me; do echo "  $p: $(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' --max-time 60 "$RENDER_URL$p")"; done
+          # Render asks the Oracle server whether it may pass app.brightolio.com on (every 5 minutes).
+          for _ in $(seq 1 14); do
+            e=$(curl -sS --max-time 60 "$want/internal/edge-check" || true); echo "app.brightolio.com/internal/edge-check: $e"
+            if echo "$e" | grep -q '"trusted":true'; then echo "OK: app.brightolio.com is answered by the Oracle app."; exit 0; fi
+            sleep 30
+          done
+          echo "::warning::app.brightolio.com is not passed on to the Oracle app (Render's ENCRYPTION_KEY or EDGE_SECRET differs from the server's). Old links still redirect; point the domain's DNS at the server to finish."

@@ -173,12 +173,16 @@ test('Render is a redirect only: every path 301 to the same path on Oracle, /hea
 
 test('one address: pages on another address of ours go to PUBLIC_URL (health, internal calls and posts do not)', async () => {
   const keep = process.env.PUBLIC_URL; process.env.PUBLIC_URL = 'https://app.brightolio.com';
+  const S = await import('../server.js');
   try {
     const http = await import('node:http'), u = new URL(base);
     const get = (p, host, method = 'GET') => new Promise((ok, no) => {
       const r = http.request({ host: u.hostname, port: u.port, path: p, method, headers: { host, 'content-type': 'application/json' } }, res => { res.resume(); ok({ status: res.statusCode, headers: { get: k => res.headers[k] } }); });
       r.on('error', no); if (method === 'POST') r.write('{}'); r.end();
     });
+    S.setMainReaches(false);
+    assert.equal((await get('/app?x=1', '138-2-233-183.sslip.io')).status, 200, 'no redirect while the main address does not reach this app (no loop)');
+    S.setMainReaches(true);
     const r = await get('/app?x=1', '138-2-233-183.sslip.io');
     assert.equal(r.status, 301); assert.equal(r.headers.get('location'), 'https://app.brightolio.com/app?x=1');
     assert.equal((await get('/auth/google', '138-2-233-183.sslip.io')).headers.get('location'), 'https://app.brightolio.com/auth/google');
@@ -186,5 +190,31 @@ test('one address: pages on another address of ours go to PUBLIC_URL (health, in
     assert.notEqual((await get('/internal/maintenance', '138-2-233-183.sslip.io')).status, 301);
     assert.notEqual((await get('/api/auth/login', '138-2-233-183.sslip.io', 'POST')).status, 301);
     assert.notEqual((await get('/app', 'app.brightolio.com')).status, 301);
-  } finally { if (keep === undefined) delete process.env.PUBLIC_URL; else process.env.PUBLIC_URL = keep; }
+  } finally { S.setMainReaches(false); if (keep === undefined) delete process.env.PUBLIC_URL; else process.env.PUBLIC_URL = keep; }
+});
+
+test('Render passes the main address on to the Oracle app (edge secret, original host); without trust it redirects', async () => {
+  const R = await import('../src/render-redirect.js'), { edgeSecret } = await import('../src/edgesetup.js');
+  const keepKey = process.env.ENCRYPTION_KEY; process.env.ENCRYPTION_KEY = 'k'.repeat(48); // as in production (32+ characters)
+  assert.equal(R.edgeSecret(), edgeSecret(), 'the same secret as the Oracle app expects');
+  assert.ok(R.edgeSecret().length > 10);
+  const http = await import('node:http');
+  process.env.REDIRECT_FALLBACK = base; process.env.REDIRECT_TO = 'https://app.brightolio.com';
+  const keep = process.env.PUBLIC_URL; process.env.PUBLIC_URL = 'https://app.brightolio.com';
+  const front = http.createServer(R.redirectHandler); await new Promise(r => front.listen(0, r));
+  const ask = (p, host = 'app.brightolio.com') => new Promise((ok, no) => { const q = http.request({ host: '127.0.0.1', port: front.address().port, path: p, headers: { host } }, res => { let b = ''; res.on('data', d => (b += d)); res.on('end', () => ok({ status: res.statusCode, location: res.headers.location, body: b })); }); q.on('error', no); q.end(); });
+  try {
+    R.setTrusted(false);
+    assert.equal((await ask('/app')).location, base + '/app', 'not trusted yet: a redirect to the server address');
+    assert.equal(await R.checkTrust(), true);
+    const e = JSON.parse((await ask('/internal/edge-check')).body);
+    assert.equal(e.trusted, true); assert.equal(e.host, 'app.brightolio.com'); assert.match(e.boot, /^[0-9a-f]{16}$/);
+    const me = await ask('/api/auth/me');
+    assert.equal(me.status, 200); assert.equal(JSON.parse(me.body).user, null);
+    assert.equal((await ask('/app', 'quantpocket.onrender.com')).location, 'https://app.brightolio.com/app');
+  } finally {
+    front.close(); R.setTrusted(false); delete process.env.REDIRECT_FALLBACK; delete process.env.REDIRECT_TO;
+    if (keepKey === undefined) delete process.env.ENCRYPTION_KEY; else process.env.ENCRYPTION_KEY = keepKey;
+    if (keep === undefined) delete process.env.PUBLIC_URL; else process.env.PUBLIC_URL = keep;
+  }
 });
