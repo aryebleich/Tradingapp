@@ -23,6 +23,15 @@ OR-13 (Render is no longer a standby app but a redirect).
 | OR-25 | **Before deleting anything**: the final copy of `pull.db`, encrypted like the backups, checked by decrypting it, kept 90 days on the server (and off-site when set). The Turso database is deleted only by matching its host name to the old `DATABASE_URL`, tokens revoked first; without `TURSO_API_TOKEN`, one issue with the three dashboard steps. | The brief; never delete the wrong database. |
 | OR-26 | **Turso-only code is marked `merge-only`** and removed after the merge by `scripts/old-db-cleanup.sh` in one commit (tested: the suite passes after it). Workflow files keep their merge steps (inert), because a workflow's own token may not edit workflow files. Turso wording everywhere else (examples, labels, private README, privacy page, setup checklist) was replaced now; the libSQL client stays for the local file and for a shared server (deploy/k8s). | The merge tooling is needed until December; everything else had no reason to wait. |
 
+## One address: app.brightolio.com (2026-11-23)
+
+| # | Decision | Reason |
+|---|---|---|
+| OR-27 | `PUBLIC_URL=https://app.brightolio.com` on the server, and a 301 from its other addresses (GET/HEAD only; not /healthz, /internal, localhost or posts). | Google sign-in is registered for that address only; one address also keeps cookies and links together. |
+| OR-28 | While app.brightolio.com's DNS points at Render, Render **forwards** it to the Oracle app with the edge secret and `x-edge-host` (Caddy replaces X-Forwarded-Host), after the server confirms the secret. Only requests plainly for `*.onrender.com` are redirected to app.brightolio.com. | The VM has no Cloudflare token, so the DNS could not be changed from here; Cloudflare does not pass the custom host name the way the first version assumed, which caused a short redirect loop (fixed in a910bd3). |
+| OR-29 | The server's redirect is on only while `PUBLIC_URL/internal/edge-check` answers with this process's boot id (checked every 5 minutes). | A redirect to an address that does not reach the server could loop; this makes that impossible. |
+| OR-30 | Deploys take a lock (flock), remove renamed leftover containers, and retry then roll back a failed start; `repair` step. | The timer's deploy and a workflow's deploy collided and left the app down for a few minutes. |
+
 ## Move to Oracle Cloud Always Free (2026-11-23)
 
 | # | Decision | Reason |

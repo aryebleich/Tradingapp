@@ -4,6 +4,18 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-23: Google sign-in works again: everything on app.brightolio.com
+
+Google refused sign-ins because the server called itself 138-2-233-183.sslip.io. Now the server's
+address is https://app.brightolio.com, its other address redirects there, and Render (where
+app.brightolio.com's DNS still points) passes that address on to the Oracle app with the edge secret.
+Also: deploys can no longer collide (lock, leftover containers removed, retry and roll back); a
+redirect loop on app.brightolio.com from the first version (16:56–17:09 UTC) is fixed. Checked:
+sign-in check (Google accepts https://app.brightolio.com/auth/google/callback from every address),
+verify with a paper trade. `npm test`: 492 pass, 0 fail. Lasting fix: point the Cloudflare record
+at 138.2.233.183 (MIGRATION_ORACLE.md).
+
+
 ## 2026-11-23: Finishing the move to Oracle Cloud (Phase 1 now, merge after Turso's reset)
 
 **What runs where:** the site and its database on the Oracle VM (https://138-2-233-183.sslip.io),

@@ -13,15 +13,31 @@ No money was spent: no Turso overages, no plan upgrade, nothing on Oracle beyond
 
 | | Now |
 |---|---|
-| The site | Oracle VM `138.2.233.183` (Ubuntu 24.04, ARM, Always Free), Docker, Caddy HTTPS: **https://138-2-233-183.sslip.io** (also `app.brightolio.com` when its DNS points at the VM) |
+| The site | **https://app.brightolio.com** (the Oracle VM `138.2.233.183`, Ubuntu 24.04, ARM, Always Free, Docker, Caddy HTTPS; its own address https://138-2-233-183.sslip.io redirects there) |
 | Database | SQLite file `/opt/brightfolio/data/quantpocket.db` (WAL) on the VM's boot volume: `DB_FILE=/app/data/quantpocket.db`, `PERSISTENT_DISK=1`. Started fresh on 2026-11-23 with every id counter at 10,000,000 |
 | Jobs (bots, scheduled trades, alerts, Playbooks, pairs) | the VM's own scheduler; it is the only active server (Admin → Hosting). GitHub's `scheduler.yml` also ticks it every 10 minutes as a backup clock (each job claims its slot first, so nothing runs twice) |
 | Backups | every hour, `VACUUM INTO` + `integrity_check`: 48 hourly and 30 daily in `/opt/brightfolio/data/backups`. A daily encrypted copy goes to Oracle Object Storage once `OCI_BACKUP_PAR_URL` is set (it is not set yet: Admin → Database says so) |
 | Keys | `/opt/brightfolio/.env` (mode 600), written from the `ORACLE_ENV` secret by `oracle.yml`; changed with `oracle-migrate.yml` step `set-env` |
 | Deploys | the VM's `brightfolio-update` timer: every 2 minutes it builds the newest `main` and switches only when `/healthz` answers. `deploy.yml` then checks paper/live routing and the database on it; `post-deploy.yml` smoke-tests and, on two failures in a row, goes back to the previous image |
-| Render (`quantpocket.onrender.com`) | **a redirect only**: every path answers 301 to the same path on Oracle (`src/render-redirect.js`, `render.yaml`). No database, no keys, no jobs |
+| Render (`quantpocket.onrender.com`) | no app, no database, no jobs (`src/render-redirect.js`): old Render links get a 301 to app.brightolio.com, and app.brightolio.com itself is passed on to the Oracle app until its DNS points at the server |
 | Turso | blocked until 2026-12-01; holds the data from before November 22 until the scheduled merge has copied it, then it is deleted |
 | `APP_URL` variable | still the old value; every workflow uses the Oracle address instead (`APP_URL` only when it is set and is not the Render address, otherwise `https://<ORACLE_HOST with dashes>.sslip.io`). The workflow token cannot change repository variables, so nothing depends on it |
+
+## The main address: app.brightolio.com (2026-11-23, 17:13 UTC)
+
+Google sign-in is registered for `https://app.brightolio.com` only, so the server now uses that
+address (`PUBLIC_URL`), and every page asked for on its other address (sslip.io) gets a 301 there.
+`app.brightolio.com`'s DNS (Cloudflare, proxied) still points at Render, so **Render passes it on**
+to the Oracle app: same path, the edge secret, and the visitor's address (`x-edge-host`); the Oracle
+app answers as app.brightolio.com. Render confirms the secret first (`/internal/edge-check`); the
+server turns its redirect on only while app.brightolio.com reaches it (its boot id), so there is no
+loop either way. `scheduler.yml` pings app.brightolio.com/healthz every 10 minutes so Render's free
+plan never sleeps. Checked: sign-in check run 45225296898 (Google and GitHub return to
+app.brightolio.com, Google accepts it), verify run 45225290317 (paper trade OK).
+
+**Lasting fix (owner, Cloudflare):** set `app.brightolio.com` to an A record `138.2.233.183`,
+proxied (or add `CLOUDFLARE_API_TOKEN` with Zone → DNS → Edit to `ORACLE_ENV` and run
+oracle-migrate `point-domain`). Then Render is not in the path at all; nothing else changes.
 
 ## Workflow runs
 
