@@ -49,7 +49,7 @@ jobs:
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
           printf '%s\n' "$KEY" | tr -d '\r' > ~/.ssh/oracle && chmod 600 ~/.ssh/oracle
           ssh-keygen -y -f ~/.ssh/oracle >/dev/null || { echo "::error::ORACLE_SSH_KEY is not a valid private key. Paste the whole file, including the BEGIN and END lines."; exit 1; }
-          for i in 1 2 3; do ssh-keyscan -T 15 -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null && break; sleep 5; done
+          for _ in 1 2 3; do ssh-keyscan -T 15 -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null && break; sleep 5; done
           ssh -i ~/.ssh/oracle -o BatchMode=yes -o ConnectTimeout=20 ubuntu@"$HOST" 'echo "Connected to $(hostname) (Ubuntu $(lsb_release -rs 2>/dev/null))"' \
             || { echo "::error::Could not log in as ubuntu@$HOST. Check the IP, that port 22 is open in the subnet's security list, and that the key belongs to this server."; exit 1; }
       - name: Are ports 80 and 443 open?
@@ -74,7 +74,7 @@ jobs:
           # Watch on the server while connecting from here: do the packets arrive at all?
           ssh -i ~/.ssh/oracle ubuntu@"$HOST" 'sudo timeout 25 tcpdump -ni any -c 20 "src host '"$(curl -s https://api.ipify.org)"' and (tcp port 443 or tcp port 80)" > /tmp/td.txt 2>&1 &' 
           sleep 4
-          for i in 1 2 3; do timeout 5 bash -c "</dev/tcp/$HOST/443" 2>/dev/null && echo "connect 443: open" || echo "connect 443: no answer"; timeout 5 bash -c "</dev/tcp/$HOST/80" 2>/dev/null && echo "connect 80: open" || echo "connect 80: no answer"; done
+          for _ in 1 2 3; do timeout 5 bash -c "</dev/tcp/$HOST/443" 2>/dev/null && echo "connect 443: open" || echo "connect 443: no answer"; timeout 5 bash -c "</dev/tcp/$HOST/80" 2>/dev/null && echo "connect 80: open" || echo "connect 80: no answer"; done
           sleep 22
           echo "--- packets seen on the server (none = blocked before the server)"
           ssh -i ~/.ssh/oracle ubuntu@"$HOST" 'cat /tmp/td.txt; rm -f /tmp/td.txt'
@@ -97,7 +97,10 @@ jobs:
           echo "Public address: $(grep '^PUBLIC_URL=' /tmp/app.env | cut -d= -f2)"
           for k in DATABASE_URL DATABASE_AUTH_TOKEN ENCRYPTION_KEY; do grep -q "^$k=." /tmp/app.env && echo "$k: present" || echo "::warning::$k is missing from ORACLE_ENV"; done
           scp -q -i ~/.ssh/oracle /tmp/app.env ubuntu@"$HOST":/tmp/app.env
-          ssh -i ~/.ssh/oracle ubuntu@"$HOST" 'sudo install -m 600 -o brightfolio -g brightfolio /tmp/app.env /opt/brightfolio/.env && rm -f /tmp/app.env && echo "Settings saved (/opt/brightfolio/.env, readable by the app only)"'
+          # After the database move (PERSISTENT_DISK=1 on the server), the server keeps its own database
+          # file: the Turso lines stay commented out (#TURSO#) and DB_FILE, PERSISTENT_DISK, MAINTENANCE
+          # and STANDBY are carried over from the server's current settings.
+          ssh -i ~/.ssh/oracle ubuntu@"$HOST" 'E=/opt/brightfolio/.env; if sudo grep -q "^PERSISTENT_DISK=1" "$E" 2>/dev/null; then sed -i -E "s/^(DATABASE_URL|DATABASE_AUTH_TOKEN)=/#TURSO# \1=/; /^(DB_FILE|PERSISTENT_DISK|MAINTENANCE|STANDBY)=/d" /tmp/app.env; sudo grep -E "^(DB_FILE|PERSISTENT_DISK|MAINTENANCE|STANDBY)=" "$E" >> /tmp/app.env; echo "Kept the database move: own database file"; fi; sudo install -m 600 -o brightfolio -g brightfolio /tmp/app.env "$E" && rm -f /tmp/app.env && echo "Settings saved (/opt/brightfolio/.env, readable by the app only)"'
           rm -f /tmp/app.env
       - name: Start the app
         if: inputs.step != 'check'
@@ -109,7 +112,7 @@ jobs:
           ssh -i ~/.ssh/oracle -o ConnectTimeout=20 ubuntu@"$HOST" 'echo "--- containers"; sudo docker ps --format "{{.Names}} {{.Status}}" 2>/dev/null; echo "--- caddy"; systemctl is-active caddy; echo "--- app log (last lines)"; cd /opt/brightfolio 2>/dev/null && sudo docker compose logs --tail 15 app 2>/dev/null | grep -viE "key|secret|token|password" ; echo "--- health on the server"; curl -fsS http://127.0.0.1:3000/healthz || echo "app not answering"' || true
           echo "--- from the internet"
           if ! timeout 8 bash -c "</dev/tcp/$HOST/443" 2>/dev/null; then echo "::error::Port 443 is still blocked before it reaches the server: Oracle's network firewall. Oracle console → Networking → Virtual cloud networks → your network → Subnets → the subnet → Security → the security list → Add Ingress Rules: Source CIDR 0.0.0.0/0, IP Protocol TCP, Destination Port Range 80,443. (If the instance uses a Network Security Group, add the same rule there.)"; exit 1; fi
-          for i in 1 2 3 4 5 6; do curl -fsS --max-time 20 "https://$DOMAIN/healthz" && { echo; echo "OK: https://$DOMAIN is up"; break; } || sleep 20; done
+          for _ in 1 2 3 4 5 6; do if curl -fsS --max-time 20 "https://$DOMAIN/healthz"; then echo; echo "OK: https://$DOMAIN is up"; break; fi; sleep 20; done
           curl -sS --max-time 20 "https://$DOMAIN/healthz/routing" || true
       - name: Clean up the key
         if: always()
