@@ -56,13 +56,17 @@ function forward(req, res, p) {
 }
 export function redirectHandler(req, res) {
   const url = req.url || '/';
+  const host = String(req.headers?.host || '').toLowerCase(), fwd = String(req.headers?.['x-forwarded-host'] || '').toLowerCase();
   if (url === '/healthz' || url.startsWith('/healthz?')) {
     res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
-    return res.end(JSON.stringify({ ok: true, redirect: TARGET(), forwarding: trusted }));
+    return res.end(JSON.stringify({ ok: true, redirect: TARGET(), forwarding: trusted, secret: !!edgeSecret(), host, forwardedHost: fwd || null }));
   }
   // Only the path and query are kept (no host header or other input goes into the address).
   const p = url.startsWith('/') && !url.startsWith('//') ? url : '/';
-  const host = String(req.headers?.host || '').toLowerCase(), main = host && host === new URL(TARGET()).host;
+  // Only a request plainly for Render's own address goes to TARGET; anything else may be the main
+  // address itself (Cloudflare and Render do not always pass its name on), so it never goes to TARGET.
+  const renderOwn = /\.onrender\.com(:\d+)?$/.test(host) && !(fwd && !/\.onrender\.com(:\d+)?$/.test(fwd));
+  const main = !renderOwn;
   if (main && trusted) return forward(req, res, p);
   const to = main ? FALLBACK() : TARGET();
   res.writeHead(301, { location: to + p, 'cache-control': main ? 'no-store' : 'public, max-age=3600', 'content-type': 'text/plain' });

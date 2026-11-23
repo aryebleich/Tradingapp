@@ -166,6 +166,7 @@ test('Render is a redirect only: every path 301 to the same path on Oracle, /hea
   assert.equal(a.status, 301); assert.equal(a.headers.location, 'https://app.brightolio.com/app?x=1');
   assert.equal(call('//evil.example/x').headers.location, 'https://app.brightolio.com/', 'no open redirect');
   assert.equal(call('/app', 'app.brightolio.com').headers.location, 'https://138-2-233-183.sslip.io/app', 'never a loop while the domain still points at Render');
+  assert.equal(call('/app', 'something-else.example').headers.location, 'https://138-2-233-183.sslip.io/app', 'an unknown host is never sent to the main address');
   assert.equal(call('/healthz').status, 200);
   const y = fs.readFileSync(new URL('../render.yaml', import.meta.url), 'utf8');
   assert.match(y, /startCommand: node src\/render-redirect\.js/); assert.doesNotMatch(y, /DATABASE_URL|ENCRYPTION_KEY|CRON_SECRET/);
