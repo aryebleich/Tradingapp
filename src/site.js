@@ -75,7 +75,7 @@ export const ENV_GROUPS = [
   ['Market data (free keys)', ['FINNHUB_API_KEY', 'TWELVEDATA_API_KEY', 'TIINGO_API_KEY', 'ALPHAVANTAGE_API_KEY', 'FMP_API_KEY', 'POLYGON_API_KEY', 'FRED_API_KEY']],
   ['QuickBooks (bookkeeping and taxes)', ['QBO_CLIENT_ID', 'QBO_CLIENT_SECRET', 'QBO_ENV']],
   ['All my money', ['BTC_API_URL', 'ETH_RPC_URL']],
-  ['Hosting and the edge', ['HOST_ID', 'EDGE_SECRET', 'CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_KV_ID', 'CLOUDFLARE_ZONE_ID', 'SITE_DOMAIN']],
+  ['Hosting and the edge', ['HOST_ID', 'STANDBY', 'DB_FILE', 'PERSISTENT_DISK', 'MAINTENANCE', 'OCI_BACKUP_PAR_URL', 'BACKUP_KEY', 'EDGE_SECRET', 'CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_KV_ID', 'CLOUDFLARE_ZONE_ID', 'SITE_DOMAIN']],
   ['Android app', ['ANDROID_CERT_SHA256', 'ANDROID_APK_URL', 'ANDROID_PLAY', 'ANDROID_PLAY_URL']],
   ['Extras', ['MARGIN_FEED_URL', 'METRICS_TOKEN', 'SEC_CONTACT']],
   ['Render', ['RENDER_API_KEY', 'RENDER_SERVICE_ID']],
@@ -87,7 +87,7 @@ export const validEnvName = k => /^[A-Z][A-Z0-9_]{1,63}$/.test(k);
 const HOST_ONLY = new Set(['NODE_ENV', 'PORT', 'HOSTNAME', 'RENDER', 'RENDER_SERVICE_ID', 'RENDER_EXTERNAL_URL', 'PATH', 'HOME',
   'NODE_TLS_REJECT_UNAUTHORIZED', 'NODE_EXTRA_CA_CERTS', 'NODE_OPTIONS', 'NODE_PATH', 'SSL_CERT_FILE', 'SSL_CERT_DIR', 'NODE_VERSION', 'ALLOW_UNPATCHED_NODE', 'LD_PRELOAD']);
 // Need a restart to take effect (read once at start-up), or would break stored data if changed live.
-const RESTART = new Set(['ENCRYPTION_KEY', 'DATABASE_URL', 'DATABASE_AUTH_TOKEN', 'DB_FILE']);
+const RESTART = new Set(['ENCRYPTION_KEY', 'DATABASE_URL', 'DATABASE_AUTH_TOKEN', 'DB_FILE', 'PERSISTENT_DISK']);
 export const isSecretName = k => /SECRET|TOKEN|PASSWORD|_KEY$|_KEY_|KEY_ID|_SID$/.test(k) && !/_URL$/.test(k);
 export const mask = v => { const s = String(v ?? ''); return !s ? '' : s.length <= 8 ? '•'.repeat(s.length) : s.slice(0, 3) + '•••' + s.slice(-4); };
 

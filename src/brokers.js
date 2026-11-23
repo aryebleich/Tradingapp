@@ -205,6 +205,8 @@ export async function placeOrder(userId, account, order, source = 'manual') {
   const symbol = String(order.symbol || '').trim().toUpperCase();
   const side = order.side === 'sell' ? 'sell' : 'buy';
   let q = +order.qty, n = +order.notional;
+  // Maintenance (src/maintenance.js): no order of any kind is sent, by hand or automatic.
+  if ((await import('./maintenance.js')).inMaintenance()) throw (await import('./maintenance.js')).maintenanceError();
   if (!validSymbol(symbol)) throw new Error('Invalid symbol');
   if (!(Number.isFinite(q) && q > 0) && !(Number.isFinite(n) && n > 0)) throw new Error('Give a quantity or dollar amount');
   if (account === 'smart') return smartOrder(userId, { ...order, symbol, side }, source);

@@ -248,7 +248,12 @@ export async function claimOnce(key) {
 }
 let lastAlerts = 0, lastStops = 0, lastAuto = 0;
 
+let pausedLogged = false;
 export async function runDueJobs(t = now()) {
+  // Maintenance: nothing automatic runs (no trading on a database that is being moved).
+  const { inMaintenance } = await import('./maintenance.js');
+  if (inMaintenance()) { if (!pausedLogged) { pausedLogged = true; console.warn('Maintenance mode: the scheduler, bots, Playbooks, equalize and pairs are paused'); } return { paused: 'maintenance' }; }
+  pausedLogged = false;
   const n = nyTime(t), trading = isTradingDay(n.day), out = { orders: await runScheduledOrders(t), bots: await runBots(t) };
   if (marketOpen(t) && t - lastAlerts > 5 * 60e3) { lastAlerts = t; await runAlerts(); }
   // Library strategies: automatic rebalances (checked every 5 minutes in the session on trading days;

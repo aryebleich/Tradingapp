@@ -26,6 +26,7 @@ async function reservedSells(userId, symbol) {
   return (await one("SELECT COALESCE(SUM(qty), 0) q FROM paper_orders WHERE user_id = ? AND symbol = ? AND side = 'sell' AND status = 'open'", userId, symbol)).q;
 }
 export async function place(userId, b) {
+  { const M = await import('./maintenance.js'); if (M.inMaintenance()) throw M.maintenanceError(); }
   const symbol = String(b.symbol || '').trim().toUpperCase(), side = b.side === 'sell' ? 'sell' : 'buy', type = b.type;
   if (!validSymbol(symbol)) throw bad('Check the symbol');
   if (!TYPES.includes(type)) throw bad('Pick limit, stop or stop limit');

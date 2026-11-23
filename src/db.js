@@ -7,9 +7,14 @@ import path from 'node:path';
 const url = process.env.DATABASE_URL || 'file:' + (process.env.DB_FILE || path.resolve('data/quantpocket.db'));
 if (url.startsWith('file:')) fs.mkdirSync(path.dirname(url.slice(5)), { recursive: true });
 // A hosted database keeps accounts and trading data across restarts; a local file on a host
-// without a lasting disk (Render's free plan) is wiped on every restart and deploy.
-export const persistentDb = !url.startsWith('file:');
-export const needsHostedDb = () => !!process.env.RENDER || process.env.REQUIRE_HOSTED_DB === '1';
+// without a lasting disk (Render's free plan) is wiped on every restart and deploy. A local file on a
+// server with a lasting disk (the Oracle VM: a Docker volume on the boot volume) is just as lasting:
+// PERSISTENT_DISK=1 says so, and it is then backed up every hour (src/backup.js).
+export const dbFile = url.startsWith('file:') ? url.slice(5) : null;
+export const persistentDisk = () => process.env.PERSISTENT_DISK === '1';
+export const persistentDb = !url.startsWith('file:') || persistentDisk();
+export const dbKind = () => (dbFile ? 'file' : 'turso');
+export const needsHostedDb = () => (!!process.env.RENDER || process.env.REQUIRE_HOSTED_DB === '1') && !persistentDisk();
 if (!persistentDb && needsHostedDb()) console.error('DATABASE ERROR: DATABASE_URL is not set, so this server uses a local SQLite file that is lost on restart. Set DATABASE_URL and DATABASE_AUTH_TOKEN (Render → Environment) before relying on it for accounts or trading data.');
 if (persistentDb && !process.env.DATABASE_AUTH_TOKEN && /^libsql:|^https:/.test(url)) console.error('DATABASE WARNING: DATABASE_URL is set but DATABASE_AUTH_TOKEN is empty; a Turso database refuses connections without it.');
 export const db = createClient({ url, authToken: process.env.DATABASE_AUTH_TOKEN });
@@ -1113,7 +1118,10 @@ const MIGRATIONS = [
 export const migrationProblems = [];
 const alreadyApplied = e => /duplicate column name|already exists/i.test(String(e?.message || e));
 export const ready = (async () => {
-  if (url.startsWith('file:')) { await db.execute('PRAGMA journal_mode = WAL'); await db.execute('PRAGMA foreign_keys = ON'); }
+  // A local file: write-ahead log (readers never wait for the writer), wait up to 5 s for a lock
+  // instead of failing, and fsync at checkpoints only (safe with WAL; a power cut loses at most the
+  // last moments, never the file).
+  if (url.startsWith('file:')) { for (const p of ['journal_mode = WAL', 'busy_timeout = 5000', 'synchronous = NORMAL', 'foreign_keys = ON']) await db.execute('PRAGMA ' + p); }
   await db.executeMultiple(SCHEMA);
   for (const m of MIGRATIONS) await db.execute(m).catch(e => {
     if (alreadyApplied(e)) return;
@@ -1184,7 +1192,14 @@ export function dbStats(limit = 30) {
     top: list.sort((a, b) => b.read - a.read).slice(0, limit).map(x => ({ sql: x.sql, calls: x.calls, callsPerMin: +(x.calls / minutes).toFixed(2), rows: x.rows, readEstimate: x.read, readsPerMin: +(x.read / minutes).toFixed(1), avgMs: +(x.ms / x.calls).toFixed(2), fullScans: x.scans })) };
 }
 export const resetDbStats = () => { STATS.clear(); statsSince = Date.now(); };
-const timed = async (sql, args, run) => {
+// The last time a statement worked and the last time one failed: /healthz reports these instead of
+// asking the database itself (a health check that reads would spend reads, and restarting the
+// server does not help when the database is the problem).
+const lastDb = { okAt: null, errAt: null, error: null };
+export const dbHealth = () => ({ ...lastDb, ok: lastDb.okAt != null && (lastDb.errAt == null || lastDb.okAt > lastDb.errAt) });
+const seen = p => p.then(r => { lastDb.okAt = Date.now(); return r; }, e => { lastDb.errAt = Date.now(); lastDb.error = String(e?.message || e).slice(0, 160); throw e; });
+const timed = async (sql, args, run0) => {
+  const run = () => seen(run0());
   if (!statsOn()) return run();
   const t0 = performance.now(), r = await run();
   await record(sql, args, r.rows?.length ?? 0, performance.now() - t0).catch(() => {});

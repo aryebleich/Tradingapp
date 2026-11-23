@@ -86,6 +86,15 @@ function fetchJson(path) {
   if (SWR.size > 300) SWR.delete(SWR.keys().next().value);
   return Promise.resolve(e.p);
 }
+// Maintenance (the server says so on every answer): one banner at the top while trading is paused.
+function maintenanceBanner(on) {
+  let b = document.getElementById('maintBanner');
+  if (!on) { b?.remove(); return; }
+  if (b) return;
+  b = document.createElement('div'); b.id = 'maintBanner'; b.className = 'maint-banner'; b.setAttribute('role', 'status');
+  b.textContent = 'Brightolio is under maintenance: trading is paused for safety. Your data is safe; please try again shortly.';
+  document.body.prepend(b);
+}
 async function apiCall(path, opts = {}, retried) {
   const r = await fetch('/api' + path, {
     method: opts.method || (opts.body ? 'POST' : 'GET'),
@@ -93,6 +102,7 @@ async function apiCall(path, opts = {}, retried) {
     body: opts.body ? JSON.stringify(opts.body) : undefined,
   });
   const d = await r.json().catch(() => ({}));
+  maintenanceBanner(r.headers.get('x-maintenance') === '1');
   // Session expired (or signed out in another tab): go back to sign-in instead of showing errors.
   if (r.status === 401 && ME && !path.startsWith('/auth/')) { keepClear(); ME = null; location.hash = '#/login'; }
   if (r.status === 402 && d.upgrade) showUpgrade(d.feature);
@@ -103,6 +113,19 @@ async function apiCall(path, opts = {}, retried) {
   if (d.stepUp && !retried && await stepUpBox()) return apiCall(path, opts, true);
   if (!r.ok) throw Object.assign(new Error(d.error || (r.status >= 500 ? 'The server is busy, please try again.' : r.statusText)), { status: r.status, addonOff: d.addonOff });
   return d;
+}
+// Server and database settings (Admin → Database, Hosting, Keys): the server answers 403 until the
+// admin confirms the password again (and the 2FA code when it is on); then it stays open 15 minutes.
+async function adminUnlocked(path, opts = {}) {
+  try { return await api(path, opts); } catch (e) {
+    if (e.status !== 403 || !/Confirm your password/.test(e.message)) throw e;
+    const c = await secureConfirm({ title: 'Confirm it is you', html: '<p class="mu">Server and database settings need your password again. They stay open for 15 minutes on this device.</p>', okText: 'Open' });
+    if (!c) throw new Error('Not confirmed.');
+    const body = { password: c.password, confirm: c.confirm };
+    try { await api('/admin/server/unlock', { body }); }
+    catch (x) { if (!/authenticator/.test(x.message)) throw x; const code = prompt('The 6-digit code from your authenticator app'); await api('/admin/server/unlock', { body: { ...body, code } }); }
+    return api(path, opts);
+  }
 }
 const form = el => Object.fromEntries($$('[name]', el).map(i => [i.name, i.type === 'checkbox' ? i.checked : i.value]));
 
@@ -574,7 +597,7 @@ const ICONS = {
   'admin-setup': '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
   admin: '<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"/>',
   wealth: '<path d="M3 20h18M5 20V10M10 20V6M15 20v-8M20 20V4"/>', 'alpaca-tools': '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
-  'admin-alpaca': '<path d="M4 19V5l8 7 8-7v14"/>', 'admin-upgrades': '<path d="M12 19V5M5 12l7-7 7 7"/><path d="M5 21h14"/>', 'admin-sponsored': '<path d="M4 11v2a1 1 0 0 0 1 1h2l5 4V6L7 10H5a1 1 0 0 0-1 1z"/><path d="M16 8a5 5 0 0 1 0 8M19 5a9 9 0 0 1 0 14"/>', 'admin-business': '<path d="M3 7h18v13H3zM8 7V4h8v3"/>', 'admin-admins': '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>', 'admin-keys': '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/>',
+  'admin-alpaca': '<path d="M4 19V5l8 7 8-7v14"/>', 'admin-upgrades': '<path d="M12 19V5M5 12l7-7 7 7"/><path d="M5 21h14"/>', 'admin-sponsored': '<path d="M4 11v2a1 1 0 0 0 1 1h2l5 4V6L7 10H5a1 1 0 0 0-1 1z"/><path d="M16 8a5 5 0 0 1 0 8M19 5a9 9 0 0 1 0 14"/>', 'admin-business': '<path d="M3 7h18v13H3zM8 7V4h8v3"/>', 'admin-admins': '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>', 'admin-keys': '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/>', 'admin-database': '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
   chart: '<path d="M7 4v16M17 6v12M4 8h6v8H4zM14 9h6v6h-6z"/>', ai: '<path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
   agents: '<path d="M3 17l6-6 4 4 8-8"/><circle cx="21" cy="7" r="1"/><path d="M3 21h18"/>', news: '<path d="M4 5h13v14H6a2 2 0 0 1-2-2zM17 9h3v8a2 2 0 0 1-2 2"/><path d="M8 9h5M8 13h5"/>',
   scanner: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5M8 11h6M11 8v6"/>', optionslab: '<path d="M3 18c4 0 5-12 9-12s5 12 9 12"/><path d="M3 21h18"/>',
@@ -2213,7 +2236,7 @@ const ADMIN_GROUPS = [
   ['Owner: people', [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-admins', 'Admins'], ['admin-support', 'Support inbox'], ['admin-comms', 'Calls, texts & email'], ['admin-phone', 'Phone line'], ['admin-phoneaccts', 'Phone & text accounts']]],
   ['Owner: money', [['admin-money', 'Money & fees'], ['admin-sponsored', 'Sponsored news'], ['admin-upgrades', 'Upgrades']]],
   ['Owner: site & content', [['admin-readme', 'README'], ['admin-seo', 'SEO'], ['admin-strategies', 'Original strategies'], ['admin-trust', 'Trust']]],
-  ['Owner: technical', [['admin-agents', 'AI team'], ['admin-ai', 'AI & privacy'], ['admin-keys', 'Keys'], ['admin-data', 'Market data'], ['admin-hosting', 'Hosting'], ['admin-analytics', 'Analytics'], ['admin-setup', 'Setup']]],
+  ['Owner: technical', [['admin-agents', 'AI team'], ['admin-ai', 'AI & privacy'], ['admin-keys', 'Keys'], ['admin-data', 'Market data'], ['admin-hosting', 'Hosting'], ['admin-database', 'Database'], ['admin-analytics', 'Analytics'], ['admin-setup', 'Setup']]],
 ];
 const ADMIN_TABS = ADMIN_GROUPS.flatMap(([, t]) => t);
 // The menu shows all of the owner's pages in one Admin section (only for admins), with a small
@@ -2345,7 +2368,7 @@ for (const k of ['trade', 'positions', 'orders']) {
 }
 // The tabs on top of every Marketplace page.
 const marketTabs = on => hubTabs(on); // the Marketplace tabs are a merged page's tabs (HUBS.marketplace)
-const shared = { safeUrl, preBuyCard, upgrade: feature => showUpgrade(feature), related: (items, here) => relatedHtml(items, here || ''), extras: () => EXTRAS, setExtras: on => { EXTRAS = on; render.navKey = null; }, marketTabs, $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, refreshMe, accounts, accountOptions, acctLabel, state, adminTabs, adminPage, secureConfirm, me: () => ME, paid: () => isPaid(ME) };
+const shared = { adminUnlocked, safeUrl, preBuyCard, upgrade: feature => showUpgrade(feature), related: (items, here) => relatedHtml(items, here || ''), extras: () => EXTRAS, setExtras: on => { EXTRAS = on; render.navKey = null; }, marketTabs, $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, refreshMe, accounts, accountOptions, acctLabel, state, adminTabs, adminPage, secureConfirm, me: () => ME, paid: () => isPaid(ME) };
 lazyRoutes(() => import('./pages/studio.js'), 'registerStudio', shared, ["ai", "agents", "code"]);
 lazyRoutes(() => import('./pages/aichat.js'), 'registerAiChat', shared, ["admin-aichat"]);
 lazyRoutes(() => import('./pages/tradetools.js'), 'registerTradeTools', shared, ["tradetools"]);
@@ -2366,7 +2389,7 @@ registerAddons(routes, shared);
 lazyRoutes(() => import('./pages/instruments.js'), 'registerInstruments', shared, ["invest"]);
 registerStart(routes, shared);
 lazyRoutes(() => import('./pages/analytics-admin.js'), 'registerAnalyticsAdmin', shared, ["admin-analytics"]);
-lazyRoutes(() => import('./pages/admin-ops.js'), 'registerAdminOps', shared, ["admin-data", "admin-comms", "admin-strategies", "admin-seo", "admin-agents", "admin-hosting"]);
+lazyRoutes(() => import('./pages/admin-ops.js'), 'registerAdminOps', shared, ["admin-data", "admin-comms", "admin-strategies", "admin-seo", "admin-agents", "admin-hosting", "admin-database"]);
 // Search lists every tab of a merged page too, under its new address and "Group › Entry".
 initSearch(shared, [['Main', [...CORE, ['extras', 'My tools']]], ...NAV.flatMap(([g, items]) => [[g, items.filter(([k]) => !HUBS[k])],
   ...items.filter(([k]) => HUBS[k]).map(([k, t]) => [`${g} › ${t}`, HUBS[k][1].map(([x, xt]) => [hubHref(k, x).slice(2), x === k ? t : xt])])])]);

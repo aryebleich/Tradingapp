@@ -43,7 +43,12 @@ const save = async v => { await siteSet('hosting', v); synced = v; return v; };
 export const saveHosting = save;
 export const hostingConfig = () => cfg();
 // Only the active server runs jobs.
+// STANDBY=1 (in the environment, or set at run time by the migration workflow) is final: this
+// server never runs jobs, whatever its database says. Render after the move to Oracle: its Turso
+// copy is old, so trading from it would act on stale data.
+export const standby = () => process.env.STANDBY === '1';
 export function isActiveHost() {
+  if (standby()) return false;
   const c = cfg();
   // Nothing chosen yet in Admin → Hosting: only the original server (Render, or one without a
   // HOST_ID) runs jobs. A newly added server waits on standby, so no order is ever sent twice.
