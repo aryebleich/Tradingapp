@@ -91,8 +91,8 @@ NODE_ENV=production
 PORT=3000
 HOST_ID=oracle
 PUBLIC_URL=https://$DOMAIN
-# DATABASE_URL=libsql://...   (the same database as your other servers)
-# DATABASE_AUTH_TOKEN=...
+DB_FILE=/app/data/quantpocket.db
+PERSISTENT_DISK=1
 # ENCRYPTION_KEY=...          (the same as on your other servers, or saved keys cannot be read)
 # EDGE_SECRET=...             (when the Cloudflare edge is in front)
 EOF

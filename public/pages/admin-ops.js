@@ -401,11 +401,11 @@ async function databasePage(view) {
   const db = d.database, b = db.backups || {}, mt = db.maintenance || {};
   const files = (b.files || []).slice(0, 30);
   view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-database')}
-  ${db.mergePending ? '<p class="banner">This server started on a new database on 2026-11-23 because Turso refused every read. The old data (accounts, trades, settings) is merged in automatically once Turso allows it again (tried every day, or Actions → Oracle database move → merge-turso). Anyone who signs up again with the same email keeps one account with both.</p>' : ''}
+  ${db.mergePending ? '<p class="banner">This server started on a new database on 2026-11-23 because the old database refused every read. The old data (accounts, trades, settings) is merged in automatically once Turso allows it again (tried every day, or Actions → Oracle database move → merge-turso). Anyone who signs up again with the same email keeps one account with both.</p>' : ''}
   ${mt.on ? `<p class="banner">Maintenance is on${mt.reason ? ': ' + H.esc(mt.reason) : ''}. Trading is paused and new orders are refused.</p>` : ''}
   ${k.warnings.filter(w => w.level === 'error').map(w => `<p class="banner err">${H.esc(w.text)}</p>`).join('')}
   <div class="card"><h2>Database</h2><div class="stats">
-    <div class="stat"><span>Type</span><b>${db.kind === 'file' ? 'SQLite file on this server' : 'Turso (hosted)'}</b><span class="mu" data-no-tr>${H.esc(db.file || '')}</span></div>
+    <div class="stat"><span>Type</span><b>${db.kind === 'file' ? 'SQLite file on this server' : 'Shared database server'}</b><span class="mu" data-no-tr>${H.esc(db.file || '')}</span></div>
     <div class="stat"><span>Size</span><b>${gb(db.bytes)}</b><span class="mu">${db.walBytes ? 'log ' + gb(db.walBytes) : ''}</span></div>
     <div class="stat"><span>Lasting disk</span><b>${db.persistentDisk ? '<span class="pos">Yes</span>' : db.kind === 'file' ? '<span class="neg">No</span>' : '-'}</b></div>
     <div class="stat"><span>Last statement</span><b>${db.health.ok ? '<span class="pos">OK</span>' : '<span class="neg">Failed</span>'}</b><span class="mu">${ago(db.health.okAt)}</span></div></div>

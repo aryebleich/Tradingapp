@@ -1,6 +1,6 @@
 # The web app. Every replica serves the API and drains the shared order queue; scheduled jobs
 # claim their time slot in the database, so any number of replicas can run side by side.
-# Needs a shared database: set DATABASE_URL (libSQL / Turso) in the quantpocket-env secret.
+# Needs a shared database: set DATABASE_URL (a libSQL server) in the quantpocket-env secret.
 apiVersion: apps/v1
 kind: Deployment
 metadata:

@@ -43,7 +43,7 @@ export function vmMetrics() {
   };
 }
 async function tableSizes() {
-  if (dbKind() !== 'file') return { counted: false, reason: 'Turso bills every row read, so the tables are not counted here.', tables: [] };
+  if (dbKind() !== 'file') return { counted: false, reason: 'A shared database server: the tables are not counted from here.', tables: [] };
   const names = (await all("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name")).map(r => r.name);
   const tables = [];
   for (const n of names) tables.push({ name: n, rows: Number((await one(`SELECT COUNT(*) AS n FROM "${n}"`)).n) });
