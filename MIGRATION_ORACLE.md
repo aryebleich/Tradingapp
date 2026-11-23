@@ -25,6 +25,19 @@ Workflows: `.github/workflows/oracle.yml` (server setup and settings) and
 | # | Workflow, step | Run | Result |
 |---|---|---|---|
 | 0 | oracle.yml check | [45096424308](https://github.com/aryebleich/Tradingapp/actions/runs/45096424308) | Connected (Ubuntu 24.04), ports 80/443 open, Caddy up; the app answered 503 because Turso refused reads |
+| 1 | oracle.yml settings | [45098085152](https://github.com/aryebleich/Tradingapp/actions/runs/45098085152) | Settings written, new version 489263a deployed; `/healthz` 200 (query-free) while Turso still refuses reads |
+| 2 | oracle-migrate maintenance-on | [45098275849](https://github.com/aryebleich/Tradingapp/actions/runs/45098275849) | VM: `MAINTENANCE=1` and the switch on. Render did not answer within 90 s (redeploying / asleep); it cannot trade while Turso refuses its reads, and render.yaml now sets STANDBY=1 |
+| 3 | oracle-migrate pull | [45098845966](https://github.com/aryebleich/Tradingapp/actions/runs/45098845966) | **Refused.** Method a (sync): `Sync(PullFrame(403, "Operation was blocked: SQL read operations are forbidden"))` — Turso blocks replica syncs too while over the read limit. Method b not tried: no `TURSO_API_TOKEN` secret |
+
+**Status: waiting for the owner.** Turso refuses both SQL reads and syncs until the monthly reset
+or until overages are on. The VM stays in maintenance (safe: it cannot read Turso anyway).
+To continue, one of:
+1. **Recommended:** Turso dashboard → organization thecompountproject → Billing → turn on overages
+   (the copy reads each row once: a few cents at $1 per billion rows read), then run
+   oracle-migrate `pull` again. Overages can be turned off right after `switch-db`.
+2. Add a `TURSO_API_TOKEN` secret (`turso auth api-tokens mint brightolio-migrate`; GitHub →
+   Settings → Secrets and variables → Actions) and run `pull` again for method b
+   (`turso db export`). It uses the same sync channel, so it will likely be refused the same way.
 
 ## How the data was copied
 
