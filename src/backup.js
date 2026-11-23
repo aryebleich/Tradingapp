@@ -12,12 +12,12 @@ import crypto from 'node:crypto';
 import { createClient } from '@libsql/client';
 import { db, dbFile, persistentDisk } from './db.js';
 
-export const KEEP_HOURLY = 48, KEEP_DAILY = 30;
+export const KEEP_HOURLY = 48, KEEP_DAILY = 30, FINAL_DAYS = 90;
 export const backupDir = (file = dbFile) => (file ? path.join(path.dirname(file), 'backups') : null);
 const stamp = (t = new Date()) => t.toISOString().replace(/[-:]/g, '').slice(0, 11); // 20261123T05
 const statusFile = dir => path.join(dir, 'status.json');
 export function backupStatus(dir = backupDir()) {
-  if (!dir) return { enabled: false, reason: 'The database is not a local file (Turso keeps its own copies).' };
+  if (!dir) return { enabled: false, reason: 'The database is a shared server (DATABASE_URL), which keeps its own copies.' };
   let s = {}; try { s = JSON.parse(fs.readFileSync(statusFile(dir), 'utf8')); } catch {}
   return { enabled: true, dir, ...s, offsite: process.env.OCI_BACKUP_PAR_URL ? 'Oracle Object Storage' : null, files: listBackups(dir).slice(0, 100) };
 }
@@ -62,7 +62,10 @@ export async function backupNow({ kind = 'hourly', client = db, file = dbFile, t
     throw e;
   }
 }
-export function prune(dir) {
+export function prune(dir, now = Date.now()) {
+  // The final copy of the old database (scripts/final-copy.mjs) is kept 90 days.
+  const final = path.join(path.dirname(dir), 'final');
+  if (fs.existsSync(final)) for (const f of fs.readdirSync(final)) { const p = path.join(final, f); if (now - fs.statSync(p).mtimeMs > FINAL_DAYS * 864e5) fs.rmSync(p, { force: true }); }
   const all = listBackups(dir);
   for (const [kind, keep] of [['hourly', KEEP_HOURLY], ['daily', KEEP_DAILY], ['manual', 10]]) for (const f of all.filter(x => x.kind === kind).slice(keep)) fs.rmSync(path.join(dir, f.name), { force: true });
 }

@@ -1,26 +1,31 @@
 #!/usr/bin/env bash
-# The database move on the Oracle VM, one step at a time (run as root by
-# .github/workflows/oracle-migrate.yml; can also be run by hand: sudo bash migrate.sh <step>).
+# The database on the Oracle VM, one step at a time (run as root by
+# .github/workflows/oracle-migrate.yml, also from oracle-merge-scheduled.yml; by hand:
+# sudo bash migrate.sh <step>). Never prints a value from .env.
 #   prep             newest code, this repo's update.sh and compose.yml installed, sqlite3, deploy
+#   status           health, database settings (names only), data files, backups, host actions
 #   maintenance-on   MAINTENANCE=1 in .env (holds across restarts) and the switch on the running app
-#   pull             copy Turso into data/pull.db by sync (scripts/turso-pull.mjs in the app image)
-#   check-pull       integrity_check of data/pull.db (after a copy made another way)
-#   switch-db        data/pull.db becomes data/quantpocket.db; DATABASE_URL and DATABASE_AUTH_TOKEN
-#                    are commented out in .env (kept, marked #TURSO#, for going back), DB_FILE and
-#                    PERSISTENT_DISK=1 are added; the app restarts
-#   fresh-db         when Turso cannot be read: a new database file with the full schema and ids from
-#                    10,000,000 (scripts/fresh-db.mjs) becomes data/quantpocket.db, same .env change
-#                    as switch-db; the old Turso data comes in later with merge-turso
-#   merge-turso      copy Turso by sync (pull), then add its rows to the live file
-#                    (scripts/turso-merge.mjs); the live file is backed up first and put back on failure
-#   verify           /internal/verify: database, schema, row counts, credentials, keys (JSON)
-#   report           the pull report (JSON: method, time, row counts)
-#   activate <url> [render-url]  register this server (and Render) in its database and make it active
 #   maintenance-off  MAINTENANCE removed from .env, app restarted, the switch off
-#   rollback         back to Turso: the #TURSO# lines return, DB_FILE and PERSISTENT_DISK go, restart
+#   fresh-db         a new database file with the full schema and every id counter at 10,000,000
+#                    (scripts/fresh-db.mjs) becomes data/quantpocket.db; the Turso lines in .env are
+#                    commented out (#TURSO#), TURSO_MERGE_PENDING=1 is set
+#   pull             copy the old database into data/pull.db by sync only (scripts/turso-pull.mjs),
+#                    with the Turso address kept in .env; integrity_check
+#   merge-turso      maintenance on → pull → a rehearsal of the merge on a copy (the site stays up) →
+#                    the app stopped, an exact copy of the live file kept → the merge
+#                    (scripts/turso-merge.mjs) → the app started, /internal/verify → maintenance off.
+#                    Any failure: the exact copy goes back, TURSO_MERGE_PENDING stays set
+#   finalize         after the merge: the final encrypted copy of pull.db (scripts/final-copy.mjs,
+#                    kept 90 days, also off-site when OCI_BACKUP_PAR_URL is set), then pull.db and
+#                    the commented Turso lines are removed from this server
+#   old-db-host      the old database's host name, for the workflow that deletes it (never logged there)
+#   verify           /internal/verify: database, schema, row counts, credentials, keys (JSON)
+#   check-trade      a paper trade end to end (/internal/check-trade: buy and sell 1 SPY on paper)
+#   report           the last pull and merge report (JSON)
+#   activate <url>   register this server in its own database and make it the active server
 #   set-env          KEY=value lines on standard input replace those keys in .env, then restart
-#   backup | status
-# Never prints a value from .env.
+#   backup           one backup now
+#   restore <file>   put a backup from data/backups back (deploy/vm/restore.sh)
 set -euo pipefail
 APP=${APP:-/opt/brightfolio}
 ENVF=$APP/.env
@@ -38,6 +43,22 @@ call() { # call METHOD PATH [JSON] : the app on this server, with its own CRON_S
 healthy() { for _ in $(seq 1 45); do curl -fs http://127.0.0.1:3000/healthz >/dev/null && return 0; sleep 2; done; echo "The app does not answer /healthz" >&2; return 1; }
 restart() { [ -n "${NO_DOCKER:-}" ] && return 0; (cd "$APP" && docker compose up -d --force-recreate app >/dev/null 2>&1); healthy; }
 timer() { systemctl "$1" brightfolio-update.timer 2>/dev/null || true; }
+old_val() { grep -m1 "^#TURSO# $1=" "$ENVF" 2>/dev/null | sed -e "s/^#TURSO# $1=//" -e 's/^"//' -e 's/"$//' || true; }
+in_app() { # in_app <command...> : a one-off container of the app image, with the data volume
+  (cd "$APP" && docker compose run --rm -T --no-deps "$@" 2>/dev/null | tail -1)
+}
+pull_old() { # copy the old database into data/pull.db (exit 3 = refused)
+  local turl ttok; turl=$(old_val DATABASE_URL); ttok=$(old_val DATABASE_AUTH_TOKEN)
+  [ -n "$turl" ] || { echo '{"ok":false,"error":"no old database address kept in .env"}'; return 1; }
+  mkdir -p "$DATA" && chown 1000:1000 "$DATA"
+  DATABASE_URL="$turl" DATABASE_AUTH_TOKEN="$ttok" in_app -e DATABASE_URL -e DATABASE_AUTH_TOKEN app node scripts/turso-pull.mjs /app/data/pull.db
+}
+maint_on() { setv MAINTENANCE 1; call POST /internal/maintenance "{\"on\":true,\"reason\":\"${1:-maintenance}\"}" >/dev/null || true; }
+maint_off() { # a restart only when the running app has MAINTENANCE=1 in its environment
+  unsetv MAINTENANCE
+  if [ -z "${NO_DOCKER:-}" ] && (cd "$APP" && docker compose exec -T app sh -c '[ "$MAINTENANCE" = 1 ]') >/dev/null 2>&1; then restart || true; fi
+  call POST /internal/maintenance '{"on":false}' >/dev/null || true
+}
 
 case "$step" in
   prep)
@@ -51,43 +72,18 @@ case "$step" in
     echo "Code: ${want:0:7}, deployed: $(cut -c1-7 "$APP/.deployed" 2>/dev/null)"
     ;;
   maintenance-on)
-    setv MAINTENANCE 1
-    call POST /internal/maintenance '{"on":true,"reason":"moving the database to this server"}' && echo || echo "(the app is not answering now; MAINTENANCE=1 applies when it starts)"
+    maint_on "${2:-maintenance}"; echo "Maintenance on."
     ;;
   pull)
-    mkdir -p "$DATA" && chown 1000:1000 "$DATA"
-    t0=$(date +%s); set +e
-    out=$(cd "$APP" && docker compose run --rm -T --no-deps app node scripts/turso-pull.mjs /app/data/pull.db 2>/dev/null | tail -1); code=$?
-    set -e
-    printf '%s\n' "$out" > "$DATA/pull-report.json"; chown 1000:1000 "$DATA/pull-report.json"
-    echo "$out"; echo "copy time: $(( $(date +%s) - t0 )) s"
+    t0=$(date +%s); set +e; out=$(pull_old); code=$?; set -e
+    printf '{"pull":%s}\n' "${out:-null}" > "$DATA/pull-report.json"; chown 1000:1000 "$DATA/pull-report.json"
+    echo "$out" | sed -E 's/"counts":\{[^}]*\}/"counts":{…}/'; echo "copy time: $(( $(date +%s) - t0 )) s"
     exit "$code"
     ;;
   check-pull)
     [ -f "$DATA/pull.db" ] || { echo "No $DATA/pull.db" >&2; exit 1; }
     ok=$(sqlite3 -readonly "$DATA/pull.db" 'PRAGMA integrity_check;' | head -1)
     echo "integrity_check: $ok"; [ "$ok" = ok ]
-    ;;
-  switch-db)
-    [ -f "$DATA/pull.db" ] || { echo "No $DATA/pull.db: run the pull first" >&2; exit 1; }
-    ok=$(sqlite3 -readonly "$DATA/pull.db" 'PRAGMA integrity_check;' | head -1)
-    [ "$ok" = ok ] || { echo "pull.db fails its integrity check ($ok)" >&2; exit 1; }
-    timer stop
-    (cd "$APP" && docker compose stop app >/dev/null 2>&1) || true
-    # One consolidated file (the replica's own log folded in), made by SQLite itself.
-    rm -f "$DATA/quantpocket.db.new"
-    sqlite3 "$DATA/pull.db" "VACUUM INTO '$DATA/quantpocket.db.new'"
-    [ "$(sqlite3 -readonly "$DATA/quantpocket.db.new" 'PRAGMA integrity_check;' | head -1)" = ok ]
-    if [ -f "$DATA/quantpocket.db" ]; then mv -f "$DATA/quantpocket.db" "$DATA/quantpocket.db.before-switch-$(date -u +%Y%m%dT%H%M%S)"; fi
-    rm -f "$DATA/quantpocket.db-wal" "$DATA/quantpocket.db-shm"
-    mv -f "$DATA/quantpocket.db.new" "$DATA/quantpocket.db"
-    chown -R 1000:1000 "$DATA"
-    for k in DATABASE_URL DATABASE_AUTH_TOKEN; do sed -i "s/^$k=/#TURSO# $k=/" "$ENVF"; done
-    setv DB_FILE /app/data/quantpocket.db
-    setv PERSISTENT_DISK 1
-    restart
-    timer start
-    echo "Switched: the app now uses $DATA/quantpocket.db ($(du -h "$DATA/quantpocket.db" | cut -f1)); the Turso settings are kept, commented out."
     ;;
   fresh-db)
     [ -f "$DATA/quantpocket.db" ] && [ "$(val PERSISTENT_DISK)" = 1 ] && { echo "This server already runs on its own database file; nothing to do." ; exit 0; }
@@ -116,51 +112,67 @@ case "$step" in
     ;;
   merge-turso)
     [ "$(val TURSO_MERGE_PENDING)" = 1 ] || { echo "Nothing to merge (TURSO_MERGE_PENDING is not set)."; exit 0; }
-    [ "$(val PERSISTENT_DISK)" = 1 ] || { echo "Run fresh-db (or switch-db) first." >&2; exit 1; }
-    turl=$(grep -m1 '^#TURSO# DATABASE_URL=' "$ENVF" | sed -e 's/^#TURSO# DATABASE_URL=//' -e 's/^"//' -e 's/"$//')
-    ttok=$(grep -m1 '^#TURSO# DATABASE_AUTH_TOKEN=' "$ENVF" | sed -e 's/^#TURSO# DATABASE_AUTH_TOKEN=//' -e 's/^"//' -e 's/"$//')
-    [ -n "$turl" ] || { echo "No Turso address kept in .env (#TURSO# DATABASE_URL)." >&2; exit 1; }
-    set +e
-    out=$(cd "$APP" && DATABASE_URL="$turl" DATABASE_AUTH_TOKEN="$ttok" docker compose run --rm -T --no-deps -e DATABASE_URL -e DATABASE_AUTH_TOKEN app node scripts/turso-pull.mjs /app/data/pull.db 2>/dev/null | tail -1); code=$?
-    set -e
-    printf '%s\n' "$out" > "$DATA/pull-report.json"; chown 1000:1000 "$DATA/pull-report.json"
-    echo "$out" | sed -E 's/"counts":\{[^}]*\}/"counts":{…}/'
-    [ "$code" = 0 ] || { echo "Turso still refuses the copy (exit $code); the live database is unchanged." >&2; exit "$code"; }
+    [ "$(val PERSISTENT_DISK)" = 1 ] || { echo "Run fresh-db first." >&2; exit 1; }
+    t0=$(date +%s); started=$(date -u +%FT%TZ)
+    maint_on "bringing back the data from before November 22"
+    set +e; pulled=$(pull_old); code=$?; set -e
+    echo "$pulled" | sed -E 's/"counts":\{[^}]*\}/"counts":{…}/'
+    if [ "$code" != 0 ]; then printf '{"pull":%s,"merge":null,"at":"%s"}\n' "${pulled:-null}" "$started" > "$DATA/pull-report.json"; maint_off; echo "The old database cannot be copied yet (exit $code); nothing changed, the site runs as before." >&2; exit "$code"; fi
+    # A rehearsal on a copy while the site stays up: a failure here touches nothing.
+    rm -f "$DATA/rehearsal.db"*
+    sqlite3 "$DATA/quantpocket.db" "VACUUM INTO '$DATA/rehearsal.db'"; chown 1000:1000 "$DATA/rehearsal.db"
+    rehearsal=$(in_app app node scripts/turso-merge.mjs /app/data/rehearsal.db /app/data/pull.db); rm -f "$DATA/rehearsal.db"*
+    case "$rehearsal" in *'"ok":true'*) ;; *) printf '{"pull":%s,"rehearsal":%s,"at":"%s"}\n' "$pulled" "${rehearsal:-null}" "$started" > "$DATA/pull-report.json"; maint_off; echo "The rehearsal of the merge failed: $rehearsal" >&2; echo "The live database was not touched." >&2; exit 1 ;; esac
+    # The real merge: the app stopped for its few seconds; an exact copy kept.
     timer stop
     (cd "$APP" && docker compose stop app >/dev/null 2>&1) || true
+    sqlite3 "$DATA/quantpocket.db" 'PRAGMA wal_checkpoint(TRUNCATE);' >/dev/null
     keep="$DATA/quantpocket.db.before-merge-$(date -u +%Y%m%dT%H%M%S)"
-    sqlite3 "$DATA/quantpocket.db" "VACUUM INTO '$keep'"
-    set +e
-    m=$(cd "$APP" && docker compose run --rm -T --no-deps app node scripts/turso-merge.mjs /app/data/quantpocket.db /app/data/pull.db 2>/dev/null | tail -1)
-    set -e
-    echo "$m"
-    case "$m" in *'"ok":true'*) unsetv TURSO_MERGE_PENDING; echo "Merged; the file before the merge is kept as $(basename "$keep")." ;;
-      *) echo "The merge failed: the live file goes back as it was." >&2; rm -f "$DATA/quantpocket.db-wal" "$DATA/quantpocket.db-shm"; cp "$keep" "$DATA/quantpocket.db"; chown 1000:1000 "$DATA/quantpocket.db"; restart || true; timer start; exit 1 ;; esac
+    cp -p "$DATA/quantpocket.db" "$keep"; sum=$(sha256sum "$keep" | cut -d' ' -f1)
+    put_back() {
+      rm -f "$DATA/quantpocket.db-wal" "$DATA/quantpocket.db-shm"; cp -p "$keep" "$DATA/quantpocket.db"
+      [ "$(sha256sum "$DATA/quantpocket.db" | cut -d' ' -f1)" = "$sum" ] && echo "The live database is back exactly as it was." >&2
+      setv TURSO_MERGE_PENDING 1; maint_off; timer start
+    }
+    merged=$(in_app app node scripts/turso-merge.mjs /app/data/quantpocket.db /app/data/pull.db)
+    case "$merged" in *'"ok":true'*) ;; *) echo "The merge failed: $merged" >&2; printf '{"pull":%s,"merge":%s,"at":"%s"}\n' "$pulled" "${merged:-null}" "$started" > "$DATA/pull-report.json"; put_back; exit 1 ;; esac
     chown -R 1000:1000 "$DATA"
-    restart
+    unsetv TURSO_MERGE_PENDING
+    if ! restart || ! v=$(call GET /internal/verify) || ! printf '%s' "$v" | grep -q '"ok":true'; then
+      echo "Verify failed after the merge: ${v:-no answer}" >&2; (cd "$APP" && docker compose stop app >/dev/null 2>&1) || true
+      printf '{"pull":%s,"merge":%s,"verify":%s,"at":"%s"}\n' "$pulled" "$merged" "${v:-null}" "$started" > "$DATA/pull-report.json"; put_back; exit 1
+    fi
+    printf '{"pull":%s,"merge":%s,"verify":%s,"at":"%s","seconds":%s,"keptBeforeMerge":"%s"}\n' "$pulled" "$merged" "$v" "$started" "$(( $(date +%s) - t0 ))" "$(basename "$keep")" > "$DATA/pull-report.json"
+    chown 1000:1000 "$DATA/pull-report.json"
     timer start
+    maint_off
+    echo "Merged. The file before the merge is kept as $(basename "$keep")."
+    echo "$merged"
     ;;
+  finalize)
+    [ "$(val TURSO_MERGE_PENDING)" = 1 ] && { echo "The merge has not run yet." >&2; exit 1; }
+    if [ -f "$DATA/pull.db" ]; then
+      out=$(in_app app node scripts/final-copy.mjs /app/data/pull.db)
+      echo "$out"
+      case "$out" in *'"ok":true'*) ;; *) echo "The final copy failed; pull.db is kept." >&2; exit 1 ;; esac
+      rm -f "$DATA/pull.db" "$DATA/pull.db-wal" "$DATA/pull.db-shm" "$DATA/pull.db-info" "$DATA/pull.db-client_wal_index"
+    else echo "No pull.db (already finalized)."; fi
+    if grep -q '^#TURSO# ' "$ENVF"; then sed -i '/^#TURSO# /d' "$ENVF"; echo "The old database settings were removed from .env."; fi
+    find "$DATA/final" -maxdepth 1 -type f -printf '%f %s bytes\n' 2>/dev/null || true
+    ;;
+  old-db-host)
+    u=$(old_val DATABASE_URL); u=${u#libsql://}; u=${u#https://}; printf '%s\n' "${u%%/*}"
+    ;;
+  check-trade) call POST /internal/check-trade; echo ;;
   verify) call GET /internal/verify; echo ;;
   report) cat "$DATA/pull-report.json" ;;
   activate)
-    url=${2:?the https address of this server}; render=${3:-}
-    servers="{\"id\":\"oracle\",\"kind\":\"oracle-vm\",\"name\":\"Oracle Cloud\",\"url\":\"$url\"}"
-    [ -n "$render" ] && servers="$servers,{\"id\":\"render\",\"kind\":\"render\",\"name\":\"Render (standby)\",\"url\":\"$render\"}"
-    call POST /internal/hosting "{\"servers\":[$servers],\"active\":\"oracle\"}"; echo
+    url=${2:?the https address of this server}
+    call POST /internal/hosting "{\"servers\":[{\"id\":\"oracle\",\"kind\":\"oracle-vm\",\"name\":\"Oracle Cloud\",\"url\":\"$url\"}],\"active\":\"oracle\"}"; echo
     call POST /internal/hosting/activate '{"id":"oracle"}'; echo
     ;;
   maintenance-off)
-    unsetv MAINTENANCE
-    restart
-    call POST /internal/maintenance '{"on":false}'; echo
-    ;;
-  rollback)
-    timer stop
-    sed -i 's/^#TURSO# //' "$ENVF"
-    unsetv DB_FILE; unsetv PERSISTENT_DISK; unsetv TURSO_MERGE_PENDING
-    restart || true
-    timer start
-    echo "Rolled back: the app uses Turso again (DATABASE_URL). The local file stays in $DATA for later."
+    maint_off; echo "Maintenance off."
     ;;
   set-env)
     n=0
@@ -175,9 +187,14 @@ case "$step" in
     [ "$n" -gt 0 ] && restart && echo "Restarted with $n changed setting(s)."
     ;;
   backup) call POST /internal/backup; echo ;;
+  restore)
+    f=${2:?the backup file name in data/backups}; f=$(basename "$f")
+    [ -f "$DATA/backups/$f" ] || { echo "No backup named $f" >&2; exit 1; }
+    timer stop; bash "$APP/src/deploy/vm/restore.sh" "$DATA/backups/$f"; timer start
+    ;;
   status)
     echo "--- health"; curl -sS --max-time 10 http://127.0.0.1:3000/healthz || true; echo
-    echo "--- database settings"; for k in DATABASE_URL DB_FILE PERSISTENT_DISK MAINTENANCE STANDBY; do if grep -q "^$k=" "$ENVF"; then echo "$k: set"; elif grep -q "^#TURSO# $k=" "$ENVF"; then echo "$k: kept, commented out"; else echo "$k: -"; fi; done
+    echo "--- database settings"; for k in DATABASE_URL DB_FILE PERSISTENT_DISK MAINTENANCE STANDBY TURSO_MERGE_PENDING; do if grep -q "^$k=" "$ENVF"; then echo "$k: set"; elif grep -q "^#TURSO# $k=" "$ENVF"; then echo "$k: kept, commented out (until the merge)"; else echo "$k: -"; fi; done
     echo "--- data"; find "$DATA" -maxdepth 1 -type f -printf '%s %f\n' | sort -k2
     echo "--- backups"; find "$DATA/backups" -maxdepth 1 -name '*.db' -printf '%T@ %f\n' 2>/dev/null | sort -rn | head -5 | cut -d' ' -f2; head -30 "$DATA/backups/status.json" 2>/dev/null || true
     echo "--- host actions"; tail -5 "$DATA/host-actions.log" 2>/dev/null || true

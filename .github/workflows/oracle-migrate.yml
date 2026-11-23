@@ -1,49 +1,64 @@
 name: Oracle database move
-# Moves the database from Turso to a SQLite file on the Oracle VM, and back if needed. Run by hand,
-# one step at a time (Actions → Oracle database move → Run workflow), in this order:
-#   maintenance-on → pull → switch-db → verify → activate → maintenance-off
-# Other steps: rollback (back to Turso), set-env (change settings in the VM's .env), backup, status.
-# MIGRATION_ORACLE.md has the whole story and how to go back to Render.
-# Needs: variable ORACLE_HOST, secrets ORACLE_SSH_KEY and CRON_SECRET (Render's), and optionally
-# TURSO_API_TOKEN (the export fallback), SMOKE_EMAIL and SMOKE_PASSWORD (login and paper trade check),
-# ORACLE_SET_ENV (KEY=value lines for set-env, so secret values never appear in the run's inputs).
-# No secret value is ever printed: the server-side script reads its own CRON_SECRET from its .env.
+# The database on the Oracle server, one step at a time (Actions → Oracle database move → Run
+# workflow); the server side is deploy/vm/migrate.sh. Also called by oracle-merge-scheduled.yml.
+#   status           health, settings (names only), files, backups
+#   maintenance-on / maintenance-off
+#   fresh-db         start on a new database (ids from 10,000,000) when the old one cannot be read
+#   pull             copy the old database to the server by sync only (a check; merge-turso does it too)
+#   merge-turso      bring the old data in (maintenance, pull, rehearsal, merge, verify; any failure
+#                    puts the live database back exactly as it was)
+#   finalize         after the merge: the final encrypted copy, then the old settings removed
+#   verify           health, schema, rows, credentials, a paper trade, the order guard
+#   activate         make this server the active one
+#   set-env          change settings in the server's .env (values masked; secret values go in the
+#                    ORACLE_SET_ENV secret, because workflow inputs are visible in the run's details)
+#   backup           one backup now;  restore  put the named backup back (input: backup)
+# Needs the variable ORACLE_HOST and the secret ORACLE_SSH_KEY. No secret value is ever printed:
+# the server-side script reads its own CRON_SECRET from its .env.
 on:
-  # Every day: merge the old Turso data in once Turso allows it (does nothing when nothing is pending).
-  schedule:
-    - cron: '23 7 * * *'
+  workflow_call:
+    inputs:
+      step:
+        type: string
+        required: true
+    outputs:
+      report:
+        description: 'The pull and merge report (JSON, no secrets)'
+        value: ${{ jobs.move.outputs.report }}
   workflow_dispatch:
     inputs:
       step:
         description: 'Which step'
         type: choice
         default: status
-        options: [status, maintenance-on, pull, switch-db, fresh-db, merge-turso, verify, activate, maintenance-off, rollback, set-env, backup]
+        options: [status, maintenance-on, maintenance-off, fresh-db, pull, merge-turso, finalize, verify, activate, set-env, backup, restore]
       settings:
-        description: 'set-env only: KEY=value pairs separated by ";" (masked in the log; use the ORACLE_SET_ENV secret for secret values). KEY= removes a key.'
+        description: 'set-env only: KEY=value pairs separated by ";" (masked in the log). KEY= removes a key.'
+        required: false
+        default: ''
+      backup:
+        description: 'restore only: the backup file name (Admin → Database lists them)'
         required: false
         default: ''
       domain:
-        description: 'The VM address (empty = <ip>.sslip.io)'
+        description: 'The server address (empty = <ip>.sslip.io)'
         required: false
         default: ''
-      render_url:
-        description: 'The Render address (kept as standby)'
-        required: false
-        default: 'https://quantpocket.onrender.com'
 permissions:
   contents: read
-concurrency:
-  group: oracle-setup
-  cancel-in-progress: false
 jobs:
   move:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    # One step at a time on the server (a called run shares the group with the caller's other steps).
+    concurrency:
+      group: oracle-server
+      cancel-in-progress: false
+    outputs:
+      report: ${{ steps.report.outputs.report }}
     env:
       HOST: ${{ vars.ORACLE_HOST }}
-      STEP: ${{ inputs.step || 'merge-turso' }}
-      RENDER_URL: ${{ inputs.render_url || 'https://quantpocket.onrender.com' }}
+      STEP: ${{ inputs.step }}
     steps:
       - uses: actions/checkout@v5
       - name: Connect
@@ -54,7 +69,7 @@ jobs:
           [ -n "$HOST" ] || { echo "::error::Add the ORACLE_HOST repository variable."; exit 1; }
           [ -n "$KEY" ] || { echo "::error::Add the ORACLE_SSH_KEY secret."; exit 1; }
           D="${DOMAIN_IN#https://}"; D="${D%%/*}"; [ -n "$D" ] || D="$(echo "$HOST" | tr . -).sslip.io"
-          echo "VM_URL=https://$D" >> "$GITHUB_ENV"; echo "VM: https://$D"
+          echo "VM_URL=https://$D" >> "$GITHUB_ENV"; echo "Server: https://$D"
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
           printf '%s\n' "$KEY" | tr -d '\r' > ~/.ssh/oracle && chmod 600 ~/.ssh/oracle
           for _ in 1 2 3; do ssh-keyscan -T 15 -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null && break; sleep 5; done
@@ -62,134 +77,33 @@ jobs:
           scp -q -i ~/.ssh/oracle deploy/vm/migrate.sh ubuntu@"$HOST":/tmp/migrate.sh
           # shellcheck disable=SC2016 # $HOST and $@ expand when the helper runs
           printf '%s\n' '#!/usr/bin/env bash' 'exec ssh -i ~/.ssh/oracle -o BatchMode=yes ubuntu@"$HOST" sudo bash /tmp/migrate.sh "$@"' > ~/vm && chmod 755 ~/vm
-      - name: Newest code on the VM
+      - name: Newest code on the server
         if: env.STEP != 'status'
         run: |
           ~/vm prep 2>&1 | tail -8
 
-      - name: Maintenance on (VM and Render)
+      - name: Maintenance on
         if: env.STEP == 'maintenance-on'
-        env:
-          CS: ${{ secrets.CRON_SECRET }}
-        run: |
-          ~/vm maintenance-on
-          if [ -n "$CS" ]; then
-            for p in maintenance standby; do
-              b='{"on":true,"reason":"moving the database to Oracle"}'
-              echo "Render /internal/$p: $(curl -sS --max-time 90 -X POST -H "authorization: Bearer $CS" -H 'content-type: application/json' --data "$b" "$RENDER_URL/internal/$p" || echo 'no answer')"
-            done
-          else echo "::warning::No CRON_SECRET secret: Render was not told (it serves pages only once STANDBY=1 is set there)."; fi
-
-      - name: Copy the data out of Turso (a. sync, b. export, c. report)
-        if: env.STEP == 'pull'
-        env:
-          TURSO_API_TOKEN: ${{ secrets.TURSO_API_TOKEN }}
-        run: |
-          set +e; ~/vm pull > pull.out 2>&1; code=$?; set -e
-          sed -E 's/"counts":\{[^}]*\}/"counts":{…}/' pull.out
-          if [ "$code" = 0 ]; then echo "METHOD=a" >> "$GITHUB_ENV"; echo "Method a (embedded replica sync) worked."; exit 0; fi
-          echo "::warning::Method a (sync) did not work (exit $code)."
-          if [ -z "$TURSO_API_TOKEN" ]; then
-            echo "::error::Method b needs a Turso API token. Make one with: turso auth api-tokens mint brightolio-migrate  — then add it in GitHub → Settings → Secrets and variables → Actions → New repository secret → TURSO_API_TOKEN, and run this step again."
-            echo "::error::If Turso also refuses that: turning on overages for a moment is the cheapest way through (a few cents at \$1 per billion rows read), then run pull again."
-            exit 1
-          fi
-          # b: turso db export, on this runner, then sent to the VM.
-          curl -sSfL https://get.tur.so/install.sh | bash >/dev/null 2>&1; export PATH="$HOME/.turso:$PATH"
-          U=$(ssh -i ~/.ssh/oracle ubuntu@"$HOST" "sudo grep -m1 -E '^(#TURSO# )?DATABASE_URL=' /opt/brightfolio/.env | sed -E 's/^(#TURSO# )?DATABASE_URL=//; s/\"//g'")
-          echo "::add-mask::$U"; H="${U#libsql://}"; H="${H%%.*}"; NAME="${H%-*}"; echo "::add-mask::$NAME"
-          t0=$(date +%s)
-          if turso db export "$NAME" --output-file pull.db --overwrite >/dev/null 2>turso.err; then
-            scp -q -i ~/.ssh/oracle pull.db ubuntu@"$HOST":/tmp/pull.db
-            ssh -i ~/.ssh/oracle ubuntu@"$HOST" 'sudo install -o 1000 -g 1000 -m 600 /tmp/pull.db /opt/brightfolio/data/pull.db && rm -f /tmp/pull.db'
-            rm -f pull.db; ~/vm check-pull
-            echo "{\"ok\":true,\"method\":\"turso-db-export\",\"ms\":$(( ($(date +%s) - t0) * 1000 ))}" | ssh -i ~/.ssh/oracle ubuntu@"$HOST" 'sudo tee /opt/brightfolio/data/pull-report.json >/dev/null'
-            echo "METHOD=b" >> "$GITHUB_ENV"; echo "Method b (turso db export) worked."
-          else
-            sed -E 's/[A-Za-z0-9_-]{30,}/[hidden]/g' turso.err | tail -5
-            echo "::error::Method b was refused too. The cheapest way through: turn on overages in Turso for a moment (a few cents at \$1 per billion rows read), then run pull again (method a)."
-            exit 1
-          fi
-
-      - name: Start the VM on a new database file (Turso cannot be read)
-        if: env.STEP == 'fresh-db'
-        run: |
-          ~/vm fresh-db
-
-      - name: Merge the old Turso data in
-        if: env.STEP == 'merge-turso'
-        run: |
-          set +e; ~/vm merge-turso; code=$?; set -e
-          if [ "$code" = 3 ]; then echo "::notice::Turso still refuses the copy (read limit); tried again tomorrow."; exit 0; fi
-          exit "$code"
-
-      - name: Switch the VM to its own database file
-        if: env.STEP == 'switch-db'
-        run: |
-          ~/vm switch-db
-
-      - name: Verify (health, schema, rows, credentials, login, order guard)
-        if: env.STEP == 'verify' || env.STEP == 'switch-db' || env.STEP == 'fresh-db'
-        env:
-          SMOKE_EMAIL: ${{ secrets.SMOKE_EMAIL }}
-          SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
-        run: |
-          echo "--- /healthz/full"; curl -sS --max-time 30 "$VM_URL/healthz/full" | jq -c '{ok, database, problems}' || true
-          ~/vm verify > verify.json || true
-          jq -c '{ok, host, active, standby, maintenance: .maintenance.on, database: {kind: .database.kind, bytes: .database.bytes, tables: .database.tables}, schema, credentials, users, problems}' verify.json
-          ~/vm report > pull.json || echo '{}' > pull.json
-          # Rows lost between the copy and the live file (more rows is fine: sessions, job runs).
-          jq -n --slurpfile p pull.json --slurpfile v verify.json '($p[0].counts // {}) as $a | ($v[0].database.counts // {}) as $b | [$a | to_entries[] | select(.key | test("^(sessions|job_runs|cache|status_checks)$|_cache$") | not) | select(($b[.key] // -1) < .value) | "\(.key): \(.value) copied, \($b[.key] // "missing") now"]' > lost.json
-          { echo "### Row counts (copy → live)"; echo; echo "| table | copied | live |"; echo "|---|---:|---:|"; jq -r --slurpfile v verify.json '.counts // {} | to_entries[] | "| \(.key) | \(.value) | \($v[0].database.counts[.key] // "-") |"' pull.json; } >> "$GITHUB_STEP_SUMMARY"
-          ok=true
-          [ "$(jq -r .ok verify.json)" = true ] || { echo "::error::verify: $(jq -c .problems verify.json)"; ok=false; }
-          [ "$(jq length lost.json)" = 0 ] || { echo "::error::rows missing: $(jq -c . lost.json)"; ok=false; }
-          if [ -n "$SMOKE_EMAIL" ] && [ -n "$SMOKE_PASSWORD" ]; then
-            code=$(jq -n --arg e "$SMOKE_EMAIL" --arg p "$SMOKE_PASSWORD" '{email:$e,password:$p}' | curl -sS -o login.json -w '%{http_code}' -c jar -H 'content-type: application/json' -H 'x-requested-with: qp' --data @- "$VM_URL/api/auth/login")
-            if [ "$code" != 200 ] && [ "$(jq -r .mergePending verify.json)" = true ]; then
-              # A new database: the check account is made here (it joins its old account at the merge).
-              code=$(jq -n --arg e "$SMOKE_EMAIL" --arg p "$SMOKE_PASSWORD" '{email:$e,password:$p}' | curl -sS -o login.json -w '%{http_code}' -c jar -H 'content-type: application/json' -H 'x-requested-with: qp' --data @- "$VM_URL/api/auth/register")
-              echo "check account created on the new database: $code"
-            fi
-            echo "login: $code"; [ "$code" = 200 ] || { echo "::error::login on the VM failed ($code)"; ok=false; }
-            o=$(curl -sS -o order.json -w '%{http_code}' -b jar -H 'content-type: application/json' -H 'x-requested-with: qp' --data '{"account":"paper","symbol":"SPY","side":"buy","qty":1,"type":"market"}' "$VM_URL/api/orders")
-            m=$(jq -r .maintenance.on verify.json)
-            echo "paper order: $o (maintenance on: $m)"
-            if [ "$m" = true ]; then [ "$o" = 503 ] || { echo "::error::maintenance is on but the order was not refused ($o)"; ok=false; }; else [ "$o" = 200 ] || { echo "::error::paper order failed ($o): $(jq -r .error order.json)"; ok=false; }; fi
-            rm -f jar login.json order.json
-          else echo "::warning::No SMOKE_EMAIL/SMOKE_PASSWORD secrets: login and paper trade not checked."; fi
-          $ok || { echo "::error::Verify failed: run the rollback step."; exit 1; }
-          echo "Verify OK."
-
-      - name: Make Oracle the active server (edge or DNS when set up)
-        if: env.STEP == 'activate'
-        run: |
-          ~/vm activate "$VM_URL" "$RENDER_URL" | jq -c . || true
-
-      - name: Maintenance off (VM) and a paper trade
+        run: ~/vm maintenance-on
+      - name: Maintenance off
         if: env.STEP == 'maintenance-off'
-        env:
-          SMOKE_EMAIL: ${{ secrets.SMOKE_EMAIL }}
-          SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
-        run: |
-          ~/vm maintenance-off
-          if [ -n "$SMOKE_EMAIL" ] && [ -n "$SMOKE_PASSWORD" ]; then
-            jq -n --arg e "$SMOKE_EMAIL" --arg p "$SMOKE_PASSWORD" '{email:$e,password:$p}' | curl -sS -o /dev/null -c jar -H 'content-type: application/json' -H 'x-requested-with: qp' --data @- "$VM_URL/api/auth/login"
-            for side in buy sell; do echo "paper $side: $(curl -sS -o /dev/null -w '%{http_code}' -b jar -H 'content-type: application/json' -H 'x-requested-with: qp' --data "{\"account\":\"paper\",\"symbol\":\"SPY\",\"side\":\"$side\",\"qty\":1,\"type\":\"market\"}" "$VM_URL/api/orders")"; done
-            rm -f jar
-          fi
-          echo "Render keeps maintenance and STANDBY on: it serves pages only."
-
-      - name: Roll back to Turso
-        if: env.STEP == 'rollback'
-        env:
-          CS: ${{ secrets.CRON_SECRET }}
-        run: |
-          ~/vm rollback
-          if [ -n "$CS" ]; then for p in standby maintenance; do echo "Render /internal/$p off: $(curl -sS --max-time 90 -X POST -H "authorization: Bearer $CS" -H 'content-type: application/json' --data '{"on":false}' "$RENDER_URL/internal/$p" || echo 'no answer')"; done; fi
-          echo "To make Render active again: Admin → Hosting → Render → Make active (see MIGRATION_ORACLE.md)."
-
-      - name: Change settings in the VM's .env
+        run: ~/vm maintenance-off
+      - name: Start the server on a new database file
+        if: env.STEP == 'fresh-db'
+        run: ~/vm fresh-db
+      - name: Copy the old database to the server (sync only)
+        if: env.STEP == 'pull'
+        run: ~/vm pull
+      - name: Bring the old data in
+        if: env.STEP == 'merge-turso'
+        run: ~/vm merge-turso
+      - name: The final copy, then the old settings removed
+        if: env.STEP == 'finalize'
+        run: ~/vm finalize
+      - name: Make this the active server
+        if: env.STEP == 'activate'
+        run: ~/vm activate "$VM_URL" | jq -c . || true
+      - name: Change settings in the server's .env
         if: env.STEP == 'set-env'
         env:
           PAIRS: ${{ inputs.settings }}
@@ -200,17 +114,50 @@ jobs:
           while IFS= read -r l; do v="${l#*=}"; [ -n "$v" ] && echo "::add-mask::$v"; done < set.env
           [ -s set.env ] || { echo "::error::Nothing to set: fill in 'settings' or the ORACLE_SET_ENV secret."; exit 1; }
           ~/vm set-env < set.env; rm -f set.env
-
       - name: Backup now
         if: env.STEP == 'backup'
+        run: ~/vm backup
+      - name: Restore a backup
+        if: env.STEP == 'restore'
+        env:
+          NAME: ${{ inputs.backup }}
         run: |
-          ~/vm backup
+          [ -n "$NAME" ] || { echo "::error::Give the backup file name (input 'backup')."; exit 1; }
+          ~/vm restore "$NAME"
 
+      - name: Verify (health, schema, credentials, a paper trade, the order guard)
+        if: contains(fromJSON('["verify","fresh-db","merge-turso","maintenance-off","restore"]'), env.STEP)
+        run: |
+          echo "--- /healthz/full"; curl -sS --max-time 30 "$VM_URL/healthz/full" | jq -c '{ok, database, problems}' || true
+          ~/vm verify > verify.json || true
+          jq -c '{ok, host, active, standby, maintenance: .maintenance.on, mergePending, database: {kind: .database.kind, bytes: .database.bytes, tables: .database.tables}, schema, credentials, users, problems}' verify.json
+          ok=true
+          [ "$(jq -r .ok verify.json)" = true ] || { echo "::error::verify: $(jq -c .problems verify.json)"; ok=false; }
+          [ "$(jq -r .active verify.json)" = true ] || echo "::warning::this server is not the active one (step activate)"
+          t=$(~/vm check-trade || true)
+          if [ "$(jq -r .maintenance.on verify.json)" = true ]; then
+            echo "Maintenance is on: the paper trade must be refused. $(echo "$t" | jq -c . 2>/dev/null || echo "$t")"
+            echo "$t" | grep -qi 'maintenance' || { echo "::error::maintenance is on but the trade was not refused"; ok=false; }
+          else
+            echo "paper trade: $(echo "$t" | jq -c . 2>/dev/null || echo "$t")"
+            [ "$(echo "$t" | jq -r .ok 2>/dev/null)" = true ] || { echo "::error::the paper trade failed"; ok=false; }
+          fi
+          $ok || { echo "::error::Verify failed."; exit 1; }
+          echo "Verify OK."
+
+      - name: Report
+        id: report
+        if: always()
+        run: |
+          r=$(~/vm report 2>/dev/null | head -c 60000 || true)
+          if [ -n "$r" ] && echo "$r" | jq -e . >/dev/null 2>&1; then
+            echo "report=$(echo "$r" | jq -c .)" >> "$GITHUB_OUTPUT"
+            { echo "### Report"; echo '```json'; echo "$r" | jq .; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          fi
       - name: Status
         if: always()
         run: |
           ~/vm status 2>&1 | sed -E 's/[A-Za-z0-9_-]{40,}/[hidden]/g' || true
           echo "--- public: $(curl -sS --max-time 20 "$VM_URL/healthz" || echo 'no answer')"
-          echo "--- Render: $(curl -sS --max-time 60 "$RENDER_URL/healthz" || echo 'no answer')"
           ssh -i ~/.ssh/oracle ubuntu@"$HOST" 'rm -f /tmp/migrate.sh' || true
-          rm -f ~/.ssh/oracle
+          rm -f ~/.ssh/oracle ~/vm
