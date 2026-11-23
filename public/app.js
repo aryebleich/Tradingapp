@@ -776,7 +776,8 @@ async function render(opts) {
       return `<button type="button" class="grp sec" data-g="${esc(g)}" aria-expanded="${open}"><span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span><span class="gname">${g}</span><span class="gcount" aria-hidden="true">${list.filter(([k]) => k != null).length}</span></button><div class="grpbody" ${open ? '' : 'hidden'}>${list.map(link).join('')}</div>`; }).join('')
       + (isPaid(ME) ? '' : `<a href="#/funding" class="upsell">${icon('star')}${ME.trialUsed ? 'Upgrade to Pro' : 'Try Pro free for 14 days'}</a>`)
       + `<div class="grp">${esc(ME.email)}</div><a href="#" id="navLogout">${icon('account')}Sign out</a>`
-      + `<div class="navfoot"><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/risk">Risk</a> · <a href="/contact">Support</a><p>Trading involves risk of loss. Backtests and projections are hypothetical. Brightolio is software, not a broker or investment adviser.</p></div>`;
+      // No legal links or disclaimer here: the page <footer> in app.html is the only copy (D-FOOT-1).
+      ;
     drawModeBtn();
     $('#navLogout').onclick = e => { e.preventDefault(); $('#logout').click(); };
     }
@@ -1140,7 +1141,7 @@ routes.register = async (view, q) => {
     <p class="mu">You start with a $100,000 paper account. <a href="#/login">Sign in instead</a></p></form>
   <aside class="card auth-side" aria-label="About your account"><h2>What you get, free</h2>
     <ul class="ticks"><li>$100,000 in practice money with real market prices</li><li>No card needed for the free plan</li><li>Paid plans start with a ${days}-day free trial; cancel anytime</li><li>Two-factor login and passkeys to protect your account</li></ul>
-    <p class="mu small-print">Brightolio is software, not a broker. Orders go to the brokerage account you choose. Trading involves risk of loss. <a href="/risk" target="_blank">Read the risk disclosure</a> · <a href="/security" target="_blank">How we protect your account</a></p></aside></div>`;
+    <p class="mu small-print"><a href="/risk" target="_blank">Read the risk disclosure</a> · <a href="/security" target="_blank">How we protect your account</a></p></aside></div>`;
   if (q.get('email')) { view.querySelector('[name=email]').value = q.get('email'); view.querySelector('[name=password]').focus(); }
   act($('button', view), async () => {
     const f = form(view);

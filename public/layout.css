@@ -132,7 +132,10 @@ html.lv2 .lv2-empty .lv2-next { margin-inline-start: var(--s2); font-weight: 600
 html.lv2 .err:not(:empty):not(.ok) { padding: var(--s2) var(--s3); border-radius: var(--r-sm); border-inline-start: 3px solid var(--rd);
   background: color-mix(in srgb, var(--rd) 8%, transparent); }
 
-/* signed in: the footer's disclosures are shown under every page (the previous layout hid them) */
+/* The app's footer (public/app.html): the only copy of the legal links and the disclaimer, and every
+   rule for it is here (D-FOOT-1). Shown at the bottom of every page, signed in and signed out, once the
+   app knows which (before, it would flash under the header while the app starts); never in popouts. */
+body > footer:not(.site) { display: none; }
 html.lv2 body:is(.signedin, .signedout) > footer { display: block; max-width: var(--w-page); margin: 0 auto; padding: var(--s4) var(--s6) var(--s5);
   font-size: var(--t-xs); line-height: 1.55; color: var(--mu); border-top: 1px solid var(--bd); }
 html.lv2 body.popout > footer { display: none !important; }

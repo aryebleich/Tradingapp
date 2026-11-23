@@ -14,7 +14,6 @@ nav { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; }
 nav a { color: var(--mu); text-decoration: none; padding: 6px 10px; border-radius: 6px; }
 nav a.on, nav a:hover { color: var(--tx); background: var(--bg); }
 main { max-width: 1180px; margin: 0 auto; padding: 20px 16px 40px; }
-footer { max-width: 1180px; margin: 0 auto 30px; padding: 0 16px; color: var(--mu); font-size: 12px; }
 h1 { font-size: 24px; margin: 0 0 14px; } h2 { font-size: 17px; margin: 0 0 10px; } h3 { font-size: 14px; margin: 14px 0 6px; color: var(--mu); text-transform: uppercase; letter-spacing: .04em; }
 .card { background: var(--card); border: 1px solid var(--bd); border-radius: 12px; padding: 16px; margin-bottom: 16px; min-width: 0; }
 .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
@@ -152,7 +151,6 @@ body.noscroll { overflow: hidden; }
   #logout { display: none; }
   #connBadge .long { display: none; }
   header { padding: 8px 12px; padding-top: calc(8px + env(safe-area-inset-top)); }
-  footer { padding-bottom: 12px; }
 }
 
 /* ---------- phone sizing: readable inputs (no iOS zoom), finger-sized targets, stacked tables ---------- */
