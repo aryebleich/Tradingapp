@@ -786,6 +786,9 @@ async function render(opts) {
   const show = () => { for (const c of [...$('#view').children]) if (c !== view) c.remove(); view.style.cssText = ''; scrollTo(0, keepY); };
   try {
     await loadPrefs();
+    // The page's "i" joins its title as soon as the title is drawn (the observer above adds it), not
+    // only once the page has loaded all its data: on a slow phone that could take many seconds.
+    if (!PREFETCH && ME) INFO_ROUTE = { view, route: ownerOnly(page) || !routes[page] ? 'dashboard' : page };
     // Owner pages open only for admins (the server refuses their data to anyone else too).
     try { await (routes[ownerOnly(page) ? 'dashboard' : page] || routes.dashboard)(view, new URLSearchParams(q)); if (render.seq === mine && view.isConnected) { addHubTabs(view, page); addRelated(view, page); addGear(view, page); { const t = pageTitle(view, page); document.title = t ? `${t} · Brightolio` : 'Brightolio'; } if (render.tracked !== page) { render.tracked = page; api('/a/track', { body: { route: page } }).catch(() => {}); } } } finally { if (render.seq === mine) swrOn = false; }
     if (!PREFETCH && ME) addGuide(view, ownerOnly(page) || !routes[page] ? 'dashboard' : page);
