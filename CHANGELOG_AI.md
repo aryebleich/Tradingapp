@@ -117,6 +117,29 @@ The golden page gate (`test/layout/gate.sh`) fails with the same counts before a
 - It signs in only with the optional `SMOKE_EMAIL`/`SMOKE_PASSWORD` test account, otherwise it checks the signed-out pages.
 - Its result is below.
 
+**First live run (signed out, 10 phone variants): 5 failures.**
+- Fields under 16 px in landscape.
+- Two disclaimers on the Yiddish sign-up page.
+
+Both were already fixed in the code. The live site was simply not running it:
+- The bundle it served (`app-UDOYYFOW.js`) and its file hash (`8f9ba3c4c5`) are exactly those of commit 0da9c9d, from before this work.
+- On the server, `brightfolio:new` held each new build, but `brightfolio:latest` (what runs) was 2 hours old.
+
+**The cause**:
+- After each deploy, "Verify live site" smoke-tests `APP_URL`. That variable is still the Render address, so it fell back to the server's direct address (`…sslip.io`).
+- The server answers pages on that address with a 301 to app.brightolio.com, so 10 of 14 checks failed every time.
+- The workflow then rolled the server back to `brightfolio:previous`, which was always the same old image.
+- This happened on every release, all day, while the deploy log said "Deployed". The same loop explains the 4-hour-old image found during the load-shedding work.
+
+**Fixed (327ac17, 84391b6)**:
+- post-deploy.yml and pages.yml use https://app.brightolio.com when `APP_URL` is empty, Render, or the direct address. deploy.yml and the scheduler keep the direct address, since they only call `/healthz` and `/internal`, which are never redirected.
+- If the previous version fails the same smoke test, the release is not the cause: the new version goes back in and the run fails for a person to look at.
+- The smoke test accepts the bundled stylesheet (it looked for `layout.css`), and checks the disclaimer appears once.
+
+Also learned from the diagnosis:
+- The `APP_URL` repository variable should be set to https://app.brightolio.com (it can only be changed in the repository settings).
+- `ANDROID_KEY_PASSWORD` is not set.
+
 ---
 
 ## 2026-11-23: "The market is very busy" on every page: the cause, then the fix

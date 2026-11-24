@@ -19,6 +19,8 @@
 | AN-3 | The disclaimer and the four links appear **once in the app** (More → About), worded exactly as the site's footer; a JVM test reads app.html and fails on a difference or a second use. | Same wording everywhere; the old app text named one broker and differed from the site. |
 | AN-4 | Edge to edge with safe-drawing insets on every screen, Back returns to Home first (and cancels two-factor), wrapping chips at large font sizes, Try again when offline. | Android 15 draws apps edge to edge; without insets the sign-in screen sat under the status bar and the keyboard covered fields. |
 | AN-5 | **Google Play upload only on a manual run with "Upload to Google Play" ticked**; pushes build, run the unit tests and refresh the APK download. | Nothing should reach Play by accident from an ordinary push. |
+| D-DEP-1 | **Live verification uses the main address** (https://app.brightolio.com) when `APP_URL` is empty, Render or the server's direct address. Only `/healthz` and `/internal` calls (deploy.yml, the scheduler) keep the direct address. | The server answers pages on its direct address with a 301 to the main one, so the smoke test failed every check and rolled back every release to one old image. |
+| D-DEP-2 | **A rollback that does not help is undone**: if the previous version fails the same smoke test, the new version goes back in and the run fails for a person to look at. | A broken check, address or outside service must not keep old code running silently for hours, as it did here. |
 
 ## Finishing the move to Oracle Cloud (2026-11-23)
 
