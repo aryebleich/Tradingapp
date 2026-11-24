@@ -5,6 +5,7 @@
 //   4 Keep the account safe (two-factor login, optional)
 //   5 What to do next, matched to the answer in step 1, and how to use real money when ready
 // Progress is kept in this browser; nothing here moves real money.
+import { LANGS, current as currentLang, setLang } from '../i18n.js';
 let H;
 export function registerStart(routes, helpers) { H = helpers; routes.start = page; }
 
@@ -27,6 +28,9 @@ const PICKS = [
 const AMOUNTS = [100, 500, 1000];
 const STEPS = 5;
 
+// Choose your language: one large button per language, each written in its own script.
+const langCard = () => `<h2>Choose your language</h2><p class="mu" style="margin-top:0">You can change it anytime from the top bar or in Settings.</p><div class="st-langs" role="group" aria-label="Choose your language">${Object.entries(LANGS).map(([k, v]) => `<button type="button" class="st-lang ${currentLang() === k ? 'on' : ''}" data-lang="${k}" data-no-tr lang="${k === 'en-plain' ? 'en' : k}" dir="${v.dir}">${v.name}</button>`).join('')}</div>`;
+
 async function page(view, q) {
   const s = get();
   let n = Math.min(STEPS, Math.max(1, +q.get('step') || s.step || 1));
@@ -34,7 +38,7 @@ async function page(view, q) {
   const dots = `<div class="st-dots" aria-label="Step ${n} of ${STEPS}">${[...Array(STEPS)].map((_, i) => `<i class="${i + 1 < n ? 'done' : i + 1 === n ? 'on' : ''}"></i>`).join('')}<span>Step ${n} of ${STEPS}</span></div>`;
   const nav = (next = 'Next', { back = n > 1, skip = false, id = 'stNext' } = {}) => `<div class="st-nav">${back ? '<button type="button" class="ghost" id="stBack">Back</button>' : '<span></span>'}<span class="row" style="gap:8px">${skip ? '<button type="button" class="ghost" id="stSkip">Skip for now</button>' : ''}<button type="button" id="${id}">${next}</button></span></div>`;
   let body = '';
-  if (n === 1) body = `<h1>Welcome to Brightolio 👋</h1><p class="st-lead">Let's set you up. It takes about two minutes, and nothing here uses real money.</p>
+  if (n === 1) body = langCard() + `<h1>Welcome to Brightolio 👋</h1><p class="st-lead">Let's set you up. It takes about two minutes, and nothing here uses real money.</p>
     <h2>What brings you here?</h2><div class="st-choices">${GOALS.map(([k, t, d, e]) => `<button type="button" class="st-choice ${s.goal === k ? 'on' : ''}" data-goal="${k}"><span class="st-emoji" aria-hidden="true">${e}</span><b>${t}</b><span class="mu">${d}</span></button>`).join('')}</div>${nav('Next')}`;
   if (n === 2) body = `<h1>You have $100,000 of practice money</h1><p class="st-lead">This is a <b>paper account</b>: it works like a real one, with real prices, but the money is not real. You can't lose anything here.</p>
     <div class="st-facts"><div><b>Buy</b><span>You pay today's price and own a piece of the company.</span></div><div><b>Price goes up</b><span>Your piece is worth more. You keep the gain when you sell.</span></div><div><b>Price goes down</b><span>Your piece is worth less. Prices go up and down every day; that's normal.</span></div></div>
@@ -64,6 +68,11 @@ async function page(view, q) {
   }
   view.innerHTML = `<div class="st-wrap">${dots}<div class="card st-card">${body}</div><p class="st-exit"><a href="#/dashboard" id="stExit">Skip the setup</a></p></div>`;
 
+  H.$$('[data-lang]', view).forEach(b => (b.onclick = async () => {
+    await setLang(b.dataset.lang); // switches the page at once; saved to the account when signed in
+    if (H.me()) fetch('/api/prefs/lang', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ value: b.dataset.lang }) }).catch(() => {});
+    page(view, q);
+  }));
   H.$$('[data-goal]', view).forEach(b => (b.onclick = () => { put({ goal: b.dataset.goal }); H.$$('[data-goal]', view).forEach(x => x.classList.toggle('on', x === b)); }));
   H.$$('[data-pick]', view).forEach(b => (b.onclick = () => { put({ pick: b.dataset.pick }); page(view, q); }));
   H.$$('[data-amt]', view).forEach(b => (b.onclick = () => { put({ amount: +b.dataset.amt }); page(view, q); }));

@@ -4,6 +4,9 @@
 // Right-to-left languages flip the layout with dir="rtl".
 export const LANGS = {
   en: { name: 'English', dir: 'ltr' },
+  // English in plain words: the same screens with simpler labels. Only the get-started screens have
+  // plain wording so far (the rest is the standard English), see DECISIONS.md A2.
+  'en-plain': { name: 'English (plain words)', dir: 'ltr', plain: true },
   yi: { name: 'אידיש', dir: 'rtl', load: () => import('./i18n/yi.js') },
   // Simple translations (menus and main buttons): ./i18n/simple.js
   es: { name: 'Español', dir: 'ltr', simple: true, load: () => import('./i18n/simple.js').then(m => m.forLang('es')) },
@@ -16,7 +19,13 @@ export const LANGS = {
   zh: { name: '中文', dir: 'ltr', simple: true, load: () => import('./i18n/simple.js').then(m => m.forLang('zh')) },
 };
 const KEY = 'qp_lang';
-export const current = () => { try { const l = localStorage.getItem(KEY); return LANGS[l] ? l : 'en'; } catch { return 'en'; } };
+export const current = () => { try { const l = localStorage.getItem(KEY); return LANGS[l] ? l : detect(); } catch { return detect(); } };
+// Before a choice is saved: the browser's language, if the app has it (Yiddish is 'yi' or 'ji').
+export function detect() {
+  const codes = (navigator.languages?.length ? navigator.languages : [navigator.language || 'en']).map(c => String(c).toLowerCase().split('-')[0]);
+  for (const c of codes) { const k = c === 'ji' ? 'yi' : c; if (LANGS[k] && k !== 'en-plain') return k; }
+  return 'en';
+}
 
 let dict = null, patterns = [], obs = null;
 const ATTRS = ['placeholder', 'title', 'aria-label'];
@@ -25,7 +34,7 @@ const SKIP = new Set(['SCRIPT', 'STYLE', 'PRE', 'CODE', 'TEXTAREA', 'CANVAS', 's
 let rtl = false;
 function tr(s) {
   const t = s.trim();
-  if (!t) return null;
+  if (!t || !dict) return null;
   // Arrows show reading direction, so they flip in right-to-left languages.
   if (!/[A-Za-z]/.test(t)) return rtl && /[→⟶]/.test(t) ? s.replace(/→/g, '←').replace(/⟶/g, '⟵') : null;
   const key = t.replace(/\s+/g, ' '), hit = dict[key];
@@ -36,28 +45,54 @@ function tr(s) {
   for (const [re, rep] of patterns) { const m = key.match(re); if (m) return s.replace(t, typeof rep === 'function' ? key.slice(0, m.index) + (rep.length > 1 ? rep(...m) : rep(m)) + key.slice(m.index + m[0].length) : key.replace(re, rep)); }
   return rtl && t.includes('→') ? s.replace(/→/g, '←') : null;
 }
+// Every change is remembered next to the original text, so switching language never needs a reload:
+// the page goes back to the English it was written in, or to the chosen language, in place.
+const txt = new WeakMap(); // text node -> { base: original, out: what we wrote }
+const att = new WeakMap(); // element -> Map(attribute -> { base, out })
+function setText(n) {
+  const rec = txt.get(n), now = n.nodeValue;
+  const base = rec && rec.out === now ? rec.base : now; // the page changed the text itself: that is the new original
+  const out = tr(base) ?? base;
+  if (out !== now) n.nodeValue = out;
+  txt.set(n, { base, out });
+}
+function setAttr(el, a) {
+  const now = el.getAttribute(a); if (now == null) return;
+  let m = att.get(el); if (!m) att.set(el, (m = new Map()));
+  const rec = m.get(a), base = rec && rec.out === now ? rec.base : now;
+  const out = tr(base) ?? base;
+  if (out !== now) el.setAttribute(a, out);
+  m.set(a, { base, out });
+}
 function translate(root) {
-  if (!dict || !root) return;
-  if (root.nodeType === 3) { const v = tr(root.nodeValue); if (v != null && v !== root.nodeValue) root.nodeValue = v; return; }
+  if (!root) return;
+  if (root.nodeType === 3) { setText(root); return; }
   const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, {
     acceptNode: n => (n.nodeType === 1 && (SKIP.has(n.nodeName) || n.dataset?.noTr !== undefined) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
   });
   const els = root.nodeType === 1 ? [root] : [];
   for (let n = w.currentNode; n; n = w.nextNode()) {
-    if (n.nodeType === 3) { const v = tr(n.nodeValue); if (v != null && v !== n.nodeValue) n.nodeValue = v; }
+    if (n.nodeType === 3) setText(n);
     else els.push(n);
   }
-  for (const el of els) for (const a of ATTRS) { const v = el.getAttribute?.(a); if (v) { const t = tr(v); if (t != null && t !== v) el.setAttribute(a, t); } }
+  for (const el of els) for (const a of ATTRS) if (el.hasAttribute?.(a)) setAttr(el, a);
+}
+
+
+// Switches the page to a language, in place. English (and English in plain words) has no dictionary.
+export async function applyLang(l) {
+  const meta = LANGS[l] || LANGS.en;
+  document.documentElement.lang = meta.plain ? 'en' : l;
+  document.documentElement.dir = meta.dir;
+  rtl = meta.dir === 'rtl';
+  if (meta.load) { const m = await meta.load(); dict = m.strings; patterns = m.patterns || []; }
+  else { dict = null; patterns = []; }
+  translate(document.body);
 }
 
 export async function startI18n() {
-  const l = current(), meta = LANGS[l];
-  document.documentElement.lang = l;
-  document.documentElement.dir = meta.dir;
-  if (!meta.load) return;
-  const m = await meta.load();
-  dict = m.strings; patterns = m.patterns || []; rtl = meta.dir === 'rtl';
-  translate(document.body);
+  await applyLang(current());
+  if (obs) return;
   obs = new MutationObserver(list => {
     for (const r of list) {
       if (r.type === 'characterData') translate(r.target);
@@ -84,9 +119,11 @@ export function canvasNote(g, text) {
   lines.forEach((l, i) => g.fillText(l, rtl ? w - 12 : 12, 28 + i * 20));
 }
 
-export function setLang(l) {
+// Saves the choice on this device and switches the page now (no reload). The account copy is saved by app.js.
+export async function setLang(l) {
   try { localStorage.setItem(KEY, l); } catch {}
-  location.reload();
+  await applyLang(l);
+  window.dispatchEvent(new Event('qp-lang'));
 }
 
 export const picker = () => `<select id="langSel" class="langsel" aria-label="Language" data-no-tr>${Object.entries(LANGS).map(([k, v]) => `<option value="${k}" ${k === current() ? 'selected' : ''}>${v.name}</option>`).join('')}</select>`;

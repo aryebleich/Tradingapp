@@ -1,4 +1,4 @@
-// Open questions from the website audit (AUDIT.md, LEGAL_REVIEW.md, BUG_REPORT.md), kept in Admin so
+// Open questions from the website audit (docs/archive/AUDIT.md, LEGAL_REVIEW.md, docs/archive/BUG_REPORT.md), kept in Admin so
 // the owner can record each answer and its status. Only the owner's answer text is stored; nothing
 // here is shown to visitors.
 import { siteGet, siteSet } from './site.js';

@@ -1,4 +1,4 @@
-// Growth pages (PLAN_GROWTH.md): Diversification (#/riskview/diversify), AI morning picks
+// Growth pages (docs/archive/PLAN_GROWTH.md): Diversification (#/riskview/diversify), AI morning picks
 // (#/signals/newspicks), AI intraday (#/bots/intraday), Passive investing (#/wealth/passive),
 // Dividends & income (#/wealth/dividends) and the Active trading desk (#/active).
 // Everything is information or the member's own rules, never advice; paper is the default.

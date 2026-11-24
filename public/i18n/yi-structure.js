@@ -1,4 +1,4 @@
-// Yiddish for the menu organized by what members want to do (STRUCTURE_AUDIT.md): the six groups,
+// Yiddish for the menu organized by what members want to do (docs/archive/STRUCTURE_AUDIT.md): the six groups,
 // the merged pages and their tabs, and the "Related" links between features.
 export const strings = {
   'Trade tools': 'האנדל געצייג', 'Automate': 'אויטאמאטיזירן', 'Track & plan': 'נאכפאלגן און פלאנירן', 'Account & help': 'קאנטע און הילף',

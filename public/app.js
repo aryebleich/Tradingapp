@@ -19,7 +19,9 @@ import { startBell } from './pages/bell.js';
 import { registerStart } from './pages/start.js';
 import { initSearch } from './pages/search.js';
 import { attachGlossary } from './pages/glossary.js';
-import { startI18n, setLang, canvasNote, LANGS, current as currentLang } from './i18n.js';
+import { startI18n, setLang as setLangHere, canvasNote, LANGS, current as currentLang } from './i18n.js';
+// A language choice: switches the page at once, and is saved to the account when signed in.
+const setLang = async l => { await setLangHere(l); if (ME) fetch('/api/prefs/lang', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify({ value: l }) }).catch(() => {}); };
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 // Links built from outside data (news, filings, feeds) may only open http(s) addresses.
@@ -439,7 +441,7 @@ const ADDON_PAGES = { brief: 'brief', taxpilot: 'taxPilot' };
 const CORE = [['dashboard', 'Home'], ['start', 'Get started'], ['trade', 'Trade'], ['positions', 'Positions'], ['orders', 'Orders'], ['watchlists', 'Watchlists'], ['markets', 'Market overview']];
 // The owner's own business books (Admin only): payroll, invoices, bookkeeping and the rest.
 const BIZ_NAV = ['My business', [['business', 'Business dashboard'], ['invoices', 'Invoices & payments'], ['books', 'Bookkeeping'], ['bank', 'Bank & receipts'], ['inventory', 'Inventory'], ['payroll', 'Payroll'], ['bizreports', 'Financial reports']]];
-// The menu is organized by what members want to do (STRUCTURE_AUDIT.md). Pages that do one job
+// The menu is organized by what members want to do (docs/archive/STRUCTURE_AUDIT.md). Pages that do one job
 // together are merged into one entry with tabs (HUBS below); every old address still works.
 const NAV = [
   ['Research', [['analyze', 'Stock & fund analyzer'], ['research', 'Research & news'], ['scanner', 'Scanners'], ['ai', 'AI assistant'], ['calendar', 'Calendar & events']]],
@@ -2215,7 +2217,7 @@ routes.settings = async view => {
     <label>${confirmLabel('delete your account')}<input type="${confirmType}" id="delpw" autocomplete="${pw ? 'current-password' : 'off'}"></label><button class="danger" id="delacct">Delete my account</button><div class="err"></div></div>
   <div class="card tablewrap"><h2>Active sessions</h2><table><tr><th>IP address</th><th>Device</th><th>Signed in</th><th></th></tr>${sessions.map(s => `<tr><td>${esc(s.ip)}</td><td data-no-tr>${esc(s.ua.slice(0, 60))}</td><td>${date(s.createdAt)}</td><td>${s.current ? '<span class="pill">this device</span>' : `<button class="small ghost" data-s="${s.id}">Sign out</button>`}</td></tr>`).join('')}</table></div>
   <div class="card tablewrap"><h2>Security log</h2><table><tr><th>When</th><th>Event</th><th>IP address</th></tr>${log.map(l => `<tr><td>${date(l.at)}</td><td>${esc(EVENT_LABELS[l.event] || l.event.replace(/_/g, ' '))}</td><td>${esc(l.ip || '')}</td></tr>`).join('')}</table></div>`;
-  $('#langSel', view).onchange = e => { if (e.target.value !== currentLang()) setLang(e.target.value); };
+  $('#langSel', view).onchange = async e => { if (e.target.value !== currentLang()) { await setLang(e.target.value); render(); } };
   act($('button', $('#qcf', view)), async () => { await api('/integrations/quantconnect', { body: form($('#qcf', view)) }); setTimeout(render, 800); return 'Connected'; });
   $$('[data-dis]', view).forEach(b => (b.onclick = async () => { await api('/integrations/' + b.dataset.dis, { method: 'DELETE' }); render(); }));
   if ($('#mfaset', view)) act($('#mfaset', view), async () => {
@@ -2261,7 +2263,7 @@ routes.settings = async view => {
 const ADMIN_GROUPS = [
   ['Owner: people', [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-admins', 'Admins'], ['admin-support', 'Support inbox'], ['admin-comms', 'Calls, texts & email'], ['admin-phone', 'Phone line'], ['admin-phoneaccts', 'Phone & text accounts']]],
   ['Owner: money', [['admin-money', 'Money & fees'], ['admin-sponsored', 'Sponsored news'], ['admin-upgrades', 'Upgrades']]],
-  ['Owner: site & content', [['admin-readme', 'README'], ['admin-seo', 'SEO'], ['admin-strategies', 'Original strategies'], ['admin-trust', 'Trust']]],
+  ['Owner: site & content', [['admin-readme', 'Overview'], ['admin-seo', 'SEO'], ['admin-strategies', 'Original strategies'], ['admin-trust', 'Trust']]],
   ['Owner: technical', [['admin-agents', 'AI team'], ['admin-ai', 'AI & privacy'], ['admin-keys', 'Keys'], ['admin-data', 'Market data'], ['admin-hosting', 'Hosting'], ['admin-database', 'Database'], ['admin-analytics', 'Analytics'], ['admin-setup', 'Setup']]],
 ];
 const ADMIN_TABS = ADMIN_GROUPS.flatMap(([, t]) => t);
@@ -2314,13 +2316,13 @@ async function adminPage(view, tab) {
     'admin-support': () => `
   <div class="card tablewrap"><h2>Support inbox</h2><table>${open.map(m => `<tr><td>${date(m.at)}</td><td data-no-tr>${esc(m.name)} &lt;<a href="mailto:${esc(m.email)}">${esc(m.email)}</a>&gt;</td><td data-no-tr><b>${esc(m.subject)}</b><br><span class="mu" style="white-space:pre-wrap">${esc(m.body)}</span></td><td><button class="small ghost" data-m="${m.id}">Done</button></td></tr>`).join('') || '<tr><td class="mu">Inbox zero</td></tr>'}</table></div>`,
     'admin-setup': () => `
-  <div class="card"><h2>Setup</h2><p class="mu" style="margin-top:0">What is switched on, from the environment variables in Render (values are never shown). Admins: <b data-no-tr>${esc(setup.admins.join(', ') || 'none')}</b></p>
-    <div class="setup">${setup.items.map(x => `<div class="setup-row"><span class="dot ${x.on ? 'on' : ''}"></span><span class="setup-name">${esc(x.name)}</span><code data-no-tr>${esc(x.env)}</code><span class="pill ${x.on ? '' : 'warn'}">${x.on ? 'On' : 'Not set'}</span></div>`).join('')}</div>
+  <div class="card"><h2>Setup</h2><p class="mu" style="margin-top:0">The setup list, most important first. Values are kept encrypted on this server (Admin → Keys) and are never shown here. Admins: <b data-no-tr>${esc(setup.admins.join(', ') || 'none')}</b></p>
+    ${(() => { const R = setup.ranked || { tasks: [], done: 0, total: 0, percent: 0 }, L = { blocker: 'Blocker', revenue: 'Unlocks revenue or users', quick: 'Quick win', nice: 'Nice to have' }; return `<div class="setup-progress"><div class="setup-bar" role="progressbar" aria-label="Setup progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${R.percent}"><i style="width:${R.percent}%"></i></div><p class="mu">${R.done} of ${R.total} done. Start at the top: the first items break the site or money flows if they are missing.</p></div><ol class="setup-tasks">${R.tasks.map(x => `<li class="setup-task ${x.status}"><span class="pill ${x.status === 'done' ? '' : 'warn'}">${x.status === 'done' ? 'Done' : x.status === 'attention' ? 'Needs attention' : 'Not started'}</span> <b>${x.rank}. ${esc(x.name)}</b> <span class="mu">${L[x.tier] || ''}</span><p class="mu">${esc(x.why)} About ${x.min} min.</p><code data-no-tr>${esc(x.env)}</code>${x.status === 'done' ? '' : ` <a class="btn ghost" href="${esc(x.go)}">Do it</a>`}</li>`).join('')}</ol>`; })()}
     ${setup.googleRedirects?.length ? `<details style="margin-top:10px"><summary>Sign-in return addresses (paste into Google and GitHub)</summary><p class="mu">Google Cloud console → APIs &amp; Services → Credentials → your OAuth client → <b>Authorized redirect URIs</b>: add each line.</p><pre data-no-tr style="white-space:pre-wrap">${esc(setup.googleRedirects.join('\n'))}</pre><p class="mu">GitHub → Settings → Developer settings → OAuth Apps → your app → <b>Authorization callback URL</b>:</p><pre data-no-tr>${esc(setup.githubRedirect)}</pre></details>` : ''}
     ${setup.emailError?.msg ? `<p class="banner err">Last email failed: ${esc(setup.emailError.msg)}</p>` : ''}
     <p><button class="ghost" id="testEmail">Send me a test email</button><span class="err"></span></p>
     <p class="mu small-print">Password-reset emails need RESEND_API_KEY and EMAIL_FROM on a domain you verified at resend.com (e.g. <span data-no-tr>Brightolio &lt;no-reply@yourdomain.com&gt;</span>). Without EMAIL_FROM, Resend's test sender only delivers to your own Resend address.</p>
-    <p class="mu" style="font-size:12.5px">To change one: open <a href="#/admin-keys">Keys</a> (saves here and on Render), or Render → your service → Environment → add or edit the variable → Save.</p></div>`,
+    <p class="mu" style="font-size:12.5px">To change one, open <a href="#/admin-keys">Keys</a>. Changes take effect on the server without a restart.</p></div>`,
   };
   view.innerHTML = `<h1>Admin</h1>${tabs}${sections[tab]()}`;
   if ($('#treasuryBox', view)) import('./pages/sponsored.js').then(m => m.treasuryCard($('#treasuryBox', view), shared)).catch(() => {});
@@ -2549,6 +2551,8 @@ if (!PREFETCH) { pfFrameEarly(); setTimeout(() => prefetchAll(), 3000); }
   if (ref && /^[a-z0-9]{6,12}$/.test(ref)) { try { localStorage.setItem('qp_ref', ref); } catch {} }
   // Language: chosen in Settings → Language.
   await startI18n().catch(e => console.warn('i18n', e));
+  // Signed in: the language saved to the account wins over this device's choice (it is saved there whenever it changes).
+  if (localStorage.getItem('qp_me')) fetch('/api/prefs/lang', { headers: { 'X-Requested-With': 'qp' } }).then(r => (r.ok ? r.json() : null)).then(r => { const v = r?.value; if (v && v !== currentLang() && LANGS[v]) setLangHere(v).then(() => render()); }).catch(() => {});
   let me = null;
   const known = (() => { try { return JSON.parse(localStorage.getItem('qp_me') || 'null'); } catch { return null; } })();
   const getMe = () => fetch('/api/auth/me', { headers: { 'X-Requested-With': 'qp' } }).then(r => (r.ok ? r.json() : null)).catch(() => null);

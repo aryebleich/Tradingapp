@@ -4,6 +4,19 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-24: Part A (product, money, AI and admin)
+
+### A2: language at Get started
+- **Get started** (`public/pages/start.js`): the first screen starts with "Choose your language", one large button per language the app has. The browser's language pre-selects one (`detect()` in `public/i18n.js`).
+- **In place, no reload** (`public/i18n.js`): the translator stores each text node's English original, so switching restores it or applies another language at once. Yiddish sets the page to right-to-left immediately.
+- **Saved to the account**: `pref:lang` (`src/settings.js`, validated against the list of languages). The saved choice is applied at sign-in (`public/app.js`).
+- **Plain-words English** (`en-plain`): offered, switches direction only; its wording is not written yet (see DECISIONS, A-2.5).
+- **Not done**: a chooser on the sign-up page.
+- **Tests**: `test/language.test.js` (3 tests: detection, direction and the plain entry, the saved list matches the languages the app has).
+- **Rollback**: revert the commit; the saved `pref:lang` values are ignored by the old code.
+
+---
+
 ## 2026-11-24: Seven phases
 
 ### Phase 1: every key on the Oracle server, managed from Admin

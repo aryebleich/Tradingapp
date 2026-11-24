@@ -1,4 +1,4 @@
-// Phase 1 inventory: writes the per-page table of AUDIT.md (part 2) from a run of run.mjs, using
+// Phase 1 inventory: writes the per-page table of docs/archive/AUDIT.md (part 2) from a run of run.mjs, using
 // the OLD layout's measurements (what is live today). Layout problems are measured, not guessed:
 // sideways scroll, h1 count, small targets, axe violations, hidden disclosures, page length on phones.
 //   node test/layout/audit.mjs e2e-output/layout-staging/pair.json > /tmp/inventory.md

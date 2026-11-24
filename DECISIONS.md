@@ -2,6 +2,16 @@
 
 > **Update 2026-11-16:** the feature flag system was removed and the flagged features are permanently on (CHANGELOG_AI.md). Rows below that mention a flag describe the earlier design.
 
+## Part A (2026-11-24): product, money, AI and admin
+
+### A2: language at Get started, applied at once and saved to the account
+- A-2.1: The language is chosen on the first Get started screen as large buttons, one per language the app has (English, English in plain words, Yiddish, and the other translated languages). The same choice is in the top bar and in Settings.
+- A-2.2: The browser's language pre-selects a choice when the app has it ("ji" counts as Yiddish). Otherwise English. Detection never picks "English in plain words".
+- A-2.3: Switching no longer reloads the page. The translator remembers each text node's English original (and each translated attribute), so switching back restores it exactly and switching to Yiddish turns the page right-to-left in place.
+- A-2.4: The choice is saved to the account (`pref:lang`, validated against the list of languages the app has). At sign-in the saved account choice wins over this device's choice. Trade-off: a language picked on a new device before signing in is replaced by the account's choice after sign-in.
+- A-2.5: "English in plain words" is offered as asked, but it only switches the page direction and keeps the standard English text. The plain-word copy for the rest of the app is not written yet, and the entry says so in the code. This is a known gap, not finished work.
+- A-2.6: The sign-up page does not have its own chooser yet. The Get started page (the first screen) does, and the top bar and Settings keep the same choice.
+
 ## Seven phases (2026-11-24)
 
 ### Phase 1: keys on the Oracle server, managed from Admin

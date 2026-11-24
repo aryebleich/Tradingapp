@@ -63,7 +63,7 @@ export async function stockSection(helpers, el, sym, view) {
   } catch (e) { el.innerHTML = `<div class="card"><p class="err">${H.esc(e.message)}</p></div>`; }
   related(el, sym, view);
 }
-// Each section links to the tools that go with it (STRUCTURE_AUDIT.md, related links).
+// Each section links to the tools that go with it (docs/archive/STRUCTURE_AUDIT.md, related links).
 function related(el, sym, view) {
   const q = encodeURIComponent(sym), REL = {
     valuation: [['scanner/valuescan', 'Growth-at-a-price scanner'], ['research/rates', 'Rates vs stocks'], [`analyze/compare?symbols=${q}`, 'Compare with others']],

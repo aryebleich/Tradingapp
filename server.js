@@ -1,5 +1,6 @@
 // Brightolio web server: JSON API + static single-page app.
 // First, before any module that opens the database: on Render this only redirects to Oracle.
+import { rankTasks } from './src/setup-tasks.js';
 import './src/render-redirect.js';
 import './src/fetch-timeout.js'; // a time limit on every outside call (PERFORMANCE.md)
 import * as SEO from './src/seo.js';
@@ -1407,7 +1408,7 @@ api.post('/admin/assess-fees', U, auth.requireAdmin, wrap(async (req, res) => re
 // Which services are set up in the environment (names only, never the values).
 api.get('/admin/setup', U, auth.requireAdmin, async (req, res) => {
   const has = (...k) => k.every(x => !!process.env[x]);
-  res.json({ admins: auth.allAdminEmails(), emailError: siteGet('emailError'), googleRedirects: ownHosts().filter(h => !/^(localhost|127\.)/.test(h)).map(h => `https://${h}/auth/google/callback`), githubRedirect: publicUrl() + '/auth/github/callback', items: [
+  const body = { admins: auth.allAdminEmails(), emailError: siteGet('emailError'), googleRedirects: ownHosts().filter(h => !/^(localhost|127\.)/.test(h)).map(h => `https://${h}/auth/google/callback`), githubRedirect: publicUrl() + '/auth/github/callback', items: [
     ['Admin email', 'ADMIN_EMAIL', auth.allAdminEmails().length > 0],
     [`Node.js ${runtime.version} (patched: ${runtime.min} or later)`, 'NODE_VERSION / .node-version', runtime.ok],
     ['Database (a lasting file on this server, or a shared server)', 'PERSISTENT_DISK or DATABASE_URL', persistentDb],
@@ -1426,7 +1427,8 @@ api.get('/admin/setup', U, auth.requireAdmin, async (req, res) => {
     ['AI assistant, free (Groq or Gemini)', 'GROQ_API_KEY / GEMINI_API_KEY', !!(process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY || process.env.OPENROUTER_API_KEY || process.env.AI_BASE_URL)],
     ['AI assistant upgrade (Claude)', 'ANTHROPIC_API_KEY', !!process.env.ANTHROPIC_API_KEY],
     ...Object.values(PAY.PROVIDERS).map(p => [`Deposits: ${p.name} (${p.via})`, ({ stripe_ach: 'STRIPE_SECRET_KEY', stripe_card: 'STRIPE_SECRET_KEY', helcim: 'HELCIM_API_TOKEN', square: 'SQUARE_ACCESS_TOKEN, SQUARE_LOCATION_ID, SQUARE_WEBHOOK_SIGNATURE_KEY', authorizenet: 'ANET_LOGIN_ID, ANET_TRANSACTION_KEY, ANET_SIGNATURE_KEY' })[p.id] || '', p.enabled()]),
-  ].map(([name, env, on]) => ({ name, env, on: !!on })) });
+  ].map(([name, env, on]) => ({ name, env, on: !!on })) };
+  res.json({ ...body, ranked: rankTasks(body.items) }); // the ranked task list (src/setup-tasks.js)
 });
 // Sends a test email to the signed-in owner and reports exactly what the email service answered.
 api.post('/admin/test-email', U, auth.requireAdmin, wrap(async (req, res) => {

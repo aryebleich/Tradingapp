@@ -1,4 +1,4 @@
-// Website audit (BUG_REPORT.md): one test per bug, written before the fix. The review-required bugs
+// Website audit (docs/archive/BUG_REPORT.md): one test per bug, written before the fix. The review-required bugs
 // are "todo" tests: they show the bug and do not fail the suite until a person decides the fix.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

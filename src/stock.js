@@ -1,4 +1,4 @@
-// One stock page (PLAN_GROWTH.md): valuation, 5-year fundamentals, earnings, dividends, technicals,
+// One stock page (docs/archive/PLAN_GROWTH.md): valuation, 5-year fundamentals, earnings, dividends, technicals,
 // supply and demand, the company card shown before every buy, and the growth-at-a-price scanner.
 // Data, all cached, with clean fallbacks that say what is missing:
 //  - SEC EDGAR (free): company facts (every reported annual and quarterly figure) and submissions

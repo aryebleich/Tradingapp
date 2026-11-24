@@ -374,7 +374,7 @@ console.log('Settings → Language');
   const go = async (r, sel) => { if (p.url() === B + '/app' + r) await p.reload(); else await p.goto(B + '/app' + r); await p.waitForSelector(sel, { timeout: 15000 }); };
   const okText = async box => { await p.waitForSelector(`${box} .ok`, { timeout: 20000 }).catch(async () => { throw new Error((await p.textContent(`${box} .err`).catch(() => '')) || 'no result'); }); };
   // The menu is organized by what members want to do: six groups, merged pages with tabs, and every
-  // old address opening its tab on the merged page (STRUCTURE_AUDIT.md).
+  // old address opening its tab on the merged page (docs/archive/STRUCTURE_AUDIT.md).
   await step('menu lists the merged pages; old addresses open their tab', async () => {
     for (const k of ['chart', 'ai', 'scanner', 'options', 'portfolios', 'signals', 'insights', 'riskview', 'values', 'money', 'brief', 'tax', 'invest', 'analyze', 'short', 'text', 'strategies', 'bots', 'developers', 'accounts']) await p.waitForSelector(`#nav a[href="#/${k}"]`, { state: 'attached' });
     const groups = await p.$$eval('#nav button.grp.sec', b => b.map(x => x.dataset.g).filter(g => !/^(Owner|Admin|My business)/.test(g)));

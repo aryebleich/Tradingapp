@@ -3,7 +3,7 @@
 //   crypto quotes across liquidity venues, and pointers to tokenized securities and multi-leg options.
 // - Alpaca AI & CLI tools (Automate → Developers): Alpaca's Trading MCP server and CLI, the owner's
 //   Broker MCP server, and connecting AI agents. They were one page; the developer half was split off
-//   so investors and developers each find their own part (STRUCTURE_AUDIT.md).
+//   so investors and developers each find their own part (docs/archive/STRUCTURE_AUDIT.md).
 import { ratesCard } from './instruments.js';
 let H;
 export function registerTools(routes, helpers) { H = helpers; routes['alpaca-tools'] = tools; routes['alpaca-dev'] = devTools; }
