@@ -140,6 +140,13 @@ Also learned from the diagnosis:
 - The `APP_URL` repository variable should be set to https://app.brightolio.com (it can only be changed in the repository settings).
 - `ANDROID_KEY_PASSWORD` is not set.
 
+**After the fix (2026-11-24)**:
+- "Verify live site" run 66 passed: the smoke test on https://app.brightolio.com and the 15-minute watch, with no rollback.
+- The live site serves build 925cc24: the stylesheet bundle `app-ae912fae44.css` and `app-3MEBOB57.js`, matching the current source.
+- "Live site on phones" run 12 is a **PASS**: the signed-out pages on all 10 phone variants, light and dark, English and Yiddish. One disclaimer at the bottom, nothing wider than the screen, no field under 16 px.
+
+Also fixed: the early "i" no longer reaches the hidden copy that a same-page redraw builds, which briefly showed two on Compare (400efe5).
+
 ---
 
 ## 2026-11-23: "The market is very busy" on every page: the cause, then the fix
