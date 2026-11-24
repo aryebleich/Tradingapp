@@ -51,7 +51,10 @@ export async function createSession(res, req, userId, mfaPending) {
 }
 
 // Attaches req.user for fully-authenticated sessions and req.pending for sessions awaiting 2FA.
-export const AUTH_CACHE = tableCache({ tables: ['sessions', 'users'], ttl: 60e3 });
+// AUTH_CACHE_MS: how long (default 60 s); 0 turns it off (the end-to-end run changes plans straight
+// in its database, past the app, so it runs without it).
+const AUTH_TTL = Number.isFinite(+process.env.AUTH_CACHE_MS) && process.env.AUTH_CACHE_MS !== '' ? Math.max(0, +process.env.AUTH_CACHE_MS) : 60e3;
+export const AUTH_CACHE = tableCache({ tables: ['sessions', 'users'], ttl: AUTH_TTL });
 export async function sessionMiddleware(req, res, next) {
   const token = parseCookies(req)[COOKIE];
   if (token) {

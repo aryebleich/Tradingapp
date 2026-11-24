@@ -34,6 +34,8 @@ const server = spawn(process.execPath, ['server.js'], {
     ALPACA_KEY_ID: 'DKEY', ALPACA_SECRET: 'DSECRET', ALPACA_STREAM_URL: 'ws://127.0.0.1:1',
     // Shows the Google buttons so their layout is checked (the sign-in itself is covered by unit tests).
     GOOGLE_CLIENT_ID: 'e2e', GOOGLE_CLIENT_SECRET: 'e2e',
+    // setPlan() below changes plans straight in the database: no 60-second session cache to hide it.
+    AUTH_CACHE_MS: '0',
   },
 });
 const serverLog = [];
@@ -475,10 +477,14 @@ console.log('Settings → Language');
     await go('#/sharedstrategies', '.hubtabs a.on'); await go('#/signalchannels', '.hubtabs a.on');
   });
   await step('guides: one switch hides them on every page; setup notes are not shown to customers', async () => {
-    await go('#/tax', '.pguide'); await p.click('.pguide [data-pg=off]'); await p.waitForFunction(() => !document.querySelector('.pguide'));
-    await go('#/positions', 'h1'); await p.waitForTimeout(900); if (await p.$('.pguide')) throw new Error('a guide still shows after hiding all guides');
+    // Guides live behind the round "i" in each title (the guide cards are gone, test/page-help.test.js).
+    // Settings → Page guides only turns off the "new" dot and the "New here? Tap i" hint; the i stays.
+    await go('#/tax', 'h1 .pinfo');
+    await go('#/settings', '#guidesT'); if (!(await p.isChecked('#guidesT'))) throw new Error('page guides should start on'); await p.uncheck('#guidesT');
+    await go('#/positions', 'h1 .pinfo'); await p.waitForTimeout(600);
+    if (await p.$('.pinfo-hint, h1 .pinfo.new')) throw new Error('the new-page hint still shows with page guides off');
     await go('#/settings', '#guidesT'); if (await p.isChecked('#guidesT')) throw new Error('Settings does not show guides as off'); await p.check('#guidesT');
-    await go('#/tax', '.pguide');
+    await go('#/tax', 'h1 .pinfo');
     // A customer never reads "not set up on this server" or key names.
     await p.waitForTimeout(600);
     const leak = await p.evaluate(() => /on this server|Admin →|[A-Z]{3,}_[A-Z_]*KEY/.test(document.querySelector('#view').innerText));
