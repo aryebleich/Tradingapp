@@ -12,6 +12,18 @@
 - A-2.5: "English in plain words" is offered as asked, but it only switches the page direction and keeps the standard English text. The plain-word copy for the rest of the app is not written yet, and the entry says so in the code. This is a known gap, not finished work.
 - A-2.6: The sign-up page does not have its own chooser yet. The Get started page (the first screen) does, and the top bar and Settings keep the same choice.
 
+### A5: one private overview, public files checked
+- A-5.1: The private overview is the existing Admin → README, which is stored encrypted in the database and rebuilt from the code (src/readme-overview.js, src/readme-auto.js). Building a second store would duplicate it, so the tab is now called Overview and nothing new is stored in the repo.
+- A-5.2: The AI rebuild of the overview after each push (asked in A5) is not built in this step. The code-built overview already regenerates on every deploy and on each open, which covers "only what is active now" without a model. An AI polish step needs a provider key in CI and is left for later, gated behind that key.
+- A-5.3: Outdated top-level files moved to docs/archive/: AUDIT, BUG_REPORT, COPY_CHANGES, DESIGN_DECISIONS, LAYOUT_TEST_RESULTS, NEEDS_REVIEW, PLAN_GROWTH, STRUCTURE_AUDIT. Code comments that name them now point there. ASSUMPTIONS.md, FEATURES.md, PRO_REVIEW.md, LEGAL_REVIEW.md and COMPLIANCE_REVIEW.md stay at the top, because code and tests refer to them as live documents.
+- A-5.4: A scan of the public top-level documents for server addresses, sslip names, Oracle references and personal emails found nothing.
+
+### A6: ranked setup list
+- A-6.1: The list is built from the existing setup check (the names and on/off state of each setting) by src/setup-tasks.js. Values are never part of it.
+- A-6.2: Ranking: blockers (ENCRYPTION_KEY, persistent storage, admin email, Node version, the Alpaca market data key, email reset-password keys, the sender domain) first, then revenue and user growth (Stripe, Google sign-in, broker and Alpaca connect), then quick wins, then nice-to-haves. Within a tier, the quicker tasks come first. Done tasks sort last.
+- A-6.3: Each open task has a "Do it" link to the admin page that changes it. The page no longer says "from Render": it describes the Oracle server and Admin → Keys.
+- A-6.4: Not done in this step: the setup assistant inside the admin AI chat (it needs the chat's tool layer and step-up confirmation, see A6 in the brief). The ranked list it will use is ready (nextTasks in src/setup-tasks.js).
+
 ## Seven phases (2026-11-24)
 
 ### Phase 1: keys on the Oracle server, managed from Admin

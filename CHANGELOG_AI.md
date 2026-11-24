@@ -17,6 +17,22 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+### A5: overview and documents
+- **Overview**: Admin → README is now labelled Overview (the same encrypted, code-built page; `public/app.js`).
+- **Docs**: AUDIT, BUG_REPORT, COPY_CHANGES, DESIGN_DECISIONS, LAYOUT_TEST_RESULTS, NEEDS_REVIEW, PLAN_GROWTH and STRUCTURE_AUDIT moved to `docs/archive/` (git mv); comments updated.
+- **Public check**: no server addresses, sslip names, Oracle references or personal emails in the public top-level documents.
+- **Not done**: the AI-written public README and the AI rebuild of the overview after each push.
+
+### A6: ranked setup list
+- **`src/setup-tasks.js`**: ranks each setting into blocker, revenue, quick win or nice-to-have; statuses done, needs attention, not started; "Do it" links; progress.
+- **`server.js`**: `/admin/setup` also returns `ranked`.
+- **Admin → Setup** (`public/app.js`): progress bar, ranked list, Oracle wording instead of Render.
+- **Tests**: `test/setuptasks.test.js` (6 tests: ranking, statuses, progress, links, no values).
+- **Not done**: the setup assistant in the admin AI chat.
+- **Rollback**: revert the commit; `ranked` is additive.
+
+---
+
 ## 2026-11-24: Seven phases
 
 ### Phase 1: every key on the Oracle server, managed from Admin
