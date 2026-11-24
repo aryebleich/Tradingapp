@@ -37,7 +37,7 @@ jobs:
           check-latest: true
       - name: Wait until the live site serves this commit, then smoke-test it
         run: |
-          APP_URL="${APP_URL_VAR:-}"; case "$APP_URL" in ""|*onrender.com*) APP_URL="https://$(echo "${ORACLE_HOST:-138.2.233.183}" | tr . -).sslip.io";; esac
+          APP_URL="${APP_URL_VAR:-}"; case "$APP_URL" in ""|*onrender.com*|*sslip.io*) APP_URL="https://app.brightolio.com";; esac # the main address: the server sends pages on its direct address there (301)
           echo "APP_URL=$APP_URL" >> "$GITHUB_ENV"
           for _ in $(seq 1 40); do
             commit=$(curl -fsS --max-time 20 "${APP_URL%/}/healthz/routing" 2>/dev/null | python3 -c "import sys,json;print(json.load(sys.stdin).get('commit') or '')" 2>/dev/null || true)
@@ -62,8 +62,16 @@ jobs:
           ssh-keyscan -T 15 -H "$ORACLE_HOST" >> ~/.ssh/known_hosts 2>/dev/null
           echo "::warning::Going back to the previous version on the server (the release ${SHA:0:7} failed live verification)."
           ssh -i ~/.ssh/oracle -o BatchMode=yes ubuntu@"$ORACLE_HOST" 'cd /opt/brightfolio && sudo docker image inspect brightfolio:previous >/dev/null && sudo docker tag brightfolio:previous brightfolio:latest && sudo docker compose up -d --force-recreate app >/dev/null 2>&1 && echo "previous version started"'
-          rm -f ~/.ssh/oracle
           sleep 30
-          node scripts/smoke.mjs "$APP_URL" && echo "Back on the previous version; the live site passes its smoke test." || echo "::error::Back on the previous version but the smoke test still fails."
-          echo "::error::The release ${SHA:0:7} failed live verification; the server runs the previous version until the next commit. Fix the cause and push again."
+          if node scripts/smoke.mjs "$APP_URL"; then
+            echo "Back on the previous version; the live site passes its smoke test."
+            echo "::error::The release ${SHA:0:7} failed live verification; the server runs the previous version until the next commit. Fix the cause and push again."
+            rm -f ~/.ssh/oracle; exit 1
+          fi
+          # The previous version fails the same check: the release is not the cause (the check, an
+          # address or a service outside the app is). Going back would only keep old code running, so
+          # the new version is put back and the run fails loudly for a person to look at.
+          ssh -i ~/.ssh/oracle -o BatchMode=yes ubuntu@"$ORACLE_HOST" 'cd /opt/brightfolio && sudo docker image inspect brightfolio:new >/dev/null && sudo docker tag brightfolio:new brightfolio:latest && sudo docker compose up -d --force-recreate app >/dev/null 2>&1 && echo "the new version is running again"'
+          rm -f ~/.ssh/oracle
+          echo "::error::The smoke test fails on the previous version too, so the release ${SHA:0:7} stays (it is not the cause). Check the smoke test's address and the services it depends on."
           exit 1

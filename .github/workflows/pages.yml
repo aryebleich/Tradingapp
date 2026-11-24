@@ -28,7 +28,7 @@ jobs:
           APP_URL_VAR: ${{ vars.APP_URL }}
           ORACLE_HOST: ${{ vars.ORACLE_HOST }}
         run: |
-          APP_URL="${APP_URL_VAR:-}"; case "$APP_URL" in ""|*onrender.com*) APP_URL="https://$(echo "${ORACLE_HOST:-138.2.233.183}" | tr . -).sslip.io";; esac
+          APP_URL="${APP_URL_VAR:-}"; case "$APP_URL" in ""|*onrender.com*|*sslip.io*) APP_URL="https://app.brightolio.com";; esac # the main address: the server sends pages on its direct address there (301)
           export APP_URL
           mkdir -p _site
           cd public

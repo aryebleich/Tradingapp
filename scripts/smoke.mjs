@@ -21,7 +21,15 @@ export async function smoke(base, { email = process.env.SMOKE_EMAIL, password = 
   await check('risk disclosure page', () => page('/risk', ['Risk']));
   await check('terms page', () => page('/terms', ['Terms']));
   await check('privacy page', () => page('/privacy', ['Privacy']));
-  await check('app shell: footer disclosures and layout', () => page('/app', ['Trading involves risk of loss', 'hypothetical', 'not a broker or investment adviser', 'layout.css']));
+  // The app's style sheets: one minified bundle (/bundle/app-<hash>.css, with layout.css inside), or
+  // the separate files when the bundler is off; the bundle must load. The disclaimer appears once.
+  await check('app shell: footer disclosures (once) and layout', async () => {
+    const t = await page('/app', ['Trading involves risk of loss', 'hypothetical', 'not a broker or investment adviser']);
+    must(t.split('not a broker or investment adviser').length === 2, '/app holds the disclaimer more than once');
+    const css = t.match(/href="(\/bundle\/app-[0-9a-f]+\.css)"/)?.[1];
+    if (!css) return must(t.includes('layout.css'), '/app links neither the style bundle nor layout.css');
+    const r = await get(css); must(r.status === 200, `${css} answered ${r.status}`); must((await r.text()).length > 1000, `${css} is empty`);
+  });
   for (const f of ['/app.js', '/layout.js', '/layout.css', '/pages/trading.js']) {
     await check(`asset ${f}`, async () => { const r = await get(f); must(r.status === 200, `${f} answered ${r.status}`); must((await r.text()).length > 200, `${f} is empty`); });
   }
