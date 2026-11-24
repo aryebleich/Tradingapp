@@ -58,7 +58,7 @@ async function stripeCard(view) {
       <p class="mu small-print">“Finish setup” creates (or updates) the Pro, Elite and Ultimate products with monthly and yearly prices matching the site, the webhook for ${s.events.length} events, and the billing portal, and saves their ids${s.renderConnected ? ' here and in Render' : ' here (kept in the database)'}. Running it again changes nothing that is already right. Plan prices come from the site's plan settings.</p>
       <div class="row"><button id="stripeSetup">${s.ready ? 'Check and update' : 'Finish setup'}</button></div><div id="stripeOut" class="mu">${note}</div>`}`;
     const b = box.querySelector('#stripeSetup');
-    if (b) H.act(b, async () => { const r = await H.api('/admin/site/stripe/setup', { body: {} }); await draw(`<ul class="plain">${r.report.map(x => `<li>✓ ${H.esc(x)}</li>`).join('')}</ul>${r.saved.length ? `Saved: ${r.saved.map(H.esc).join(', ')}${r.render ? ' (also in Render)' : ''}.` : 'Nothing needed saving.'}`); return 'Done'; }, box.querySelector('#stripeOut'));
+    if (b) H.act(b, async () => { const r = await H.adminUnlocked('/admin/site/stripe/setup', { body: {} }); await draw(`<ul class="plain">${r.report.map(x => `<li>✓ ${H.esc(x)}</li>`).join('')}</ul>${r.saved.length ? `Saved: ${r.saved.map(H.esc).join(', ')}${r.render ? ' (also in Render)' : ''}.` : 'Nothing needed saving.'}`); return 'Done'; }, box.querySelector('#stripeOut'));
   };
   await draw();
 }
@@ -219,48 +219,61 @@ async function admins(view) {
   H.$$('[data-rm-phone]', view).forEach(b => H.act(b, async () => { await H.api('/admin/site/admins?phone=' + encodeURIComponent(b.dataset.rmPhone), { method: 'DELETE' }); H.render(); }));
 }
 
-async function keys(view) {
-  const d = await H.api('/admin/site/env');
-  setTimeout(() => { const b = H.$('#reqCheck', view); if (b) H.act(b, async () => { const k = await H.adminUnlocked('/admin/server/keys'); H.$('#reqOut', view).innerHTML = k.warnings.length ? `<ul class="plain">${k.warnings.map(w => `<li><span class="pill ${w.level === 'error' ? 'neg' : 'warn'}">${w.level === 'error' ? 'Required' : 'Check'}</span> ${H.esc(w.text)}</li>`).join('')}</ul>` : '<span class="pill pos">All required keys are set</span>'; return ''; }); });
-  const pw = H.me()?.hasPassword !== false;
-  view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-keys')}
-  <div class="card" id="reqKeys"><div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">Required on this server</h2><button class="small ghost" id="reqCheck">Check (names only)</button></div><div id="reqOut" class="mu">Which keys this server needs and which are missing, by name only. Asks your password.</div></div>
-  <div class="card"><h2>Render</h2>
-    ${d.render.enabled ? '<p><span class="pill pos">Connected</span> Saving a key here also saves it on Render, so it stays after restarts.</p>'
-      : '<p class="mu">Not connected. Add <code>RENDER_API_KEY</code> below (Render → Account settings → API keys)' + (d.render.onRender ? '' : ' and <code>RENDER_SERVICE_ID</code> (srv-…, from the service URL)') + '. Until then, keys saved here work at once and are kept encrypted in the database, but values set on Render win after a restart.</p>'}
-    <div class="row"><button id="pull" class="ghost" ${d.render.enabled ? '' : 'disabled'}>Load from Render</button><button id="push" class="ghost" ${d.render.enabled ? '' : 'disabled'}>Send all to Render</button><button id="deploy" class="ghost" ${d.render.enabled ? '' : 'disabled'}>Restart (deploy) on Render</button></div><div class="err"></div></div>
-  <div class="grid">
-    <form class="card" id="imp"><h2>Import a .env file</h2><p class="mu">Paste KEY=value lines or choose a file. Masked values (abc•••1234) are skipped.</p>
-      <input type="file" name="file" accept=".env,.txt,text/plain"><textarea name="text" rows="6" placeholder="STRIPE_SECRET_KEY=sk_live_...&#10;TWILIO_FROM=+18455551234" spellcheck="false" data-no-tr></textarea>
-      <label class="check"><input type="checkbox" name="render" ${d.render.enabled ? 'checked' : 'disabled'}> Also save on Render</label>
-      <button>Import</button><div class="err"></div></form>
-    <form class="card" id="exp"><h2>Export as .env</h2><p class="mu">Downloads every key with its real value. Keep the file private.</p>
-      ${pw ? '<label>Your password<input name="password" type="password" autocomplete="current-password" required></label>' : '<label>Type your email to confirm<input name="confirm" type="email" autocomplete="off" required></label>'}
-      <button>Download .env</button><div class="err"></div></form>
-  </div>
-  ${d.groups.map(g => `<div class="card tablewrap"><h2>${H.esc(g.name)}</h2><table class="keys">${g.rows.map(r => `<tr><td><code data-no-tr>${r.key}</code>${r.restart ? ' <span class="pill">restart</span>' : ''}</td>
-    <td>${r.set ? '<span class="dot on"></span>' : '<span class="dot"></span>'}</td><td class="val" data-no-tr>${H.esc(r.value) || '<span class="mu">not set</span>'}</td>
-    <td><form class="keyset" data-key="${r.key}"><input name="value" ${r.secret ? 'type="password" autocomplete="new-password"' : ''} placeholder="${r.set ? 'New value' : 'Value'}" data-no-tr><button class="small">Save</button>${r.set ? `<button type="button" class="small ghost" data-clear="${r.key}">Clear</button>` : ''}</form></td></tr>`).join('')}</table></div>`).join('')}
-  <form class="card" id="addKey"><h2>Add another key</h2><div class="row"><input name="key" placeholder="NAME_IN_CAPITALS" data-no-tr><input name="value" placeholder="Value" data-no-tr><button>Add</button></div><div class="err"></div></form>`;
-  const say = r => `Saved ${r.keys.join(', ')}${r.render ? ' (and on Render)' : ''}.${r.restart?.length ? ` ${r.restart.join(', ')} take effect after a restart.` : ''}`;
-  H.$$('.keyset', view).forEach(f => H.act(H.$('button', f), async () => { const r = await H.api('/admin/site/env', { method: 'PUT', body: { key: f.dataset.key, value: f.value.value } }); setTimeout(H.render, 900); return say(r); }));
-  H.$$('[data-clear]', view).forEach(b => H.act(b, async () => { if (!confirm(`Clear ${b.dataset.clear}?`)) return ''; await H.api('/admin/site/env', { method: 'PUT', body: { key: b.dataset.clear, value: '' } }); H.render(); }));
-  H.act(H.$('#addKey button', view), async () => { const f = H.form(H.$('#addKey', view)); const r = await H.api('/admin/site/env', { method: 'PUT', body: { key: f.key.trim().toUpperCase(), value: f.value } }); setTimeout(H.render, 900); return say(r); });
-  const imp = H.$('#imp', view);
-  imp.file.onchange = async () => { const file = imp.file.files[0]; if (file) imp.text.value = await file.text(); };
-  H.act(H.$('button', imp), async () => { const r = await H.api('/admin/site/env/import', { body: { text: imp.text.value, render: imp.render.checked } }); imp.text.value = ''; setTimeout(H.render, 1500); return say(r); });
-  H.act(H.$('#exp button', view), async () => {
-    const r = await fetch('/api/admin/site/env/export', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'qp' }, body: JSON.stringify(H.form(H.$('#exp', view))) });
-    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Export failed');
-    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(await r.blob()), download: 'brightolio.env' });
-    document.body.append(a); a.click(); a.remove(); H.$('#exp', view).reset();
-    return 'Downloaded brightolio.env';
+// Admin → Keys: every key the app knows, from the key store on this server (src/keystore.js).
+// Values are typed into a password field and never come back: the page shows the last 4 characters,
+// where each key comes from (Admin, the server .env, or missing), when it changed and by whom.
+// Everything here needs admin plus the password again (15 minutes), and is in the audit log.
+const SRC = { admin: ['pos', 'Admin'], env: ['', 'Server .env'], missing: ['warn', 'Missing'] };
+const NEED = { required: ['neg', 'Required'], recommended: ['warn', 'Recommended'], optional: ['', 'Optional'] };
+function keyDialog(k) {
+  return new Promise(resolve => {
+    const d = document.createElement('dialog'); d.className = 'keydlg';
+    d.innerHTML = `<form method="dialog"><h2>${k.source === 'admin' ? 'Replace' : 'Add'} <code data-no-tr>${H.esc(k.name)}</code></h2>
+      <p class="mu" style="margin-top:0">${H.esc(k.what)}</p>
+      <label>${k.secret ? 'New value (it is not shown again after saving)' : 'Value'}<input name="value" ${k.secret ? 'type="password" autocomplete="new-password"' : 'autocomplete="off"'} spellcheck="false" required data-no-tr ${!k.secret && k.value ? `value="${H.esc(k.value)}"` : ''}></label>
+      ${k.url ? `<p class="mu small-print">Get one: <a href="${H.safeUrl(k.url)}" target="_blank" rel="noopener">${H.esc(new URL(k.url).host)} ↗</a></p>` : ''}
+      <p class="mu small-print">Saved encrypted on this server and live at once, with no restart.${k.source === 'env' ? ' It takes over from the server .env value, which stays as the fallback.' : ''}</p>
+      <div class="row" style="justify-content:flex-end;gap:8px"><button class="ghost" value="no" formnovalidate>Cancel</button><button value="yes">Save</button></div></form>`;
+    document.body.append(d);
+    d.onclose = () => { const v = d.querySelector('[name=value]').value; resolve(d.returnValue === 'yes' && v ? v : null); d.remove(); };
+    d.showModal(); setTimeout(() => d.querySelector('[name=value]').focus(), 30);
   });
-  if (d.render.enabled) {
-    H.act(H.$('#pull', view), async () => { const r = await H.api('/admin/site/env/render/pull', { body: {} }); setTimeout(H.render, 1500); return `Loaded ${r.keys.length} values from Render.`; });
-    H.act(H.$('#push', view), async () => { const r = await H.api('/admin/site/env/render/push', { body: { deploy: confirm('Restart the service on Render after sending, so every value takes effect?') } }); return `Sent ${r.keys.length} values to Render${r.deploy ? '; restarting now' : ''}.`; });
-    H.act(H.$('#deploy', view), async () => { if (!confirm('Restart the service on Render now?')) return ''; await H.api('/admin/site/env/render/deploy', { body: {} }); return 'Restarting on Render. The site is back in a minute or two.'; });
-  }
+}
+async function keys(view) {
+  const d = await H.adminUnlocked('/admin/keys');
+  const when = t => (t ? new Date(t).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '');
+  const row = k => `<tr data-k="${H.esc(k.name)}" data-search="${H.esc((k.name + ' ' + k.what).toLowerCase())}">
+    <td data-label="Key"><code data-no-tr>${H.esc(k.name)}</code><div class="mu small">${H.esc(k.what)}</div>${k.url ? `<a class="small" href="${H.safeUrl(k.url)}" target="_blank" rel="noopener">Get one ↗</a>` : ''}</td>
+    <td data-label="Needed"><span class="pill ${NEED[k.need][0]}">${NEED[k.need][1]}</span></td>
+    <td data-label="From"><span class="pill ${SRC[k.source][0]}">${SRC[k.source][1]}</span>${k.alsoInEnv ? '<div class="mu small">also in .env</div>' : ''}</td>
+    <td data-label="Value" data-no-tr>${k.source === 'missing' ? '<span class="mu">-</span>' : k.secret ? `<code>••••${H.esc(k.last4)}</code>` : `<code>${H.esc(k.value)}</code>`}</td>
+    <td data-label="Changed">${k.changedAt ? `${when(k.changedAt)}<div class="mu small" data-no-tr>${H.esc(k.changedBy || '')}</div>` : '<span class="mu">-</span>'}</td>
+    <td data-label="Check">${k.tested ? `<span class="pill ${k.tested.ok ? 'pos' : 'neg'}" title="${H.esc(k.tested.message || '')}">${k.tested.ok ? 'OK' : 'Failed'}</span><div class="mu small">${when(k.tested.at)}</div>` : '<span class="mu">-</span>'}</td>
+    <td data-label="" class="keyacts">${k.envOnly ? '<span class="mu small">Server .env only</span>' : `<button class="small" data-set>${k.source === 'admin' ? 'Replace' : 'Add'}</button>
+      ${k.testable && k.source !== 'missing' ? '<button class="small ghost" data-test>Test</button>' : ''}
+      ${k.source === 'admin' ? '<button class="small ghost" data-copy title="Also write it into the server .env, so it survives a database restore">Copy to .env</button><button class="small ghost danger" data-del>Remove</button>' : ''}`}</td></tr>`;
+  view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-keys')}
+  <div class="card"><h2 style="margin-top:0">Keys</h2>
+    <p class="mu" style="margin-top:0">Every key lives on this server, encrypted with ENCRYPTION_KEY. A key saved here works at once (no restart); without one, the server .env value applies. Values are never shown again after saving.</p>
+    <div class="stats"><div class="stat"><span>Set in Admin</span><b>${d.counts.admin}</b></div><div class="stat"><span>From the server .env</span><b>${d.counts.env}</b></div><div class="stat"><span>Not set</span><b>${d.counts.missing}</b></div><div class="stat"><span>Needed and missing</span><b class="${d.missing.length ? 'neg' : 'pos'}">${d.missing.length}</b></div></div>
+    ${d.missing.length ? `<p class="banner warn">Missing: ${d.missing.map(m => `<code data-no-tr>${H.esc(m.name)}</code>${m.need === 'required' ? ' (required)' : ''}`).join(', ')}</p>` : ''}
+    <div class="row" style="gap:8px;align-items:center"><input id="kq" type="search" placeholder="Find a key (name or what it does)" aria-label="Find a key" style="flex:1;min-width:200px">
+      <label class="chk"><input type="checkbox" id="kmiss"> Only missing</label></div>
+    <p class="mu small-print">Changing a key asks for your password once every 15 minutes, is written to the audit log and sends you a notification. "Copy to .env" also writes it into the server .env, so it survives restoring an older database.</p></div>
+  ${d.groups.map(g => `<div class="card tablewrap keygroup"><h2>${H.esc(g.name)} <span class="mu small">${g.keys.filter(k => k.source !== 'missing').length} of ${g.keys.length} set</span></h2>
+    <table class="keys stack"><thead><tr><th>Key</th><th>Needed</th><th>From</th><th>Value</th><th>Changed</th><th>Check</th><th></th></tr></thead><tbody>${g.keys.map(row).join('')}</tbody></table></div>`).join('')}
+  <form class="card" id="addKey"><h2>Add another key</h2><p class="mu" style="margin-top:0">Any setting name in capitals (A–Z, 0–9, _).</p><div class="row"><input name="key" placeholder="NAME_IN_CAPITALS" aria-label="Key name" data-no-tr autocomplete="off"><input name="value" type="password" autocomplete="new-password" placeholder="Value" aria-label="Value" data-no-tr><button>Add</button></div><div class="err"></div></form>`;
+  const find = () => { const q = H.$('#kq', view).value.trim().toLowerCase(), miss = H.$('#kmiss', view).checked;
+    for (const tr of H.$$('tr[data-k]', view)) tr.hidden = (q && !tr.dataset.search.includes(q)) || (miss && !/Missing/.test(tr.querySelector('[data-label=From]').textContent));
+    for (const c of H.$$('.keygroup', view)) c.hidden = !H.$$('tr[data-k]', c).some(tr => !tr.hidden); };
+  H.$('#kq', view).oninput = find; H.$('#kmiss', view).onchange = find;
+  const byName = n => d.groups.flatMap(g => g.keys).find(k => k.name === n);
+  const go = (sel, fn) => H.$$(sel, view).forEach(b => H.act(b, () => fn(byName(b.closest('tr').dataset.k), b)));
+  go('[data-set]', async k => { const v = await keyDialog(k); if (!v) return ''; await H.adminUnlocked('/admin/keys/' + k.name, { method: 'PUT', body: { value: v, rotate: k.source === 'admin' } }); setTimeout(H.render, 600); return `Saved ${k.name}.`; });
+  go('[data-test]', async k => { const r = await H.adminUnlocked(`/admin/keys/${k.name}/test`, { body: {} }); setTimeout(H.render, 1200); if (r.ok === false) throw new Error(r.message); return r.message; });
+  go('[data-copy]', async k => (await H.adminUnlocked(`/admin/keys/${k.name}/copy-env`, { body: {} })).message);
+  go('[data-del]', async k => { if (!confirm(`Remove ${k.name} from Admin?${k.alsoInEnv ? ' The server .env value applies again.' : ' The feature that uses it stops working.'}`)) return ''; await H.adminUnlocked('/admin/keys/' + k.name, { method: 'DELETE' }); H.render(); return ''; });
+  H.act(H.$('#addKey button', view), async () => { const f = H.form(H.$('#addKey', view)), n = f.key.trim().toUpperCase(); if (!n || !f.value) throw new Error('Enter a name and a value'); await H.adminUnlocked('/admin/keys/' + n, { method: 'PUT', body: { value: f.value } }); setTimeout(H.render, 600); return `Saved ${n}.`; });
 }
 
 // Phone line (IVR): settings, what callers hear, the Twilio links and the call log.

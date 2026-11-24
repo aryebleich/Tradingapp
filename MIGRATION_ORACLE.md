@@ -138,6 +138,21 @@ December 2." is shown to signed-in people while `TURSO_MERGE_PENDING=1`, and dis
   `ENCRYPTION_KEY` set as on the server:
   `node -e "import('./src/backup.js').then(m=>process.stdout.write(m.decryptBackup(require('fs').readFileSync(process.argv[1]))))" daily-….db.gz.enc > restored.db`
 
+## The keys in the database (Admin → Keys, 2026-11-24)
+
+- The keys managed in **Admin → Keys** live in the app's own database on the server (table
+  `secrets`), each value encrypted with AES-256-GCM under `ENCRYPTION_KEY`. Every backup (hourly,
+  daily, off-site) therefore holds them too, **still encrypted**.
+- **The same `ENCRYPTION_KEY` is needed to read them after a restore.** It lives only in the server
+  `.env` (from the `ORACLE_ENV` secret), never in the database: keep a copy of it somewhere safe
+  outside the server. With a different key the app still starts, the stored keys read as missing
+  and the `.env` values apply; add them again in Admin → Keys.
+- A key that must survive restoring an *older* database (one saved before the key was added): use
+  **Copy to .env** next to it in Admin → Keys. The app leaves an encrypted request on the data
+  volume; the host's update script hands it to `migrate.sh set-env` within 2 minutes (no restart,
+  values never logged).
+- Order when both are set: the Admin value wins; removing it in Admin falls back to the `.env` value.
+
 ## Rebuild the server from a backup
 
 If the VM is lost: make a new Always Free VM (Ubuntu 24.04, ARM; ports 22, 80, 443 open), put its

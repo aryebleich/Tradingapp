@@ -74,7 +74,8 @@ adminSiteRouter.put('/mode', wrap(async (req, res) => {
 // ---------- keys (environment values) ----------
 const row = k => {
   const v = process.env[k];
-  return { key: k, set: v !== undefined && v !== '', secret: S.isSecretName(k), value: v === undefined ? '' : S.isSecretName(k) ? S.mask(v) : v, restart: S.needsRestart(k), fromHost: S.fromHost(k) };
+  // A secret shows its last 4 characters only (Admin → Keys); plain settings show their value.
+  return { key: k, set: v !== undefined && v !== '', secret: S.isSecretName(k), value: v === undefined ? '' : S.isSecretName(k) ? (String(v).length > 4 ? '•••' + String(v).slice(-4) : '••••') : v, restart: S.needsRestart(k), fromHost: S.fromHost(k) };
 };
 adminSiteRouter.get('/env', (req, res) => {
   const known = new Set(S.ENV_GROUPS.flatMap(([, keys]) => keys));
@@ -86,20 +87,19 @@ adminSiteRouter.get('/env', (req, res) => {
 });
 // Saves values: they work at once in this server, are kept (encrypted) in the database, and are
 // sent to Render when it is connected, so they survive restarts.
+// Values go into the key store (src/keystore.js): encrypted, live at once in every worker.
 async function apply(req, changes, toRender) {
-  for (const k of Object.keys(changes)) S.checkEnvChange(k);
-  const live = {};
-  for (const [k, v] of Object.entries(changes)) {
-    if (!S.needsRestart(k)) { if (v === null || v === '') delete process.env[k]; else process.env[k] = String(v); }
-    live[k] = v;
-  }
-  await S.saveEnv(live);
+  const K = await import('./keystore.js');
+  for (const k of Object.keys(changes)) { S.checkEnvChange(k); if (K.ENV_ONLY.has(k)) throw bad(`${k} stays in the server .env only`); }
+  for (const [k, v] of Object.entries(changes)) { if (v === null || v === '') await K.removeSecret(k); else await K.setSecret(k, String(v), req.user); }
   await S.siteSet('envKeys', [...new Set([...S.siteGet('envKeys', []), ...Object.keys(changes)])]);
   let render = null;
   if (toRender && S.renderEnabled()) render = await S.renderPut(changes);
   await audit(req.user.id, 'env_changed', { keys: Object.keys(changes), render: !!render }, req.ip);
   return { ok: true, keys: Object.keys(changes), render, restart: Object.keys(changes).filter(S.needsRestart) };
 }
+// Saving keys needs the step-up too (the password again, 15 minutes: src/server-admin.js).
+const stepUp = (req, res, next) => import('./server-admin.js').then(({ isUnlocked }) => (isUnlocked(req) ? next() : res.status(403).json({ error: 'Confirm your password to change keys.', adminUnlock: true }))).catch(next);
 // Stripe: what is set, and one button that creates the plan prices, the webhook and the portal.
 const siteUrl = () => (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || 'http://localhost:3000').replace(/\/$/, '');
 adminSiteRouter.get('/stripe', wrap(async (req, res) => {
@@ -127,7 +127,7 @@ adminSiteRouter.get('/stripe/treasury', wrap(async (req, res) => {
     message: fa && fa.status !== 200 ? fa.body?.error?.message : null,
   });
 }));
-adminSiteRouter.post('/stripe/setup', wrap(async (req, res) => {
+adminSiteRouter.post('/stripe/setup', stepUp, wrap(async (req, res) => {
   const { setupStripe } = await import('./stripesetup.js');
   const r = await setupStripe({ siteUrl: siteUrl(), savedWebhookId: S.siteGet('stripeWebhookId', null) });
   await S.siteSet('stripeWebhookId', r.webhookId);
@@ -135,12 +135,12 @@ adminSiteRouter.post('/stripe/setup', wrap(async (req, res) => {
   await audit(req.user.id, 'stripe_setup', { mode: r.mode, keys: Object.keys(r.changes) }, req.ip);
   res.json({ mode: r.mode, account: r.account, report: r.report, saved: saved ? saved.keys : [], render: !!saved?.render });
 }));
-adminSiteRouter.put('/env', wrap(async (req, res) => {
+adminSiteRouter.put('/env', stepUp, wrap(async (req, res) => {
   const { key, value, render = true } = req.body || {};
   const k = String(key || '').trim().toUpperCase();
   res.json(await apply(req, { [k]: value == null ? '' : String(value) }, render));
 }));
-adminSiteRouter.post('/env/import', wrap(async (req, res) => {
+adminSiteRouter.post('/env/import', stepUp, wrap(async (req, res) => {
   const parsed = S.parseDotenv(req.body?.text);
   // Masked values copied from this page (abc•••1234) are never saved over the real ones.
   const changes = Object.fromEntries(Object.entries(parsed).filter(([k, v]) => !v.includes('•') && !['NODE_ENV', 'PORT', 'RENDER', 'HOSTNAME', 'RENDER_SERVICE_ID'].includes(k)));
@@ -148,11 +148,11 @@ adminSiteRouter.post('/env/import', wrap(async (req, res) => {
   res.json(await apply(req, changes, req.body?.render !== false));
 }));
 // The real values, as a .env file. Asks for the password (or email, for Google-only accounts).
+// Key values are never sent to a browser any more (Admin → Keys): the export answers 410.
 adminSiteRouter.post('/env/export', wrap(async (req, res) => {
   if (!confirmsIdentity(req.user, req.body || {})) throw Object.assign(new Error(req.user.password_set === 0 ? 'Type your email address to confirm' : 'Wrong password'), { status: 401 });
-  const keys = [...new Set([...S.ENV_GROUPS.flatMap(([, k]) => k), ...S.siteGet('envKeys', [])])].filter(k => process.env[k]);
-  await audit(req.user.id, 'env_exported', { n: keys.length }, req.ip);
-  res.type('text/plain').attachment('quantpocket.env').send(`# Brightolio settings, exported ${new Date().toISOString()}\n# Keep this file private: it holds your secret keys.\n` + S.toDotenv(Object.fromEntries(keys.map(k => [k, process.env[k]]))));
+  await audit(req.user.id, 'env_export_refused', null, req.ip);
+  return res.status(410).json({ error: 'Keys are never downloaded: they stay on the server. Use Admin → Keys to replace one, or "Copy to the server .env".' });
 }));
 // Render → here: loads every value set on Render into this server (until its next restart, when
 // Render's own values apply anyway).

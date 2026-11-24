@@ -4,6 +4,34 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-24: Seven phases
+
+### Phase 1: every key on the Oracle server, managed from Admin
+- **Key store** (`src/keystore.js`, table `secrets`):
+  - Each value is AES-256-GCM under `ENCRYPTION_KEY`, with the last 4 characters, who changed it and when, and the last test.
+  - `secret(name)` reads Admin first, then the server .env.
+  - A change works at once in every worker (it is put on `process.env`, and each worker checks a version every 3 s). No restart or redeploy.
+  - Removing a key falls back to the .env value.
+  - The older saved settings were moved in once.
+- **Admin → Keys** (rebuilt):
+  - Every key the app knows (`src/keys-catalog.js`, about 90), grouped: AI, brokers, market data, payments, email and SMS, hosting and backups, GitHub, sign-in, other.
+  - For each one: what it's for, required, recommended or optional, where it comes from (Admin, the server .env, or missing), the last 4 characters, when it changed and by whom, the last test, and a link to get one.
+  - Actions: add, replace, remove, test (a real read-only call to the provider), and "Copy to .env".
+  - Search, and an "only missing" filter.
+- **Rules**:
+  - Admin plus step-up (password, and 2FA when on) for everything.
+  - One audit entry and one owner email per change, never with the value.
+  - Values never reach a browser: the old export of real values answers 410.
+  - `ENCRYPTION_KEY` and host settings can never be stored.
+- **"Copy to .env"**:
+  - The app leaves an encrypted request on the data volume (`data/.env-request`).
+  - `deploy/vm/update.sh` decrypts it inside the container (`scripts/env-request.mjs`) and pipes it into `migrate.sh set-env` with no restart.
+- **Backups**: they hold the table, still encrypted. MIGRATION_ORACLE.md now says the same `ENCRYPTION_KEY` is needed to read the keys after a restore.
+- **Tests**:
+  - `test/keystore.test.js`: the read order, encryption at rest (not in the database file), the refresh across workers, the refused names, admin plus step-up, no value in any answer or the audit log, and the encrypted copy request.
+  - Owner, security and Stripe setup tests were updated for the step-up.
+
+
 ## 2026-11-23: One disclaimer, the mobile website and the Android app
 
 ### Part 1: one disclaimer, never two

@@ -56,6 +56,7 @@ before(async () => {
   await new Promise(r => { server = app.listen(0, () => { base = `http://127.0.0.1:${server.address().port}`; r(); }); });
   await owner('/auth/register', { email: 'owner@example.com', password: 'Str0ngPassword1', agree: true });
   await user('/auth/register', { email: 'payer@example.com', password: 'Str0ngPassword1', agree: true });
+  await owner('/admin/server/unlock', { password: 'Str0ngPassword1' }); // saving keys (the Stripe setup does) needs the step-up
 });
 after(() => { server.close(); stripe.close(); });
 

@@ -107,24 +107,26 @@ test('business mode, keys page, .env import/export and Render sync', async () =>
   assert.equal((await owner.call('/public/features')).body.adviser, true);
   assert.equal((await owner.call('/admin/site/mode', { adviser: false }, 'PUT')).body.adviser, false);
 
-  // Saving a key works at once; secrets show masked; host-only names are refused.
+  // Saving a key needs the password again (step-up), then works at once; secrets show their last 4
+  // characters only; host-only names are refused.
+  assert.equal((await owner.call('/admin/site/env', { key: 'RESEND_API_KEY', value: 're_1234567890abcd' }, 'PUT')).status, 403);
+  assert.equal((await owner.call('/admin/server/unlock', { password: 'Str0ngPassword' })).status, 200);
   assert.equal((await owner.call('/admin/site/env', { key: 'RESEND_API_KEY', value: 're_1234567890abcd' }, 'PUT')).status, 200);
   assert.equal(process.env.RESEND_API_KEY, 're_1234567890abcd');
   const env = (await owner.call('/admin/site/env')).body;
   const row = env.groups.flatMap(g => g.rows).find(r => r.key === 'RESEND_API_KEY');
-  assert.equal(row.set, true); assert.equal(row.value, 're_•••abcd');
+  assert.equal(row.set, true); assert.equal(row.value, '•••abcd');
   assert.equal(JSON.stringify(env).includes('re_1234567890abcd'), false);
   assert.equal((await owner.call('/admin/site/env', { key: 'NODE_ENV', value: 'production' }, 'PUT')).status, 400);
   assert.equal((await owner.call('/admin/site/env', { key: 'bad name', value: 'x' }, 'PUT')).status, 400);
 
-  // Import a .env (masked values skipped), then export it back with the password.
+  // Import a .env (masked values skipped). Exporting real values is gone: keys never reach a browser.
   const imp = (await owner.call('/admin/site/env/import', { text: 'export EMAIL_FROM="Brightolio <hi@example.com>"\n# note\nTRIAL_DAYS=21 # three weeks\nRESEND_API_KEY=re_•••abcd\nMY_EXTRA=1' })).body;
   assert.deepEqual(imp.keys.sort(), ['EMAIL_FROM', 'MY_EXTRA', 'TRIAL_DAYS']);
   assert.equal(process.env.EMAIL_FROM, 'Brightolio <hi@example.com>'); assert.equal(process.env.RESEND_API_KEY, 're_1234567890abcd');
   assert.equal((await owner.call('/admin/site/env/export', { password: 'wrong' })).status, 401);
   const out = await owner.call('/admin/site/env/export', { password: 'Str0ngPassword' });
-  assert.equal(out.status, 200);
-  assert.match(out.text, /^RESEND_API_KEY="re_1234567890abcd"$/m); assert.match(out.text, /^EMAIL_FROM="Brightolio <hi@example.com>"$/m); assert.match(out.text, /^MY_EXTRA="1"$/m);
+  assert.equal(out.status, 410); assert.equal(out.text.includes('re_1234567890abcd'), false);
 
   // Render: not connected yet, then connected through the fake Render API.
   assert.equal((await owner.call('/admin/site/env/render/push', {})).status, 400);

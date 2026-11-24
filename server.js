@@ -158,6 +158,8 @@ if (process.env.NODE_TLS_REJECT_UNAUTHORIZED === '0') {
 // Site settings (admins, business mode, keys saved in Admin) load before the first request.
 await loadSite().catch(e => console.warn('site settings', e.message));
 await applySavedEnv();
+// The key store (Admin → Keys): encrypted in the database, read first by secret(), live in every worker.
+await (await import('./src/keystore.js')).initKeystore().catch(e => console.warn('key store:', e.message));
 export const app = express();
 app.set('trust proxy', 1);
 // Behind the Cloudflare edge (edge/worker.js) every request comes from Cloudflare: the edge passes
@@ -835,6 +837,7 @@ api.use('/admin/users', adminUsersRouter);
 api.use('/retirement', retirementRouter);
 api.use('/admin/hosting', hostingRouter);
 api.use('/admin/server', (await import('./src/server-admin.js')).serverAdminRouter);
+api.use('/admin/keys', (await import('./src/keystore.js')).keysRouter);
 api.use('/plain-research', plainResearchRouter);
 // Live market-data stream (Admin → Market data → Live stream).
 api.get('/admin/streams', auth.requireUser, auth.requireAdmin, async (req, res) => { const S = await import('./src/streams.js'); res.json(S.hub.status()); });

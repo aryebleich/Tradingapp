@@ -32,6 +32,13 @@ if [ -f "$DATA/.restore-request" ]; then
 fi
 if take restart; then log "restart requested from Admin"; (cd "$APP" && docker compose restart app) && log "restart ok"; fi
 take deploy && { log "deploy requested from Admin"; FORCE=1; }
+# Admin → Keys "Copy to the server .env": the app leaves an encrypted request (data/.env-request);
+# only the app can decrypt it (ENCRYPTION_KEY), so it prints the KEY=value lines and migrate.sh's
+# set-env writes them (values never logged). No restart: the key already works from the key store.
+if [ -f "$DATA/.env-request" ]; then
+  if (cd "$APP" && docker compose exec -T app node scripts/env-request.mjs) | NO_DOCKER=1 bash "$APP/src/deploy/vm/migrate.sh" set-env >/dev/null 2>&1; then log "keys copied to .env from Admin"; else log "copying keys to .env FAILED"; fi
+  rm -f "$DATA/.env-request"
+fi
 
 cd "$APP/src"
 G() { sudo -u brightfolio git "$@"; } # the checkout belongs to the app user

@@ -2,6 +2,21 @@
 
 > **Update 2026-11-16:** the feature flag system was removed and the flagged features are permanently on (CHANGELOG_AI.md). Rows below that mention a flag describe the earlier design.
 
+## Seven phases (2026-11-24)
+
+### Phase 1: keys on the Oracle server, managed from Admin
+
+| # | Decision | Reason |
+|---|---|---|
+| KS-1 | **A `secrets` table in the app's SQLite file**, one row per key: the value encrypted with AES-256-GCM under `ENCRYPTION_KEY` (the existing `encrypt()`), the last 4 characters, who changed it and when, and the last test. | One place on the server's own disk, included in every backup, unreadable without the master key. |
+| KS-2 | **`secret(name)`: the key store first, then the environment.** A saved key is also written to `process.env`, so the many places that read `process.env` directly see it at once; every worker re-checks a version (count and newest change) every 3 seconds. | Live in every worker with no restart or redeploy, without rewriting hundreds of reads in one go; new code calls `secret()`. |
+| KS-3 | **`ENCRYPTION_KEY` and host settings never go in** (also the database settings and Node's own options). | The master key cannot encrypt itself, and a bad host setting from a browser could lock the app out of its data. |
+| KS-4 | **Values never reach a browser**: Admin shows the last 4 characters of secrets (plain settings such as addresses in full). The old `.env` export of real values now answers 410; the old masked view showed the first 3 characters too and now shows the last 4 only. | As asked: entered once in a password field, never shown again. |
+| KS-5 | **Admin plus step-up for all of Keys** (the existing 15-minute password and 2FA unlock of Admin → Database), also for the older save, import and Stripe setup endpoints. One audit entry and one owner email per change; the email never holds the value. | Keys are the most powerful thing in Admin. |
+| KS-6 | **Test calls** are read-only requests to each provider (a list of models, the account, one quote); the answer is scrubbed of the value. | A real check without side effects. |
+| KS-7 | **"Copy to the server .env"** writes an encrypted request on the data volume; the host's update script decrypts it inside the app container and pipes the lines into `migrate.sh set-env` with no restart. Not through the `oracle-migrate` workflow input. | Workflow inputs are visible in a run's details, so a value must never pass through one; this reuses the same set-env step on the server. |
+| KS-8 | The older encrypted blob of saved settings (`site_settings.env`) is moved into the table once at start. | Nothing saved earlier is lost. |
+
 ## One disclaimer, the mobile website, the Android app (2026-11-23)
 
 | # | Decision | Reason |
