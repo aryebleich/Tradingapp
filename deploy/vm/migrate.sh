@@ -203,6 +203,17 @@ case "$step" in
     echo "--- images: $(docker images brightfolio --format '{{.Tag}}={{.ID}} {{.CreatedSince}}' | paste -sd' ' -); running: $(docker inspect -f '{{.Image}}' brightfolio-app-1 2>/dev/null | cut -c8-19)"
     echo "--- app start-up log"; (cd "$APP" && docker compose logs --tail 60 app 2>&1) | grep -viE 'key|secret|token|password|authorization' | tail -40
     ;;
+  aichat-diagnose)
+    # The admin AI chat's failures: the app's own log lines (status and reason, never message text),
+    # the last replies with the model Auto picked, then each AI provider with a key probed the way the
+    # chat uses it (key prefix and length only).
+    echo "--- stream failures in the last 7 days (the app's own log lines)"
+    (cd "$APP" && docker compose logs --since 168h app 2>/dev/null) | grep '"src":"aichat"' | grep 'stream_failed' | tail -30 || true
+    echo "--- the last 25 AI chat replies (model, why Auto picked it, status; no text)"
+    sqlite3 -readonly "$DATA/quantpocket.db" "SELECT id, COALESCE(model,'-'), status, COALESCE(route_reason,'-'), datetime(created_at/1000,'unixepoch') FROM ai_chat_messages WHERE role = 'assistant' ORDER BY id DESC LIMIT 25;" 2>&1 | head -30 || true
+    echo "--- providers (probed from inside the app, as the chat uses them)"
+    (cd "$APP" && docker compose exec -T app node scripts/aichat-diagnose.mjs) 2>&1 | head -40 || true
+    ;;
   diagnose-load)
     # Six samples, ten seconds apart: the load and its parts, heap and its real limit, the event-loop
     # delay, in flight, refused requests; then the container's memory and CPU, and /metrics.

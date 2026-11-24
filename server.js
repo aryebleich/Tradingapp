@@ -1444,6 +1444,12 @@ api.get('/admin/setup', U, auth.requireAdmin, async (req, res) => {
   ].map(([name, env, on]) => ({ name, env, on: !!on })) };
   res.json({ ...body, ranked: rankTasks(body.items) }); // the ranked task list (src/setup-tasks.js)
 });
+// Admin → AI → Test the chat: each provider with a key, probed as the chat uses it (no key, no message text).
+api.post('/admin/ai/diagnose', U, auth.requireAdmin, wrap(async (req, res) => {
+  const D = await import('./src/aichat/diagnose.js');
+  const d = await D.diagnose();
+  res.json({ ...d, lines: d.providers.map(D.plainLine) });
+}));
 // Admin → AI: the active provider, the key warnings and the OpenAI webhook status (names and states only).
 api.get('/admin/ai/status', U, auth.requireAdmin, wrap(async (req, res) => {
   const W = await import('./src/openai-webhook.js'), K = await import('./src/keystore.js'), L = await import('./src/llm.js');

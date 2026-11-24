@@ -2,6 +2,7 @@ name: Oracle database move
 # The database on the Oracle server, one step at a time (Actions → Oracle database move → Run
 # workflow); the server side is deploy/vm/migrate.sh. Also called by oracle-merge-scheduled.yml.
 #   status           health, settings (names only), files, backups
+#   aichat-diagnose  the admin AI chat's recent failures and each AI provider probed (key shapes only)
 #   maintenance-on / maintenance-off
 #   fresh-db         start on a new database (ids from 10,000,000) when the old one cannot be read
 #   pull             copy the old database to the server by sync only (a check; merge-turso does it too)
@@ -33,7 +34,7 @@ on:
         description: 'Which step'
         type: choice
         default: status
-        options: [status, diagnose-load, deploy-now, repair, maintenance-on, maintenance-off, fresh-db, pull, merge-turso, final-copy, clean-old-settings, finalize, verify, activate, point-domain, set-env, backup, restore]
+        options: [status, aichat-diagnose, diagnose-load, deploy-now, repair, maintenance-on, maintenance-off, fresh-db, pull, merge-turso, final-copy, clean-old-settings, finalize, verify, activate, point-domain, set-env, backup, restore]
       settings:
         description: 'set-env only: KEY=value pairs separated by ";" (masked in the log). KEY= removes a key.'
         required: false

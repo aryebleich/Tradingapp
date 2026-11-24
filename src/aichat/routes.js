@@ -3,6 +3,7 @@
 // router then requires the "AI team chat" permission (403).
 // Replies stream as server-sent events over the POST response: start, thinking, text, done, error.
 import * as R from '../ai/router.js';
+import { reasonOf } from './diagnose.js';
 import express from 'express';
 import { rateLimit } from '../auth.js';
 import { one, all, run, now, audit } from '../db.js';
@@ -110,7 +111,7 @@ async function streamInto(req, res, conv, modelId) {
     await save(stopped ? 'stopped' : 'error', { outputTokens: E.estimateTokens(text + thinking), inputTokens: E.estimateTokens(msgs.map(m => m.content).join(' ')) }).catch(() => {});
     await saveThinking()?.catch?.(() => {});
     if (stopped) send('done', { status: 'stopped', assistantMessageId: aid });
-    else { E.clog('stream_failed', { conversation: conv.id, message: aid, model: model.id, code: e.code || e.status || e.name }); send('error', { message: e.status && e.status < 500 && e.code !== 'provider' ? e.message : 'The reply was interrupted. The text so far is kept; you can retry.', assistantMessageId: aid, retry: true }); }
+    else { const why = reasonOf(e); E.clog('stream_failed', { conversation: conv.id, message: aid, model: model.id, status: e.status || null, reason: why.code, code: e.code || e.status || e.name }); send('error', { message: e.status && e.status < 500 && e.code !== 'provider' ? e.message : 'The reply was interrupted. The text so far is kept; you can retry.', assistantMessageId: aid, retry: true }); }
   } finally { active.delete(aid); res.end(); }
 }
 
