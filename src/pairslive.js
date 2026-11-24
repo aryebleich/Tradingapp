@@ -66,11 +66,12 @@ async function loadHistory(sym, minutes) {
   for (const x of b[sym] || []) addPoint(sym, Date.parse(x.t), x.c); // 1-minute closes stand in for midpoints in the history window
 }
 // The latest price of each leg: the stream's midpoint when it is fresh, otherwise a polled last price.
-async function freshPrice(sym, userId) {
+// "Fresh" is measured on the run's own clock (t), the same one the trading window and the history use.
+async function freshPrice(sym, userId, t = Date.now()) {
   const a = BUF.get(sym), last = a?.at(-1);
-  if (last && Date.now() - last.t < 90e3) return { price: last.price, via: 'stream' };
+  if (last && t - last.t < 90e3) return { price: last.price, via: 'stream' };
   const p = await lastPrice(sym, userId).catch(() => null);
-  if (p > 0) addPoint(sym, Date.now(), p);
+  if (p > 0) addPoint(sym, t, p);
   return { price: p, via: 'poll' };
 }
 
@@ -168,7 +169,7 @@ export async function runPair(pair, t = Date.now()) {
   if (await killed(pair.user_id)) { await save(pair, st, 'paused'); await log(pair, 'paused', 'The kill switch is on: the bot is paused and sends no orders. Close any open legs by hand.'); return { paused: 'kill switch' }; }
   if (!w.open) return { idle: w.why };
   await loadHistory(pair.a, p.historyMin); await loadHistory(pair.b, p.historyMin);
-  const A = await freshPrice(pair.a, pair.user_id), B = await freshPrice(pair.b, pair.user_id);
+  const A = await freshPrice(pair.a, pair.user_id, t), B = await freshPrice(pair.b, pair.user_id, t);
   if (!(A.price > 0 && B.price > 0)) { await log(pair, 'skip', 'No price for one of the legs'); return { skip: 'no price' }; }
   const barMs = p.barMin * 60e3, from = t - p.historyMin * 60e3;
   const g = M.align(M.resample(keep(pair.a, p.historyMin).filter(x => x.t >= from), barMs), M.resample(keep(pair.b, p.historyMin).filter(x => x.t >= from), barMs));
