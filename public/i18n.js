@@ -30,8 +30,10 @@ function tr(s) {
   if (!/[A-Za-z]/.test(t)) return rtl && /[→⟶]/.test(t) ? s.replace(/→/g, '←').replace(/⟶/g, '⟵') : null;
   const key = t.replace(/\s+/g, ' '), hit = dict[key];
   if (hit) return s.replace(t, hit);
-  // A function pattern gets the match array (m[1] is the first group), as every translation file writes them.
-  for (const [re, rep] of patterns) { const m = key.match(re); if (m) return s.replace(t, typeof rep === 'function' ? key.slice(0, m.index) + rep(m) + key.slice(m.index + m[0].length) : key.replace(re, rep)); }
+  // A function pattern written m => m[1] gets the match array; one written like a String.replace
+  // callback, (m, a, b) => ..., gets the match and each group as its own argument (some Yiddish
+  // patterns are written that way: with the array alone their groups were undefined and they threw).
+  for (const [re, rep] of patterns) { const m = key.match(re); if (m) return s.replace(t, typeof rep === 'function' ? key.slice(0, m.index) + (rep.length > 1 ? rep(...m) : rep(m)) + key.slice(m.index + m[0].length) : key.replace(re, rep)); }
   return rtl && t.includes('→') ? s.replace(/→/g, '←') : null;
 }
 function translate(root) {
