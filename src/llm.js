@@ -37,8 +37,9 @@ const free = id => ({ id, name: FREE[id].name, base: env(id.toUpperCase() + '_BA
 // parameter the model rejects.
 // OPENAI_BASE_URL (optional, not a secret) only exists so tests can point at a fake server.
 export const OPENAI = { id: 'openai', name: 'ChatGPT (OpenAI)', base: 'https://api.openai.com/v1', key: 'OPENAI_API_KEY' };
-const openaiKey = () => env(OPENAI.key);
-const openaiProvider = () => ({ id: 'openai', name: OPENAI.name, base: (env('OPENAI_BASE_URL') || OPENAI.base).replace(/\/$/, ''), apiKey: openaiKey(), model: env('OPENAI_MODEL') || null, paid: true });
+// A signing secret is never sent as the API key (src/key-format.js): it is refused here too.
+const openaiKey = () => { const k = env(OPENAI.key); return /^whsec_/.test(k) ? '' : k; };
+export const openaiProvider = () => ({ id: 'openai', name: OPENAI.name, base: (env('OPENAI_BASE_URL') || OPENAI.base).replace(/\/$/, ''), apiKey: openaiKey(), model: env('OPENAI_MODEL') || null, paid: true });
 let openaiList = { at: 0, ids: [] };
 // The newest chat model in a list of model ids (newest version first, then the plain name over a dated copy).
 export function pickOpenAIModel(ids) {
@@ -54,7 +55,7 @@ export function openaiError(status, d) {
   if (status === 429) return Object.assign(new Error('ChatGPT (OpenAI) is rate-limited right now. Try again in a minute.'), { status: 429 });
   return Object.assign(new Error(redact(msg) || `ChatGPT (OpenAI) answered ${status}`), { status: status >= 500 ? 502 : status });
 }
-async function openaiModel(p) {
+export async function openaiModel(p) {
   if (p.model) return p.model;
   if (!openaiList.ids.length || Date.now() - openaiList.at > 6 * 3600e3) {
     const r = await fetch(`${p.base}/models`, { headers: { Authorization: `Bearer ${p.apiKey}` }, signal: AbortSignal.timeout(15000) });
@@ -118,6 +119,8 @@ export async function openaiStream(p, { system, messages, signal, onText, maxTok
 }
 const picked = {}; // a model found to work when the default one is retired
 export const llmEnabled = () => !!provider();
+// The provider the owner chose in Admin → AI (AI_PROVIDER), or null for automatic.
+export const activeId = () => { const p = env('AI_PROVIDER').toLowerCase(); return p && p !== 'auto' ? p : null; };
 export const llmInfo = () => { const p = provider(); return p ? { provider: p.id, name: p.name, free: !!p.free, model: p.model || (p.id === 'anthropic' ? 'claude-opus-5-5' : 'newest chat model') } : null; };
 
 let claude;

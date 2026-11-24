@@ -45,6 +45,29 @@
 - AI-2.7: Chat: "Auto (best for each message)" is first and the default when at least one real provider has a key. Under each answer: which model answered, why, and the token count. "Retry with a stronger model" uses Claude, then ChatGPT. Per-feature fixed models and cost caps are not built yet.
 - AI-2.8: Decisions are recorded (last 200) and shown in Admin → AI → Routing with the rules, the privacy rule per provider, which models answered and how often they finished (from real chat replies).
 
+## OpenAI: active provider, key checks, and the webhook receiver (2026-11-24)
+
+### Part 1: the keys are in the right place
+- OAI-1.1: I cannot read the saved values from this environment (they are encrypted on the Oracle server, and only prefixes may be looked at). So the check runs where the keys are: at start, the key store moves any value saved under an API-key name that starts with whsec_ to its signing-secret name (OPENAI_API_KEY → OPENAI_WEBHOOK_SECRET), once; it only logs names. A value already in the signing-secret name is not overwritten.
+- OAI-1.2: Saving a value is checked by prefix: a whsec_ value is refused in an API-key field, and an sk- value in a signing-secret field, each with the name it belongs in. Other providers' formats (for example sk-ant- and gsk_) are not refused, because their prefixes are not the same rule.
+- OAI-1.3: Warnings: if the OpenAI API key is missing (or was a signing secret), Admin → Keys and Admin → AI show the exact message from the brief. A missing signing secret is also reported. The API key is never sent to OpenAI when it starts with whsec_ (src/llm.js).
+- OAI-1.4: OPENAI_WEBHOOK_SECRET added to the catalogue (group AI, optional).
+
+### Part 2: OpenAI as the active AI
+- OAI-2.1: The active provider is stored as AI_PROVIDER in the key store (Admin → AI → Active AI provider), so it applies at once with no restart. "Automatic" removes it. Choosing a provider without a key is refused.
+- OAI-2.2: When set to openai and the key is real, OpenAI is tried first; the next provider with a key answers when it fails (the existing chain in src/llm.js). Automatic keeps the free providers first, as before.
+- OAI-2.3: The router prefers the active provider by +4 where it lists the need (never where it is weak), and the admin chat marks it "(active)".
+- OAI-2.4: I did not set the active provider on the live site myself: that is part of the post-deploy steps, which need the live server.
+
+### Part 3: the webhook receiver
+- OAI-3.1: POST /api/webhooks/openai is registered before the API router, so it has no login and no CSRF check, and reads the raw body.
+- OAI-3.2: Standard Webhooks signing is checked by hand (webhook-id, webhook-timestamp, webhook-signature; HMAC-SHA256 of "id.timestamp.body" with the base64 key after whsec_). I did not use the openai SDK's unwrap: the SDK is not a dependency here, and the manual check is short and tested. Events older than 5 minutes are refused with 400; a bad signature is 400; several signatures (key rotation) are accepted if one matches.
+- OAI-3.3: Each event id is stored once (openai_events); a repeat is answered as a duplicate. The answer goes out before the work, which runs after it.
+- OAI-3.4: response.completed fetches the response and finishes its job (and the waiting chat answer; the owner is told if they asked). response.failed/cancelled/incomplete mark the job failed with the reason, and the chat answer offers Retry. batch.completed downloads the results file into the job; batch.failed/expired/cancelled mark it and tell the admins.
+- OAI-3.5: "Run in background" in the admin chat starts a background response (store on, background mode) and shows a waiting note; it completes through the webhook.
+- OAI-3.6: Admin → AI shows the webhook address, whether the secret is set, the last event, the last refused signature, failures, and recent events. The "send a test" step is done in OpenAI's dashboard, which the page explains.
+- OAI-3.7: Not built: a batch submission UI (the batch handling is in the receiver; nothing in the app starts a batch yet).
+
 ## Seven phases (2026-11-24)
 
 ### Phase 1: keys on the Oracle server, managed from Admin

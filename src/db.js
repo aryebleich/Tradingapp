@@ -976,6 +976,10 @@ const MIGRATIONS = [
   'CREATE INDEX IF NOT EXISTS ai_chat_messages_conv ON ai_chat_messages (conversation_id, id)',
   'ALTER TABLE ai_chat_messages ADD COLUMN route_reason TEXT', // why the router picked this model (src/ai/router.js)
   'CREATE TABLE IF NOT EXISTS ai_chat_thinking (message_id INTEGER PRIMARY KEY REFERENCES ai_chat_messages(id) ON DELETE CASCADE, content TEXT NOT NULL, duration_ms INTEGER)',
+  // OpenAI webhooks (src/openai-webhook.js): each event id is handled once; background jobs wait for their event.
+  'CREATE TABLE IF NOT EXISTS openai_events (id TEXT PRIMARY KEY, type TEXT NOT NULL, status TEXT NOT NULL, error TEXT, received_at INTEGER NOT NULL, done_at INTEGER)',
+  'CREATE TABLE IF NOT EXISTS openai_jobs (id INTEGER PRIMARY KEY, kind TEXT NOT NULL, openai_id TEXT NOT NULL, status TEXT NOT NULL, owner_id INTEGER, conversation_id TEXT, message_id INTEGER, result TEXT, error TEXT, notify INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
+  'CREATE INDEX IF NOT EXISTS openai_jobs_openai ON openai_jobs (openai_id)',
   // Stripe webhook hardening: each event id is processed once (Stripe re-sends events and may deliver
   // them late or out of order); per-object state lets a late "subscription updated" be ignored after
   // the subscription was deleted; ledger.livemode keeps test-mode payments out of revenue reports

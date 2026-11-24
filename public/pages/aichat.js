@@ -43,7 +43,7 @@ export async function page(view) {
         <label for="acInput" class="ac-sr">Message</label>
         <textarea id="acInput" rows="3" maxlength="20000" placeholder="Message the AI team (Enter to send, Shift+Enter for a new line)" aria-describedby="acHelp"></textarea>
         <p id="acHelp" class="ac-sr">Enter sends the message. Shift and Enter adds a new line.</p>
-        <div class="ac-actions"><button type="submit" class="ac-send">Send</button><button type="button" class="ac-stop" hidden>Stop</button></div>
+        <div class="ac-actions"><label class="ac-bg"><input type="checkbox" id="acBg"> Run in background (long questions: the answer arrives when it is ready)</label><button type="submit" class="ac-send">Send</button><button type="button" class="ac-stop" hidden>Stop</button></div>
       </form>
     </section></div>`;
   // A missing element never throws: the lookup gives an empty stand-in, so a handler on it does nothing.
@@ -174,7 +174,7 @@ export async function page(view) {
     const now = Date.now();
     S.msgs.push({ id: `u${now}`, role: 'user', content: text, createdAt: now, status: 'complete' });
     drawAll(); toBottom(true);
-    await stream(`/conversations/${S.conv.id}/messages`, { content: text, model: S.model });
+    await stream(`/conversations/${S.conv.id}/messages`, { content: text, model: S.model, background: $('#acBg')?.checked === true });
     // Real ids from the server (so Edit and Regenerate work on these messages too).
     try {
       const c = await call(`/conversations/${S.conv.id}`), onRetry = document.activeElement?.classList.contains('ac-retry');

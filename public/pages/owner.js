@@ -256,6 +256,7 @@ async function keys(view) {
   <div class="card"><h2 style="margin-top:0">Keys</h2>
     <p class="mu" style="margin-top:0">Every key lives on this server, encrypted with ENCRYPTION_KEY. A key saved here works at once (no restart); without one, the server .env value applies. Values are never shown again after saving.</p>
     <div class="stats"><div class="stat"><span>Set in Admin</span><b>${d.counts.admin}</b></div><div class="stat"><span>From the server .env</span><b>${d.counts.env}</b></div><div class="stat"><span>Not set</span><b>${d.counts.missing}</b></div><div class="stat"><span>Needed and missing</span><b class="${d.missing.length ? 'neg' : 'pos'}">${d.missing.length}</b></div></div>
+    ${(d.warnings || []).map(w => `<p class="banner warn" role="status">${H.esc(w)}</p>`).join('')}
     ${d.missing.length ? `<p class="banner warn">Missing: ${d.missing.map(m => `<code data-no-tr>${H.esc(m.name)}</code>${m.need === 'required' ? ' (required)' : ''}`).join(', ')}</p>` : ''}
     <div class="row" style="gap:8px;align-items:center"><input id="kq" type="search" placeholder="Find a key (name or what it does)" aria-label="Find a key" style="flex:1;min-width:200px">
       <label class="chk"><input type="checkbox" id="kmiss"> Only missing</label></div>
@@ -323,8 +324,27 @@ Trade
 // AI & privacy: which AI crawlers may read the public site, what AI tools may say about it, and
 // what the app's own assistant may send to its AI provider.
 async function aiPrivacy(view) {
-  const [d, pw] = await Promise.all([H.api('/admin/site/ai'), H.api('/admin/site/pnlwhy')]), s = d.settings;
+  const [d, pw, st] = await Promise.all([H.api('/admin/site/ai'), H.api('/admin/site/pnlwhy'), H.api('/admin/ai/status')]), s = d.settings;
+  const A = st.active, W = st.webhook, when = t => (t ? new Date(t).toLocaleString() : '-');
   view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-ai')}
+  <div class="card" id="aiActive"><h2>Active AI provider</h2>
+    ${st.warnings.map(w => `<p class="banner warn" role="status">${H.esc(w)}</p>`).join('')}
+    <p class="mu" style="margin-top:0">The provider the app tries first. <b>Automatic</b> lets the app pick the best free one first. A change applies at once, with no restart.</p>
+    <div class="row" style="gap:8px;align-items:end;flex-wrap:wrap">
+      <label>Active provider<select id="aiActSel" data-no-tr>${[{ id: 'auto', name: 'Automatic (free first)' }, ...A.providers].map(p => `<option value="${H.esc(p.id)}" ${p.id === A.setting ? 'selected' : ''}>${H.esc(p.name)}</option>`).join('')}</select></label>
+      <button type="button" id="aiActSave">Save</button><button type="button" class="ghost" id="aiActTest">Test the active provider</button>
+    </div>
+    <p class="mu small-print">Now in use: <b data-no-tr>${H.esc(A.inUse?.name || 'none')}</b>${A.inUse?.model ? ` <span data-no-tr>(${H.esc(A.inUse.model)})</span>` : ''}. If it fails, the next provider with a key answers.</p>
+    <div id="aiActOut" role="status"></div>
+    <h3>OpenAI webhook</h3>
+    <p class="mu small-print">Enter this address in OpenAI's dashboard (Settings → Webhooks) and paste its signing secret into Keys as OPENAI_WEBHOOK_SECRET. OpenAI can send a test event from that page: it should appear below as the last event.</p>
+    <table class="slim"><tr><th>Address</th><td><code data-no-tr>${H.esc(W.url)}</code></td></tr>
+      <tr><th>Signing secret</th><td>${W.secretSet ? 'Set' : '<b class="neg">Not set</b>'}</td></tr>
+      <tr><th>Last event</th><td>${W.lastEvent ? `${H.esc(W.lastEvent.type)} · ${H.esc(when(W.lastEvent.at))}` : 'None yet. Send a test event from OpenAI.'}</td></tr>
+      <tr><th>Last signature refused</th><td>${W.lastBadSignature ? `${H.esc(W.lastBadSignature.reason)} · ${H.esc(when(W.lastBadSignature.at))}` : 'None'}</td></tr>
+      <tr><th>Failures</th><td>${W.failures ? `${W.failures.count}: ${H.esc(W.failures.last)}` : 'None'}</td></tr></table>
+    ${W.recent.length ? `<details><summary>Recent events (${W.recent.length})</summary><div class="tablewrap"><table class="slim"><tr><th>When</th><th>Event</th><th>Result</th></tr>${W.recent.map(e => `<tr><td>${H.esc(when(e.received_at))}</td><td data-no-tr>${H.esc(e.type)}</td><td>${H.esc(e.status)}${e.error ? ` · ${H.esc(e.error)}` : ''}</td></tr>`).join('')}</table></div></details>` : ''}
+  </div>
   <div class="card" id="aiTest"><h2>The AI the app uses</h2>
     <p class="mu" style="margin-top:0">${d.ai ? `In use now: <b>${H.esc(d.ai.name)}</b> <span class="mu" data-no-tr>(${H.esc(d.ai.model)})</span>. When it fails, the next provider that has a key answers instead.` : 'No AI key is set. Add GEMINI_API_KEY (free at aistudio.google.com/apikey), GROQ_API_KEY, OPENROUTER_API_KEY or ANTHROPIC_API_KEY in <a href="#/admin-keys">Keys</a>.'}</p>
     <button type="button" id="aiTestB">Test the AI now</button><div id="aiTestOut"></div></div>
@@ -358,6 +378,20 @@ async function aiPrivacy(view) {
     <button>Save</button><div class="err"></div></form>
   <div class="card"><h2>robots.txt now</h2><pre class="ivrtree" data-no-tr id="robots">${H.esc(d.robots)}</pre></div>`;
   { const f = H.$('#pwf', view); H.act(f.querySelector('button'), async () => { await H.api('/admin/site/pnlwhy', { method: 'PUT', body: { on: f.on.checked, every: Object.fromEntries(['free', 'pro', 'elite', 'ultimate'].map(k => [k, +f[k].value])) } }); return 'Saved.'; }); }
+  H.act(H.$('#aiActSave', view), async () => {
+    const r = await H.api('/admin/ai/active', { body: { value: H.$('#aiActSel', view).value } });
+    H.$('#aiActOut', view).innerHTML = `<p class="banner ok">Saved. The active provider is now ${H.esc(r.active)}.</p>`;
+    return '';
+  });
+  H.act(H.$('#aiActTest', view), async () => {
+    const r = await H.api('/admin/site/ai/test', { body: {} });
+    const want = H.$('#aiActSel', view).value;
+    const row = r.results.find(x => x.id === (want === 'auto' ? r.active?.provider : want)) || r.results[0];
+    H.$('#aiActOut', view).innerHTML = row
+      ? (row.ok ? `<p class="banner ok">${H.esc(row.name)} answered in ${row.ms} ms: "${H.esc(row.text || '')}"</p>` : `<p class="banner err">${H.esc(row.name)} did not answer: ${H.esc(row.error || 'no answer')}</p>`)
+      : '<p class="banner err">No provider has a key yet. Add one in Keys.</p>';
+    return '';
+  });
   H.act(H.$('#aiTestB', view), async () => {
     const r = await H.api('/admin/site/ai/test', { body: {} });
     const hint = e => /API key not valid|API_KEY_INVALID|invalid api key|401|403/i.test(e) ? 'The key is wrong or was deleted: make a new one and save it in Keys (no spaces).' : /quota|exhausted|429/i.test(e) ? 'The free quota is used up for now; it refills (per minute and per day), or add a second provider.' : /not found|404|not supported/i.test(e) ? 'This model is not open to the key; the app now picks one that is.' : /location|region|country/i.test(e) ? 'Google does not offer the free Gemini API in the server\'s region; use Groq or OpenRouter as well.' : '';

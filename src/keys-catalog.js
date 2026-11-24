@@ -10,6 +10,7 @@ const bearer = v => ({ authorization: `Bearer ${v}` });
 const K = [
   // AI
   ['OPENAI_API_KEY', 'AI', 'OpenAI (ChatGPT): the admin AI chat and the AI features routed to it in Admin → AI.', 'optional', 'https://platform.openai.com/api-keys', v => ({ url: 'https://api.openai.com/v1/models', headers: bearer(v) })],
+  ['OPENAI_WEBHOOK_SECRET', 'AI', 'Verifies webhooks from OpenAI (the signing secret, starts with whsec_). Needed for background AI jobs.', 'optional', 'https://platform.openai.com/settings/organization/webhooks'],
   ['ANTHROPIC_API_KEY', 'AI', 'Claude (Anthropic): the AI features routed to it, and the AI work queue when you allow paid use.', 'optional', 'https://console.anthropic.com/settings/keys', v => ({ url: 'https://api.anthropic.com/v1/models', headers: { 'x-api-key': v, 'anthropic-version': '2023-06-01' } })],
   ['GROQ_API_KEY', 'AI', 'Groq: a fast free tier, the default fallback when a paid provider is down or at its cap.', 'optional', 'https://console.groq.com/keys', v => ({ url: 'https://api.groq.com/openai/v1/models', headers: bearer(v) })],
   ['GEMINI_API_KEY', 'AI', 'Google Gemini: a free tier for the AI features routed to it.', 'optional', 'https://aistudio.google.com/app/apikey', v => ({ url: `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(v)}` })],

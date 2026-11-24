@@ -122,8 +122,35 @@ aiChatRouter.post('/conversations/:id/messages', route(async (req, res) => {
   const t = now();
   await run("INSERT INTO ai_chat_messages (conversation_id, role, content, status, model, input_tokens, output_tokens, created_at, updated_at) VALUES (?, 'user', ?, 'complete', NULL, 0, 0, ?, ?)", conv.id, content, t, t);
   if (conv.title === 'New chat') await run('UPDATE ai_chat_conversations SET title = ? WHERE id = ?', E.titleFrom(content), conv.id);
+  if (req.body?.background === true) return backgroundInto(req, res, conv);
   await streamInto(req, res, conv, req.body?.model || conv.model);
 }));
+// "Run in background" (long questions): OpenAI works on it and the answer arrives through its webhook
+// (src/openai-webhook.js), so no connection is held open. The reply shows a waiting note until then.
+async function backgroundInto(req, res, conv) {
+  const c = E.config();
+  if (!rateLimit(`aichat:${req.user.id}`, c.messagesPerMinute, 60e3)) throw E.bad('You are sending messages too quickly. Please wait a minute.', 429, 'rate_limited');
+  const msgs = history(await E.messages(conv.id, { withThinking: false }), c.historyMessages);
+  if (!msgs.length || msgs.at(-1).role !== 'user') throw E.bad('Nothing to answer.');
+  const L = await import('../llm.js');
+  if (!L.providers().some(p => p.id === 'openai')) throw E.bad('Background answers use ChatGPT (OpenAI). Add its key in Admin → Keys.', 400, 'no_model');
+  const OJ = await import('../openai-jobs.js');
+  const t0 = now(), note = 'Working on it in the background. This answer appears here when OpenAI finishes (usually a few minutes). You can leave this page.';
+  const aid = Number((await run("INSERT INTO ai_chat_messages (conversation_id, role, content, status, model, input_tokens, output_tokens, created_at, updated_at, route_reason) VALUES (?, 'assistant', ?, 'background', 'openai', 0, 0, ?, ?, ?)", conv.id, note, t0, t0, 'Background answer (ChatGPT)')).lastInsertRowid);
+  await run('UPDATE ai_chat_conversations SET model = ?, updated_at = ? WHERE id = ?', 'openai', t0, conv.id);
+  try {
+    await OJ.startBackground({ input: msgs.map(m => ({ role: m.role, content: m.content })), instructions: c.systemPrompt, owner: req.user.id, conversationId: conv.id, messageId: aid, notify: true });
+  } catch (e) {
+    await run("UPDATE ai_chat_messages SET content = ?, status = 'error', updated_at = ? WHERE id = ?", `The background answer could not start: ${e.message}`, now(), aid);
+    throw e;
+  }
+  res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
+  const send = (event, data) => { if (!res.writableEnded) res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`); };
+  send('start', { assistantMessageId: aid, model: 'openai', name: 'ChatGPT (OpenAI)', thinking: false, route: { need: 'background', reason: 'Background answer (ChatGPT)' } });
+  send('text', { delta: note });
+  send('done', { status: 'background', assistantMessageId: aid });
+  res.end();
+}
 // Regenerate (or retry after an error / a stop): the last assistant reply is replaced.
 aiChatRouter.post('/conversations/:id/regenerate', route(async (req, res) => {
   const conv = await E.conversation(req.params.id, req.user.id);

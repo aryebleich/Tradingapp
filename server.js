@@ -438,6 +438,20 @@ const stripeDeps = {
   alertOwner: async (subject, text) => { for (const to of auth.allAdminEmails()) await N.sendEmail(to, subject, text).catch(() => {}); },
   emailUser: (to, subject, text) => N.sendEmail(to, subject, text),
 };
+// OpenAI webhooks (src/openai-webhook.js): no login, CSRF-exempt, the raw body checked against the
+// signing secret (OPENAI_WEBHOOK_SECRET). The answer goes out first; the work follows.
+app.post('/api/webhooks/openai', express.raw({ type: '*/*', limit: '1mb' }), async (req, res) => {
+  const W = await import('./src/openai-webhook.js'), K = await import('./src/keystore.js');
+  const raw = req.body.toString('utf8');
+  const v = W.verifyStandardWebhook({ raw, headers: req.headers, secret: K.secret('OPENAI_WEBHOOK_SECRET') });
+  if (!v.ok) { siteSet('openaiBadSignature', { at: now(), reason: v.reason }).catch(() => {}); return res.status(400).json({ error: v.reason }); }
+  let ev; try { ev = JSON.parse(raw); } catch { return res.status(400).json({ error: 'bad payload' }); }
+  let state;
+  try { state = await W.receive(ev); } catch (e) { return res.status(e.status || 400).json({ error: e.message }); }
+  if (state === 'duplicate') return res.json({ received: true, duplicate: true });
+  res.json({ received: true });
+  setImmediate(() => W.processEvent(ev).catch(() => {}));
+});
 app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
   const raw = req.body.toString('utf8');
   // The signature is checked on the raw body before anything is parsed or trusted.
@@ -1430,6 +1444,23 @@ api.get('/admin/setup', U, auth.requireAdmin, async (req, res) => {
   ].map(([name, env, on]) => ({ name, env, on: !!on })) };
   res.json({ ...body, ranked: rankTasks(body.items) }); // the ranked task list (src/setup-tasks.js)
 });
+// Admin → AI: the active provider, the key warnings and the OpenAI webhook status (names and states only).
+api.get('/admin/ai/status', U, auth.requireAdmin, wrap(async (req, res) => {
+  const W = await import('./src/openai-webhook.js'), K = await import('./src/keystore.js'), L = await import('./src/llm.js');
+  const webhook = await W.webhookStatus(publicUrl(), K.has('OPENAI_WEBHOOK_SECRET'));
+  res.json({ active: { setting: L.activeId() || 'auto', inUse: L.llmInfo(), providers: L.providers().map(p => ({ id: p.id, name: p.name, model: p.model || null })) }, warnings: K.report().warnings, webhook });
+}));
+// Admin → AI: the active provider ("auto" clears it). Saved in the key store as AI_PROVIDER: it applies at once, no restart.
+api.post('/admin/ai/active', U, auth.requireAdmin, wrap(async (req, res) => {
+  const v = String(req.body?.value || 'auto').trim().toLowerCase();
+  const L = await import('./src/llm.js'), K = await import('./src/keystore.js');
+  const allowed = ['auto', 'openai', 'anthropic', 'gemini', 'groq', 'openrouter', 'custom'];
+  if (!allowed.includes(v)) return res.status(400).json({ error: 'Choose a provider from the list.' });
+  if (v !== 'auto' && !L.providers().some(p => p.id === v)) return res.status(400).json({ error: 'That provider has no key yet. Add its key in Admin → Keys first.' });
+  if (v === 'auto') await K.removeSecret('AI_PROVIDER'); else await K.setSecret('AI_PROVIDER', v, req.user);
+  await audit(req.user.id, 'ai_active_provider', { value: v }, req.ip);
+  res.json({ active: v });
+}));
 // Admin → AI → Routing: the recent router decisions, which models answered and how often they finished, and the catalog.
 api.get('/admin/ai/routing', U, auth.requireAdmin, wrap(async (req, res) => {
   const R = await import('./src/ai/router.js');

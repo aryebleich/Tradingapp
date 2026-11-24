@@ -15,6 +15,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { encrypt, tryDecrypt } from './crypto.js';
 import { describe, isSecret, CATALOG, GROUPS } from './keys-catalog.js';
+import { checkFormat, misfileTarget, openAIWarnings } from './key-format.js';
+// Set when a value was moved out of the wrong key name at start (the warning stays until the key is fixed).
+let openAIMovedFrom = false;
 
 // Never stored here: the master key, what the host sets, and what would cut the app off its data.
 export const ENV_ONLY = new Set(['ENCRYPTION_KEY', 'DATABASE_URL', 'DATABASE_AUTH_TOKEN', 'DB_FILE', 'PERSISTENT_DISK', 'NODE_ENV', 'PORT', 'HOSTNAME', 'RENDER',
@@ -74,6 +77,8 @@ export async function initKeystore({ every = 3000 } = {}) {
     await S.siteSet('keystoreMoved', true);
   }
   await refresh();
+  openAIMovedFrom = !!S.siteGet('openaiMisfiled', false);
+  await moveMisfiled().catch(e => console.warn('key store: could not move misfiled keys:', e.message));
   if (every && !timer) { timer = setInterval(() => refresh().catch(() => {}), every); timer.unref?.(); }
 }
 
@@ -87,6 +92,7 @@ export async function setSecret(name, value, user = null) {
   if (!v.trim()) throw bad('Enter a value');
   if (v.length > 20000) throw bad('That value is too long');
   if (v.includes('•')) throw bad('That looks like a masked value, not the key itself');
+  const fmt = checkFormat(name, v); if (!fmt.ok) throw bad(fmt.message);
   const { run } = await dbm(), t = Date.now();
   await run(`INSERT INTO secrets (name, blob, last4, updated_at, updated_by, updated_by_email, created_at, tested_at, test_ok, test_msg) VALUES (?,?,?,?,?,?,?,NULL,NULL,NULL)
     ON CONFLICT(name) DO UPDATE SET blob = excluded.blob, last4 = excluded.last4, updated_at = excluded.updated_at, updated_by = excluded.updated_by,
@@ -96,6 +102,24 @@ export async function setSecret(name, value, user = null) {
   version = null;
   return { name, last4: last4(v), source: 'admin' };
 }
+// A value saved under the wrong name (a whsec_ signing secret in an API-key field, or an sk- key in a
+// signing-secret field) moves to the right name, once. Only names are logged, never values.
+export async function moveMisfiled() {
+  const moved = [];
+  for (const name of [...store.keys()]) {
+    const v = store.get(name), to = misfileTarget(name, v);
+    if (!to) continue;
+    if (!store.get(to)) await setSecret(to, v, null);
+    await removeSecret(name);
+    moved.push({ from: name, to });
+  }
+  if (moved.length) {
+    console.log(`key store: moved ${moved.length} key(s) to the right name: ${moved.map(m => `${m.from} → ${m.to}`).join(', ')}`);
+    if (moved.some(m => m.from === 'OPENAI_API_KEY')) { openAIMovedFrom = true; const S = await import('./site.js'); await S.siteSet('openaiMisfiled', true); }
+  }
+  return moved;
+}
+
 export async function removeSecret(name) {
   check(name);
   const { run } = await dbm();
@@ -143,7 +167,7 @@ export function report() {
   });
   const groups = GROUPS.map(g => ({ name: g, keys: rows.filter(r => r.group === g).sort((a, b) => (a.need === 'required' ? -1 : 0) - (b.need === 'required' ? -1 : 0) || a.name.localeCompare(b.name)) })).filter(g => g.keys.length);
   const missing = rows.filter(r => r.source === 'missing' && (r.need === 'required' || r.need === 'recommended')).map(r => ({ name: r.name, need: r.need }));
-  return { groups, missing, counts: { admin: rows.filter(r => r.source === 'admin').length, env: rows.filter(r => r.source === 'env').length, missing: rows.filter(r => r.source === 'missing').length } };
+  return { warnings: openAIWarnings({ apiKey: secret('OPENAI_API_KEY'), signingSecret: secret('OPENAI_WEBHOOK_SECRET'), movedFrom: openAIMovedFrom }), groups, missing, counts: { admin: rows.filter(r => r.source === 'admin').length, env: rows.filter(r => r.source === 'env').length, missing: rows.filter(r => r.source === 'missing').length } };
 }
 
 // "Copy to the server .env": an encrypted request on the data volume. The host's update script

@@ -8,7 +8,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { one, all, run, now } from '../db.js';
 import { siteGet, siteSet, isOwner } from '../site.js';
 import { canonicalEmail } from '../auth.js';
-import { providers, openaiStream } from '../llm.js';
+import { providers, openaiStream, activeId } from '../llm.js';
 import { redact } from '../aiaccess.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -45,7 +45,7 @@ export const accessList = granted;
 // ---------- models ----------
 // Only providers that have a key, that the config lists, and (if adminModels names this admin) that are in their list.
 export function models(user) {
-  const c = config(), list = [...providers().map(p => ({ id: p.id, name: p.name, model: p.model, thinking: p.id === 'anthropic' }))];
+  const c = config(), act = activeId(), list = [...providers().map(p => ({ id: p.id, name: p.name + (p.id === act ? ' (active)' : ''), model: p.model, thinking: p.id === 'anthropic' }))];
   if (process.env.NODE_ENV === 'test' && process.env.AI_CHAT_FAKE_MODEL) list.push({ id: 'fake', name: 'Test model (thinks)', model: 'fake-thinker', thinking: true }, { id: 'fake-plain', name: 'Test model', model: 'fake-plain', thinking: false });
   const mine = c.adminModels?.[canonicalEmail(user?.email || '')];
   const out = list.filter(m => (c.models.includes(m.id) || m.id.startsWith('fake')) && (!mine || mine.includes(m.id)));

@@ -6,7 +6,7 @@
 // real calls (src/llm.js lastErrors). Pure functions first, so they can be tested without a database.
 import fs from 'node:fs';
 const catalogFile = JSON.parse(fs.readFileSync(new URL('./catalog.json', import.meta.url), 'utf8'));
-import { providers, lastErrors } from '../llm.js';
+import { providers, lastErrors, activeId } from '../llm.js';
 import { siteGet, siteSet } from '../site.js';
 
 export const NEEDS = ['quick', 'reasoning', 'coding', 'long', 'finance', 'summary', 'translation', 'extraction', 'image', 'general'];
@@ -42,7 +42,7 @@ export function catalogFor(provider, modelId, catalog = catalogFile) {
 }
 
 // Scores one candidate for a need. Higher is better; null means it is not allowed (privacy or health).
-export function score(candidate, need, { member = false, health = {} } = {}) {
+export function score(candidate, need, { member = false, health = {}, preferred = null } = {}) {
   const c = candidate, h = health[c.provider];
   if (member && !c.memberData) return { score: null, blocked: 'privacy: this provider may not receive member data' };
   if (h && h.open) return { score: null, blocked: `${h.reason}` };
@@ -54,6 +54,8 @@ export function score(candidate, need, { member = false, health = {} } = {}) {
   else if (c.price) s -= Math.min(4, c.price.inputPerM / 2 + c.price.outputPerM / 8); // a cost penalty, capped
   else s -= 1; // price not verified: a little caution
   if (h && h.slow) s -= 2;
+  // The provider the owner made active is preferred where it fits the need (not where it is weak).
+  if (preferred && c.provider === preferred && c.strengths.includes(need)) s += 4;
   return { score: Math.round(s * 10) / 10, blocked: null };
 }
 
@@ -100,9 +102,9 @@ export function candidatesFromKeys(list = providers(), catalog = catalogFile) {
 }
 
 // The whole decision for a message: need, model, reason and the runners-up. Pure given its inputs.
-export function decide({ text = '', hasImage = false, feature = '', member = false }, { candidates, health = {} } = {}) {
+export function decide({ text = '', hasImage = false, feature = '', member = false }, { candidates, health = {}, preferred = null } = {}) {
   const { need, why } = classify({ text, hasImage, feature });
-  const { ranked, blocked } = rank(candidates || [], need, { member, health });
+  const { ranked, blocked } = rank(candidates || [], need, { member, health, preferred });
   const pick = ranked[0] || null;
   return {
     need, needWhy: why,
@@ -117,7 +119,7 @@ export function decide({ text = '', hasImage = false, feature = '', member = fal
 // Routes a message with the live keys and health, and records the decision (the last 200 are kept
 // for Admin → AI → Routing).
 export async function route(input) {
-  const d = decide(input, { candidates: candidatesFromKeys(), health: healthOf() });
+  const d = decide(input, { candidates: candidatesFromKeys(), health: healthOf(), preferred: activeId() });
   await recordDecision({ at: Date.now(), need: d.need, model: d.model?.name || null, provider: d.model?.provider || null, reason: d.reason, member: d.member, blocked: d.blocked.length });
   return d;
 }

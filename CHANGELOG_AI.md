@@ -55,6 +55,17 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-24: OpenAI: active provider, key checks, and the webhook receiver
+
+- **Keys** (`src/key-format.js`, `src/keystore.js`): prefix checks on save; a one-time move of a misfiled signing secret; warnings on Keys and AI; `OPENAI_WEBHOOK_SECRET` in the catalogue. `src/llm.js` never sends a whsec_ value as the API key.
+- **Active provider**: `AI_PROVIDER` in the key store; `/api/admin/ai/active`; Admin → AI card with the selector and a test; "(active)" in the chat menu; the router prefers it where it fits.
+- **Webhook**: `src/openai-webhook.js` (signature, dedup, response and batch handling), `src/openai-jobs.js` (OpenAI calls and background jobs), `POST /api/webhooks/openai`, tables `openai_events` and `openai_jobs`, `/api/admin/ai/status`.
+- **Chat**: "Run in background" checkbox; background answers finish through the webhook.
+- **Tests**: `test/openai-keys.test.js` (8), `test/openai-webhook.test.js` (6), `test/openai-active.test.js` (5).
+- **Not verified here**: a real OpenAI test event (needs the live site and the dashboard); the live "hello" in the chat (needs the deployed site).
+
+---
+
 ## 2026-11-24: Seven phases
 
 ### Phase 1: every key on the Oracle server, managed from Admin
