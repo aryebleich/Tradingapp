@@ -140,12 +140,14 @@ test('a model without thinking sends no thinking events', async () => {
   const r = await sse(owner, `/admin/aichat/conversations/${c.id}/messages`, { content: 'hello', model: 'fake-plain' });
   assert.equal(r.events.some(e => e.event.startsWith('thinking')), false); assert.equal(r.events[0].data.thinking, false);
 });
-test('stop: closing the stream mid-reply records "stopped" and keeps the partial text', async () => {
+test('closing the stream mid-reply (not the Stop button) records an error that says the connection closed, and keeps the partial text', async () => {
   const c = (await owner('/admin/aichat/conversations', { model: 'fake' })).body;
   const r = await sse(owner, `/admin/aichat/conversations/${c.id}/messages`, { content: 'please answer slow', model: 'fake' }, { abortAfter: ev => ev.filter(e => e.event === 'text').length >= 3 });
   await wait(250);
   const m = (await owner(`/admin/aichat/conversations/${c.id}`)).body.messages.at(-1);
-  assert.equal(m.status, 'stopped'); assert.ok(m.content.length > 0 && m.content.length < 'This answer streams slowly '.length * 40, 'partial text kept'); assert.ok(r.events.length > 0);
+  assert.equal(m.status, 'error');
+  assert.match(m.error, /connection to the server closed during the reply/);
+  assert.ok(m.content.length > 0 && m.content.length < 'This answer streams slowly '.length * 40, 'partial text kept'); assert.ok(r.events.length > 0);
 });
 test('stop: the Stop endpoint ends a reply that is still streaming', async () => {
   const c = (await owner('/admin/aichat/conversations', { model: 'fake-plain' })).body;

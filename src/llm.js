@@ -50,10 +50,11 @@ export function pickOpenAIModel(ids) {
 // Maps an OpenAI error answer to a clear message (the key never appears in it).
 export function openaiError(status, d) {
   const code = String(d?.error?.code || d?.error?.type || ''), msg = String(d?.error?.message || '');
-  if (status === 401) return Object.assign(new Error('The ChatGPT (OpenAI) key was refused (401). Check OPENAI_API_KEY in Admin → Keys.'), { status: 401 });
-  if (status === 429 && /insufficient_quota/.test(code + ' ' + msg)) return Object.assign(new Error('ChatGPT (OpenAI) is out of credit (insufficient_quota). Add billing at platform.openai.com, then try again.'), { status: 429, quota: true });
-  if (status === 429) return Object.assign(new Error('ChatGPT (OpenAI) is rate-limited right now. Try again in a minute.'), { status: 429 });
-  return Object.assign(new Error(redact(msg) || `ChatGPT (OpenAI) answered ${status}`), { status: status >= 500 ? 502 : status });
+  const providerCode = /^[a-z][a-z_]{2,40}$/.test(code) ? code : '';
+  if (status === 401) return Object.assign(new Error('The ChatGPT (OpenAI) key was refused (401). Check OPENAI_API_KEY in Admin → Keys.'), { status: 401, providerCode });
+  if (status === 429 && /insufficient_quota/.test(code + ' ' + msg)) return Object.assign(new Error('ChatGPT (OpenAI) is out of credit (insufficient_quota). Add billing at platform.openai.com, then try again.'), { status: 429, quota: true, providerCode: 'insufficient_quota' });
+  if (status === 429) return Object.assign(new Error('ChatGPT (OpenAI) is rate-limited right now. Try again in a minute.'), { status: 429, providerCode });
+  return Object.assign(new Error(redact(msg) || `ChatGPT (OpenAI) answered ${status}`), { status: status >= 500 ? 502 : status, providerCode });
 }
 export async function openaiModel(p) {
   if (p.model) return p.model;
@@ -136,7 +137,7 @@ async function post(p, body) {
   });
   const d = await r.json().catch(() => ({}));
   const err = Array.isArray(d) ? d[0]?.error : d.error; // Gemini sometimes answers with an array
-  if (!r.ok) throw Object.assign(new Error(err?.message || `AI service answered ${r.status}`), { status: r.status === 429 ? 429 : r.status });
+  if (!r.ok) throw Object.assign(new Error(err?.message || `AI service answered ${r.status}`), { status: r.status === 429 ? 429 : r.status, providerCode: String(err?.code || err?.type || '') });
   return d;
 }
 // The models a Gemini key can use, best first (newest flash, then other flash, then pro).
@@ -300,6 +301,11 @@ export async function textWith(id, { system, user, maxTokens = 3000 }) {
 // such model or is down, the request goes to the next provider that has a key. The last error of
 // each provider is kept for Admin → AI & privacy → Test the AI.
 export const lastErrors = {};
+// The chat's own stream failures feed the same health record, so Auto stops choosing a provider that is failing.
+export function noteProviderError(id, e) {
+  lastErrors[id] = { at: Date.now(), status: e?.status || null, message: redact(String(e?.message || e || '')).slice(0, 200) };
+}
+export function noteProviderOk(id) { delete lastErrors[id]; }
 const retryable = e => !e.refusal && (!e.status || [401, 402, 403, 404, 408, 429].includes(e.status) || e.status >= 500 || /quota|exhausted|overloaded|unavailable|fetch failed|timeout|aborted|api key|api_key|permission|not found|not supported|location is not supported|billing/i.test(e.message));
 function chain() {
   const all = providers(), first = provider() || all[0];

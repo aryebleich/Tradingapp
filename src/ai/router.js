@@ -83,9 +83,9 @@ export function healthOf(lastErr = lastErrors, now = Date.now()) {
   for (const [id, e] of Object.entries(lastErr || {})) {
     const age = now - (e.at || 0);
     if (age > 15 * 60e3) continue;
-    if (e.status === 429 && age < 5 * 60e3) out[id] = { slow: true };
     if ([401, 402, 403].includes(e.status) && age < 15 * 60e3) out[id] = { open: true, reason: `${id} refused the last request (${e.status})` };
-    if (e.status >= 500 && age < 5 * 60e3) out[id] = { open: true, reason: `${id} was failing (${e.status})` };
+    else if (e.status === 429 && age < 2 * 60e3) out[id] = { open: true, reason: `${id} is over its limit right now (429)` };
+    else if ((e.status == null || e.status >= 500) && age < 2 * 60e3) out[id] = { open: true, reason: `${id} did not answer (${e.status || 'no answer'})` };
   }
   return out;
 }
@@ -104,7 +104,9 @@ export function candidatesFromKeys(list = providers(), catalog = catalogFile) {
 // The whole decision for a message: need, model, reason and the runners-up. Pure given its inputs.
 export function decide({ text = '', hasImage = false, feature = '', member = false }, { candidates, health = {}, preferred = null } = {}) {
   const { need, why } = classify({ text, hasImage, feature });
-  const { ranked, blocked } = rank(candidates || [], need, { member, health, preferred });
+  let { ranked, blocked } = rank(candidates || [], need, { member, health, preferred });
+  // Every provider is cooling down: the best one still answers (a single failure must not leave the chat with no model).
+  if (!ranked.length && Object.keys(health || {}).length) ({ ranked, blocked } = rank(candidates || [], need, { member, health: {}, preferred }));
   const pick = ranked[0] || null;
   return {
     need, needWhy: why,

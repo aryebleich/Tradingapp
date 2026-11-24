@@ -139,7 +139,7 @@ export async function conversation(id, userId) {
 }
 export async function messages(convId, { withThinking = true } = {}) {
   const rows = await all('SELECT m.*, t.content AS thinking, t.duration_ms AS thinking_ms FROM ai_chat_messages m LEFT JOIN ai_chat_thinking t ON t.message_id = m.id WHERE m.conversation_id = ? ORDER BY m.id', convId);
-  return rows.map(r => ({ id: r.id, role: r.role, content: r.content, status: r.status, model: r.model, routeReason: r.route_reason || null, inputTokens: r.input_tokens, outputTokens: r.output_tokens, createdAt: r.created_at, updatedAt: r.updated_at, ...(withThinking && r.thinking ? { thinking: r.thinking, thinkingMs: r.thinking_ms } : {}) }));
+  return rows.map(r => ({ id: r.id, role: r.role, content: r.content, status: r.status, model: r.model, routeReason: r.route_reason || null, error: r.error || null, inputTokens: r.input_tokens, outputTokens: r.output_tokens, createdAt: r.created_at, updatedAt: r.updated_at, ...(withThinking && r.thinking ? { thinking: r.thinking, thinkingMs: r.thinking_ms } : {}) }));
 }
 export async function purgeOld(t = now()) {
   const cutoff = t - config().retentionDays * 864e5;

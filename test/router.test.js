@@ -51,13 +51,15 @@ test('a provider refused for its key or out of quota is skipped, and the next on
   assert.equal(d.model.provider, 'openai', 'the next strong model is the fallback');
 });
 
-test('a rate-limited provider is ranked lower, not removed', () => {
+test('a rate-limited provider is skipped for two minutes, and still answers when it is the only one', () => {
   const now = 1_000_000;
   const health = healthOf({ gemini: { at: now - 1000, status: 429 } }, now);
   const r = rank([GEMINI, GROQ], 'quick', { health });
-  assert.equal(r.ranked.length, 2);
-  const solo = score(GEMINI, 'quick', { health }).score, free = score(GEMINI, 'quick', {}).score;
-  assert.ok(solo < free);
+  assert.deepEqual(r.ranked.map(x => x.provider), ['groq'], 'the rate-limited one is not chosen');
+  const only = decide({ text: 'Is it open today?' }, { candidates: [GEMINI], health });
+  assert.equal(only.model?.provider, 'gemini', 'with nothing else, it still answers');
+  const later = healthOf({ gemini: { at: now - 3 * 60e3, status: 429 } }, now);
+  assert.deepEqual(later, {}, 'after the cool-down it is back');
 });
 
 test('the answer says which model and why, with its alternatives', () => {

@@ -332,10 +332,11 @@ async function aiPrivacy(view) {
     <p class="mu" style="margin-top:0">The provider the app tries first. <b>Automatic</b> lets the app pick the best free one first. A change applies at once, with no restart.</p>
     <div class="row" style="gap:8px;align-items:end;flex-wrap:wrap">
       <label>Active provider<select id="aiActSel" data-no-tr>${[{ id: 'auto', name: 'Automatic (free first)' }, ...A.providers].map(p => `<option value="${H.esc(p.id)}" ${p.id === A.setting ? 'selected' : ''}>${H.esc(p.name)}</option>`).join('')}</select></label>
-      <button type="button" id="aiActSave">Save</button><button type="button" class="ghost" id="aiActTest">Test the active provider</button>
+      <button type="button" id="aiActSave">Save</button><button type="button" class="ghost" id="aiActTest">Test the active provider</button><button type="button" class="ghost" id="aiChatTest">Test the chat</button>
     </div>
     <p class="mu small-print">Now in use: <b data-no-tr>${H.esc(A.inUse?.name || 'none')}</b>${A.inUse?.model ? ` <span data-no-tr>(${H.esc(A.inUse.model)})</span>` : ''}. If it fails, the next provider with a key answers.</p>
     <div id="aiActOut" role="status"></div>
+    <div id="aiChatOut" role="status"></div>
     <h3>OpenAI webhook</h3>
     <p class="mu small-print">Enter this address in OpenAI's dashboard (Settings → Webhooks) and paste its signing secret into Keys as OPENAI_WEBHOOK_SECRET. OpenAI can send a test event from that page: it should appear below as the last event.</p>
     <table class="slim"><tr><th>Address</th><td><code data-no-tr>${H.esc(W.url)}</code></td></tr>
@@ -378,6 +379,14 @@ async function aiPrivacy(view) {
     <button>Save</button><div class="err"></div></form>
   <div class="card"><h2>robots.txt now</h2><pre class="ivrtree" data-no-tr id="robots">${H.esc(d.robots)}</pre></div>`;
   { const f = H.$('#pwf', view); H.act(f.querySelector('button'), async () => { await H.api('/admin/site/pnlwhy', { method: 'PUT', body: { on: f.on.checked, every: Object.fromEntries(['free', 'pro', 'elite', 'ultimate'].map(k => [k, +f[k].value])) } }); return 'Saved.'; }); }
+  H.act(H.$('#aiChatTest', view), async () => {
+    // Each AI provider with a key, asked the same tiny question as the chat, from this server: plain words, no key, no reply text.
+    const r = await H.api('/admin/ai/diagnose', { body: {} });
+    H.$('#aiChatOut', view).innerHTML = r.lines.length
+      ? `<p class="mu small-print">Checked ${H.esc(r.at.replace('T', ' ').slice(0, 19))} UTC. Active setting: <b data-no-tr>${H.esc(r.active)}</b>.</p><ul class="tips">${r.providers.map(p => `<li class="${p.chat?.ok ? 'ok' : 'err'}"><b>${H.esc(p.name)}</b>: ${p.chat?.ok ? `the chat answered in ${p.chat.ms} ms` : `the chat failed. ${H.esc(p.chat?.reason || 'unknown')}${p.chat?.message ? ` <span class="mu small-print">(${H.esc(p.chat.message)})</span>` : ''}`}${p.models && !p.models.ok ? `<br><span class="mu small-print">Its model list: ${H.esc(p.models.text || 'failed')}.</span>` : ''}</li>`).join('')}</ul>`
+      : '<p class="banner err">No AI provider has a key yet. Add one in Keys.</p>';
+    return '';
+  });
   H.act(H.$('#aiActSave', view), async () => {
     const r = await H.api('/admin/ai/active', { body: { value: H.$('#aiActSel', view).value } });
     H.$('#aiActOut', view).innerHTML = `<p class="banner ok">Saved. The active provider is now ${H.esc(r.active)}.</p>`;

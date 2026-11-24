@@ -975,6 +975,7 @@ const MIGRATIONS = [
   'CREATE TABLE IF NOT EXISTS ai_chat_messages (id INTEGER PRIMARY KEY, conversation_id TEXT NOT NULL REFERENCES ai_chat_conversations(id) ON DELETE CASCADE, role TEXT NOT NULL, content TEXT NOT NULL, status TEXT NOT NULL, model TEXT, input_tokens INTEGER NOT NULL DEFAULT 0, output_tokens INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
   'CREATE INDEX IF NOT EXISTS ai_chat_messages_conv ON ai_chat_messages (conversation_id, id)',
   'ALTER TABLE ai_chat_messages ADD COLUMN route_reason TEXT', // why the router picked this model (src/ai/router.js)
+  'ALTER TABLE ai_chat_messages ADD COLUMN error TEXT', // why a reply failed, shown when the conversation is reopened (no key, no message text)
   'CREATE TABLE IF NOT EXISTS ai_chat_thinking (message_id INTEGER PRIMARY KEY REFERENCES ai_chat_messages(id) ON DELETE CASCADE, content TEXT NOT NULL, duration_ms INTEGER)',
   // OpenAI webhooks (src/openai-webhook.js): each event id is handled once; background jobs wait for their event.
   'CREATE TABLE IF NOT EXISTS openai_events (id TEXT PRIMARY KEY, type TEXT NOT NULL, status TEXT NOT NULL, error TEXT, received_at INTEGER NOT NULL, done_at INTEGER)',

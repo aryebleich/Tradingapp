@@ -75,7 +75,7 @@ export const shedding = () => level('shed');
 // Never shed: anything that is not an API call (the pages, the app shell, scripts, styles, images,
 // fonts, the manifest, the service worker, sign-in with Google), and these API calls: trading, risk
 // controls, the account lock, sign-in, webhooks that carry orders, health.
-const CRITICAL = [/^\/api\/orders/, /^\/api\/alpaca\/orders/, /^\/api\/alpaca\/positions/, /^\/api\/risk/, /^\/api\/security/, /^\/api\/auth/, /^\/hook\//, /^\/api\/fleet\/inbox/, /^\/healthz/, /^\/readyz/, /^\/metrics/, /^\/api\/exec/, /^\/api\/me\b/, /^\/api\/v1\/orders/];
+const CRITICAL = [/^\/api\/admin\/aichat/, /^\/api\/admin\/ai\//, /^\/api\/orders/, /^\/api\/alpaca\/orders/, /^\/api\/alpaca\/positions/, /^\/api\/risk/, /^\/api\/security/, /^\/api\/auth/, /^\/hook\//, /^\/api\/fleet\/inbox/, /^\/healthz/, /^\/readyz/, /^\/metrics/, /^\/api\/exec/, /^\/api\/me\b/, /^\/api\/v1\/orders/];
 // Shed first: heavy reads that can wait.
 const OPTIONAL = [/^\/api\/insights/, /^\/api\/news/, /^\/api\/institutions/, /^\/api\/ml/, /^\/api\/scanners\/run/, /^\/api\/baskets\/backtest/, /^\/api\/backtest/, /^\/api\/alpaca\/data\/(bars|news|movers|most-actives)/,
   /^\/api\/code\/prices/, /^\/api\/ai\//, /^\/api\/options\/(scan|template)/, /^\/api\/values\/(screen|portfolio)/, /^\/api\/market/, /^\/api\/tax/, /^\/api\/longterm/];

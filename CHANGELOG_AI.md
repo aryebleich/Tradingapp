@@ -33,6 +33,36 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-24: Admin AI chat: the fix (interrupted replies now explain themselves)
+
+- **Reasons, not "interrupted"** (`src/aichat/failure.js`): each failure names the provider and says what to do: "Gemini refused the key (401). Check GEMINI_API_KEY in Admin → Keys.", "ChatGPT (OpenAI) is over its limit right now (429) (rate_limit_exceeded)…", "took too long to answer (timeout after 60 s)", "had a server error (503)", "The connection to Groq closed during the reply…". OpenAI's own short error code is kept (src/llm.js), never the key and never the user's text.
+- **Saved with the reply**: a new column `ai_chat_messages.error`; reopening the conversation shows the same reason. The model that failed is shown under the reply.
+- **Auto**: a failing provider is recorded (llm.lastErrors, fed by the chat's streams too) and skipped for a short cool-down (2 min for 429, network and 5xx; 15 min for a refused key). If every provider is cooling down, the best one still answers. When the first model fails before any text, the next one ranked answers, and the reply says "X didn't answer (code); trying the next model" with "Y answered instead".
+- **Long answers**: a comment line (": ping") every 15 s while the reply is written; a reply silent for 60 s is stopped and reported as a timeout. A connection that closes during a reply is saved as an error that says so (a Stop request is still "stopped"). The page reads the reply back from the server when the stream drops.
+- **Never shed**: /api/admin/aichat and /api/admin/ai/* are critical in src/reliability.js. Caddy already sends /api/admin/* to the leader with flush_interval -1 and no timeout.
+- **Test the chat**: Admin → AI button runs the diagnosis for each provider with a key (key shape, models check, one tiny chat request) and shows each result in plain words.
+- **Clean-up check fixed**: scripts/clean-check.mjs now follows new URL(…, import.meta.url) and cpu('module') names, and reads deploy/vm scripts. The check had failed on the last push, so the clean-up job was red.
+- **Tests**: test/aichat-errors.test.js (15 tests: each failure text, ping, fallback, health, Auto skipping a failing provider, a saved reason after a failed reply, no key or message text in logs, the chat is never shed, a 401 through the streaming path). test/aichat.test.js: the "closing the stream" test now checks the new error message, and a Stop request still gives "stopped"; test/router.test.js: a rate-limited provider is skipped for two minutes instead of only ranked lower.
+- **Not verified here**: the live "hello" on Auto and on ChatGPT (needs an admin sign-in on the live site), and whether the OpenAI error code is the rate limit or quota once the new text is live (the diagnosis step shows it after the deploy).
+
+---
+
+## 2026-11-24: Admin AI chat: the interrupted replies (findings)
+
+Found on the live Oracle server with the ops step `aichat-diagnose` (run 45507341549, from commit 5177d93):
+
+- **Which provider answered:** only ChatGPT (OpenAI) has a key on the server. Auto therefore has no other provider to fall back to.
+- **The key:** starts "sk-proj-", 164 characters (shape only). Its models endpoint answered in 612 ms, so the key is accepted and the network works.
+- **The chat request:** a one-token request to ChatGPT returned HTTP 429 with the rate-limit wording. It was not the "out of credit" (insufficient_quota) case, because that text was not in the answer. The app does not keep OpenAI's error code, so the exact code is still unknown; the fix below keeps it.
+- **The failing replies:** the last two assistant replies (23:06:59 and 23:08:23 UTC) were both routed by Auto to ChatGPT ("quick answer") and ended with status error.
+- **Why the reason was hidden:** a provider error is sent to the page as the generic "The reply was interrupted" line when its code is "provider" or its status is 500 or more (src/aichat/routes.js). The saved reply kept only status error, so reopening a conversation showed the generic line again.
+- **Logs:** the app's stream_failed lines were not found in the last 7 days of container logs, so the cause could not be confirmed from the log lines alone. Those lines now carry the HTTP status and a reason code (commit 1aaef50).
+- **Auto health:** a failing stream never updates the provider health used by the router, so Auto can keep choosing a provider that is failing.
+
+Decision: the fix saves the provider, the status, OpenAI's error code and a redacted short message on each failed reply; Auto skips a provider that failed recently and falls back to the next model when the first fails before any text; long waits send a comment every 15 seconds.
+
+---
+
 ## 2026-11-24: Admin AI, smart and complete
 
 ### Part 1: chat crash fixed, ChatGPT added

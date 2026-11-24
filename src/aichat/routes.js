@@ -3,7 +3,8 @@
 // router then requires the "AI team chat" permission (403).
 // Replies stream as server-sent events over the POST response: start, thinking, text, done, error.
 import * as R from '../ai/router.js';
-import { reasonOf } from './diagnose.js';
+import { answerWithFallback, failureInfo, startPing } from './failure.js';
+import { noteProviderError, noteProviderOk } from '../llm.js';
 import express from 'express';
 import { rateLimit } from '../auth.js';
 import { one, all, run, now, audit } from '../db.js';
@@ -73,47 +74,97 @@ async function streamInto(req, res, conv, modelId) {
   if (!rateLimit(`aichat:${req.user.id}`, c.messagesPerMinute, 60e3)) throw E.bad('You are sending messages too quickly. Please wait a minute.', 429, 'rate_limited');
   const msgs = history(await E.messages(conv.id, { withThinking: false }), c.historyMessages);
   if (!msgs.length || msgs.at(-1).role !== 'user') throw E.bad('Nothing to answer.');
-  // Auto: the router picks the model for this message and says why (src/ai/router.js).
-  let route = null;
+  // Auto: the router picks the model for this message and says why (src/ai/router.js). If the first
+  // model fails before any text, the next one it ranked answers, and the reply says so.
+  let route = null, candidates;
   if (modelId === 'auto') {
     route = await R.route({ text: msgs.at(-1).content, member: false });
     if (!route.model) throw E.bad('No AI model is available. Add a key in Admin → Keys.', 503, 'no_model');
-    modelId = route.model.provider;
-  }
-  const model = E.models(req.user).find(m => m.id === modelId);
-  if (!model) throw E.bad('That model is not available to you.', 400, 'model');
+    candidates = [route.model.provider, ...route.alternatives.map(a => a.provider)];
+  } else candidates = [modelId];
+  const all = E.models(req.user);
+  candidates = [...new Set(candidates)].filter(id => all.some(m => m.id === id));
+  if (!candidates.length) throw E.bad('That model is not available to you.', 400, 'model');
+  const first = all.find(m => m.id === candidates[0]);
   const t0 = now();
-  const aid = Number((await run("INSERT INTO ai_chat_messages (conversation_id, role, content, status, model, input_tokens, output_tokens, created_at, updated_at, route_reason) VALUES (?, 'assistant', '', 'streaming', ?, 0, 0, ?, ?, ?)", conv.id, model.id, t0, t0, route?.reason || null)).lastInsertRowid);
-  await run('UPDATE ai_chat_conversations SET model = ?, updated_at = ? WHERE id = ?', route ? 'auto' : model.id, t0, conv.id);
+  const aid = Number((await run("INSERT INTO ai_chat_messages (conversation_id, role, content, status, model, input_tokens, output_tokens, created_at, updated_at, route_reason) VALUES (?, 'assistant', '', 'streaming', ?, 0, 0, ?, ?, ?)", conv.id, first.id, t0, t0, route?.reason || null)).lastInsertRowid);
+  await run('UPDATE ai_chat_conversations SET model = ?, updated_at = ? WHERE id = ?', route ? 'auto' : first.id, t0, conv.id);
   res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
   const send = (event, data) => { if (res.writableEnded) return; res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`); res.flush?.(); };
   const ac = new AbortController(); active.set(aid, ac);
-  res.on('close', () => { if (!res.writableEnded) ac.abort(); });
-  let text = '', thinking = '', thinkStart = null, thinkEnd = null, lastSave = Date.now();
+  // A connection that closes during the reply is an error (saved with its own reason), not a stop by the user.
+  let closedEarly = false;
+  res.on('close', () => { if (!res.writableEnded) { closedEarly = true; ac.abort(); } });
+  // While the reply is written: a comment every 15 s keeps proxies and browsers from closing an idle
+  // stream; a reply silent for 60 s is stopped and reported as a timeout.
+  const stopPing = startPing(s => { if (!res.writableEnded) res.write(s); }, 15000);
+  let lastActivity = Date.now(), timedOut = false;
+  const watchdog = setInterval(() => { if (!ac.signal.aborted && Date.now() - lastActivity > 60e3) { timedOut = true; ac.abort(); } }, 5000);
+  watchdog.unref?.();
+  let text = '', thinking = '', thinkStart = null, thinkEnd = null, lastSave = Date.now(), started = false;
+  const touch = () => { lastActivity = Date.now(); };
   const save = (status, extra = {}) => run('UPDATE ai_chat_messages SET content = ?, status = ?, input_tokens = ?, output_tokens = ?, updated_at = ? WHERE id = ?', text, status, extra.inputTokens || 0, extra.outputTokens || E.estimateTokens(text + thinking), now(), aid);
   const saveThinking = () => (thinking ? run('INSERT INTO ai_chat_thinking (message_id, content, duration_ms) VALUES (?,?,?) ON CONFLICT(message_id) DO UPDATE SET content = excluded.content, duration_ms = excluded.duration_ms', aid, thinking, (thinkEnd || now()) - (thinkStart || now())) : null);
-  send('start', { assistantMessageId: aid, model: model.id, name: model.name, thinking: model.thinking, route: route ? { need: route.need, reason: route.reason } : null });
-  try {
-    const usage = await E.streamReply(model.id, {
+  send('start', { assistantMessageId: aid, model: first.id, name: first.name, thinking: first.thinking, route: route ? { need: route.need, reason: route.reason } : null });
+  const notes = [];
+  let answered = null, usage = null, lastFailure = null;
+  const attempt = async (cand, onStart) => {
+    const m = all.find(x => x.id === cand);
+    return E.streamReply(m.id, {
       system: c.systemPrompt, messages: msgs, maxTokens: c.maxOutputTokens, signal: ac.signal,
-      onThinking: d => { thinkStart ??= Date.now(); thinking += d; send('thinking', { delta: d }); },
+      onThinking: d => { touch(); if (!started) { started = true; onStart(); } thinkStart ??= Date.now(); thinking += d; send('thinking', { delta: d }); },
       onText: d => {
+        touch(); if (!started) { started = true; onStart(); }
         if (thinkStart && !thinkEnd) { thinkEnd = Date.now(); send('thinking_done', { ms: thinkEnd - thinkStart }); }
         text += d; send('text', { delta: d });
         if (Date.now() - lastSave > 1000) { lastSave = Date.now(); save('streaming').catch(() => {}); }
       },
     });
+  };
+  try {
+    const out = await answerWithFallback(candidates, async (cand, onStart) => {
+      try {
+        usage = await attempt(cand, onStart);
+        noteProviderOk(providerOf(cand));
+      } catch (e) {
+        if (!started && !ac.signal.aborted) noteProviderError(providerOf(cand), e);
+        throw e;
+      }
+    }, {
+      onFail: (cand, e) => { lastFailure = { cand, e }; const f = failureInfo((all.find(m => m.id === cand) || {}).name || cand, providerOf(cand), e); notes.push(`${(all.find(m => m.id === cand) || {}).name || cand} didn't answer (${f.code}); trying the next model`); },
+    });
+    answered = out.answered;
+    if (out.skipped.length) {
+      const m = all.find(x => x.id === answered);
+      const reason = `${m.name} answered instead: ${out.skipped.map(s => (all.find(x => x.id === s.candidate) || {}).name || s.candidate).join(', ')} did not answer`;
+      await run('UPDATE ai_chat_messages SET model = ?, route_reason = ? WHERE id = ?', answered, reason, aid);
+      send('route', { model: answered, name: m.name, note: reason });
+    }
     if (thinkStart && !thinkEnd) { thinkEnd = Date.now(); send('thinking_done', { ms: thinkEnd - thinkStart }); }
-    await save('complete', usage); await saveThinking();
-    send('done', { status: 'complete', assistantMessageId: aid, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens });
+    await save('complete', usage || {}); await saveThinking();
+    send('done', { status: 'complete', assistantMessageId: aid, inputTokens: usage?.inputTokens, outputTokens: usage?.outputTokens });
   } catch (e) {
-    const stopped = ac.signal.aborted || e.name === 'AbortError';
+    const stopped = ac.userStopped === true || (!timedOut && !closedEarly && (ac.signal.aborted || e.name === 'AbortError'));
+    const last = lastFailure || { cand: candidates[0], e };
+    const name = (all.find(m => m.id === last.cand) || {}).name || last.cand;
+    const info = closedEarly
+      ? { text: 'The connection to the server closed during the reply. The text so far is kept.', code: 'closed', status: null }
+      : failureInfo(name, providerOf(last.cand), timedOut ? Object.assign(new Error('timeout'), { name: 'TimeoutError' }) : e, { seconds: 60, midReply: started });
     await save(stopped ? 'stopped' : 'error', { outputTokens: E.estimateTokens(text + thinking), inputTokens: E.estimateTokens(msgs.map(m => m.content).join(' ')) }).catch(() => {});
     await saveThinking()?.catch?.(() => {});
     if (stopped) send('done', { status: 'stopped', assistantMessageId: aid });
-    else { const why = reasonOf(e); E.clog('stream_failed', { conversation: conv.id, message: aid, model: model.id, status: e.status || null, reason: why.code, code: e.code || e.status || e.name }); send('error', { message: e.status && e.status < 500 && e.code !== 'provider' ? e.message : 'The reply was interrupted. The text so far is kept; you can retry.', assistantMessageId: aid, retry: true }); }
-  } finally { active.delete(aid); res.end(); }
+    else {
+      // The reason is kept with the reply, so reopening the conversation shows it (no message text, no key).
+      const kept = text.length && !closedEarly ? ' The text so far is kept.' : '';
+      const shown = (notes.length ? `${notes.join('. ')}. ${info.text}` : info.text) + kept;
+      await run('UPDATE ai_chat_messages SET error = ?, model = ? WHERE id = ?', shown, last.cand, aid).catch(() => {});
+      E.clog('stream_failed', { conversation: conv.id, message: aid, model: last.cand, status: info.status, reason: info.code, code: e.code || e.status || e.name });
+      send('error', { message: shown, code: info.code, status: info.status, assistantMessageId: aid, model: last.cand, retry: true });
+    }
+  } finally { active.delete(aid); clearInterval(watchdog); stopPing(); res.end(); }
 }
+// The provider id behind a model id (the chat's model ids are the provider ids).
+const providerOf = id => id;
 
 aiChatRouter.post('/conversations/:id/messages', route(async (req, res) => {
   const conv = await E.conversation(req.params.id, req.user.id), content = String(req.body?.content ?? '').trim();
@@ -176,7 +227,7 @@ aiChatRouter.post('/conversations/:id/branch', route(async (req, res) => {
 aiChatRouter.post('/messages/:id/stop', route(async (req, res) => {
   const m = await one('SELECT m.id FROM ai_chat_messages m JOIN ai_chat_conversations c ON c.id = m.conversation_id WHERE m.id = ? AND c.owner_id = ?', +req.params.id, req.user.id);
   if (!m) throw E.bad('Not found', 404);
-  const ac = active.get(m.id); if (ac) ac.abort();
+  const ac = active.get(m.id); if (ac) { ac.userStopped = true; ac.abort(); }
   res.json({ stopped: !!ac });
 }));
 

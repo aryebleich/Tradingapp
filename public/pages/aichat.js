@@ -116,7 +116,8 @@ export async function page(view) {
     const name = m.name || modelInfo(m.model).name || '';
     const tokens = (m.inputTokens || 0) + (m.outputTokens || 0);
     if (!why && !name) return '';
-    return `<p class="mu small-print ac-route">Answered by <b>${esc(why || name)}</b>${tokens ? ` · ${tokens.toLocaleString()} tokens` : ''}</p>`;
+    const verb = m.status === 'error' ? 'Model tried' : m.status === 'stopped' ? 'Stopped with' : 'Answered by';
+    return `<p class="mu small-print ac-route">${verb} <b>${esc(why || name)}</b>${tokens ? ` · ${tokens.toLocaleString()} tokens` : ''}</p>`;
   }
   // The strongest model that has a key: Claude, then ChatGPT, then the first other one (never Auto).
   function strongest() { const list = S.models.filter(x => !x.auto); return list.find(x => x.id === 'anthropic') || list.find(x => x.id === 'openai') || list[0] || null; }
@@ -186,6 +187,7 @@ export async function page(view) {
   async function stream(path, body, regenerate = false) {
     if (S.busy) return;
     if (regenerate) { const la = lastAssistant(); if (la && S.msgs.at(-1) === la) { S.msgs.pop(); drawAll(); } }
+    let reloadNeeded = false;
     const ac = new AbortController(), m = { id: `a${Date.now()}`, key: `k${Date.now()}`, role: 'assistant', content: '', thinking: '', status: 'streaming', model: S.model, createdAt: Date.now() };
     S.busy = { ac, m }; setBusy(true); announce('The assistant is replying…'); S.stick = true;
     S.msgs.push(m); redraw(m);
@@ -206,16 +208,19 @@ export async function page(view) {
           else if (ev === 'thinking_done') { m.thinkingDone = true; m.thinkingMs = data.ms; redraw(m); }
           else if (ev === 'text') { m.content += data.delta; redraw(m); }
           else if (ev === 'done') { m.status = data.status; announce(data.status === 'stopped' ? 'Stopped. The text so far is kept.' : 'The reply is complete.'); }
-          else if (ev === 'error') { m.status = 'error'; m.error = data.message; announce('The reply was interrupted. You can retry.'); }
+          else if (ev === 'route') { m.model = data.model || m.model; m.routeReason = data.note || m.routeReason; redraw(m); }
+          else if (ev === 'error') { m.status = 'error'; m.error = data.message; if (data.model) m.model = data.model; announce(data.message || 'The reply failed. You can retry.'); }
         }
       }
-      if (m.status === 'streaming') { m.status = 'error'; m.error = 'The connection closed before the reply finished. The text so far is kept.'; }
+      if (m.status === 'streaming') reloadNeeded = true; // the server saved what happened: read it back below
     } catch (e) {
       if (ac.signal.aborted) { m.status = 'stopped'; announce('Stopped. The text so far is kept.'); }
       else if (e.early) { S.msgs.pop(); drawAll(); showError(e.message); announce(e.message); }
-      else { m.status = 'error'; m.error = 'The connection was lost. The text so far is kept.'; announce('The reply was interrupted. You can retry.'); }
+      else reloadNeeded = true;
     } finally {
       S.busy = null; setBusy(false);
+      // The connection dropped: read the reply back from the server, which kept the text and the real reason.
+      if (reloadNeeded && S.conv) { try { await openConv(S.conv.id); } catch { /* the page keeps what it has */ } }
       if (S.msgs.includes(m)) { cancelAnimationFrame(pending); pending = null; drawAll(); toBottom(); }
       call('/status').then(s => { S.budget = s.budget; showBudget(); }).catch(() => {});
       if (m.status !== 'error') input.focus(); else list.querySelector('.ac-retry')?.focus();
