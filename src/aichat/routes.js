@@ -2,6 +2,7 @@
 // Mounted under /api/admin, so requireUser + requireAdmin already ran (non-admins get 403 there); this
 // router then requires the "AI team chat" permission (403).
 // Replies stream as server-sent events over the POST response: start, thinking, text, done, error.
+import * as R from '../ai/router.js';
 import express from 'express';
 import { rateLimit } from '../auth.js';
 import { one, all, run, now, audit } from '../db.js';
@@ -30,7 +31,7 @@ aiChatRouter.get('/status', route(async (req, res) => {
 }));
 aiChatRouter.get('/conversations', route(async (req, res) => res.json({ conversations: await all('SELECT id, title, model, created_at AS createdAt, updated_at AS updatedAt FROM ai_chat_conversations WHERE owner_id = ? ORDER BY updated_at DESC LIMIT 200', req.user.id) })));
 aiChatRouter.post('/conversations', route(async (req, res) => {
-  const m = E.models(req.user), model = m.find(x => x.id === req.body?.model)?.id || m[0]?.id;
+  const m = E.models(req.user), model = m.find(x => x.id === req.body?.model)?.id || m.find(x => x.id === 'auto')?.id || m[0]?.id;
   if (!model) throw E.bad('No AI model is available. Add a key in Admin → Keys.', 503, 'no_model');
   const id = E.newId(), t = now();
   await run('INSERT INTO ai_chat_conversations (id, owner_id, title, model, created_at, updated_at) VALUES (?,?,?,?,?,?)', id, req.user.id, 'New chat', model, t, t);
@@ -69,13 +70,20 @@ async function streamInto(req, res, conv, modelId) {
   const c = E.config();
   E.checkBudget(await E.tokensToday(req.user.id));
   if (!rateLimit(`aichat:${req.user.id}`, c.messagesPerMinute, 60e3)) throw E.bad('You are sending messages too quickly. Please wait a minute.', 429, 'rate_limited');
-  const model = E.models(req.user).find(m => m.id === modelId);
-  if (!model) throw E.bad('That model is not available to you.', 400, 'model');
   const msgs = history(await E.messages(conv.id, { withThinking: false }), c.historyMessages);
   if (!msgs.length || msgs.at(-1).role !== 'user') throw E.bad('Nothing to answer.');
+  // Auto: the router picks the model for this message and says why (src/ai/router.js).
+  let route = null;
+  if (modelId === 'auto') {
+    route = await R.route({ text: msgs.at(-1).content, member: false });
+    if (!route.model) throw E.bad('No AI model is available. Add a key in Admin → Keys.', 503, 'no_model');
+    modelId = route.model.provider;
+  }
+  const model = E.models(req.user).find(m => m.id === modelId);
+  if (!model) throw E.bad('That model is not available to you.', 400, 'model');
   const t0 = now();
-  const aid = Number((await run("INSERT INTO ai_chat_messages (conversation_id, role, content, status, model, input_tokens, output_tokens, created_at, updated_at) VALUES (?, 'assistant', '', 'streaming', ?, 0, 0, ?, ?)", conv.id, model.id, t0, t0)).lastInsertRowid);
-  await run('UPDATE ai_chat_conversations SET model = ?, updated_at = ? WHERE id = ?', model.id, t0, conv.id);
+  const aid = Number((await run("INSERT INTO ai_chat_messages (conversation_id, role, content, status, model, input_tokens, output_tokens, created_at, updated_at, route_reason) VALUES (?, 'assistant', '', 'streaming', ?, 0, 0, ?, ?, ?)", conv.id, model.id, t0, t0, route?.reason || null)).lastInsertRowid);
+  await run('UPDATE ai_chat_conversations SET model = ?, updated_at = ? WHERE id = ?', route ? 'auto' : model.id, t0, conv.id);
   res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
   const send = (event, data) => { if (res.writableEnded) return; res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`); res.flush?.(); };
   const ac = new AbortController(); active.set(aid, ac);
@@ -83,7 +91,7 @@ async function streamInto(req, res, conv, modelId) {
   let text = '', thinking = '', thinkStart = null, thinkEnd = null, lastSave = Date.now();
   const save = (status, extra = {}) => run('UPDATE ai_chat_messages SET content = ?, status = ?, input_tokens = ?, output_tokens = ?, updated_at = ? WHERE id = ?', text, status, extra.inputTokens || 0, extra.outputTokens || E.estimateTokens(text + thinking), now(), aid);
   const saveThinking = () => (thinking ? run('INSERT INTO ai_chat_thinking (message_id, content, duration_ms) VALUES (?,?,?) ON CONFLICT(message_id) DO UPDATE SET content = excluded.content, duration_ms = excluded.duration_ms', aid, thinking, (thinkEnd || now()) - (thinkStart || now())) : null);
-  send('start', { assistantMessageId: aid, model: model.id, thinking: model.thinking });
+  send('start', { assistantMessageId: aid, model: model.id, name: model.name, thinking: model.thinking, route: route ? { need: route.need, reason: route.reason } : null });
   try {
     const usage = await E.streamReply(model.id, {
       system: c.systemPrompt, messages: msgs, maxTokens: c.maxOutputTokens, signal: ac.signal,

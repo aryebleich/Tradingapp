@@ -35,6 +35,16 @@
 - AI-1.6: Redaction: the streaming path for OpenAI-compatible providers now redacts system and message text too (it did not before). OPENAI_BASE_URL (not a secret) exists only so tests can use a fake server.
 - AI-1.7: Not verified here: the chat page's no-model state in a real browser (it needs a signed-in admin on the live site). It is part of the live check.
 
+### Part 2: the system picks the best AI for each need (partly)
+- AI-2.1: The model catalogue is src/ai/catalog.json: strengths, tier, memberData (may the provider receive member data), free or paid, and prices. Prices are null where they are not verified: the router then treats the model as mid-cost and says so in the code. I did not check current prices or each provider's terms this session (the web fetch that would have checked OpenAI's pages could not reach the host). Those values must be verified before the cost limits (Part 3) rely on them.
+- AI-2.2: Free tiers default to memberData false, because their terms usually let the provider use prompts to improve its models. Paid providers default to true only where their API terms say so; the owner should confirm this per provider before member data is sent to a new one.
+- AI-2.3: Classification is by rules first, in order: image, code, translation, summary, structured data, a calculation (numbers, %, $), a long text, reasoning words, a short question, then general. The tiny-model check for unclear cases is not built; a general question simply gets the best fit.
+- AI-2.4: Scoring: fit for the need (a model listed for the need scores far higher); hard needs (reasoning, coding, long, finance) favour strong models, the other needs favour small ones; a strong model is kept back from easy needs; free models get a bonus for easy needs and only +1 for hard ones, so a hard task keeps the strong model; unknown prices get a small caution penalty.
+- AI-2.5: Health comes from the last real calls: a provider that refused its key or ran out of quota (401, 402, 403) is skipped for 15 minutes; a 5xx is skipped for 5 minutes; a 429 is only ranked lower. Fallback inside a request is the existing chain in src/llm.js.
+- AI-2.6: Member data: the chat sends member: false (it has no member data flag yet). When a feature sends member data, it must pass member: true, which removes providers that may not receive it. Other AI features still use the existing chain and are not yet routed; that is the next step.
+- AI-2.7: Chat: "Auto (best for each message)" is first and the default when at least one real provider has a key. Under each answer: which model answered, why, and the token count. "Retry with a stronger model" uses Claude, then ChatGPT. Per-feature fixed models and cost caps are not built yet.
+- AI-2.8: Decisions are recorded (last 200) and shown in Admin → AI → Routing with the rules, the privacy rule per provider, which models answered and how often they finished (from real chat replies).
+
 ## Seven phases (2026-11-24)
 
 ### Phase 1: keys on the Oracle server, managed from Admin

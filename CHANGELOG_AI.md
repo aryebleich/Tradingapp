@@ -45,6 +45,16 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+### Part 2: the system picks the best AI (partly)
+- **Catalogue** `src/ai/catalog.json`: providers and models, strengths, tiers, member-data rule, price (null = not verified). No keys.
+- **Router** `src/ai/router.js`: rule-based need, scoring (fit, tier, cost, free, health, privacy), decisions recorded (last 200), `catalogSummary`.
+- **Chat**: Auto is the default; the answer shows the model, the reason and the token count; "Retry with a stronger model"; `routeReason` stored per reply (`ai_chat_messages.route_reason`).
+- **Admin → AI → Routing**: rules, privacy per provider, models that answered and how often they finished, recent decisions (`/api/admin/ai/routing`).
+- **Tests**: `test/router.test.js` (9 tests); chat tests still pass (18).
+- **Not done**: other AI features routed through the router; per-feature fixed models; cost caps; verified prices; i18n and the "i" help panel for these pages.
+
+---
+
 ## 2026-11-24: Seven phases
 
 ### Phase 1: every key on the Oracle server, managed from Admin

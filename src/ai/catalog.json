@@ -1,0 +1,48 @@
+{
+  "_comment": "Model catalog for the router (src/ai/router.js). Edit here (or in Admin → AI → Routing once that lands), then redeploy. Facts are what the provider's docs say; a null price means not verified yet, and the router then treats the model as mid-cost. memberData: true only when the provider's terms allow it to receive member data (names, account details, trade history). Free tiers are false by default because their terms usually allow the provider to use prompts to improve its models. Speed and success come from real calls at run time, not from this file. Keys are never in this file.",
+  "verifiedAt": null,
+  "providers": {
+    "openai": {
+      "name": "ChatGPT (OpenAI)", "key": "OPENAI_API_KEY", "tier": "paid", "memberData": true,
+      "terms": "API data is not used for training by default (see OpenAI's API data policy). Verify before relying on it.",
+      "models": [
+        { "id": "auto-newest", "name": "Newest chat model on the key", "strengths": ["reasoning", "coding", "long", "summary", "translation", "extraction", "finance", "general", "quick", "image"], "context": null, "inputPerM": null, "outputPerM": null, "tier": "strong", "note": "Chosen at run time from the key's list (OPENAI_MODEL overrides)." }
+      ]
+    },
+    "anthropic": {
+      "name": "Claude", "key": "ANTHROPIC_API_KEY", "tier": "paid", "memberData": true,
+      "terms": "Commercial API terms: inputs are not used for training by default. Verify before relying on it.",
+      "models": [
+        { "id": "claude-opus-5-5", "name": "Claude Opus 5.5", "strengths": ["reasoning", "coding", "long", "finance", "summary", "translation", "extraction", "image", "general"], "context": null, "inputPerM": null, "outputPerM": null, "tier": "strong" }
+      ]
+    },
+    "groq": {
+      "name": "Groq (free tier)", "key": "GROQ_API_KEY", "tier": "free", "memberData": false,
+      "terms": "Free tier: check Groq's terms before sending member data.",
+      "models": [
+        { "id": "openai/gpt-oss-120b", "name": "gpt-oss 120B (Groq)", "strengths": ["quick", "coding", "summary", "extraction", "general", "finance"], "context": null, "inputPerM": 0, "outputPerM": 0, "tier": "medium" }
+      ]
+    },
+    "gemini": {
+      "name": "Google Gemini (free tier)", "key": "GEMINI_API_KEY", "tier": "free", "memberData": false,
+      "terms": "Free tier: Google may use prompts to improve its products. Member data is blocked.",
+      "models": [
+        { "id": "gemini-2.5-flash", "name": "Gemini 2.5 Flash", "strengths": ["quick", "long", "summary", "translation", "image", "extraction", "general"], "context": null, "inputPerM": 0, "outputPerM": 0, "tier": "medium" }
+      ]
+    },
+    "openrouter": {
+      "name": "OpenRouter (free models)", "key": "OPENROUTER_API_KEY", "tier": "free", "memberData": false,
+      "terms": "Free models: the upstream provider's terms apply. Member data is blocked.",
+      "models": [
+        { "id": "meta-llama/llama-3.3-70b-instruct:free", "name": "Llama 3.3 70B (free)", "strengths": ["quick", "summary", "general", "translation"], "context": null, "inputPerM": 0, "outputPerM": 0, "tier": "medium" }
+      ]
+    },
+    "custom": {
+      "name": "Custom model", "key": "AI_BASE_URL", "tier": "self", "memberData": false,
+      "terms": "Your own server: you decide. Member data is blocked until you say otherwise here.",
+      "models": [
+        { "id": "default", "name": "Custom model", "strengths": ["quick", "general"], "context": null, "inputPerM": 0, "outputPerM": 0, "tier": "small" }
+      ]
+    }
+  }
+}

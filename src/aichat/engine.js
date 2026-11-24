@@ -48,7 +48,10 @@ export function models(user) {
   const c = config(), list = [...providers().map(p => ({ id: p.id, name: p.name, model: p.model, thinking: p.id === 'anthropic' }))];
   if (process.env.NODE_ENV === 'test' && process.env.AI_CHAT_FAKE_MODEL) list.push({ id: 'fake', name: 'Test model (thinks)', model: 'fake-thinker', thinking: true }, { id: 'fake-plain', name: 'Test model', model: 'fake-plain', thinking: false });
   const mine = c.adminModels?.[canonicalEmail(user?.email || '')];
-  return list.filter(m => (c.models.includes(m.id) || m.id.startsWith('fake')) && (!mine || mine.includes(m.id)));
+  const out = list.filter(m => (c.models.includes(m.id) || m.id.startsWith('fake')) && (!mine || mine.includes(m.id)));
+  // Auto first: the router picks the best model that has a key for each message (src/ai/router.js).
+  if (providers().length && out.length) out.unshift({ id: 'auto', name: 'Auto (best for each message)', model: 'auto', thinking: false, auto: true });
+  return out;
 }
 
 // ---------- token budget ----------
@@ -136,7 +139,7 @@ export async function conversation(id, userId) {
 }
 export async function messages(convId, { withThinking = true } = {}) {
   const rows = await all('SELECT m.*, t.content AS thinking, t.duration_ms AS thinking_ms FROM ai_chat_messages m LEFT JOIN ai_chat_thinking t ON t.message_id = m.id WHERE m.conversation_id = ? ORDER BY m.id', convId);
-  return rows.map(r => ({ id: r.id, role: r.role, content: r.content, status: r.status, model: r.model, inputTokens: r.input_tokens, outputTokens: r.output_tokens, createdAt: r.created_at, updatedAt: r.updated_at, ...(withThinking && r.thinking ? { thinking: r.thinking, thinkingMs: r.thinking_ms } : {}) }));
+  return rows.map(r => ({ id: r.id, role: r.role, content: r.content, status: r.status, model: r.model, routeReason: r.route_reason || null, inputTokens: r.input_tokens, outputTokens: r.output_tokens, createdAt: r.created_at, updatedAt: r.updated_at, ...(withThinking && r.thinking ? { thinking: r.thinking, thinkingMs: r.thinking_ms } : {}) }));
 }
 export async function purgeOld(t = now()) {
   const cutoff = t - config().retentionDays * 864e5;

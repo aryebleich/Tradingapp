@@ -106,9 +106,20 @@ export async function page(view) {
     return `<li class="ac-msg ac-asst" data-id="${m.id}" data-key="${esc(m.key ?? m.id)}"><div class="ac-meta"><b>Assistant</b> ${time}${st ? ` <span class="pill">${st}</span>` : ''}</div>
       ${think && (m.thinking || streaming) ? `<details class="ac-think"><summary><span class="ac-tlabel">Thinking</span> <span class="ac-tstate">${m.thinkingDone || !streaming ? (m.thinkingMs != null ? `for ${secs(m.thinkingMs)}` : '') : '<span class="ac-dot" aria-hidden="true"></span> thinking…'}</span></summary><div class="ac-tbody">${esc(m.thinking || '')}</div><button type="button" class="ac-copythink">Copy thinking</button></details>` : ''}
       <div class="ac-body md">${md(m.content)}${streaming ? '<span class="ac-cursor" aria-hidden="true"></span>' : ''}</div>
+      ${routeLine(m)}
       ${m.status === 'error' ? `<p class="err ac-errline" role="alert">${esc(m.error || 'The reply was interrupted. The text so far is kept.')} <button type="button" class="ac-retry">Retry</button></p>` : ''}
-      ${streaming ? '' : `<div class="ac-mact"><button type="button" class="ac-copy">Copy</button>${isLast ? '<button type="button" class="ac-regen">Regenerate</button>' : ''}</div>`}</li>`;
+      ${streaming ? '' : `<div class="ac-mact"><button type="button" class="ac-copy">Copy</button>${isLast ? '<button type="button" class="ac-regen">Regenerate</button>' : ''}${strongest() && strongest().id !== m.model ? '<button type="button" class="ac-stronger">Retry with a stronger model</button>' : ''}</div>`}</li>`;
   }
+  // Under each answer: which model answered and why (the router's reason), and the size of the answer.
+  function routeLine(m) {
+    const why = m.routeReason || m.route?.reason || '';
+    const name = m.name || modelInfo(m.model).name || '';
+    const tokens = (m.inputTokens || 0) + (m.outputTokens || 0);
+    if (!why && !name) return '';
+    return `<p class="mu small-print ac-route">Answered by <b>${esc(why || name)}</b>${tokens ? ` · ${tokens.toLocaleString()} tokens` : ''}</p>`;
+  }
+  // The strongest model that has a key: Claude, then ChatGPT, then the first other one (never Auto).
+  function strongest() { const list = S.models.filter(x => !x.auto); return list.find(x => x.id === 'anthropic') || list.find(x => x.id === 'openai') || list[0] || null; }
   function drawAll() {
     drawHead();
     list.innerHTML = S.msgs.map(msgHtml).join('');
@@ -141,6 +152,7 @@ export async function page(view) {
     if (e.target.closest('.ac-copy')) return copy(m.content, e.target);             // the answer only, never the thinking
     if (e.target.closest('.ac-copythink')) return copy(m.thinking || '', e.target);
     if (e.target.closest('.ac-regen') || e.target.closest('.ac-retry')) return stream(`/conversations/${S.conv.id}/regenerate`, { model: S.model }, true);
+    if (e.target.closest('.ac-stronger')) { const sm = strongest(); if (sm) return stream(`/conversations/${S.conv.id}/regenerate`, { model: sm.id }, true); }
     if (e.target.closest('.ac-edit')) {
       const body = li.querySelector('.ac-body');
       body.innerHTML = `<label class="ac-sr" for="acEdit${m.id}">Edit your message</label><textarea id="acEdit${m.id}" rows="3">${esc(m.content)}</textarea><div class="ac-mact"><button type="button" class="ac-save">Save and send as a new branch</button><button type="button" class="ac-cancel">Cancel</button></div>`;
@@ -189,7 +201,7 @@ export async function page(view) {
         while ((k = buf.indexOf('\n\n')) >= 0) {
           const frame = buf.slice(0, k); buf = buf.slice(k + 2);
           const ev = /^event: (.+)$/m.exec(frame)?.[1], data = JSON.parse(/^data: (.+)$/m.exec(frame)?.[1] || '{}');
-          if (ev === 'start') { m.id = data.assistantMessageId; m.model = data.model; redraw(m); }
+          if (ev === 'start') { m.id = data.assistantMessageId; m.model = data.model; m.name = data.name || ''; m.route = data.route || null; redraw(m); }
           else if (ev === 'thinking') { m.thinking += data.delta; redraw(m); }
           else if (ev === 'thinking_done') { m.thinkingDone = true; m.thinkingMs = data.ms; redraw(m); }
           else if (ev === 'text') { m.content += data.delta; redraw(m); }

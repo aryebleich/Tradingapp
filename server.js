@@ -1430,6 +1430,12 @@ api.get('/admin/setup', U, auth.requireAdmin, async (req, res) => {
   ].map(([name, env, on]) => ({ name, env, on: !!on })) };
   res.json({ ...body, ranked: rankTasks(body.items) }); // the ranked task list (src/setup-tasks.js)
 });
+// Admin → AI → Routing: the recent router decisions, which models answered and how often they finished, and the catalog.
+api.get('/admin/ai/routing', U, auth.requireAdmin, wrap(async (req, res) => {
+  const R = await import('./src/ai/router.js');
+  const answered = await all("SELECT model, status, COUNT(*) AS n, AVG(output_tokens) AS avgOut FROM ai_chat_messages WHERE role = 'assistant' AND model IS NOT NULL AND model != 'auto' GROUP BY model, status ORDER BY n DESC LIMIT 200");
+  res.json({ decisions: await R.recentDecisions(100), answered, catalog: R.catalogSummary() });
+}));
 // Sends a test email to the signed-in owner and reports exactly what the email service answered.
 api.post('/admin/test-email', U, auth.requireAdmin, wrap(async (req, res) => {
   if (!N.emailEnabled()) throw new Error('RESEND_API_KEY is not set (Admin → Keys).');

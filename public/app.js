@@ -2264,7 +2264,7 @@ const ADMIN_GROUPS = [
   ['Owner: people', [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-admins', 'Admins'], ['admin-support', 'Support inbox'], ['admin-comms', 'Calls, texts & email'], ['admin-phone', 'Phone line'], ['admin-phoneaccts', 'Phone & text accounts']]],
   ['Owner: money', [['admin-money', 'Money & fees'], ['admin-sponsored', 'Sponsored news'], ['admin-upgrades', 'Upgrades']]],
   ['Owner: site & content', [['admin-readme', 'Overview'], ['admin-seo', 'SEO'], ['admin-strategies', 'Original strategies'], ['admin-trust', 'Trust']]],
-  ['Owner: technical', [['admin-agents', 'AI team'], ['admin-ai', 'AI & privacy'], ['admin-keys', 'Keys'], ['admin-data', 'Market data'], ['admin-hosting', 'Hosting'], ['admin-database', 'Database'], ['admin-analytics', 'Analytics'], ['admin-setup', 'Setup']]],
+  ['Owner: technical', [['admin-agents', 'AI team'], ['admin-ai', 'AI & privacy'], ['admin-routing', 'Routing'], ['admin-keys', 'Keys'], ['admin-data', 'Market data'], ['admin-hosting', 'Hosting'], ['admin-database', 'Database'], ['admin-analytics', 'Analytics'], ['admin-setup', 'Setup']]],
 ];
 const ADMIN_TABS = ADMIN_GROUPS.flatMap(([, t]) => t);
 // The menu shows all of the owner's pages in one Admin section (only for admins), with a small
@@ -2274,8 +2274,20 @@ const adminNav = () => ['Admin', [...ADMIN_GROUPS, BIZ_NAV].flatMap(([g, items])
 const adminGroup = k => (ADMIN_GROUPS.find(([, t]) => t.some(([x]) => x === k)) || ADMIN_GROUPS[0])[1];
 // Pages with their own module (owner.js, protect.js) draw themselves under the same tabs.
 const adminTabs = current => `<div class="chips admintabs">${adminGroup(current).map(([k, t]) => `<a href="#/${k}"><button type="button" class="${k === current ? 'on' : ''}">${t}</button></a>`).join('')}</div>`;
+// Admin → AI → Routing: how each message is routed, which model answered and how often it finished.
+function routingCard(r) {
+  const NEEDS = { quick: 'a short question: a fast, cheap model', reasoning: 'deep reasoning: a strong model', coding: 'code: a strong model', long: 'a long document: a model with a large context', finance: 'a calculation: a strong model', summary: 'a summary: a fast model', translation: 'a translation (Yiddish included): a model that knows the language', extraction: 'structured data: a model that answers in JSON', image: 'an image: a model that can see', general: 'anything else: the best fit' };
+  const when = t => new Date(t).toLocaleString();
+  const answered = (r.answered || []).map(x => `<tr><td data-no-tr>${esc(x.model)}</td><td>${esc(x.status)}</td><td>${x.n}</td><td>${Math.round(x.avgOut || 0)}</td></tr>`).join('');
+  const decisions = (r.decisions || []).map(d => `<tr><td>${esc(when(d.at))}</td><td>${esc(d.need)}</td><td>${esc(d.reason || '')}</td><td>${d.blocked ? `${d.blocked} blocked` : ''}</td></tr>`).join('');
+  return `<div class="card"><h2>Rules by need</h2><p class="mu" style="margin-top:0">The router reads each message, works out what it needs, and picks the best model that has a key. Expensive models are kept for hard tasks; free ones are used when they fit. A model whose terms do not allow member data never gets it.</p>
+    <table class="tbl"><thead><tr><th>Need</th><th>Chosen for</th></tr></thead><tbody>${Object.entries(NEEDS).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('')}</tbody></table></div>
+  <div class="card"><h2>Models and their privacy rule</h2><table class="tbl"><thead><tr><th>Provider</th><th>Models</th><th>May receive member data</th></tr></thead><tbody>${(r.catalog || []).map(p => `<tr><td>${esc(p.name)}<br><span class="mu small-print" data-no-tr>key: ${esc(p.key)}</span></td><td>${p.models.map(m => esc(m.name) + (m.free ? ' (free)' : '')).join('<br>')}</td><td>${p.memberData ? 'Yes' : 'No: member data is blocked'}</td></tr>`).join('')}</tbody></table></div>
+  <div class="card"><h2>Which model answered, and how often it finished</h2>${answered ? `<table class="tbl"><thead><tr><th>Model</th><th>Status</th><th>Replies</th><th>Average output tokens</th></tr></thead><tbody>${answered}</tbody></table>` : '<p class="mu">No replies yet.</p>'}</div>
+  <div class="card"><h2>Recent decisions</h2>${decisions ? `<table class="tbl"><thead><tr><th>When</th><th>Need</th><th>Why</th><th>Blocked</th></tr></thead><tbody>${decisions}</tbody></table>` : '<p class="mu">No decisions yet.</p>'}</div>`;
+}
 async function adminPage(view, tab) {
-  const [s, msgs, setup] = await Promise.all([api('/admin/summary'), api('/admin/messages'), tab === 'admin-setup' ? api('/admin/setup') : null]);
+  const [s, msgs, setup, routing] = await Promise.all([api('/admin/summary'), api('/admin/messages'), tab === 'admin-setup' ? api('/admin/setup') : null, tab === 'admin-routing' ? api('/admin/ai/routing') : null]);
   const total = (kind, status) => s.byKind.filter(x => x.kind === kind && (!status || x.status === status)).reduce((a, x) => a + x.total, 0);
   const f = s.funnel, steps = [['Signed up', f.signups], ['Connected a brokerage', f.connected], ['Placed a trade', f.traded], ['In free trial', f.trialing], ['Paying', f.paying]];
   const open = msgs.filter(m => m.status === 'open');
@@ -2315,6 +2327,7 @@ async function adminPage(view, tab) {
     <p class="mu" style="font-size:12px">Helcim's figure assumes a regulated (big-bank) debit card; cards from small banks and credit cards cost more. Card-network rules and some states limit surcharges on cards, so the service fee is shown up front and charged for the deposit service.</p></div><div id="treasuryBox"></div>`,
     'admin-support': () => `
   <div class="card tablewrap"><h2>Support inbox</h2><table>${open.map(m => `<tr><td>${date(m.at)}</td><td data-no-tr>${esc(m.name)} &lt;<a href="mailto:${esc(m.email)}">${esc(m.email)}</a>&gt;</td><td data-no-tr><b>${esc(m.subject)}</b><br><span class="mu" style="white-space:pre-wrap">${esc(m.body)}</span></td><td><button class="small ghost" data-m="${m.id}">Done</button></td></tr>`).join('') || '<tr><td class="mu">Inbox zero</td></tr>'}</table></div>`,
+    'admin-routing': () => routingCard(routing),
     'admin-setup': () => `
   <div class="card"><h2>Setup</h2><p class="mu" style="margin-top:0">The setup list, most important first. Values are kept encrypted on this server (Admin → Keys) and are never shown here. Admins: <b data-no-tr>${esc(setup.admins.join(', ') || 'none')}</b></p>
     ${(() => { const R = setup.ranked || { tasks: [], done: 0, total: 0, percent: 0 }, L = { blocker: 'Blocker', revenue: 'Unlocks revenue or users', quick: 'Quick win', nice: 'Nice to have' }; return `<div class="setup-progress"><div class="setup-bar" role="progressbar" aria-label="Setup progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${R.percent}"><i style="width:${R.percent}%"></i></div><p class="mu">${R.done} of ${R.total} done. Start at the top: the first items break the site or money flows if they are missing.</p></div><ol class="setup-tasks">${R.tasks.map(x => `<li class="setup-task ${x.status}"><span class="pill ${x.status === 'done' ? '' : 'warn'}">${x.status === 'done' ? 'Done' : x.status === 'attention' ? 'Needs attention' : 'Not started'}</span> <b>${x.rank}. ${esc(x.name)}</b> <span class="mu">${L[x.tier] || ''}</span><p class="mu">${esc(x.why)} About ${x.min} min.</p><code data-no-tr>${esc(x.env)}</code>${x.status === 'done' ? '' : ` <a class="btn ghost" href="${esc(x.go)}">Do it</a>`}</li>`).join('')}</ol>`; })()}
