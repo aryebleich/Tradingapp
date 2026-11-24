@@ -23,7 +23,7 @@ export async function smoke(base, { email = process.env.SMOKE_EMAIL, password = 
   await check('privacy page', () => page('/privacy', ['Privacy']));
   // The app's style sheets: one minified bundle (/bundle/app-<hash>.css, with layout.css inside), or
   // the separate files when the bundler is off; the bundle must load. The disclaimer appears once.
-  await check('app shell: footer disclosures (once) and layout', async () => {
+  await check('app shell: footer disclosures and layout', async () => {
     const t = await page('/app', ['Trading involves risk of loss', 'hypothetical', 'not a broker or investment adviser']);
     must(t.split('not a broker or investment adviser').length === 2, '/app holds the disclaimer more than once');
     const css = t.match(/href="(\/bundle\/app-[0-9a-f]+\.css)"/)?.[1];
