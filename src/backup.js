@@ -95,7 +95,17 @@ export async function uploadDaily(file) {
 let timer = null;
 export function startBackups() {
   if (timer || !dbFile || !persistentDisk()) return null;
-  const tick = () => { const s = backupStatus(); if (!s.last?.at || Date.now() - s.last.at >= 60 * 60e3 - 60e3) backupNow().catch(e => console.error('backup failed:', e.message)); };
+  // In a process of its own at the lowest CPU priority (scripts/backup-once.mjs): never on a request thread.
+  let running = false;
+  const tick = async () => {
+    const s = backupStatus(); if (running || !(!s.last?.at || Date.now() - s.last.at >= 60 * 60e3 - 60e3)) return;
+    running = true;
+    try {
+      const { fork } = await import('node:child_process');
+      const child = fork(new URL('../scripts/backup-once.mjs', import.meta.url).pathname, ['hourly'], { stdio: 'inherit', env: process.env });
+      await new Promise(r => child.on('exit', r));
+    } catch (e) { console.error('backup failed:', e.message); } finally { running = false; }
+  };
   setTimeout(tick, 3 * 60e3).unref?.();
   timer = setInterval(tick, 5 * 60e3); timer.unref?.();
   return timer;

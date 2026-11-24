@@ -1,6 +1,7 @@
 // Storage via libSQL: a SQLite file (DB_FILE; on the Oracle server with PERSISTENT_DISK=1), or a
 // shared libSQL server when DATABASE_URL and DATABASE_AUTH_TOKEN are set (several replicas, deploy/k8s).
 import { createClient } from '@libsql/client';
+import { publish, on, isLeader } from './bus.js';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -1128,7 +1129,7 @@ export const ready = (async () => {
     migrationProblems.push({ migration: m.replace(/\s+/g, ' ').slice(0, 120), error: String(e?.message || e).slice(0, 200) });
     console.error('DATABASE MIGRATION FAILED:', m.replace(/\s+/g, ' ').slice(0, 120), '->', e?.message || e);
   });
-  if (url.startsWith('file:')) await compactFile().catch(e => console.warn('compact:', e.message));
+  if (url.startsWith('file:') && isLeader()) await compactFile().catch(e => console.warn('compact:', e.message)); // one process tidies the file
 })();
 // Whole SEC company-facts documents (5-10 MB each) were cached under sec:facts: until 2026-11-23 and
 // filled the file; they are trimmed now (sec:facts2:). The old ones are removed, and when most of the
@@ -1229,7 +1230,13 @@ export const run = async (sql, ...a) => { const r = await exec(sql, a); wrote(sq
 const writeHooks = [];
 export const onWrite = fn => { writeHooks.push(fn); };
 const WRITE = /^\s*(?:INSERT(?:\s+OR\s+\w+)?\s+INTO|REPLACE\s+INTO|UPDATE(?:\s+OR\s+\w+)?|DELETE\s+FROM)\s+["`]?(\w+)/i;
-function wrote(sql, args) { const m = WRITE.exec(sql); if (!m) return; const t = m[1].toLowerCase(); for (const h of writeHooks) { try { h(t, args); } catch {} } }
+function wrote(sql, args) {
+  const m = WRITE.exec(sql); if (!m) return; const t = m[1].toLowerCase();
+  for (const h of writeHooks) { try { h(t, args, false); } catch {} }
+  // The other processes (src/bus.js) drop their cached rows too; only plain values travel.
+  publish('write', { t, args: (args || []).filter(x => typeof x === 'number' || typeof x === 'string').slice(0, 40) });
+}
+on('write', ({ t, args }) => { for (const h of writeHooks) { try { h(t, args, true); } catch {} } });
 export const now = () => Date.now();
 
 export async function audit(userId, event, detail, ip) {

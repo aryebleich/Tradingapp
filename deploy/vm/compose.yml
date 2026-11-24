@@ -1,13 +1,20 @@
 # Brightolio on a VM: the app container, locked down. Caddy (on the host) serves HTTPS and passes
-# requests to 127.0.0.1:3000 only, so the container is never reachable from outside directly.
+# requests to 127.0.0.1:3000-3003 only, so the container is never reachable from outside directly.
+# Sized for the Oracle Always Free VM (2 cores, 12 GB; PERFORMANCE.md): one Node.js process per core
+# (cluster.js: the leader on 3000, a helper on 3001), 8 GB for the container (the rest stays for the
+# system, Caddy and the image builds a deploy runs), a 3 GB heap per process.
 services:
   app:
     image: brightfolio:latest
     env_file: .env
-    # The heap may use 1.5 GB of the 2 GB container (V8's limit; load shedding reads it from V8).
+    command: ['node', 'cluster.js']
+    # Each process's heap may use 3 GB (V8's limit; load shedding reads it from V8: HEAP_LIMIT_MB
+    # follows on its own). MAX_INFLIGHT is per process.
     environment:
-      NODE_OPTIONS: --max-old-space-size=1536
-    ports: ['127.0.0.1:3000:3000']
+      NODE_OPTIONS: --max-old-space-size=3072
+      WEB_WORKERS: '2'
+      MAX_INFLIGHT: '600'
+    ports: ['127.0.0.1:3000-3003:3000-3003']
     restart: unless-stopped
     read_only: true
     tmpfs: ['/tmp']
@@ -15,6 +22,6 @@ services:
     security_opt: ['no-new-privileges:true']
     cap_drop: ['ALL']
     user: '1000:1000'
-    mem_limit: 2g
+    mem_limit: 8g
     pids_limit: 512
     logging: { driver: json-file, options: { max-size: 10m, max-file: '3' } }

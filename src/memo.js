@@ -48,13 +48,14 @@ function remember(key, e) {
   for (const [k, x] of MEM) { if (memBytes <= MEM_MAX && MEM.size <= 2000) break; MEM.delete(k); memBytes -= x.size || 0; } // oldest first
 }
 export const memCacheStats = () => ({ entries: MEM.size, mb: +(memBytes / 1048576).toFixed(1), maxMb: MEM_MAX / 1048576 });
-export async function dbCached(key, ttl, fn) {
-  const m = MEM.get(key);
-  if (m && now() - m.at < ttl) return m.v;
+// Stale-while-revalidate (PERFORMANCE.md): data cached for 5 minutes or more is answered at once
+// from the last copy while one refresh runs in the background, for up to 6 times its lifetime (6 h at
+// most), so nobody waits for a slow provider. Short-lived data (prices) is never served stale, except
+// when the source fails: then the last copy within 10 times its lifetime is better than an error.
+const staleFor = ttl => (ttl >= 300e3 ? Math.min(ttl * 6, 6 * 3600e3) : 0);
+async function refreshNow(key, ttl, fn) {
   if (INFLIGHT.has(key)) return INFLIGHT.get(key);
   const p = (async () => {
-    const c = await one('SELECT v, at FROM cache WHERE k = ?', key);
-    if (c && now() - c.at < ttl) { const v = JSON.parse(c.v); if (c.v.length <= BIG) remember(key, { v, at: c.at, size: c.v.length }); return v; }
     const v = await fn(), json = JSON.stringify(v);
     await run('INSERT INTO cache (k, v, at) VALUES (?,?,?) ON CONFLICT(k) DO UPDATE SET v = excluded.v, at = excluded.at', key, json, now());
     // A big value is not kept in memory too (a parsed object takes several times its JSON size), and
@@ -64,4 +65,16 @@ export async function dbCached(key, ttl, fn) {
   })();
   INFLIGHT.set(key, p);
   try { return await p; } finally { INFLIGHT.delete(key); }
+}
+export async function dbCached(key, ttl, fn) {
+  const m = MEM.get(key);
+  if (m && now() - m.at < ttl) return m.v;
+  let last = m ? { v: m.v, at: m.at } : null;
+  if (!last) {
+    const c = await one('SELECT v, at FROM cache WHERE k = ?', key);
+    if (c) { const v = JSON.parse(c.v); if (now() - c.at < ttl) { if (c.v.length <= BIG) remember(key, { v, at: c.at, size: c.v.length }); return v; } last = { v, at: c.at }; }
+  }
+  if (last && now() - last.at < ttl + staleFor(ttl)) { refreshNow(key, ttl, fn).catch(() => {}); return last.v; }
+  try { return await refreshNow(key, ttl, fn); }
+  catch (e) { if (last && now() - last.at < ttl * 10) return last.v; throw e; }
 }

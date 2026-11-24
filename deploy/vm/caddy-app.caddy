@@ -1,0 +1,21 @@
+# How Caddy reaches the app (installed by deploy/vm/update.sh as /etc/caddy/brightolio-app.caddy and
+# imported by the site block in /etc/caddy/Caddyfile). cluster.js runs one Node.js process per core:
+# the leader on 3000 holds everything that lives in memory (live streams, webhooks, sign-in, orders,
+# Admin, the background work), the helpers share the rest (PERFORMANCE.md).
+@leader path /api/alpaca/stream* /api/alpaca/broker/events* /api/comms* /api/admin/* /api/auth/* /api/orders* /api/v1/* /hook/* /webhooks/* /twilio/* /oauth/* /internal/* /mcp /metrics /readyz
+handle @leader {
+	reverse_proxy 127.0.0.1:3000 {
+		flush_interval -1
+	}
+}
+handle {
+	reverse_proxy 127.0.0.1:3000 127.0.0.1:3001 {
+		lb_policy least_conn
+		lb_try_duration 3s
+		fail_duration 15s
+		health_uri /healthz
+		health_interval 10s
+		health_timeout 3s
+		flush_interval -1
+	}
+}

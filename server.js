@@ -1,6 +1,7 @@
 // Brightolio web server: JSON API + static single-page app.
 // First, before any module that opens the database: on Render this only redirects to Oracle.
 import './src/render-redirect.js';
+import './src/fetch-timeout.js'; // a time limit on every outside call (PERFORMANCE.md)
 import * as SEO from './src/seo.js';
 import { agentsRouter } from './src/agents.js';
 import { overviewRouter } from './src/overview.js';
@@ -30,6 +31,7 @@ import { marginRouter } from './src/margin.js';
 import { setSetting, getSetting } from './src/settings.js';
 import { prefsRouter } from './src/settings.js';
 import { longtermRouter } from './src/longterm.js';
+import { cpu } from './src/cpu.js';
 import { shedMiddleware, recordRoute, countUnhandled, stats as relStats, metricsText, recommendedReplicas, load as relLoad } from './src/reliability.js';
 import { queueStats, userQueue } from './src/orderqueue.js';
 import { booksFor, booksCsv } from './src/books.js';
@@ -149,7 +151,7 @@ const PUBLIC_URL = (process.env.PUBLIC_URL || 'http://localhost:3000').replace(/
 const runtime = nodeStatus();
 if (!runtime.ok) {
   console.error(`SECURITY: Node.js ${runtime.version} is older than the patched release ${runtime.min}. Update Node.js (Render: NODE_VERSION or .node-version) and redeploy.`);
-  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_UNPATCHED_NODE !== '1' && process.argv[1] === fileURLToPath(import.meta.url)) process.exit(1);
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_UNPATCHED_NODE !== '1' && (process.argv[1] === fileURLToPath(import.meta.url) || process.env.QP_START === '1')) process.exit(1);
 }
 if (process.env.NODE_TLS_REJECT_UNAUTHORIZED === '0') {
   console.error('SECURITY: NODE_TLS_REJECT_UNAUTHORIZED=0 turns off HTTPS certificate checks. Remove it.');
@@ -940,16 +942,11 @@ api.post('/backtest', U, wrap(async (req, res) => {
   if (/\{/.test(cfg.entry + cfg.exit)) {
     if (!isPaid(req.user)) throw upgrade('The strategy optimizer');
     await CR.spend(req.user, 'optimize', { memo: String(req.body.symbol || '').slice(0, 10) });
-    return res.json({ optimize: optimize(bars.closes, cfg, warm, bars.dates), source: bars.source });
+    // The optimizer and the backtest run in the CPU pool (src/cpu.js): never on the request thread.
+    return res.json({ optimize: await cpu('cpu-tasks', 'optimizeRun', [bars.closes, cfg, warm, bars.dates]), source: bars.source });
   }
-  const r = backtest(bars.closes, cfg, warm, bars.closes.length, bars.dates);
-  const step = Math.max(1, Math.floor(r.eq.length / 400));
-  const idx = r.eq.map((_, i) => i).filter(i => i % step === 0 || i === r.eq.length - 1);
-  res.json({
-    source: bars.source, symbol: String(b.symbol).toUpperCase(), m: r.m, holding: r.holding, trades: r.trades.slice(-100),
-    curve: idx.map(i => ({ d: r.dates[i], eq: r.eq[i], bh: r.bh[i] })),
-    projection: projectAnnual(r.eq), walkForward: walkForward(bars.closes, cfg, warm, 4, bars.dates),
-  });
+  const r = await cpu('cpu-tasks', 'fullBacktest', [bars.closes, cfg, warm, bars.dates]);
+  res.json({ source: bars.source, symbol: String(b.symbol).toUpperCase(), ...r });
 }));
 
 api.post('/ai/strategy', U, wrap(async (req, res) => {
@@ -1599,7 +1596,9 @@ app.use(express.static(pub, {
 }));
 app.use(async (req, res) => res.status(404).sendFile(path.join(pub, '404.html')));
 
-if (process.argv[1] === fileURLToPath(import.meta.url) && process.env.REDIRECT_ONLY !== '1') {
+// Started directly (node server.js) or by cluster.js (QP_START=1): listen and start the background work.
+const isMain = process.argv[1] === fileURLToPath(import.meta.url) || process.env.QP_START === '1';
+if (isMain && process.env.REDIRECT_ONLY !== '1') {
   // A promise somebody forgot to catch (a background job, a fire-and-forget email) is logged and
   // counted, instead of stopping the whole server as Node.js does by default.
   process.on('unhandledRejection', e => { countUnhandled(); console.error('Unhandled promise rejection (server keeps running):', e?.stack || e); });
@@ -1617,15 +1616,21 @@ if (process.argv[1] === fileURLToPath(import.meta.url) && process.env.REDIRECT_O
       if (r.ok && sch.ok && (persistentDb || !needsHostedDb())) console.log(`Startup check OK: ${persistentDb ? 'hosted' : 'local'} database, ${sch.checkedColumns} migrated columns present, paper and live routing correct.`);
     } catch (e) { console.error('STARTUP CHECK could not run:', e.message); }
   }, 1500).unref();
+  // Background work runs in exactly one process: the leader (src/bus.js, cluster.js). Helpers only
+  // answer requests, so no job, backup or stream ever runs twice.
+  const { isLeader } = await import('./src/bus.js');
+  let timer = null, stopKyc = null;
+  if (isLeader()) {
   startHostingSync();
   checkMain().then(ok => console.log('One address (' + (process.env.PUBLIC_URL || '-') + '):', ok ? 'reaches this server, other addresses redirect there' : 'does not reach this server yet, no redirect')); setInterval(checkMain, 5 * 60e3).unref();
-  const timer = startScheduler(isActiveHost);
+  timer = startScheduler(isActiveHost);
   (await import('./src/backup.js')).startBackups();
   startKeepWarm();
-  const stopKyc = startKycEvents();
+  stopKyc = startKycEvents();
   // Each deploy brings the private README's generated overview up to date (a few seconds after start).
   setTimeout(() => import('./src/admin-site.js').then(m => m.refreshReadme()).catch(() => {}), 5000).unref();
-  const stop = () => { clearInterval(timer); stopKyc(); server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 8000).unref(); };
+  } else { checkMain().catch(() => {}); }
+  const stop = () => { if (timer) clearInterval(timer); stopKyc?.(); server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 8000).unref(); };
   process.on('SIGTERM', stop);
   process.on('SIGINT', stop);
 }

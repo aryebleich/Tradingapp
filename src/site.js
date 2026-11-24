@@ -1,7 +1,7 @@
 // Site-wide settings the owner changes in Admin: extra admin emails and phones, the business mode
 // (software only, or registered investment adviser), and environment values (API keys) saved from
 // the admin page or synced with Render.
-import { all, run, now } from './db.js';
+import { all, run, now, onWrite } from './db.js';
 import crypto from 'node:crypto';
 import { encrypt, decrypt } from './crypto.js';
 
@@ -35,6 +35,9 @@ export async function loadSite() {
 // Read once at start, then at most every 5 minutes (another server may have saved a setting); a save
 // on this server updates the cache at once (siteSet). Every request calls this, so it must not read more.
 export const SITE_REFRESH_MS = 5 * 60e3;
+// A setting saved by another process of this server (src/bus.js): read the table again at once.
+let reloadTimer = null;
+onWrite((t, args, remote) => { if (remote && t === 'site_settings') { clearTimeout(reloadTimer); reloadTimer = setTimeout(() => loadSite().catch(() => {}), 100); reloadTimer.unref?.(); } });
 export async function freshSite() { if (now() - loadedAt > SITE_REFRESH_MS) { loadedAt = now(); await loadSite().catch(() => {}); } }
 export const siteGet = (k, dflt = null) => (cache.has(k) ? cache.get(k) : dflt);
 export async function siteSet(k, v) {

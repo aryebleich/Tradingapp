@@ -3,6 +3,7 @@
 // browsers over Server-Sent Events, coalesced to at most two pushes per second per browser.
 import { URLS } from './http.js';
 import { brokerEnabled } from './broker.js';
+import { isLeader } from '../bus.js';
 
 const MAX_SYMBOLS = +process.env.ALPACA_STREAM_MAX_SYMBOLS || 30;
 const clients = new Set(); // { res, symbols:Set, pending:Map, timer }
@@ -19,7 +20,7 @@ export const streamEnabled = () => alpacaReady() || !!hub.provider();
 const usingAlpaca = () => alpacaReady() && !hub.provider();
 // Symbols with an active price alert are followed live too, even with no browser open.
 let alertSet = new Set();
-async function refreshAlerts() { const { isActiveHost } = await import('../hosting.js'); alertSet = isActiveHost() ? new Set((await alertSymbols().catch(() => [])).map(a => a.symbol)) : new Set(); syncAll(); }
+async function refreshAlerts() { if (!isLeader()) return; const { isActiveHost } = await import('../hosting.js'); alertSet = isActiveHost() ? new Set((await alertSymbols().catch(() => [])).map(a => a.symbol)) : new Set(); syncAll(); }
 setInterval(() => refreshAlerts(), 60e3).unref?.();
 setTimeout(() => refreshAlerts(), 5000).unref?.();
 const notify = async (uid, msg) => (await import('../notify-user.js')).notifyUser(uid, msg);
@@ -75,7 +76,9 @@ function wanted(name) {
 }
 // Every symbol any browser or alert follows, for the other providers' stream.
 function wantedAll() { const all = new Set(alertSet); for (const c of clients) for (const s of c.symbols) all.add(s); for (const w of watchers) for (const s of w.symbols) all.add(s); return all; }
-function syncAll() { feeds.stocks.sync(); feeds.crypto.sync(); hub.sync(); }
+// The market-data connections live in the leader process only (src/bus.js; Caddy sends every live
+// stream there), so a provider that allows one connection never sees two.
+function syncAll() { if (!isLeader()) return; feeds.stocks.sync(); feeds.crypto.sync(); hub.sync(); }
 hub.configure({ sink: u => push(u), want: wantedAll, alpacaReady });
 
 function dispatch(m) {

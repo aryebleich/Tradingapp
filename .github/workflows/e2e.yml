@@ -56,3 +56,15 @@ jobs:
           name: mobile-screenshots
           path: e2e-output/mobile/
           retention-days: 14
+  caddy:
+    # The Caddy routing the server installs (deploy/vm/caddy-app.caddy, imported by the site block
+    # setup.sh writes) must validate before it ever reaches the server (update.sh validates again).
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Caddy accepts the app routing
+        run: |
+          mkdir -p caddy && cp deploy/vm/caddy-app.caddy caddy/brightolio-app.caddy
+          printf 'example.com {\n\tencode zstd gzip\n\timport /etc/caddy/brightolio-app.caddy\n}\n' > caddy/Caddyfile
+          docker run --rm -v "$PWD/caddy:/etc/caddy:ro" caddy:2.10 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile

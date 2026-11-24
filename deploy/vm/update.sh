@@ -52,6 +52,21 @@ if ! cmp -s deploy/vm/update.sh /usr/local/bin/brightfolio-update; then
   log "installed the new update script"; FORCE=1 exec /usr/local/bin/brightfolio-update
 fi
 cmp -s deploy/vm/compose.yml "$APP/compose.yml" || cp deploy/vm/compose.yml "$APP/compose.yml"
+# Caddy reaches the app's processes through deploy/vm/caddy-app.caddy (the leader on 3000, helpers
+# beside it): installed when it changes, the site block made to import it once, checked before the
+# reload, and put back as it was if Caddy refuses it.
+CF=/etc/caddy/Caddyfile CA=/etc/caddy/brightolio-app.caddy
+if [ -f "$CF" ] && command -v caddy >/dev/null && ! { cmp -s deploy/vm/caddy-app.caddy "$CA" && grep -q "import $CA" "$CF"; }; then
+  cp -p "$CF" "$CF.before-app" 2>/dev/null || true
+  if [ -f "$CA" ]; then cp -p "$CA" "$CA.before"; fi
+  cp deploy/vm/caddy-app.caddy "$CA"
+  if ! grep -q "import $CA" "$CF"; then
+    # The block written by setup.sh: reverse_proxy 127.0.0.1:3000 { flush_interval -1 }
+    perl -0pi -e "s{\n\treverse_proxy 127\.0\.0\.1:3000 \{\n\t\tflush_interval -1\n\t\}\n}{\n\timport $CA\n}" "$CF"
+  fi
+  if grep -q "import $CA" "$CF" && caddy validate --config "$CF" --adapter caddyfile >/dev/null 2>&1 && systemctl reload caddy; then log "Caddy now reaches every app process"
+  else cp -p "$CF.before-app" "$CF" 2>/dev/null || true; if [ -f "$CA.before" ]; then cp -p "$CA.before" "$CA"; fi; systemctl reload caddy || true; log "Caddy routing NOT changed (validation failed); still one upstream"; fi
+fi
 command -v sqlite3 >/dev/null || { apt-get install -y -qq sqlite3 >/dev/null 2>&1 || true; }
 docker build -q --pull -t brightfolio:new . >/dev/null
 cd "$APP"
