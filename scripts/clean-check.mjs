@@ -30,6 +30,10 @@ function follow(starts) {
       if (!/\.\w+$/.test(dep)) dep += '.js';
       todo.push(dep);
     }
+    // Files loaded by address (new URL('./catalog.json', import.meta.url), a worker thread's script) and
+    // modules run by name from the CPU pool (cpu('cpu-tasks', 'fn', …) runs src/cpu-tasks.js).
+    for (const m of src.matchAll(/new URL\(\s*['"`](\.{1,2}\/[^'"`]+)['"`]\s*,\s*import\.meta\.url/g)) todo.push(path.posix.normalize(path.posix.join(dir, m[1])));
+    for (const m of src.matchAll(/\bcpu\(\s*['"`]([\w-]+)['"`]/g)) todo.push(`src/${m[1]}.js`);
     // Absolute app paths inside public code ('/pages/x.js', "/chart.js") and server code naming public files.
     for (const m of src.matchAll(/['"`(]\/((?:pages|i18n)\/[\w./-]+\.js|[\w-]+\.(?:js|css|html|png|svg|webp|webmanifest))/g)) todo.push('public/' + m[1]);
     for (const m of src.matchAll(/['"`]((?:src|public|scripts|test)\/[\w./-]+\.(?:js|mjs|py|json|html))(?![\w])/g)) todo.push(m[1]); // (?![\w]): "x.json" is not read as "x.js"
@@ -44,7 +48,7 @@ function follow(starts) {
 const pages = tracked.filter(f => /^public\/[\w-]+\.html$/.test(f));
 const used = follow(['server.js', ...pages, 'public/app.js', 'public/sw.js', ...tracked.filter(f => /^(test|scripts)\//.test(f)), ...tracked.filter(f => f.startsWith('.github/workflows/'))]);
 // Everything named in package.json scripts and the workflows.
-const runners = read('package.json') + tracked.filter(f => f.startsWith('.github/workflows/')).map(read).join('\n') + read('Dockerfile') + read('render.yaml');
+const runners = read('package.json') + tracked.filter(f => f.startsWith('.github/workflows/')).map(read).join('\n') + read('Dockerfile') + read('render.yaml') + read('deploy/vm/migrate.sh') + read('deploy/vm/update.sh');
 const named = (f, text) => text.includes(f) || text.includes(path.basename(f));
 // Pictures, styles, pages and other public files: named anywhere in the code or pages.
 const allText = [...used].filter(f => /\.(js|mjs|html|css|json|webmanifest)$/.test(f)).map(read).join('\n') + runners;
