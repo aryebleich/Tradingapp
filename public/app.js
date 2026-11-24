@@ -693,7 +693,7 @@ function addInfo(view, route) {
 const addGuide = addInfo; // older name
 new MutationObserver(() => {
   clearTimeout(infoTimer);
-  infoTimer = setTimeout(() => { const c = INFO_ROUTE; if (!c || !GUIDES || !c.view.isConnected) return; const h1 = $('.pagehead h1', c.view) || $('h1', c.view); if (h1 && !h1.querySelector('.pinfo')) GUIDES.addInfo(c.view, c.route, { practice: state.account === 'paper' }); }, 80);
+  infoTimer = setTimeout(() => { const c = INFO_ROUTE; if (!c || !GUIDES || !c.view.isConnected || c.view.style.visibility === 'hidden') return; /* a redraw still swapping in: its i comes once it is shown */ const h1 = $('.pagehead h1', c.view) || $('h1', c.view); if (h1 && !h1.querySelector('.pinfo')) GUIDES.addInfo(c.view, c.route, { practice: state.account === 'paper' }); }, 80);
 }).observe(document.body, { childList: true, subtree: true });
 const SKELETON = '<div class="skel"><div class="h1"></div><div class="box"></div><div class="w60"></div><div></div><div class="box"></div></div>';
 async function render(opts) {
