@@ -30,7 +30,7 @@ import { marginRouter } from './src/margin.js';
 import { setSetting, getSetting } from './src/settings.js';
 import { prefsRouter } from './src/settings.js';
 import { longtermRouter } from './src/longterm.js';
-import { shedMiddleware, countUnhandled, stats as relStats, metricsText, recommendedReplicas, load as relLoad } from './src/reliability.js';
+import { shedMiddleware, recordRoute, countUnhandled, stats as relStats, metricsText, recommendedReplicas, load as relLoad } from './src/reliability.js';
 import { queueStats, userQueue } from './src/orderqueue.js';
 import { booksFor, booksCsv } from './src/books.js';
 import { taxSummary, harvestCandidates, form8949Csv, scheduleD, scheduleDCsv, markToMarket } from './src/tax.js';
@@ -207,6 +207,8 @@ app.use((req, res, next) => {
   if (/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(host) || !/^https:/.test(process.env.PUBLIC_URL)) return next();
   if (req.method !== 'GET' && req.method !== 'HEAD') return next();
   if (/^\/(healthz|readyz|internal|metrics)(\/|$)/.test(req.path)) return next();
+  // The load test runs against this server's own address with its CRON_SECRET (never a visitor).
+  if (req.headers['x-qp-loadtest'] && process.env.CRON_SECRET && safeEqual(String(req.headers['x-qp-loadtest']), process.env.CRON_SECRET)) return next();
   res.redirect(301, process.env.PUBLIC_URL.replace(/\/+$/, '') + req.originalUrl);
 });
 app.disable('x-powered-by');
@@ -217,7 +219,7 @@ app.use(compression({ filter: (req, res) => !String(req.headers.accept).includes
 app.use((req, res, next) => {
   const t = Date.now();
   const url = req.originalUrl.split('?')[0].replace(/^\/hook\/.*/, '/hook/[secret]');
-  res.on('finish', () => console.log(`${req.method} ${url} ${res.statusCode} ${Date.now() - t}ms`));
+  res.on('finish', () => { const ms = Date.now() - t; console.log(`${req.method} ${url} ${res.statusCode} ${ms}ms`); if (url.startsWith('/api/')) recordRoute(req.method, url, ms); });
   next();
 });
 
@@ -353,6 +355,18 @@ app.post('/internal/check-trade', internalAuth, async (req, res) => {
     res.json({ ok: true, ...out });
   } catch (e) { res.status(e.status || 500).json({ ok: false, error: e.message }); }
 });
+// The load test (PERFORMANCE.md, .github/workflows/load-test.yml, CRON_SECRET): a session for one
+// paper-only test account on the reserved .invalid domain (made in the database, no email), with
+// a paper position or two so the pages have something to show. The load test only reads.
+app.post('/internal/loadtest-session', internalAuth, async (req, res) => {
+  const email = 'load-test@brightolio.invalid';
+  let u = await one('SELECT id FROM users WHERE email = ?', email);
+  if (!u) { await run("INSERT INTO users (email, pass_hash, role, plan, created_at, password_set) VALUES (?, ?, 'user', 'free', ?, 0)", email, 'disabled:' + Date.now(), now()); u = await one('SELECT id FROM users WHERE email = ?', email); }
+  await run('INSERT OR IGNORE INTO paper_accounts (user_id, cash, start_cash) VALUES (?, 100000, 100000)', u.id);
+  const { createSession } = await import('./src/auth.js');
+  await createSession(res, req, u.id, false);
+  res.json({ ok: true, cookie: 'qp_sid=' + res.locals.sessionToken });
+});
 // Load diagnosis (CRON_SECRET): the load and its three parts, the V8 heap and its real limit, the
 // event-loop delay, requests in flight, the last refused requests and the process memory.
 app.get('/internal/load', internalAuth, async (req, res) => {
@@ -362,7 +376,7 @@ app.get('/internal/load', internalAuth, async (req, res) => {
   res.json({ at: new Date().toISOString(), stats: (({ breakers, ...x }) => x)(R.stats()), parts: R.loadParts(),
     lagNow2s: { p50: +(h.percentile(50) / 1e6).toFixed(1), p90: +(h.percentile(90) / 1e6).toFixed(1), p99: +(h.percentile(99) / 1e6).toFixed(1), max: +(h.max / 1e6).toFixed(1) },
     heap: { usedMb: mb(hs.used_heap_size), totalMb: mb(hs.total_heap_size), limitMb: mb(hs.heap_size_limit) }, rssMb: mb(m.rss), externalMb: mb(m.external), arrayBuffersMb: mb(m.arrayBuffers),
-    nodeOptions: process.env.NODE_OPTIONS || null, shed: R.shedEvents().slice(-20) });
+    nodeOptions: process.env.NODE_OPTIONS || null, shed: R.shedEvents().slice(-20), routes: R.routeTimes(30), cpus: (await import('node:os')).cpus().length, totalMemMb: mb((await import('node:os')).totalmem()) });
 });
 app.post('/internal/backup', internalAuth, async (req, res) => {
   const B = await import('./src/backup.js');

@@ -1,0 +1,78 @@
+name: Load test (live server)
+# PERFORMANCE.md: 200 simultaneous people doing the common flows on the Oracle server (its own
+# address, so the numbers are the server's, not a forwarder's), plus Lighthouse on mobile and
+# desktop. Read-only: the load-test account is paper only and the test never places an order
+# (scripts/loadtest-live.mjs). Fails if a target is missed: p95 under 300 ms for cached routes and
+# under 800 ms for the rest, no shed answers, no 5xx, Lighthouse mobile performance 90+.
+# Needs the variable ORACLE_HOST and the secret CRON_SECRET (the server's, as the scheduler uses).
+on:
+  workflow_dispatch:
+    inputs:
+      users: { description: 'Simultaneous people', default: '200' }
+      seconds: { description: 'How long (seconds)', default: '60' }
+      lighthouse: { description: 'Also run Lighthouse', type: boolean, default: true }
+      enforce: { description: 'Fail when a target is missed', type: boolean, default: true }
+permissions:
+  contents: read
+concurrency:
+  group: load-test
+  cancel-in-progress: false
+jobs:
+  load:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      ORACLE_HOST: ${{ vars.ORACLE_HOST }}
+      LOADTEST_TOKEN: ${{ secrets.CRON_SECRET }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          check-latest: true
+          cache: npm
+      - run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: The server before
+        run: |
+          [ -n "$LOADTEST_TOKEN" ] || { echo "::error::Add the CRON_SECRET secret."; exit 1; }
+          BASE="https://$(echo "${ORACLE_HOST:-138.2.233.183}" | tr . -).sslip.io"; echo "BASE=$BASE" >> "$GITHUB_ENV"
+          mkdir -p out
+          curl -fsS --max-time 30 -H "authorization: Bearer $LOADTEST_TOKEN" "$BASE/internal/load" > out/server-before.json || echo '{}' > out/server-before.json
+          jq -c '{cpus, totalMemMb, load: .stats.load, heap, lagNow2s, inflight: .stats.inflight, shed: .stats.shed, nodeOptions}' out/server-before.json || true
+      - name: 200 people for a minute
+        env:
+          USERS: ${{ inputs.users }}
+          SECONDS: ${{ inputs.seconds }}
+          OUT: out/loadtest.json
+        run: node scripts/loadtest-live.mjs
+      - name: The server after
+        run: |
+          sleep 3
+          curl -fsS --max-time 30 -H "authorization: Bearer $LOADTEST_TOKEN" "$BASE/internal/load" > out/server-after.json || echo '{}' > out/server-after.json
+          jq -c '{load: .stats.load, heap, lagNow2s, inflight: .stats.inflight, shed: .stats.shed}' out/server-after.json || true
+          echo "--- the server's own response times per route (top 30, ms)"
+          jq -r '.routes[]? | "\(.count)\t p50 \(.p50)\t p95 \(.p95)\t \(.route)"' out/server-after.json | head -30 || true
+      - name: Lighthouse (mobile and desktop)
+        if: inputs.lighthouse
+        env:
+          LIGHTHOUSE: npx --yes lighthouse@12
+          OUT: out/lighthouse.json
+        run: |
+          CHROME_PATH="$(node -e "console.log(require('playwright').chromium.executablePath())")"; export CHROME_PATH
+          node scripts/lighthouse-live.mjs
+      - name: Targets
+        if: inputs.enforce
+        run: node scripts/perf-targets.mjs out/loadtest.json out/lighthouse.json
+      - name: Summary
+        if: always()
+        run: |
+          { echo '### Load test'; echo '```'; jq -c '{users, seconds, requests, perSecond, errors, shed, overall, api, static, page}' out/loadtest.json 2>/dev/null; echo '```';
+            echo '### Lighthouse'; echo '```'; jq -c '.scores' out/lighthouse.json 2>/dev/null; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: load-test
+          path: out/
+          retention-days: 30

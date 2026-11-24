@@ -181,3 +181,22 @@ export function metricsText(extra = {}) {
   out += '\n# HELP qp_breaker_open Circuit breaker open (1) per broker\n# TYPE qp_breaker_open gauge\n' + s.breakers.map(b => `qp_breaker_open{broker="${b.name}"} ${b.state === 'open' ? 1 : 0}`).join('\n');
   return out + '\n';
 }
+
+// ---------- response times per route (PERFORMANCE.md) ----------
+// The last 400 durations of each route (ids and symbols collapsed: /api/stock/AAPL → /api/stock/:x),
+// for the p50 and p95 that /internal/load and Admin → Hosting show. A few kilobytes in all.
+const ROUTE_T = new Map();
+export const routeKey = (method, url) => method + ' ' + String(url).split('?')[0]
+  .replace(/\/hook\/.*/, '/hook/:secret').replace(/\/[0-9a-f]{16,}(?=\/|$)/gi, '/:id').replace(/\/\d+(?=\/|$)/g, '/:n')
+  .replace(/^(\/api\/(?:stock|quote|chart|analyze|desk\/quote|bars|news|options|filings|company|logo)s?)\/[^/]+/i, '$1/:x').slice(0, 80);
+export function recordRoute(method, url, ms) {
+  const k = routeKey(method, url);
+  let a = ROUTE_T.get(k); if (!a) { if (ROUTE_T.size >= 600) return; ROUTE_T.set(k, (a = { n: 0, d: [] })); }
+  a.n++; a.d.push(ms); if (a.d.length > 400) a.d.shift();
+}
+export function routeTimes(top = 30) {
+  const q = (s, p) => s[Math.min(s.length - 1, Math.floor(p * s.length))];
+  return [...ROUTE_T].map(([route, a]) => { const s = [...a.d].sort((x, y) => x - y); return { route, count: a.n, p50: q(s, 0.5), p95: q(s, 0.95), max: s[s.length - 1] }; })
+    .sort((a, b) => b.count - a.count).slice(0, top);
+}
+export const resetRouteTimes = () => ROUTE_T.clear();

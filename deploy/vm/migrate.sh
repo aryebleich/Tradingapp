@@ -220,6 +220,10 @@ case "$step" in
     echo "--- the running code has /internal/load: $( (cd "$APP" && docker compose exec -T app grep -c "internal/load" /app/server.js) 2>&1 | head -1)"
     cs=$(val CRON_SECRET); echo "--- /internal/load answer:"; curl -sS -i --max-time 15 -H "authorization: Bearer $cs" http://127.0.0.1:3000/internal/load 2>&1 | head -12 | cut -c1-200 | grep -viE 'set-cookie|authorization'
     for i in 1 2 3; do echo "--- /metrics now ($i)"; curl -sS --max-time 10 ${mt:+-H "authorization: Bearer $mt"} http://127.0.0.1:3000/metrics | grep -E '^qp_(load|inflight|event_loop|heap|requests|shed|jobs)' | paste -sd' ' -; sleep 3; done
+    echo "--- the machine: $(nproc) CPU cores, $(free -m | awk '/^Mem:/{print $2" MB memory, "$7" MB available"}'), swap $(free -m | awk '/^Swap:/{print $2" MB"}')"
+    echo "    container limits: $(docker inspect -f 'memory {{.HostConfig.Memory}} bytes, cpus {{.HostConfig.NanoCpus}}' brightfolio-app-1 2>/dev/null)"
+    echo "--- response times per route since the app started (top 30 by count; ms)"
+    call GET /internal/load | jq -r '.routes[]? | "\(.count)\t p50 \(.p50)\t p95 \(.p95)\t max \(.max)\t \(.route)"' 2>/dev/null | head -30 || true
     for i in 1 2 3 4 5 6; do echo "--- sample $i"; r=$(call GET /internal/load || true); echo "$r" | jq -c '{at, load: .stats.load, parts, lagNow2s, heap, rssMb, inflight: .stats.inflight, shed: .stats.shed, requests: .stats.requests, uptimeSec: .stats.uptimeSec, nodeOptions}' 2>/dev/null || echo "  (not JSON: $(printf '%s' "$r" | head -c 160 | tr -d '\n'))"; [ "$i" -lt 6 ] && sleep 8; done
     echo "--- last refused requests"; call GET /internal/load | jq -c '.shed[]?' | tail -20 || true
     echo "--- database file (names and sizes only, never values)"
