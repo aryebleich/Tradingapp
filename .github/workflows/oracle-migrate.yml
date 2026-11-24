@@ -86,6 +86,9 @@ jobs:
       - name: Load diagnosis (no change)
         if: env.STEP == 'diagnose-load'
         run: ~/vm diagnose-load
+      - name: AI chat diagnosis (no change)
+        if: env.STEP == 'aichat-diagnose'
+        run: ~/vm aichat-diagnose
       - name: The app back up first (an interrupted deploy)
         if: env.STEP == 'repair'
         run: ~/vm repair
