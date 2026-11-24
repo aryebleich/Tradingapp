@@ -117,7 +117,8 @@ for (const v of VARIANTS) {
   const ctxs = {};
   for (const auth of [false, true]) {
     const c = await browser.newContext({ ...v.dev, colorScheme: v.scheme, reducedMotion: 'reduce' });
-    await c.addInitScript(([lang]) => { try { localStorage.setItem('qp_lang', lang); localStorage.setItem('qp_guides', 'off'); } catch {} }, [v.lang]);
+    // Beginner hints stay on (a new user sees "New here? Tap i"; it once pushed a title off the screen).
+    await c.addInitScript(([lang]) => { try { localStorage.setItem('qp_lang', lang); } catch {} }, [v.lang]);
     if (auth) await c.addCookies(session);
     ctxs[auth] = c;
   }

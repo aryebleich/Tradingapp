@@ -361,3 +361,16 @@ html.lv2 .notice-banner, .notice-banner { display: flex; gap: 10px; align-items:
    nothing jumps when the app shows them (a layout shift Lighthouse counted on every load) */
 html.was-in header#top[hidden] { display: flex; visibility: hidden; }
 @media (min-width: 901px) { html.was-in #nav[hidden] { display: block; visibility: hidden; } }
+/* the bottom tab bar never grows wider than the screen: five equal columns that may shrink below
+   their label's width (a long label or a badge made it 410 px on a 390 px phone for a few seconds) */
+@media (max-width: 900px) {
+  html.lv2 #tabs:not([hidden]) { grid-template-columns: repeat(5, minmax(0, 1fr)); max-width: 100vw; box-sizing: border-box; }
+  html.lv2 #tabs a { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+/* phones: a page title with its badge, i, gear and the one-time "New here? Tap i" hint wraps instead
+   of running off the screen (the dashboard's title row was 398 px on a 390 px phone until the hint went) */
+@media (max-width: 640px) {
+  html.lv2 .dash-title h1 { flex: 1 1 auto; flex-wrap: wrap; white-space: normal; max-width: 100%; row-gap: var(--s1); }
+  html.lv2 #view h1 { max-width: 100%; overflow-wrap: anywhere; }
+  html.lv2 #view h1 .pinfo-hint { white-space: nowrap; }
+}
