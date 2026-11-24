@@ -8,7 +8,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import { one, all, run, now } from '../db.js';
 import { siteGet, siteSet, isOwner } from '../site.js';
 import { canonicalEmail } from '../auth.js';
-import { providers } from '../llm.js';
+import { providers, openaiStream } from '../llm.js';
+import { redact } from '../aiaccess.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 let cfgCache = null;
@@ -84,8 +85,9 @@ async function streamAnthropic({ system, messages, signal, onThinking, onText, m
 }
 // OpenAI-compatible services (Gemini, Groq, OpenRouter, a custom server): server-sent chunks, no thinking.
 async function streamCompatible(p, { system, messages, signal, onText, maxTokens }) {
+  // Personal details and keys never leave the server in a message (src/aiaccess.js).
   const r = await fetch(`${p.base}/chat/completions`, { method: 'POST', signal, headers: { 'Content-Type': 'application/json', ...(p.apiKey ? { Authorization: `Bearer ${p.apiKey}` } : {}) },
-    body: JSON.stringify({ model: p.model, stream: true, max_tokens: maxTokens, stream_options: { include_usage: true }, messages: [{ role: 'system', content: system }, ...messages] }) });
+    body: JSON.stringify({ model: p.model, stream: true, max_tokens: maxTokens, stream_options: { include_usage: true }, messages: [{ role: 'system', content: redact(system) }, ...messages.map(m => ({ ...m, content: redact(m.content) }))] }) });
   if (!r.ok) throw bad(`The AI service answered ${r.status}`, r.status === 429 ? 429 : 502, 'provider');
   let buf = '', input = 0, output = 0;
   const dec = new TextDecoder();
@@ -119,7 +121,9 @@ export async function streamReply(modelId, args) {
   if (modelId.startsWith('fake') && process.env.NODE_ENV === 'test' && process.env.AI_CHAT_FAKE_MODEL) return streamFake(modelId, args);
   const p = providers().find(x => x.id === modelId);
   if (!p) throw bad('That model is not available.', 400, 'model');
-  return p.id === 'anthropic' ? streamAnthropic(args) : streamCompatible(p, args);
+  if (p.id === 'anthropic') return streamAnthropic(args);
+  if (p.id === 'openai') return openaiStream(p, args);
+  return streamCompatible(p, args);
 }
 
 // ---------- storage ----------

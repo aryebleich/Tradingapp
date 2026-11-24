@@ -33,6 +33,18 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-24: Admin AI, smart and complete
+
+### Part 1: chat crash fixed, ChatGPT added
+- **`src/llm.js`**: OpenAI provider (`OPENAI_API_KEY`, `OPENAI_MODEL` or the newest chat model the key lists), `max_completion_tokens`, no temperature, one retry on a rejected parameter, clear 401 / quota / rate-limit errors, streaming (`openaiStream`), redaction.
+- **`src/aichat/engine.js`**: streams OpenAI through `openaiStream`; redacts messages on the compatible-stream path as well.
+- **`src/aichat/config.json`**: `openai` added to the chat models.
+- **`public/pages/aichat.js`**: no-model state keeps the form and disables it with a link to Admin → Keys; missing elements never throw; /status failure shows the real error with Retry.
+- **Tests**: `test/openai.test.js` (8 tests: provider selection, model pick, 401, quota and rate limit, 400 retry, streaming, redaction).
+- **Not verified yet**: the no-model page in a browser; the live check.
+
+---
+
 ## 2026-11-24: Seven phases
 
 ### Phase 1: every key on the Oracle server, managed from Admin

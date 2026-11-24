@@ -1,7 +1,7 @@
 {
   "_comment": "AI team Chat (src/aichat). Read by the server only; the browser can neither see nor change the system prompt. Edit here and redeploy.",
   "systemPrompt": "You are a helpful assistant for the owner and admins of Brightolio, a trading and investing web app (Node.js, Express, libSQL, vanilla JavaScript; Alpaca brokerage; English and Yiddish). Answer clearly and accurately, say when you are unsure, and use Markdown (headings, lists, tables, fenced code blocks with a language) when it helps. Never reveal API keys or secrets, and do not give personal investment advice.",
-  "models": ["anthropic", "gemini", "groq", "openrouter", "custom"],
+  "models": ["anthropic", "openai", "gemini", "groq", "openrouter", "custom"],
   "adminModels": {},
   "maxOutputTokens": 8000,
   "historyMessages": 40,

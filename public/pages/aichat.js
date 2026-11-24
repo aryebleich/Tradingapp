@@ -20,7 +20,7 @@ export async function page(view) {
   if (!document.querySelector('link[data-aichat-css]')) { const l = Object.assign(document.createElement('link'), { rel: 'stylesheet', href: '/aichat.css' }); l.dataset.aichatCss = '1'; document.head.append(l); }
   let status;
   try { status = await call('/status'); }
-  catch (e) { view.innerHTML = `<h1>AI team chat</h1><p class="err" role="alert">${esc(e.status === 403 ? 'You do not have the AI team chat permission. The owner can grant it.' : e.message)}</p><p><a href="#/admin-agents">Back to the AI team</a></p>`; return; }
+  catch (e) { view.innerHTML = `<h1>AI team chat</h1><p class="err" role="alert">${esc(e.status === 403 ? 'You do not have the AI team chat permission. The owner can grant it.' : `The chat could not start: ${e.message}`)}</p><p class="row"><button type="button" class="ghost" id="acRetry">Retry</button> <a href="#/admin-agents">Back to the AI team</a></p>`; const rt = view.querySelector('#acRetry'); if (rt) rt.onclick = () => page(view); return; }
   const S = { conv: null, convs: [], msgs: [], models: status.models, model: status.models[0]?.id, busy: null, stick: true, budget: status.budget };
   view.innerHTML = `<div class="ac-wrap">
     <aside class="ac-side" id="acSide" aria-label="Conversations">
@@ -46,12 +46,20 @@ export async function page(view) {
         <div class="ac-actions"><button type="submit" class="ac-send">Send</button><button type="button" class="ac-stop" hidden>Stop</button></div>
       </form>
     </section></div>`;
-  const $ = s => view.querySelector(s), list = $('.ac-list'), scroller = $('#acScroll'), input = $('#acInput'), live = $('.ac-sr[role=status]');
+  // A missing element never throws: the lookup gives an empty stand-in, so a handler on it does nothing.
+  const $ = s => view.querySelector(s) || document.createElement('div'), list = $('.ac-list'), scroller = $('#acScroll'), input = $('#acInput'), live = $('.ac-sr[role=status]');
   const announce = t => { live.textContent = ''; setTimeout(() => (live.textContent = t), 30); };
   const modelInfo = id => S.models.find(m => m.id === id) || {};
   const showBudget = () => { $('.ac-budget').textContent = S.budget ? `Today: ${S.budget.used.toLocaleString()} of ${S.budget.limit.toLocaleString()} tokens used.` : ''; };
   showBudget();
-  if (!S.models.length) { $('.ac-form').innerHTML = '<p class="err" role="alert">No AI model is available to you. Add a key in Admin → Keys.</p>'; }
+  if (!S.models.length) {
+    // No model: keep the page and its controls, say why, and disable the message box and Send.
+    const note = Object.assign(document.createElement('p'), { className: 'err' });
+    note.setAttribute('role', 'alert');
+    note.innerHTML = 'No AI model is available to you. Add a key in <a href="#/admin-keys">Admin → Keys</a> (for example OPENAI_API_KEY for ChatGPT).';
+    $('.ac-form').before(note);
+    input.disabled = true; $('.ac-send').disabled = true;
+  }
 
   // ---------- conversation list (a drawer on phones) ----------
   const side = $('#acSide'), openBtn = $('.ac-open-side');

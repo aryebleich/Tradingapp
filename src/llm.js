@@ -21,19 +21,108 @@ export function provider() {
   const p = env('AI_PROVIDER').toLowerCase();
   if (p === 'anthropic' && env('ANTHROPIC_API_KEY')) return { id: 'anthropic', name: 'Claude' };
   if (p === 'custom' || (!p && env('AI_BASE_URL'))) return env('AI_BASE_URL') ? { id: 'custom', name: 'Custom model', base: env('AI_BASE_URL').replace(/\/$/, ''), apiKey: env('AI_API_KEY'), model: env('AI_MODEL') || 'llama3.1' } : null;
+  if (p === 'openai' && openaiKey()) return openaiProvider();
   if (FREE[p] && keyOf(p)) return free(p);
   if (!p && env('ANTHROPIC_API_KEY')) return { id: 'anthropic', name: 'Claude' };
   for (const id of Object.keys(FREE)) if (keyOf(id)) return free(id);
+  if (!p && openaiKey()) return openaiProvider();
   return null;
 }
 const free = id => ({ id, name: FREE[id].name, base: env(id.toUpperCase() + '_BASE_URL') || (env('AI_PROVIDER').toLowerCase() === id && env('AI_BASE_URL')) || FREE[id].base, apiKey: keyOf(id), model: (env('AI_PROVIDER').toLowerCase() === id && env('AI_MODEL')) || (id === 'gemini' && env('GEMINI_MODEL')) || picked[id] || FREE[id].model, free: true });
+// ---------- ChatGPT (OpenAI) ----------
+// Paid, through OPENAI_API_KEY (Admin → Keys). The model comes from OPENAI_MODEL. When that is not
+// set, the newest chat model the key can use is read from OpenAI's model list (cached 6 hours), so
+// no model name is hard-coded that could be retired. Parameters: max_completion_tokens instead of
+// max_tokens; no temperature (reasoning models accept only the default); and one retry without any
+// parameter the model rejects.
+// OPENAI_BASE_URL (optional, not a secret) only exists so tests can point at a fake server.
+export const OPENAI = { id: 'openai', name: 'ChatGPT (OpenAI)', base: 'https://api.openai.com/v1', key: 'OPENAI_API_KEY' };
+const openaiKey = () => env(OPENAI.key);
+const openaiProvider = () => ({ id: 'openai', name: OPENAI.name, base: (env('OPENAI_BASE_URL') || OPENAI.base).replace(/\/$/, ''), apiKey: openaiKey(), model: env('OPENAI_MODEL') || null, paid: true });
+let openaiList = { at: 0, ids: [] };
+// The newest chat model in a list of model ids (newest version first, then the plain name over a dated copy).
+export function pickOpenAIModel(ids) {
+  const chat = (ids || []).filter(id => /^(gpt-|o\d)/.test(id) && !/(realtime|audio|transcribe|tts|image|embedding|search|instruct|moderation|whisper|dall|codex|preview)/.test(id));
+  const ver = id => +(/^gpt-(\d+(?:\.\d+)?)/.exec(id)?.[1] || /^o(\d+)/.exec(id)?.[1] || 0);
+  return chat.sort((a, b) => (ver(b) - ver(a)) || (/^gpt-/.test(b) - /^gpt-/.test(a)) || (a.length - b.length))[0] || null;
+}
+// Maps an OpenAI error answer to a clear message (the key never appears in it).
+export function openaiError(status, d) {
+  const code = String(d?.error?.code || d?.error?.type || ''), msg = String(d?.error?.message || '');
+  if (status === 401) return Object.assign(new Error('The ChatGPT (OpenAI) key was refused (401). Check OPENAI_API_KEY in Admin → Keys.'), { status: 401 });
+  if (status === 429 && /insufficient_quota/.test(code + ' ' + msg)) return Object.assign(new Error('ChatGPT (OpenAI) is out of credit (insufficient_quota). Add billing at platform.openai.com, then try again.'), { status: 429, quota: true });
+  if (status === 429) return Object.assign(new Error('ChatGPT (OpenAI) is rate-limited right now. Try again in a minute.'), { status: 429 });
+  return Object.assign(new Error(redact(msg) || `ChatGPT (OpenAI) answered ${status}`), { status: status >= 500 ? 502 : status });
+}
+async function openaiModel(p) {
+  if (p.model) return p.model;
+  if (!openaiList.ids.length || Date.now() - openaiList.at > 6 * 3600e3) {
+    const r = await fetch(`${p.base}/models`, { headers: { Authorization: `Bearer ${p.apiKey}` }, signal: AbortSignal.timeout(15000) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw openaiError(r.status, d);
+    openaiList = { at: Date.now(), ids: (d.data || []).map(m => m.id) };
+  }
+  const m = pickOpenAIModel(openaiList.ids);
+  if (!m) throw Object.assign(new Error('This ChatGPT key lists no chat model. Set OPENAI_MODEL in Admin → Keys.'), { status: 404 });
+  return m;
+}
+// Body in the form the API takes today, without the parameters reasoning models refuse.
+function openaiBody(body, model) {
+  const b = { ...body, model };
+  if (b.max_tokens != null) { b.max_completion_tokens = b.max_tokens; delete b.max_tokens; }
+  delete b.temperature;
+  return b;
+}
+async function openaiSend(p, b) {
+  const r = await fetch(`${p.base}/chat/completions`, {
+    method: 'POST', signal: AbortSignal.timeout(60000),
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${p.apiKey}` },
+    body: JSON.stringify(b),
+  });
+  return { ok: r.ok, status: r.status, d: await r.json().catch(() => ({})) };
+}
+// A chat request to OpenAI. A 400 that names a rejected parameter is retried once without it.
+export async function openaiPost(p, body) {
+  const model = await openaiModel(p);
+  let b = openaiBody(body, model);
+  let r = await openaiSend(p, b);
+  if (!r.ok && r.status === 400) {
+    const m = /'([a-z_]+)'/i.exec(String(r.d?.error?.message || ''));
+    if (m && m[1] in b && /unsupported|not supported|does not support|only the default/i.test(r.d.error.message)) {
+      delete b[m[1]];
+      r = await openaiSend(p, b);
+    }
+  }
+  if (!r.ok) throw openaiError(r.status, r.d);
+  return r.d;
+}
+// Streamed reply (the chat's Stop button aborts it through the signal).
+export async function openaiStream(p, { system, messages, signal, onText, maxTokens }) {
+  const model = await openaiModel(p);
+  const b = openaiBody({ max_tokens: maxTokens, stream: true, stream_options: { include_usage: true }, messages: [{ role: 'system', content: redact(system) }, ...messages.map(m => ({ ...m, content: redact(m.content) }))] }, model);
+  const r = await fetch(`${p.base}/chat/completions`, { method: 'POST', signal, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${p.apiKey}` }, body: JSON.stringify(b) });
+  if (!r.ok) throw openaiError(r.status, await r.json().catch(() => ({})));
+  let buf = '', input = 0, output = 0;
+  const dec = new TextDecoder();
+  for await (const chunk of r.body) {
+    buf += dec.decode(chunk, { stream: true });
+    let i;
+    while ((i = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+      if (!line.startsWith('data:')) continue;
+      const d = line.slice(5).trim(); if (d === '[DONE]') continue;
+      try { const j = JSON.parse(d); const t = j.choices?.[0]?.delta?.content; if (t) onText(t); if (j.usage) { input = j.usage.prompt_tokens || input; output = j.usage.completion_tokens || output; } } catch { /* a partial line */ }
+    }
+  }
+  return { inputTokens: input, outputTokens: output, stopReason: 'end_turn', model };
+}
 const picked = {}; // a model found to work when the default one is retired
 export const llmEnabled = () => !!provider();
-export const llmInfo = () => { const p = provider(); return p ? { provider: p.id, name: p.name, free: !!p.free, model: p.model || 'claude-opus-5-5' } : null; };
+export const llmInfo = () => { const p = provider(); return p ? { provider: p.id, name: p.name, free: !!p.free, model: p.model || (p.id === 'anthropic' ? 'claude-opus-5-5' : 'newest chat model') } : null; };
 
 let claude;
 const anthropic = () => (claude ||= new Anthropic());
-const failed = (e, p) => (e.status === 401 || e.status === 403 ? Object.assign(new Error(`The AI service refused the request; check the API key for ${p.name}`), { status: 502 }) : e);
+const failed = (e, p) => (p.id === 'openai' ? e : e.status === 401 || e.status === 403 ? Object.assign(new Error(`The AI service refused the request; check the API key for ${p.name}`), { status: 502 }) : e);
 
 // OpenAI-compatible chat completions (Groq, Gemini, OpenRouter, Ollama...).
 async function post(p, body) {
@@ -58,6 +147,7 @@ export async function geminiModels(apiKey) {
     .sort((a, b) => ((/flash/.test(b) ? 1 : 0) - (/flash/.test(a) ? 1 : 0)) || ver(b) - ver(a) || a.length - b.length);
 }
 async function completions(p, body) {
+  if (p.id === 'openai') return openaiPost(p, body);
   if (p.id !== 'gemini') return post(p, body);
   // Gemini "thinks" before it answers and the thinking counts against max_tokens: keep it short and
   // leave room, or the answer comes back empty.
@@ -183,6 +273,7 @@ export function providers() {
   const out = [];
   if (env('ANTHROPIC_API_KEY')) out.push({ id: 'anthropic', name: 'Claude', model: 'claude-opus-5-5' });
   for (const id of Object.keys(FREE)) if (keyOf(id)) out.push(free(id));
+  if (openaiKey()) out.push(openaiProvider());
   if (env('AI_BASE_URL')) out.push({ id: 'custom', name: 'Custom model', base: env('AI_BASE_URL').replace(/\/$/, ''), apiKey: env('AI_API_KEY'), model: env('AI_MODEL') || 'default' });
   return out;
 }
@@ -208,8 +299,9 @@ export async function textWith(id, { system, user, maxTokens = 3000 }) {
 export const lastErrors = {};
 const retryable = e => !e.refusal && (!e.status || [401, 402, 403, 404, 408, 429].includes(e.status) || e.status >= 500 || /quota|exhausted|overloaded|unavailable|fetch failed|timeout|aborted|api key|api_key|permission|not found|not supported|location is not supported|billing/i.test(e.message));
 function chain() {
-  const first = provider(); if (!first) return [];
-  return [first, ...providers().filter(x => x.id !== first.id)];
+  const all = providers(), first = provider() || all[0];
+  if (!first) return [];
+  return [first, ...all.filter(x => x.id !== first.id)];
 }
 async function viaChain(fn, args) {
   const list = chain(); if (!list.length) throw Object.assign(new Error('No AI provider is set up'), { status: 503 });

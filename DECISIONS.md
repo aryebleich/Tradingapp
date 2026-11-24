@@ -24,6 +24,17 @@
 - A-6.3: Each open task has a "Do it" link to the admin page that changes it. The page no longer says "from Render": it describes the Oracle server and Admin → Keys.
 - A-6.4: Not done in this step: the setup assistant inside the admin AI chat (it needs the chat's tool layer and step-up confirmation, see A6 in the brief). The ranked list it will use is ready (nextTasks in src/setup-tasks.js).
 
+## Admin AI, smart and complete (2026-11-24)
+
+### Part 1: the chat crash and ChatGPT as a provider
+- AI-1.1: The crash came from the chat page replacing its whole message form when no model was listed, then setting handlers on the removed Stop button. The form is now kept; the message is shown above it and the box and Send are disabled. Every element lookup returns an empty stand-in when missing, so no handler can throw on null. When /status fails the page shows the real error with a Retry button.
+- AI-1.2: OpenAI is a full provider (src/llm.js): id openai, "ChatGPT (OpenAI)", base https://api.openai.com/v1, key OPENAI_API_KEY (already in the key catalogue), streaming, tool calls and JSON output, and it is listed in the chat config.
+- AI-1.3: The model comes from OPENAI_MODEL. When it is not set, the newest chat model that the key can list (GET /v1/models, cached 6 hours) is used. Reason: the OpenAI changelog could not be read from this environment (DNS failed), so no model name is hard-coded that might be wrong or retired. The owner can pin one with OPENAI_MODEL.
+- AI-1.4: Parameters: max_completion_tokens instead of max_tokens; no custom temperature (reasoning models accept only the default; the default is fine for every model). A 400 that names a rejected parameter is retried once without it.
+- AI-1.5: Errors: 401 names OPENAI_API_KEY in Admin → Keys without showing the key; insufficient_quota says the account is out of credit (not a rate limit); other 429s say rate-limited; other statuses pass the API's message through redacted. OpenAI's messages are not rewritten by the shared "key refused" wrapper.
+- AI-1.6: Redaction: the streaming path for OpenAI-compatible providers now redacts system and message text too (it did not before). OPENAI_BASE_URL (not a secret) exists only so tests can use a fake server.
+- AI-1.7: Not verified here: the chat page's no-model state in a real browser (it needs a signed-in admin on the live site). It is part of the live check.
+
 ## Seven phases (2026-11-24)
 
 ### Phase 1: keys on the Oracle server, managed from Admin
