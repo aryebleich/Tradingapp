@@ -48,7 +48,7 @@ export function cleanParams(b = {}, prev = DEFAULTS) {
 
 // ---------- prices: history, live stream or polling ----------
 const BUF = new Map(); // symbol -> [{ t, price }]
-const keep = (sym, minutes) => { const a = BUF.get(sym) || []; const from = Date.now() - minutes * 60e3 - 3600e3; while (a.length && a[0].t < from) a.shift(); BUF.set(sym, a); return a; };
+const keep = (sym, minutes, now = Date.now()) => { const a = BUF.get(sym) || []; const from = now - minutes * 60e3 - 3600e3; while (a.length && a[0].t < from) a.shift(); BUF.set(sym, a); return a; };
 export const addPoint = (sym, t, price) => { if (!(price > 0)) return; const a = BUF.get(sym) || []; if (!a.length || t >= a.at(-1).t) a.push({ t, price }); BUF.set(sym, a); };
 let unwatch = null, watched = '';
 async function follow(symbols) {
@@ -172,7 +172,7 @@ export async function runPair(pair, t = Date.now()) {
   const A = await freshPrice(pair.a, pair.user_id, t), B = await freshPrice(pair.b, pair.user_id, t);
   if (!(A.price > 0 && B.price > 0)) { await log(pair, 'skip', 'No price for one of the legs'); return { skip: 'no price' }; }
   const barMs = p.barMin * 60e3, from = t - p.historyMin * 60e3;
-  const g = M.align(M.resample(keep(pair.a, p.historyMin).filter(x => x.t >= from), barMs), M.resample(keep(pair.b, p.historyMin).filter(x => x.t >= from), barMs));
+  const g = M.align(M.resample(keep(pair.a, p.historyMin, t).filter(x => x.t >= from), barMs), M.resample(keep(pair.b, p.historyMin, t).filter(x => x.t >= from), barMs));
   const m = M.model(g.ca, g.cb);
   // Paper results count per day the bot ran on paper in regular hours.
   if (pair.account === 'paper') { st.paperDays = [...new Set([...(st.paperDays || []), day])].slice(-60); }
