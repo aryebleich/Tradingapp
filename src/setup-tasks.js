@@ -27,7 +27,6 @@ const META = {
   'TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM': { tier: 'quick', why: 'Text-message alerts and sign-in codes by text.', min: 15, go: '#/admin-keys' },
   'GROQ_API_KEY / GEMINI_API_KEY': { tier: 'quick', why: 'A free AI assistant. Free tiers have limits.', min: 5, go: '#/admin-agents' },
   ANTHROPIC_API_KEY: { tier: 'nice', why: 'The paid, higher-quality AI assistant. Optional.', min: 5, go: '#/admin-agents' },
-  RENDER_API_KEY: { tier: 'nice', why: 'Keeps keys in sync with the old Render host. Not needed on Oracle.', min: 5, go: '#/admin-keys' },
 };
 const ORDER = { blocker: 0, revenue: 1, quick: 2, nice: 3 };
 

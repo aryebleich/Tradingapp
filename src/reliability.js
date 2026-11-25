@@ -12,7 +12,7 @@ import { nyTime } from './time.js';
 
 // Limits (settings, .env.example). The heap limit is V8's real one (heap_size_limit, which follows
 // --max-old-space-size; the Oracle image sets 1536 MB for its 2 GB container), not a fixed number:
-// the fixed 450 MB was Render's, and on a machine where V8 may grow the heap to 1.5 GB before it
+// the fixed 450 MB was the old host's, and on a machine where V8 may grow the heap to 1.5 GB before it
 // collects, a heap of 440 MB is normal, not "full".
 const num = (v, d) => (Number.isFinite(+v) && +v > 0 ? +v : d);
 export const limits = () => ({

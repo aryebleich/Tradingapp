@@ -1,6 +1,6 @@
 // Site-wide settings the owner changes in Admin: extra admin emails and phones, the business mode
 // (software only, or registered investment adviser), and environment values (API keys) saved from
-// the admin page or synced with Render.
+// the admin page (kept on this server: the Admin key store and the server .env).
 import { all, run, now, onWrite } from './db.js';
 import crypto from 'node:crypto';
 import { encrypt, decrypt } from './crypto.js';
@@ -81,13 +81,12 @@ export const ENV_GROUPS = [
   ['Hosting and the edge', ['HOST_ID', 'STANDBY', 'DB_FILE', 'PERSISTENT_DISK', 'MAINTENANCE', 'OCI_BACKUP_PAR_URL', 'BACKUP_KEY', 'EDGE_SECRET', 'CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_KV_ID', 'CLOUDFLARE_ZONE_ID', 'SITE_DOMAIN']],
   ['Android app', ['ANDROID_CERT_SHA256', 'ANDROID_APK_URL', 'ANDROID_PLAY', 'ANDROID_PLAY_URL']],
   ['Extras', ['MARGIN_FEED_URL', 'METRICS_TOKEN', 'SEC_CONTACT']],
-  ['Render', ['RENDER_API_KEY', 'RENDER_SERVICE_ID']],
   ['GitHub (README and repository)', ['GITHUB_TOKEN', 'GITHUB_REPO']],
 ];
 export const validEnvName = k => /^[A-Z][A-Z0-9_]{1,63}$/.test(k);
 // Never changed from the app: the host sets these, or changing them would lock out the data.
 // Also never: settings that would weaken HTTPS or change how Node.js itself runs.
-const HOST_ONLY = new Set(['NODE_ENV', 'PORT', 'HOSTNAME', 'RENDER', 'RENDER_SERVICE_ID', 'RENDER_EXTERNAL_URL', 'PATH', 'HOME',
+const HOST_ONLY = new Set(['NODE_ENV', 'PORT', 'HOSTNAME', 'PATH', 'HOME',
   'NODE_TLS_REJECT_UNAUTHORIZED', 'NODE_EXTRA_CA_CERTS', 'NODE_OPTIONS', 'NODE_PATH', 'SSL_CERT_FILE', 'SSL_CERT_DIR', 'NODE_VERSION', 'ALLOW_UNPATCHED_NODE', 'LD_PRELOAD']);
 // Need a restart to take effect (read once at start-up), or would break stored data if changed live.
 const RESTART = new Set(['ENCRYPTION_KEY', 'DATABASE_URL', 'DATABASE_AUTH_TOKEN', 'DB_FILE', 'PERSISTENT_DISK']);
@@ -97,7 +96,7 @@ export const mask = v => { const s = String(v ?? ''); return !s ? '' : s.length 
 // What the real environment held at start-up, before anything saved in the app was applied.
 const bootEnv = new Set(Object.keys(process.env));
 const savedEnv = () => { const b = siteGet('env'); if (!b) return {}; try { return decrypt(b); } catch { return {}; } };
-// Values saved in the app fill in what the host did not set (Render values win after a restart).
+// Values saved in the app fill in what the server .env did not set (the .env wins after a restart).
 export async function applySavedEnv() {
   for (const [k, v] of Object.entries(savedEnv())) if (!bootEnv.has(k) && !HOST_ONLY.has(k) && !RESTART.has(k)) process.env[k] = v;
 }
@@ -132,43 +131,3 @@ export function parseDotenv(text) {
 }
 export const toDotenv = obj => Object.entries(obj).map(([k, v]) => `${k}="${String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n')}"`).join('\n') + '\n';
 
-// ---------- Render ----------
-// RENDER_API_KEY comes from Render → Account settings → API keys. RENDER_SERVICE_ID is set by
-// Render on every service; outside Render it can be given by hand (srv-...).
-const RENDER_API = () => (process.env.RENDER_API_URL || 'https://api.render.com/v1').replace(/\/$/, '');
-export const renderEnabled = () => !!(process.env.RENDER_API_KEY && process.env.RENDER_SERVICE_ID);
-async function renderCall(method, p, body) {
-  if (!renderEnabled()) throw Object.assign(new Error('Add RENDER_API_KEY (and RENDER_SERVICE_ID outside Render) first'), { status: 400 });
-  const r = await fetch(`${RENDER_API()}/services/${encodeURIComponent(process.env.RENDER_SERVICE_ID)}${p}`, {
-    method, headers: { authorization: `Bearer ${process.env.RENDER_API_KEY}`, accept: 'application/json', ...(body ? { 'content-type': 'application/json' } : {}) },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const text = await r.text();
-  if (!r.ok) throw Object.assign(new Error(`Render answered ${r.status}: ${text.slice(0, 200)}`), { status: 502 });
-  return text ? JSON.parse(text) : {};
-}
-export async function renderEnv() {
-  const out = {};
-  let cursor = '';
-  for (let i = 0; i < 20; i++) {
-    const page = await renderCall('GET', `/env-vars?limit=100${cursor ? '&cursor=' + encodeURIComponent(cursor) : ''}`);
-    for (const row of page) out[row.envVar.key] = row.envVar.value;
-    if (page.length < 100) break;
-    cursor = page[page.length - 1].cursor;
-  }
-  return out;
-}
-// One key at a time, so values set only on Render are never wiped.
-export async function renderPut(changes) {
-  const done = [];
-  for (const [k, v] of Object.entries(changes)) {
-    if (v === null || v === '') await renderCall('DELETE', `/env-vars/${encodeURIComponent(k)}`).catch(e => { if (!/404/.test(e.message)) throw e; });
-    else await renderCall('PUT', `/env-vars/${encodeURIComponent(k)}`, { value: String(v) });
-    done.push(k);
-  }
-  return done;
-}
-export const renderDeploy = () => renderCall('POST', '/deploys', { clearCache: 'do_not_clear' });
-export const renderService = () => renderCall('GET', '');
-// A new instance type; Render moves the service to it with a fresh deploy.
-export const renderSetPlan = plan => renderCall('PATCH', '', { serviceDetails: { plan } });

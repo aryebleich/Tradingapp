@@ -20,8 +20,8 @@ import { checkFormat, misfileTarget, openAIWarnings } from './key-format.js';
 let openAIMovedFrom = false;
 
 // Never stored here: the master key, what the host sets, and what would cut the app off its data.
-export const ENV_ONLY = new Set(['ENCRYPTION_KEY', 'DATABASE_URL', 'DATABASE_AUTH_TOKEN', 'DB_FILE', 'PERSISTENT_DISK', 'NODE_ENV', 'PORT', 'HOSTNAME', 'RENDER',
-  'RENDER_SERVICE_ID', 'RENDER_EXTERNAL_URL', 'PATH', 'HOME', 'NODE_TLS_REJECT_UNAUTHORIZED', 'NODE_EXTRA_CA_CERTS', 'NODE_OPTIONS', 'NODE_PATH', 'SSL_CERT_FILE',
+export const ENV_ONLY = new Set(['ENCRYPTION_KEY', 'DATABASE_URL', 'DATABASE_AUTH_TOKEN', 'DB_FILE', 'PERSISTENT_DISK', 'NODE_ENV', 'PORT', 'HOSTNAME',
+  'PATH', 'HOME', 'NODE_TLS_REJECT_UNAUTHORIZED', 'NODE_EXTRA_CA_CERTS', 'NODE_OPTIONS', 'NODE_PATH', 'SSL_CERT_FILE',
   'SSL_CERT_DIR', 'NODE_VERSION', 'ALLOW_UNPATCHED_NODE', 'LD_PRELOAD', 'AUTH_CACHE_MS']);
 export const validName = k => /^[A-Z][A-Z0-9_]{1,63}$/.test(k);
 const bad = (m, s = 400) => Object.assign(new Error(m), { status: s });

@@ -80,7 +80,7 @@ export async function setupEdge({ domain, servers = [], active = null } = {}) {
   domain = String(domain || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
   if (domain && !/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(domain)) throw bad('The address looks wrong: use a name like app.brightolio.com');
   const origins = originList(servers, active, domain || null);
-  if (!origins.length) throw bad(`Add your servers above first, each with its own address (not ${domain || 'the edge address'}), e.g. Oracle: https://138-2-233-183.sslip.io and Render: https://quantpocket.onrender.com`);
+  if (!origins.length) throw bad(`Add your servers above first, each with its own address (not ${domain || 'the edge address'}), e.g. Oracle: https://138-2-233-183.sslip.io`);
 
   // 3. Settings store (the list of servers Admin → Hosting switches)
   let kv = process.env.CLOUDFLARE_KV_ID || edgeConfig().kv;

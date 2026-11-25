@@ -1,8 +1,6 @@
 // Brightolio web server: JSON API + static single-page app.
-// First, before any module that opens the database: on Render this only redirects to Oracle.
 import { rankTasks } from './src/setup-tasks.js';
 import { setMainAddressReaches } from './src/main-address.js';
-import './src/render-redirect.js';
 import './src/fetch-timeout.js'; // a time limit on every outside call (PERFORMANCE.md)
 import * as SEO from './src/seo.js';
 import { agentsRouter } from './src/agents.js';
@@ -143,16 +141,15 @@ import { router as sp500Router } from './src/sp500.js';
 import { router as extRouter, oauthCallback as extOauthCallback, accountsFor } from './src/ext/routes.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-// On Render the service's own address is known (RENDER_EXTERNAL_URL) when PUBLIC_URL is not set, so
-// payment return links and the Stripe webhook never point at localhost.
-if (!process.env.PUBLIC_URL && process.env.RENDER_EXTERNAL_URL) process.env.PUBLIC_URL = process.env.RENDER_EXTERNAL_URL;
+// The site's address is required in production (src/origin.js): without it, stop here with the reason.
+{ const why = (await import('./src/origin.js')).missingPublicUrl(); if (why) { console.error(why); process.exit(1); } }
 const PUBLIC_URL = (process.env.PUBLIC_URL || 'http://localhost:3000').replace(/\/$/, '');
 // Node.js must carry the latest security fixes (security/node-floor.json). In production an
 // unpatched runtime refuses to start, so a deploy on it fails its health check and the previous,
 // patched one keeps serving. ALLOW_UNPATCHED_NODE=1 overrides this in an emergency.
 const runtime = nodeStatus();
 if (!runtime.ok) {
-  console.error(`SECURITY: Node.js ${runtime.version} is older than the patched release ${runtime.min}. Update Node.js (Render: NODE_VERSION or .node-version) and redeploy.`);
+  console.error(`SECURITY: Node.js ${runtime.version} is older than the patched release ${runtime.min}. Update Node.js (the Dockerfile's base image, then deploy again) and redeploy.`);
   if (process.env.NODE_ENV === 'production' && process.env.ALLOW_UNPATCHED_NODE !== '1' && (process.argv[1] === fileURLToPath(import.meta.url) || process.env.QP_START === '1')) process.exit(1);
 }
 if (process.env.NODE_TLS_REJECT_UNAUTHORIZED === '0') {
@@ -182,8 +179,8 @@ app.use((req, res, next) => {
   }
   next();
 });
-// Is this request's edge secret the right one? Render asks before it forwards the main address here
-// (src/render-redirect.js); the answer is only yes or no.
+// Is this request's edge secret the right one? A forwarder asks before it passes the main address here
+// (a forwarder in front of this server, such as the Cloudflare edge); the answer is only yes or no.
 const BOOT_ID = crypto.randomBytes(8).toString('hex');
 app.get('/internal/edge-check', (req, res) => res.json({ trusted: req.viaEdge === true, host: req.viaEdge ? req.headers.host : null, boot: BOOT_ID }));
 // The one-address redirect below is on only while PUBLIC_URL really reaches this app (its edge-check
@@ -308,9 +305,8 @@ app.post('/internal/maintenance', express.json(), async (req, res) => {
 app.get('/internal/maintenance', async (req, res) => res.json((await import('./src/maintenance.js')).maintenance()));
 // The migration workflow's other calls (deploy/vm, .github/workflows/oracle-migrate.yml), all behind
 // CRON_SECRET and none returning a secret value:
-//   POST /internal/standby {on}            this server stops (or resumes) running jobs; on Render it
-//                                          is also saved as STANDBY=1 in Render's settings when the
-//                                          Render API key is there, so it holds after a restart
+//   POST /internal/standby {on}            this server stops (or resumes) running jobs (until the
+//                                          next restart; STANDBY=1 in the server .env makes it last)
 //   POST /internal/hosting {servers, active} register servers in this server's own database
 //   POST /internal/hosting/activate {id}   the switch (edge or DNS when set up), as Admin → Hosting
 //   GET  /internal/verify                  database, schema, row counts, credentials open, maintenance
@@ -320,8 +316,6 @@ app.post('/internal/standby', express.json(), internalAuth, async (req, res) => 
   const on = req.body?.on !== false;
   if (on) process.env.STANDBY = '1'; else delete process.env.STANDBY;
   let saved = 'memory only (until the next restart)';
-  const S = await import('./src/site.js');
-  if (process.env.RENDER && S.renderEnabled()) saved = await S.renderPut({ STANDBY: on ? '1' : null }).then(() => 'saved on Render too', e => 'not saved on Render: ' + e.message);
   res.json({ host: thisHost(), standby: on, saved });
 });
 app.post('/internal/hosting', express.json(), internalAuth, async (req, res) => {
@@ -398,7 +392,7 @@ app.post('/internal/tick', async (req, res) => {
   if (!isActiveHost()) return res.json({ skipped: true, reason: `${thisHost()} is not the active server` });
   const out = await runDueJobs();
   if (req.query.snapshot) await snapshotAll();
-  // Whether accounts and sign-ins live in a lasting database (a local file on Render is wiped on
+  // Whether accounts and sign-ins live in a lasting database (a local file on a host without a lasting disk is wiped on
   // every restart and deploy, which signs everyone out).
   res.json({ ...out, database: process.env.DATABASE_URL ? 'lasting (DATABASE_URL)' : persistentDisk() ? 'lasting (local file on a persistent disk)' : 'local file: wiped on restart' });
 });
@@ -1438,7 +1432,6 @@ api.get('/admin/setup', U, auth.requireAdmin, async (req, res) => {
     ['Connect existing Alpaca accounts (OAuth)', 'ALPACA_OAUTH_CLIENT_ID, ALPACA_OAUTH_CLIENT_SECRET', oauthEnabled()],
     ['Sign in with Google', 'GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET', googleEnabled()],
     ['Sign in with GitHub', 'GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET', githubEnabled()],
-    ['Keys sync with Render', 'RENDER_API_KEY', !!(process.env.RENDER_API_KEY && process.env.RENDER_SERVICE_ID)],
     ['Plans and card payments (Stripe)', 'STRIPE_SECRET_KEY', N.stripeEnabled()],
     ['Stripe webhook', 'STRIPE_WEBHOOK_SECRET', has('STRIPE_WEBHOOK_SECRET')],
     ['Text messages and hotline (Twilio)', 'TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM', N.twilioEnabled()],
@@ -1540,13 +1533,14 @@ const page = base => async (req, res) => {
 // once instead of one import level after another.
 let appHtml = null;
 // The version of the app's files: a hash of their contents, so every server running the same code
-// (Render, Oracle) gives the same version, and a change gives a new one at once.
+// gives the same version, and a change gives a new one at once.
 const ASSET_V = await (async () => {
   const h = crypto.createHash('sha1');
   const walk = async d => { for (const e of (await fs.readdir(d, { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name))) { const f = path.join(d, e.name); if (e.isDirectory()) await walk(f); else if (/\.(js|css)$/.test(e.name)) h.update(e.name).update(await fs.readFile(f)); } };
   await walk(pub).catch(() => {}); return h.digest('hex').slice(0, 10);
 })();
-const BUILD = process.env.RENDER_GIT_COMMIT || ASSET_V;
+// The commit this image was built from (GIT_COMMIT, set at docker build time by deploy/vm/update.sh).
+const BUILD = process.env.GIT_COMMIT || ASSET_V;
 // Every import inside the app's code carries the version (app.js?v=…, ./pages/x.js?v=…). Those
 // addresses never change their content, so the browser, the offline cache and the Cloudflare edge
 // keep them without asking again: repeat visits open at once, and a new version is never mixed with
@@ -1649,7 +1643,7 @@ app.use(async (req, res) => res.status(404).sendFile(path.join(pub, '404.html'))
 
 // Started directly (node server.js) or by cluster.js (QP_START=1): listen and start the background work.
 const isMain = process.argv[1] === fileURLToPath(import.meta.url) || process.env.QP_START === '1';
-if (isMain && process.env.REDIRECT_ONLY !== '1') {
+if (isMain) {
   // A promise somebody forgot to catch (a background job, a fire-and-forget email) is logged and
   // counted, instead of stopping the whole server as Node.js does by default.
   process.on('unhandledRejection', e => { countUnhandled(); console.error('Unhandled promise rejection (server keeps running):', e?.stack || e); });

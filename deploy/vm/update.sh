@@ -68,11 +68,12 @@ if [ -f "$CF" ] && command -v caddy >/dev/null && ! { cmp -s deploy/vm/caddy-app
   else cp -p "$CF.before-app" "$CF" 2>/dev/null || true; if [ -f "$CA.before" ]; then cp -p "$CA.before" "$CA"; fi; systemctl reload caddy || true; log "Caddy routing NOT changed (validation failed); still one upstream"; fi
 fi
 command -v sqlite3 >/dev/null || { apt-get install -y -qq sqlite3 >/dev/null 2>&1 || true; }
-docker build -q --pull -t brightfolio:new . >/dev/null
+docker build -q --pull --build-arg GIT_COMMIT="$NEW" -t brightfolio:new . >/dev/null
 cd "$APP"
 docker tag brightfolio:latest brightfolio:previous 2>/dev/null || true
 docker tag brightfolio:new brightfolio:latest
-if grep -q '^RENDER_GIT_COMMIT=' .env; then sed -i "s/^RENDER_GIT_COMMIT=.*/RENDER_GIT_COMMIT=$NEW/" .env; else echo "RENDER_GIT_COMMIT=$NEW" >> .env; fi
+# The commit is built into the image (GIT_COMMIT); the old marker in .env is removed.
+sed -i '/^RENDER_GIT_COMMIT=/d' .env
 if ! docker compose up -d --force-recreate app; then
   for c in $(stale); do docker rm -f "$c" >/dev/null 2>&1 || true; done
   docker compose up -d --force-recreate app || true

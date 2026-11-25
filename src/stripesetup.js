@@ -133,7 +133,7 @@ export async function stripeStatus({ siteUrl, lastEvent, savedWebhookId }) {
     const a = await stripeApi('GET', '/account');
     account = { id: a.id, name: a.settings?.dashboard?.display_name || a.business_profile?.name || null, chargesEnabled: a.charges_enabled !== false, detailsSubmitted: a.details_submitted !== false };
     if (savedWebhookId) { const w = await stripeApi('GET', `/webhook_endpoints/${savedWebhookId}`).catch(() => null); webhook = w ? { status: w.status, url: w.url, missingEvents: w.enabled_events?.includes('*') ? [] : WEBHOOK_EVENTS.filter(e => !w.enabled_events?.includes(e)) } : { missing: true }; }
-    // Pointing at another address (for example the old Render one) means events never reach this site.
+    // Pointing at another address (for example an old one) means events never reach this site.
     if (webhook?.url && webhook.url !== base.webhookUrl) webhook.wrongUrl = true;
   } catch (e) { error = e.message; }
   const ready = !error && base.webhookSecret && Object.values(base.prices).every(Boolean) && !!account?.chargesEnabled && !webhook?.missing && !webhook?.wrongUrl && !webhook?.missingEvents?.length && webhook?.status !== 'disabled';

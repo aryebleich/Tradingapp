@@ -20,7 +20,7 @@ export function routingReport() {
   if (production && paperHost !== 'paper-api.alpaca.markets') problems.push(`Paper orders go to ${paperHost}, not paper-api.alpaca.markets.`);
   if (production && liveHost !== 'api.alpaca.markets') problems.push(`Real-money orders go to ${liveHost}, not api.alpaca.markets.`);
   return {
-    ok: !problems.length, commit: (process.env.RENDER_GIT_COMMIT || '').slice(0, 40) || null, checkedAt: new Date().toISOString(),
+    ok: !problems.length, commit: (process.env.GIT_COMMIT || '').slice(0, 40) || null, checkedAt: new Date().toISOString(),
     paper: { practiceAccount: 'filled inside Brightolio (never sent to a broker)', alpacaPaper: paperHost },
     live: { alpacaLive: liveHost, brokerApi: brokerHost, brokerAccountsLive: brokerHost === 'broker-api.alpaca.markets' },
     perOrder: 'Each Alpaca order first checks the account number: paper (PA…) only with paper keys, real money only with live keys.',

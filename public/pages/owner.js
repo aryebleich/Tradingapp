@@ -1,7 +1,7 @@
-// Owner pages: Upgrades (business mode, Alpaca, GitHub and Render plans, site version), money
+// Owner pages: Upgrades (business mode, Alpaca and GitHub plans, site version), money
 // levers under Money & fees, Admins
 // (emails and phones that sign in as admin), and Keys (every environment value, .env import and
-// export, and sync with Render). Admin pages stay in English.
+// on this server). Admin pages stay in English.
 import { md } from './studio.js';
 import { yiddishVoice } from './voice-admin.js';
 let H;
@@ -45,7 +45,7 @@ async function stripeCard(view) {
     const priceRows = Object.entries(s.prices || {}).map(([k, v]) => `<li>${ok(v)} <code>${H.esc(k)}</code></li>`).join('');
     const ev = s.lastEvent ? `${H.esc(s.lastEvent.type)} · ${new Date(s.lastEvent.at).toLocaleString()}${s.lastEvent.livemode ? '' : ' (test mode)'}` : 'none yet';
     box.innerHTML = `<div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">Stripe: plan payments</h2>${s.ready ? '<span class="pill pos">Customers can pay</span>' : s.keySet ? '<span class="pill warn">Setup not finished</span>' : '<span class="pill">Not connected</span>'}</div>
-      ${!s.keySet ? '<p>Add <code>STRIPE_SECRET_KEY</code> in Render (or Admin → Keys), then come back here.</p>' : `
+      ${!s.keySet ? '<p>Add <code>STRIPE_SECRET_KEY</code> in Admin → Keys, then come back here.</p>' : `
       <ul class="plain" style="margin:10px 0">
         <li>${ok(s.keySet)} Secret key · <b>${s.mode === 'live' ? 'live mode (real money)' : s.mode === 'test' ? 'test mode (no real money)' : 'mode unknown'}</b>${s.account ? ` · account ${H.esc(s.account.name || s.account.id)}` : ''}</li>
         ${s.account ? `<li>${ok(s.account.chargesEnabled)} Stripe lets this account take payments${s.account.chargesEnabled ? '' : ': finish the account details in the Stripe dashboard (business, bank account, identity)'}</li>` : ''}
@@ -54,11 +54,11 @@ async function stripeCard(view) {
         <li>Plan prices<ul class="plain" style="margin:4px 0 0 18px">${priceRows}</ul></li>
         <li class="mu">Last event received: ${ev}${s.badSignature ? ` · last rejected (bad signature): ${new Date(s.badSignature.at).toLocaleString()}` : ''}</li></ul>
       ${s.error ? `<p class="err">${H.esc(s.error)}</p>` : ''}
-      ${/^http:\/\/localhost/.test(s.siteUrl) ? '<p class="err">The site address is not known: set <code>PUBLIC_URL</code> in Render to your site\'s https address first.</p>' : ''}
-      <p class="mu small-print">“Finish setup” creates (or updates) the Pro, Elite and Ultimate products with monthly and yearly prices matching the site, the webhook for ${s.events.length} events, and the billing portal, and saves their ids${s.renderConnected ? ' here and in Render' : ' here (kept in the database)'}. Running it again changes nothing that is already right. Plan prices come from the site's plan settings.</p>
+      ${/^http:\/\/localhost/.test(s.siteUrl) ? '<p class="err">The site address is not known: set <code>PUBLIC_URL</code> in the server .env to your site\'s https address first.</p>' : ''}
+      <p class="mu small-print">“Finish setup” creates (or updates) the Pro, Elite and Ultimate products with monthly and yearly prices matching the site, the webhook for ${s.events.length} events, and the billing portal, and saves their ids here (kept in the database). Running it again changes nothing that is already right. Plan prices come from the site's plan settings.</p>
       <div class="row"><button id="stripeSetup">${s.ready ? 'Check and update' : 'Finish setup'}</button></div><div id="stripeOut" class="mu">${note}</div>`}`;
     const b = box.querySelector('#stripeSetup');
-    if (b) H.act(b, async () => { const r = await H.adminUnlocked('/admin/site/stripe/setup', { body: {} }); await draw(`<ul class="plain">${r.report.map(x => `<li>✓ ${H.esc(x)}</li>`).join('')}</ul>${r.saved.length ? `Saved: ${r.saved.map(H.esc).join(', ')}${r.render ? ' (also in Render)' : ''}.` : 'Nothing needed saving.'}`); return 'Done'; }, box.querySelector('#stripeOut'));
+    if (b) H.act(b, async () => { const r = await H.adminUnlocked('/admin/site/stripe/setup', { body: {} }); await draw(`<ul class="plain">${r.report.map(x => `<li>✓ ${H.esc(x)}</li>`).join('')}</ul>${r.saved.length ? `Saved: ${r.saved.map(H.esc).join(', ')}.` : 'Nothing needed saving.'}`); return 'Done'; }, box.querySelector('#stripeOut'));
   };
   await draw();
 }
@@ -144,9 +144,9 @@ function alpacaHtml(d) {
   </div>`}`;
 }
 
-// ---------- Upgrades: business mode, Alpaca, GitHub and Render in one place ----------
+// ---------- Upgrades: business mode, Alpaca and GitHub in one place ----------
 // Every upgrade asks for the password and the word UPGRADE, and moves the site version up.
-const UP_TABS = [['mode', 'Business mode'], ['alpaca', 'Alpaca'], ['github', 'GitHub'], ['render', 'Render'], ['history', 'Version history']];
+const UP_TABS = [['mode', 'Business mode'], ['alpaca', 'Alpaca'], ['github', 'GitHub'], ['history', 'Version history']];
 async function upgrades(view, q) {
   const tab = UP_TABS.some(([k]) => k === q?.get('tab')) ? q.get('tab') : 'mode';
   const u = await H.api('/admin/site/upgrades');
@@ -167,11 +167,6 @@ async function upgrades(view, q) {
     body = `<div class="card"><h2>GitHub</h2><p class="mu">${!g.configured ? 'Add GITHUB_TOKEN in Keys to see the current plan.' : g.login ? `Signed in to GitHub as <b data-no-tr>${H.esc(g.login)}</b>${g.plan ? ` · plan: <b>${H.esc(g.plan)}</b>` : ' (GitHub does not show the plan to this token)'}.` : 'GitHub did not answer for GITHUB_TOKEN; check the token in Keys.'} GitHub changes plans on its own billing page; after you switch there, record it here.</p>
       <a href="https://github.com/settings/billing/plans" target="_blank" rel="noopener"><button type="button" class="ghost">Open GitHub billing ↗</button></a></div>
       <div class="grid">${u.githubPlans.map(p => card(p, g.plan === p.id, `<button type="button" data-rec="github:${p.id}">I switched to ${H.esc(p.name)}</button>`)).join('')}</div>`;
-  } else if (tab === 'render') {
-    const r = u.render;
-    body = `<div class="card"><h2>Render (where the site runs)</h2><p class="mu">${r.configured ? (r.error ? `<span class="err">${H.esc(r.error)}</span>` : `Service <b data-no-tr>${H.esc(r.name || '')}</b> · plan <b>${H.esc(r.plan || 'unknown')}</b>. Switching here changes the plan through the Render API and redeploys the site (about 2 minutes).`) : 'Add RENDER_API_KEY in Keys (Render → Account settings → API keys) to switch plans from here.'} Render bills the new plan by the second.</p>
-      <a href="https://dashboard.render.com" target="_blank" rel="noopener"><button type="button" class="ghost">Open the Render dashboard ↗</button></a></div>
-      <div class="grid">${u.renderPlans.map(p => card(p, r.plan === p.id, r.configured && !r.error ? `<button type="button" data-render="${p.id}">Switch to ${H.esc(p.name)}</button>` : '')).join('')}</div>`;
   } else {
     body = `<div class="card tablewrap"><h2>Version history</h2><table><tr><th>Version</th><th>Change</th><th>When</th></tr>${u.history.map(h => `<tr><td><b>${H.esc(h.v)}</b></td><td>${H.esc(h.what)}</td><td class="mu">${H.date(h.at)}</td></tr>`).join('') || '<tr><td colspan="3" class="mu">No upgrades yet: the site is at v0.1.</td></tr>'}</table></div>`;
   }
@@ -198,7 +193,6 @@ async function upgrades(view, q) {
     H.$$('[data-ria]', view).forEach(c => (c.onchange = async () => { await H.api('/admin/site/ria', { method: 'PUT', body: { id: c.dataset.ria, done: c.checked } }); H.render(); }));
   }
   H.$$('[data-rec]', view).forEach(b => H.act(b, () => { const [kind, to] = b.dataset.rec.split(':'); return apply({ kind, to }, `Record: ${b.closest('.aplan')?.querySelector('h2,h3')?.textContent || to}`, '<p class="mu">Records that you made this change in its own dashboard. Nothing is changed there from here.</p>'); }));
-  H.$$('[data-render]', view).forEach(b => H.act(b, () => apply({ kind: 'render', to: b.dataset.render }, `Switch Render to ${b.closest('.aplan').querySelector('h3').textContent}`, '<p class="mu">Render moves the site to the new plan and redeploys it. The site may be unavailable for a minute.</p>')));
 }
 
 async function admins(view) {

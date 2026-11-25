@@ -1,5 +1,5 @@
 // Admin → Admins, Business mode and Keys: who is an admin, software-only or registered-adviser
-// mode, and every environment value (API keys), with .env import/export and Render sync.
+// mode, and every environment value (API keys), kept on this server (the Admin key store and the server .env).
 import express from 'express';
 import { one, all, run, audit } from './db.js';
 import { requireUser, requireAdmin, confirmsIdentity, adminEmails, allAdminEmails, canonicalEmail } from './auth.js';
@@ -82,29 +82,24 @@ adminSiteRouter.get('/env', (req, res) => {
   const saved = Object.keys(process.env).filter(k => !known.has(k) && S.siteGet('envKeys', []).includes(k));
   res.json({
     groups: [...S.ENV_GROUPS, ...(saved.length ? [['Added', saved]] : [])].map(([name, keys]) => ({ name, rows: keys.map(row) })),
-    render: { enabled: S.renderEnabled(), onRender: !!process.env.RENDER },
   });
 });
-// Saves values: they work at once in this server, are kept (encrypted) in the database, and are
-// sent to Render when it is connected, so they survive restarts.
 // Values go into the key store (src/keystore.js): encrypted, live at once in every worker.
-async function apply(req, changes, toRender) {
+async function apply(req, changes) {
   const K = await import('./keystore.js');
   for (const k of Object.keys(changes)) { S.checkEnvChange(k); if (K.ENV_ONLY.has(k)) throw bad(`${k} stays in the server .env only`); }
   for (const [k, v] of Object.entries(changes)) { if (v === null || v === '') await K.removeSecret(k); else await K.setSecret(k, String(v), req.user); }
   await S.siteSet('envKeys', [...new Set([...S.siteGet('envKeys', []), ...Object.keys(changes)])]);
-  let render = null;
-  if (toRender && S.renderEnabled()) render = await S.renderPut(changes);
-  await audit(req.user.id, 'env_changed', { keys: Object.keys(changes), render: !!render }, req.ip);
-  return { ok: true, keys: Object.keys(changes), render, restart: Object.keys(changes).filter(S.needsRestart) };
+  await audit(req.user.id, 'env_changed', { keys: Object.keys(changes) }, req.ip);
+  return { ok: true, keys: Object.keys(changes), restart: Object.keys(changes).filter(S.needsRestart) };
 }
 // Saving keys needs the step-up too (the password again, 15 minutes: src/server-admin.js).
 const stepUp = (req, res, next) => import('./server-admin.js').then(({ isUnlocked }) => (isUnlocked(req) ? next() : res.status(403).json({ error: 'Confirm your password to change keys.', adminUnlock: true }))).catch(next);
 // Stripe: what is set, and one button that creates the plan prices, the webhook and the portal.
-const siteUrl = () => (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || 'http://localhost:3000').replace(/\/$/, '');
+const siteUrl = () => (process.env.PUBLIC_URL || 'http://localhost:3000').replace(/\/$/, '');
 adminSiteRouter.get('/stripe', wrap(async (req, res) => {
   const { stripeStatus } = await import('./stripesetup.js');
-  res.json({ ...(await stripeStatus({ siteUrl: siteUrl(), lastEvent: S.siteGet('stripeLastEvent', null), savedWebhookId: S.siteGet('stripeWebhookId', null) })), badSignature: S.siteGet('stripeBadSignature', null), renderConnected: S.renderEnabled() });
+  res.json({ ...(await stripeStatus({ siteUrl: siteUrl(), lastEvent: S.siteGet('stripeLastEvent', null), savedWebhookId: S.siteGet('stripeWebhookId', null) })), badSignature: S.siteGet('stripeBadSignature', null) });
 }));
 // Stripe Treasury (financial accounts for the businesses on a Connect platform): where the setup
 // stands. Stripe answers with what is missing (Connect not set up, Treasury not approved yet, ...).
@@ -133,19 +128,19 @@ adminSiteRouter.post('/stripe/setup', stepUp, wrap(async (req, res) => {
   await S.siteSet('stripeWebhookId', r.webhookId);
   const saved = Object.keys(r.changes).length ? await apply(req, r.changes, true) : null;
   await audit(req.user.id, 'stripe_setup', { mode: r.mode, keys: Object.keys(r.changes) }, req.ip);
-  res.json({ mode: r.mode, account: r.account, report: r.report, saved: saved ? saved.keys : [], render: !!saved?.render });
+  res.json({ mode: r.mode, account: r.account, report: r.report, saved: saved ? saved.keys : [] });
 }));
 adminSiteRouter.put('/env', stepUp, wrap(async (req, res) => {
-  const { key, value, render = true } = req.body || {};
+  const { key, value } = req.body || {};
   const k = String(key || '').trim().toUpperCase();
-  res.json(await apply(req, { [k]: value == null ? '' : String(value) }, render));
+  res.json(await apply(req, { [k]: value == null ? '' : String(value) }));
 }));
 adminSiteRouter.post('/env/import', stepUp, wrap(async (req, res) => {
   const parsed = S.parseDotenv(req.body?.text);
   // Masked values copied from this page (abc•••1234) are never saved over the real ones.
-  const changes = Object.fromEntries(Object.entries(parsed).filter(([k, v]) => !v.includes('•') && !['NODE_ENV', 'PORT', 'RENDER', 'HOSTNAME', 'RENDER_SERVICE_ID'].includes(k)));
+  const changes = Object.fromEntries(Object.entries(parsed).filter(([k, v]) => !v.includes('•') && !['NODE_ENV', 'PORT', 'HOSTNAME'].includes(k)));
   if (!Object.keys(changes).length) throw bad('No KEY=value lines found');
-  res.json(await apply(req, changes, req.body?.render !== false));
+  res.json(await apply(req, changes));
 }));
 // The real values, as a .env file. Asks for the password (or email, for Google-only accounts).
 // Key values are never sent to a browser any more (Admin → Keys): the export answers 410.
@@ -154,29 +149,6 @@ adminSiteRouter.post('/env/export', wrap(async (req, res) => {
   await audit(req.user.id, 'env_export_refused', null, req.ip);
   return res.status(410).json({ error: 'Keys are never downloaded: they stay on the server. Use Admin → Keys to replace one, or "Copy to the server .env".' });
 }));
-// Render → here: loads every value set on Render into this server (until its next restart, when
-// Render's own values apply anyway).
-adminSiteRouter.post('/env/render/pull', wrap(async (req, res) => {
-  const env = await S.renderEnv();
-  const keys = Object.keys(env).filter(k => S.validEnvName(k) && !S.needsRestart(k) && !S.hostOnly(k));
-  for (const k of keys) process.env[k] = env[k];
-  await audit(req.user.id, 'env_render_pull', { n: keys.length }, req.ip);
-  res.json({ ok: true, keys });
-}));
-// Here → Render: sends every known value to Render, then optionally redeploys.
-adminSiteRouter.post('/env/render/push', wrap(async (req, res) => {
-  const keys = [...new Set([...S.ENV_GROUPS.flatMap(([, k]) => k), ...S.siteGet('envKeys', [])])].filter(k => process.env[k] && !['RENDER_SERVICE_ID'].includes(k));
-  const done = await S.renderPut(Object.fromEntries(keys.map(k => [k, process.env[k]])));
-  const deploy = req.body?.deploy ? await S.renderDeploy() : null;
-  await audit(req.user.id, 'env_render_push', { n: done.length, deploy: !!deploy }, req.ip);
-  res.json({ ok: true, keys: done, deploy: deploy?.id || null });
-}));
-adminSiteRouter.post('/env/render/deploy', wrap(async (req, res) => {
-  const d = await S.renderDeploy();
-  await audit(req.user.id, 'render_deploy', null, req.ip);
-  res.json({ ok: true, deploy: d?.id || null });
-}));
-
 // ---------- money levers: deposit fee, referrals, partner commission ----------
 adminSiteRouter.get('/money', wrap(async (req, res) => {
   const { settings } = await import('./revenue.js');

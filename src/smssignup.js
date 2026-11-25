@@ -8,7 +8,7 @@ import { randomToken, sha256 } from './crypto.js';
 import { normalizePhone, siteGet } from './site.js';
 import { sendEmail } from './notify.js';
 
-const site = () => (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || 'https://app.brightolio.com').replace(/\/$/, '');
+const site = () => (process.env.PUBLIC_URL || 'https://app.brightolio.com').replace(/\/$/, '');
 const EMAIL = /([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/i;
 
 export const welcome = () => `📊 Welcome to Brightolio!

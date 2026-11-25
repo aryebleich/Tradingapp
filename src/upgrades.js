@@ -1,5 +1,5 @@
 // Admin → Upgrades: every change to how the business runs, in one place. Business mode (software
-// only or registered adviser), the owner's Alpaca plans, the GitHub plan and the Render plan.
+// only or registered adviser), the owner's Alpaca plans and the GitHub plan.
 // Each upgrade needs the owner's password (or email, for Google/GitHub sign-ins) and a typed
 // confirmation, is written to the audit log, and moves the site version up: v0.1, v0.2, ...
 import express from 'express';
@@ -22,17 +22,7 @@ export async function bump(what, userId = null) {
   return entry;
 }
 
-// ---------- Render and GitHub plans ----------
-// Render web service instance types (https://render.com/pricing); the API id is the key.
-export const RENDER_PLANS = [
-  ['free', 'Free', 0, '512 MB RAM, 0.1 CPU. Sleeps after 15 minutes without visits (the first visit then takes about a minute).'],
-  ['starter', 'Starter', 7, '512 MB RAM, 0.5 CPU. Always on: no sleeping, so scheduled trades and alerts run on time.'],
-  ['standard', 'Standard', 25, '2 GB RAM, 1 CPU. Room for many users, backtests and AI agents at once.'],
-  ['pro', 'Pro', 85, '4 GB RAM, 2 CPU. For heavy traffic.'],
-  ['pro_plus', 'Pro Plus', 175, '8 GB RAM, 4 CPU.'],
-  ['pro_max', 'Pro Max', 225, '16 GB RAM, 4 CPU.'],
-  ['pro_ultra', 'Pro Ultra', 450, '32 GB RAM, 8 CPU.'],
-].map(([id, name, price, text]) => ({ id, name, price, text }));
+// ---------- GitHub plans ----------
 export const GITHUB_PLANS = [
   ['free', 'Free', 0, '2,000 Actions minutes a month for private repositories (public ones are free). Enough for the checks after every push.'],
   ['pro', 'Pro', 4, '3,000 Actions minutes, more Pages and Codespaces hours, required reviewers on private repositories.'],
@@ -46,20 +36,14 @@ async function githubPlan() {
   const u = r?.ok ? await r.json() : null;
   return { configured: true, login: u?.login || null, plan: u?.plan?.name || null };
 }
-async function renderStatus() {
-  if (!S.renderEnabled()) return { configured: false };
-  const s = await S.renderService().catch(e => ({ error: e.message }));
-  return s.error ? { configured: true, error: s.error } : { configured: true, name: s.name, plan: s.serviceDetails?.plan || null, url: s.serviceDetails?.url || null };
-}
-
 // ---------- routes (under /api/admin/site, admins only) ----------
 export const upgradesRouter = express.Router();
-const KINDS = ['mode', 'render', 'github', 'alpaca'];
+const KINDS = ['mode', 'github', 'alpaca'];
 const ALPACA = { elite: 'Alpaca Elite', trading: 'Trading plan', data: 'Market data: Algo Trader Plus', options: 'Options level', cash: 'High-yield cash' };
 
 upgradesRouter.get('/upgrades', wrap(async (req, res) => {
-  const [render, github] = await Promise.all([renderStatus(), githubPlan()]);
-  res.json({ version: version(), history: versionHistory(), adviser: S.adviserMode(), crd: S.siteGet('adviserCrd', ''), render, github, renderPlans: RENDER_PLANS, githubPlans: GITHUB_PLANS, alpaca: ALPACA, recorded: S.siteGet('upgradesDone', {}) });
+  const github = await githubPlan();
+  res.json({ version: version(), history: versionHistory(), adviser: S.adviserMode(), crd: S.siteGet('adviserCrd', ''), github, githubPlans: GITHUB_PLANS, alpaca: ALPACA, recorded: S.siteGet('upgradesDone', {}) });
 }));
 
 // One upgrade. Body: { kind, to, password | confirm, typed: 'UPGRADE' } (+ registered, crd for adviser mode).
@@ -78,12 +62,6 @@ upgradesRouter.post('/upgrades', wrap(async (req, res) => {
     await S.siteSet('adviserMode', on);
     if (b.crd !== undefined) await S.siteSet('adviserCrd', String(b.crd || '').slice(0, 20));
     what = on ? `Business mode: registered investment adviser${b.crd ? ` (CRD ${String(b.crd).slice(0, 20)})` : ''}` : 'Business mode: software only';
-  } else if (kind === 'render') {
-    const p = RENDER_PLANS.find(x => x.id === to);
-    if (!p) throw bad('Pick a Render plan');
-    if (!S.renderEnabled()) throw bad('Add RENDER_API_KEY in Keys first (Render → Account settings → API keys)');
-    await S.renderSetPlan(p.id);
-    what = `Render plan: ${p.name}${p.price ? ` ($${p.price}/month)` : ''}`;
   } else {
     // GitHub and Alpaca plans change in their own dashboards; this records that it was done.
     const name = kind === 'github' ? GITHUB_PLANS.find(x => x.id === to)?.name : ALPACA[to];

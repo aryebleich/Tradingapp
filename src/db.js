@@ -15,7 +15,7 @@ export const dbFile = url.startsWith('file:') ? url.slice(5) : null;
 export const persistentDisk = () => process.env.PERSISTENT_DISK === '1';
 export const persistentDb = !url.startsWith('file:') || persistentDisk();
 export const dbKind = () => (dbFile ? 'file' : 'remote');
-export const needsHostedDb = () => (!!process.env.RENDER || process.env.REQUIRE_HOSTED_DB === '1') && !persistentDisk();
+export const needsHostedDb = () => process.env.REQUIRE_HOSTED_DB === '1' && !persistentDisk();
 if (!persistentDb && needsHostedDb() && process.env.REDIRECT_ONLY !== '1') console.error('DATABASE ERROR: DATABASE_URL is not set, so this server uses a local SQLite file that is lost on restart. Set PERSISTENT_DISK=1 on a server with a lasting disk, or DATABASE_URL for a shared database.');
 if (persistentDb && !process.env.DATABASE_AUTH_TOKEN && /^libsql:|^https:/.test(url)) console.error('DATABASE WARNING: DATABASE_URL is set but DATABASE_AUTH_TOKEN is empty; a libSQL server refuses connections without it.');
 export const db = createClient({ url, authToken: process.env.DATABASE_AUTH_TOKEN });

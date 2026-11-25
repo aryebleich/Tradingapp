@@ -13,6 +13,9 @@ RUN node -e "import('./src/runtime-check.js').then(m => { const s = m.nodeStatus
 RUN npm ci --omit=dev
 COPY . .
 ENV NODE_ENV=production
+# The commit this image is built from (deploy/vm/update.sh passes it): the app's version and /healthz/routing.
+ARG GIT_COMMIT=
+ENV GIT_COMMIT=$GIT_COMMIT
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s CMD node -e "fetch('http://localhost:'+(process.env.PORT||3000)+'/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 CMD ["node", "server.js"]

@@ -39,7 +39,7 @@ export function vmMetrics() {
   return {
     host: thisHost(), active: isActiveHost(), standby: standby(), cpus: os.cpus().length, load: os.loadavg().map(x => +x.toFixed(2)),
     memory: mem, disk, uptimeSec: Math.round(os.uptime()), appUptimeSec: Math.round(process.uptime()), node: process.version,
-    version: (process.env.RENDER_GIT_COMMIT || '').slice(0, 7) || null, lastDeploy: host, hostActions: actions, pending, canRequest: onVm(),
+    version: (process.env.GIT_COMMIT || '').slice(0, 7) || null, lastDeploy: host, hostActions: actions, pending, canRequest: onVm(),
   };
 }
 async function tableSizes() {
