@@ -899,3 +899,13 @@ Automatic (above). By hand: redeploy the previous tag: `curl -X POST "<deploy ho
   - news searches with dates are not cached.
 - **Lighthouse step fixed:** the script ran `npx --yes lighthouse@12` as a single program name.
 - **Tests:** test/shared-cache.test.js. npm test passes 594 (3 known TODO reviews).
+
+## 2026-11-25: Performance phase 2, second load test and fixes
+- **Second load test** (commit 8431f8f):
+  - movers, most actives, news and sentiment now meet their targets;
+  - Lighthouse ran: mobile 95–98, desktop 92–100, accessibility 100;
+  - 0 errors, 0 shed.
+- **Still slow, and fixed now:**
+  - the desk quote: the quote and its bid/ask are shared together, kept 1 s and shown for 2 s more while one refresh runs. Orders do not use this; they price themselves.
+  - the market overview: the rows use the shared cache, so an expiry no longer makes every user refetch 22 symbols at once.
+- Numbers are in PERFORMANCE.md. npm test: 594, all pass apart from the 3 known TODO reviews.

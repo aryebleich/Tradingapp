@@ -50,9 +50,25 @@ It never places an order. Lighthouse runs too, through `scripts/lighthouse-live.
 - **Lighthouse:** did not run, because the script passed `npx --yes lighthouse@12` as a single program name. Fixed.
 - **Changes that followed:** the shared market-data cache (above), the shared 1-second desk quote, and the Lighthouse fix.
 
-### After the shared cache
+### 2026-11-25, commit 8431f8f (the shared market-data cache)
 
-See the newest section of CHANGELOG_AI.md. Each load test also keeps its JSON as a workflow artifact for 30 days.
+- **Throughput:** 200 people, no errors and no shed answers (all targets on errors met). The server's CPU stayed idle (load 0.1).
+- **Fixed by the shared cache:** movers, most actives and news now meet their targets; `/api/news/sentiment` went from 1.4 s to 288 ms at p95.
+- **Lighthouse (now running):**
+  - mobile: sign-in 98, dashboard 95, scanner 95, stock page 95;
+  - desktop: 92 to 100;
+  - accessibility 100 everywhere. The mobile target (90+) is met.
+- **Still missed:**
+  - `/api/desk/quote/:x`: p50 1.2 s. The shared quote lived 1 s, shorter than one provider call, so everyone still waited, and the bid/ask call was not shared.
+  - `/api/market/overview`: p95 6.2 s. Its rows were cached 30 s with no in-flight sharing, so on expiry every waiting user refetched all 22 symbols.
+  - A few static files at 320–490 ms p95, the network time from the GitHub runner.
+- **Changes that followed:**
+  - the desk quote and its bid/ask are fetched together, kept 1 s and shown for 2 s more while one refresh runs;
+  - the overview rows use the shared cache (30 s, then 2 minutes stale while refreshing).
+
+### After those changes
+
+See the newest section of CHANGELOG_AI.md.
 
 ## Still to do
 

@@ -7,18 +7,19 @@ import { getSetting, setSetting } from './settings.js';
 import { validSymbol } from './brokers.js';
 import * as DS from './datasources.js';
 import { session } from './desk.js';
+import { shared } from './shared-cache.js';
 
 const bad = (m, s = 400) => Object.assign(new Error(m), { status: s });
 export const INDEXES = [['SPY', 'S&P 500'], ['QQQ', 'Nasdaq-100'], ['DIA', 'Dow 30'], ['IWM', 'Small caps'], ['TLT', 'Long bonds'], ['GLD', 'Gold']];
 export const SECTORS = [['XLK', 'Technology'], ['XLC', 'Communication'], ['XLY', 'Consumer discretionary'], ['XLP', 'Consumer staples'], ['XLV', 'Health care'], ['XLF', 'Financials'], ['XLI', 'Industrials'], ['XLE', 'Energy'], ['XLB', 'Materials'], ['XLU', 'Utilities'], ['XLRE', 'Real estate']];
 export const CRYPTO = [['BTC/USD', 'Bitcoin'], ['ETH/USD', 'Ether']];
-const cache = new Map(); // symbol -> { at, row }
 const day = t => new Date(t).toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
 
-// One symbol: live price, previous close, change, source and freshness (cached 30 seconds).
-export async function row(symbol, userId) {
-  const hit = cache.get(symbol);
-  if (hit && Date.now() - hit.at < 30e3) return hit.row;
+// One symbol: live price, previous close, change, source and freshness. Shared by everyone
+// (src/shared-cache.js): one fetch per symbol at a time, kept 30 seconds, and for 2 minutes more the
+// last row is shown at once while one refresh runs, so an expiry never makes everyone wait.
+export const row = (symbol, userId) => shared(`overview:${symbol}`, 30e3, 120e3, () => fetchRow(symbol, userId));
+async function fetchRow(symbol, userId) {
   const sess = session(), crypto = symbol.includes('/');
   let q = null, b = null;
   try { [q, b] = await Promise.all([DS.quote(symbol, userId).catch(e => (e.status === 404 ? { missing: true } : null)), DS.bars(symbol, day(Date.now() - 14 * 864e5), userId).catch(() => null)]); } catch {}
@@ -30,8 +31,6 @@ export async function row(symbol, userId) {
   const fresh = q?.source ? DS.freshness(q.source, sess.open || crypto) : { level: 'close', label: 'Previous close' };
   const r = { symbol, price, prevClose, change: price && prevClose ? price - prevClose : null, changePct: price && prevClose ? (price / prevClose - 1) * 100 : null,
     source: q?.source ? DS.PROVIDERS[q.source]?.name || q.source : b?.source ? DS.PROVIDERS[b.source]?.name || b.source : null, freshness: fresh };
-  cache.set(symbol, { at: Date.now(), row: r });
-  if (cache.size > 500) cache.delete(cache.keys().next().value);
   return r;
 }
 export async function rows(symbols, userId) {

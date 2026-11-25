@@ -91,15 +91,20 @@ export const deskRouter = (() => {
   r.get('/fees', (req, res) => res.json(fees()));
   r.get('/quote/:symbol', requireUser, async (req, res) => {
     const symbol = String(req.params.symbol || '').toUpperCase().slice(0, 15), account = String(req.query.account || 'paper');
-    const t0 = Date.now(); let q = null;
-    // Everyone looking at the same symbol in the same second shares one call to the data source
-    // (src/shared-cache.js); the price shown is never more than a second older than the source's.
-    try { q = await shared(`desk:quote:${symbol}`, 1000, 0, () => DS.quote(symbol, req.user.id)); } catch (e) { if (e.status === 404) throw bad(`Unknown symbol ${symbol}`, 404); }
+    const t0 = Date.now();
+    // Everyone looking at the same symbol shares one trip to the data sources (src/shared-cache.js):
+    // the price and the bid/ask are fetched together, kept 1 s, and for 2 s more the last ones are
+    // shown at once while one refresh runs. Orders never use this: they price themselves.
+    const live = await shared(`desk:quote:${symbol}`, 1000, 2000, async () => {
+      let q = null;
+      try { q = await DS.quote(symbol, req.user.id); } catch (e) { if (e.status === 404) throw bad(`Unknown symbol ${symbol}`, 404); }
+      const { quoteAt } = await import('./execution.js');
+      return { q, nb: await quoteAt(symbol, q?.price).catch(() => null) };
+    });
+    let q = live.q, nb = live.nb;
     if (!q) { const { lastPrice } = await import('./brokers.js'); q = { price: await lastPrice(symbol, req.user.id), source: 'Last known price (no live source)' }; }
     const ms = Date.now() - t0;
     let bid = null, ask = null;
-    const { quoteAt } = await import('./execution.js');
-    const nb = await quoteAt(symbol, q.price).catch(() => null);
     // A bid/ask far from the live price is stale or from another market: not shown.
     if (nb?.bid && nb?.ask && q.price > 0 && Math.abs((nb.bid + nb.ask) / 2 - q.price) / q.price <= 0.03) { bid = nb.bid; ask = nb.ask; }
     const qty = +req.query.qty || 0, side = req.query.side === 'sell' ? 'sell' : 'buy';
