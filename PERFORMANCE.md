@@ -66,12 +66,19 @@ It never places an order. Lighthouse runs too, through `scripts/lighthouse-live.
   - the desk quote and its bid/ask are fetched together, kept 1 s and shown for 2 s more while one refresh runs;
   - the overview rows use the shared cache (30 s, then 2 minutes stale while refreshing).
 
-### After those changes
+### 2026-11-25, commit 6e124e1 (desk quote and overview share one refresh)
 
-See the newest section of CHANGELOG_AI.md.
+- **Throughput:** 200 people; 0 errors, 0 shed, no 5xx. Server load 0.05, heap 155 MB, event-loop lag about 10 ms.
+- **From the test runner (p95):**
+  - `/api/desk/quote/:x` 131 ms (was 2 s); the server's own p95 is 10 ms;
+  - `/api/market/overview` 224 ms (was 6.2 s);
+  - movers, most actives and news: the server's own p95 is 3–130 ms;
+  - every API route is under its target.
+- **The only miss:** the 48 KB font file at 334 ms p95 against 300 ms. That is transfer time from the GitHub runner, not server work.
+- **Lighthouse:** not rerun (the previous run passed: mobile 95–98).
 
 ## Still to do
 
 - Precompute the stock card for the most-viewed symbols, so its first call is never cold.
-- Serve the font from the cache headers Caddy already sets, or preload it.
+- The font: 48 KB, and its p95 from the runner is just over 300 ms. Browsers cache it after the first visit; a smaller subset of the font would get it under the target.
 - Run the load test through app.brightolio.com once the DNS points straight at the server.

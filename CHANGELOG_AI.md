@@ -909,3 +909,15 @@ Automatic (above). By hand: redeploy the previous tag: `curl -X POST "<deploy ho
   - the desk quote: the quote and its bid/ask are shared together, kept 1 s and shown for 2 s more while one refresh runs. Orders do not use this; they price themselves.
   - the market overview: the rows use the shared cache, so an expiry no longer makes every user refetch 22 symbols at once.
 - Numbers are in PERFORMANCE.md. npm test: 594, all pass apart from the 3 known TODO reviews.
+
+## 2026-11-25: Performance phase 2, third load test (commit 6e124e1)
+- **Results:**
+  - 200 people, 0 errors, 0 shed;
+  - the desk quote's p95 went from 2 s to 131 ms, the market overview's from 6.2 s to 224 ms;
+  - every API route meets its target.
+- **The only miss:** the font file (334 ms against 300 ms), which is network transfer time.
+- **Fix:** the load-test Summary step no longer fails when Lighthouse is skipped.
+- **Phase 2 status:**
+  - the CPU pool is in the backtest routes, PERFORMANCE.md is written, and the 200-user load test runs and mostly passes;
+  - indexes: 131, and no slow database route showed up in the load test (database routes answer in 1–10 ms on the server), so no new index was needed;
+  - precomputing: the shared caches cover the market-wide data. Precomputing the stock card for the most-viewed symbols is left in PERFORMANCE.md ("Still to do").

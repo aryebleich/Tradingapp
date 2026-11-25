@@ -68,8 +68,8 @@ jobs:
       - name: Summary
         if: always()
         run: |
-          { echo '### Load test'; echo '```'; jq -c '{users, seconds, requests, perSecond, errors, shed, overall, api, static, page}' out/loadtest.json 2>/dev/null; echo '```';
-            echo '### Lighthouse'; echo '```'; jq -c '.scores' out/lighthouse.json 2>/dev/null; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          { echo '### Load test'; echo '```'; jq -c '{users, seconds, requests, perSecond, errors, shed, overall, api, static, page}' out/loadtest.json 2>/dev/null || echo 'no result'; echo '```';
+            echo '### Lighthouse'; echo '```'; jq -c '.scores' out/lighthouse.json 2>/dev/null || echo 'not run'; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v7
         if: always()
         with:
