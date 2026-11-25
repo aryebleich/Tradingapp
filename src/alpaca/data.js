@@ -3,6 +3,7 @@
 // or, when only Broker API keys are configured, the data sandbox with Basic auth.
 import { URLS, request, paged } from './http.js';
 import { brokerEnabled, brokerAuth } from './broker.js';
+import { shared } from '../shared-cache.js';
 
 export function dataSource() {
   if (process.env.ALPACA_KEY_ID && process.env.ALPACA_SECRET) return { base: URLS.data(), auth: { keys: [process.env.ALPACA_KEY_ID, process.env.ALPACA_SECRET] } };
@@ -66,12 +67,17 @@ export async function snapshots(symbols) {
   return out;
 }
 
-export const mostActives = (by = 'volume', top = 20) => get('/v1beta1/screener/stocks/most-actives', { by: by === 'trades' ? 'trades' : 'volume', top: Math.min(+top || 20, 100) });
-export const movers = (market = 'stocks', top = 10) => get(`/v1beta1/screener/${market === 'crypto' ? 'crypto' : 'stocks'}/movers`, { top: Math.min(+top || 10, 50) });
+// The screeners and the news are the same for everyone: shared for 60 seconds, and the last answer is
+// given at once for 10 more minutes while one refresh runs (src/shared-cache.js, PERFORMANCE.md).
+const SHARED_TTL = 60e3, SHARED_STALE = 600e3;
+export const mostActives = (by = 'volume', top = 20) => { const q = { by: by === 'trades' ? 'trades' : 'volume', top: Math.min(+top || 20, 100) }; return shared(`alpaca:ma:${q.by}:${q.top}`, SHARED_TTL, SHARED_STALE, () => get('/v1beta1/screener/stocks/most-actives', q)); };
+export const movers = (market = 'stocks', top = 10) => { const m = market === 'crypto' ? 'crypto' : 'stocks', t = Math.min(+top || 10, 50); return shared(`alpaca:mv:${m}:${t}`, SHARED_TTL, SHARED_STALE, () => get(`/v1beta1/screener/${m}/movers`, { top: t })); };
 
 export async function news({ symbols, limit = 20, start, end } = {}) {
-  const d = await get('/v1beta1/news', { symbols: list(symbols), limit: Math.min(+limit || 20, 50), start, end, sort: 'desc', include_content: false });
-  return d.news || [];
+  const q = { symbols: list(symbols), limit: Math.min(+limit || 20, 50), start, end, sort: 'desc', include_content: false };
+  const load = async () => (await get('/v1beta1/news', q)).news || [];
+  // The latest news is shared (see SHARED_TTL); a search with dates goes to Alpaca each time.
+  return start || end ? load() : shared(`alpaca:news:${q.symbols || ''}:${q.limit}`, SHARED_TTL, SHARED_STALE, load);
 }
 
 // Level II for crypto: the latest order book (bids and asks with sizes). US stock depth is not part

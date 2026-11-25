@@ -885,3 +885,17 @@ Automatic (above). By hand: redeploy the previous tag: `curl -X POST "<deploy ho
 - **Landing-page demo backtest** (`POST /api/public/backtest`): runs in the pool (`cpu-tasks.demoBacktest`), same answer as before.
 - Already in the pool: `POST /api/backtest` and the optimizer. Left on the request thread on purpose: the AI-bot backtests (one symbol, a single pass, a few milliseconds), the AI-fund backtest (cached 12 hours) and the playbook and pairs backtests, which read the database while they run.
 - Tests: test/cpu-routes.test.js (pool answer equals inline answer; a database module is refused). test/no-render.test.js no longer uses an sslip address (the one-address test caught it).
+
+## 2026-11-25: Performance phase 2, the load test and the shared market-data cache
+- **Load test run** (load-test.yml, 200 people, 60 s, against the Oracle server):
+  - 568 requests per second; 0 errors, 0 shed, no 5xx;
+  - p50 71 ms, p95 1.2 s;
+  - the server's CPU stayed idle.
+- **What was slow:** calls to outside providers that had no cache. The desk quote called the provider on every request; movers, most actives and news went to Alpaca on every call. Details are in PERFORMANCE.md (new).
+- **Fix:** src/shared-cache.js:
+  - for data that is the same for everyone, one provider call at a time per key;
+  - movers, most actives and the latest news are kept 60 s, then the last answer is served for 10 more minutes while one refresh runs;
+  - the desk quote is shared per symbol for 1 s;
+  - news searches with dates are not cached.
+- **Lighthouse step fixed:** the script ran `npx --yes lighthouse@12` as a single program name.
+- **Tests:** test/shared-cache.test.js. npm test passes 594 (3 known TODO reviews).

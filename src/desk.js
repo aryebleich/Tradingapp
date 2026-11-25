@@ -6,6 +6,7 @@
 //  - holding: what the chosen account holds of the symbol (for "Sell all" and the sell check);
 //  - costs: commission, SEC and FINRA fees on sales, the bid/ask spread and an estimate of
 //    slippage, from rates the owner keeps current in Admin → Market data → Trading fees.
+import { shared } from './shared-cache.js';
 import express from 'express';
 import { one, all } from './db.js';
 import { requireUser } from './auth.js';
@@ -91,7 +92,9 @@ export const deskRouter = (() => {
   r.get('/quote/:symbol', requireUser, async (req, res) => {
     const symbol = String(req.params.symbol || '').toUpperCase().slice(0, 15), account = String(req.query.account || 'paper');
     const t0 = Date.now(); let q = null;
-    try { q = await DS.quote(symbol, req.user.id); } catch (e) { if (e.status === 404) throw bad(`Unknown symbol ${symbol}`, 404); }
+    // Everyone looking at the same symbol in the same second shares one call to the data source
+    // (src/shared-cache.js); the price shown is never more than a second older than the source's.
+    try { q = await shared(`desk:quote:${symbol}`, 1000, 0, () => DS.quote(symbol, req.user.id)); } catch (e) { if (e.status === 404) throw bad(`Unknown symbol ${symbol}`, 404); }
     if (!q) { const { lastPrice } = await import('./brokers.js'); q = { price: await lastPrice(symbol, req.user.id), source: 'Last known price (no live source)' }; }
     const ms = Date.now() - t0;
     let bid = null, ask = null;
