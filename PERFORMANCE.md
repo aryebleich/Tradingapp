@@ -79,6 +79,6 @@ It never places an order. Lighthouse runs too, through `scripts/lighthouse-live.
 
 ## Still to do
 
-- Precompute the stock card for the most-viewed symbols, so its first call is never cold.
+- Measure stock-card traffic by symbol to tune the initial warmup set. The active server leader now prepares AAPL, MSFT, NVDA and AMZN when platform market data is configured. Request workers share the resulting database cache. Expired or unavailable warmup entries follow the standard card path. Verify the effect under an authorized load test.
 - The font: 48 KB, and its p95 from the runner is just over 300 ms. Browsers cache it after the first visit; a smaller subset of the font would get it under the target.
 - Run the load test through app.brightolio.com once the DNS points straight at the server.

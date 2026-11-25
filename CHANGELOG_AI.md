@@ -4,6 +4,11 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-25: Stock-card precomputation (PERF-01)
+
+- Reused the database cache to share precomputed stock cards across request workers. The active leader starts with four symbols from the existing large-stock universe and pauses warmup during load shedding.
+- Stock-card, route and load-shedding fixture tests passed. No release tag. The isolated commit can be reverted if needed.
+
 ## 2026-11-25: Claude Code and Codex handoff
 
 - Added the shared contributor instructions, Claude Code entry point, and the checkpoint and task queue in [AI_HANDOFF.md](AI_HANDOFF.md).
