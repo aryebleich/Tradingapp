@@ -63,7 +63,7 @@ test('in production a server without HOST_ID never runs jobs; with nothing confi
 
 test('with servers configured, only the configured active server runs jobs', async () => {
   const H = await import('../src/hosting.js'), S = await import('../src/site.js');
-  await S.siteSet('hosting', { servers: [{ id: 'oracle', kind: 'oracle-vm', url: 'https://1-2-3-4.sslip.io' }, { id: 'spare', kind: 'custom', url: 'https://spare.example.net' }], active: 'spare', keepWarm: true });
+  await S.siteSet('hosting', { servers: [{ id: 'oracle', kind: 'oracle-vm', url: 'https://oracle.example.net' }, { id: 'spare', kind: 'custom', url: 'https://spare.example.net' }], active: 'spare', keepWarm: true });
   try {
     process.env.NODE_ENV = 'production'; delete process.env.STANDBY;
     process.env.HOST_ID = 'spare'; assert.equal(H.isActiveHost(), true);

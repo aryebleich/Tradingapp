@@ -19,7 +19,7 @@ import { one, all, run, now, audit, persistentDb, needsHostedDb, schemaReport, d
 import { encrypt, hashSecret, verifySecret, safeEqual, publicName } from './src/crypto.js';
 import * as auth from './src/auth.js';
 import crypto from 'node:crypto';
-import { backtest, projectAnnual, walkForward, optimize, warmupFor, compile, PRESETS } from './src/engine.js';
+import { warmupFor, compile, PRESETS } from './src/engine.js';
 import { getBars, getCred, accountSummary, placeOrder, listOrders, portfolioHistory, lastPrice, snapshotEquity, ACCOUNT_IDS } from './src/brokers.js';
 import * as QC from './src/quantconnect.js';
 import { PLANS, COMPARE, GROWTH_COMPARE, TIERS, TRIAL_DAYS, isPaid, adjustForCashflow, revenueSummary } from './src/fees.js';
@@ -935,9 +935,7 @@ api.post('/public/backtest', async (req, res) => {
   const preset = Object.hasOwn(PRESETS, b.preset) ? PRESETS[b.preset] : PRESETS['SMA cross'];
   const bars = await getBars(symbol, '2015-01-01', null);
   const cfg = { ...preset, capital: 10000 }, warm = warmupFor(cfg);
-  const r = backtest(bars.closes, cfg, warm, bars.closes.length, bars.dates);
-  const step = Math.max(1, Math.floor(r.eq.length / 200));
-  res.json({ symbol, source: bars.source, m: r.m, projection: projectAnnual(r.eq), curve: r.eq.filter((_, i) => i % step === 0), bh: r.bh.filter((_, i) => i % step === 0) });
+  res.json({ symbol, source: bars.source, ...(await cpu('cpu-tasks', 'demoBacktest', [bars.closes, cfg, warm, bars.dates])) });
 });
 api.post('/public/contact', async (req, res) => {
   const { name, email, subject, body } = req.body || {};

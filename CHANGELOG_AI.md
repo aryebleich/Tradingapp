@@ -879,3 +879,9 @@ Automatic (above). By hand: redeploy the previous tag: `curl -X POST "<deploy ho
 - No Cloudflare or Render key exists, so the custom domain and the service were left as they are; the service is still running.
 - The repository variable APP_URL is still the old Render address. The workflows ignore it, because it is not a brightolio.com address.
 - actionlint is not installed in this environment and the browser suites were not run here; npm test passed (585).
+
+## 2026-11-25: Performance phase 2, the CPU pool in the backtest routes
+- **Basket backtest** (`POST /api/baskets/backtest`): the math moved to src/baskets-math.js (pure: no database or network) and runs in the CPU pool. src/baskets.js loads the prices and hands them over; `select` and `isRebalanceDay` are shared from the new module, so the live rebalancer uses the same code.
+- **Landing-page demo backtest** (`POST /api/public/backtest`): runs in the pool (`cpu-tasks.demoBacktest`), same answer as before.
+- Already in the pool: `POST /api/backtest` and the optimizer. Left on the request thread on purpose: the AI-bot backtests (one symbol, a single pass, a few milliseconds), the AI-fund backtest (cached 12 hours) and the playbook and pairs backtests, which read the database while they run.
+- Tests: test/cpu-routes.test.js (pool answer equals inline answer; a database module is refused). test/no-render.test.js no longer uses an sslip address (the one-address test caught it).

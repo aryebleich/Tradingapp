@@ -2,7 +2,7 @@
 // with plain data and sends the answer back. Nothing here touches the database or the network.
 import { parentPort } from 'node:worker_threads';
 
-const ALLOWED = new Set(['engine', 'pairslive-math', 'dividend-math', 'cpu-tasks']); // pure modules only (no database, auth or network)
+const ALLOWED = new Set(['engine', 'pairslive-math', 'dividend-math', 'cpu-tasks', 'baskets-math']); // pure modules only (no database, auth or network)
 const mods = new Map();
 parentPort.on('message', async ({ id, mod, fn, args }) => {
   try {

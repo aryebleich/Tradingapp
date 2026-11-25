@@ -14,3 +14,10 @@ export function fullBacktest(closes, cfg, warm, dates) {
   };
 }
 export const optimizeRun = (closes, cfg, warm, dates) => optimize(closes, cfg, warm, dates);
+
+// POST /api/public/backtest (the landing page demo): the backtest, its projection and a 200-point curve.
+export function demoBacktest(closes, cfg, warm, dates) {
+  const r = backtest(closes, cfg, warm, closes.length, dates);
+  const step = Math.max(1, Math.floor(r.eq.length / 200));
+  return { m: r.m, projection: projectAnnual(r.eq), curve: r.eq.filter((_, i) => i % step === 0), bh: r.bh.filter((_, i) => i % step === 0) };
+}

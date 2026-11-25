@@ -9,7 +9,8 @@ import { one, all, run, now, audit } from './db.js';
 import { requireUser, rateLimit } from './auth.js';
 import { getBars, placeOrder, lastPrice } from './brokers.js';
 import { compile } from './engine.js';
-import { roc, rsi, vol } from './ta.js';
+import { select, isRebalanceDay } from './baskets-math.js';
+import { cpu } from './cpu.js';
 import { symbolsOf, UNIVERSES } from './scanner.js';
 import { nyTime, stockSession } from './time.js';
 import { isPaid } from './fees.js';
@@ -20,6 +21,7 @@ import * as B from './alpaca/broker.js';
 export const RANKS = { momentum12m: '12-month momentum', momentum6m: '6-month momentum', momentum3m: '3-month momentum', lowvol: 'Lowest volatility', rsi_low: 'Most oversold (RSI)', none: 'No ranking (all that pass)' };
 export const WEIGHTS = { equal: 'Equal weight', invvol: 'Inverse volatility (risk parity)', rank: 'By rank (top gets most)', manual: 'Fixed weights you set' };
 export const REBALANCE = { weekly: 'Weekly', monthly: 'Monthly', quarterly: 'Quarterly' };
+export { select };
 const bad = (m, s = 400) => Object.assign(new Error(m), { status: s });
 
 export function cleanSpec(b) {
@@ -35,42 +37,6 @@ export function cleanSpec(b) {
   return s;
 }
 
-const score = (rankBy, c) => {
-  const last = a => a.at(-1);
-  if (rankBy === 'momentum12m') return last(roc(c, 252));
-  if (rankBy === 'momentum6m') return last(roc(c, 126));
-  if (rankBy === 'momentum3m') return last(roc(c, 63));
-  if (rankBy === 'lowvol') { const v = vol(c, 60); return v == null ? null : -v; }
-  if (rankBy === 'rsi_low') { const r = last(rsi(c, 14)); return r == null ? null : -r; }
-  return 0;
-};
-// Target weights (summing to 1 - cash) from closes up to the decision day.
-export function select(spec, closesBySymbol) {
-  const pass = [];
-  for (const [sym, c] of Object.entries(closesBySymbol)) {
-    if (!c || c.length < 30) continue;
-    if (spec.filters.trim()) { const fns = compile(spec.filters, c); if (!fns.every(f => f(c.length - 1))) continue; }
-    const sc = score(spec.rankBy, c); if (sc == null || !Number.isFinite(sc)) continue;
-    pass.push({ sym, score: sc, vol: vol(c, 60) || 20 });
-  }
-  if (spec.weighting === 'manual') {
-    const keep = pass.filter(p => spec.weights[p.sym]);
-    const tot = keep.reduce((a, p) => a + spec.weights[p.sym], 0);
-    return Object.fromEntries(keep.map(p => [p.sym, spec.weights[p.sym] / tot * (1 - spec.cashPct / 100)]));
-  }
-  const top = (spec.rankBy === 'none' ? pass : pass.sort((a, b) => b.score - a.score)).slice(0, spec.topN);
-  const raw = top.map((p, i) => (spec.weighting === 'invvol' ? 1 / p.vol : spec.weighting === 'rank' ? top.length - i : 1));
-  const tot = raw.reduce((a, b) => a + b, 0);
-  return Object.fromEntries(top.map((p, i) => [p.sym, raw[i] / tot * (1 - spec.cashPct / 100)]));
-}
-
-const isRebalanceDay = (rebalance, prev, day) => {
-  if (!prev) return true;
-  if (rebalance === 'weekly') return new Date(day).getUTCDay() < new Date(prev).getUTCDay() || Date.parse(day) - Date.parse(prev) > 6 * 864e5;
-  if (rebalance === 'quarterly') return Math.floor((+day.slice(5, 7) - 1) / 3) !== Math.floor((+prev.slice(5, 7) - 1) / 3) || day.slice(0, 4) !== prev.slice(0, 4);
-  return day.slice(0, 7) !== prev.slice(0, 7);
-};
-
 const yearsAgo = n => new Date(Date.now() - n * 365 * 864e5).toISOString().slice(0, 10);
 async function loadCloses(userId, symbols, years) {
   const out = {};
@@ -79,49 +45,12 @@ async function loadCloses(userId, symbols, years) {
 }
 
 // Backtest: rebalances on schedule using only data known on that day, holds between rebalances,
-// charges 0.05% of each trade, compares with SPY.
+// charges 0.05% of each trade, compares with SPY. The math runs in the CPU pool (src/baskets-math.js).
 export async function backtestBasket(userId, spec, years = 6) {
   const syms = symbolsOf(spec.universe);
-  const data = await loadCloses(userId, [...new Set([...syms, 'SPY'])], years + 1);
-  const avail = syms.filter(s => data[s]?.closes?.length > 260);
-  if (!avail.length) throw bad('No price history for these symbols');
-  // Common trading days across all symbols.
-  const sets = avail.map(s => new Map(data[s].dates.map((d, i) => [d, data[s].closes[i]])));
-  const days = data[avail[0]].dates.filter(d => sets.every(m => m.has(d)));
-  const start = days.findIndex(d => d >= yearsAgo(years)), w0 = Math.max(260, start);
-  if (days.length - w0 < 120) throw bad('Not enough overlapping history');
-  const px = (s, i) => sets[avail.indexOf(s)].get(days[i]);
-  let eq = 1, hold = {}, prev = null, turnover = 0, rebalances = 0, peak = 1, dd = 0;
-  const curve = [], spy = data.SPY ? new Map(data.SPY.dates.map((d, i) => [d, data.SPY.closes[i]])) : null, spy0 = spy?.get(days[w0]);
-  const rets = [], picks = [];
-  for (let i = w0; i < days.length; i++) {
-    if (i > w0) { // drift with prices
-      let r = 0; for (const [s, w] of Object.entries(hold)) r += w * (px(s, i) / px(s, i - 1) - 1);
-      eq *= 1 + r; rets.push(r);
-      const tot = Object.entries(hold).reduce((a, [s, w]) => a + w * px(s, i) / px(s, i - 1), 0) + (1 - Object.values(hold).reduce((a, b) => a + b, 0));
-      hold = Object.fromEntries(Object.entries(hold).map(([s, w]) => [s, w * px(s, i) / px(s, i - 1) / tot]));
-    }
-    if (isRebalanceDay(spec.rebalance, prev, days[i])) {
-      const closes = Object.fromEntries(avail.map(s => [s, data[s].closes.slice(0, data[s].dates.indexOf(days[i]) + 1)]));
-      const target = select(spec, closes);
-      const t = [...new Set([...Object.keys(hold), ...Object.keys(target)])].reduce((a, s) => a + Math.abs((target[s] || 0) - (hold[s] || 0)), 0);
-      eq *= 1 - t * 0.0005; turnover += t; rebalances++; hold = target; prev = days[i];
-      if (picks.length < 400) picks.push({ day: days[i], holdings: Object.keys(target) });
-    }
-    peak = Math.max(peak, eq); dd = Math.max(dd, 1 - eq / peak);
-    if ((i - w0) % 5 === 0 || i === days.length - 1) curve.push({ d: days[i], eq: +eq.toFixed(4), spy: spy && spy0 ? +(spy.get(days[i]) / spy0).toFixed(4) : null });
-  }
-  const yrs = (days.length - w0) / 252, m = rets.reduce((a, b) => a + b, 0) / (rets.length || 1);
-  const sd = Math.sqrt(rets.reduce((a, b) => a + (b - m) ** 2, 0) / Math.max(1, rets.length - 1));
-  const spyEnd = curve.at(-1)?.spy;
-  return {
-    curve, picks: picks.slice(-24), from: days[w0], to: days.at(-1), symbolsUsed: avail.length, dataSource: data[avail[0]].source,
-    stats: {
-      totalReturn: +((eq - 1) * 100).toFixed(1), cagr: +((eq ** (1 / yrs) - 1) * 100).toFixed(1), maxDrawdown: +(dd * 100).toFixed(1),
-      sharpe: sd ? +(m / sd * Math.sqrt(252)).toFixed(2) : null, volatility: +(sd * Math.sqrt(252) * 100).toFixed(1),
-      spyCagr: spyEnd ? +((spyEnd ** (1 / yrs) - 1) * 100).toFixed(1) : null, rebalances, avgTurnover: +(turnover / rebalances * 100).toFixed(0),
-    },
-  };
+  const raw = await loadCloses(userId, [...new Set([...syms, 'SPY'])], years + 1);
+  const data = Object.fromEntries(Object.entries(raw).map(([s, b]) => [s, { closes: b.closes, dates: b.dates, source: b.source }]));
+  return cpu('baskets-math', 'basketRun', [spec, syms, data, years]);
 }
 
 export async function currentTargets(userId, spec) {
