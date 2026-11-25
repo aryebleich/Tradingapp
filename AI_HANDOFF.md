@@ -19,11 +19,18 @@ Read [AGENTS.md](AGENTS.md) before claiming a task. Use this file as the shared 
 - **Checks:** [CI](https://github.com/aryebleich/Tradingapp/actions/runs/45657499162) passed on the base. [Clean code and README](https://github.com/aryebleich/Tradingapp/actions/runs/45655189475) failed at the private README check. [Deep check](https://github.com/aryebleich/Tradingapp/actions/runs/45655702274) failed at its issue-opening step. The takeover reviewed existing GitHub results. No application test or production workflow was run for this documentation commit.
 - **Current claim:** none. Codex completed the documentation handoff on `docs/ai-handoff`, based on `d6a291b090abf177fe10dcda697106fe2c54bbfa`. The commit introducing this checkpoint is the initial handoff revision.
 
+## Codex checkpoint for PERF-01
+
+- **Status:** implemented locally on `work/perf-01-stock-card` at `e8fe5891373518ce676e9c90d32910aeb538e3a9`. The remote task and coordination refs remain absent. Codex proceeded in the isolated local checkout after the owner asked to continue. There is no remote claim.
+- **Changes:** `server.js`, `src/stock.js`, and `src/memo.js` share precomputed cards across workers for four starter symbols. `test/stock-routes.test.js` checks a cold worker's cache hit and expired-entry fallback. The performance notes and changelog record the change.
+- **Verification:** 21 focused local tests passed. The full suite reported 589 passed, 0 failed, 3 skipped and 3 TODO. Production latency remains unmeasured.
+- **Next action:** Review or transfer the local commit, then take PERF-02 from the queue. Production latency still needs separately authorized measurement.
+
 ## Shared task queue
 
 | ID | State | Owner | Scope and completion evidence |
 | --- | --- | --- | --- |
-| PERF-01 | ready | Unclaimed | Trace the stock-card read and existing cache before adding bounded precomputation for frequently viewed symbols. Verify locally with fixtures that a cold visit benefits and cache reads stay correct. Start here for the next performance task. |
+| PERF-01 | done | Codex | Implementation and fixture verification complete locally. See the checkpoint above for the task commit and publication status. |
 | PERF-02 | ready | Unclaimed | Identify the measured font and required character coverage. Compare a smaller subset against the current asset, checking fallback and supported languages. Record size and local measurements. |
 | CI-01 | ready | Unclaimed | Read the existing Clean and Deep check failure logs. Reproduce locally where possible and record the root causes independently of the passing basic CI. |
 | PERF-03 | blocked | Owner | DNS is confirmed. A canonical-domain performance run still requires explicit approval for live load. Use a local or staging run for development verification. If authorized separately, attach the canonical-domain report and check the targets in PERFORMANCE.md. |
