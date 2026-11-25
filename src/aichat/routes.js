@@ -7,7 +7,7 @@ import { answerWithFallback, failureInfo, startPing } from './failure.js';
 import { noteProviderError, noteProviderOk } from '../llm.js';
 import express from 'express';
 import { rateLimit } from '../auth.js';
-import { one, all, run, now, audit } from '../db.js';
+import { one, all, run, now, audit, tx } from '../db.js';
 import { isOwner, siteGet, siteSet } from '../site.js';
 import * as E from './engine.js';
 
@@ -56,7 +56,12 @@ aiChatRouter.post('/conversations', route(async (req, res) => {
 }));
 aiChatRouter.get('/conversations/:id', route(async (req, res) => {
   const c = await E.conversation(req.params.id, req.user.id);
-  res.json({ id: c.id, title: c.title, model: c.model, createdAt: c.created_at, updatedAt: c.updated_at, messages: await E.messages(c.id) });
+  const messages = await E.messages(c.id);
+  if (messages.some(m => m.status === 'team_pending' && m.createdAt < now() - teamTimeout - 10000)) {
+    await run("UPDATE ai_chat_messages SET status='error', error='Background reply interrupted. Send a follow-up to try again.' WHERE conversation_id=? AND status='team_pending' AND created_at<?", c.id, now() - teamTimeout - 10000);
+    return res.json({ id: c.id, title: c.title, model: c.model, createdAt: c.created_at, updatedAt: c.updated_at, messages: await E.messages(c.id) });
+  }
+  res.json({ id: c.id, title: c.title, model: c.model, createdAt: c.created_at, updatedAt: c.updated_at, messages });
 }));
 aiChatRouter.patch('/conversations/:id', route(async (req, res) => {
   const c = await E.conversation(req.params.id, req.user.id), title = String(req.body?.title || '').replace(/\s+/g, ' ').trim().slice(0, 120);
@@ -183,6 +188,47 @@ async function streamInto(req, res, conv, modelId) {
 // Keep model-specific failures, such as Codex availability, separate from Auto's provider health.
 const providerOf = id => id;
 
+const teamModels = ['codex', 'anthropic'];
+const teamTimeout = 5 * 60e3;
+
+async function finishTeamReply(id, model, messages) {
+  const config = E.config();
+  let content = '';
+  try {
+    const usage = await E.streamReply(model, {
+      system: config.systemPrompt, messages, maxTokens: config.maxOutputTokens,
+      signal: AbortSignal.timeout(teamTimeout), onThinking() {}, onText(delta) { content += delta; },
+    });
+    await run("UPDATE ai_chat_messages SET content=?, status='complete', input_tokens=?, output_tokens=?, updated_at=? WHERE id=?", content, usage.inputTokens, usage.outputTokens, now(), id);
+  } catch (e) {
+    const info = failureInfo(model === 'codex' ? 'Codex' : 'Claude', model, e);
+    await run("UPDATE ai_chat_messages SET content=?, error=?, status='error', output_tokens=?, updated_at=? WHERE id=?", content, info.text, E.estimateTokens(content), now(), id);
+  }
+}
+
+aiChatRouter.post('/conversations/:id/team', route(async (req, res) => {
+  const conv = await E.conversation(req.params.id, req.user.id);
+  const content = String(req.body?.content || '').trim();
+  if (!content || content.length > 20000) throw E.bad('Enter a message of up to 20,000 characters.');
+  const available = E.models(req.user);
+  if (!teamModels.every(id => available.some(m => m.id === id))) throw E.bad('Claude and Codex must both be available to this admin.', 400);
+  E.checkBudget(await E.tokensToday(req.user.id));
+  if (!rateLimit(`aichat:${req.user.id}`, E.config().messagesPerMinute, 60e3)) throw E.bad('Please wait a minute before sending another message.', 429);
+  const { messages, ids } = await tx(async db => {
+    const t = now();
+    const rows = await db.all("SELECT role, content, status FROM ai_chat_messages WHERE conversation_id=? AND status='complete' ORDER BY id DESC LIMIT ?", conv.id, E.config().historyMessages);
+    const messages = history([...rows.reverse(), { role: 'user', content }], E.config().historyMessages);
+    addHandoff(messages);
+    const insert = (role, body, status, model) => db.run('INSERT INTO ai_chat_messages (conversation_id,role,content,status,model,input_tokens,output_tokens,created_at,updated_at) VALUES (?,?,?,?,?,0,0,?,?)', conv.id, role, body, status, model, t, t);
+    await insert('user', content, 'complete', null);
+    const ids = [];
+    for (const model of teamModels) ids.push((await insert('assistant', '', 'team_pending', model)).lastInsertRowid);
+    await db.run("UPDATE ai_chat_conversations SET title=CASE WHEN title='New chat' THEN ? ELSE title END, updated_at=? WHERE id=?", E.titleFrom(content), t, conv.id);
+    return { messages, ids };
+  });
+  for (const [i, model] of teamModels.entries()) finishTeamReply(ids[i], model, messages).catch(() => E.clog('team_save_failed', { message: ids[i] }));
+  res.status(202).json({ ids });
+}));
 aiChatRouter.post('/conversations/:id/messages', route(async (req, res) => {
   const conv = await E.conversation(req.params.id, req.user.id), content = String(req.body?.content ?? '').trim();
   if (!content) throw E.bad('Write a message first.');

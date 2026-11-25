@@ -47,7 +47,7 @@ export async function page(view) {
         <label for="acInput" class="ac-sr">Message</label>
         <textarea id="acInput" rows="2" maxlength="20000" placeholder="Message the AI team…" aria-describedby="acHelp"></textarea>
         <p id="acHelp" class="ac-sr">Enter sends the message. Shift and Enter adds a new line.</p>
-        <div class="ac-actions"><label class="ac-bg"><input type="checkbox" id="acBg"> Run in background</label><button type="submit" class="ac-send">Send</button><button type="button" class="ac-stop" hidden>Stop</button></div>
+        <div class="ac-actions">${['codex','anthropic'].every(id => S.models.some(m => m.id === id)) ? '<label><input type="checkbox" id="acTeam" checked> Claude + Codex in background</label>' : ''}<label class="ac-bg"><input type="checkbox" id="acBg"> Run in background</label><button type="submit" class="ac-send">Send</button><button type="button" class="ac-stop" hidden>Stop</button></div>
       </form>
     </section></div>`;
   // A missing element never throws: the lookup gives an empty stand-in, so a handler on it does nothing.
@@ -101,12 +101,26 @@ export async function page(view) {
     }
   });
   $('.ac-new').onclick = async () => { const c = await call('/conversations', { method: 'POST', body: { model: S.model } }); await openConv(c.id); await loadConvs(); if (matchMedia('(max-width: 860px)').matches) setDrawer(false); input.focus(); announce('New chat'); };
-  $('#acModel').onchange = e => { S.model = e.target.value; };
+  $('#acModel').onchange = e => { S.model = e.target.value; $('#acTeam').checked = false; };
 
+  let refreshTimer;
+  function watchReplies() {
+    clearTimeout(refreshTimer);
+    if (!S.msgs.some(m => ['team_pending','background'].includes(m.status))) return;
+    const id = S.conv.id;
+    refreshTimer = setTimeout(async () => {
+      if (!list.isConnected || S.conv?.id !== id) return;
+      try {
+        const c = await call(`/conversations/${id}`);
+        if (S.conv?.id !== id) return;
+        if (!S.busy && !submitting) { S.msgs = c.messages; drawAll(); toBottom(); }
+      } catch { /* Reconnect on the next poll. */ } finally { if (S.conv?.id === id) watchReplies(); }
+    }, 2500);
+  }
   async function openConv(id) {
     const c = await call(`/conversations/${id}`);
-    S.conv = c; S.msgs = c.messages; if (modelInfo(c.model).id) { S.model = c.model; $('#acModel').value = c.model; }
-    drawAll(); await loadConvs(); toBottom(true);
+    sessionStorage.setItem('ac-thread', c.id); S.conv = c; S.msgs = c.messages; if (modelInfo(c.model).id) { S.model = c.model; $('#acModel').value = c.model; }
+    drawAll(); watchReplies(); await loadConvs(); toBottom(true);
   }
   const drawHead = () => { $('#acTitle').textContent = S.conv ? S.conv.title : 'AI team chat'; $('.ac-sub').textContent = S.conv ? `Model: ${modelInfo(S.conv.model).name || S.conv.model}` : ''; };
 
@@ -128,9 +142,9 @@ export async function page(view) {
     const think = modelInfo(m.model).thinking || m.thinking;
     const streaming = m.status === 'streaming', isLast = lastAssistant()?.id === m.id;
     const st = { stopped: 'Stopped', error: 'Interrupted' }[m.status];
-    return `<li class="ac-msg ac-asst" data-id="${m.id}" data-key="${esc(m.key ?? m.id)}"><div class="ac-meta"><b>Assistant</b> ${time}${st ? ` <span class="pill">${st}</span>` : ''}</div>
+    return `<li class="ac-msg ac-asst" data-id="${m.id}" data-key="${esc(m.key ?? m.id)}"><div class="ac-meta"><b>${esc(modelInfo(m.model).name || 'Assistant')}</b> ${time}${st ? ` <span class="pill">${st}</span>` : ''}</div>
       ${think && (m.thinking || streaming) ? `<details class="ac-think"><summary><span class="ac-tlabel">Thinking</span> <span class="ac-tstate">${m.thinkingDone || !streaming ? (m.thinkingMs != null ? `for ${secs(m.thinkingMs)}` : '') : '<span class="ac-dot" aria-hidden="true"></span> thinking…'}</span></summary><div class="ac-tbody">${esc(m.thinking || '')}</div><button type="button" class="ac-copythink">Copy thinking</button></details>` : ''}
-      <div class="ac-body md">${md(m.content)}${streaming ? '<span class="ac-cursor" aria-hidden="true"></span>' : ''}</div>
+      <div class="ac-body md">${m.status === 'team_pending' ? (Date.now() - m.createdAt > 310000 ? 'Reply interrupted. Send a follow-up to try again.' : 'Working in the background…') : md(m.content)}${streaming ? '<span class="ac-cursor" aria-hidden="true"></span>' : ''}</div>
       ${routeLine(m)}
       ${m.status === 'error' ? `<p class="err ac-errline" role="alert">${esc(m.error || 'The reply was interrupted. The text so far is kept.')} ${recoveryActions(m, isLast)}</p>` : ''}
       ${streaming ? '' : `<div class="ac-mact"><button type="button" class="ac-copy">Copy</button>${isLast ? '<button type="button" class="ac-regen">Regenerate</button>' : ''}${isLast && m.status !== 'error' && strongest() && strongest().id !== m.model ? '<button type="button" class="ac-stronger">Retry with a stronger model</button>' : ''}</div>`}</li>`;
@@ -199,6 +213,11 @@ export async function page(view) {
   // ---------- streaming ----------
   async function send(text) {
     if (!S.conv) { const c = await call('/conversations', { method: 'POST', body: { model: S.model } }); S.conv = { ...c, messages: [] }; S.msgs = []; }
+    if ($('#acTeam').checked) {
+      await call(`/conversations/${S.conv.id}/team`, { method: 'POST', body: { content: text } });
+      await openConv(S.conv.id);
+      return;
+    }
     const now = Date.now();
     S.msgs.push({ id: `u${now}`, role: 'user', content: text, createdAt: now, status: 'complete' });
     drawAll(); toBottom(true);
@@ -253,17 +272,19 @@ export async function page(view) {
       if (m.status !== 'error') input.focus(); else list.querySelector('.ac-retry')?.focus();
     }
   }
-  const showError = text => { let p = $('.ac-form .err'); if (!p) { p = Object.assign(document.createElement('p'), { className: 'err' }); p.setAttribute('role', 'alert'); $('.ac-form').prepend(p); } p.textContent = text; };
+  const showError = text => { let p = view.querySelector('.ac-form .err'); if (!p) { p = Object.assign(document.createElement('p'), { className: 'err' }); p.setAttribute('role', 'alert'); $('.ac-form').prepend(p); } p.textContent = text; };
   const setBusy = on => { $('.ac-send').hidden = on; $('.ac-stop').hidden = !on; input.setAttribute('aria-busy', String(on)); if (on) $('.ac-stop').focus?.(); };
   $('.ac-stop').onclick = () => { const b = S.busy; if (!b) return; b.ac.abort(); if (Number.isInteger(b.m.id)) call(`/messages/${b.m.id}/stop`, { method: 'POST', body: {} }).catch(() => {}); };
+  let submitting = false;
   $('.ac-form').addEventListener('submit', async e => {
     e.preventDefault();
-    const text = input.value.trim(); if (!text || S.busy) return;
+    const text = input.value.trim(); if (!text || S.busy || submitting) return;
     $('.ac-form .err')?.remove();
-    input.value = ''; await send(text);
+    submitting = true; input.value = '';
+    try { await send(text); } catch (e) { showError(e.message); if (!input.value) input.value = text; } finally { submitting = false; }
   });
   input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('.ac-form').requestSubmit(); } });
 
   // Opens as a new conversation (created on the first message); earlier ones are one click away in the list.
-  await loadConvs(); drawAll(); input.focus();
+  await loadConvs(); if (S.convs.length) await openConv(S.convs.find(c => c.id === sessionStorage.getItem('ac-thread'))?.id || S.convs[0].id); else drawAll(); input.focus();
 }
