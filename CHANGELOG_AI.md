@@ -4,6 +4,11 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-25: Claude Code and Codex handoff
+
+- Added the shared contributor instructions, Claude Code entry point, and the checkpoint and task queue in [AI_HANDOFF.md](AI_HANDOFF.md).
+- Reviewed the published history and GitHub checks. Documentation only. Release tag and deployment rollback do not apply.
+
 ## 2026-11-25: Leaving Render (what was done)
 
 - **DNS**: issue #55 gives the exact record (A `app` → 138.2.233.183, DNS only) and says to remove the old CNAME to onrender.com. `dns-cutover.yml` checks every 10 minutes and closes the issue when https://app.brightolio.com/healthz answers from the Oracle server (`host: oracle`, no Render header). /healthz now names the host.
