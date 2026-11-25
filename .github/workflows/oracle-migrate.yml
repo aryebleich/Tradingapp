@@ -3,6 +3,7 @@ name: Oracle database move
 # workflow); the server side is deploy/vm/migrate.sh. Also called by oracle-merge-scheduled.yml.
 #   status           health, settings (names only), files, backups
 #   aichat-diagnose  the admin AI chat's recent failures and each AI provider probed (key shapes only)
+#   address-diagnose  which address the site has and why visitors land elsewhere (read only; names, not secrets)
 #   maintenance-on / maintenance-off
 #   fresh-db         start on a new database (ids from 10,000,000) when the old one cannot be read
 #   pull             copy the old database to the server by sync only (a check; merge-turso does it too)
@@ -34,7 +35,7 @@ on:
         description: 'Which step'
         type: choice
         default: status
-        options: [status, aichat-diagnose, diagnose-load, deploy-now, repair, maintenance-on, maintenance-off, fresh-db, pull, merge-turso, final-copy, clean-old-settings, finalize, verify, activate, point-domain, set-env, backup, restore]
+        options: [status, address-diagnose, aichat-diagnose, diagnose-load, deploy-now, repair, maintenance-on, maintenance-off, fresh-db, pull, merge-turso, final-copy, clean-old-settings, finalize, verify, activate, point-domain, set-env, backup, restore]
       settings:
         description: 'set-env only: KEY=value pairs separated by ";" (masked in the log). KEY= removes a key.'
         required: false
@@ -89,6 +90,22 @@ jobs:
       - name: AI chat diagnosis (no change)
         if: env.STEP == 'aichat-diagnose'
         run: ~/vm aichat-diagnose
+      - name: Address diagnosis on the server (no change)
+        if: env.STEP == 'address-diagnose'
+        run: ~/vm address-diagnose
+      - name: Address check from outside (no change)
+        if: env.STEP == 'address-diagnose'
+        run: |
+          echo "repository variable APP_URL: ${{ vars.APP_URL }}"
+          echo "secret ORACLE_ENV is set: ${{ secrets.ORACLE_ENV != '' }}"
+          for u in "https://138-2-233-183.sslip.io/" "http://138.2.233.183/" "https://app.brightolio.com/healthz" "https://app.brightolio.com/"; do
+            echo "--- GET $u"
+            curl -sS -o /dev/null -D - --max-time 30 "$u" 2>&1 | grep -iE '^(HTTP|location|server|x-render|cf-ray)' | tr -d '\r' | sed 's/^/  /' || echo "  no answer"
+          done
+          echo "--- certificate for app.brightolio.com, from outside"
+          echo | timeout 20 openssl s_client -connect app.brightolio.com:443 -servername app.brightolio.com 2>/dev/null | openssl x509 -noout -subject -issuer -enddate 2>&1 | sed 's/^/  /' || echo "  no certificate"
+          echo "--- DNS, from outside"
+          for d in app.brightolio.com brightolio.com; do echo "  $d: A [$(dig +short "$d" A | paste -sd, -)] CNAME [$(dig +short "$d" CNAME | paste -sd, -)]"; done
       - name: The app back up first (an interrupted deploy)
         if: env.STEP == 'repair'
         run: ~/vm repair

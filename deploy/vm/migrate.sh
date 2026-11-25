@@ -203,6 +203,36 @@ case "$step" in
     echo "--- images: $(docker images brightfolio --format '{{.Tag}}={{.ID}} {{.CreatedSince}}' | paste -sd' ' -); running: $(docker inspect -f '{{.Image}}' brightfolio-app-1 2>/dev/null | cut -c8-19)"
     echo "--- app start-up log"; (cd "$APP" && docker compose logs --tail 60 app 2>&1) | grep -viE 'key|secret|token|password|authorization' | tail -40
     ;;
+  address-diagnose)
+    # Read only: which address the site has, why visitors reach the other one. Settings are printed as
+    # names with their values only when they are not secret; secrets show presence and length only.
+    echo "--- settings that name an address (values not secret)"
+    for k in PUBLIC_URL PUBLIC_ORIGINS REDIRECT_TO REDIRECT_FALLBACK APP_DOMAIN CANONICAL_REDIRECT EDGE_SECRET; do
+      v=$(val $k); if [ -z "$v" ]; then echo "  $k: not set"; elif [ "$k" = EDGE_SECRET ]; then echo "  $k: set (length ${#v})"; else echo "  $k: $v"; fi
+    done
+    for k in CLOUDFLARE_API_TOKEN CLOUDFLARE_ZONE_ID ORACLE_SET_ENV; do v=$(val $k); echo "  $k: $([ -n "$v" ] && echo "set (length ${#v})" || echo 'not set')"; done
+    echo "--- what Caddy serves (site names only)"
+    grep -E '^[^#[:space:]].*\{$|reverse_proxy|import ' /etc/caddy/Caddyfile 2>/dev/null | sed 's/^/  /' || echo "  no Caddyfile"
+    echo "--- DNS from this server"
+    for d in app.brightolio.com brightolio.com; do echo "  $d: A [$(dig +short "$d" A | paste -sd, -)] AAAA [$(dig +short "$d" AAAA | paste -sd, -)] CNAME [$(dig +short "$d" CNAME | paste -sd, -)]"; done
+    echo "  this server's address: $(curl -fsS --max-time 10 https://api.ipify.org 2>/dev/null || echo unknown)"
+    tok=$(val CLOUDFLARE_API_TOKEN)
+    if [ -n "$tok" ]; then
+      echo "--- Cloudflare records for app.brightolio.com (type, content, proxied)"
+      apex=brightolio.com; zone=$(val CLOUDFLARE_ZONE_ID); [ -n "$zone" ] || zone=$(curl -sS --max-time 30 -H "authorization: Bearer $tok" "https://api.cloudflare.com/client/v4/zones?name=$apex" | jq -r '.result[0].id // empty') || true
+      curl -sS --max-time 30 -H "authorization: Bearer $tok" "https://api.cloudflare.com/client/v4/zones/$zone/dns_records?name=app.brightolio.com" | jq -c '[.result[]? | {type, content, proxied}]' 2>/dev/null || echo "  Cloudflare did not answer"; true
+    fi
+    echo "--- certificate this server gives for each name (SNI)"
+    for n in app.brightolio.com 138-2-233-183.sslip.io; do
+      c=$(echo | timeout 15 openssl s_client -connect 127.0.0.1:443 -servername "$n" 2>/dev/null | openssl x509 -noout -subject -issuer -enddate 2>/dev/null | paste -sd' ' -) || true
+      echo "  $n: ${c:-no certificate from this server}"
+    done
+    echo "--- what the main address answers (through its DNS)"
+    curl -sS -o /dev/null -D - --max-time 20 https://app.brightolio.com/internal/edge-check 2>&1 | grep -iE '^(HTTP|server|x-render|cf-ray|location)' | tr -d '\r' | sed 's/^/  /' || true
+    curl -sS --max-time 20 https://app.brightolio.com/internal/edge-check 2>/dev/null | head -c 200 | sed 's/^/  body: /' || true; echo
+    echo "--- this app process (what the one-address redirect checks)"
+    curl -sS --max-time 10 http://127.0.0.1:3000/internal/edge-check 2>/dev/null | head -c 200 | sed 's/^/  /' || true; echo
+    ;;
   aichat-diagnose)
     # The admin AI chat's failures: the app's own log lines (status and reason, never message text),
     # the last replies with the model Auto picked, then each AI provider with a key probed the way the
