@@ -870,3 +870,12 @@ Number snapshots: the baseline of 11,820 figures (prices, fees, balances, P&L, %
 ### Rollback
 
 Automatic (above). By hand: redeploy the previous tag: `curl -X POST "<deploy hook>&ref=<commit of the previous tag>"`, or revert the merge commit on main (`git revert -m 1 <merge commit>`) and push; the pipeline deploys the revert.
+
+### Leaving Render (checked after the deploy, 2026-11-25 15:41 UTC, commit 2595bfe)
+- The Oracle server answers /healthz with `host: oracle`, database ok; it runs commit 2595bfe.
+- https://138-2-233-183.sslip.io/ and http://138.2.233.183/ answer 301 to https://app.brightolio.com/.
+- The server holds valid Let's Encrypt certificates for app.brightolio.com and the sslip name (until Feb 2027).
+- app.brightolio.com still resolves to Cloudflare (104.21.94.31, 172.67.218.253) with Render behind it (`x-render-origin-server: Render`). It reaches Oracle only through the Render forwarder until the owner sets the record in issue #55. dns-cutover.yml checks every 10 minutes and closes the issue once the header is gone.
+- No Cloudflare or Render key exists, so the custom domain and the service were left as they are; the service is still running.
+- The repository variable APP_URL is still the old Render address. The workflows ignore it, because it is not a brightolio.com address.
+- actionlint is not installed in this environment and the browser suites were not run here; npm test passed (585).
