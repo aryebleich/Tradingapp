@@ -107,8 +107,9 @@ async function streamInto(req, res, conv, modelId) {
   const saveThinking = () => (thinking ? run('INSERT INTO ai_chat_thinking (message_id, content, duration_ms) VALUES (?,?,?) ON CONFLICT(message_id) DO UPDATE SET content = excluded.content, duration_ms = excluded.duration_ms', aid, thinking, (thinkEnd || now()) - (thinkStart || now())) : null);
   send('start', { assistantMessageId: aid, model: first.id, name: first.name, thinking: first.thinking, route: route ? { need: route.need, reason: route.reason } : null });
   const notes = [];
-  let answered = null, usage = null, lastFailure = null;
+  let answered = null, usage = null, attempted = first.id;
   const attempt = async (cand, onStart) => {
+    attempted = cand;
     const m = all.find(x => x.id === cand);
     return E.streamReply(m.id, {
       system: c.systemPrompt, messages: msgs, maxTokens: c.maxOutputTokens, signal: ac.signal,
@@ -131,7 +132,7 @@ async function streamInto(req, res, conv, modelId) {
         throw e;
       }
     }, {
-      onFail: (cand, e) => { lastFailure = { cand, e }; const f = failureInfo((all.find(m => m.id === cand) || {}).name || cand, providerOf(cand), e); if (cand !== candidates.at(-1)) notes.push(`${(all.find(m => m.id === cand) || {}).name || cand} didn't answer (${f.code}); trying the next model`); },
+      onFail: (cand, e) => { const f = failureInfo((all.find(m => m.id === cand) || {}).name || cand, providerOf(cand), e); if (cand !== candidates.at(-1)) notes.push(`${(all.find(m => m.id === cand) || {}).name || cand} didn't answer (${f.code}); trying the next model`); },
     });
     answered = out.answered;
     if (out.skipped.length) {
@@ -145,7 +146,7 @@ async function streamInto(req, res, conv, modelId) {
     send('done', { status: 'complete', assistantMessageId: aid, inputTokens: usage?.inputTokens, outputTokens: usage?.outputTokens });
   } catch (e) {
     const stopped = ac.userStopped === true || (!timedOut && !closedEarly && (ac.signal.aborted || e.name === 'AbortError'));
-    const last = lastFailure || { cand: candidates[0], e };
+    const last = { cand: attempted, e };
     const name = (all.find(m => m.id === last.cand) || {}).name || last.cand;
     const info = closedEarly
       ? { text: 'The connection to the server closed during the reply. The text so far is kept.', code: 'closed', status: null }

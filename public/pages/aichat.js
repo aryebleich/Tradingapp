@@ -97,6 +97,16 @@ export async function page(view) {
 
   // ---------- messages ----------
   const lastAssistant = () => [...S.msgs].reverse().find(m => m.role === 'assistant');
+  function recoveryActions(m, isLast) {
+    if (!isLast) return '';
+    if (!/credit_balance_exhausted|insufficient_quota|out of credit/i.test(m.error || '')) {
+      return '<button type="button" class="ac-retry">Retry</button>';
+    }
+    const provider = id => id === 'codex' ? 'openai' : id;
+    const alternatives = S.models.filter(model => model.id !== 'auto' && provider(model.id) !== provider(m.model));
+    return alternatives.map(model => `<button type="button" class="ac-retry" data-model="${esc(model.id)}">Retry with ${esc(model.name)}</button>`).join(' ') +
+      ' <a href="#/admin-keys">Manage provider keys</a>';
+  }
   function msgHtml(m) {
     const time = `<time datetime="${new Date(m.createdAt).toISOString()}">${esc(fmtTime(m.createdAt))}</time>`;
     if (m.role === 'user') return `<li class="ac-msg ac-user" data-id="${m.id}"><div class="ac-meta"><b>You</b> ${time}</div><div class="ac-body ac-plain">${esc(m.content)}</div><div class="ac-mact"><button type="button" class="ac-edit">Edit</button></div></li>`;
@@ -107,8 +117,8 @@ export async function page(view) {
       ${think && (m.thinking || streaming) ? `<details class="ac-think"><summary><span class="ac-tlabel">Thinking</span> <span class="ac-tstate">${m.thinkingDone || !streaming ? (m.thinkingMs != null ? `for ${secs(m.thinkingMs)}` : '') : '<span class="ac-dot" aria-hidden="true"></span> thinking…'}</span></summary><div class="ac-tbody">${esc(m.thinking || '')}</div><button type="button" class="ac-copythink">Copy thinking</button></details>` : ''}
       <div class="ac-body md">${md(m.content)}${streaming ? '<span class="ac-cursor" aria-hidden="true"></span>' : ''}</div>
       ${routeLine(m)}
-      ${m.status === 'error' ? `<p class="err ac-errline" role="alert">${esc(m.error || 'The reply was interrupted. The text so far is kept.')} <button type="button" class="ac-retry">Retry</button></p>` : ''}
-      ${streaming ? '' : `<div class="ac-mact"><button type="button" class="ac-copy">Copy</button>${isLast ? '<button type="button" class="ac-regen">Regenerate</button>' : ''}${strongest() && strongest().id !== m.model ? '<button type="button" class="ac-stronger">Retry with a stronger model</button>' : ''}</div>`}</li>`;
+      ${m.status === 'error' ? `<p class="err ac-errline" role="alert">${esc(m.error || 'The reply was interrupted. The text so far is kept.')} ${recoveryActions(m, isLast)}</p>` : ''}
+      ${streaming ? '' : `<div class="ac-mact"><button type="button" class="ac-copy">Copy</button>${isLast ? '<button type="button" class="ac-regen">Regenerate</button>' : ''}${isLast && m.status !== 'error' && strongest() && strongest().id !== m.model ? '<button type="button" class="ac-stronger">Retry with a stronger model</button>' : ''}</div>`}</li>`;
   }
   // Under each answer: which model answered and why (the router's reason), and the size of the answer.
   function routeLine(m) {
@@ -152,7 +162,9 @@ export async function page(view) {
     if (e.target.closest('[data-copy-code]')) return copy(e.target.closest('.md-code').querySelector('code').textContent, e.target);
     if (e.target.closest('.ac-copy')) return copy(m.content, e.target);             // the answer only, never the thinking
     if (e.target.closest('.ac-copythink')) return copy(m.thinking || '', e.target);
-    if (e.target.closest('.ac-regen') || e.target.closest('.ac-retry')) return stream(`/conversations/${S.conv.id}/regenerate`, { model: S.model }, true);
+    const retry = e.target.closest('.ac-retry');
+    if (retry?.dataset.model) { S.model = retry.dataset.model; $('#acModel').value = S.model; }
+    if (e.target.closest('.ac-regen') || retry) return stream(`/conversations/${S.conv.id}/regenerate`, { model: S.model }, true);
     if (e.target.closest('.ac-stronger')) { const sm = strongest(); if (sm) return stream(`/conversations/${S.conv.id}/regenerate`, { model: sm.id }, true); }
     if (e.target.closest('.ac-edit')) {
       const body = li.querySelector('.ac-body');
