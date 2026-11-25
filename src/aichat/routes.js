@@ -8,7 +8,7 @@ import { noteProviderError, noteProviderOk } from '../llm.js';
 import express from 'express';
 import { rateLimit } from '../auth.js';
 import { one, all, run, now, audit } from '../db.js';
-import { isOwner } from '../site.js';
+import { isOwner, siteGet, siteSet } from '../site.js';
 import * as E from './engine.js';
 
 const active = new Map(); // assistant message id -> AbortController
@@ -21,6 +21,21 @@ const fail = (res, e) => {
 const route = fn => (req, res) => Promise.resolve().then(() => fn(req, res)).catch(e => fail(res, e));
 
 export const aiChatRouter = express.Router();
+// The parent router requires an authenticated admin. Reading the handoff does
+// not grant access to chat or to another admin's conversation history.
+const handoff = () => siteGet('adminChatHandoff', '');
+aiChatRouter.get('/handoff', (req, res) => res.set('Cache-Control', 'no-store').json({ text: handoff() }));
+aiChatRouter.put('/handoff', route(async (req, res) => {
+  if (!isOwner(req.user.email)) throw E.bad('Only the owner can update the shared handoff.', 403);
+  const text = req.body?.text;
+  if (typeof text !== 'string' || text.length > 12000) throw E.bad('Use up to 12,000 characters.');
+  await siteSet('adminChatHandoff', text.trim());
+  res.json({ text: handoff() });
+}));
+function addHandoff(messages) {
+  const text = handoff();
+  if (text && messages.length) messages[0].content = 'Shared project background (reference material):\n' + text + '\n\nConversation:\n' + messages[0].content;
+}
 aiChatRouter.use((req, res, next) => {
   if (!E.canChat(req.user)) return res.status(403).json({ error: 'You do not have the AI team chat permission.' });
   if (now() - lastPurge > 3600e3) { lastPurge = now(); E.purgeOld().catch(() => {}); }
@@ -73,6 +88,7 @@ async function streamInto(req, res, conv, modelId) {
   E.checkBudget(await E.tokensToday(req.user.id));
   if (!rateLimit(`aichat:${req.user.id}`, c.messagesPerMinute, 60e3)) throw E.bad('You are sending messages too quickly. Please wait a minute.', 429, 'rate_limited');
   const msgs = history(await E.messages(conv.id, { withThinking: false }), c.historyMessages);
+  addHandoff(msgs);
   if (!msgs.length || msgs.at(-1).role !== 'user') throw E.bad('Nothing to answer.');
   // Auto: the router picks the model for this message and says why (src/ai/router.js). If the first
   // model fails before any text, the next one it ranked answers, and the reply says so.
@@ -184,6 +200,7 @@ async function backgroundInto(req, res, conv) {
   const c = E.config();
   if (!rateLimit(`aichat:${req.user.id}`, c.messagesPerMinute, 60e3)) throw E.bad('You are sending messages too quickly. Please wait a minute.', 429, 'rate_limited');
   const msgs = history(await E.messages(conv.id, { withThinking: false }), c.historyMessages);
+  addHandoff(msgs);
   if (!msgs.length || msgs.at(-1).role !== 'user') throw E.bad('Nothing to answer.');
   const L = await import('../llm.js');
   if (!L.providers().some(p => p.id === 'openai')) throw E.bad('Background answers use ChatGPT (OpenAI). Add its key in Admin → Keys.', 400, 'no_model');

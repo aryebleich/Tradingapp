@@ -18,14 +18,18 @@ const copy = async (text, btn) => { try { await navigator.clipboard.writeText(te
 
 export async function page(view) {
   if (!document.querySelector('link[data-aichat-css]')) { const l = Object.assign(document.createElement('link'), { rel: 'stylesheet', href: '/aichat.css' }); l.dataset.aichatCss = '1'; document.head.append(l); }
+  const shared = await call('/handoff').catch(() => null);
+  const handoffPanel = shared ? `<details class="ac-handoff"><summary>Shared project handoff</summary><p class="ac-plain">${esc(shared.text || 'No handoff has been shared yet.')}</p></details>` : '';
   let status;
   try { status = await call('/status'); }
-  catch (e) { view.innerHTML = `<h1>AI team chat</h1><p class="err" role="alert">${esc(e.status === 403 ? 'You do not have the AI team chat permission. The owner can grant it.' : `The chat could not start: ${e.message}`)}</p><p class="row"><button type="button" class="ghost" id="acRetry">Retry</button> <a href="#/admin-agents">Back to the AI team</a></p>`; const rt = view.querySelector('#acRetry'); if (rt) rt.onclick = () => page(view); return; }
+  catch (e) { view.innerHTML = `<h1>AI team chat</h1><p class="err" role="alert">${esc(e.status === 403 ? 'You do not have the AI team chat permission. The owner can grant it.' : `The chat could not start: ${e.message}`)}</p><p class="row"><button type="button" class="ghost" id="acRetry">Retry</button> <a href="#/admin-agents">Back to the AI team</a></p>${handoffPanel}`; const rt = view.querySelector('#acRetry'); if (rt) rt.onclick = () => page(view); return; }
   const S = { conv: null, convs: [], msgs: [], models: status.models, model: status.models[0]?.id, busy: null, stick: true, budget: status.budget };
   view.innerHTML = `<div class="ac-wrap">
     <aside class="ac-side" id="acSide" aria-label="Conversations">
       <div class="ac-sidehead"><h2>Conversations</h2><button type="button" class="ac-close-side" aria-label="Close conversations">×</button></div>
       <button type="button" class="ac-new">New chat</button>
+      ${handoffPanel}
+      ${shared && status.owner ? '<details><summary>Update handoff</summary><label>Context shared with all admins and the selected chat provider<textarea id="acHandoff" maxlength="12000"></textarea></label><button type="button" id="acSaveHandoff">Save handoff</button><span role="status" id="acHandoffResult"></span></details>' : ''}
       <ul class="ac-convs" aria-label="Conversation list"></ul>
       <p class="mu small-print">Chats are deleted after ${status.retentionDays} days.</p>
     </aside>
@@ -48,6 +52,17 @@ export async function page(view) {
     </section></div>`;
   // A missing element never throws: the lookup gives an empty stand-in, so a handler on it does nothing.
   const $ = s => view.querySelector(s) || document.createElement('div'), list = $('.ac-list'), scroller = $('#acScroll'), input = $('#acInput'), live = $('.ac-sr[role=status]');
+  const editor = view.querySelector('#acHandoff');
+  if (editor) {
+    editor.value = shared.text;
+    $('#acSaveHandoff').onclick = async () => {
+      try {
+        const updated = await call('/handoff', { method: 'PUT', body: { text: editor.value } });
+        $('.ac-handoff p').textContent = updated.text || 'No handoff has been shared yet.';
+        $('#acHandoffResult').textContent = 'Saved';
+      } catch (e) { $('#acHandoffResult').textContent = e.message; }
+    };
+  }
   const announce = t => { live.textContent = ''; setTimeout(() => (live.textContent = t), 30); };
   const modelInfo = id => S.models.find(m => m.id === id) || {};
   const showBudget = () => { $('.ac-budget').textContent = S.budget ? `Today: ${S.budget.used.toLocaleString()} of ${S.budget.limit.toLocaleString()} tokens used.` : ''; };
