@@ -1,12 +1,12 @@
 // Hosting (Admin → Hosting): the servers the site can run on, which one is active, health and speed
 // of each, deploys, switching, and the free Cloudflare edge in front.
 //
-//   servers   each has a name, kind (render, northflank, oracle-vm, koyeb, custom), its own https
+//   servers   each has a name, kind (oracle-vm, northflank, koyeb, custom), its own https
 //             address and an optional deploy hook (kept encrypted). All of them share the same
 //             database (DATABASE_URL), so a switch moves no data.
 //   active    only the active server runs background jobs (bots, scheduled trades, alerts,
 //             snapshots); every other one serves pages only, so no order is ever sent twice.
-//             Each server knows itself by HOST_ID (Render is "render" when HOST_ID is unset).
+//             Each server knows itself by HOST_ID (the Oracle VM: "oracle").
 //   switching tells the edge which server to send visitors to (Cloudflare Worker, KV "origins"),
 //             or points the domain's DNS record at it (Cloudflare DNS), and updates the APP_URL
 //             repository variable the scheduler and deploy check use.
@@ -22,13 +22,14 @@ import { setupEdge, edgeConfig, edgeCheck, edgeSecret, putOrigins } from './edge
 
 const bad = (m, s = 400) => Object.assign(new Error(m), { status: s });
 export const KINDS = {
-  render: { name: 'Render', note: 'Free web service sleeps after 15 minutes without visitors; keep-warm stops that.' },
   northflank: { name: 'Northflank', note: 'Free sandbox: 2 always-on services, no sleeping. Deploys from GitHub with the Dockerfile.' },
   'oracle-vm': { name: 'Oracle Cloud VM', note: 'Always Free ARM virtual machine: never sleeps, your own server (deploy/vm/setup.sh sets it up).' },
   koyeb: { name: 'Koyeb', note: 'Free instance scales to zero when idle; keep-warm helps.' },
   custom: { name: 'Other', note: 'Any host that runs the Dockerfile or `node server.js`.' },
 };
-export const thisHost = () => process.env.HOST_ID || (process.env.RENDER ? 'render' : 'local');
+// Each server names itself with HOST_ID (the Oracle VM: "oracle"). Without it: "local" in development,
+// "unknown" in production (and an unknown server never runs jobs, see isActiveHost).
+export const thisHost = () => process.env.HOST_ID || (process.env.NODE_ENV === 'production' ? 'unknown' : 'local');
 // Read straight from the database every 30 seconds too, so a switch made on another server reaches
 // this one even when nobody visits it (siteGet alone refreshes on page requests).
 let synced = null;
@@ -45,18 +46,22 @@ export const saveHosting = save;
 export const hostingConfig = () => cfg();
 // Only the active server runs jobs.
 // STANDBY=1 (in the environment, or set at run time by the migration workflow) is final: this
-// server never runs jobs, whatever its database says. Render after the move to Oracle: its old
-// copy is old, so trading from it would act on stale data.
+// server never runs jobs, whatever its database says (a copy that is not the live one would act
+// on stale data).
 export const standby = () => process.env.STANDBY === '1';
 export function isActiveHost() {
   if (standby()) return false;
+  const production = process.env.NODE_ENV === 'production';
+  // In production a server must say who it is: one without HOST_ID (a stray copy, a test box) never
+  // runs jobs, so nothing (an order, an alert, a fee) can run twice.
+  if (production && !process.env.HOST_ID) return false;
   const c = cfg();
-  // Nothing chosen yet in Admin → Hosting: only the original server (Render, or one without a
-  // HOST_ID) runs jobs. A newly added server waits on standby, so no order is ever sent twice.
-  if (!c.active || !c.servers.length) return !process.env.HOST_ID || process.env.HOST_ID === 'render';
+  // Nothing chosen in Admin → Hosting: in production the Oracle server is the active one; in
+  // development the one process runs everything.
+  if (!c.active || !c.servers.length) return production ? process.env.HOST_ID === 'oracle' : true;
   return c.active === thisHost();
 }
-const url = u => { const s = String(u || '').trim().replace(/\/$/, ''); if (!/^https:\/\/[a-z0-9.-]+(:\d+)?$/i.test(s)) throw bad('Use the server\'s https address, e.g. https://my-app.onrender.com'); return s; };
+const url = u => { const s = String(u || '').trim().replace(/\/$/, ''); if (!/^https:\/\/[a-z0-9.-]+(:\d+)?$/i.test(s)) throw bad('Use the server\'s https address, e.g. https://138-2-233-183.sslip.io (its own address, not the site address)'); return s; };
 const pub = s => ({ id: s.id, name: s.name, kind: s.kind, url: s.url, hook: !!s.hook, added: s.added });
 
 // One request to a server's health and routing pages: is it up, how fast, which version.
@@ -116,7 +121,7 @@ let warmTimer = null;
 export function startKeepWarm() {
   if (warmTimer) return warmTimer;
   warmTimer = setInterval(() => {
-    const c = cfg(), target = (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || '').replace(/\/$/, '');
+    const c = cfg(), target = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
     if (!c.keepWarm || !/^https:/.test(target) || !isActiveHost()) return;
     fetch(target + '/healthz', { signal: AbortSignal.timeout(20000), headers: { 'user-agent': 'Brightolio-keep-warm' } }).catch(() => {});
   }, 9 * 60e3);
@@ -141,7 +146,7 @@ export const hostingRouter = (() => {
   r.post('/servers', async (req, res) => {
     const b = req.body || {}, c = cfg();
     const id = String(b.id || '').trim().toLowerCase();
-    if (!/^[a-z0-9-]{2,30}$/.test(id)) throw bad('Server id: 2-30 letters, numbers or dashes (it must match HOST_ID on that server; Render can use "render")');
+    if (!/^[a-z0-9-]{2,30}$/.test(id)) throw bad('Server id: 2-30 letters, numbers or dashes (it must match HOST_ID on that server, e.g. "oracle")');
     if (!KINDS[b.kind]) throw bad('Pick the kind of host');
     const name = String(b.name || KINDS[b.kind].name).trim().slice(0, 40);
     const hook = b.hook === undefined || b.hook === '' ? undefined : String(b.hook).trim();
