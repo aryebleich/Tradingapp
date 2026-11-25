@@ -52,7 +52,7 @@ export function openaiError(status, d) {
   const code = String(d?.error?.code || d?.error?.type || ''), msg = String(d?.error?.message || '');
   const providerCode = /^[a-z][a-z_]{2,40}$/.test(code) ? code : '';
   if (status === 401) return Object.assign(new Error('The ChatGPT (OpenAI) key was refused (401). Check OPENAI_API_KEY in Admin → Keys.'), { status: 401, providerCode });
-  if (status === 429 && /insufficient_quota/.test(code + ' ' + msg)) return Object.assign(new Error('ChatGPT (OpenAI) is out of credit (insufficient_quota). Add billing at platform.openai.com, then try again.'), { status: 429, quota: true, providerCode: 'insufficient_quota' });
+  if (status === 429 && /insufficient_quota|credit_balance_exhausted/.test(code + ' ' + msg)) return Object.assign(new Error('ChatGPT (OpenAI) is out of API credit. Add billing at platform.openai.com, then try again.'), { status: 429, quota: true, providerCode: providerCode || 'insufficient_quota' });
   if (status === 429) return Object.assign(new Error('ChatGPT (OpenAI) is rate-limited right now. Try again in a minute.'), { status: 429, providerCode });
   return Object.assign(new Error(redact(msg) || `ChatGPT (OpenAI) answered ${status}`), { status: status >= 500 ? 502 : status, providerCode });
 }

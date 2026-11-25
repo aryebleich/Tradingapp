@@ -131,7 +131,7 @@ async function streamInto(req, res, conv, modelId) {
         throw e;
       }
     }, {
-      onFail: (cand, e) => { lastFailure = { cand, e }; const f = failureInfo((all.find(m => m.id === cand) || {}).name || cand, providerOf(cand), e); notes.push(`${(all.find(m => m.id === cand) || {}).name || cand} didn't answer (${f.code}); trying the next model`); },
+      onFail: (cand, e) => { lastFailure = { cand, e }; const f = failureInfo((all.find(m => m.id === cand) || {}).name || cand, providerOf(cand), e); if (cand !== candidates.at(-1)) notes.push(`${(all.find(m => m.id === cand) || {}).name || cand} didn't answer (${f.code}); trying the next model`); },
     });
     answered = out.answered;
     if (out.skipped.length) {
