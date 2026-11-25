@@ -32,6 +32,7 @@ Read [AGENTS.md](AGENTS.md) before claiming a task. Use this file as the shared 
 | --- | --- | --- | --- |
 | PERF-01 | done | Codex | Implementation and fixture verification complete locally. See the checkpoint above for the task commit and publication status. |
 | PERF-02 | ready | Unclaimed | Identify the measured font and required character coverage. Compare a smaller subset against the current asset, checking fallback and supported languages. Record size and local measurements. |
+| CHAT-04 | ready for review | Codex | Live Codex activity and partial answers on work/admin-team-thread. All 33 chat tests and a simulated Codex event stream passed. Live provider verification pending. |
 | CI-01 | ready | Unclaimed | Read the existing Clean and Deep check failure logs. Reproduce locally where possible and record the root causes independently of the passing basic CI. |
 | PERF-03 | blocked | Owner | DNS is confirmed. A canonical-domain performance run still requires explicit approval for live load. Use a local or staging run for development verification. If authorized separately, attach the canonical-domain report and check the targets in PERFORMANCE.md. |
 | OPS-01 | blocked | Owner | Confirm Render custom-domain removal and suspension and the repository setting cleanup from issue #55. Review the two leftover forwarder files for a separate source-only cleanup once the owner confirms the dashboard state. |

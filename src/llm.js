@@ -124,7 +124,7 @@ export function codexChatProvider() {
   return p.apiKey ? { ...p, id: 'codex', name: 'Codex (OpenAI)', model: env('OPENAI_CODEX_MODEL') || 'gpt-5.3-codex' } : null;
 }
 
-export async function codexChatStream(p, { system, messages, signal, onText, maxTokens }) {
+export async function codexChatStream(p, { system, messages, signal, onText, onActivity, maxTokens }) {
   const r = await fetch(`${p.base}/responses`, {
     method: 'POST',
     signal,
@@ -152,6 +152,7 @@ export async function codexChatStream(p, { system, messages, signal, onText, max
       const data = line.slice(5).trim();
       if (!data || data === '[DONE]') continue;
       const event = JSON.parse(data);
+      if (event.type === 'response.output_item.added' && event.item?.type === 'reasoning') onActivity?.('thinking');
       if (event.type === 'response.output_text.delta') onText(event.delta);
       if (event.type === 'response.refusal.delta') {
         throw Object.assign(new Error('The model declined to answer this message.'), { status: 422, code: 'refusal' });

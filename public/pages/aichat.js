@@ -106,7 +106,7 @@ export async function page(view) {
   let refreshTimer;
   function watchReplies() {
     clearTimeout(refreshTimer);
-    if (!S.msgs.some(m => ['team_pending','background'].includes(m.status))) return;
+    if (!S.msgs.some(m => m.status.startsWith('team_') || m.status === 'background')) return;
     const id = S.conv.id;
     refreshTimer = setTimeout(async () => {
       if (!list.isConnected || S.conv?.id !== id) return;
@@ -141,13 +141,16 @@ export async function page(view) {
     if (m.role === 'user') return `<li class="ac-msg ac-user" data-id="${m.id}"><div class="ac-meta"><b>You</b> ${time}</div><div class="ac-body ac-plain">${esc(m.content)}</div><div class="ac-mact"><button type="button" class="ac-edit">Edit</button></div></li>`;
     const think = modelInfo(m.model).thinking || m.thinking;
     const streaming = m.status === 'streaming', isLast = lastAssistant()?.id === m.id;
-    const st = { stopped: 'Stopped', error: 'Interrupted' }[m.status];
+    const teamActive = m.status.startsWith('team_');
+    const codexActive = m.model === 'codex' && (streaming || teamActive);
+    const st = codexActive ? (m.content ? 'Writing' : m.activity === 'thinking' || m.status === 'team_thinking' ? 'Thinking' : 'Waiting for Codex')
+      : m.model === 'codex' && m.status === 'complete' ? 'Complete' : { stopped: 'Stopped', error: 'Interrupted' }[m.status];
     return `<li class="ac-msg ac-asst" data-id="${m.id}" data-key="${esc(m.key ?? m.id)}"><div class="ac-meta"><b>${esc(modelInfo(m.model).name || 'Assistant')}</b> ${time}${st ? ` <span class="pill">${st}</span>` : ''}</div>
       ${think && (m.thinking || streaming) ? `<details class="ac-think"><summary><span class="ac-tlabel">Thinking</span> <span class="ac-tstate">${m.thinkingDone || !streaming ? (m.thinkingMs != null ? `for ${secs(m.thinkingMs)}` : '') : '<span class="ac-dot" aria-hidden="true"></span> thinking…'}</span></summary><div class="ac-tbody">${esc(m.thinking || '')}</div><button type="button" class="ac-copythink">Copy thinking</button></details>` : ''}
-      <div class="ac-body md">${m.status === 'team_pending' ? (Date.now() - m.createdAt > 310000 ? 'Reply interrupted. Send a follow-up to try again.' : 'Working in the background…') : md(m.content)}${streaming ? '<span class="ac-cursor" aria-hidden="true"></span>' : ''}</div>
+      <div class="ac-body md">${m.status === 'team_pending' && !codexActive ? (Date.now() - m.createdAt > 310000 ? 'Reply interrupted. Send a follow-up to try again.' : 'Working in the background…') : md(m.content)}${streaming ? '<span class="ac-cursor" aria-hidden="true"></span>' : ''}</div>
       ${routeLine(m)}
       ${m.status === 'error' ? `<p class="err ac-errline" role="alert">${esc(m.error || 'The reply was interrupted. The text so far is kept.')} ${recoveryActions(m, isLast)}</p>` : ''}
-      ${streaming ? '' : `<div class="ac-mact"><button type="button" class="ac-copy">Copy</button>${isLast ? '<button type="button" class="ac-regen">Regenerate</button>' : ''}${isLast && m.status !== 'error' && strongest() && strongest().id !== m.model ? '<button type="button" class="ac-stronger">Retry with a stronger model</button>' : ''}</div>`}</li>`;
+      ${streaming || teamActive ? '' : `<div class="ac-mact"><button type="button" class="ac-copy">Copy</button>${isLast ? '<button type="button" class="ac-regen">Regenerate</button>' : ''}${isLast && m.status !== 'error' && strongest() && strongest().id !== m.model ? '<button type="button" class="ac-stronger">Retry with a stronger model</button>' : ''}</div>`}</li>`;
   }
   // Under each answer: which model answered and why (the router's reason), and the size of the answer.
   function routeLine(m) {
@@ -250,6 +253,7 @@ export async function page(view) {
           const frame = buf.slice(0, k); buf = buf.slice(k + 2);
           const ev = /^event: (.+)$/m.exec(frame)?.[1], data = JSON.parse(/^data: (.+)$/m.exec(frame)?.[1] || '{}');
           if (ev === 'start') { m.id = data.assistantMessageId; m.model = data.model; m.name = data.name || ''; m.route = data.route || null; redraw(m); }
+          else if (ev === 'activity') { m.activity = data.phase; redraw(m); }
           else if (ev === 'thinking') { m.thinking += data.delta; redraw(m); }
           else if (ev === 'thinking_done') { m.thinkingDone = true; m.thinkingMs = data.ms; redraw(m); }
           else if (ev === 'text') { m.content += data.delta; redraw(m); }

@@ -57,8 +57,8 @@ aiChatRouter.post('/conversations', route(async (req, res) => {
 aiChatRouter.get('/conversations/:id', route(async (req, res) => {
   const c = await E.conversation(req.params.id, req.user.id);
   const messages = await E.messages(c.id);
-  if (messages.some(m => m.status === 'team_pending' && m.createdAt < now() - teamTimeout - 10000)) {
-    await run("UPDATE ai_chat_messages SET status='error', error='Background reply interrupted. Send a follow-up to try again.' WHERE conversation_id=? AND status='team_pending' AND created_at<?", c.id, now() - teamTimeout - 10000);
+  if (messages.some(m => m.status.startsWith('team_') && m.createdAt < now() - teamTimeout - 10000)) {
+    await run("UPDATE ai_chat_messages SET status='error', error='Background reply interrupted. Send a follow-up to try again.' WHERE conversation_id=? AND status IN ('team_pending','team_thinking','team_writing') AND created_at<?", c.id, now() - teamTimeout - 10000);
     return res.json({ id: c.id, title: c.title, model: c.model, createdAt: c.created_at, updatedAt: c.updated_at, messages: await E.messages(c.id) });
   }
   res.json({ id: c.id, title: c.title, model: c.model, createdAt: c.created_at, updatedAt: c.updated_at, messages });
@@ -133,7 +133,7 @@ async function streamInto(req, res, conv, modelId) {
     attempted = cand;
     const m = all.find(x => x.id === cand);
     return E.streamReply(m.id, {
-      system: c.systemPrompt, messages: msgs, maxTokens: c.maxOutputTokens, signal: ac.signal,
+      system: c.systemPrompt, messages: msgs, maxTokens: c.maxOutputTokens, signal: ac.signal, onActivity: phase => send('activity', { phase }),
       onThinking: d => { touch(); if (!started) { started = true; onStart(); } thinkStart ??= Date.now(); thinking += d; send('thinking', { delta: d }); },
       onText: d => {
         touch(); if (!started) { started = true; onStart(); }
@@ -193,11 +193,21 @@ const teamTimeout = 5 * 60e3;
 
 async function finishTeamReply(id, model, messages) {
   const config = E.config();
-  let content = '';
+  let content = '', lastSave = 0, saving = false;
+  function checkpoint(phase) {
+    if (saving || (phase === 'team_writing' && now() - lastSave < 1000)) return;
+    saving = true;
+    lastSave = now();
+    run("UPDATE ai_chat_messages SET status=?, content=?, updated_at=? WHERE id=? AND status IN ('team_pending','team_thinking','team_writing')", phase, content, lastSave, id)
+      .catch(() => E.clog('team_progress_failed', { message: id }))
+      .finally(() => { saving = false; });
+  }
   try {
     const usage = await E.streamReply(model, {
       system: config.systemPrompt, messages, maxTokens: config.maxOutputTokens,
-      signal: AbortSignal.timeout(teamTimeout), onThinking() {}, onText(delta) { content += delta; },
+      signal: AbortSignal.timeout(teamTimeout), onThinking() {},
+      onActivity() { if (!content) checkpoint('team_thinking'); },
+      onText(delta) { content += delta; if (model === 'codex') checkpoint('team_writing'); },
     });
     await run("UPDATE ai_chat_messages SET content=?, status='complete', input_tokens=?, output_tokens=?, updated_at=? WHERE id=?", content, usage.inputTokens, usage.outputTokens, now(), id);
   } catch (e) {
