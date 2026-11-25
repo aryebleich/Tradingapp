@@ -4,6 +4,11 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-25: Codex in Admin AI Chat
+
+- Added an explicit Codex model using the existing OpenAI key and Responses streaming. It uses the existing chat permissions and leaves Auto's provider routing as before.
+- Verified with a local OpenAI fixture. No release tag. Revert the task commit to remove the option.
+
 ## 2026-11-25: Claude Code and Codex handoff
 
 - Added the shared contributor instructions, Claude Code entry point, and the checkpoint and task queue in [AI_HANDOFF.md](AI_HANDOFF.md).

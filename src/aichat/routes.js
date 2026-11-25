@@ -163,7 +163,7 @@ async function streamInto(req, res, conv, modelId) {
     }
   } finally { active.delete(aid); clearInterval(watchdog); stopPing(); res.end(); }
 }
-// The provider id behind a model id (the chat's model ids are the provider ids).
+// Keep model-specific failures, such as Codex availability, separate from Auto's provider health.
 const providerOf = id => id;
 
 aiChatRouter.post('/conversations/:id/messages', route(async (req, res) => {

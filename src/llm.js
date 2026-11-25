@@ -118,6 +118,57 @@ export async function openaiStream(p, { system, messages, signal, onText, maxTok
   }
   return { inputTokens: input, outputTokens: output, stopReason: 'end_turn', model };
 }
+// Admin Chat can explicitly choose a Codex model through the Responses API.
+export function codexChatProvider() {
+  const p = openaiProvider();
+  return p.apiKey ? { ...p, id: 'codex', name: 'Codex (OpenAI)', model: env('OPENAI_CODEX_MODEL') || 'gpt-5.3-codex' } : null;
+}
+
+export async function codexChatStream(p, { system, messages, signal, onText, maxTokens }) {
+  const r = await fetch(`${p.base}/responses`, {
+    method: 'POST',
+    signal,
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${p.apiKey}` },
+    body: JSON.stringify({
+      model: p.model,
+      instructions: redact(system),
+      input: messages.map(({ role, content }) => ({ role, content: redact(content) })),
+      max_output_tokens: maxTokens,
+      store: false,
+      stream: true,
+    }),
+  });
+  if (!r.ok) throw openaiError(r.status, await r.json().catch(() => ({})));
+
+  let buffer = '';
+  const decoder = new TextDecoder();
+  for await (const chunk of r.body) {
+    buffer += decoder.decode(chunk, { stream: true });
+    let newline;
+    while ((newline = buffer.indexOf('\n')) !== -1) {
+      const line = buffer.slice(0, newline).trim();
+      buffer = buffer.slice(newline + 1);
+      if (!line.startsWith('data:')) continue;
+      const data = line.slice(5).trim();
+      if (!data || data === '[DONE]') continue;
+      const event = JSON.parse(data);
+      if (event.type === 'response.output_text.delta') onText(event.delta);
+      if (event.type === 'response.refusal.delta') {
+        throw Object.assign(new Error('The model declined to answer this message.'), { status: 422, code: 'refusal' });
+      }
+      if (event.type === 'response.failed' || event.type === 'response.incomplete' || event.type === 'error') {
+        const error = event.response?.error || event;
+        throw openaiError(502, { error });
+      }
+      if (event.type === 'response.completed') {
+        const usage = event.response?.usage;
+        return { inputTokens: usage?.input_tokens || 0, outputTokens: usage?.output_tokens || 0, stopReason: 'end_turn', model: p.model };
+      }
+    }
+  }
+  throw new Error('The Codex stream ended before the response completed.');
+}
+
 const picked = {}; // a model found to work when the default one is retired
 export const llmEnabled = () => !!provider();
 // The provider the owner chose in Admin → AI (AI_PROVIDER), or null for automatic.

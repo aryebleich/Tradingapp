@@ -8,7 +8,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { one, all, run, now } from '../db.js';
 import { siteGet, siteSet, isOwner } from '../site.js';
 import { canonicalEmail } from '../auth.js';
-import { providers, openaiStream, activeId } from '../llm.js';
+import { providers, openaiStream, activeId, codexChatProvider, codexChatStream } from '../llm.js';
 import { redact } from '../aiaccess.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -46,6 +46,8 @@ export const accessList = granted;
 // Only providers that have a key, that the config lists, and (if adminModels names this admin) that are in their list.
 export function models(user) {
   const c = config(), act = activeId(), list = [...providers().map(p => ({ id: p.id, name: p.name + (p.id === act ? ' (active)' : ''), model: p.model, thinking: p.id === 'anthropic' }))];
+  const codex = codexChatProvider();
+  if (codex) list.push({ id: codex.id, name: codex.name, model: codex.model, thinking: false });
   if (process.env.NODE_ENV === 'test' && process.env.AI_CHAT_FAKE_MODEL) list.push({ id: 'fake', name: 'Test model (thinks)', model: 'fake-thinker', thinking: true }, { id: 'fake-plain', name: 'Test model', model: 'fake-plain', thinking: false });
   const mine = c.adminModels?.[canonicalEmail(user?.email || '')];
   const out = list.filter(m => (c.models.includes(m.id) || m.id.startsWith('fake')) && (!mine || mine.includes(m.id)));
@@ -122,10 +124,11 @@ async function streamFake(id, { messages, signal, onThinking, onText }) {
 }
 export async function streamReply(modelId, args) {
   if (modelId.startsWith('fake') && process.env.NODE_ENV === 'test' && process.env.AI_CHAT_FAKE_MODEL) return streamFake(modelId, args);
-  const p = providers().find(x => x.id === modelId);
+  const p = modelId === 'codex' ? codexChatProvider() : providers().find(x => x.id === modelId);
   if (!p) throw bad('That model is not available.', 400, 'model');
   if (p.id === 'anthropic') return streamAnthropic(args);
   if (p.id === 'openai') return openaiStream(p, args);
+  if (p.id === 'codex') return codexChatStream(p, args);
   return streamCompatible(p, args);
 }
 

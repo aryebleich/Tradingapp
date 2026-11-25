@@ -5,6 +5,15 @@
 Admin → AI team → **Chat**: a normal back-and-forth conversation with the AI team's model. No flag;
 **off**. Branch `feature/ai-team-chat`. Decisions: [DECISIONS.md](../DECISIONS.md), section "AI team Chat".
 
+## Chat with Codex
+
+Choose **Codex (OpenAI)** in the Admin AI Chat model picker. It uses the existing server-side
+`OPENAI_API_KEY` from Admin → Keys. The key's OpenAI API project must have access to
+`gpt-5.3-codex`, or the server can set `OPENAI_CODEX_MODEL` to a supported Codex Responses API model.
+Existing AI Chat permissions, token limits and local chat history apply. The Responses request
+sets `store: false` and supplies no tools. This is a Brightolio conversation with an OpenAI Codex model.
+To share context from ChatGPT, paste the relevant handoff or code into the Brightolio conversation.
+
 ## Architecture
 
 ```

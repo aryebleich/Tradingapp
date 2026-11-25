@@ -6,7 +6,7 @@
 import { redact } from '../aiaccess.js';
 import { reasonOf } from './diagnose.js';
 
-export const KEY_NAME = { openai: 'OPENAI_API_KEY', anthropic: 'ANTHROPIC_API_KEY', gemini: 'GEMINI_API_KEY', groq: 'GROQ_API_KEY', openrouter: 'OPENROUTER_API_KEY', custom: 'AI_API_KEY' };
+export const KEY_NAME = { openai: 'OPENAI_API_KEY', codex: 'OPENAI_API_KEY', anthropic: 'ANTHROPIC_API_KEY', gemini: 'GEMINI_API_KEY', groq: 'GROQ_API_KEY', openrouter: 'OPENROUTER_API_KEY', custom: 'AI_API_KEY' };
 
 // The provider's own short code (for example rate_limit_exceeded), kept only when it is a plain word.
 const shortCode = e => {

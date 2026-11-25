@@ -13,6 +13,11 @@ before(async () => {
       const body = raw ? JSON.parse(raw) : {};
       seen.push({ url: req.url, auth: req.headers.authorization || '', body });
       const step = script.shift() || { status: 200, json: { choices: [{ message: { content: '{"ok":true}' } }] } };
+      if (step.events) {
+        res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+        for (const event of step.events) res.write(`data: ${JSON.stringify(event)}\r\n\r\n`);
+        return res.end();
+      }
       if (step.stream) {
         res.writeHead(200, { 'Content-Type': 'text/event-stream' });
         for (const t of step.stream) res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: t } }] })}\n\n`);
@@ -109,4 +114,48 @@ test('secrets in a message are redacted before anything is sent', async () => {
   const sent = JSON.stringify(seen[0].body);
   assert.ok(!sent.includes('sk-abcdefghijklmnopqrstuvwx'), 'the key is removed');
   assert.ok(!sent.includes('person@example.com'), 'the email is removed');
+});
+
+
+test('Admin AI Chat offers Codex and streams a Responses API reply with usage', async () => {
+  const E = await import('../src/aichat/engine.js');
+  assert.equal(E.models({}).find(m => m.id === 'codex')?.name, 'Codex (OpenAI)');
+  script.push({ events: [
+    { type: 'response.output_text.delta', delta: 'Hello' },
+    { type: 'response.output_text.delta', delta: ' from Codex.' },
+    { type: 'response.completed', response: { usage: { input_tokens: 13, output_tokens: 4 } } },
+  ] });
+  const key = process.env.OPENAI_API_KEY;
+  let text = '';
+  const usage = await E.streamReply('codex', {
+    system: 'Help Brightolio developers.',
+    messages: [{ role: 'user', content: `My key is ${key}` }],
+    onText: delta => { text += delta; }, maxTokens: 800,
+  });
+  assert.equal(text, 'Hello from Codex.');
+  assert.equal(usage.inputTokens, 13);
+  assert.equal(usage.outputTokens, 4);
+  const request = seen.at(-1);
+  assert.equal(request.url, '/v1/responses');
+  assert.equal(request.body.model, 'gpt-5.3-codex');
+  assert.equal(request.body.max_output_tokens, 800);
+  assert.equal(request.body.store, false);
+  assert.ok(!JSON.stringify(request.body).includes(key));
+  assert.equal(request.body.tools, undefined);
+});
+
+test('Codex rejects an interrupted stream and is unavailable without the OpenAI API key', async () => {
+  const E = await import('../src/aichat/engine.js');
+  script.push({ events: [{ type: 'response.output_text.delta', delta: 'Partial' }] });
+  await assert.rejects(E.streamReply('codex', {
+    system: '', messages: [], onText() {}, maxTokens: 800,
+  }), /ended before the response completed/);
+  const key = process.env.OPENAI_API_KEY;
+  delete process.env.OPENAI_API_KEY;
+  try {
+    assert.ok(!E.models({}).some(m => m.id === 'codex'));
+    await assert.rejects(E.streamReply('codex', {}), /model is not available/);
+  } finally {
+    process.env.OPENAI_API_KEY = key;
+  }
 });
