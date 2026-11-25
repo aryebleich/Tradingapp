@@ -263,9 +263,11 @@ app.get('/vm.sh', (req, res) => res.redirect(302, 'https://raw.githubusercontent
 app.get('/healthz/routing', async (req, res) => { const { routingReport } = await import('./src/routingcheck.js'); const r = routingReport(); res.status(r.ok ? 200 : 500).json(r); });
 // Company logos next to tickers (served from this site; see src/logos.js).
 (await import('./src/logos.js')).logoRoute(app);
+const hostId = () => process.env.HOST_ID || (process.env.NODE_ENV === 'production' ? 'unknown' : 'local');
 app.get('/healthz', (req, res) => {
   const d = dbHealth();
-  res.json({ ok: true, time: new Date().toISOString(), database: { kind: dbKind(), ok: d.ok, lastOkAt: d.okAt, lastErrorAt: d.errAt } });
+  // host: which server answered (its HOST_ID, not a secret), so outside checks can see the site is served by Oracle.
+  res.json({ ok: true, host: hostId(), time: new Date().toISOString(), database: { kind: dbKind(), ok: d.ok, lastOkAt: d.okAt, lastErrorAt: d.errAt } });
 });
 // /healthz says the server process answers; it runs no query (a check that reads spends database
 // reads, and a restart would not fix a database outage). The database part is what the app's own

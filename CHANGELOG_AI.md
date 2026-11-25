@@ -4,6 +4,24 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-25: Leaving Render (findings, before any change)
+
+From the read-only ops step `render-diagnose` (run 45644272391) and a search of the repository:
+
+- **DNS:** the brightolio.com zone is on Cloudflare (name servers melinda/harlan.ns.cloudflare.com). app.brightolio.com is proxied by Cloudflare (104.21.94.31, 172.67.218.253 and two IPv6 addresses) with **Render as the origin** (header x-render-origin-server: Render): app.brightolio.com → Cloudflare → Render → Oracle. brightolio.com and www.brightolio.com have no A, AAAA or CNAME record. Render's /healthz says it forwards (forwarding: true, its edge secret set).
+- **Keys:** no RENDER_API_KEY anywhere (not in the VM .env, not in the Admin key store, not as a GitHub secret), and no Cloudflare token anywhere (CLOUDFLARE_API_TOKEN and CLOUDFLARE_ZONE_ID absent in all three). So the Render service cannot be read, changed or suspended from here, and the DNS record cannot be changed from here.
+- **GitHub:** the secret RENDER_DEPLOY_HOOK_URL is set (RENDER_DEPLOY_HOOK, RENDER_API_KEY and RENDER_SERVICE_ID are not). The repository variable APP_URL is https://quantpocket.onrender.com.
+- **The VM:** .env holds RENDER_GIT_COMMIT, which deploy/vm/update.sh writes on every deploy as the running commit. No other RENDER_* setting. PUBLIC_URL is https://app.brightolio.com; APP_DOMAIN and PUBLIC_ORIGINS were set by the last step.
+- **What Render still provides:** only the forwarder for the main address (src/render-redirect.js, started by render.yaml). It has no database, no disk and runs no jobs. Settings, jobs, webhooks and files have nothing left on Render to move: the app's settings are on the VM, jobs run on the VM, and webhooks are registered to app.brightolio.com (the brief's list of outside settings is in MIGRATION_ORACLE.md).
+- **In the repository:** render.yaml, src/render-redirect.js, .github/workflows/render-redirect.yml; the Render API key sync in src/site.js (renderEnabled, renderEnv, renderPut, renderDeploy, renderService, renderSetPlan) and its ENV_GROUPS/HOST_ONLY entries; RENDER_PLANS and the "render" upgrade kind in src/upgrades.js and its Admin tab; "render" in src/hosting.js (the host kind, thisHost and isActiveHost); RENDER_EXTERNAL_URL, RENDER_EXTERNAL_HOSTNAME and RENDER_GIT_COMMIT fallbacks in server.js, src/origin.js, src/smssignup.js, src/admin-site.js, src/routingcheck.js and src/server-admin.js; RENDER_API_KEY in src/keys-catalog.js, src/setup-tasks.js and src/keystore.js; the "Keys sync with Render" setup check in server.js; src/readme-auto.js and src/readme-overview.js; public/pages/admin-ops.js and public/pages/owner.js; the onrender.com fallbacks in android.yml, pages.yml and post-deploy.yml; deploy/vm/update.sh; scripts/clean-check.mjs; tests; docs.
+
+Decisions:
+- The DNS record is changed by hand (issue #55 gives the exact record: A app → 138.2.233.183, DNS only, and remove the old CNAME to onrender.com). The workflow dns-cutover.yml checks every 10 minutes and closes the issue when https://app.brightolio.com/healthz answers from the Oracle server (host "oracle", no Render header).
+- **render.yaml and src/render-redirect.js stay until that DNS change is made**, and only those two: Render deploys every push to main, and while the domain still points at Render they are what keeps the site up. Everything else that refers to Render goes now.
+- Render's custom domain and the service itself can only be removed and suspended by the owner (no API key): the steps are in issue #55.
+
+---
+
 ## 2026-11-25: One address: everything goes to https://app.brightolio.com (what was done)
 
 - **Why visitors ended on sslip**: Render's forwarder (src/render-redirect.js) passed the main address on to the Oracle server only while its trust check was on. While it was off (at start, after a slow or failed check), every main-address request got a 301 to REDIRECT_FALLBACK, the server's sslip address. Fixed: a visitor now gets a "taking longer than usual" page that tries again, the check runs again within a minute, and the server address is only a server-to-server target.
