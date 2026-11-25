@@ -66,6 +66,16 @@ async function refreshNow(key, ttl, fn) {
   INFLIGHT.set(key, p);
   try { return await p; } finally { INFLIGHT.delete(key); }
 }
+// Read a precomputed value without running a loader in the request process.
+export async function readDbCache(key, ttl) {
+  const m = MEM.get(key);
+  if (m && now() - m.at < ttl) return m.v;
+  const c = await one('SELECT v, at FROM cache WHERE k = ?', key);
+  if (!c || now() - c.at >= ttl) return null;
+  const v = JSON.parse(c.v);
+  if (c.v.length <= BIG) remember(key, { v, at: c.at, size: c.v.length });
+  return v;
+}
 export async function dbCached(key, ttl, fn) {
   const m = MEM.get(key);
   if (m && now() - m.at < ttl) return m.v;

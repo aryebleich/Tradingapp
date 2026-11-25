@@ -18,6 +18,8 @@ import * as D from './alpaca/data.js';
 import { eventsEnabled, earnings as fhEarnings } from './events.js';
 import { getSetting, setSetting } from './settings.js';
 import { isPaid } from './fees.js';
+import { dbCached, readDbCache } from './memo.js';
+import { jobAllowed } from './reliability.js';
 
 const DAY = 864e5;
 const r2 = (x, d = 2) => (x == null || !Number.isFinite(+x) ? null : +(+x).toFixed(d));
@@ -389,14 +391,54 @@ async function headlines(symbol) {
   if (!D.dataEnabled()) return [];
   return cached(`news:${symbol}`, 30 * 60e3, async () => ((await D.news({ symbols: [symbol], limit: 3 }).catch(() => null)) || []).map(n => ({ title: n.headline, url: n.url, at: n.created_at, source: n.source })));
 }
+const CARD_TTL = 3 * 3600e3;
+// Start with a small set from the existing large-stock universe until per-symbol traffic is measured.
+const PRECOMPUTED_CARDS = UNIVERSE.slice(0, 4);
+
+async function loadCard(symbol, userId, { requireMarketBars = false } = {}) {
+  const s = await stockData(symbol, userId, { sector: true });
+  if (requireMarketBars && (s.kind !== 'stock' || !s.series?.full || !(s.range52?.high > 0))) {
+    throw new Error('Stock card data is incomplete');
+  }
+  const sr = s.kind === 'stock' ? strengthsRisks({ ratios: s.ratios, val: s.valuation, div: s.dividends }) : null;
+  const about = s.kind === 'stock' ? `${s.name}${s.sector ? ` · ${s.sector}` : ''}${s.exchange ? ` · listed on ${s.exchange}` : ''}.` : 'A fund, or a company without US SEC filings: no company figures to show. Its cost and holdings are on its fund page.';
+  return buildCard({ symbol, name: s.name, about, sector: s.sector, val: s.valuation, div: s.dividends, earn: { last: s.earnings?.last, next: s.earnings?.next }, range52: s.range52, headlines: await headlines(symbol), sr, etf: s.kind !== 'stock' });
+}
+
+const stockCardKey = symbol => `stock-card:${symbol}`;
+
+function sharedCard(symbol) {
+  // Refresh ahead of the three-hour cutoff used by request workers.
+  return dbCached(stockCardKey(symbol), CARD_TTL / 2, () => loadCard(symbol, undefined, { requireMarketBars: true }));
+}
+
 export async function cardFor(symbol, userId) {
-  return cached(`card:${symbol}`, 3 * 3600e3, async () => {
-    const s = await stockData(symbol, userId, { sector: true }).catch(() => null);
-    if (!s) return buildCard({ symbol, name: symbol });
-    const sr = s.kind === 'stock' ? strengthsRisks({ ratios: s.ratios, val: s.valuation, div: s.dividends }) : null;
-    const about = s.kind === 'stock' ? `${s.name}${s.sector ? ` · ${s.sector}` : ''}${s.exchange ? ` · listed on ${s.exchange}` : ''}.` : 'A fund, or a company without US SEC filings: no company figures to show. Its cost and holdings are on its fund page.';
-    return buildCard({ symbol, name: s.name, about, sector: s.sector, val: s.valuation, div: s.dividends, earn: { last: s.earnings?.last, next: s.earnings?.next }, range52: s.range52, headlines: await headlines(symbol), sr, etf: s.kind !== 'stock' });
-  });
+  if (D.dataEnabled() && PRECOMPUTED_CARDS.includes(symbol)) {
+    const card = await readDbCache(stockCardKey(symbol), CARD_TTL).catch(() => null);
+    if (card) return card;
+  }
+  return cached(`card:${symbol}`, CARD_TTL, () => loadCard(symbol, userId).catch(() => buildCard({ symbol, name: symbol })));
+}
+
+// Run on the active leader, independently of the trading scheduler. The database cache lets
+// request workers read the same cards, even after they restart.
+export function startStockCardWarmup(active) {
+  let busy = false, stopped = false;
+  const warm = async () => {
+    if (stopped || busy || !D.dataEnabled() || !active() || !jobAllowed('stock-card')) return;
+    busy = true;
+    try {
+      for (const symbol of PRECOMPUTED_CARDS) {
+        if (stopped || !active() || !jobAllowed('stock-card')) break;
+        await sharedCard(symbol).catch(() => {});
+      }
+    } finally {
+      busy = false;
+    }
+  };
+  const startup = setTimeout(warm, 30e3).unref();
+  const interval = setInterval(warm, 3600e3).unref();
+  return () => { stopped = true; clearTimeout(startup); clearInterval(interval); };
 }
 async function aiSummary(s) {
   const { llmEnabled, jsonCall } = await import('./llm.js');

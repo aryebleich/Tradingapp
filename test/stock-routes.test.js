@@ -45,6 +45,35 @@ test('the card before a buy: the essentials, cached, and "don\'t show for this s
   assert.equal((await free('/stock/card/hidden', { symbol: '???' })).status, 400);
 });
 
+test('a cold request worker reads a fresh precomputed card and ignores an expired one', async () => {
+  const { run, now } = await import('../src/db.js');
+  const names = ['ALPACA_KEY_ID', 'ALPACA_SECRET'];
+  const saved = names.map(name => process.env[name]);
+  for (const name of names) process.env[name] = 'fixture-only';
+  try {
+    await run('INSERT INTO cache (k, v, at) VALUES (?, ?, ?)', 'stock-card:AAPL',
+      JSON.stringify({ symbol: 'AAPL', name: 'Precomputed Apple' }), now());
+    const response = await free('/stock/AAPL/card');
+    assert.equal(response.status, 200);
+    assert.equal(response.body.name, 'Precomputed Apple');
+    await run('INSERT INTO cache (k, v, at) VALUES (?, ?, ?)', 'stock-card:MSFT',
+      JSON.stringify({ symbol: 'MSFT', name: 'Expired Microsoft' }), now() - 4 * 3600e3);
+    const oldDataUrl = process.env.ALPACA_DATA_URL;
+    process.env.ALPACA_DATA_URL = sec.url;
+    try {
+      assert.equal((await free('/stock/MSFT/card')).body.name, 'Microsoft Corp');
+    } finally {
+      if (oldDataUrl === undefined) delete process.env.ALPACA_DATA_URL;
+      else process.env.ALPACA_DATA_URL = oldDataUrl;
+    }
+  } finally {
+    for (const [i, name] of names.entries()) {
+      if (saved[i] === undefined) delete process.env[name];
+      else process.env[name] = saved[i];
+    }
+  }
+});
+
 test('compare and the growth-at-a-price scanner; saving filters with alerts is Pro', async () => {
   const cmp = (await free('/stock/compare?symbols=AAPL,MSFT,NOPE')).body;
   assert.equal(cmp.rows.length, 3); assert.ok(cmp.rows[0].pe > 0); assert.ok(cmp.rows[2].error);

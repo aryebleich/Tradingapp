@@ -77,7 +77,7 @@ import { combinedRouter } from './src/consolidate.js';
 import { profilesRouter } from './src/profiles.js';
 import { sponsoredRouter } from './src/sponsored.js';
 import { investRouter } from './src/invest.js';
-import { stockRouter } from './src/stock.js';
+import { startStockCardWarmup, stockRouter } from './src/stock.js';
 import { ratesRouter } from './src/rates.js';
 import { diversifyRouter } from './src/diversify.js';
 import { newspicksRouter } from './src/newspicks.js';
@@ -1662,18 +1662,19 @@ if (isMain) {
   // Background work runs in exactly one process: the leader (src/bus.js, cluster.js). Helpers only
   // answer requests, so no job, backup or stream ever runs twice.
   const { isLeader } = await import('./src/bus.js');
-  let timer = null, stopKyc = null;
+  let timer = null, stopKyc = null, stopStockCardWarmup = null;
   if (isLeader()) {
   startHostingSync();
   checkMain().then(ok => console.log('One address (' + (process.env.PUBLIC_URL || '-') + '):', ok ? 'reaches this server, other addresses redirect there' : 'does not reach this server yet, no redirect')); setInterval(checkMain, 5 * 60e3).unref();
   timer = startScheduler(isActiveHost);
+  stopStockCardWarmup = startStockCardWarmup(isActiveHost);
   (await import('./src/backup.js')).startBackups();
   startKeepWarm();
   stopKyc = startKycEvents();
   // Each deploy brings the private README's generated overview up to date (a few seconds after start).
   setTimeout(() => import('./src/admin-site.js').then(m => m.refreshReadme()).catch(() => {}), 5000).unref();
   } else { checkMain().catch(() => {}); }
-  const stop = () => { if (timer) clearInterval(timer); stopKyc?.(); server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 8000).unref(); };
+  const stop = () => { if (timer) clearInterval(timer); stopKyc?.(); stopStockCardWarmup?.(); server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 8000).unref(); };
   process.on('SIGTERM', stop);
   process.on('SIGINT', stop);
 }
