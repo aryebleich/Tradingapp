@@ -41,9 +41,9 @@ export async function page(view) {
       <div class="ac-sr" role="status" aria-live="polite" aria-atomic="true"></div>
       <form class="ac-form" novalidate>
         <label for="acInput" class="ac-sr">Message</label>
-        <textarea id="acInput" rows="3" maxlength="20000" placeholder="Message the AI team (Enter to send, Shift+Enter for a new line)" aria-describedby="acHelp"></textarea>
+        <textarea id="acInput" rows="2" maxlength="20000" placeholder="Message the AI team…" aria-describedby="acHelp"></textarea>
         <p id="acHelp" class="ac-sr">Enter sends the message. Shift and Enter adds a new line.</p>
-        <div class="ac-actions"><label class="ac-bg"><input type="checkbox" id="acBg"> Run in background (long questions: the answer arrives when it is ready)</label><button type="submit" class="ac-send">Send</button><button type="button" class="ac-stop" hidden>Stop</button></div>
+        <div class="ac-actions"><label class="ac-bg"><input type="checkbox" id="acBg"> Run in background</label><button type="submit" class="ac-send">Send</button><button type="button" class="ac-stop" hidden>Stop</button></div>
       </form>
     </section></div>`;
   // A missing element never throws: the lookup gives an empty stand-in, so a handler on it does nothing.
@@ -152,7 +152,7 @@ export async function page(view) {
     });
   }
   const atBottom = () => scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 48;
-  scroller.addEventListener('scroll', () => { S.stick = atBottom(); $('.ac-jump').hidden = S.stick || !S.busy; }, { passive: true });
+  scroller.addEventListener('scroll', () => { S.stick = atBottom(); $('.ac-jump').hidden = S.stick; }, { passive: true });
   const toBottom = (force = false) => { if (force || S.stick) scroller.scrollTop = scroller.scrollHeight; };
   $('.ac-jump').onclick = () => { S.stick = true; toBottom(true); $('.ac-jump').hidden = true; input.focus(); };
 
