@@ -19,25 +19,15 @@ No money was spent: no Turso overages, no plan upgrade, nothing on Oracle beyond
 | Backups | every hour, `VACUUM INTO` + `integrity_check`: 48 hourly and 30 daily in `/opt/brightfolio/data/backups`. A daily encrypted copy goes to Oracle Object Storage once `OCI_BACKUP_PAR_URL` is set (it is not set yet: Admin → Database says so) |
 | Keys | `/opt/brightfolio/.env` (mode 600), written from the `ORACLE_ENV` secret by `oracle.yml`; changed with `oracle-migrate.yml` step `set-env` |
 | Deploys | the VM's `brightfolio-update` timer: every 2 minutes it builds the newest `main` and switches only when `/healthz` answers. `deploy.yml` then checks paper/live routing and the database on it; `post-deploy.yml` smoke-tests and, on two failures in a row, goes back to the previous image |
-| Render (`quantpocket.onrender.com`) | no app, no database, no jobs (`src/render-redirect.js`): old Render links get a 301 to app.brightolio.com, and app.brightolio.com itself is passed on to the Oracle app until its DNS points at the server |
+| Render | being left (2026-11-25). Nothing in the app, the workflows or Admin uses it. Until the DNS change in issue #55, Render still passes app.brightolio.com on to Oracle; then its custom domain is removed and the service suspended (by the owner, in the Render dashboard). |
 | Turso | blocked until 2026-12-01; holds the data from before November 22 until the scheduled merge has copied it, then it is deleted |
-| `APP_URL` variable | still the old value; every workflow uses the Oracle address instead (`APP_URL` only when it is set and is not the Render address, otherwise `https://<ORACLE_HOST with dashes>.sslip.io`). The workflow token cannot change repository variables, so nothing depends on it |
+| `APP_URL` variable | still the old Render address until the owner sets it to https://app.brightolio.com (the workflow token cannot change repository variables); every workflow uses https://app.brightolio.com unless `APP_URL` is a brightolio.com address, and the server's own address only for direct checks |
 
-## The main address: app.brightolio.com (2026-11-23, 17:13 UTC)
+## The main address: app.brightolio.com
 
-Google sign-in is registered for `https://app.brightolio.com` only, so the server now uses that
-address (`PUBLIC_URL`), and every page asked for on its other address (sslip.io) gets a 301 there.
-`app.brightolio.com`'s DNS (Cloudflare, proxied) still points at Render, so **Render passes it on**
-to the Oracle app: same path, the edge secret, and the visitor's address (`x-edge-host`); the Oracle
-app answers as app.brightolio.com. Render confirms the secret first (`/internal/edge-check`); the
-server turns its redirect on only while app.brightolio.com reaches it (its boot id), so there is no
-loop either way. `scheduler.yml` pings app.brightolio.com/healthz every 10 minutes so Render's free
-plan never sleeps. Checked: sign-in check run 45225296898 (Google and GitHub return to
-app.brightolio.com, Google accepts it), verify run 45225290317 (paper trade OK).
-
-**Lasting fix (owner, Cloudflare):** set `app.brightolio.com` to an A record `138.2.233.183`,
-proxied (or add `CLOUDFLARE_API_TOKEN` with Zone → DNS → Edit to `ORACLE_ENV` and run
-oracle-migrate `point-domain`). Then Render is not in the path at all; nothing else changes.
+Google sign-in, Stripe, OpenAI and every link use `https://app.brightolio.com` (`PUBLIC_URL`). The
+server's own address and its bare IP send visitors there (see "One address" below). How it got here,
+including the time Render passed the address on, is in docs/archive/MIGRATION_ORACLE-render-era.md.
 
 ## Workflow runs
 
@@ -162,8 +152,8 @@ public IP in the `ORACLE_HOST` variable and its key in `ORACLE_SSH_KEY`, then:
 2. Oracle database move → `set-env` with `DB_FILE=/app/data/quantpocket.db;PERSISTENT_DISK=1`.
 3. Copy the newest backup to `/opt/brightfolio/data/backups/` (from the old server, or from Object
    Storage, decrypted as above), then `restore` with its name, then `activate` and `verify`.
-4. Point `app.brightolio.com` (or Render's `REDIRECT_TO` and the `render-redirect` workflow) at the
-   new address.
+4. Point `app.brightolio.com` at the new server: an A record to its IP (DNS only), then run the
+   oracle-migrate step `caddy-site` so Caddy serves it.
 
 ## Decisions
 
@@ -172,9 +162,16 @@ DECISIONS.md, "Move to Oracle Cloud" (OR-1 to OR-13) and "Finishing the move" (O
 ## One address: https://app.brightolio.com
 
 - **The site's address** is `PUBLIC_URL` (and `APP_DOMAIN`, which sets the Caddy site) = https://app.brightolio.com. Visitors on any other address of this server get a 301 to the same path there: its own name (`138-2-233-183.sslip.io`) and its bare IP over HTTP. Health checks, `/internal/*`, webhooks, sign-in returns and the load test (with its header) are not redirected, and a request forwarded by Render (it carries the edge secret) is never redirected, which would loop.
-- **Render** still answers app.brightolio.com (Cloudflare proxies it to Render), and Render passes every request for the main address on to the Oracle server while it is trusted. While it is not trusted, a visitor gets a "taking longer than usual" page that tries again; it is never sent to the server's own address. `REDIRECT_FALLBACK` (render.yaml, https://138-2-233-183.sslip.io) is only the server-to-server target.
+- **DNS**: app.brightolio.com must be an A record to the server's IP (138.2.233.183), DNS only (or proxied with SSL Full (strict)). Issue #55 has the exact record; the workflow dns-cutover.yml closes it once /healthz answers from the server (`host: oracle`).
 - **The one-address redirect in the app** (server.js) is on only while the main address really reaches this server (its own check, every five minutes). Admin → Hosting shows a red warning when it does not.
 - **To set up a server** (`deploy/vm/setup.sh`): the main domain defaults to app.brightolio.com (`APP_DOMAIN`), and `PUBLIC_URL`, `PUBLIC_ORIGINS` (the app domain and the GitHub Pages origin) are written from it.
 - **To change the Caddy site later**: set `APP_DOMAIN` (Admin → Keys or the ops step set-env), then run the ops step `caddy-site` (Actions → Oracle database move → step caddy-site). The file is checked by Caddy before it is loaded; the old file comes back if Caddy refuses it.
 - **Diagnose**: the ops step `address-diagnose` (read only) prints the settings that name an address, the DNS, the certificate each name gets, and what the main address answers.
 - **Outside settings to update by hand** (the app cannot change them): Google sign-in (the authorized JavaScript origin https://app.brightolio.com and the redirect URI https://app.brightolio.com/auth/google/callback), Stripe webhook endpoints (https://app.brightolio.com/webhooks/stripe), the OpenAI webhook (https://app.brightolio.com/api/webhooks/openai), any other service registered to the server's own address, the repository variable `APP_URL` (set to https://app.brightolio.com), and the `ORACLE_ENV` secret (add `PUBLIC_URL=https://app.brightolio.com` and `PUBLIC_ORIGINS=https://app.brightolio.com,https://aryebleich.github.io` so a re-install keeps them).
+
+## Leaving Render (2026-11-25)
+
+- **Found**: no Render or Cloudflare API key anywhere (server .env, Admin key store, GitHub secrets); the secret RENDER_DEPLOY_HOOK_URL in GitHub; the variable APP_URL still the Render address; RENDER_GIT_COMMIT in the server .env (the deploy marker). Render held no database, disk or jobs: only the forwarder for app.brightolio.com.
+- **Done in the app**: the Render key sync, the Render plans and their Admin tab, the "render" server kind, every RENDER_* fallback, RENDER_API_KEY in the key list and the setup tasks, and the Render workflow are gone. The commit comes from the image (GIT_COMMIT, set by deploy/vm/update.sh at build time). PUBLIC_URL is required in production (the app stops with the reason if it is missing). Jobs run only on the server named by HOST_ID and set as active (Oracle when nothing is set); a production server without HOST_ID never runs them. /healthz names the host.
+- **Kept until the DNS change**: render.yaml and src/render-redirect.js. Render deploys every push, and while app.brightolio.com still points at it they keep the site up. The app does not load them. Delete both after issue #55 closes.
+- **Owner steps** (no API key exists, so only you can): (1) the DNS record in issue #55; (2) after it closes, Render → quantpocket → Settings → Custom Domains → remove app.brightolio.com; (3) Settings → Suspend the service (Delete later, and close the account if you want); (4) GitHub → Actions secrets: delete RENDER_DEPLOY_HOOK_URL; set the variable APP_URL to https://app.brightolio.com.

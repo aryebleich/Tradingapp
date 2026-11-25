@@ -13,14 +13,14 @@
 4. SSH in and run:
    `curl -fsSL https://raw.githubusercontent.com/aryebleich/Tradingapp/main/deploy/vm/setup.sh | sudo bash -s -- <name> aryebleich/Tradingapp`
 5. Put your settings in `/opt/brightfolio/.env` (Admin → Keys → Download .env gives them all). It must have
-   the same `DATABASE_URL`, `DATABASE_AUTH_TOKEN` and `ENCRYPTION_KEY` as Render, plus `HOST_ID=oracle`.
+   the same `DATABASE_URL`, `DATABASE_AUTH_TOKEN` and `ENCRYPTION_KEY` as the other servers, plus its own `HOST_ID`.
    Then `sudo FORCE=1 brightfolio-update`. From then on every push to main is live there within 2 minutes.
 
 **Northflank** (second free always-on option): new project → service from the GitHub repository →
 build with the Dockerfile → port 3000 → add the same settings and `HOST_ID=northflank`.
 
 Then add each server in **Admin → Hosting** (id = its HOST_ID, its https address, and its deploy hook if
-it has one). Render can stay as the backup (`HOST_ID` unset counts as `render`).
+it has one). A server without `HOST_ID` never runs jobs in production.
 
 ## 2. The edge (free Cloudflare Worker in front)
 

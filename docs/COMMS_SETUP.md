@@ -27,7 +27,7 @@ Where a step says "(verify)" it is the part most likely to have moved.
 | `ASTERISK_ARI_URL`, `ASTERISK_ARI_USER`, `ASTERISK_ARI_PASSWORD` | asterisk only | private-network address, TLS, password of 16+ characters |
 | `ENCRYPTION_KEY` | all | already required in production; it also encrypts the 72-hour delivery buffer |
 
-Secrets go only in the host's environment (Render) or Admin → Keys, never in the repository or in chat.
+Secrets go only in the server .env or Admin → Keys, never in the repository or in chat.
 
 ## 2. Database migration
 

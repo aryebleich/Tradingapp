@@ -35,7 +35,7 @@ on:
         description: 'Which step'
         type: choice
         default: status
-        options: [status, render-diagnose, address-diagnose, aichat-diagnose, diagnose-load, deploy-now, repair, maintenance-on, maintenance-off, fresh-db, pull, merge-turso, final-copy, clean-old-settings, finalize, verify, activate, point-domain, set-env, backup, restore]
+        options: [status, address-diagnose, aichat-diagnose, diagnose-load, deploy-now, repair, maintenance-on, maintenance-off, fresh-db, pull, merge-turso, final-copy, clean-old-settings, finalize, verify, activate, point-domain, set-env, backup, restore]
       settings:
         description: 'set-env only: KEY=value pairs separated by ";" (masked in the log). KEY= removes a key.'
         required: false
@@ -90,22 +90,6 @@ jobs:
       - name: AI chat diagnosis (no change)
         if: env.STEP == 'aichat-diagnose'
         run: ~/vm aichat-diagnose
-      - name: Render diagnosis on the server (no change)
-        if: env.STEP == 'render-diagnose'
-        run: ~/vm render-diagnose
-      - name: Render and DNS settings in GitHub (names only, no change)
-        if: env.STEP == 'render-diagnose'
-        run: |
-          echo "repository variable APP_URL: ${{ vars.APP_URL }}"
-          echo "secret RENDER_API_KEY set: ${{ secrets.RENDER_API_KEY != '' }}"
-          echo "secret RENDER_DEPLOY_HOOK set: ${{ secrets.RENDER_DEPLOY_HOOK != '' }}"
-          echo "secret RENDER_DEPLOY_HOOK_URL set: ${{ secrets.RENDER_DEPLOY_HOOK_URL != '' }}"
-          echo "secret RENDER_SERVICE_ID set: ${{ secrets.RENDER_SERVICE_ID != '' }}"
-          echo "secret CLOUDFLARE_API_TOKEN set: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}"
-          echo "secret CLOUDFLARE_ZONE_ID set: ${{ secrets.CLOUDFLARE_ZONE_ID != '' }}"
-          for d in app.brightolio.com brightolio.com www.brightolio.com; do echo "  $d: A [$(dig +short "$d" A | paste -sd, -)] AAAA [$(dig +short "$d" AAAA | paste -sd, -)] CNAME [$(dig +short "$d" CNAME | paste -sd, -)] NS [$(dig +short "$d" NS | paste -sd, -)]"; done
-          echo "  brightolio.com NS: $(dig +short brightolio.com NS | paste -sd, -)"
-          curl -sS --max-time 20 https://app.brightolio.com/healthz | head -c 300; echo
       - name: Address diagnosis on the server (no change)
         if: env.STEP == 'address-diagnose'
         run: ~/vm address-diagnose
@@ -212,10 +196,10 @@ jobs:
         run: |
           ~/vm status 2>&1 | sed -E 's/[A-Za-z0-9_-]{40,}/[hidden]/g' || true
           echo "--- public: $(curl -sS --max-time 20 "$VM_URL/healthz" || echo 'no answer')"
-          # The main address: where its DNS points, and who answers it (this server, Render, Cloudflare).
+          # The main address: where its DNS points, and who answers it (this server or Cloudflare).
           for d in app.brightolio.com brightolio.com; do
             echo "--- $d: DNS $(dig +short "$d" A | paste -sd, -) $(dig +short "$d" CNAME | paste -sd, -) (this server: $HOST)"
-            curl -sS -o /dev/null -D - --max-time 20 "https://$d/healthz" 2>&1 | grep -iE '^(HTTP|server|location|x-render|cf-ray|via)' | tr -d '\r' | sed 's/^/    /' || true
+            curl -sS -o /dev/null -D - --max-time 20 "https://$d/healthz" 2>&1 | grep -iE '^(HTTP|server|location|cf-ray|via)' | tr -d '\r' | sed 's/^/    /' || true
           done
           ssh -i ~/.ssh/oracle ubuntu@"$HOST" 'rm -f /tmp/migrate.sh' || true
           rm -f ~/.ssh/oracle ~/vm

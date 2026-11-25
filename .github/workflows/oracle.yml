@@ -89,7 +89,7 @@ jobs:
           ENVF: ${{ secrets.ORACLE_ENV }}
         run: |
           umask 077
-          printf '%s\n' "$ENVF" | tr -d '\r' | grep -Ev '^(NODE_ENV|PORT|HOST_ID|RENDER_[A-Z_]*|HOSTNAME)=' > /tmp/app.env
+          printf '%s\n' "$ENVF" | tr -d '\r' | grep -Ev '^(NODE_ENV|PORT|HOST_ID|HOSTNAME)=' > /tmp/app.env
           { echo "NODE_ENV=production"; echo "PORT=3000"; echo "HOST_ID=oracle"; } >> /tmp/app.env
           # With an own domain, the site's public address is that domain.
           if [ -n "${{ inputs.domain }}" ]; then sed -i '/^PUBLIC_URL=/d' /tmp/app.env; fi

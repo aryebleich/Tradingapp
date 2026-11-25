@@ -13,7 +13,7 @@ name: Android app
 # a build is uploaded to the Play track in the PLAY_TRACK variable (default: internal) only when the
 # workflow is run by hand with "Upload to Google Play" ticked. Pushes build, test and refresh the
 # download only, so nothing reaches Play by accident.
-# The app talks to APP_URL; when it is empty or still the old Render address it uses the main
+# The app talks to APP_URL; when it is empty or not a brightolio.com address it uses the main
 # address, https://app.brightolio.com (the Oracle server).
 # The very first upload has to be done by hand in Play Console (Google's rule); see android/play/.
 on:
@@ -72,7 +72,7 @@ jobs:
           ORACLE_HOST: ${{ vars.ORACLE_HOST }}
           VERSION_CODE: ${{ github.run_number }}
         run: |
-          APP_URL="${APP_URL_VAR:-}"; case "$APP_URL" in ""|*onrender.com*|*sslip.io*) APP_URL="https://app.brightolio.com";; esac
+          APP_URL="${APP_URL_VAR:-}"; case "$APP_URL" in https://*brightolio.com*) ;; *) APP_URL="https://app.brightolio.com";; esac
           APP_HOST="$APP_URL"; export APP_HOST
           echo "The app talks to: $APP_HOST"
           cd android

@@ -4,6 +4,22 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-25: Leaving Render (what was done)
+
+- **DNS**: issue #55 gives the exact record (A `app` → 138.2.233.183, DNS only) and says to remove the old CNAME to onrender.com. `dns-cutover.yml` checks every 10 minutes and closes the issue when https://app.brightolio.com/healthz answers from the Oracle server (`host: oracle`, no Render header). /healthz now names the host.
+- **Removed from the app**: the Render API key sync (src/site.js) and its Admin routes (push, pull, deploy); the Render plans and the "render" upgrade kind (src/upgrades.js) with their Admin tab; the "Keys sync with Render" setup check; RENDER_API_KEY and RENDER_SERVICE_ID from the key catalogue, the setup tasks, the key store and the settings groups; every RENDER_EXTERNAL_URL / RENDER_EXTERNAL_HOSTNAME / RENDER_GIT_COMMIT fallback; the forwarder import at the top of server.js; Render wording in Admin → Hosting, the edge setup, the readme generators, the Yiddish strings and the docs.
+- **Build info**: the commit is built into the image (`GIT_COMMIT`, a docker build argument passed by deploy/vm/update.sh), which also deletes the old RENDER_GIT_COMMIT line from the server .env.
+- **PUBLIC_URL** is required in production: without it (or with a non-https or path value) the app stops at start with the reason (src/origin.js missingPublicUrl).
+- **Jobs**: no "render" host. thisHost() is HOST_ID ("local" in development, "unknown" in production without it). In production a server without HOST_ID never runs jobs; with nothing configured in Admin → Hosting only the Oracle server (HOST_ID=oracle) does; otherwise only the configured active server.
+- **A hosted server without a lasting disk** is now `REQUIRE_HOSTED_DB=1`, not the presence of a RENDER variable.
+- **Workflows**: render-redirect.yml deleted; android, pages and post-deploy use https://app.brightolio.com unless APP_URL is a brightolio.com address; the Render comments in deploy, scheduler, security and oracle are gone; the temporary render-diagnose step was removed after its findings were written down.
+- **Kept until the DNS change**: render.yaml and src/render-redirect.js (Render deploys every push, and while the domain still points at Render they are what keeps the site up). The app does not load them; the test allows only that file and says why.
+- **Docs**: MIGRATION_ORACLE.md describes the current state and a "Leaving Render" section with the owner steps; the guide as it stood during the move is in docs/archive/MIGRATION_ORACLE-render-era.md.
+- **Tests**: test/no-render.test.js (7: no Render as a host in src, server.js, public or .github; the forwarder is not loaded; jobs only on the named active server; production without HOST_ID never active; PUBLIC_URL required, and the app refuses to start without it). Updated: batch9 (no Render plan), batch18 and edge (no "render" server kind), health and oracle (REQUIRE_HOSTED_DB), origin (no Render host name), owner (no Render sync routes).
+- **Not possible from here**: changing the DNS, removing the custom domain on Render and suspending the service (no Cloudflare or Render API key exists). The owner steps are in issue #55 and MIGRATION_ORACLE.md.
+
+---
+
 ## 2026-11-25: Leaving Render (findings, before any change)
 
 From the read-only ops step `render-diagnose` (run 45644272391) and a search of the repository:

@@ -257,40 +257,6 @@ CADDY
       echo "Caddy site NOT changed (Caddy refused the new file; the old one is back)." >&2; exit 1
     fi
     ;;
-  render-diagnose)
-    # Read only: what is still on Render. Names only (never values): the RENDER_* and CLOUDFLARE_*
-    # settings in .env and in the Admin key store, then, when a Render key exists, the Render service
-    # "quantpocket": its state, custom domains, environment variable names, disks, and other services.
-    echo "--- .env: RENDER_* and CLOUDFLARE_* names"
-    grep -oE '^(RENDER_[A-Z0-9_]*|CLOUDFLARE_[A-Z0-9_]*)=' "$ENVF" 2>/dev/null | tr -d '=' | sed 's/^/  /' || echo "  none"
-    echo "--- the key store and Render (from inside the app)"
-    (cd "$APP" && docker compose exec -T app node --input-type=module -e '
-      const K = await import("file:///app/src/keystore.js");
-      await K.initKeystore({ every: 0 });
-      const rows = K.report().groups.flatMap(g => g.keys);
-      const pick = rows.filter(k => /^(RENDER_|CLOUDFLARE_)/.test(k.name) && k.source !== "missing").map(k => `${k.name} (${k.source})`);
-      console.log("  set: " + (pick.join(", ") || "no RENDER_* or CLOUDFLARE_* key"));
-      const rk = K.secret("RENDER_API_KEY").trim();
-      if (!rk) { console.log("  no RENDER_API_KEY: the Render service cannot be read from here"); process.exit(0); }
-      const get = async p => { const r = await fetch("https://api.render.com/v1" + p, { headers: { authorization: "Bearer " + rk, accept: "application/json" }, signal: AbortSignal.timeout(20000) }); if (!r.ok) throw new Error(p + " answered " + r.status); return r.json(); };
-      try {
-        const all = await get("/services?limit=50");
-        console.log("  services: " + all.map(x => `${x.service.name} [${x.service.type}${x.service.suspended === "suspended" ? ", suspended" : ""}]`).join(", "));
-        const q = all.map(x => x.service).find(s => s.name === "quantpocket");
-        if (!q) { console.log("  no service named quantpocket"); process.exit(0); }
-        console.log("  quantpocket: id " + q.id + ", " + (q.suspended || "state unknown") + ", url " + (q.serviceDetails?.url || "-"));
-        const dom = await get(`/services/${q.id}/custom-domains`).catch(e => ({ error: e.message }));
-        console.log("  custom domains: " + (Array.isArray(dom) ? dom.map(d => `${d.customDomain.name} (${d.customDomain.verificationStatus})`).join(", ") || "none" : dom.error));
-        const env = await get(`/services/${q.id}/env-vars?limit=100`).catch(e => ({ error: e.message }));
-        console.log("  env var names: " + (Array.isArray(env) ? env.map(e => e.envVar.key).join(", ") || "none" : env.error));
-        const disks = await get(`/disks?serviceId=${q.id}`).catch(e => ({ error: e.message }));
-        console.log("  disks: " + (Array.isArray(disks) ? disks.map(d => d.disk?.name || d.name).join(", ") || "none" : disks.error));
-        const deps = await get(`/services/${q.id}/deploys?limit=1`).catch(e => ({ error: e.message }));
-        console.log("  last deploy: " + (Array.isArray(deps) && deps[0] ? `${deps[0].deploy.status} ${deps[0].deploy.finishedAt || ""}` : (deps.error || "none")));
-      } catch (e) { console.log("  Render API: " + e.message); }
-      process.exit(0);
-    ') 2>&1 | head -40 || true
-    ;;
   address-diagnose)
     # Read only: which address the site has, why visitors reach the other one. Settings are printed as
     # names with their values only when they are not secret; secrets show presence and length only.
@@ -316,7 +282,7 @@ CADDY
       echo "  $n: ${c:-no certificate from this server}"
     done
     echo "--- what the main address answers (through its DNS)"
-    curl -sS -o /dev/null -D - --max-time 20 https://app.brightolio.com/internal/edge-check 2>&1 | grep -iE '^(HTTP|server|x-render|cf-ray|location)' | tr -d '\r' | sed 's/^/  /' || true
+    curl -sS -o /dev/null -D - --max-time 20 https://app.brightolio.com/internal/edge-check 2>&1 | grep -iE '^(HTTP|server|cf-ray|location)' | tr -d '\r' | sed 's/^/  /' || true
     curl -sS --max-time 20 https://app.brightolio.com/internal/edge-check 2>/dev/null | head -c 200 | sed 's/^/  body: /' || true; echo
     echo "--- this app process (what the one-address redirect checks)"
     curl -sS --max-time 10 http://127.0.0.1:3000/internal/edge-check 2>/dev/null | head -c 200 | sed 's/^/  /' || true; echo

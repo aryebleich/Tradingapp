@@ -18,5 +18,5 @@ A native Android app (Kotlin, Jetpack Compose), built and published by
 - Google Play: every build also makes `brightfolio.aab` (signed with the same key, used as the Play
   upload key). With the `PLAY_SERVICE_ACCOUNT_JSON` secret it is uploaded to Play automatically;
   the one-time owner steps are in `play/README.md`. With Play App Signing, add Google's app-signing
-  certificate SHA-256 (Play Console → App integrity) to `ANDROID_CERT_SHA256` in Render, next to
+  certificate SHA-256 (Play Console → App integrity) to `ANDROID_CERT_SHA256` in Admin → Keys, next to
   this key's, comma-separated, so sign-in links keep opening the app.

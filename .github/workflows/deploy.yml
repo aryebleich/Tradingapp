@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       # The Oracle server deploys itself: every 2 minutes it builds the newest main and switches
-      # only when the new version answers (deploy/vm/update.sh). Render is a redirect only.
+      # only when the new version answers (deploy/vm/update.sh).
       # After the new version is live: paper must still go to paper and real money to real money.
       - name: Check paper and live routing on the live site
         env:

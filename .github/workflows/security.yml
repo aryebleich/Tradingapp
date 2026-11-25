@@ -3,8 +3,8 @@ name: Security check
 #   1. npm audit: fails on any high or critical advisory in the app's dependencies;
 #   2. Node.js: when nodejs.org publishes a newer security release, raises security/node-floor.json
 #      and package.json engines, tests, and commits it (the app then refuses older Node.js);
-#   3. Render: starts a fresh build, so the service always runs the newest Node.js 22 and a fresh
-#      certificate store (the Oracle server rebuilds its image with --pull at every deploy).
+#   The Oracle server rebuilds its image with --pull at every deploy, so it runs the newest Node.js 22
+#   and a fresh certificate store.
 # Dependabot (.github/dependabot.yml) opens update pull requests for npm packages, the Docker base
 # image and GitHub Actions; this check catches what lands between them.
 on:

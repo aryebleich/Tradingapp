@@ -40,7 +40,7 @@ jobs:
           render=$(printf '%s' "$h" | grep -ic '^x-render-origin-server' || true)
           echo "DNS A: [$a] CNAME: [$c] (Oracle: $ip); /healthz host: ${host:-none}; Render header: $render"
           direct=false; case ",$a," in *",$ip,"*) direct=true;; esac
-          if [ "$host" = oracle ] && [ "$render" = 0 ] && { $direct || [ -z "$c" ]; } && ! printf '%s' "$c" | grep -q onrender; then
+          if [ "$host" = oracle ] && [ "$render" = 0 ] && { $direct || [ -z "$c" ]; }; then
             echo "done=true" >> "$GITHUB_OUTPUT"
           else echo "done=false" >> "$GITHUB_OUTPUT"; fi
           { echo "a=$a"; echo "host=${host:-none}"; echo "direct=$direct"; } >> "$GITHUB_OUTPUT"

@@ -114,7 +114,7 @@ mock is used), screen readers by a person, colour contrast with a measuring tool
 
 ### Staging deployment
 
-1. Create a staging service (a second Render service, or any host) from branch `feature/trading-tools` with its **own
+1. Create a staging service (a second server, or any host) from branch `feature/trading-tools` with its **own
    database**, `NODE_ENV=production`, `ENCRYPTION_KEY`, Alpaca **paper** keys and market-data keys, and optionally an AI
    provider key. No live brokerage keys.
 2. Sign in as the owner on staging (staging has only

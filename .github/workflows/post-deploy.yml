@@ -37,7 +37,7 @@ jobs:
           check-latest: true
       - name: Wait until the live site serves this commit, then smoke-test it
         run: |
-          APP_URL="${APP_URL_VAR:-}"; case "$APP_URL" in ""|*onrender.com*|*sslip.io*) APP_URL="https://app.brightolio.com";; esac # the main address: the server sends pages on its direct address there (301)
+          APP_URL="${APP_URL_VAR:-}"; case "$APP_URL" in https://*brightolio.com*) ;; *) APP_URL="https://app.brightolio.com";; esac # the main address: the server sends pages on its direct address there (301)
           echo "APP_URL=$APP_URL" >> "$GITHUB_ENV"
           for _ in $(seq 1 40); do
             commit=$(curl -fsS --max-time 20 "${APP_URL%/}/healthz/routing" 2>/dev/null | python3 -c "import sys,json;print(json.load(sys.stdin).get('commit') or '')" 2>/dev/null || true)
