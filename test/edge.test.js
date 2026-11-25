@@ -54,20 +54,20 @@ test('Set up the edge: one token, then account, store, Worker, keep-warm, server
   assert.equal(r.status, 400); assert.match(r.body.error, /Add your servers/);
 
   await api('/admin/hosting/servers', { id: 'oracle', kind: 'oracle-vm', url: 'https://1-2-3-4.sslip.io' });
-  await api('/admin/hosting/servers', { id: 'render', kind: 'render', url: 'https://demo.onrender.com' });
+  await api('/admin/hosting/servers', { id: 'spare', kind: 'custom', url: 'https://spare.example.net' });
   await api('/admin/hosting/servers', { id: 'self', kind: 'custom', url: 'https://app.example.com' }); // the edge's own name: never an origin
   calls.length = 0;
   r = await api('/admin/hosting/edge', { domain: 'app.example.com', password: 'Str0ngPassword1' });
   assert.equal(r.status, 200, JSON.stringify(r.body));
   assert.equal(r.body.url, 'https://app.example.com'); assert.equal(r.body.route, true);
-  assert.deepEqual(r.body.origins, ['https://1-2-3-4.sslip.io', 'https://demo.onrender.com']);
+  assert.deepEqual(r.body.origins, ['https://1-2-3-4.sslip.io', 'https://spare.example.net']);
   assert.ok(calls.every(c => c.auth === 'Bearer cf-token'));
   const upload = calls.find(c => c.method === 'PUT' && c.p === '/accounts/acc9/workers/scripts/brightfolio-edge');
   assert.ok(upload, 'Worker uploaded');
   assert.match(upload.body, /"namespace_id":"kv9"/); assert.match(upload.body, /"name":"EDGE_SECRET"/); assert.match(upload.body, /export default/);
   assert.ok(upload.body.includes(edgeSecret()), 'the edge gets the secret the servers already share');
   assert.ok(calls.find(c => c.p.endsWith('/schedules') && /\*\/5/.test(c.body)), 'keep-warm schedule');
-  assert.equal(calls.find(c => c.p.endsWith('/values/origins')).body, JSON.stringify(['https://1-2-3-4.sslip.io', 'https://demo.onrender.com']));
+  assert.equal(calls.find(c => c.p.endsWith('/values/origins')).body, JSON.stringify(['https://1-2-3-4.sslip.io', 'https://spare.example.net']));
   assert.ok(calls.find(c => c.method === 'PATCH' && c.p === '/zones/z9/dns_records/r1' && /"proxied":true/.test(c.body)), 'the name goes through Cloudflare');
   assert.ok(calls.find(c => c.method === 'POST' && c.p === '/zones/z9/workers/routes' && /app\.example\.com\/\*/.test(c.body)), 'route on the domain');
 

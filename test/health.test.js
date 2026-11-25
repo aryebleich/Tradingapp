@@ -32,8 +32,8 @@ test('/healthz/full: database, schema and routing together; /healthz stays a sim
   assert.equal(h.status, 200, JSON.stringify(j));
   assert.equal(j.database.reachable, true); assert.equal(j.database.schemaOk, true); assert.equal(j.routing.ok, true);
   assert.equal((await fetch(s.base + '/healthz')).status, 200);
-  // On Render without DATABASE_URL the full check fails (data would be lost on restart).
-  process.env.RENDER = '1';
+  // On a host without a lasting disk (REQUIRE_HOSTED_DB=1) and no DATABASE_URL the full check fails (data would be lost on restart).
+  process.env.REQUIRE_HOSTED_DB = '1';
   try { const r = await fetch(s.base + '/healthz/full'); assert.equal(r.status, 500); assert.match((await r.json()).problems.join(' '), /DATABASE_URL is not set/); }
-  finally { delete process.env.RENDER; }
+  finally { delete process.env.REQUIRE_HOSTED_DB; }
 });

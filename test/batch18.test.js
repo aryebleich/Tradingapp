@@ -45,9 +45,9 @@ test('hosting: servers, health, switching through the edge and DNS; only the act
   const tick = () => fetch(base + '/internal/tick', { method: 'POST', headers: { Authorization: 'Bearer tick-secret' } }).then(r => r.json());
   assert.notEqual((await tick()).skipped, true);
   // Addresses must be https (the fakes are http, so the health check is pointed at them directly).
-  assert.equal((await owner('/admin/hosting/servers', { id: 'local', kind: 'render', url: 'http://insecure.example' })).status, 400);
-  assert.equal((await owner('/admin/hosting/servers', { id: 'Bad Id!', kind: 'render', url: 'https://a.example' })).status, 400);
-  assert.equal((await owner('/admin/hosting/servers', { id: 'local', kind: 'render', name: 'Render', url: 'https://local.example' })).status, 200);
+  assert.equal((await owner('/admin/hosting/servers', { id: 'local', kind: 'oracle-vm', url: 'http://insecure.example' })).status, 400);
+  assert.equal((await owner('/admin/hosting/servers', { id: 'Bad Id!', kind: 'oracle-vm', url: 'https://a.example' })).status, 400);
+  assert.equal((await owner('/admin/hosting/servers', { id: 'local', kind: 'oracle-vm', name: 'Test server', url: 'https://local.example' })).status, 200);
   assert.equal((await owner('/admin/hosting/servers', { id: 'oracle', kind: 'oracle-vm', url: 'https://oracle.example', hook: 'https://hooks.example/deploy?key=secret' })).status, 200);
   const siteGet = () => H.hostingConfig(), siteSet = (k, v) => H.saveHosting(v);
   const c = siteGet('hosting');

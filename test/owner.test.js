@@ -1,27 +1,21 @@
 // Owner features: built-in admins, admins added in Admin, sign-in by text code (owner phone),
-// GitHub sign-in against a fake GitHub, business mode, and the keys page with .env and Render.
+// GitHub sign-in against a fake GitHub, business mode, and the keys page with .env (kept on this server).
 const { test, before, after } = await import('node:test');
 const assert = (await import('node:assert/strict')).default;
 const http = await import('node:http');
 const { app } = await import('../server.js');
 
-let server, base, fake, renderVars = {}, deploys = 0;
+let server, base, fake;
 before(async () => {
   await new Promise(r => { server = app.listen(0, () => { base = `http://127.0.0.1:${server.address().port}`; r(); }); });
-  // One fake server plays GitHub (web + API) and the Render API.
+  // One fake server plays GitHub (web + API).
   fake = http.createServer((req, res) => {
     let body = ''; req.on('data', c => (body += c)); req.on('end', () => {
       const json = (s, o) => { res.writeHead(s, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(o)); };
       if (req.url === '/login/oauth/access_token') return new URLSearchParams(body).get('code') === 'good' ? json(200, { access_token: 'gho_x' }) : json(200, { error: 'bad_verification_code' });
       if (req.url === '/user') return json(200, { id: 4242, login: 'octo' });
       if (req.url === '/user/emails') return json(200, [{ email: 'old@example.com', verified: false, primary: false }, { email: 'Octo@Example.com', verified: true, primary: true }]);
-      if (req.headers.authorization !== 'Bearer rnd_test') return json(401, { message: 'unauthorized' });
-      const m = req.url.match(/^\/v1\/services\/srv-test\/(env-vars(?:\/([A-Z_0-9]+))?|deploys)/);
-      if (!m) return json(404, {});
-      if (m[1] === 'deploys') { deploys++; return json(201, { id: 'dep-1' }); }
-      if (req.method === 'GET') return json(200, Object.entries(renderVars).map(([key, value]) => ({ envVar: { key, value }, cursor: key })));
-      if (req.method === 'PUT') { renderVars[m[2]] = JSON.parse(body).value; return json(200, { key: m[2], value: renderVars[m[2]] }); }
-      if (req.method === 'DELETE') { delete renderVars[m[2]]; res.writeHead(204); return res.end(); }
+      json(404, {});
     });
   });
   await new Promise(r => fake.listen(0, r));
@@ -96,7 +90,7 @@ test('GitHub sign-up, linking by verified email, and failures', async () => {
   } finally { for (const k of ['GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'GITHUB_URL', 'GITHUB_API_URL']) delete process.env[k]; }
 });
 
-test('business mode, keys page, .env import/export and Render sync', async () => {
+test('business mode, keys page and .env import (kept on this server, no Render sync)', async () => {
   const owner = client();
   await owner.call('/auth/register', { email: 'site-owner@example.com', password: 'Str0ngPassword' });
   // Software only by default; adviser mode needs the registration confirmed.
@@ -128,20 +122,13 @@ test('business mode, keys page, .env import/export and Render sync', async () =>
   const out = await owner.call('/admin/site/env/export', { password: 'Str0ngPassword' });
   assert.equal(out.status, 410); assert.equal(out.text.includes('re_1234567890abcd'), false);
 
-  // Render: not connected yet, then connected through the fake Render API.
-  assert.equal((await owner.call('/admin/site/env/render/push', {})).status, 400);
-  Object.assign(process.env, { RENDER_API_URL: `http://127.0.0.1:${fake.address().port}/v1`, RENDER_SERVICE_ID: 'srv-test' });
+  // No Render: the sync routes are gone, the keys page names no Render, and a key is set and cleared on this server only.
   try {
-    await owner.call('/admin/site/env', { key: 'RENDER_API_KEY', value: 'rnd_test' }, 'PUT');
-    assert.equal((await owner.call('/admin/site/env')).body.render.enabled, true);
+    for (const p of ['/admin/site/env/render/push', '/admin/site/env/render/pull', '/admin/site/env/render/deploy']) assert.equal((await owner.call(p, {})).status, 404, p);
+    assert.equal((await owner.call('/admin/site/env')).body.render, undefined);
     await owner.call('/admin/site/env', { key: 'TWILIO_FROM', value: '+18455550000' }, 'PUT');
-    assert.equal(renderVars.TWILIO_FROM, '+18455550000');
-    const push = (await owner.call('/admin/site/env/render/push', { deploy: true })).body;
-    assert.ok(push.keys.includes('RESEND_API_KEY')); assert.equal(renderVars.RESEND_API_KEY, 're_1234567890abcd'); assert.equal(push.deploy, 'dep-1'); assert.equal(deploys, 1);
-    renderVars.GROQ_FROM_RENDER = 'x';
-    assert.ok((await owner.call('/admin/site/env/render/pull', {})).body.keys.includes('GROQ_FROM_RENDER'));
-    assert.equal(process.env.GROQ_FROM_RENDER, 'x');
+    assert.equal(process.env.TWILIO_FROM, '+18455550000');
     await owner.call('/admin/site/env', { key: 'TWILIO_FROM', value: '' }, 'PUT');
-    assert.equal(renderVars.TWILIO_FROM, undefined); assert.equal(process.env.TWILIO_FROM, undefined);
-  } finally { for (const k of ['RENDER_API_URL', 'RENDER_SERVICE_ID', 'RENDER_API_KEY', 'GROQ_FROM_RENDER', 'RESEND_API_KEY', 'EMAIL_FROM', 'TRIAL_DAYS', 'MY_EXTRA']) delete process.env[k]; }
+    assert.equal(process.env.TWILIO_FROM, undefined);
+  } finally { for (const k of ['RESEND_API_KEY', 'EMAIL_FROM', 'TRIAL_DAYS', 'MY_EXTRA', 'TWILIO_FROM']) delete process.env[k]; }
 });

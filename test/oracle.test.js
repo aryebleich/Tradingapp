@@ -15,10 +15,10 @@ const hasSqlite = spawnSync('sqlite3', ['-version']).status === 0;
 
 test('PERSISTENT_DISK=1: a database file on a lasting disk passes the start-up check on a hosted server', () => {
   const probe = env => JSON.parse(execFileSync(process.execPath, ['--input-type=module', '-e', "const D = await import('./src/db.js'); console.log(JSON.stringify({ lasting: D.persistentDb, needs: D.needsHostedDb(), kind: D.dbKind() })); process.exit(0)"],
-    { cwd: root, env: { ...process.env, DATABASE_URL: '', DB_FILE: path.join(tmp, 'probe.db'), RENDER: '1', ...env }, encoding: 'utf8' }).trim().split('\n').pop());
+    { cwd: root, env: { ...process.env, DATABASE_URL: '', DB_FILE: path.join(tmp, 'probe.db'), REQUIRE_HOSTED_DB: '1', ...env }, encoding: 'utf8' }).trim().split('\n').pop());
   assert.deepEqual(probe({ PERSISTENT_DISK: '1' }), { lasting: true, needs: false, kind: 'file' });
   const without = probe({ PERSISTENT_DISK: '' });
-  assert.equal(without.lasting, false); assert.equal(without.needs, true); // a plain file on Render is still refused
+  assert.equal(without.lasting, false); assert.equal(without.needs, true); // a plain file on a host without a lasting disk is still refused
 });
 
 test('an online backup (VACUUM INTO) has the same rows, and restore.sh puts it back', async () => {
