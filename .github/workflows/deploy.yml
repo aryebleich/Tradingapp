@@ -25,12 +25,12 @@ jobs:
       # After the new version is live: paper must still go to paper and real money to real money.
       - name: Check paper and live routing on the live site
         env:
-          APP_URL_VAR: ${{ vars.APP_URL }}
           ORACLE_HOST: ${{ vars.ORACLE_HOST }}
           SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
-          APP_URL="${APP_URL_VAR:-}"; case "$APP_URL" in ""|*onrender.com*) APP_URL="https://$(echo "${ORACLE_HOST:-138.2.233.183}" | tr . -).sslip.io";; esac
-          url="${APP_URL%/}/healthz/routing"
+          # The server itself, directly (its own name, not the visitors' address): these are checks of the server.
+          DIRECT="https://$(echo "${ORACLE_HOST:-138.2.233.183}" | tr . -).sslip.io"
+          url="${DIRECT%/}/healthz/routing"
           # Wait (up to 20 minutes) for the server to serve this commit, then check it.
           for _ in $(seq 1 40); do
             body=$(curl -fsS --max-time 20 "$url" 2>/dev/null || true)
@@ -56,11 +56,11 @@ jobs:
       # mistaken for a code failure.
       - name: Check the database on the live site
         env:
-          APP_URL_VAR: ${{ vars.APP_URL }}
           ORACLE_HOST: ${{ vars.ORACLE_HOST }}
         run: |
-          APP_URL="${APP_URL_VAR:-}"; case "$APP_URL" in ""|*onrender.com*) APP_URL="https://$(echo "${ORACLE_HOST:-138.2.233.183}" | tr . -).sslip.io";; esac
-          body=$(curl -sS --max-time 30 "${APP_URL%/}/healthz/full" || true)
+          # The server itself, directly (its own name, not the visitors' address): these are checks of the server.
+          DIRECT="https://$(echo "${ORACLE_HOST:-138.2.233.183}" | tr . -).sslip.io"
+          body=$(curl -sS --max-time 30 "${DIRECT%/}/healthz/full" || true)
           [ -n "$body" ] || { echo "::warning::/healthz/full did not answer (the server may still be on an older version)."; exit 0; }
           printf '%s' "$body" | python3 -c "
           import sys, json

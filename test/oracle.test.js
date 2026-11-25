@@ -165,8 +165,10 @@ test('Render is a redirect only: every path 301 to the same path on Oracle, /hea
   const a = call('/app?x=1');
   assert.equal(a.status, 301); assert.equal(a.headers.location, 'https://app.brightolio.com/app?x=1');
   assert.equal(call('//evil.example/x').headers.location, 'https://app.brightolio.com/', 'no open redirect');
-  assert.equal(call('/app', 'app.brightolio.com').headers.location, 'https://138-2-233-183.sslip.io/app', 'never a loop while the domain still points at Render');
-  assert.equal(call('/app', 'something-else.example').headers.location, 'https://138-2-233-183.sslip.io/app', 'an unknown host is never sent to the main address');
+  // Not forwarding yet: a visitor gets the retry page, never the server's own address (that is where they used to land).
+  const notYet = call('/app', 'app.brightolio.com');
+  assert.equal(notYet.status, 503); assert.equal(notYet.headers.location, undefined, 'no redirect to the server address'); assert.match(notYet.body, /Taking longer than usual/);
+  assert.equal(call('/app', 'something-else.example').status, 503, 'an unknown host is never sent to the server address either');
   assert.equal(call('/healthz').status, 200);
   const y = fs.readFileSync(new URL('../render.yaml', import.meta.url), 'utf8');
   assert.match(y, /startCommand: node src\/render-redirect\.js/); assert.doesNotMatch(y, /DATABASE_URL|ENCRYPTION_KEY|CRON_SECRET/);
@@ -206,13 +208,15 @@ test('Render passes the main address on to the Oracle app (edge secret, original
   const ask = (p, host = 'app.brightolio.com') => new Promise((ok, no) => { const q = http.request({ host: '127.0.0.1', port: front.address().port, path: p, headers: { host } }, res => { let b = ''; res.on('data', d => (b += d)); res.on('end', () => ok({ status: res.statusCode, location: res.headers.location, body: b })); }); q.on('error', no); q.end(); });
   try {
     R.setTrusted(false);
-    assert.equal((await ask('/app')).location, base + '/app', 'not trusted yet: a redirect to the server address');
+    const wait = await ask('/app');
+    assert.equal(wait.status, 503, 'not trusted yet: the retry page'); assert.equal(wait.location, undefined, 'never a redirect to the server address');
     assert.equal(await R.checkTrust(), true);
     const e = JSON.parse((await ask('/internal/edge-check')).body);
     assert.equal(e.trusted, true); assert.equal(e.host, 'app.brightolio.com'); assert.match(e.boot, /^[0-9a-f]{16}$/);
     const me = await ask('/api/auth/me');
     assert.equal(me.status, 200); assert.equal(JSON.parse(me.body).user, null);
     assert.equal((await ask('/app', 'quantpocket.onrender.com')).location, 'https://app.brightolio.com/app');
+    // The forwarder itself must never name the server's address to a visitor.
   } finally {
     front.close(); R.setTrusted(false); delete process.env.REDIRECT_FALLBACK; delete process.env.REDIRECT_TO;
     if (keepKey === undefined) delete process.env.ENCRYPTION_KEY; else process.env.ENCRYPTION_KEY = keepKey;

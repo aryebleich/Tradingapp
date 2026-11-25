@@ -168,3 +168,13 @@ public IP in the `ORACLE_HOST` variable and its key in `ORACLE_SSH_KEY`, then:
 ## Decisions
 
 DECISIONS.md, "Move to Oracle Cloud" (OR-1 to OR-13) and "Finishing the move" (OR-14 to OR-26).
+
+## One address: https://app.brightolio.com
+
+- **The site's address** is `PUBLIC_URL` (and `APP_DOMAIN`, which sets the Caddy site) = https://app.brightolio.com. Visitors on any other address of this server get a 301 to the same path there: its own name (`138-2-233-183.sslip.io`) and its bare IP over HTTP. Health checks, `/internal/*`, webhooks, sign-in returns and the load test (with its header) are not redirected, and a request forwarded by Render (it carries the edge secret) is never redirected, which would loop.
+- **Render** still answers app.brightolio.com (Cloudflare proxies it to Render), and Render passes every request for the main address on to the Oracle server while it is trusted. While it is not trusted, a visitor gets a "taking longer than usual" page that tries again; it is never sent to the server's own address. `REDIRECT_FALLBACK` (render.yaml, https://138-2-233-183.sslip.io) is only the server-to-server target.
+- **The one-address redirect in the app** (server.js) is on only while the main address really reaches this server (its own check, every five minutes). Admin → Hosting shows a red warning when it does not.
+- **To set up a server** (`deploy/vm/setup.sh`): the main domain defaults to app.brightolio.com (`APP_DOMAIN`), and `PUBLIC_URL`, `PUBLIC_ORIGINS` (the app domain and the GitHub Pages origin) are written from it.
+- **To change the Caddy site later**: set `APP_DOMAIN` (Admin → Keys or the ops step set-env), then run the ops step `caddy-site` (Actions → Oracle database move → step caddy-site). The file is checked by Caddy before it is loaded; the old file comes back if Caddy refuses it.
+- **Diagnose**: the ops step `address-diagnose` (read only) prints the settings that name an address, the DNS, the certificate each name gets, and what the main address answers.
+- **Outside settings to update by hand** (the app cannot change them): Google sign-in (the authorized JavaScript origin https://app.brightolio.com and the redirect URI https://app.brightolio.com/auth/google/callback), Stripe webhook endpoints (https://app.brightolio.com/webhooks/stripe), the OpenAI webhook (https://app.brightolio.com/api/webhooks/openai), any other service registered to the server's own address, the repository variable `APP_URL` (set to https://app.brightolio.com), and the `ORACLE_ENV` secret (add `PUBLIC_URL=https://app.brightolio.com` and `PUBLIC_ORIGINS=https://app.brightolio.com,https://aryebleich.github.io` so a re-install keeps them).

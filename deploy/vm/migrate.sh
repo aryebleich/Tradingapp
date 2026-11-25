@@ -203,6 +203,60 @@ case "$step" in
     echo "--- images: $(docker images brightfolio --format '{{.Tag}}={{.ID}} {{.CreatedSince}}' | paste -sd' ' -); running: $(docker inspect -f '{{.Image}}' brightfolio-app-1 2>/dev/null | cut -c8-19)"
     echo "--- app start-up log"; (cd "$APP" && docker compose logs --tail 60 app 2>&1) | grep -viE 'key|secret|token|password|authorization' | tail -40
     ;;
+  caddy-site)
+    # Rewrites the Caddy site file for APP_DOMAIN (the one address, automatic HTTPS). The server's own
+    # sslip name and its bare IP redirect visitors there (see caddy_site). Checked before it is loaded;
+    # the old file comes back if Caddy refuses it.
+    app_domain=$(val APP_DOMAIN); app_domain=${app_domain:-app.brightolio.com}
+    ip=$(curl -4fsS --max-time 10 https://api.ipify.org 2>/dev/null || true)
+    echo "$ip" | grep -Eq '^[0-9]{1,3}(\.[0-9]{1,3}){3}$' || { echo "Could not find this server's address." >&2; exit 1; }
+    sslip="$(echo "$ip" | tr . -).sslip.io"
+    cp -p /etc/caddy/Caddyfile /etc/caddy/Caddyfile.before-site
+# The Caddy site file: APP_DOMAIN is the one address (automatic HTTPS). The server's own sslip name
+# keeps its certificate, and its visitors are sent to APP_DOMAIN, except the paths the server itself
+# and its workflows use (health, readiness, metrics, internal calls, webhooks, sign-in returns and the
+# load test, which carries its own header). Its bare IPv4 address answers over HTTP with the same redirect.
+# Kept identical in deploy/vm/setup.sh and deploy/vm/migrate.sh (migrate.sh is copied to the server alone).
+caddy_site() { # caddy_site APP_DOMAIN SSLIP_NAME [IPV4]
+  local app="$1" sslip="$2" ip="${3:-}"
+  {
+    cat <<CADDY
+$app {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+	import /etc/caddy/brightolio-app.caddy
+}
+$sslip {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+	@visitor {
+		method GET HEAD
+		not path /healthz /healthz/* /readyz /readyz/* /metrics /metrics/* /internal/* /hook/* /webhooks/* /api/webhooks/* /twilio/* /oauth/* /api/v1/hook/*
+		not header x-qp-loadtest *
+		not header x-edge-secret *
+	}
+	redir @visitor https://$app{uri} permanent
+	import /etc/caddy/brightolio-app.caddy
+}
+CADDY
+    if [ -n "$ip" ]; then printf 'http://%s {\n\tredir https://%s{uri} permanent\n}\n' "$ip" "$app"; fi
+  }
+}
+
+    caddy_site "$app_domain" "$sslip" "$ip" > /etc/caddy/Caddyfile.new
+    if caddy validate --config /etc/caddy/Caddyfile.new --adapter caddyfile >/dev/null 2>&1 && mv -f /etc/caddy/Caddyfile.new /etc/caddy/Caddyfile && systemctl reload caddy; then
+      echo "Caddy: $app_domain is the address; $sslip and $ip go there."
+    else
+      rm -f /etc/caddy/Caddyfile.new; cp -p /etc/caddy/Caddyfile.before-site /etc/caddy/Caddyfile; systemctl reload caddy || true
+      echo "Caddy site NOT changed (Caddy refused the new file; the old one is back)." >&2; exit 1
+    fi
+    ;;
   address-diagnose)
     # Read only: which address the site has, why visitors reach the other one. Settings are printed as
     # names with their values only when they are not secret; secrets show presence and length only.

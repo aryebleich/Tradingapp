@@ -4,8 +4,9 @@
 //   every request is passed on to the Oracle server (FALLBACK, its direct address) with the edge
 //   secret and the address the visitor used, so the Oracle app answers as app.brightolio.com (sign-in
 //   with Google, cookies and links keep that address). Render first asks the Oracle server whether
-//   its secret is trusted (/internal/edge-check); until it is, those requests get a 301 to the
-//   server's direct address instead (never a loop).
+//   its secret is trusted (/internal/edge-check). Until it is, a visitor is NOT sent to the server's
+//   direct address (that is where visitors ended up before): they get a short "taking longer than
+//   usual" page, and the check is asked again within a minute.
 // - Every other address (quantpocket.onrender.com, old links and bookmarks): a 301 to the same path
 //   on TARGET.
 // /healthz answers here with 200 (Render's own health check, and the keep-warm ping).
@@ -21,6 +22,8 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 export const TARGET = () => (process.env.REDIRECT_TO || 'https://app.brightolio.com').replace(/\/+$/, '');
+// FALLBACK is the Oracle server's direct address: where Render passes the main address on, server to
+// server. It is never a redirect target for a visitor (that would show it in the address bar).
 export const FALLBACK = () => (process.env.REDIRECT_FALLBACK || 'https://138-2-233-183.sslip.io').replace(/\/+$/, '');
 // The same secret the Oracle app expects from its edge (src/edgesetup.js edgeSecret): EDGE_SECRET,
 // else derived from ENCRYPTION_KEY exactly as src/crypto.js does.
@@ -32,6 +35,12 @@ export function edgeSecret(env = process.env) {
 }
 let trusted = false;
 export const setTrusted = v => { trusted = v; };
+let lastRecheck = 0;
+// Asks again, at most every 30 seconds (a visitor waiting on the retry page must not start a flood of checks).
+export function recheckSoon() {
+  if (Date.now() - lastRecheck < 30e3) return;
+  lastRecheck = Date.now(); checkTrust().catch(() => {});
+}
 export async function checkTrust() {
   const sec = edgeSecret(); if (!sec) return (trusted = false);
   try {
@@ -68,14 +77,26 @@ export function redirectHandler(req, res) {
   const renderOwn = /\.onrender\.com(:\d+)?$/.test(host) && !(fwd && !/\.onrender\.com(:\d+)?$/.test(fwd));
   const main = !renderOwn;
   if (main && trusted) return forward(req, res, p);
-  const to = main ? FALLBACK() : TARGET();
-  res.writeHead(301, { location: to + p, 'cache-control': main ? 'no-store' : 'public, max-age=3600', 'content-type': 'text/plain' });
-  res.end('Brightolio moved to ' + to + p + '\n');
+  if (main) {
+    // Not forwarding yet: say so, and never send the visitor to the server's own address.
+    recheckSoon();
+    res.writeHead(503, { 'content-type': 'text/html; charset=utf-8', 'retry-after': '30', 'cache-control': 'no-store' });
+    return res.end(retryPage(TARGET() + p));
+  }
+  res.writeHead(301, { location: TARGET() + p, 'cache-control': 'public, max-age=3600', 'content-type': 'text/plain' });
+  res.end('Brightolio moved to ' + TARGET() + p + '\n');
+}
+// The page a visitor sees while the main address is not forwarded yet: it tries the same address again.
+export function retryPage(again) {
+  const u = String(again).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="8;url=${u}"><title>Brightolio</title><style>body{font:16px/1.5 system-ui,sans-serif;margin:0;min-height:100vh;display:grid;place-items:center;background:#f6f7f9;color:#111}main{max-width:460px;padding:24px}a{color:#1d4ed8}</style></head><body><main><h1 style="font-size:20px">Taking longer than usual, trying again…</h1><p>Brightolio is starting up on its server. This page tries again in a few seconds.</p><p><a href="${u}">Try now</a></p></main></body></html>`;
 }
 export function startRedirect(port = +process.env.PORT || 10000) {
   const s = http.createServer(redirectHandler);
   s.listen(port, () => console.log(`Redirect: every path → ${TARGET()}; ${new URL(TARGET()).host} is passed on to ${FALLBACK()} when trusted (port ${port})`));
   checkTrust().then(t => console.log('Forwarding the main address:', t ? 'on' : 'off (redirecting it to the server address)'));
+  // Asked again every minute while not forwarding, every five minutes once it is.
+  setInterval(() => { if (!trusted) checkTrust().catch(() => {}); }, 60e3).unref();
   setInterval(checkTrust, 5 * 60e3).unref();
   return s;
 }

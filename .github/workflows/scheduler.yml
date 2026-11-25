@@ -1,7 +1,7 @@
 # A backup clock for the Oracle server, which also runs its own scheduler: every 10 minutes it asks
 # the server to run due jobs (each job claims its slot in the database first, so nothing runs twice),
-# plus a daily equity snapshot after the US close. The address is the Oracle server's (APP_URL when it
-# is set and is not the old Render address, otherwise https://<ORACLE_HOST with dashes>.sslip.io).
+# plus a daily equity snapshot after the US close. It calls the Oracle server directly (its own address,
+# https://<ORACLE_HOST with dashes>.sslip.io): these are internal calls, not the visitors' address.
 name: App scheduler
 on:
   schedule:
@@ -15,14 +15,14 @@ jobs:
     steps:
       - name: Run due jobs
         env:
-          APP_URL_VAR: ${{ vars.APP_URL }}
           ORACLE_HOST: ${{ vars.ORACLE_HOST }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          APP_URL="${APP_URL_VAR:-}"; case "$APP_URL" in ""|*onrender.com*) APP_URL="https://$(echo "${ORACLE_HOST:-138.2.233.183}" | tr . -).sslip.io";; esac
+          # The server itself, directly (its own name, not the visitors' address): these are checks of the server.
+          DIRECT="https://$(echo "${ORACLE_HOST:-138.2.233.183}" | tr . -).sslip.io"
           if [ -z "$CRON_SECRET" ]; then echo "CRON_SECRET not set; skipping."; exit 0; fi
           q=""; if [ "${{ github.event.schedule }}" = "15 21 * * 1-5" ]; then q="?snapshot=1"; fi
-          curl -fsS --retry 3 --retry-delay 20 --max-time 90 -X POST -H "Authorization: Bearer $CRON_SECRET" "${APP_URL%/}/internal/tick$q"
+          curl -fsS --retry 3 --retry-delay 20 --max-time 90 -X POST -H "Authorization: Bearer $CRON_SECRET" "${DIRECT%/}/internal/tick$q"
           # app.brightolio.com goes through Render (free plan, sleeps after 15 minutes idle) until its DNS
           # points at the Oracle server: this keeps it awake, so visitors never wait for it to wake up.
           curl -fsS -o /dev/null --max-time 90 https://app.brightolio.com/healthz || echo "::warning::app.brightolio.com/healthz did not answer"

@@ -1,6 +1,7 @@
 // Brightolio web server: JSON API + static single-page app.
 // First, before any module that opens the database: on Render this only redirects to Oracle.
 import { rankTasks } from './src/setup-tasks.js';
+import { setMainAddressReaches } from './src/main-address.js';
 import './src/render-redirect.js';
 import './src/fetch-timeout.js'; // a time limit on every outside call (PERFORMANCE.md)
 import * as SEO from './src/seo.js';
@@ -189,13 +190,15 @@ app.get('/internal/edge-check', (req, res) => res.json({ trusted: req.viaEdge ==
 // answers with this process's id): if the main address pointed anywhere else, redirecting there could
 // send visitors round in a loop. Checked at start and every 5 minutes.
 let mainReachesUs = false;
+const publishReaches = () => setMainAddressReaches(mainReachesUs);
 const checkMain = async () => {
   try { const u = new URL(process.env.PUBLIC_URL); if (u.protocol !== 'https:') return (mainReachesUs = false); const r = await fetch(u.origin + '/internal/edge-check', { signal: AbortSignal.timeout(20000), headers: { 'user-agent': 'Brightolio-self-check' } }); mainReachesUs = r.ok && (await r.json()).boot === BOOT_ID; }
   catch { mainReachesUs = false; }
+  publishReaches();
   return mainReachesUs;
 };
 export const mainAddressCheck = checkMain;
-export const setMainReaches = v => { mainReachesUs = v === true; }; // for the tests
+export const setMainReaches = v => { mainReachesUs = v === true; publishReaches(); }; // for the tests
 // One address for the site (PUBLIC_URL, e.g. https://app.brightolio.com): a page asked for on any of
 // the server's other addresses (its sslip.io address, an old link) gets a 301 to the same path there,
 // so sign-in with Google (registered for that address only), cookies and links all use one address.
@@ -209,7 +212,8 @@ app.use((req, res, next) => {
   if (req.headers['x-edge-secret'] && !req.viaEdge) return next();
   if (/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(host) || !/^https:/.test(process.env.PUBLIC_URL)) return next();
   if (req.method !== 'GET' && req.method !== 'HEAD') return next();
-  if (/^\/(healthz|readyz|internal|metrics)(\/|$)/.test(req.path)) return next();
+  // Health, the server's own calls, webhooks and sign-in returns keep working on every address (their registered URLs move to PUBLIC_URL).
+  if (/^\/(healthz|readyz|internal|metrics|hook|webhooks|api\/webhooks|api\/v1\/hook|twilio|oauth)(\/|$)/.test(req.path)) return next();
   // The load test runs against this server's own address with its CRON_SECRET (never a visitor).
   if (req.headers['x-qp-loadtest'] && process.env.CRON_SECRET && safeEqual(String(req.headers['x-qp-loadtest']), process.env.CRON_SECRET)) return next();
   res.redirect(301, process.env.PUBLIC_URL.replace(/\/+$/, '') + req.originalUrl);

@@ -24,6 +24,8 @@ fi
 case "$DOMAIN" in *:*|.sslip.io|-*) echo "That does not look like a domain: $DOMAIN (use the server's IPv4 address with dashes, e.g. 129-146-12-34.sslip.io)" >&2; exit 1;; esac
 REPO="${2:-aryebleich/Tradingapp}"
 APP=/opt/brightfolio
+# The one address visitors use (a setting: APP_DOMAIN in .env later). The server's own name ($DOMAIN) stays for direct checks.
+APP_DOMAIN="${APP_DOMAIN:-app.brightolio.com}"
 
 echo "== System updates and basics"
 export DEBIAN_FRONTEND=noninteractive
@@ -62,18 +64,45 @@ if ! command -v caddy >/dev/null; then
   curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' > /etc/apt/sources.list.d/caddy-stable.list
   apt-get update -y && apt-get install -y caddy
 fi
-cat >/etc/caddy/Caddyfile <<EOF
-$DOMAIN {
+# The Caddy site file: APP_DOMAIN is the one address (automatic HTTPS). The server's own sslip name
+# keeps its certificate, and its visitors are sent to APP_DOMAIN, except the paths the server itself
+# and its workflows use (health, readiness, metrics, internal calls, webhooks, sign-in returns and the
+# load test, which carries its own header). Its bare IPv4 address answers over HTTP with the same redirect.
+# Kept identical in deploy/vm/setup.sh and deploy/vm/migrate.sh (migrate.sh is copied to the server alone).
+caddy_site() { # caddy_site APP_DOMAIN SSLIP_NAME [IPV4]
+  local app="$1" sslip="$2" ip="${3:-}"
+  {
+    cat <<CADDY
+$app {
 	encode zstd gzip
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		-Server
 	}
-	reverse_proxy 127.0.0.1:3000 {
-		flush_interval -1
-	}
+	import /etc/caddy/brightolio-app.caddy
 }
-EOF
+$sslip {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+	@visitor {
+		method GET HEAD
+		not path /healthz /healthz/* /readyz /readyz/* /metrics /metrics/* /internal/* /hook/* /webhooks/* /api/webhooks/* /twilio/* /oauth/* /api/v1/hook/*
+		not header x-qp-loadtest *
+		not header x-edge-secret *
+	}
+	redir @visitor https://$app{uri} permanent
+	import /etc/caddy/brightolio-app.caddy
+}
+CADDY
+    if [ -n "$ip" ]; then printf 'http://%s {\n\tredir https://%s{uri} permanent\n}\n' "$ip" "$app"; fi
+  }
+}
+
+IPV4=""; case "$DOMAIN" in *.sslip.io) IPV4="$(echo "${DOMAIN%.sslip.io}" | tr - .)";; esac
+caddy_site "$APP_DOMAIN" "$DOMAIN" "$IPV4" > /etc/caddy/Caddyfile
 # Check the settings first, then (re)start; a start that fails shows Caddy's own reason.
 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 systemctl enable caddy
@@ -90,7 +119,9 @@ if [ ! -f "$APP/.env" ]; then
 NODE_ENV=production
 PORT=3000
 HOST_ID=oracle
-PUBLIC_URL=https://$DOMAIN
+PUBLIC_URL=https://$APP_DOMAIN
+APP_DOMAIN=$APP_DOMAIN
+PUBLIC_ORIGINS=https://$APP_DOMAIN,https://aryebleich.github.io
 DB_FILE=/app/data/quantpocket.db
 PERSISTENT_DISK=1
 # ENCRYPTION_KEY=...          (the same as on your other servers, or saved keys cannot be read)

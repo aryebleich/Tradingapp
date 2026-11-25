@@ -15,5 +15,6 @@ services:
       # The newest Node.js 22 at every build (security fixes).
       - { key: NODE_VERSION, value: "22" }
       - { key: REDIRECT_TO, value: "https://app.brightolio.com" }
-      # Used only if app.brightolio.com itself still points at Render (no loop).
+      # The Oracle server's own address: Render passes the main address on to it, server to server. Visitors are
+      # never sent here (a redirect would show this address in their browser).
       - { key: REDIRECT_FALLBACK, value: "https://138-2-233-183.sslip.io" }

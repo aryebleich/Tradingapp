@@ -13,6 +13,7 @@
 //   keep warm the active server calls its own public address every 9 minutes, so a free host
 //             that sleeps idle apps never makes the next visitor wait for it to wake up.
 import express from 'express';
+import { mainAddressReaches, mainAddressWarning } from './main-address.js';
 import { requireUser, requireAdmin, confirmsIdentity } from './auth.js';
 import { audit, now, one } from './db.js';
 import { siteGet, siteSet } from './site.js';
@@ -132,6 +133,7 @@ export const hostingRouter = (() => {
     res.json({
       thisHost: thisHost(), active: c.active, keepWarm: c.keepWarm !== false, switchedAt: c.switchedAt || null,
       servers: c.servers.map(s => ({ ...pub(s), health: health.find(h => h.id === s.id) })), kinds: KINDS,
+      mainAddress: { url: process.env.PUBLIC_URL || null, reaches: mainAddressReaches(), warning: mainAddressWarning(process.env.PUBLIC_URL, mainAddressReaches()) },
       edge: { ready: edgeReady(), dns: dnsReady(), domain: process.env.SITE_DOMAIN || null, publicUrl: process.env.PUBLIC_URL || null, secret: !!edgeSecret(), token: !!process.env.CLOUDFLARE_API_TOKEN, setup: edgeConfig().url ? { url: edgeConfig().url, route: !!edgeConfig().route, origins: edgeConfig().origins || [], at: edgeConfig().at } : null, check: await edgeCheck() },
       database: process.env.DATABASE_URL ? 'shared (DATABASE_URL)' : 'local file: every server would have its own data, set DATABASE_URL first',
     });
