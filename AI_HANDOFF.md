@@ -18,7 +18,7 @@ The shared work board of **Claude**, **Codex (ChatGPT)** and **Grok**. Each assi
 | --- | --- | --- | --- | --- | --- |
 | Claude | TEAM-01 | active | 2026-11-26 14:05 | 84a43b1 | Finish TEAM-01, then take REV-01 (Plans and billing with credits). |
 | Codex | — | idle | 2026-11-26 14:10 | 5c80fec | Take REV-02 (Unlock with Pro labels). |
-| Grok | — | idle | — | — | Take RES-01 (pricing and competitor research). |
+| Grok | RES-01 | done | 2026-11-26 15:33 | 3c8ebaf | Take RES-02 (AI picks / portfolios disclosure review) when ready. |
 
 ## Queue
 
@@ -32,7 +32,6 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 | REV-03 | ready | 3 | Claude | — | — | Honest trial-end reminders: an in-app notice 3 days and 1 day before a trial ends, with the price and a one-tap cancel. No countdowns. Done when tests cover the timing, the copy and the opt-out, and real email sends only with the user's comms opt-in. |
 | CI-01 | ready | 4 | Codex | — | — | Fix the failing Clean code and README run (the private README check) and the Deep check (its issue-opening step). Done when both are green on main. |
 | TRUST-01 | ready | 5 | Codex | — | — | A public status page (/status): uptime from /healthz history, the last incidents, and data-provider health, without internal details. Done when it is linked in the footer and tested. |
-| RES-01 | ready | 6 | Grok | — | — | Pricing and competitor research: plans and prices of the top retail platforms (public sources, with dates and links). Done when docs/research/pricing.md lists each one and gives 3 pricing options for Brightolio, with their trade-offs. |
 | AI-01 | ready | 7 | Claude | — | — | AI usage and caps (was AIADMIN-3): spend and tokens per day and month per provider, a monthly cap per provider ($0 default for per-use billing), and calls stop at the cap with a clear reason. Done when the tests with mocks pass. |
 | PAGES-01 | ready | 8 | Codex | — | — | The GitHub Pages deploy fails with "No artifacts named github-pages". Done when a Pages run is green. |
 | DEV-01 | ready | 9 | Codex | — | — | Developer API as a paid tier: usage metering per key, per-plan limits, and an OpenAPI file. Done when limits are enforced in tests and the docs page shows them. |
@@ -49,6 +48,7 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 | CHAT-04 | ready | 20 | Codex | — | — | A live check of the Codex activity stream in Admin → AI chat, with one short test message. Done when the result is written here (no message text in logs). |
 | PARTA-1 | ready | 21 | Claude | — | — | Part A items A1, A3, A4, A7 and A8 (definitions in DECISIONS.md and CHANGELOG_AI.md). Done when each one is a commit. |
 | OPS-02 | blocked | 30 | Claude | — | — | The Turso recovery window, scheduled from 2026-12-01 00:30 UTC. Done when its report and checks are read and written up. |
+| RES-01 | done | 6 | Grok | Grok | 2026-11-26 15:33 | Pricing and competitor research: plans and prices of the top retail platforms (public sources, with dates and links). Done when docs/research/pricing.md lists each one and gives 3 pricing options for Brightolio, with their trade-offs. |
 | PERF-01 | done | 0 | Codex | Codex | 2026-11-26 14:10 | Stock cards precomputed for the starter symbols and shared across workers (5c80fec). |
 | OPS-01 | done | 0 | Claude | Claude | 2026-11-26 13:55 | The Render files are removed after the DNS cutover. |
 | PERF-00 | done | 0 | Claude | Claude | 2026-11-25 16:33 | Performance phase 2: CPU pool, shared caches, load test passing (PERFORMANCE.md). |
@@ -66,6 +66,13 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 ## Hand-offs
 
 Newest first. Use these fields every time; the next assistant continues from **Next action**.
+
+### 2026-11-26 15:33 UTC · Grok · RES-01 · done
+- **Last SHA:** 3c8ebaf
+- **Changed:** Added docs/research/pricing.md — competitor prices (TradingView, Schwab/thinkorswim, IBKR, eToro, Robinhood Gold) with dates/links + three Brightolio pricing options (Accessible premium, Software ladder, Hybrid recommended) and trade-offs.
+- **Checks:** Research only; no code. Public sources only.
+- **Blockers:** none.
+- **Next action:** Claude: finish TEAM-01, then use the pricing note when implementing REV-01 (plans + AI credits). Codex: take REV-02. Grok next: RES-02 when free.
 
 ### 2026-11-26 14:05 UTC · Claude · TEAM-01 · active
 - **Last SHA:** 84a43b1
