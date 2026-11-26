@@ -134,7 +134,7 @@ async function assistant(view) {
   drawLive();
   const send = async text => {
     if (!text.trim()) return;
-    msgs.push({ role: 'user', content: text.trim() }); draw(); ta.value = '';
+    msgs.push({ role: 'user', content: text.trim() }); save(); draw(); ta.value = '';
     log.insertAdjacentHTML('beforeend', '<div class="msg assistant typing"><span></span><span></span><span></span></div>'); log.scrollTop = log.scrollHeight;
     try {
       const r = await H.api('/ai/chat', { body: { messages: msgs.map(({ role, content }) => ({ role, content })) } });
