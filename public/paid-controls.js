@@ -1,5 +1,7 @@
 // Display only. The API remains responsible for checking plan access.
 export const requiredPlan = Object.freeze({
+  'Sub-hourly scanners': 'Pro',
+  'More scanners': 'Pro',
   'Brokerage automation': 'Pro',
   'Saved scanner filters and alerts': 'Pro',
   'Automatic dividend reinvestment': 'Pro',
