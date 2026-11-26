@@ -13,11 +13,11 @@
     },
     {
       "name": "Codex",
-      "task": null,
-      "state": "idle",
-      "updated": "2026-11-26 14:10",
-      "lastSha": "5c80fec",
-      "next": "Take REV-02 (Unlock with Pro labels)."
+      "task": "REV-02",
+      "state": "active",
+      "updated": "2026-11-26 15:54",
+      "lastSha": "5a1fd9a",
+      "next": "Label paid controls before activation."
     },
     {
       "name": "Grok",
@@ -29,7 +29,17 @@
     }
   ],
   "queue": {
-    "active": [],
+    "active": [
+      {
+        "id": "REV-02",
+        "state": "active",
+        "priority": 2,
+        "suggested": "Codex",
+        "claimedBy": "Codex",
+        "updated": "2026-11-26 15:54",
+        "task": "\"Unlock with Pro\" labels on paid-only controls before they are pressed (PRO_REVIEW #18), from one list of paid features. Done when every paid control on the 10 most-used pages is labelled and a test checks the list."
+      }
+    ],
     "paused": [],
     "ready": [
       {
@@ -40,15 +50,6 @@
         "claimedBy": null,
         "updated": null,
         "task": "Plans and billing as a main section, with AI credits (buy, balance, history) using the existing Stripe test flow. Done when a test-mode purchase adds credits and tests cover it."
-      },
-      {
-        "id": "REV-02",
-        "state": "ready",
-        "priority": 2,
-        "suggested": "Codex",
-        "claimedBy": null,
-        "updated": null,
-        "task": "\"Unlock with Pro\" labels on paid-only controls before they are pressed (PRO_REVIEW #18), from one list of paid features. Done when every paid control on the 10 most-used pages is labelled and a test checks the list."
       },
       {
         "id": "AIP-01",
