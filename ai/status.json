@@ -76,7 +76,7 @@
         "suggested": "Codex",
         "claimedBy": null,
         "updated": null,
-        "task": "Fix the failing Clean code and README run (the private README check) and the Deep check (its issue-opening step). Done when both are green on main."
+        "task": "Fix the Deep check (its issue-opening step). The private README check is fixed (Claude, 2026-11-26: the README page is now Admin → Overview). Done when the Deep check is green on main."
       },
       {
         "id": "TRUST-01",
