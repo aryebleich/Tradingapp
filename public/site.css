@@ -200,7 +200,9 @@ code { font: 0.9em ui-monospace, SFMono-Regular, Menlo, monospace; background: c
 .ichips button:hover { border-color: color-mix(in srgb, var(--ac) 50%, var(--bd)); transform: translateY(-1px); }
 .ichips button[aria-selected=true] { background: var(--grad); color: #fff; border-color: transparent; box-shadow: 0 10px 24px color-mix(in srgb, var(--ac) 30%, transparent); }
 .ichips button[aria-selected=true] svg { color: #fff; }
-.ipanel { background: var(--card); border: 1px solid var(--bd); border-radius: 20px; padding: 30px; box-shadow: var(--shadow); animation: rise .25s ease-out; }
+.ipanel { background: var(--card); border: 1px solid var(--bd); border-radius: 20px; padding: 30px; box-shadow: var(--shadow); }
+/* The panel rises in only for visitors who haven't asked for reduced motion (like the site's other animations). */
+@media (prefers-reduced-motion: no-preference) { .ipanel { animation: rise .25s ease-out; } }
 .ipanel .ic { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: var(--grad); color: #fff; margin-bottom: 16px; }
 .ipanel h3 { font-size: 24px; letter-spacing: -0.02em; margin: 0 0 8px; }
 .ipanel p { color: var(--mu); margin: 0; }
