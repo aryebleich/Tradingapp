@@ -268,13 +268,13 @@ async function workCard(el) {
   // data-no-fig: the live work board changes with every hand-off, so the page gate doesn't compare its numbers.
   el.innerHTML = `<div class="card" data-no-fig><h2>Work status</h2>
     <p class="mu" style="margin-top:0">Claude, Codex and Grok share one board (<a href="https://github.com/aryebleich/Tradingapp/blob/main/AI_HANDOFF.md" target="_blank" rel="noopener">AI_HANDOFF.md</a>) and pick up where the last one stopped. This is the board as deployed with this version.</p>
-    ${st ? `<div class="tablewrap"><table><thead><tr><th>Assistant</th><th>Task</th><th>State</th><th>Updated (UTC)</th><th>Last push</th><th>Next action</th><th>Limit resets (UTC)</th></tr></thead><tbody>${who}</tbody></table></div>` : '<p class="mu">No ai/status.json in this version yet.</p>'}
+    ${st ? `<div class="tablewrap" tabindex="0" role="region" aria-label="Who is on what"><table><thead><tr><th>Assistant</th><th>Task</th><th>State</th><th>Updated (UTC)</th><th>Last push</th><th>Next action</th><th>Limit resets (UTC)</th></tr></thead><tbody>${who}</tbody></table></div>` : '<p class="mu">No ai/status.json in this version yet.</p>'}
     <h3>Spending caps (per month)</h3>
     <p class="mu">Anything billed per use starts at $0, so nothing costs money until you raise it. Claude through your Claude subscription (CLAUDE_CODE_OAUTH_TOKEN in GitHub) is not billed per use. Each run counts at its per-run ceiling.</p>
-    <div class="tablewrap"><table><thead><tr><th>Assistant</th><th>Cap ($)</th><th>Used</th><th>Can run now?</th><th></th></tr></thead><tbody>${caps}</tbody></table></div>
+    <div class="tablewrap" tabindex="0" role="region" aria-label="Spending caps"><table><thead><tr><th>Assistant</th><th>Cap ($)</th><th>Used</th><th>Can run now?</th><th></th></tr></thead><tbody>${caps}</tbody></table></div>
     <p><button type="button" id="wkSave">Save caps</button> <span class="ok" id="wkMsg"></span></p>
     ${d.canRun ? '' : '<p class="mu">"Run now" needs GITHUB_TOKEN in <a href="#/admin-keys">Keys</a>; the automatic loop also runs on its own schedule.</p>'}
-    <h3>Queue</h3><div class="tablewrap"><table><thead><tr><th>ID</th><th>State</th><th>Priority</th><th>Who</th><th>Task and done when</th><th></th></tr></thead><tbody>${queue}</tbody></table></div>
+    <h3>Queue</h3><div class="tablewrap" tabindex="0" role="region" aria-label="Queue"><table><thead><tr><th>ID</th><th>State</th><th>Priority</th><th>Who</th><th>Task and done when</th><th></th></tr></thead><tbody>${queue}</tbody></table></div>
     ${(st?.owner || []).length ? `<h3>Only you can do</h3><ul>${st.owner.map(o => `<li><code>${H.esc(o.id)}</code> ${H.esc(o.task)}</li>`).join('')}</ul>` : ''}
     <h3>The chain: Claude → Grok → Codex</h3><p class="mu small-print">At a usage limit, a cap of $0 or 3 failed tries, the task moves to the next assistant on the same branch; when all three are at their limits it waits for the first reset.</p><ul>${chain || '<li class="mu">No task in progress</li>'}</ul>
     <h3>Recent hand-offs and reviews</h3><ul>${hand || '<li class="mu">None yet</li>'}</ul>

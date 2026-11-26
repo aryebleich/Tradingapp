@@ -74,7 +74,8 @@ async function measure(p, width) {
     // Blocks whose own text is a disclosure (the smallest element holding the sentence).
     const disclosures = [];
     for (const el of document.querySelectorAll('body p, body small, body li, body footer, body div, body span, body label, body td, body figcaption, body aside, body em, body .disc, body [role=note]')) {
-      if (el.closest('script,style,noscript,template,select,option,#nav,nav,[aria-hidden=true]')) continue;
+      // [data-no-fig]: live content (the AI work board) whose text changes on its own; it holds no legal text.
+      if (el.closest('script,style,noscript,template,select,option,#nav,nav,[aria-hidden=true],[data-no-fig]')) continue;
       const own = norm([...el.childNodes].filter(n => n.nodeType === 3 || /^(A|B|STRONG|EM|I|SPAN|CODE)$/.test(n.nodeName) && !n.querySelector('div,p')).map(n => n.textContent).join(' '));
       if (own.length < 25 || !re.test(own)) continue;
       if ([...el.children].some(c => /^(DIV|P|LI|SECTION|TABLE|UL|OL)$/.test(c.nodeName) && re.test(c.textContent))) continue;
