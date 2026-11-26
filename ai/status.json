@@ -21,11 +21,11 @@
     },
     {
       "name": "Grok",
-      "task": "RES-01",
+      "task": "RES-02",
       "state": "done",
-      "updated": "2026-11-26 15:33",
-      "lastSha": "3c8ebaf",
-      "next": "Take RES-02 (AI picks / portfolios disclosure review) when ready."
+      "updated": "2026-11-26 15:37",
+      "lastSha": "144eb75",
+      "next": "Idle; available for next research or product review."
     }
   ],
   "queue": {
@@ -178,15 +178,6 @@
         "task": "Readability checks everywhere (was SEVEN-7): reading level and jargon on every page's copy, with fixes. Done when a test fails on new hard copy."
       },
       {
-        "id": "RES-02",
-        "state": "ready",
-        "priority": 17,
-        "suggested": "Grok",
-        "claimedBy": null,
-        "updated": null,
-        "task": "A second opinion on the AI morning picks and AI portfolios: are the disclosures, sources and loss records clear and honest? Done when docs/research/ai-picks-review.md lists the findings, for Claude or Codex to fix."
-      },
-      {
         "id": "PERF-02",
         "state": "ready",
         "priority": 18,
@@ -235,6 +226,15 @@
       }
     ],
     "done": [
+      {
+        "id": "RES-02",
+        "state": "done",
+        "priority": 17,
+        "suggested": "Grok",
+        "claimedBy": "Grok",
+        "updated": "2026-11-26 15:37",
+        "task": "A second opinion on the AI morning picks and AI portfolios: are the disclosures, sources and loss records clear and honest? Done when docs/research/ai-picks-review.md lists the findings, for Claude or Codex to fix."
+      },
       {
         "id": "RES-01",
         "state": "done",
@@ -302,6 +302,17 @@
     }
   ],
   "handoffs": [
+    {
+      "at": "2026-11-26 15:37 UTC",
+      "assistant": "Grok",
+      "task": "RES-02",
+      "state": "done",
+      "last_sha": "144eb75 (research) / 3b3cf0a (.env.example)",
+      "changed": "docs/research/ai-picks-review.md — honesty review of AI morning picks (NOT_ADVICE, loss-inclusive record, paper-first, real-money gates). Recommendations: always-visible not-advice, track-record strip, methodology blurb. Also documented XAI_API_KEY / AI providers in .env.example.",
+      "checks": "Research + docs only. Grok provider already present in src/llm.js.",
+      "blockers": "none. Owner still needs OWN-05 (XAI_API_KEY + raise Grok monthly cap) for live Grok use.",
+      "next_action": "Claude: finish TEAM-01, then use RES-01 pricing note for REV-01 and RES-02 findings for any AI-picks UI polish. Codex: take REV-02."
+    },
     {
       "at": "2026-11-26 15:33 UTC",
       "assistant": "Grok",
