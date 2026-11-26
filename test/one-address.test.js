@@ -51,36 +51,6 @@ test('the main domain is a setting: setup.sh writes APP_DOMAIN and PUBLIC_URL fr
   assert.match(read('deploy/vm/migrate.sh'), /app_domain=\$\(val APP_DOMAIN\); app_domain=\$\{app_domain:-app\.brightolio\.com\}/);
 });
 
-// ---------- the Render forwarder ----------
-const { redirectHandler, setTrusted, retryPage, FALLBACK } = await import('../src/render-redirect.js');
-const call = (url, host = 'app.brightolio.com') => { const out = {}; redirectHandler({ url, headers: { host } }, { writeHead: (s, h) => { out.status = s; out.headers = h; }, end: b => { out.body = b; } }); return out; };
-before(() => { setTrusted(false); });
-after(() => { setTrusted(false); });
-
-test('Render, not yet passing the main address on: visitors get the retry page, never the server\'s own address', () => {
-  for (const host of ['app.brightolio.com', '138-2-233-183.sslip.io', 'something-else.example']) {
-    const r = call('/app?x=1', host);
-    assert.equal(r.status, 503, host);
-    assert.equal(r.headers.location, undefined, host);
-    assert.match(r.body, /Taking longer than usual, trying again/);
-    assert.doesNotMatch(r.body, /sslip/i, 'the retry page never names the server address');
-  }
-});
-test('the forwarder\'s retry page keeps the path and refers to the main address only', () => {
-  assert.match(retryPage('https://app.brightolio.com/app?x=1&y=2'), /href="https:\/\/app\.brightolio\.com\/app\?x=1&amp;y=2"/);
-  assert.doesNotMatch(retryPage('https://app.brightolio.com/'), /sslip/);
-});
-test('the Render address still goes to the main address (a visitor who types it)', () => {
-  const r = call('/app?x=1', 'quantpocket.onrender.com');
-  assert.equal(r.status, 301); assert.equal(r.headers.location, 'https://app.brightolio.com/app?x=1');
-});
-test('the server address is only used server to server, never as a redirect target', () => {
-  const src = read('src/render-redirect.js');
-  const locations = [...src.matchAll(/location:\s*([^,}]+)/g)].map(m => m[1]);
-  for (const l of locations) assert.doesNotMatch(l, /FALLBACK/, `a redirect to FALLBACK: ${l}`);
-  assert.ok(FALLBACK().startsWith('https://'));
-});
-
 // ---------- the Oracle server's own one-address redirect ----------
 test('the server redirects GET and HEAD on its other names; health, internal, webhooks and POST are not redirected', async () => {
   const keep = process.env.PUBLIC_URL; process.env.PUBLIC_URL = 'https://app.brightolio.com';
@@ -114,9 +84,9 @@ test('the server redirects GET and HEAD on its other names; health, internal, we
 
 // ---------- nothing names the server's own address as the site ----------
 test('no file outside the history names the server\'s own address as the site address', () => {
-  // Places where the server\'s own address is used on purpose: the direct checks, the forwarder\'s target,
+  // Places where the server\'s own address is used on purpose: the direct checks,
   // the setup and the diagnosis scripts, and the notes about them.
-  const allowed = new Set(['src/render-redirect.js', 'src/edgesetup.js', 'server.js', 'render.yaml', 'deploy/vm/setup.sh', 'deploy/vm/migrate.sh',
+  const allowed = new Set(['src/edgesetup.js', 'server.js', 'deploy/vm/setup.sh', 'deploy/vm/migrate.sh',
     'deploy/vm/oracle-create.sh', 'edge/README.md', 'test/one-address.test.js', 'test/oracle.test.js', 'test/edge.test.js', 'public/pages/admin-ops.js',
     '.github/workflows/oracle.yml', '.github/workflows/oracle-migrate.yml', '.github/workflows/load-test.yml', '.github/workflows/live-mobile.yml',
     '.github/workflows/edge-check.yml', '.github/workflows/signin-check.yml', '.github/workflows/deploy.yml', '.github/workflows/scheduler.yml',

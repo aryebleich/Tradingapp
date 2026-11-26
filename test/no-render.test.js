@@ -11,10 +11,6 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-// Kept on purpose until app.brightolio.com points straight at the Oracle server (issue #55, the
-// workflow dns-cutover.yml): Render deploys every push, and while the domain still points at it,
-// this file is what passes visitors on to Oracle. It is deleted with render.yaml after the cutover.
-const UNTIL_CUTOVER = new Set(['src/render-redirect.js']);
 // Names Render only to check that its header is gone from the answers.
 const CHECKS_FOR_RENDER = new Set(['.github/workflows/dns-cutover.yml']);
 
@@ -23,7 +19,6 @@ test('nothing in src/, server.js, public/ or .github/ uses Render as a host', ()
     .filter(f => /\.(js|mjs|json|html|yml|yaml|css)$/.test(f));
   const bad = [];
   for (const f of files) {
-    if (UNTIL_CUTOVER.has(f)) continue;
     const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
     src.split('\n').forEach((line, i) => {
       if (/onrender|RENDER_|render\.com|process\.env\.RENDER\b/.test(line)) bad.push(`${f}:${i + 1}: ${line.trim().slice(0, 100)}`);
@@ -33,10 +28,10 @@ test('nothing in src/, server.js, public/ or .github/ uses Render as a host', ()
   assert.deepEqual(bad, []);
 });
 
-test('the Render forwarder is the only Render file left, and the app does not load it', () => {
+test('the Render files are gone: no forwarder, no render.yaml, no Render workflow', () => {
+  for (const f of ['src/render-redirect.js', 'render.yaml', '.github/workflows/render-redirect.yml']) assert.equal(fs.existsSync(path.join(ROOT, f)), false, f);
   const server = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
   assert.doesNotMatch(server, /render-redirect/, 'server.js never imports the forwarder');
-  assert.equal(fs.existsSync(path.join(ROOT, '.github/workflows/render-redirect.yml')), false);
   const keys = fs.readFileSync(path.join(ROOT, 'src/keys-catalog.js'), 'utf8');
   assert.doesNotMatch(keys, /RENDER_API_KEY|RENDER_SERVICE_ID/);
 });

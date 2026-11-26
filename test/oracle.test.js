@@ -159,21 +159,6 @@ test('keyReport: names only, and a missing required key is a warning', async () 
   assert.doesNotMatch(JSON.stringify(r), /abc|x\.example/);
 });
 
-test('Render is a redirect only: every path 301 to the same path on Oracle, /healthz 200', async () => {
-  const { redirectHandler } = await import('../src/render-redirect.js');
-  const call = (url, host = 'quantpocket.onrender.com') => { const out = {}; redirectHandler({ url, headers: { host } }, { writeHead: (s, h) => { out.status = s; out.headers = h; }, end: b => { out.body = b; } }); return out; };
-  const a = call('/app?x=1');
-  assert.equal(a.status, 301); assert.equal(a.headers.location, 'https://app.brightolio.com/app?x=1');
-  assert.equal(call('//evil.example/x').headers.location, 'https://app.brightolio.com/', 'no open redirect');
-  // Not forwarding yet: a visitor gets the retry page, never the server's own address (that is where they used to land).
-  const notYet = call('/app', 'app.brightolio.com');
-  assert.equal(notYet.status, 503); assert.equal(notYet.headers.location, undefined, 'no redirect to the server address'); assert.match(notYet.body, /Taking longer than usual/);
-  assert.equal(call('/app', 'something-else.example').status, 503, 'an unknown host is never sent to the server address either');
-  assert.equal(call('/healthz').status, 200);
-  const y = fs.readFileSync(new URL('../render.yaml', import.meta.url), 'utf8');
-  assert.match(y, /startCommand: node src\/render-redirect\.js/); assert.doesNotMatch(y, /DATABASE_URL|ENCRYPTION_KEY|CRON_SECRET/);
-});
-
 test('one address: pages on another address of ours go to PUBLIC_URL (health, internal calls and posts do not)', async () => {
   const keep = process.env.PUBLIC_URL; process.env.PUBLIC_URL = 'https://app.brightolio.com';
   const S = await import('../server.js');
@@ -196,30 +181,3 @@ test('one address: pages on another address of ours go to PUBLIC_URL (health, in
   } finally { S.setMainReaches(false); if (keep === undefined) delete process.env.PUBLIC_URL; else process.env.PUBLIC_URL = keep; }
 });
 
-test('Render passes the main address on to the Oracle app (edge secret, original host); without trust it redirects', async () => {
-  const R = await import('../src/render-redirect.js'), { edgeSecret } = await import('../src/edgesetup.js');
-  const keepKey = process.env.ENCRYPTION_KEY; process.env.ENCRYPTION_KEY = 'k'.repeat(48); // as in production (32+ characters)
-  assert.equal(R.edgeSecret(), edgeSecret(), 'the same secret as the Oracle app expects');
-  assert.ok(R.edgeSecret().length > 10);
-  const http = await import('node:http');
-  process.env.REDIRECT_FALLBACK = base; process.env.REDIRECT_TO = 'https://app.brightolio.com';
-  const keep = process.env.PUBLIC_URL; process.env.PUBLIC_URL = 'https://app.brightolio.com';
-  const front = http.createServer(R.redirectHandler); await new Promise(r => front.listen(0, r));
-  const ask = (p, host = 'app.brightolio.com') => new Promise((ok, no) => { const q = http.request({ host: '127.0.0.1', port: front.address().port, path: p, headers: { host } }, res => { let b = ''; res.on('data', d => (b += d)); res.on('end', () => ok({ status: res.statusCode, location: res.headers.location, body: b })); }); q.on('error', no); q.end(); });
-  try {
-    R.setTrusted(false);
-    const wait = await ask('/app');
-    assert.equal(wait.status, 503, 'not trusted yet: the retry page'); assert.equal(wait.location, undefined, 'never a redirect to the server address');
-    assert.equal(await R.checkTrust(), true);
-    const e = JSON.parse((await ask('/internal/edge-check')).body);
-    assert.equal(e.trusted, true); assert.equal(e.host, 'app.brightolio.com'); assert.match(e.boot, /^[0-9a-f]{16}$/);
-    const me = await ask('/api/auth/me');
-    assert.equal(me.status, 200); assert.equal(JSON.parse(me.body).user, null);
-    assert.equal((await ask('/app', 'quantpocket.onrender.com')).location, 'https://app.brightolio.com/app');
-    // The forwarder itself must never name the server's address to a visitor.
-  } finally {
-    front.close(); R.setTrusted(false); delete process.env.REDIRECT_FALLBACK; delete process.env.REDIRECT_TO;
-    if (keepKey === undefined) delete process.env.ENCRYPTION_KEY; else process.env.ENCRYPTION_KEY = keepKey;
-    if (keep === undefined) delete process.env.PUBLIC_URL; else process.env.PUBLIC_URL = keep;
-  }
-});

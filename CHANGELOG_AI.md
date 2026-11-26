@@ -931,3 +931,10 @@ Automatic (above). By hand: redeploy the previous tag: `curl -X POST "<deploy ho
   - the CPU pool is in the backtest routes, PERFORMANCE.md is written, and the 200-user load test runs and mostly passes;
   - indexes: 131, and no slow database route showed up in the load test (database routes answer in 1–10 ms on the server), so no new index was needed;
   - precomputing: the shared caches cover the market-wide data. Precomputing the stock card for the most-viewed symbols is left in PERFORMANCE.md ("Still to do").
+
+## 2026-11-26: Render files removed after the DNS cutover
+- **Confirmed** by dns-cutover.yml on 2026-11-25 16:42 UTC: app.brightolio.com resolves to 138.2.233.183 (A record, no CNAME), /healthz answers `host: oracle`, no Render header. Issue #55 is closed.
+- **Deleted:** render.yaml and src/render-redirect.js, their tests (test/oracle.test.js, test/one-address.test.js), the Render line in test/security.test.js, and the render.yaml read in scripts/clean-check.mjs.
+- **test/no-render.test.js** now checks that the three Render files are gone; the UNTIL_CUTOVER allowance is removed.
+- **Owner, later:** in the Render dashboard, remove the custom domain and suspend the service. The service receives no traffic now.
+- **Tests:** npm test passes 590 (3 known TODO reviews).

@@ -15,12 +15,11 @@ test('Node.js floor: patched releases pass, older ones and odd lines do not', ()
   assert.equal(nodeStatus('v22.22.0', f).min, '22.23.4');
 });
 
-test('engines, Render, Docker and CI all follow the floor', () => {
+test('engines, Docker and CI all follow the floor', () => {
   const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
   assert.equal(pkg.engines.node, enginesRange(floors()));
   assert.match(fs.readFileSync('.npmrc', 'utf8'), /^engine-strict=true$/m);
   assert.equal(fs.readFileSync('.node-version', 'utf8').trim(), '22');
-  assert.match(fs.readFileSync('render.yaml', 'utf8'), /key: NODE_VERSION, value: "22"/);
   const docker = fs.readFileSync('Dockerfile', 'utf8');
   assert.match(docker, /ca-certificates/); assert.match(docker, /nodeStatus\(\)/);
   for (const f of fs.readdirSync('.github/workflows')) {

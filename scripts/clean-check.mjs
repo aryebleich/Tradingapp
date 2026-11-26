@@ -48,7 +48,7 @@ function follow(starts) {
 const pages = tracked.filter(f => /^public\/[\w-]+\.html$/.test(f));
 const used = follow(['server.js', ...pages, 'public/app.js', 'public/sw.js', ...tracked.filter(f => /^(test|scripts)\//.test(f)), ...tracked.filter(f => f.startsWith('.github/workflows/'))]);
 // Everything named in package.json scripts and the workflows.
-const runners = read('package.json') + tracked.filter(f => f.startsWith('.github/workflows/')).map(read).join('\n') + read('Dockerfile') + read('render.yaml') + read('deploy/vm/migrate.sh') + read('deploy/vm/update.sh');
+const runners = read('package.json') + tracked.filter(f => f.startsWith('.github/workflows/')).map(read).join('\n') + read('Dockerfile') + read('deploy/vm/migrate.sh') + read('deploy/vm/update.sh');
 const named = (f, text) => text.includes(f) || text.includes(path.basename(f));
 // Pictures, styles, pages and other public files: named anywhere in the code or pages.
 const allText = [...used].filter(f => /\.(js|mjs|html|css|json|webmanifest)$/.test(f)).map(read).join('\n') + runners;
