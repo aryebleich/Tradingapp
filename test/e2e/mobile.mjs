@@ -252,7 +252,7 @@ if (!ONLY && !LIVE) {
     const box = await p.$eval('#eqPosF [name=wholeShares]', e => { const l = e.closest('label').getBoundingClientRect(); return l.height; });
     if (box < 24) throw new Error(`the "Whole shares only" checkbox row is ${box}px tall`);
     await p.tap('#eqPosF [name=wholeShares]'); await p.tap('#eqPosF button:not([type=button])');
-    await p.waitForFunction(() => document.querySelector('dialog[open]') || /\S/.test(document.querySelector('#eqPosOut')?.textContent || ''), null, { timeout: 15000 });
+    await p.waitForFunction(() => document.querySelector('dialog[open]') || document.querySelector('#eqPosOut .ok, #eqPosOut .err'), null, { timeout: 15000 });
     if (!(await p.$('dialog[open]'))) throw new Error('no confirmation: ' + (await p.textContent('#eqPosOut')).slice(0, 120));
     await dlgFits('equalize confirm');
     // The checkboxes: one per holding and "all"; each a finger-sized row, and leaving one out updates the plan.
