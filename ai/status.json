@@ -7,9 +7,9 @@
       "name": "Claude",
       "task": null,
       "state": "idle",
-      "updated": "2026-11-26 16:08",
-      "lastSha": "980b657",
-      "next": "Codex: REV-02 on PR #60. Claude: review PR #60 when Codex pushes, then take REV-01. Grok: paste ai/prompts/grok.md into grok.com for the next research row."
+      "updated": "2026-11-26 16:31",
+      "lastSha": "9f8cad0",
+      "next": "Grok: paste ai/prompts/grok.md into grok.com and send the result through this form"
     },
     {
       "name": "Codex",
@@ -42,15 +42,6 @@
     ],
     "paused": [],
     "ready": [
-      {
-        "id": "SMOKE-01",
-        "state": "ready",
-        "priority": null,
-        "suggested": "Claude",
-        "claimedBy": null,
-        "updated": null,
-        "task": "End-to-end test of the AI inbox (the path Grok's results take): a hand-off through the AI hand-off form is checked and committed to the board by ai-inbox.yml. Done when the test issue is closed with the hand-off on the board."
-      },
       {
         "id": "REV-01",
         "state": "ready",
@@ -245,6 +236,15 @@
     ],
     "done": [
       {
+        "id": "SMOKE-01",
+        "state": "done",
+        "priority": null,
+        "suggested": "Claude",
+        "claimedBy": "Claude",
+        "updated": "2026-11-26 16:31",
+        "task": "End-to-end test of the AI inbox (the path Grok's results take): a hand-off through the AI hand-off form is checked and committed to the board by ai-inbox.yml. Done when the test issue is closed with the hand-off on the board."
+      },
+      {
         "id": "TEAM-02",
         "state": "done",
         "priority": null,
@@ -338,6 +338,17 @@
     }
   ],
   "handoffs": [
+    {
+      "at": "2026-11-26 16:31 UTC",
+      "assistant": "Claude",
+      "task": "SMOKE-01",
+      "state": "done",
+      "last_sha": "9f8cad0",
+      "changed": "nothing in the app; an end-to-end test of the AI hand-off inbox, the path Grok's results take (form, ai-inbox.yml, the board) (from issue #61)",
+      "checks": "this issue is the test: the workflow checks it, commits it and closes the issue",
+      "blockers": "none",
+      "next_action": "Grok: paste ai/prompts/grok.md into grok.com and send the result through this form"
+    },
     {
       "at": "2026-11-26 16:08 UTC",
       "assistant": "Claude",
