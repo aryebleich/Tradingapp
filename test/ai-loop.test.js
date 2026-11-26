@@ -113,3 +113,50 @@ test('ai-loop.yml: each assistant only with its key, caps asked first, one task 
   assert.match(y, /reviewed=true/); assert.match(g, /ai\/claude-\*\|ai\/codex-\*\)/); assert.match(g, /run-name: .*\(reviewed\)/);
   assert.doesNotMatch(y, /git push[^\n]*--force/);
 });
+
+// ---------- without paid keys: Codex through GitHub (@codex), Grok through the AI hand-off inbox ----------
+const I = await import('../scripts/ai-inbox.mjs');
+const fsx = await import('node:fs');
+const BOARD = fsx.readFileSync('AI_HANDOFF.md', 'utf8');
+const form = (o = {}) => {
+  const f = { Assistant: 'Grok', 'Task ID': 'RES-01', 'Note path (optional)': '_No response_', 'Note (optional)': '_No response_',
+    'Hand-off': '```markdown\n### 2026-11-26 16:20 UTC · Grok · RES-01 · done\n- **Last SHA:** chat, not pushed\n- **Changed:** a follow-up of the pricing note\n- **Checks:** public pricing pages, 2026-11-26\n- **Blockers:** none\n- **Next action:** Claude: use option B in REV-01\n```', ...o };
+  return Object.entries(f).map(([k, v]) => `### ${k}\n\n${v}`).join('\n\n');
+};
+
+test('Codex through its GitHub integration runs on the plan, with no API key and no cap, and is preferred over the API', () => {
+  assert.deepEqual(P.eligible(['codex_github'], null).map(x => `${x.assistant}:${x.billing}`), ['codex:plan']);
+  assert.deepEqual(P.eligible(['codex_github', 'openai'], OK).map(x => x.billing), ['plan']);
+  assert.deepEqual(P.eligible(['codex_github'], { allowed: {}, paused: { codex: { at: 1 } } }), [], 'a pause in Admin still wins');
+  assert.equal(L.budget().allowed.codexPlan.ok, true);
+});
+
+test('the AI inbox reads the issue form, keeps the hand-off heading inside its fence, and puts it on the board', () => {
+  const f = I.parseForm(form());
+  assert.equal(f.assistant, 'Grok'); assert.equal(f.task, 'RES-01'); assert.equal(f.note, ''); assert.match(f.handoff, /^### 2026-11-26 16:20 UTC · Grok · RES-01 · done/);
+  const p = I.plan(f, BOARD, new Date('2026-11-26T16:25:00Z'));
+  assert.equal(p.errors, undefined, JSON.stringify(p.errors));
+  const S2 = I.apply(BOARD, f, p, 77);
+  assert.match(S2, /### 2026-11-26 16:25 UTC · Grok · RES-01 · done\n- \*\*Last SHA:\*\* chat, not pushed\n- \*\*Changed:\*\* a follow-up of the pricing note \(from issue #77\)/);
+  assert.match(S2, /\| Grok \| — \| idle \| 2026-11-26 16:25 \|/);
+});
+
+test('the AI inbox refuses a wrong task, a mismatched hand-off, a patch and anything that looks private', () => {
+  const errs = o => I.plan(I.parseForm(form(o)), BOARD).errors || [];
+  assert.match(errs({ 'Task ID': 'NOPE-99' }).join(), /not on the board/);
+  assert.match(errs({ Assistant: 'Codex' }).join(), /names Grok, not Codex/);
+  assert.match(errs({ 'Note (optional)': '```markdown\ndiff --git a/x b/x\n```', 'Note path (optional)': 'docs/research/notes.md' }).join(), /patches/);
+  assert.match(errs({ 'Hand-off': '```\n### 2026-11-26 16:20 UTC · Grok · RES-01 · done\n- **Next action:** mail owner@example.com\n```' }).join(), /private/);
+  assert.match(errs({ 'Note path (optional)': 'src/server.js', 'Note (optional)': 'x'.repeat(300) }).join(), /note path/);
+  assert.match(errs({ 'Hand-off': 'no heading here' }).join(), /heading/);
+});
+
+test('the inbox and the @codex steps: only the owner\'s issues count, and Codex\'s verdict merges or sends back', () => {
+  const inbox = fsx.readFileSync('.github/workflows/ai-inbox.yml', 'utf8'), loop = fsx.readFileSync('.github/workflows/ai-loop.yml', 'utf8');
+  assert.match(inbox, /github\.event\.issue\.user\.login == github\.repository_owner/);
+  assert.match(inbox, /node --test test\/ai-status\.test\.js/, 'the public-safety test runs before the commit');
+  assert.ok(fsx.existsSync('.github/ISSUE_TEMPLATE/ai-handoff.yml'));
+  assert.match(loop, /CODEX_GITHUB == '1'/); assert.match(loop, /@codex review/); assert.match(loop, /codex-verdict:/);
+  assert.match(loop, /didn\.\?t find any major issues/); assert.match(loop, /CODEX_MENTION_TOKEN/);
+  for (const f of ['chatgpt.md', 'grok.md', 'claude-web.md']) assert.match(fsx.readFileSync('ai/prompts/' + f, 'utf8'), /issues\/new\?template=ai-handoff\.yml/, f);
+});

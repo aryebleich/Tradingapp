@@ -3,7 +3,8 @@
 // Anything billed per use starts with a $0 cap, so nothing costs money until the owner raises it:
 //   claude  per use only with ANTHROPIC_API_KEY; with CLAUDE_CODE_OAUTH_TOKEN it uses the owner's
 //           Claude subscription (not billed per use), so it may run while its cap is $0
-//   codex   OPENAI_API_KEY, billed per use
+//   codex   through its GitHub integration (@codex, the owner's ChatGPT plan; the variable CODEX_GITHUB=1):
+//           not billed per use, so no cap; or OPENAI_API_KEY, billed per use
 //   grok    XAI_API_KEY, billed per use (also the admin chat and router: off until its cap is raised)
 // A run is counted at its "per run" ceiling (perRunUsd), the most one run may cost (the workflow
 // limits turns and tokens to stay inside it), so the month's total never exceeds the cap.
@@ -60,13 +61,17 @@ export function budget(s = loopSettings()) {
   const m = month();
   return {
     month: m, caps: s.caps, spent: Object.fromEntries(ASSISTANTS.map(a => [a, spent(a, s, m)])), paused: s.paused,
-    allowed: { claudeSubscription: allowed('claude', 'subscription', s, m), claudePerUse: allowed('claude', 'per-use', s, m), codex: allowed('codex', 'per-use', s, m), grok: allowed('grok', 'per-use', s, m) },
+    allowed: {
+      claudeSubscription: allowed('claude', 'subscription', s, m), claudePerUse: allowed('claude', 'per-use', s, m),
+      codexPlan: s.paused.codex ? { ok: false, reason: 'paused in Admin' } : { ok: true, reason: 'Codex through GitHub (@codex) on the ChatGPT plan, not billed per use', billed: false },
+      codex: allowed('codex', 'per-use', s, m), grok: allowed('grok', 'per-use', s, m),
+    },
   };
 }
 // One automatic run, recorded by the workflow (at its ceiling when billed per use).
 export async function recordRun({ assistant, billing = 'per-use', task = '', outcome = '', run = '' } = {}) {
   if (!ASSISTANTS.includes(assistant)) throw Object.assign(new Error('Unknown assistant'), { status: 400 });
-  const s = loopSettings(), billed = !(assistant === 'claude' && billing === 'subscription');
+  const s = loopSettings(), billed = !((assistant === 'claude' && billing === 'subscription') || (assistant === 'codex' && billing === 'plan'));
   s.runs.push({
     assistant, billed, usd: billed ? s.caps[assistant].perRunUsd : 0, month: month(), at: Date.now(),
     task: String(task).replace(/[^A-Z0-9-]/gi, '').slice(0, 20), outcome: String(outcome).replace(/[^a-z_-]/gi, '').slice(0, 20), run: String(run).replace(/\D/g, '').slice(0, 20),

@@ -4,7 +4,7 @@
 //   release  writes the hand-off and the row's new state (done, paused at a usage limit, blocked)
 // The board edits are plain text edits of AI_HANDOFF.md (scripts/ai-status.mjs), so a human and the
 // workflow keep the same file. Output is JSON on stdout (for the workflow's next steps).
-//   node scripts/ai-loop.mjs pick --assistant auto|claude|codex|grok [--task REV-01] --keys claude_oauth,anthropic,openai,xai [--budget budget.json]
+//   node scripts/ai-loop.mjs pick --assistant auto|claude|codex|grok [--task REV-01] --keys claude_oauth,anthropic,codex_github,openai,xai [--budget budget.json]
 //   node scripts/ai-loop.mjs claim --assistant claude --task REV-01 --sha abc1234
 //   node scripts/ai-loop.mjs release --assistant claude --task REV-01 --state done --sha abc1234 [--pr 12] [--next "..."] [--changed "..."] [--checks "..."] [--blockers "..."]
 import fs from 'node:fs';
@@ -18,12 +18,15 @@ const CLAIM_MS = 3 * 3600e3;
 const parseUtc = s => (s && /^\d{4}-\d\d-\d\d \d\d:\d\d$/.test(s) ? Date.parse(s.replace(' ', 'T') + ':00Z') : NaN);
 
 // Who may run: the key must exist, and anything billed per use needs room under its cap. With no
-// budget answer (the site unreachable), only Claude through the owner's subscription may run.
+// budget answer (the site unreachable), only what is not billed per use runs: Claude through the
+// owner's subscription, and Codex through its GitHub integration on the owner's ChatGPT plan
+// (codex_github, the variable CODEX_GITHUB=1), which is preferred over Codex's per-use API key.
 export function eligible(keys = [], budget = null) {
   const a = budget?.allowed || {}, out = [];
   if (keys.includes('claude_oauth') && (a.claudeSubscription?.ok ?? true)) out.push({ assistant: 'claude', billing: 'subscription' });
   else if (keys.includes('anthropic') && a.claudePerUse?.ok) out.push({ assistant: 'claude', billing: 'per-use' });
-  if (keys.includes('openai') && a.codex?.ok) out.push({ assistant: 'codex', billing: 'per-use' });
+  if (keys.includes('codex_github') && !budget?.paused?.codex) out.push({ assistant: 'codex', billing: 'plan' });
+  else if (keys.includes('openai') && a.codex?.ok) out.push({ assistant: 'codex', billing: 'per-use' });
   if (keys.includes('xai') && a.grok?.ok) out.push({ assistant: 'grok', billing: 'per-use' });
   return out;
 }
@@ -86,7 +89,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     writeBoard(b); console.log(JSON.stringify({ claimed: id, by: name, at }));
   } else if (cmd === 'release') {
     const name = NAME[who], state = arg('state', 'done'); if (!name || !id) throw new Error('release needs --assistant and --task');
-    if (!['done', 'paused', 'blocked', 'ready'].includes(state)) throw new Error('state must be done, paused, blocked or ready');
+    if (!['done', 'active', 'paused', 'blocked', 'ready'].includes(state)) throw new Error('state must be done, active, paused, blocked or ready');
     const pr = arg('pr'), next = arg('next') || (state === 'done' ? (pr ? `Review PR #${pr} (cross-review), then take the next ready row.` : 'Take the next ready row.') : `Continue ${id}.`);
     let b = setRow(md, 'Queue', id, { state, claimed_by: state === 'ready' ? '—' : name, updated: at });
     b = setRow(b, 'Assistants', name, { task: state === 'done' ? '—' : id, state: state === 'done' ? 'idle' : state, updated: at, last_sha: arg('sha', '—'), next_action: next });

@@ -247,7 +247,7 @@ const statePill = s => `<span class="pill ${s === 'done' ? 'pos' : s === 'blocke
 async function workCard(el) {
   const d = await H.api('/admin/aiteam/work'), st = d.status, b = d.budget;
   const who = (st?.assistants || []).map(a => `<tr><td><b>${H.esc(a.name)}</b></td><td>${H.esc(a.task || '-')}</td><td>${statePill(a.state)}</td><td class="mu">${H.esc(a.updated || '-')}</td><td><code>${H.esc(a.lastSha || '-')}</code></td><td>${H.esc(a.next || '')}</td></tr>`).join('');
-  const allow = { claude: b.allowed.claudeSubscription, codex: b.allowed.codex, grok: b.allowed.grok };
+  const allow = { claude: b.allowed.claudeSubscription, codex: b.allowed.codexPlan?.ok ? { reason: b.allowed.codexPlan.reason + (b.allowed.codex.ok ? '' : '; the per-use API: ' + b.allowed.codex.reason) } : b.allowed.codex, grok: b.allowed.grok };
   const caps = Object.keys(NAMES).map(k => `<tr><td><b>${NAMES[k]}</b>${d.keys[k] ? '' : ' <span class="mu">(no API key on the server)</span>'}</td>
     <td><input type="number" min="0" step="1" data-cap="${k}" value="${b.caps[k].monthlyUsd}" aria-label="${NAMES[k]} monthly cap in dollars" style="width:6em"></td>
     <td class="num">$${b.spent[k].toFixed(2)}</td><td class="mu">${H.esc(allow[k].reason)}</td>
