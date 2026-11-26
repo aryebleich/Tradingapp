@@ -262,6 +262,8 @@ jobs:
           APP_URL_VAR: ${{ vars.APP_URL }}
         run: |
           pr=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty'); [ -n "$pr" ] || { echo "no open pull request"; exit 0; }
+          # Only the brief (ai/tasks/) so far: the assistant hasn't pushed its work yet, so nothing to review.
+          if [ -z "$(git diff --name-only origin/main...HEAD | grep -v '^ai/tasks/' || true)" ]; then echo "only the task brief on $BRANCH: nothing to review yet"; exit 0; fi
           echo "PR=$pr" >> "$GITHUB_ENV"
           task=$(echo "$BRANCH" | sed -E 's#^ai/[a-z]+-([a-z]+-[0-9]+)-[0-9]+$#\1#' | tr '[:lower:]' '[:upper:]'); echo "TASK=$task" >> "$GITHUB_ENV"
           author=$(echo "$BRANCH" | cut -d/ -f2 | cut -d- -f1); echo "AUTHOR=$author" >> "$GITHUB_ENV"

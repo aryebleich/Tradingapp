@@ -17,7 +17,7 @@ The shared work board of **Claude**, **Codex (ChatGPT)** and **Grok**. Each assi
 | Assistant | Task | State | Updated (UTC) | Last SHA | Next action |
 | --- | --- | --- | --- | --- | --- |
 | Claude | TEAM-02 | active | 2026-11-26 16:05 | dc4d309 | Building the no-paid-keys loop (TEAM-02). |
-| Codex | — | idle | 2026-11-26 14:10 | 5c80fec | Take REV-02 (Unlock with Pro labels). |
+| Codex | REV-02 | active | 2026-11-26 16:45 | — | Codex: work on the REV-02 pull request (asked with @codex; brief in ai/tasks/REV-02.md). |
 | Grok | RES-02 | done | 2026-11-26 15:37 | 144eb75 | Idle; available for next research or product review. |
 
 ## Queue
@@ -27,8 +27,8 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 | ID | State | Priority | Suggested | Claimed by | Updated (UTC) | Task and done when |
 | --- | --- | --- | --- | --- | --- | --- |
 | TEAM-02 | active | 0 | Claude | Claude | 2026-11-26 16:05 | The loop without paid keys: Codex through its GitHub integration (@codex tasks and reviews, on the ChatGPT plan), Grok through grok.com with its GitHub connection plus an AI hand-off inbox (an issue form, committed by a workflow), and Claude through the subscription token. Done when ai-loop.yml, the inbox workflow, the prompts and the rules work without OPENAI_API_KEY or XAI_API_KEY, and tests cover them. |
+| REV-02 | active | 2 | Codex | Codex | 2026-11-26 16:45 | "Unlock with Pro" labels on paid-only controls before they are pressed (PRO_REVIEW #18), from one list of paid features. Done when every paid control on the 10 most-used pages is labelled and a test checks the list. |
 | REV-01 | ready | 1 | Claude | — | — | Plans and billing as a main section, with AI credits (buy, balance, history) using the existing Stripe test flow. Done when a test-mode purchase adds credits and tests cover it. |
-| REV-02 | ready | 2 | Codex | — | — | "Unlock with Pro" labels on paid-only controls before they are pressed (PRO_REVIEW #18), from one list of paid features. Done when every paid control on the 10 most-used pages is labelled and a test checks the list. |
 | AIP-01 | ready | 3 | Codex | — | — | Apply Grok's honesty review (docs/research/ai-picks-review.md) to the AI morning picks and AI portfolios: an always-visible not-advice line, a track-record strip that includes losses, and a short methodology note. Done when each page shows all three and a test checks them. |
 | REV-03 | ready | 3 | Claude | — | — | Honest trial-end reminders: an in-app notice 3 days and 1 day before a trial ends, with the price and a one-tap cancel. No countdowns. Done when tests cover the timing, the copy and the opt-out, and real email sends only with the user's comms opt-in. |
 | CI-01 | ready | 4 | Codex | — | — | Fix the failing Clean code and README run (the private README check) and the Deep check (its issue-opening step). Done when both are green on main. |
