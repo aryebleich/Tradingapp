@@ -65,7 +65,7 @@ jobs:
       HOST: ${{ vars.ORACLE_HOST }}
       STEP: ${{ inputs.step }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Connect
         env:
           KEY: ${{ secrets.ORACLE_SSH_KEY }}
