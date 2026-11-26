@@ -5,13 +5,14 @@ const STATE = { ok: ['All good', 'ok'], degraded: ['Slower than usual', 'warn'],
 const OVERALL = { ok: 'Everything is working', degraded: 'Some parts are slower than usual', maintenance: 'Scheduled maintenance', down: 'Some parts are not working' };
 const when = t => new Date(t).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
+// The uptime figures are live (they change as checks run): data-no-fig keeps them out of the page gate's figure check.
 async function status(el) {
   const d = await get('/status');
   el.innerHTML = `<div class="st-banner ${STATE[d.overall][1]}"><b>${OVERALL[d.overall]}</b></div>
   ${d.incidents.filter(i => i.status !== 'resolved').map(incident).join('')}
   <div class="st-list">${d.components.map(c => `<div class="st-comp"><div class="st-head"><b>${esc(c.name)}</b><span class="st-pill ${STATE[c.state][1]}">${STATE[c.state][0]}</span></div>
     <div class="st-days" aria-label="Last 90 days">${c.days.map((v, i) => `<i class="${v == null ? 'none' : v >= 99.5 ? 'ok' : v >= 95 ? 'warn' : 'bad'}" title="${v == null ? 'No checks' : v + '% of checks passed'}"></i>`).join('')}</div>
-    <div class="st-foot mu"><span>90 days ago</span><span>${c.uptime == null ? 'No checks yet' : c.uptime + '% uptime'}</span><span>Today</span></div></div>`).join('')}</div>
+    <div class="st-foot mu" data-no-fig><span>90 days ago</span><span>${c.uptime == null ? 'No checks yet' : c.uptime + '% uptime'}</span><span>Today</span></div></div>`).join('')}</div>
   <h2>Past 14 days</h2>${d.incidents.filter(i => i.status === 'resolved').map(incident).join('') || '<p class="mu">No incidents.</p>'}
   <p class="mu">Checked every ${d.checkedEveryMinutes} minutes while the service is running.</p>`;
 }
