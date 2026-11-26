@@ -1318,7 +1318,7 @@ function homeClock(view) {
   if (!view) return;
   // One clock in the whole document: drop any earlier one (another render, a wrapper) and its timer.
   stopClock(); document.querySelectorAll('#homeClock').forEach(x => x.remove());
-  const el = document.createElement('div'); el.id = 'homeClock'; el.className = 'homeclock'; el.setAttribute('role', 'timer'); el.setAttribute('aria-label', 'Current time');
+  const el = document.createElement('div'); el.id = 'homeClock'; el.className = 'homeclock'; el.setAttribute('role', 'timer'); el.setAttribute('aria-label', 'Current time'); el.dataset.noFig = ''; // a live clock and the market status for today, not a figure (page gate)
   el.innerHTML = '<b class="hc-time" dir="ltr"></b><span class="hc-date"></span><span class="hc-ny" dir="auto"></span>';
   // In the title row, right after the title (part of the Home layout).
   const h1 = $('h1', view); h1 ? h1.after(el) : view.prepend(el);

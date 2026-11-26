@@ -265,7 +265,8 @@ async function workCard(el) {
   }).join('');
   const hand = (st?.handoffs || []).slice(0, 5).map(h => `<li><b>${H.esc(h.assistant)}</b> · <code>${H.esc(h.task)}</code> · ${statePill(h.state)} <span class="mu">${H.esc(h.at)}</span><br>${H.esc(h.next_action || '')}</li>`).join('');
   const runs = (d.runs || []).slice(0, 8).map(r => `<li>${H.esc(NAMES[r.assistant] || r.assistant)} · ${H.esc(r.task || '-')} · ${H.esc(r.outcome || '-')} · ${r.billed ? '$' + (+r.usd).toFixed(2) : 'subscription'} <span class="mu">${new Date(r.at).toLocaleString()}</span></li>`).join('');
-  el.innerHTML = `<div class="card"><h2>Work status</h2>
+  // data-no-fig: the live work board changes with every hand-off, so the page gate doesn't compare its numbers.
+  el.innerHTML = `<div class="card" data-no-fig><h2>Work status</h2>
     <p class="mu" style="margin-top:0">Claude, Codex and Grok share one board (<a href="https://github.com/aryebleich/Tradingapp/blob/main/AI_HANDOFF.md" target="_blank" rel="noopener">AI_HANDOFF.md</a>) and pick up where the last one stopped. This is the board as deployed with this version.</p>
     ${st ? `<div class="tablewrap"><table><thead><tr><th>Assistant</th><th>Task</th><th>State</th><th>Updated (UTC)</th><th>Last push</th><th>Next action</th><th>Limit resets (UTC)</th></tr></thead><tbody>${who}</tbody></table></div>` : '<p class="mu">No ai/status.json in this version yet.</p>'}
     <h3>Spending caps (per month)</h3>
