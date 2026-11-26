@@ -18,7 +18,7 @@ The shared work board of **Claude**, **Codex (ChatGPT)** and **Grok**. Each assi
 | --- | --- | --- | --- | --- | --- | --- |
 | Claude | MP-01 | active | 2026-11-26 21:51 | bc7f32e | Working on MP-01 in GitHub Actions. | — |
 | Codex | REV-02 | active | 2026-11-26 16:50 | f555da2 | Codex: work on PR #60 (asked with @codex; brief in ai/tasks/REV-02.md). | — |
-| Grok | RES-02 | done | 2026-11-26 15:37 | 144eb75 | Idle; available for next research or product review. | — |
+| Grok | RES-03 | done | 2026-11-26 22:13 | a545db7 | Idle. FEAT-02 and FEAT-03 are ready from the research note. | — |
 
 ## Queue
 
@@ -39,7 +39,9 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 | PAGES-01 | ready | 8 | Codex | — | — | The GitHub Pages deploy fails with "No artifacts named github-pages". Done when a Pages run is green. |
 | MEAS-01 | ready | 9 | Claude | — | — | Measurement in Admin (docs/research/growth-plan.md): free-to-Pro conversion, the AI-credit attach rate, churn, and support tickets about surprise charges. Done when Admin shows the four numbers from the database, with tests on the math. |
 | DEV-01 | ready | 9 | Codex | — | — | Developer API as a paid tier: usage metering per key, per-plan limits, and an OpenAPI file. Done when limits are enforced in tests and the docs page shows them. |
+| FEAT-02 | ready | 10 | Claude | — | 2026-11-26 22:13 | Insider Form 4 tracker (S-11 + I-04), from docs/research/insider-congressional.md: market buys list, cluster filter, per-symbol strip, EDGAR links, lag and not-advice copy, Plus alerts optional. Done when pages and tests are on main and registry rows are updated. |
 | FEAT-01 | ready | 11 | Claude | — | — | Phase B. Dividend scanner: about 2,000 symbols, yield, safety, growth and scores, labelled not advice. Done when the scanner page and its tests are on main. |
+| FEAT-03 | ready | 11 | Codex | — | 2026-11-26 22:13 | Congressional PTR tracker (I-03), from docs/research/insider-congressional.md: House + Senate table with amount ranges, 45-day lag label, official filing links, not-advice copy. Done when the page and tests are on main and the registry row is updated. |
 | ONB-01 | ready | 12 | Claude | — | — | Phase B. Onboarding with the language choice at sign-up and the setup assistant in the chat. Done when the e2e sign-up covers both. |
 | APP-01 | ready | 13 | Codex | — | — | Phase B (performance). A smaller app.js: Home and settings load as lazy files (PRO_REVIEW #20). Done when the first-load JS is at least 25% smaller and the e2e tests pass. |
 | PERF-02 | ready | 13 | Codex | — | — | Phase B (performance). A smaller subset of the font (the only performance miss, 334 ms against 300 ms). Done when the subset is served, every supported language still renders, and the sizes are recorded in PERFORMANCE.md. |
@@ -50,6 +52,7 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 | CHAT-04 | ready | 20 | Codex | — | — | A live check of the Codex activity stream in Admin → AI chat, with one short test message. Done when the result is written here (no message text in logs). |
 | PARTA-1 | ready | 21 | Claude | — | — | Part A items A1, A3, A4, A7 and A8 (definitions in DECISIONS.md and CHANGELOG_AI.md). Done when each one is a commit. |
 | OPS-02 | blocked | 30 | Claude | — | — | The Turso recovery window, scheduled from 2026-12-01 00:30 UTC. Done when its report and checks are read and written up. |
+| RES-03 | done | 10 | Grok | Grok | 2026-11-26 22:13 | Insider and congressional tracker research (S-11, I-04, I-03). Done when docs/research/insider-congressional.md lists sources, competitors, product recommendations and FEAT-02/FEAT-03 done-when rows. |
 | QA-02 | done | 0 | Claude | Claude | 2026-11-26 19:37 | The page gate (release-gates.yml: disclosures, figures, controls, accessibility at four widths) fails on main itself against its 2026-11-16 baseline (test/golden/layout-baseline.json), so no branch can merge automatically. A run of 4 pages on main: 22 disclosure, 16 figure and 52 control differences (for example the homepage webhook sentence, and the Orders note on Day orders after the 4 PM close). Review each difference: restore every disclosure that was lost by mistake; then regenerate the baseline (test/layout/run.mjs) for the intended changes only, with the list in DECISIONS.md. Done when the page gate passes on main and on PR #60. |
 | TEAM-03 | done | 1 | Claude | Claude | 2026-11-26 18:53 | The Claude → Grok → Codex chain: an unfinished task moves on at a usage limit (paused with the reset time), Grok can code within its cap, Codex through GitHub, the chain waits for the first reset; task pull requests merge themselves when the required checks pass (owner-approved label for workflows, legal, secrets, live billing, live money); the chain in Admin → Work status. Done when the tests for each step pass. |
 | SEC-01 | done | 1 | Claude | Claude | 2026-11-26 18:53 | Site-wide "Require two-factor sign-in" in Admin → Security, off by default: scope (admins, live-trading accounts, everyone), a grace period with a "Set up now" banner, passkeys count, step-up and audit for the switch, an admin lock-out check, and recovery codes. Done when the tests for every rule pass. |
@@ -75,6 +78,13 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 ## Hand-offs
 
 Newest first. Use these fields every time; the next assistant continues from **Next action**.
+
+### 2026-11-26 22:13 UTC · Grok · RES-03 · done
+- **Last SHA:** a545db7
+- **Changed:** docs/research/insider-congressional.md — Form 4 + STOCK Act sources, competitor snapshot (OpenInsider, Capitol Trades, Quiver, Unusual Whales), product recommendations, FEAT-02 and FEAT-03 queue rows. Board updated.
+- **Checks:** Research only; public sources (SEC EDGAR, House/Senate PTR paths, competitor pages Oct–Nov 2026). Pushed to main (docs/ only).
+- **Blockers:** none
+- **Next action:** Claude: finish MP-01 then REV-01. Codex: finish REV-02 (PR #60) and AIP-01. Either may claim FEAT-02 (insider) or FEAT-03 (Congress) from the research note. Owner: merge PR #65 (mobile→desktop) when green.
 
 ### 2026-11-26 19:37 UTC · Claude · QA-02 · done
 - **Last SHA:** 1ae64f7
