@@ -14,10 +14,10 @@
     {
       "name": "Codex",
       "task": "REV-02",
-      "state": "active",
-      "updated": "2026-11-26 15:54",
-      "lastSha": "5a1fd9a",
-      "next": "Label paid controls before activation."
+      "state": "paused",
+      "updated": "2026-11-26 15:57",
+      "lastSha": "12b6bd3",
+      "next": "Review coverage against the ten busiest routes in Admin Analytics."
     },
     {
       "name": "Grok",
@@ -29,18 +29,18 @@
     }
   ],
   "queue": {
-    "active": [
+    "active": [],
+    "paused": [
       {
         "id": "REV-02",
-        "state": "active",
+        "state": "paused",
         "priority": 2,
         "suggested": "Codex",
         "claimedBy": "Codex",
-        "updated": "2026-11-26 15:54",
+        "updated": "2026-11-26 15:57",
         "task": "\"Unlock with Pro\" labels on paid-only controls before they are pressed (PRO_REVIEW #18), from one list of paid features. Done when every paid control on the 10 most-used pages is labelled and a test checks the list."
       }
     ],
-    "paused": [],
     "ready": [
       {
         "id": "REV-01",
@@ -311,6 +311,17 @@
     }
   ],
   "handoffs": [
+    {
+      "at": "2026-11-26 15:57 UTC",
+      "assistant": "Codex",
+      "task": "REV-02",
+      "state": "paused",
+      "last_sha": "12b6bd3",
+      "changed": "Shared plan labels on stock and growth views, scanner controls, account choices, bank linking and dividend reinvestment. Implementation on work/rev-02-pro-labels.",
+      "checks": "Plan catalogue and paper, brokerage and Elite label tests passed.",
+      "blockers": "The production route ranking is available in signed-in Admin Analytics. Coverage of the ten busiest routes awaits verification.",
+      "next_action": "Claude: compare the pull request's control coverage with the ten busiest routes in Admin Analytics before merge."
+    },
     {
       "at": "2026-11-26 15:41 UTC",
       "assistant": "Claude",
