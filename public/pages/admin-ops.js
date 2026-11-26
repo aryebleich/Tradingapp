@@ -246,7 +246,7 @@ const NAMES = { claude: 'Claude', codex: 'Codex (ChatGPT)', grok: 'Grok' };
 const statePill = s => `<span class="pill ${s === 'done' ? 'pos' : s === 'blocked' ? 'neg' : s === 'active' ? 'warn' : ''}">${H.esc(s || '-')}</span>`;
 async function workCard(el) {
   const d = await H.api('/admin/aiteam/work'), st = d.status, b = d.budget;
-  const who = (st?.assistants || []).map(a => `<tr><td><b>${H.esc(a.name)}</b></td><td>${H.esc(a.task || '-')}</td><td>${statePill(a.state)}</td><td class="mu">${H.esc(a.updated || '-')}</td><td><code>${H.esc(a.lastSha || '-')}</code></td><td>${H.esc(a.next || '')}</td></tr>`).join('');
+  const who = (st?.assistants || []).map(a => `<tr><td><b>${H.esc(a.name)}</b></td><td>${H.esc(a.task || '-')}</td><td>${statePill(a.state)}</td><td class="mu">${H.esc(a.updated || '-')}</td><td><code>${H.esc(a.lastSha || '-')}</code></td><td>${H.esc(a.next || '')}</td><td class="mu">${H.esc(a.reset || '-')}</td></tr>`).join('');
   const allow = { claude: b.allowed.claudeSubscription, codex: b.allowed.codexPlan?.ok ? { reason: b.allowed.codexPlan.reason + (b.allowed.codex.ok ? '' : '; the per-use API: ' + b.allowed.codex.reason) } : b.allowed.codex, grok: b.allowed.grok };
   const caps = Object.keys(NAMES).map(k => `<tr><td><b>${NAMES[k]}</b>${d.keys[k] ? '' : ' <span class="mu">(no API key on the server)</span>'}</td>
     <td><input type="number" min="0" step="1" data-cap="${k}" value="${b.caps[k].monthlyUsd}" aria-label="${NAMES[k]} monthly cap in dollars" style="width:6em"></td>
@@ -256,11 +256,18 @@ async function workCard(el) {
   const q = st?.queue || {}, rows = [...(q.active || []), ...(q.paused || []), ...(q.ready || []).slice(0, 12), ...(q.blocked || [])];
   const queue = rows.map(r => `<tr><td><code>${H.esc(r.id)}</code></td><td>${statePill(r.state)}</td><td class="num">${r.priority ?? ''}</td><td>${H.esc(r.claimedBy || r.suggested || '')}</td><td>${H.esc(r.task)}</td>
     <td>${d.canRun && r.state === 'ready' ? `<button type="button" class="ghost" data-runtask="${H.esc(r.id)}">Run</button>` : ''}</td></tr>`).join('');
+  // The chain (Claude → Grok → Codex): for each task in progress, who has it now, who had it before, and why it moved.
+  const why = h => /usage limit/i.test(h.blockers || '') ? 'usage limit' : /failed after/i.test(h.blockers || '') ? '3 failed tries' : /cap/i.test(h.blockers || '') ? 'cap' : /taken over/i.test(h.changed || '') ? 'taken over' : '';
+  const chain = [...(q.active || []), ...(q.paused || [])].map(r => {
+    const hs = (st?.handoffs || []).filter(h => h.task === r.id);
+    const path = hs.slice().reverse().map(h => `${H.esc(h.assistant)}${why(h) ? ` <span class="mu">(${why(h)})</span>` : ''}`).join(' → ');
+    return `<li><code>${H.esc(r.id)}</code> · now <b>${H.esc(r.claimedBy || '—')}</b> ${statePill(r.state)}${path ? `<br><span class="small">${path}</span>` : ''}</li>`;
+  }).join('');
   const hand = (st?.handoffs || []).slice(0, 5).map(h => `<li><b>${H.esc(h.assistant)}</b> · <code>${H.esc(h.task)}</code> · ${statePill(h.state)} <span class="mu">${H.esc(h.at)}</span><br>${H.esc(h.next_action || '')}</li>`).join('');
   const runs = (d.runs || []).slice(0, 8).map(r => `<li>${H.esc(NAMES[r.assistant] || r.assistant)} · ${H.esc(r.task || '-')} · ${H.esc(r.outcome || '-')} · ${r.billed ? '$' + (+r.usd).toFixed(2) : 'subscription'} <span class="mu">${new Date(r.at).toLocaleString()}</span></li>`).join('');
   el.innerHTML = `<div class="card"><h2>Work status</h2>
     <p class="mu" style="margin-top:0">Claude, Codex and Grok share one board (<a href="https://github.com/aryebleich/Tradingapp/blob/main/AI_HANDOFF.md" target="_blank" rel="noopener">AI_HANDOFF.md</a>) and pick up where the last one stopped. This is the board as deployed with this version.</p>
-    ${st ? `<div class="tablewrap"><table><thead><tr><th>Assistant</th><th>Task</th><th>State</th><th>Updated (UTC)</th><th>Last push</th><th>Next action</th></tr></thead><tbody>${who}</tbody></table></div>` : '<p class="mu">No ai/status.json in this version yet.</p>'}
+    ${st ? `<div class="tablewrap"><table><thead><tr><th>Assistant</th><th>Task</th><th>State</th><th>Updated (UTC)</th><th>Last push</th><th>Next action</th><th>Limit resets (UTC)</th></tr></thead><tbody>${who}</tbody></table></div>` : '<p class="mu">No ai/status.json in this version yet.</p>'}
     <h3>Spending caps (per month)</h3>
     <p class="mu">Anything billed per use starts at $0, so nothing costs money until you raise it. Claude through your Claude subscription (CLAUDE_CODE_OAUTH_TOKEN in GitHub) is not billed per use. Each run counts at its per-run ceiling.</p>
     <div class="tablewrap"><table><thead><tr><th>Assistant</th><th>Cap ($)</th><th>Used</th><th>Can run now?</th><th></th></tr></thead><tbody>${caps}</tbody></table></div>
@@ -268,6 +275,7 @@ async function workCard(el) {
     ${d.canRun ? '' : '<p class="mu">"Run now" needs GITHUB_TOKEN in <a href="#/admin-keys">Keys</a>; the automatic loop also runs on its own schedule.</p>'}
     <h3>Queue</h3><div class="tablewrap"><table><thead><tr><th>ID</th><th>State</th><th>Priority</th><th>Who</th><th>Task and done when</th><th></th></tr></thead><tbody>${queue}</tbody></table></div>
     ${(st?.owner || []).length ? `<h3>Only you can do</h3><ul>${st.owner.map(o => `<li><code>${H.esc(o.id)}</code> ${H.esc(o.task)}</li>`).join('')}</ul>` : ''}
+    <h3>The chain: Claude → Grok → Codex</h3><p class="mu small-print">At a usage limit, a cap of $0 or 3 failed tries, the task moves to the next assistant on the same branch; when all three are at their limits it waits for the first reset.</p><ul>${chain || '<li class="mu">No task in progress</li>'}</ul>
     <h3>Recent hand-offs and reviews</h3><ul>${hand || '<li class="mu">None yet</li>'}</ul>
     <h3>Automatic runs</h3><ul>${runs || '<li class="mu">None yet</li>'}</ul></div>`;
   const msg = H.$('#wkMsg', el);
@@ -419,10 +427,12 @@ async function hostingPage(view) {
 const gb = n => (n == null ? '-' : n >= 1e9 ? (n / 1e9).toFixed(1) + ' GB' : n >= 1e6 ? (n / 1e6).toFixed(1) + ' MB' : Math.round(n / 1e3) + ' KB');
 const ago = t => { if (!t) return 'never'; const s = Math.round((Date.now() - t) / 1000); return s < 90 ? s + ' s ago' : s < 5400 ? Math.round(s / 60) + ' min ago' : s < 172800 ? Math.round(s / 3600) + ' h ago' : Math.round(s / 86400) + ' days ago'; };
 const pctUsed = (used, total) => (total ? Math.round(used / total * 100) + '%' : '-');
+// The machine's live numbers (load, memory, disk, uptime) change on every load: data-no-fig keeps them out of
+// the page gate's figure check (test/layout/run.mjs), which is for prices, fees and balances.
 function serverCard(m) {
   const mem = m.memory || {}, disk = m.disk || {};
   return `<div class="card" style="margin:12px 0 0"><h3 style="margin-top:0">This server: <span data-no-tr>${H.esc(m.host)}</span> ${m.standby ? '<span class="pill warn">Standby (STANDBY=1): pages only</span>' : m.active ? '<span class="pill pos">Runs the jobs</span>' : '<span class="pill">Pages only</span>'}</h3>
-    <div class="stats"><div class="stat"><span>CPU load (1, 5, 15 min)</span><b>${m.load.join(' · ')}</b><span class="mu">${m.cpus} CPUs</span></div>
+    <div class="stats" data-no-fig><div class="stat"><span>CPU load (1, 5, 15 min)</span><b>${m.load.join(' · ')}</b><span class="mu">${m.cpus} CPUs</span></div>
       <div class="stat"><span>Memory used</span><b>${pctUsed(mem.total - mem.available, mem.total)}</b><span class="mu">of ${gb(mem.total)}</span></div>
       <div class="stat"><span>Disk used</span><b>${disk.total ? pctUsed(disk.total - disk.free, disk.total) : '-'}</b><span class="mu">${gb(disk.free)} free</span></div>
       <div class="stat"><span>Version</span><b data-no-tr>${H.esc(m.version || '-')}</b><span class="mu">up ${Math.round(m.appUptimeSec / 60)} min</span></div>

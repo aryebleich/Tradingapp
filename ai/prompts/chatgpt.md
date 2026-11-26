@@ -29,12 +29,12 @@ Read the newest hand-off's **Next action**. If it is addressed to Codex, that is
    - run `npm run ai:status`, commit `handoff: <ID> <state>` and push.
 5. Write a dated "Codex" section in CHANGELOG_AI.md, and decisions in DECISIONS.md.
 
-**2b. If an `@codex` comment woke you on a pull request** (the AI loop opens one per Codex task, with a brief in `ai/tasks/<ID>.md`): the row is already claimed for you, and that pull request is your branch.
+**2b. If an `@codex` comment woke you on a pull request** (the AI loop opens one per task on the branch `ai/task-<id>`, with the brief and the progress note in `ai/tasks/<ID>.md`; you may be taking over from Claude or Grok at a usage limit): the row is already claimed for you, and that pull request is your branch.
 - Do the task there: push your commits to the pull request's branch, never to main.
 - `npm test` must pass before each push. Add a dated Codex section to CHANGELOG_AI.md.
 - Don't edit AI_HANDOFF.md, ai/status.json or .github/workflows; the loop updates the board.
 - End with a comment on the pull request: Changed, Checks, Blockers, Next action.
-- For `@codex review` on a Claude pull request: report real problems only (bugs, security, broken features, missing tests, secrets, promised returns, dark patterns). Say "Didn't find any major issues" when there are none, so the loop can merge.
+- For `@codex review` on a Claude pull request: report real problems only (bugs, security, broken features, missing tests, secrets, promised returns, dark patterns). Say "Didn't find any major issues" when there are none. The pull request is already merged and deployed by then, and real problems become the next task.
 
 **2c. If you cannot push (a plain ChatGPT chat):** claim nothing. Read the files you need from the public raw links, for example https://raw.githubusercontent.com/aryebleich/Tradingapp/main/src/llm.js, and do the work in the chat. End with exactly two blocks, for me to paste into Claude Code or Codex, which commits them:
 1. **Patch:** a unified diff (`git apply`-ready), or "no code change". A patch goes into Claude Code or Codex, which test and commit it.

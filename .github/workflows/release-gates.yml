@@ -1,13 +1,14 @@
 name: Release gates
-run-name: ${{ inputs.reviewed && 'Release gates (reviewed)' || 'Release gates' }}
 # Every push to a short-lived branch (ai/*, chore/*, fix/*, feature/*) runs every gate. When all pass,
 # the branch is merged into main automatically (a merge commit, only when the branch already contains
 # main's latest commit, so the merged tree is exactly the tree that was tested), main is deployed, and
 # the branch is deleted. Gates never get skipped: a failing gate leaves main untouched and the branch open
 # for the author to fix. If main moved on, merge main into the branch and push again to rerun the gates.
-# Branches of the automatic AI loop (ai/claude-*, ai/codex-*; .github/workflows/ai-loop.yml) are merged
-# only after another assistant's cross-review passed: the review starts this workflow again on the
-# branch with reviewed=true. Grok's research notes (ai/grok-*) merge after the gates like any branch.
+# Task branches of the AI loop (ai/task-*, .github/workflows/ai-loop.yml) deploy right away: their pull
+# request merges itself as soon as every gate passes (squash), then the deploy and the post-deploy checks
+# (rollback if the live site fails) run, and the cross-review follows the merge (ai-loop.yml "review").
+# The exception: a change to workflows, the legal or compliance reviews, secrets, billing going live or
+# live-money trading (scripts/ai-loop.mjs OWNER_PATHS) waits for the owner-approved label.
 #
 # Limits: (1) a branch whose changes touch .github/workflows cannot be merged by this workflow (GitHub
 # does not let the built-in token change workflow files); push such a merge to main by hand after the
@@ -17,8 +18,6 @@ on:
   push:
     branches: ['ai/**', 'chore/**', 'fix/**', 'feature/**']
   workflow_dispatch:
-    inputs:
-      reviewed: { description: 'The cross-review passed (ai-loop.yml sets this for ai/claude-* and ai/codex-* branches)', type: boolean, default: false }
 permissions:
   contents: read
 concurrency:
@@ -75,20 +74,36 @@ jobs:
     permissions:
       contents: write
       actions: write
+      pull-requests: write
     env:
       GH_TOKEN: ${{ github.token }}
       BRANCH: ${{ github.ref_name }}
       SHA: ${{ github.sha }}
-      REVIEWED: ${{ github.event_name == 'workflow_dispatch' && inputs.reviewed }}
     steps:
       - uses: actions/checkout@v7
         with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v7
+        with: { node-version-file: .node-version, check-latest: true }
+      - name: Owner approval for sensitive changes
+        id: owner
+        run: |
+          git fetch -q origin main "$BRANCH"
+          pr=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty'); echo "pr=$pr" >> "$GITHUB_OUTPUT"
+          git diff "origin/main...origin/$BRANCH" > "$RUNNER_TEMP/branch.diff"
+          files=$(git diff --name-only "origin/main...origin/$BRANCH" | paste -sd, -)
+          need=$(node scripts/ai-loop.mjs owner --files "$files" --diff "$RUNNER_TEMP/branch.diff" | jq -r .owner)
+          approved=false; if [ -n "$pr" ] && gh pr view "$pr" --json labels --jq '.labels[].name' | grep -qx owner-approved; then approved=true; fi
+          if [ "$need" = true ] && [ "$approved" != true ]; then
+            echo "::notice::Gates passed. This change touches workflows, legal or compliance, secrets, live billing or live-money trading: it waits for the owner-approved label${pr:+ on PR #$pr}."
+            if [ -n "$pr" ]; then gh pr edit "$pr" --add-label needs-owner-approval > /dev/null 2>&1 || true; fi
+            echo "wait=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: Merge into main, deploy, delete the branch
+        if: steps.owner.outputs.wait != 'true'
+        env:
+          PR: ${{ steps.owner.outputs.pr }}
         run: |
           git config user.name "release-gates[bot]"; git config user.email "release-gates@users.noreply.github.com"
-          case "$BRANCH" in ai/claude-*|ai/codex-*)
-            if [ "$REVIEWED" != "true" ]; then echo "::notice::Gates passed. This AI loop branch merges after the cross-review (ai-loop.yml)."; exit 0; fi;;
-          esac
           git fetch origin main "$BRANCH"
           [ "$(git rev-parse origin/$BRANCH)" = "$SHA" ] || { echo "::warning::The branch moved after these gates started; the newer push runs its own gates."; exit 0; }
           if git diff --name-only origin/main "$SHA" | grep -q '^\.github/workflows/'; then
@@ -98,10 +113,18 @@ jobs:
           if ! git merge-base --is-ancestor origin/main "$SHA"; then
             echo "::warning::main has new commits this branch does not contain. Merge main into the branch and push to rerun the gates (the merged tree must be the tested tree)."; exit 0
           fi
-          git checkout -B main origin/main
-          git merge --no-ff "$SHA" -m "Merge $BRANCH (all release gates passed)" -m "Gates: audit, secrets scan, syntax, clean, unit, end-to-end, page gates (test and production mode), browser suites." 
-          git push origin main
-          git push origin --delete "$BRANCH" || true
+          if [ -n "$PR" ]; then
+            # The pull request merges itself (squash): one commit per task on main, and the pull request closes.
+            gh pr ready "$PR" > /dev/null 2>&1 || true
+            gh pr merge "$PR" --squash --delete-branch --subject "$(gh pr view "$PR" --json title --jq .title) (#$PR)" --body "All release gates passed: audit, secrets scan, syntax, clean, unit, end-to-end, page gates (test and production mode), browser suites."
+          else
+            git checkout -B main origin/main
+            git merge --no-ff "$SHA" -m "Merge $BRANCH (all release gates passed)" -m "Gates: audit, secrets scan, syntax, clean, unit, end-to-end, page gates (test and production mode), browser suites."
+            git push origin main
+            git push origin --delete "$BRANCH" || true
+          fi
           # A push made with the built-in token does not start other workflows, so start the deploy here.
           gh workflow run deploy.yml --ref main
           echo "Merged $BRANCH into main and started the deploy."
+          # The cross-review follows the merge (it doesn't hold up the deploy): real problems become the next task.
+          case "$BRANCH" in ai/task-*) if [ -n "$PR" ]; then gh workflow run ai-loop.yml -f review_pr="$PR"; fi;; esac

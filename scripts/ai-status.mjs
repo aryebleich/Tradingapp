@@ -43,7 +43,7 @@ export function handoffs(md) {
 }
 
 export function build(md) {
-  const assistants = table(md, 'Assistants').map(r => ({ name: clean(r.assistant), task: dash(r.task), state: clean(r.state), updated: dash(r.updated), lastSha: dash(r.last_sha), next: dash(r.next_action) }));
+  const assistants = table(md, 'Assistants').map(r => ({ name: clean(r.assistant), task: dash(r.task), state: clean(r.state), updated: dash(r.updated), lastSha: dash(r.last_sha), next: dash(r.next_action), reset: dash(r.reset) }));
   const rows = table(md, 'Queue').map(r => ({ id: clean(r.id), state: clean(r.state), priority: Number(clean(r.priority)) || null, suggested: dash(r.suggested), claimedBy: dash(r.claimed_by), updated: dash(r.updated), task: clean(r.task_and_done_when) }));
   const by = s => rows.filter(r => r.state === s);
   return {
