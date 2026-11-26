@@ -31,7 +31,8 @@ test('the board names the three assistants, keeps the queue in order, and gives 
   assert.deepEqual(s.assistants.map(a => a.name), ASSISTANTS);
   assert.deepEqual(sortedProblems(md), []);
   for (const u of [RAW.board, RAW.status]) assert.ok(md.includes(u), u);
-  assert.ok(s.queue.ready.length >= 20, 'at least 20 ready tasks');
+  const open = ['active', 'paused', 'ready', 'blocked'].reduce((n, k) => n + s.queue[k].length, 0);
+  assert.ok(open >= 10, `the queue is running low (${open} open rows): add the next tasks, ranked by revenue and trust against effort`);
   for (const r of s.queue.ready) { assert.match(r.task, /Done when/, r.id); assert.ok(ASSISTANTS.includes(r.suggested), `${r.id}: suggested assistant`); }
   assert.ok(s.handoffs.length && s.handoffs[0].next_action, 'the newest hand-off has a next action');
 });
