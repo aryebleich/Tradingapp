@@ -5,11 +5,11 @@
   "assistants": [
     {
       "name": "Claude",
-      "task": null,
-      "state": "idle",
-      "updated": "2026-11-26 15:41",
-      "lastSha": "cd63970",
-      "next": "Claude: take REV-01 (Plans and billing with credits). Codex: take REV-02. Grok: idle; RES-01 and RES-02 are done."
+      "task": "TEAM-02",
+      "state": "active",
+      "updated": "2026-11-26 16:05",
+      "lastSha": "dc4d309",
+      "next": "Building the no-paid-keys loop (TEAM-02)."
     },
     {
       "name": "Codex",
@@ -29,7 +29,17 @@
     }
   ],
   "queue": {
-    "active": [],
+    "active": [
+      {
+        "id": "TEAM-02",
+        "state": "active",
+        "priority": null,
+        "suggested": "Claude",
+        "claimedBy": "Claude",
+        "updated": "2026-11-26 16:05",
+        "task": "The loop without paid keys: Codex through its GitHub integration (@codex tasks and reviews, on the ChatGPT plan), Grok through grok.com with its GitHub connection plus an AI hand-off inbox (an issue form, committed by a workflow), and Claude through the subscription token. Done when ai-loop.yml, the inbox workflow, the prompts and the rules work without OPENAI_API_KEY or XAI_API_KEY, and tests cover them."
+      }
+    ],
     "paused": [],
     "ready": [
       {
