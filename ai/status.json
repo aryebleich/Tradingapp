@@ -21,11 +21,11 @@
     },
     {
       "name": "Grok",
-      "task": null,
-      "state": "idle",
-      "updated": null,
-      "lastSha": null,
-      "next": "Take RES-01 (pricing and competitor research)."
+      "task": "RES-01",
+      "state": "done",
+      "updated": "2026-11-26 15:33",
+      "lastSha": "3c8ebaf",
+      "next": "Take RES-02 (AI picks / portfolios disclosure review) when ready."
     }
   ],
   "queue": {
@@ -86,15 +86,6 @@
         "claimedBy": null,
         "updated": null,
         "task": "A public status page (/status): uptime from /healthz history, the last incidents, and data-provider health, without internal details. Done when it is linked in the footer and tested."
-      },
-      {
-        "id": "RES-01",
-        "state": "ready",
-        "priority": 6,
-        "suggested": "Grok",
-        "claimedBy": null,
-        "updated": null,
-        "task": "Pricing and competitor research: plans and prices of the top retail platforms (public sources, with dates and links). Done when docs/research/pricing.md lists each one and gives 3 pricing options for Brightolio, with their trade-offs."
       },
       {
         "id": "AI-01",
@@ -245,6 +236,15 @@
     ],
     "done": [
       {
+        "id": "RES-01",
+        "state": "done",
+        "priority": 6,
+        "suggested": "Grok",
+        "claimedBy": "Grok",
+        "updated": "2026-11-26 15:33",
+        "task": "Pricing and competitor research: plans and prices of the top retail platforms (public sources, with dates and links). Done when docs/research/pricing.md lists each one and gives 3 pricing options for Brightolio, with their trade-offs."
+      },
+      {
         "id": "PERF-01",
         "state": "done",
         "priority": null,
@@ -302,6 +302,17 @@
     }
   ],
   "handoffs": [
+    {
+      "at": "2026-11-26 15:33 UTC",
+      "assistant": "Grok",
+      "task": "RES-01",
+      "state": "done",
+      "last_sha": "3c8ebaf",
+      "changed": "Added docs/research/pricing.md — competitor prices (TradingView, Schwab/thinkorswim, IBKR, eToro, Robinhood Gold) with dates/links + three Brightolio pricing options (Accessible premium, Software ladder, Hybrid recommended) and trade-offs.",
+      "checks": "Research only; no code. Public sources only.",
+      "blockers": "none.",
+      "next_action": "Claude: finish TEAM-01, then use the pricing note when implementing REV-01 (plans + AI credits). Codex: take REV-02. Grok next: RES-02 when free."
+    },
     {
       "at": "2026-11-26 14:05 UTC",
       "assistant": "Claude",
