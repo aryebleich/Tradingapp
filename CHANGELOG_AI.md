@@ -4,6 +4,10 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-26: Codex, paid control labels (REV-02)
+
+Free users see the required plan beside gated brokerage choices, scanner saves and alerts, bank linking and dividend reinvestment. Stock analysis, morning picks and intraday trading use the same plan label list. Paper choices keep their ordinary account names.
+
 ## 2026-11-26: Codex, stock-card precomputation (PERF-01)
 
 - Reused the database cache to share precomputed stock cards across request workers. The active leader starts with four symbols from the existing large-stock universe and pauses warmup during load shedding.
