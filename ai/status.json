@@ -51,6 +51,15 @@
         "task": "\"Unlock with Pro\" labels on paid-only controls before they are pressed (PRO_REVIEW #18), from one list of paid features. Done when every paid control on the 10 most-used pages is labelled and a test checks the list."
       },
       {
+        "id": "AIP-01",
+        "state": "ready",
+        "priority": 3,
+        "suggested": "Codex",
+        "claimedBy": null,
+        "updated": null,
+        "task": "Apply Grok's honesty review (docs/research/ai-picks-review.md) to the AI morning picks and AI portfolios: an always-visible not-advice line, a track-record strip that includes losses, and a short methodology note. Done when each page shows all three and a test checks them."
+      },
+      {
         "id": "REV-03",
         "state": "ready",
         "priority": 3,
