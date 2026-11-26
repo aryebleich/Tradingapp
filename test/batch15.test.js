@@ -41,7 +41,7 @@ test('public pages carry canonical, hreflang, Open Graph, verification and valid
   assert.ok(types.includes('Organization') && types.includes('WebSite') && types.includes('SoftwareApplication'));
   assert.ok(ld['@graph'].find(x => x['@type'] === 'Organization').sameAs[0].includes('linkedin'));
   const app = ld['@graph'].find(x => x['@type'] === 'SoftwareApplication');
-  assert.ok(app.offers.some(o => o.name === 'Pro' && o.price === '53'));
+  assert.ok(app.offers.some(o => o.name === 'Pro' && o.price === '14.99'));
   const faq = ld['@graph'].find(x => x['@type'] === 'FAQPage');
   assert.ok(faq && faq.mainEntity.length > 2 && faq.mainEntity[0].acceptedAnswer.text.length > 10);
   // Other pages: their own canonical, and no FAQ.

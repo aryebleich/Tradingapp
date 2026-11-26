@@ -67,9 +67,13 @@ test('ready-made strategies trade real accounts by themselves only in registered
     assert.equal((await owner('/library/' + st.id)).body.autoRealAllowed, false);
     // By hand on the real account is fine.
     assert.equal((await owner('/library/' + st.id, { mode: 'manual', account: 'alpaca' }, 'PUT')).status, 200);
-    // In adviser mode it is allowed.
+    // Adviser mode alone is not enough: it also waits for the legal gate (L-MP1). With both, it is allowed.
     assert.equal((await owner('/admin/site/mode', { adviser: true, registered: true }, 'PUT')).status, 200);
+    assert.equal((await owner('/library/' + st.id, { mode: 'auto', account: 'alpaca' }, 'PUT')).status, 403);
+    const { siteSet } = await import('../src/site.js');
+    await siteSet('legalGates', { copyTrading: { on: true, at: Date.now() } });
     assert.equal((await owner('/library/' + st.id, { mode: 'auto', account: 'alpaca' }, 'PUT')).status, 200);
+    await siteSet('legalGates', {});
     await owner('/admin/site/mode', { adviser: false }, 'PUT');
 
     // Copying someone else's signal channel into a real account automatically: review only.

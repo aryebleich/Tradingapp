@@ -8,7 +8,6 @@
 import express from 'express';
 import { one, all, run, now } from './db.js';
 import { isPaid } from './fees.js';
-import { adviserMode } from './site.js';
 import { publicName } from './crypto.js';
 import { stepUpGuard } from './security.js';
 import { placeOrder, lastPrice, accountSummary, ACCOUNT_IDS } from './brokers.js';
@@ -21,6 +20,7 @@ import { checkPlaybook, fromSpec, rebalanceDue, tickers, condLabel, REBALANCES, 
 import { walkForward } from './engine.js';
 import { isTradingDay, prevTradingDay, sessionOf } from './market-calendar.js';
 import { realityFor } from './rotation/reality.js';
+import { realCopyAllowed } from './legal-gates.js';
 
 export const KIND = 'playbook';
 export const DISCLAIMER = 'Backtests are hypothetical and use past prices; past results do not predict future returns. Trading involves risk of loss.';
@@ -169,7 +169,7 @@ export async function runPlaybooks(t = now(), claim) {
       }
       // Copies of ready-made or shared Playbooks follow real accounts by approval unless the business
       // runs as a registered adviser (the same rule as the ready-made strategies).
-      const approve = s.mode === 'approve' || (s.account !== 'paper' && raw.copied_from && !adviserMode());
+      const approve = s.mode === 'approve' || (s.account !== 'paper' && raw.copied_from && !realCopyAllowed());
       if (approve) await prepare(s, n.day); else await execute(s, s.userId, { kind: 'auto' });
       ran++;
     } catch (e) {

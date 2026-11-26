@@ -296,7 +296,8 @@ test('errors: every response has a request id; a Stripe failure reaches the cust
   // A real checkout request that Stripe rejects.
   const u = client(); await u('/auth/register', { email: 'h-err@example.com', password: 'Str0ngPassword1', agree: true });
   process.env.STRIPE_PRICE_PRO = 'price_missing';
-  failQueue.push({ status: 400, body: { error: { type: 'invalid_request_error', message: "No such price: 'price_missing'" } } });
+  // Stripe refuses the price twice: the price check before checkout (src/stripesetup.js checkPlanPrice) and the checkout itself.
+  for (let i = 0; i < 2; i++) failQueue.push({ status: 400, body: { error: { type: 'invalid_request_error', message: "No such price: 'price_missing'" } } });
   const lines = []; const warn = console.warn; console.warn = l => lines.push(String(l));
   let res; try { res = await u('/billing/checkout', { plan: 'pro' }); } finally { console.warn = warn; }
   assert.equal(res.status, 400);

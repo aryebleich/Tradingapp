@@ -139,3 +139,21 @@ export async function stripeStatus({ siteUrl, lastEvent, savedWebhookId }) {
   const ready = !error && base.webhookSecret && Object.values(base.prices).every(Boolean) && !!account?.chargesEnabled && !webhook?.missing && !webhook?.wrongUrl && !webhook?.missingEvents?.length && webhook?.status !== 'disabled';
   return { ...base, account, webhook, error, ready };
 }
+
+// Checkout never charges a price other than the one shown (DECISIONS.md MP-3). The saved Stripe price
+// (STRIPE_PRICE_<PLAN>[_YEARLY]) is read once every 10 minutes and compared with PLANS; after a price
+// change, checkout waits until the owner runs Admin → Money & fees → Stripe → Finish setup again.
+const priceSeen = new Map();
+export async function checkPlanPrice(plan, interval, plans = PLANS) {
+  const id = process.env[priceEnv(plan, interval)]; if (!id) return { ok: true, unchecked: true };
+  const want = Math.round((interval === 'year' ? plans[plan]?.yearly : plans[plan]?.monthly) * 100);
+  let hit = priceSeen.get(id);
+  if (!hit || Date.now() - hit.at > 600e3) {
+    // Stripe unreachable: checkout itself reports that in plain words; the check runs again next time.
+    let p; try { p = await stripeApi('GET', `/prices/${encodeURIComponent(id)}`); } catch { return { ok: true, unchecked: true }; }
+    hit = { at: Date.now(), cents: p.unit_amount, currency: p.currency }; priceSeen.set(id, hit);
+  }
+  if (hit.cents !== want || hit.currency !== 'usd') throw Object.assign(new Error('This plan\'s price was just updated and checkout is paused until the new price is set up. Nothing was charged; please try again later.'), { status: 409, priceMismatch: true });
+  return { ok: true };
+}
+export const _resetPriceCheck = () => priceSeen.clear();

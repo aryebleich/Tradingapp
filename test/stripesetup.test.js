@@ -75,8 +75,8 @@ test('setup creates prices, webhook and portal once; a second run changes nothin
   assert.equal(r.status, 200, JSON.stringify(r.body));
   assert.equal(db.products.length, 3); assert.equal(db.prices.length, 6); assert.equal(db.hooks.length, 1); assert.equal(db.portals.length, 1);
   const pro = db.prices.find(p => p.lookup_key === 'brightfolio_pro_month');
-  assert.equal(pro.unit_amount, 5300); assert.equal(pro.recurring.interval, 'month');
-  assert.equal(db.prices.find(p => p.lookup_key === 'brightfolio_ultimate_year').unit_amount, 320000);
+  assert.equal(pro.unit_amount, 1499); assert.equal(pro.recurring.interval, 'month');
+  assert.equal(db.prices.find(p => p.lookup_key === 'brightfolio_ultimate_year').unit_amount, 89900);
   assert.equal(db.hooks[0].url, 'https://pay.example/webhooks/stripe');
   assert.ok(db.hooks[0].enabled_events.includes('checkout.session.completed') && db.hooks[0].enabled_events.includes('invoice.paid'));
   assert.ok(r.body.saved.includes('STRIPE_WEBHOOK_SECRET') && r.body.saved.includes('STRIPE_PRICE_PRO_YEARLY') && r.body.saved.includes('STRIPE_PORTAL_CONFIG'));
@@ -94,7 +94,7 @@ test('a changed plan price makes a new Stripe price and retires the old one', as
     await owner('/admin/site/stripe/setup', {});
     const live = db.prices.filter(p => p.active && p.recurring.interval === 'month' && p.unit_amount === 5900);
     assert.equal(live.length, 1); assert.equal(process.env.STRIPE_PRICE_PRO, live[0].id);
-    assert.equal(db.prices.find(p => p.unit_amount === 5300).active, false);
+    assert.equal(db.prices.find(p => p.unit_amount === 1499).active, false);
   } finally { PLANS.pro.monthly = old; await owner('/admin/site/stripe/setup', {}); }
 });
 
@@ -146,4 +146,19 @@ test('a wrong key is reported plainly', async () => {
   const k = process.env.STRIPE_SECRET_KEY; process.env.STRIPE_SECRET_KEY = 'sk_test_wrong';
   try { const r = await owner('/admin/site/stripe/setup', {}); assert.equal(r.status, 400); assert.match(r.body.error, /Invalid API Key/); }
   finally { process.env.STRIPE_SECRET_KEY = k; }
+});
+
+test('checkout refuses a saved Stripe price that no longer matches the price shown (nothing is charged)', async () => {
+  const { PLANS } = await import('../src/fees.js'), S = await import('../src/stripesetup.js');
+  await owner('/admin/site/stripe/setup', {}); S._resetPriceCheck();
+  const buyer = client(); await buyer('/auth/register', { email: 'buyer2@example.com', password: 'Str0ngPassword1', agree: true });
+  const before = db.sessions.length;
+  const ok = await buyer('/billing/checkout', { plan: 'elite', interval: 'month' });
+  assert.equal(ok.status, 200, JSON.stringify(ok.body)); assert.equal(db.sessions.length, before + 1);
+  const old = PLANS.elite.monthly; PLANS.elite.monthly = 44.99; S._resetPriceCheck();
+  try {
+    const r = await buyer('/billing/checkout', { plan: 'elite', interval: 'month' });
+    assert.equal(r.status, 409); assert.match(r.body.error, /Nothing was charged/);
+    assert.equal(db.sessions.length, before + 1, 'no checkout session was made');
+  } finally { PLANS.elite.monthly = old; S._resetPriceCheck(); }
 });

@@ -98,7 +98,7 @@ async function moneyExtras(view) {
     <div class="stat"><span>Paying users</span><b>${f.paying}</b></div>
     <div class="stat"><span>Signup → paying</span><b>${f.conversion}%</b></div></div>
     <div class="levers">${[
-      ['Plans', `Starter free, Pro $53, Elite $109, Ultimate $320 a month; yearly = 2 months free.`, true],
+      ['Plans', `Starter free, Pro $14.99, Elite $39.99, Ultimate $89.99 a month; yearly = about 2 months free; Institutional from $499 a month on a contract (DECISIONS.md MP-3).`, true],
       ['Free trial', 'Every paid plan starts with a free trial; invited friends get extra days, so they convert more often.', true],
       ['Live trading on every plan', 'Free users trade their own real accounts, so they connect a brokerage early. Automation (bots, webhooks, strategies on real money) is what they upgrade for.', true],
       ['Deposit service fee', `${m.depositFeePercent}%${m.depositFeeFixed ? ' + ' + H.money(m.depositFeeFixed) : ''}${m.depositFeeCap ? `, at most ${H.money(m.depositFeeCap)}` : ''} on card and bank deposits.`, m.depositFeePercent > 0 || m.depositFeeFixed > 0],

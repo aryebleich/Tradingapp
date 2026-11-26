@@ -10,7 +10,7 @@ import { literal } from '../src/readme-overview.js';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const FILE = path.join(root, 'docs/FEATURE_REGISTRY.md');
 export const STATES = ['done', 'partial', 'missing'];
-export const TIERS = ['Free', 'Plus', 'Pro', 'Elite', 'Institutional'];
+export const TIERS = ['Free', 'Pro', 'Elite', 'Ultimate', 'Institutional'];
 export const FLAGS = ['legal', 'licensed', 'delayed', 'member', '—'];
 export const PRODUCTS = ['Terminal', 'AI', 'Scanner', 'AutoTrade', 'Portfolio', 'Intelligence', 'Social', 'Marketplace', 'Academy', 'Enterprise', 'Developer Cloud', 'Apps', 'Security'];
 

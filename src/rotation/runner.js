@@ -1,7 +1,6 @@
 // A user's copy of a library strategy: walkdown with live data, placing the orders (by hand or
 // automatically each trading day), trailing stops, and the daily model return that Reality Check uses.
 import { one, all, run, now } from '../db.js';
-import { adviserMode } from '../site.js';
 import { placeOrder, accountSummary, lastPrice, validSymbol } from '../brokers.js';
 import { TEMPLATES, template } from './templates.js';
 import { isDesign, materialize, missingSlots } from './blueprints.js';
@@ -10,6 +9,7 @@ import { FNS } from './indicators.js';
 import { realityFor } from './reality.js';
 import { sendSms, sendEmail } from '../notify.js';
 import { notifyUser as notifyAccount } from '../notify-user.js';
+import { realCopyAllowed } from '../legal-gates.js';
 
 export { ACCOUNT_IDS as ACCOUNTS } from '../brokers.js';
 const bad = (msg, status = 400) => Object.assign(new Error(msg), { status });
@@ -201,7 +201,7 @@ export async function runAuto(t = now(), claim) {
     if (!await claim(`strategy:${s.id}:${n.day}`)) continue;
     // Ready-made strategies trade real accounts by themselves only in registered-adviser mode.
     // Otherwise (and in "approve" mode) the orders are prepared and the user approves them.
-    const approve = s.mode === 'approve' || (s.account !== 'paper' && s.templateId && !adviserMode());
+    const approve = s.mode === 'approve' || (s.account !== 'paper' && s.templateId && !realCopyAllowed());
     try { if (approve) await prepare(s, n.day); else await execute(s, s.userId, { kind: 'auto' }); ran++; }
     catch (e) { await run('INSERT INTO strategy_runs (strategy_id, user_id, kind, summary, at) SELECT id, user_id, ?, ?, ? FROM user_strategies WHERE id = ?', 'error', e.message.slice(0, 300), now(), s.id); }
   }

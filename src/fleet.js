@@ -4,7 +4,6 @@
 // own guardrails.
 import express from 'express';
 import { publicName } from './crypto.js';
-import { adviserMode } from './site.js';
 import crypto from 'node:crypto';
 import { one, all, run, now, audit } from './db.js';
 import { requireUser, rateLimit } from './auth.js';
@@ -14,6 +13,7 @@ import { isPaid } from './fees.js';
 import { killed } from './risk.js';
 import { notifyUser } from './notify-user.js';
 import { sha256 } from './crypto.js';
+import { realCopyAllowed } from './legal-gates.js';
 
 const REVIEW_MINUTES = 30;
 const bad = (m, s = 400) => Object.assign(new Error(m), { status: s });
@@ -47,7 +47,7 @@ export async function broadcast(channel, { symbol, side, sizePct = null, note = 
   for (const sub of subs) {
     // Copying another trader's signals into a real account without review is managed money: only in
     // registered-adviser mode. Otherwise each one waits for the follower to approve it.
-    const auto = sub.mode === 'auto' && (sub.account === 'paper' || sub.user_id === channel.user_id || adviserMode());
+    const auto = sub.mode === 'auto' && (sub.account === 'paper' || sub.user_id === channel.user_id || realCopyAllowed());
     if (auto) {
       let result; try { result = await execute(sub, sig); } catch (e) { result = 'failed: ' + e.message; }
       await run("INSERT INTO channel_pending (sub_id, signal_id, user_id, status, result, at) VALUES (?,?,?, 'auto', ?, ?)", sub.id, sigId, sub.user_id, result, now());
@@ -116,7 +116,7 @@ export const fleetRouter = (() => {
     const c = await one('SELECT * FROM channels WHERE id = ? AND (public = 1 OR user_id = ?)', +req.params.id, req.user.id); if (!c) throw bad('No such channel', 404);
     const accounts = (Array.isArray(req.body.accounts) ? req.body.accounts : [req.body.account || 'paper']).filter(a => ACCOUNT_IDS.includes(a));
     if (!accounts.length) throw bad('Pick an account');
-    if (req.body.mode === 'auto' && accounts.some(a => a !== 'paper') && c.user_id !== req.user.id && !adviserMode()) throw Object.assign(bad('Copying another trader\'s signals into a real account automatically needs the business to be a registered investment adviser. Choose "review each signal" for real accounts, or automatic on paper.'), { status: 403, adviserOnly: true });
+    if (req.body.mode === 'auto' && accounts.some(a => a !== 'paper') && c.user_id !== req.user.id && !realCopyAllowed()) throw Object.assign(bad('Copying another trader\'s signals into a real account automatically needs the business to be a registered investment adviser. Choose "review each signal" for real accounts, or automatic on paper.'), { status: 403, adviserOnly: true });
     if (accounts.some(a => a !== 'paper') && !isPaid(req.user)) throw Object.assign(bad('Mirroring into real accounts is part of Pro'), { status: 402, upgrade: true, feature: 'Signal mirroring to real accounts' });
     const sizing = req.body.sizing === 'pct' ? 'pct' : 'fixed', amount = Math.max(1, Math.min(sizing === 'pct' ? 100 : 1e7, +req.body.amount || 100)), mode = req.body.mode === 'auto' ? 'auto' : 'review';
     for (const a of accounts) await run('INSERT INTO channel_subs (channel_id, user_id, account, sizing, amount, mode, active, created_at) VALUES (?,?,?,?,?,?,1,?) ON CONFLICT(channel_id, user_id, account) DO UPDATE SET sizing = excluded.sizing, amount = excluded.amount, mode = excluded.mode, active = 1', c.id, req.user.id, a, sizing, amount, mode, now());

@@ -4,6 +4,14 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-26: Claude, one price ladder and the legal gates (MP-01, steps 3 and 4)
+
+- Prices (DECISIONS.md MP-3): Pro $14.99, Elite $39.99, Ultimate $89.99 a month (yearly $149, $399, $899), Starter free, and Institutional from $499 a month on a contract (a "Talk to us" card on Plans & billing, no checkout). Updated in src/fees.js, the homepage (scripts/home.py, public/index.html, public/yi.html), the owner overview and the plan documents. The plan names stay.
+- Checkout refuses a saved Stripe price whose amount no longer matches the plan (checkPlanPrice in src/stripesetup.js). Nothing is charged. Stripe stays in test mode; the owner reruns Admin → Money & fees → Stripe → Finish setup to create the new test prices.
+- Legal gates (src/legal-gates.js, LEGAL_REVIEW.md L-MP1 to L-MP4), all off: automatic real-money copies of another member's trades, shared Playbooks and ready-made strategies (src/fleet.js, src/playbooks.js, src/rotation/*), the performance fee (src/scheduler.js) and the per-trade broker commission (src/revenue.js). Each now needs its gate as well as the adviser mode it needed before.
+- test/price-ladder.test.js keeps the plans, the revenue strategy, the homepage, the "Unlock with" labels and the credits on one ladder. Tests changed for the gates: api, batch6, wealth, stripe-hardening, stripesetup.
+- Page gate: site/home, site/yi, app/funding, app/admin-money, app/admin-readme and app/admin-agents re-measured after review. The only differences were the new prices and disclosures moved down by the added card and section.
+
 ## 2026-11-26: Grok, one product pull request (REV-02 from Codex)
 
 - Took the unfinished paid-control labels from draft PR #60 (commits f7c7107 and 4231cf5) onto current main.

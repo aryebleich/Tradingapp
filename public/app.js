@@ -2124,6 +2124,9 @@ routes.funding = routes.billing = async (view, q) => {
         <ul>${p.features.map(f => `<li>${esc(f)}</li>`).join('')}</ul>
         ${p.monthly && !cur ? `<button data-plan="${k}" class="${p.popular ? '' : 'ghost'}">${trial && !subscribed() ? `Start ${days}-day free trial` : subscribed() ? `Switch to ${esc(p.name)}` : `Choose ${esc(p.name)}`}</button>` : cur ? '<button class="ghost" disabled>Your plan</button>' : ''}</div>`;
     }).join('')}</div>
+    ${CFG.institutional ? `<div class="card plan inst"><h2 style="margin:0">${esc(CFG.institutional.name)}</h2><div class="mu" style="font-size:14px">${esc(CFG.institutional.tagline)}</div>
+      <div class="price">From $${CFG.institutional.from}<small>/month</small></div><div class="mu" style="font-size:13px">On an annual contract; no card is taken here.</div>
+      <ul>${CFG.institutional.features.map(f => `<li>${esc(f)}</li>`).join('')}</ul><button type="button" class="ghost" id="instContact">Talk to us</button></div>` : ''}
     <div class="err" id="planErr"></div><p class="mu small-print">Payment is on Stripe's secure page. On a phone, if the card numbers you type don't show, turn off your browser's dark theme for websites (Chrome: Settings → Theme; Samsung Internet: dark mode off) or open the page in another browser.</p>
     <p class="mu" style="text-align:center;font-size:13px">Secure checkout by Stripe. Cancel anytime from "Manage billing". Prices in USD.</p>
     ${CFG.compare ? `<details class="card compare" ${ME.plan === 'free' ? 'open' : ''}><summary><b>Compare plans</b></summary><div class="tablewrap" tabindex="0" role="region" aria-label="Compare plans"><table class="cmp"><thead><tr><th scope="col">Feature</th>${Object.entries(CFG.plans).map(([k, p]) => `<th scope="col" class="${k === ME.plan ? 'cur' : ''}${p.popular ? ' rec' : ''}">${esc(p.name)}${CFG.tiers?.[k] && CFG.tiers[k] !== p.name ? `<br><small class="tier">${esc(CFG.tiers[k])}</small>` : ''}${k === ME.plan ? ' <span class="pill">Your plan</span>' : ''}</th>`).join('')}</tr></thead>
@@ -2156,6 +2159,7 @@ routes.funding = routes.billing = async (view, q) => {
       ${ledger.map(l => `<tr><td>${date(l.at)}</td><td>${esc(l.kind.replace(/_/g, ' '))}</td><td>${money(l.amount)}</td><td>${esc(l.status)}</td><td>${esc(l.memo || '')}</td></tr>`).join('') || '<tr><td colspan="5"><div class="empty"><b>Nothing billed yet.</b><span>Charges, refunds and credit purchases show here.</span></div></td></tr>'}</table></div>`;
     $$('#interval button', view).forEach(b => (b.onclick = () => { yearly = b.dataset.i === 'year'; draw(); }));
     // Members who already pay switch in the billing portal (one subscription, prorated), never a second checkout.
+    const ic = $('#instContact', view); if (ic) ic.onclick = () => { location.href = '/contact'; };
     $$('[data-plan]', view).forEach(b => act(b, async () => { location.href = subscribed() ? (await api('/billing/portal', { body: {} })).url : (await api('/billing/checkout', { body: { plan: b.dataset.plan, interval: yearly ? 'year' : 'month' } })).url; }, $('#planErr', view)));
     $$('[data-pack]', view).forEach(b => act(b, async () => { location.href = (await api('/credits/buy', { body: { pack: b.dataset.pack } })).url; }, $('#credErr', view)));
     if ($('#portal', view)) act($('#portal', view), async () => { location.href = (await api('/billing/portal', { body: {} })).url; }, $('#planErr', view));

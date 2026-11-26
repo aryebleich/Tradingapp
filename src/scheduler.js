@@ -9,13 +9,13 @@ import { latestSignal } from './engine.js';
 import { sendSms, sendEmail } from './notify.js';
 import { notifyUser } from './notify-user.js';
 import { assessFee, isPaid } from './fees.js';
-import { adviserMode } from './site.js';
 import { tradingFor } from './alpaca/connections.js';
 import { getAccount, brokerEnabled, FINAL_STATUSES } from './alpaca/broker.js';
 import { applyStatus } from './alpaca/kyc.js';
 import { runAuto, checkStops, recordDaily } from './rotation/runner.js';
 import { runPairBots } from './pairs.js';
 import { isTradingDay, sessionOf } from './market-calendar.js';
+import { performanceFeeAllowed } from './legal-gates.js';
 
 const DAY = 86400e3;
 
@@ -224,7 +224,8 @@ export async function snapshotAll() {
 export async function assessAllFees() {
   const out = [];
   // Software-only mode charges no performance fee (that needs a registered investment adviser).
-  if (!adviserMode()) return out;
+  // It also waits for the owner's legal sign-off (Admin → Security → Legal gates, L-MP3).
+  if (!performanceFeeAllowed()) return out;
   for (const s of await all('SELECT user_id, account FROM fee_state')) {
     try {
       if (s.account === 'alpaca' && !(await tradingFor(s.user_id))) continue;

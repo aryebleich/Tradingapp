@@ -69,9 +69,12 @@ test('register, trade, schedule, tax, 2FA login', async () => {
   const { siteSet } = await import('../src/site.js');
   await siteSet('adviserMode', true);
   try {
+    // Registered-adviser mode alone is not enough: the fee also waits for the legal gate (L-MP3).
+    assert.deepEqual((await call('/admin/assess-fees', {})).body, []);
+    await siteSet('legalGates', { adviceAndCut: { on: true, at: Date.now() } });
     const fees = await call('/admin/assess-fees', {});
     assert.ok(fees.body.find(f => f.account === 'paper').fee > 0);
-  } finally { await siteSet('adviserMode', false); }
+  } finally { await siteSet('adviserMode', false); await siteSet('legalGates', {}); }
 });
 
 test('lockout after repeated bad passwords', async () => {

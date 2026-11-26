@@ -183,11 +183,11 @@ FEATURES = [
 PLANS = [
  ('Starter', 'Learn and practice', '$0', None, '/forever', None, None,
   ['$100,000 paper account', 'Live trading on your own brokerage (your own orders)', '1 chart per layout, every indicator', 'Strategy library by hand + 1 automatic strategy on paper', 'Unlimited backtests', '1 alert webhook (paper)', '2 scanners, checked hourly', 'AI assistant: 30 messages a day', '100 credits every month'], 'Start free', False),
- ('Pro', 'Automate your real accounts', '$53', '$530', '/month', '/year', None,
+ ('Pro', 'Automate your real accounts', '$14.99', '$149', '/month', '/year', None,
   ['Everything in Starter', 'Automated trading on Alpaca, Schwab, tastytrade, Tradier &amp; TradeStation', '2-chart layouts', '5 automatic strategies with Reality Check auto-throttle', '10 alert webhooks', 'Scanners every 5 minutes, portfolios &amp; signal mirroring', 'AI assistant: 300 messages a day', 'Optimizer, walk-forward testing &amp; code lab', 'Trading and alerts by text and phone, QuantConnect and bank-card linking', '1,000 credits every month'], 'Start 14-day free trial', True),
- ('Elite', 'For active traders', '$109', '$1,090', '/month', '/year', None,
+ ('Elite', 'For active traders', '$39.99', '$399', '/month', '/year', None,
   ['Everything in Pro', '4-chart layouts and pop-out windows', '25 automatic strategies &amp; 25 webhooks', 'Option income bots &amp; multi-leg orders', 'Market-neutral pairs (long + short)', 'Tax-loss harvesting &amp; Schedule D', 'AI assistant: 1,000 messages a day', '3,000 credits every month'], 'Start 14-day free trial', False),
- ('Ultimate', 'For serious capital', '$320', '$3,200', '/month', '/year', None,
+ ('Ultimate', 'For serious capital', '$89.99', '$899', '/month', '/year', None,
   ['Everything in Elite', '100 automatic strategies &amp; 100 webhooks', 'Unlimited scanners and AI agents', 'AI assistant: 3,000 messages a day', '10,000 credits every month', 'Priority support'], 'Start 14-day free trial', False),
 ]
 

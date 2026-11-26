@@ -22,13 +22,13 @@ This is Brightolio's one revenue strategy: the plan below plus the master plan's
 | Plan | Monthly | Yearly | What it is for |
 | --- | --- | --- | --- |
 | Free | $0 | $0 | Acquisition and trust: paper trading, charts, watchlists, research basics, delayed data |
-| Plus | $14.99 | $149 | The main conversion tier: real-account automation, scanners every 5 minutes, alerts by text, more AI |
-| Pro | $39.99 | $399 | Active traders: options income bots, multi-leg orders, tax-loss harvesting, 4-chart layouts, more AI |
-| Elite | $89.99 | $899 | Power users: 100 strategies and webhooks, unlimited scanners and agents, the most AI, priority support |
+| Pro | $14.99 | $149 | The main conversion tier: real-account automation, scanners every 5 minutes, alerts by text, more AI |
+| Elite | $39.99 | $399 | Active traders: options income bots, multi-leg orders, tax-loss harvesting, 4-chart layouts, more AI |
+| Ultimate | $89.99 | $899 | Power users: 100 strategies and webhooks, unlimited scanners and agents, the most AI, priority support |
 | Institutional | from $499 a month | annual contract | Teams: workspaces, APIs, SSO, reporting (sales-led; no self-serve checkout yet) |
 | AI credits | per pack | — | Usage beyond the plan's allowance (packs of 500, 3,000 and 12,000) |
 
-The yearly price is about 17% off (ten months for twelve). Both the master plan and the research call these prices a starting point to test. Revisit them every 6 months against TradingView, Robinhood Gold and new AI tools (docs/research/pricing.md).
+Free is the Starter plan. The names are the app's (Pro, Elite, Ultimate), which members, Stripe and the translations already use; the master plan's Plus, Pro and Elite map to them. The yearly price is about 17% off (ten months for twelve). Both the master plan and the research call these prices a starting point to test. Revisit them every 6 months against TradingView, Robinhood Gold and new AI tools (docs/research/pricing.md).
 
 ### Revenue streams
 

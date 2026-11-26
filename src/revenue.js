@@ -3,6 +3,7 @@
 // orders in brokerage accounts opened through Brightolio (Alpaca Broker API partner commission).
 import { one, run, now } from './db.js';
 import { siteGet, siteSet } from './site.js';
+import { brokerCommissionAllowed } from './legal-gates.js';
 
 const num = (v, d = 0) => (Number.isFinite(+v) && v !== '' && v != null ? +v : d);
 const DEFAULTS = () => ({
@@ -58,13 +59,14 @@ export function nextMilestone(paying) {
 // Added to orders in accounts Brightolio opened (Broker API); Alpaca collects it for the partner.
 export function withCommission(body) {
   const s = settings();
-  if (!(s.commissionValue > 0)) return body;
+  // Per-trade pay from a broker waits for the owner's legal sign-off (Legal gates, L-MP4).
+  if (!(s.commissionValue > 0) || !brokerCommissionAllowed()) return body;
   return { ...body, commission: String(s.commissionValue), commission_type: s.commissionType };
 }
 // Records what the commission on a sent order should bring in, for the revenue page.
 export async function recordCommission(userId, order, priceHint) {
   const s = settings();
-  if (!(s.commissionValue > 0) || !order?.id) return;
+  if (!(s.commissionValue > 0) || !order?.id || !brokerCommissionAllowed()) return;
   const qty = +order.qty || 0, notional = +order.notional || qty * (+priceHint || +order.limit_price || 0);
   const amount = s.commissionType === 'bps' ? notional * s.commissionValue / 1e4 : s.commissionType === 'qty' ? qty * s.commissionValue : s.commissionValue;
   if (!(amount > 0)) return;

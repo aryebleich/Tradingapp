@@ -34,6 +34,10 @@ test('money levers: deposit fee with a cap, referral milestones, longer trial fo
     const { serviceFee, trialDaysFor, withCommission, referralReward, nextMilestone } = await import('../src/revenue.js');
     assert.equal(serviceFee(100), 1.5); assert.equal(serviceFee(10000), 5);
     assert.equal(trialDaysFor({ referred_by: 3 }, 14), 30); assert.equal(trialDaysFor({}, 14), 14);
+    // Per-trade broker pay waits for the legal gate (L-MP4): nothing is added while it is off.
+    assert.deepEqual(withCommission({ symbol: 'AAPL' }), { symbol: 'AAPL' });
+    const { siteSet } = await import('../src/site.js');
+    await siteSet('legalGates', { brokerPerTrade: { on: true, at: Date.now() } });
     assert.deepEqual(withCommission({ symbol: 'AAPL' }), { symbol: 'AAPL', commission: '50', commission_type: 'bps' });
     assert.deepEqual(nextMilestone(1), { at: 2, bonus: 40 });
     // Two friends subscribe: the second one reaches the milestone.
@@ -46,6 +50,7 @@ test('money levers: deposit fee with a cap, referral milestones, longer trial fo
     const m = (await owner('/admin/site/money')).body;
     assert.equal(m.leaders[0].invited, 2); assert.equal(m.stats.referredSignups, 2);
     await owner('/admin/site/money', { commissionValue: 0, depositFeePercent: 0, depositFeeFixed: 0 }, 'PUT');
+    await siteSet('legalGates', {});
     assert.deepEqual(withCommission({ symbol: 'AAPL' }), { symbol: 'AAPL' });
     // The adviser checklist is ticked off step by step.
     assert.equal((await owner('/admin/site/ria', { id: 'exam', done: true }, 'PUT')).status, 200);

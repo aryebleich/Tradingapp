@@ -10,7 +10,8 @@ import { publicName } from '../crypto.js';
 import { Market, tickersOf, backtest } from './engine.js';
 import { parse, mine, validateSpec, walkdown, execute, templatesList, ACCOUNTS, decidePending, nyNow, marginMultiple } from './runner.js';
 import { realityFor, winRateSplit } from './reality.js';
-import { adviserMode, adviserFor } from '../site.js';
+import { adviserFor } from '../site.js';
+import { realCopyAllowed, legalGate } from '../legal-gates.js';
 
 // What each plan gets in the strategy builder. Free: build and follow by hand, automate one on
 // paper, copy community strategies. Paid plans add automation on real accounts, longer backtests,
@@ -125,7 +126,7 @@ router.get('/:id', async (req, res) => {
   const runs = await all('SELECT kind, summary, at FROM strategy_runs WHERE strategy_id = ? ORDER BY id DESC LIMIT 30', s.id);
   if (s.state.pending && s.state.pending.day !== nyNow().day) s.state = { ...s.state, pending: undefined };
   const bp = bpById(s.templateId);
-  res.json({ ...s, template: bp ? { id: bp.id, name: bp.name, tagline: bp.tagline, about: bp.about } : templatesList().find(t => t.id === s.templateId) || null, runs, reality: await realityFor(s), limits: limits(req.user), plan: planOf(req.user), autoRealAllowed: !s.templateId || adviserFor(req.user) });
+  res.json({ ...s, template: bp ? { id: bp.id, name: bp.name, tagline: bp.tagline, about: bp.about } : templatesList().find(t => t.id === s.templateId) || null, runs, reality: await realityFor(s), limits: limits(req.user), plan: planOf(req.user), autoRealAllowed: !s.templateId || (adviserFor(req.user) && legalGate('copyTrading')) });
 });
 
 router.put('/:id', async (req, res) => {
@@ -137,7 +138,7 @@ router.put('/:id', async (req, res) => {
   // Following a strategy by hand or approving each trade is the user's own trading: every plan.
   // Trading by itself on a real account is automation (paid plans).
   if (account !== 'paper' && mode === 'auto' && !isPaid(req.user)) throw upgrade('Running strategies on your brokerage account');
-  if (mode === 'auto' && account !== 'paper' && s.templateId && !adviserMode()) throw adviserOnly();
+  if (mode === 'auto' && account !== 'paper' && s.templateId && !realCopyAllowed()) throw adviserOnly();
   if (mode !== 'manual' && mode !== s.mode && s.mode === 'manual') {
     const autos = (await one("SELECT COUNT(*) n FROM user_strategies WHERE user_id = ? AND mode IN ('auto', 'approve')", req.user.id)).n;
     if (autos >= limits(req.user).auto) throw isPaid(req.user) ? bad(`Your plan runs ${limits(req.user).auto} automatic strategies at once`) : upgrade('More than one automatic strategy');
