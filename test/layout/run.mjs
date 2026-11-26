@@ -95,6 +95,9 @@ async function measure(p, width) {
         // Dates (11/26/2026, 2026-11-26, Nov 26, Monday): the server stamps real times (a last sign-in), and a
         // date is never a price, fee or balance.
         if (/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b|\b\d{4}-\d{2}-\d{2}\b|\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s\d{1,2}\b|\b\d{1,2}\s(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b|\b(Mon|Tues?|Wed|Thu|Fri|Sat|Sun)[a-z]*day\b/.test(wide)) continue;
+        // Sizes of the code itself (the README overview: "101 unit-test files", "54 admin tabs"): they grow with
+        // ordinary development and are never a price, fee or balance.
+        if (/^\s?(unit-test files|pages in the menu|admin tabs|background jobs)\b/.test(after)) continue;
         figs.push(m[0].replace(/\s/g, '').replace('−', '-') + '\t' + n.textContent.replace(/\s+/g, ' ').trim().slice(0, 60));
       }
     }
