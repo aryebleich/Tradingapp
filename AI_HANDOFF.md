@@ -17,7 +17,7 @@ The shared work board of **Claude**, **Codex (ChatGPT)** and **Grok**. Each assi
 | Assistant | Task | State | Updated (UTC) | Last SHA | Next action |
 | --- | --- | --- | --- | --- | --- |
 | Claude | TEAM-01 | active | 2026-11-26 14:05 | 84a43b1 | Finish TEAM-01, then take REV-01 (Plans and billing with credits). |
-| Codex | PERF-01 | active | 2026-11-25 17:30 | e318623 | Push the local stock-card precompute (branch work/perf-01-stock-card, e8fe589) onto main, then take REV-02. |
+| Codex | — | idle | 2026-11-26 14:10 | 5c80fec | Take REV-02 (Unlock with Pro labels). |
 | Grok | — | idle | — | — | Take RES-01 (pricing and competitor research). |
 
 ## Queue
@@ -27,7 +27,6 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 | ID | State | Priority | Suggested | Claimed by | Updated (UTC) | Task and done when |
 | --- | --- | --- | --- | --- | --- | --- |
 | TEAM-01 | active | 0 | Claude | Claude | 2026-11-26 14:05 | Three-assistant loop: rules, board, ai/status.json, prompts, Grok provider, Admin work status, ai-loop.yml. Done when all are on main and npm test passes. |
-| PERF-01 | active | 0 | Codex | Codex | 2026-11-25 17:30 | Stock cards precomputed for the starter symbols. Done when the local commit is rebased on main, npm test passes and it is pushed. |
 | REV-01 | ready | 1 | Claude | — | — | Plans and billing as a main section, with AI credits (buy, balance, history) using the existing Stripe test flow. Done when a test-mode purchase adds credits and tests cover it. |
 | REV-02 | ready | 2 | Codex | — | — | "Unlock with Pro" labels on paid-only controls before they are pressed (PRO_REVIEW #18), from one list of paid features. Done when every paid control on the 10 most-used pages is labelled and a test checks the list. |
 | REV-03 | ready | 3 | Claude | — | — | Honest trial-end reminders: an in-app notice 3 days and 1 day before a trial ends, with the price and a one-tap cancel. No countdowns. Done when tests cover the timing, the copy and the opt-out, and real email sends only with the user's comms opt-in. |
@@ -50,6 +49,7 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 | CHAT-04 | ready | 20 | Codex | — | — | A live check of the Codex activity stream in Admin → AI chat, with one short test message. Done when the result is written here (no message text in logs). |
 | PARTA-1 | ready | 21 | Claude | — | — | Part A items A1, A3, A4, A7 and A8 (definitions in DECISIONS.md and CHANGELOG_AI.md). Done when each one is a commit. |
 | OPS-02 | blocked | 30 | Claude | — | — | The Turso recovery window, scheduled from 2026-12-01 00:30 UTC. Done when its report and checks are read and written up. |
+| PERF-01 | done | 0 | Codex | Codex | 2026-11-26 14:10 | Stock cards precomputed for the starter symbols and shared across workers (5c80fec). |
 | OPS-01 | done | 0 | Claude | Claude | 2026-11-26 13:55 | The Render files are removed after the DNS cutover. |
 | PERF-00 | done | 0 | Claude | Claude | 2026-11-25 16:33 | Performance phase 2: CPU pool, shared caches, load test passing (PERFORMANCE.md). |
 
@@ -81,12 +81,12 @@ Newest first. Use these fields every time; the next assistant continues from **N
 - **Blockers:** none.
 - **Next action:** Codex: push PERF-01.
 
-### 2026-11-25 17:30 UTC · Codex · PERF-01 · active
-- **Last SHA:** e318623
-- **Changed:** stock cards precomputed for four starter symbols and shared across workers (server.js, src/stock.js, src/memo.js, test/stock-routes.test.js). Local only, on work/perf-01-stock-card at e8fe589.
-- **Checks:** 589 tests passed locally.
-- **Blockers:** not pushed yet.
-- **Next action:** Codex: rebase onto main, run npm test and push.
+### 2026-11-26 14:10 UTC · Codex · PERF-01 · done
+- **Last SHA:** 5c80fec
+- **Changed:** stock cards precomputed for four starter symbols and shared across workers (server.js, src/stock.js, src/memo.js, test/stock-routes.test.js). Board updated by Claude from the commit, because the push did not update it.
+- **Checks:** npm test passes on main after the rebase (run by Claude).
+- **Blockers:** none.
+- **Next action:** Codex: take REV-02.
 
 ## Checkpoint fields
 

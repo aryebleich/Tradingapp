@@ -13,11 +13,11 @@
     },
     {
       "name": "Codex",
-      "task": "PERF-01",
-      "state": "active",
-      "updated": "2026-11-25 17:30",
-      "lastSha": "e318623",
-      "next": "Push the local stock-card precompute (branch work/perf-01-stock-card, e8fe589) onto main, then take REV-02."
+      "task": null,
+      "state": "idle",
+      "updated": "2026-11-26 14:10",
+      "lastSha": "5c80fec",
+      "next": "Take REV-02 (Unlock with Pro labels)."
     },
     {
       "name": "Grok",
@@ -38,15 +38,6 @@
         "claimedBy": "Claude",
         "updated": "2026-11-26 14:05",
         "task": "Three-assistant loop: rules, board, ai/status.json, prompts, Grok provider, Admin work status, ai-loop.yml. Done when all are on main and npm test passes."
-      },
-      {
-        "id": "PERF-01",
-        "state": "active",
-        "priority": null,
-        "suggested": "Codex",
-        "claimedBy": "Codex",
-        "updated": "2026-11-25 17:30",
-        "task": "Stock cards precomputed for the starter symbols. Done when the local commit is rebased on main, npm test passes and it is pushed."
       }
     ],
     "paused": [],
@@ -254,6 +245,15 @@
     ],
     "done": [
       {
+        "id": "PERF-01",
+        "state": "done",
+        "priority": null,
+        "suggested": "Codex",
+        "claimedBy": "Codex",
+        "updated": "2026-11-26 14:10",
+        "task": "Stock cards precomputed for the starter symbols and shared across workers (5c80fec)."
+      },
+      {
         "id": "OPS-01",
         "state": "done",
         "priority": null,
@@ -325,15 +325,15 @@
       "next_action": "Codex: push PERF-01."
     },
     {
-      "at": "2026-11-25 17:30 UTC",
+      "at": "2026-11-26 14:10 UTC",
       "assistant": "Codex",
       "task": "PERF-01",
-      "state": "active",
-      "last_sha": "e318623",
-      "changed": "stock cards precomputed for four starter symbols and shared across workers (server.js, src/stock.js, src/memo.js, test/stock-routes.test.js). Local only, on work/perf-01-stock-card at e8fe589.",
-      "checks": "589 tests passed locally.",
-      "blockers": "not pushed yet.",
-      "next_action": "Codex: rebase onto main, run npm test and push."
+      "state": "done",
+      "last_sha": "5c80fec",
+      "changed": "stock cards precomputed for four starter symbols and shared across workers (server.js, src/stock.js, src/memo.js, test/stock-routes.test.js). Board updated by Claude from the commit, because the push did not update it.",
+      "checks": "npm test passes on main after the rebase (run by Claude).",
+      "blockers": "none.",
+      "next_action": "Codex: take REV-02."
     }
   ]
 }

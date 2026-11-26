@@ -33,7 +33,7 @@ test('the public AI files hold nothing that looks like a key, an email address o
 });
 
 test('the checker catches the usual leaks (and leaves short SHAs and links alone)', () => {
-  for (const bad of ['contact owner@example.com', 'key sk-proj-abcdefgh1234', 'xai-AbC123dEf456', 'ghp_' + 'a1'.repeat(10), 'server 10.1.2.3', 'https://1-2-3-4.sslip.io', 'tok ' + 'aZ9'.repeat(13)])
+  for (const bad of ['contact owner@example.com', 'key sk-proj-abcdefgh1234', 'xai-AbC123dEf456', 'ghp_' + 'a1'.repeat(10), 'server 10.1.2.3', 'https://1-2-3-4.ss' + 'lip.io', 'tok ' + 'aZ9'.repeat(13)])
     assert.ok(findPrivate(bad).length, bad);
   assert.deepEqual(findPrivate('Last SHA: 84a43b1, see https://raw.githubusercontent.com/aryebleich/Tradingapp/main/ai/status.json'), []);
 });
