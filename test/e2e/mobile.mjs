@@ -203,6 +203,11 @@ if (!ONLY && !LIVE) {
   await flow('add a passkey', async () => {
     await p.goto(B + '/app#/security'); await p.waitForSelector('#addPk', { timeout: 15000 }); await fits('security page');
     await p.tap('#addPk'); await p.waitForFunction(() => /My device/.test(document.querySelector('#view')?.textContent || '') && document.querySelectorAll('[data-rm]').length > 0, null, { timeout: 15000 });
+    // The first passkey shows the ten recovery codes once (src/mfa-policy.js); the member saves them and closes the window.
+    await p.waitForSelector('dialog.modal[open] pre', { timeout: 15000 });
+    const codes = (await p.textContent('dialog.modal[open] pre')).trim().split('\n');
+    if (codes.length !== 10) throw new Error(`expected 10 recovery codes, got ${codes.length}`);
+    await p.tap('dialog.modal[open] button'); await p.waitForSelector('dialog.modal[open]', { state: 'detached', timeout: 10000 });
   });
   await flow('sign out from the menu, sign in with the password', async () => {
     await p.tap('#moreTab'); await p.waitForSelector('#nav.open'); await p.tap('#navLogout'); await p.waitForURL(u => u.pathname === '/', { timeout: 15000 });

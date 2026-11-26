@@ -5,11 +5,11 @@
   "assistants": [
     {
       "name": "Claude",
-      "task": "QA-02",
-      "state": "active",
-      "updated": "2026-11-26 18:53",
-      "lastSha": "17aa6f7",
-      "next": "QA-02: verify the new page baseline with a full gate run, then push it.",
+      "task": null,
+      "state": "idle",
+      "updated": "2026-11-26 19:37",
+      "lastSha": "1ae64f7",
+      "next": "Claude: REV-01's price step (Hybrid prices and the checkout guard). PR #60 merges itself once its gates pass.",
       "reset": null
     },
     {
@@ -41,15 +41,6 @@
         "claimedBy": "Codex",
         "updated": "2026-11-26 16:45",
         "task": "Phase A. \"Unlock with Pro\" labels on paid-only controls before they are pressed, from one list of paid features (PR #60, Codex). Done when PR #60 is merged and deployed."
-      },
-      {
-        "id": "QA-02",
-        "state": "active",
-        "priority": null,
-        "suggested": "Claude",
-        "claimedBy": "Claude",
-        "updated": "2026-11-26 17:05",
-        "task": "The page gate (release-gates.yml: disclosures, figures, controls, accessibility at four widths) fails on main itself against its 2026-11-16 baseline (test/golden/layout-baseline.json), so no branch can merge automatically. A run of 4 pages on main: 22 disclosure, 16 figure and 52 control differences (for example the homepage webhook sentence, and the Orders note on Day orders after the 4 PM close). Review each difference: restore every disclosure that was lost by mistake; then regenerate the baseline (test/layout/run.mjs) for the intended changes only, with the list in DECISIONS.md. Done when the page gate passes on main and on PR #60."
       }
     ],
     "paused": [],
@@ -257,6 +248,15 @@
     ],
     "done": [
       {
+        "id": "QA-02",
+        "state": "done",
+        "priority": null,
+        "suggested": "Claude",
+        "claimedBy": "Claude",
+        "updated": "2026-11-26 19:37",
+        "task": "The page gate (release-gates.yml: disclosures, figures, controls, accessibility at four widths) fails on main itself against its 2026-11-16 baseline (test/golden/layout-baseline.json), so no branch can merge automatically. A run of 4 pages on main: 22 disclosure, 16 figure and 52 control differences (for example the homepage webhook sentence, and the Orders note on Day orders after the 4 PM close). Review each difference: restore every disclosure that was lost by mistake; then regenerate the baseline (test/layout/run.mjs) for the intended changes only, with the list in DECISIONS.md. Done when the page gate passes on main and on PR #60."
+      },
+      {
         "id": "TEAM-03",
         "state": "done",
         "priority": 1,
@@ -378,6 +378,17 @@
   ],
   "handoffs": [
     {
+      "at": "2026-11-26 19:37 UTC",
+      "assistant": "Claude",
+      "task": "QA-02",
+      "state": "done",
+      "last_sha": "1ae64f7",
+      "changed": "the page gate's baseline after review (DECISIONS.md QA2-1 to QA2-5), the gate stable from day to day, Retirement accessibility, reduced motion on the homepage tabs, live numbers excluded",
+      "checks": "the full page gate passes on main (89 pages × 4 widths); npm test; the clean check",
+      "blockers": "none",
+      "next_action": "Claude: REV-01's price step (Hybrid prices and the checkout guard). PR #60 merges itself once its gates pass."
+    },
+    {
       "at": "2026-11-26 18:53 UTC",
       "assistant": "Claude",
       "task": "TEAM-03",
@@ -475,17 +486,6 @@
       "checks": "npm test 590 pass (3 known TODO reviews).",
       "blockers": "none.",
       "next_action": "Codex: push PERF-01."
-    },
-    {
-      "at": "2026-11-26 14:10 UTC",
-      "assistant": "Codex",
-      "task": "PERF-01",
-      "state": "done",
-      "last_sha": "5c80fec",
-      "changed": "stock cards precomputed for four starter symbols and shared across workers (server.js, src/stock.js, src/memo.js, test/stock-routes.test.js). Board updated by Claude from the commit, because the push did not update it.",
-      "checks": "npm test passes on main after the rebase (run by Claude).",
-      "blockers": "none.",
-      "next_action": "Codex: take REV-02."
     }
   ]
 }
