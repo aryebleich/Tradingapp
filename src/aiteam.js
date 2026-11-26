@@ -41,6 +41,7 @@ export const ROLE_IDS = Object.keys(ROLES);
 export const PRIOR = {
   anthropic: { manager: 0.95, code: 0.95, write: 0.95, review: 0.95, ideas: 0.85, prompts: 0.95, finance: 0.85, alpaca: 0.8, yiddish: 0.8 },
   gemini: { manager: 0.8, code: 0.8, write: 0.8, review: 0.75, ideas: 0.85, prompts: 0.75, finance: 0.85, alpaca: 0.75, yiddish: 0.75 },
+  xai: { manager: 0.8, code: 0.8, write: 0.8, review: 0.85, ideas: 0.9, prompts: 0.8, finance: 0.9, alpaca: 0.7, yiddish: 0.6 },
   groq: { manager: 0.7, code: 0.75, write: 0.75, review: 0.7, ideas: 0.75, prompts: 0.7, finance: 0.7, alpaca: 0.6, yiddish: 0.45 },
   openrouter: { manager: 0.65, code: 0.65, write: 0.65, review: 0.6, ideas: 0.75, prompts: 0.65, finance: 0.65, alpaca: 0.55, yiddish: 0.45 },
   custom: { manager: 0.5, code: 0.5, write: 0.5, review: 0.5, ideas: 0.5, prompts: 0.5, finance: 0.5, alpaca: 0.5, yiddish: 0.4 },
@@ -134,6 +135,32 @@ export const aiTeamRouter = (() => {
     const m = JSON.parse(j.messages || '[]')[+req.body?.index]; if (!m?.provider) throw bad('Nothing to rate');
     await learn(m.provider, m.role, req.body?.good ? 1 : 0);
     res.json({ ok: true, team: assign() });
+  });
+  // ---------- Work status: Claude, Codex and Grok on the shared board (AI_HANDOFF.md, ai/status.json) ----------
+  r.get('/work', async (req, res) => {
+    const L = await import('./ai-loop.js'), s = L.loopSettings();
+    const keys = { claude: !!process.env.ANTHROPIC_API_KEY, codex: !!process.env.OPENAI_API_KEY, grok: !!process.env.XAI_API_KEY, github: !!process.env.GITHUB_TOKEN };
+    res.json({ status: L.workStatus(), budget: L.budget(s), runs: s.runs.slice(-20).reverse(), keys, canRun: keys.github });
+  });
+  r.put('/work/caps', async (req, res) => {
+    const L = await import('./ai-loop.js'), caps = await L.setCaps(req.body || {});
+    await audit(req.user.id, 'ai_loop_caps', Object.fromEntries(Object.entries(caps).map(([a, c]) => [a, c.monthlyUsd])), req.ip);
+    res.json({ caps });
+  });
+  r.post('/work/pause', async (req, res) => {
+    const L = await import('./ai-loop.js'), a = String(req.body?.assistant || '');
+    const paused = await L.setPaused(a, req.body?.paused !== false);
+    await audit(req.user.id, 'ai_loop_pause', { assistant: a, paused: !!paused[a] }, req.ip);
+    res.json({ paused });
+  });
+  r.post('/work/run', async (req, res) => {
+    const a = String(req.body?.assistant || 'auto'), task = String(req.body?.task || '').toUpperCase();
+    if (!['auto', 'claude', 'codex', 'grok'].includes(a)) throw bad('Pick Claude, Codex, Grok or auto');
+    if (task && !/^[A-Z]{2,8}-\d{1,3}$/.test(task)) throw bad('A task ID looks like REV-01');
+    const { dispatch } = await import('./agents.js');
+    const out = await dispatch('loop', { assistant: a, ...(task ? { task } : {}) });
+    await audit(req.user.id, 'ai_loop_run', { assistant: a, task }, req.ip);
+    res.json(out);
   });
   r.put('/pins', async (req, res) => {
     const b = req.body || {}, p = {};

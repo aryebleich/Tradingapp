@@ -1,11 +1,12 @@
 // One place that talks to a language model. Free providers come first (Groq, Google Gemini,
 // OpenRouter, or any OpenAI-compatible server such as a local Ollama); Claude is the upgrade and
 // is used whenever ANTHROPIC_API_KEY is set. Keys stay on the server.
-//   AI_PROVIDER   anthropic | groq | gemini | openrouter | custom   (optional: picked from the keys set)
+//   AI_PROVIDER   anthropic | openai | xai | groq | gemini | openrouter | custom   (optional: picked from the keys set)
 //   GROQ_API_KEY / GEMINI_API_KEY / OPENROUTER_API_KEY / ANTHROPIC_API_KEY
 //   AI_BASE_URL, AI_API_KEY, AI_MODEL   for "custom" (e.g. http://localhost:11434/v1 for Ollama), or to override a model
 import Anthropic from '@anthropic-ai/sdk';
 import { redact } from './aiaccess.js';
+import { grokAllowed } from './ai-loop.js';
 
 export const FREE = {
   groq: { name: 'Groq (free tier)', base: 'https://api.groq.com/openai/v1', key: 'GROQ_API_KEY', model: 'openai/gpt-oss-120b', signup: 'https://console.groq.com/keys' },
@@ -22,6 +23,7 @@ export function provider() {
   if (p === 'anthropic' && env('ANTHROPIC_API_KEY')) return { id: 'anthropic', name: 'Claude' };
   if (p === 'custom' || (!p && env('AI_BASE_URL'))) return env('AI_BASE_URL') ? { id: 'custom', name: 'Custom model', base: env('AI_BASE_URL').replace(/\/$/, ''), apiKey: env('AI_API_KEY'), model: env('AI_MODEL') || 'llama3.1' } : null;
   if (p === 'openai' && openaiKey()) return openaiProvider();
+  if (p === 'xai' && xaiProvider()) return xaiProvider();
   if (FREE[p] && keyOf(p)) return free(p);
   if (!p && env('ANTHROPIC_API_KEY')) return { id: 'anthropic', name: 'Claude' };
   for (const id of Object.keys(FREE)) if (keyOf(id)) return free(id);
@@ -29,6 +31,12 @@ export function provider() {
   return null;
 }
 const free = id => ({ id, name: FREE[id].name, base: env(id.toUpperCase() + '_BASE_URL') || (env('AI_PROVIDER').toLowerCase() === id && env('AI_BASE_URL')) || FREE[id].base, apiKey: keyOf(id), model: (env('AI_PROVIDER').toLowerCase() === id && env('AI_MODEL')) || (id === 'gemini' && env('GEMINI_MODEL')) || picked[id] || FREE[id].model, free: true });
+// ---------- Grok (xAI) ----------
+// Billed per use through XAI_API_KEY (Admin → Keys), OpenAI-compatible at https://api.x.ai/v1. The model
+// comes from XAI_MODEL (default below). Like every per-use assistant it is off until its monthly cap
+// is raised in Admin → AI team → Work status (src/ai-loop.js), so a key alone never costs money.
+export const XAI = { id: 'xai', name: 'Grok (xAI)', base: 'https://api.x.ai/v1', key: 'XAI_API_KEY', model: 'grok-4-latest' };
+export const xaiProvider = () => (env(XAI.key) && grokAllowed() ? { id: 'xai', name: XAI.name, base: (env('XAI_BASE_URL') || XAI.base).replace(/\/$/, ''), apiKey: env(XAI.key), model: env('XAI_MODEL') || XAI.model, paid: true } : null);
 // ---------- ChatGPT (OpenAI) ----------
 // Paid, through OPENAI_API_KEY (Admin → Keys). The model comes from OPENAI_MODEL. When that is not
 // set, the newest chat model the key can use is read from OpenAI's model list (cached 6 hours), so
@@ -330,6 +338,7 @@ export function providers() {
   if (env('ANTHROPIC_API_KEY')) out.push({ id: 'anthropic', name: 'Claude', model: 'claude-opus-5-5' });
   for (const id of Object.keys(FREE)) if (keyOf(id)) out.push(free(id));
   if (openaiKey()) out.push(openaiProvider());
+  if (xaiProvider()) out.push(xaiProvider());
   if (env('AI_BASE_URL')) out.push({ id: 'custom', name: 'Custom model', base: env('AI_BASE_URL').replace(/\/$/, ''), apiKey: env('AI_API_KEY'), model: env('AI_MODEL') || 'default' });
   return out;
 }

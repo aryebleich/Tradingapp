@@ -16,6 +16,13 @@
         { "id": "claude-opus-5-5", "name": "Claude Opus 5.5", "strengths": ["reasoning", "coding", "long", "finance", "summary", "translation", "extraction", "image", "general"], "context": null, "inputPerM": null, "outputPerM": null, "tier": "strong" }
       ]
     },
+    "xai": {
+      "name": "Grok (xAI)", "key": "XAI_API_KEY", "tier": "paid", "memberData": false,
+      "terms": "Paid API: check xAI's data terms before sending member data. Member data is blocked until verified.",
+      "models": [
+        { "id": "grok-4-latest", "name": "Grok 4", "strengths": ["reasoning", "finance", "general", "summary", "long"], "context": null, "inputPerM": null, "outputPerM": null, "tier": "strong", "note": "XAI_MODEL overrides. Off until its cap is raised in Admin → AI team → Work status." }
+      ]
+    },
     "groq": {
       "name": "Groq (free tier)", "key": "GROQ_API_KEY", "tier": "free", "memberData": false,
       "terms": "Free tier: check Groq's terms before sending member data.",
