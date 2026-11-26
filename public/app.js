@@ -1,3 +1,4 @@
+import { accountPlanSuffix } from './paid-controls.js';
 // Where things are (public/):
 //   app.html, app.js   the app's page and its core: sign-in, menu, page switching, shared helpers
 //   pages/             one file per area of the app (trading, strategies, AI studio, admin, ...)
@@ -254,7 +255,7 @@ async function accounts(force) {
 }
 const acctLabel = a => (a.id === 'paper' ? 'Paper account' : `${a.name}${a.live ? ' (live)' : a.id === 'alpaca' ? '' : ' (test)'}`);
 const accountOptions = (list, selected, paid = true) => list.filter(a => a.connected || a.id === selected || a.id === 'alpaca')
-  .map(a => `<option value="${a.id}" ${a.id === selected ? 'selected' : ''}>${esc(acctLabel(a))}${a.id !== 'paper' && !paid ? ' · Pro' : ''}${!a.connected ? ' · not connected' : ''}</option>`).join('');
+  .map(a => `<option value="${a.id}" ${a.id === selected ? 'selected' : ''}>${esc(acctLabel(a))}${accountPlanSuffix(a.id, paid)}${!a.connected ? ' · not connected' : ''}</option>`).join('');
 // Real money (the live account) is the default; the choice is remembered per browser.
 const state = { account: (() => { try { return localStorage.getItem('qp_account') || ''; } catch { return ''; } })() };
 // No choice made yet in this browser: the live account when one is connected, otherwise practice money.

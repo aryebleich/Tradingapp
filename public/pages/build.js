@@ -1,3 +1,4 @@
+import { accountPlanSuffix, unlockLabel } from '../paid-controls.js';
 // Build & share: the 24/7 scanner, rule-based portfolios (backtest, deploy with scheduled
 // contributions, community), the signal fleet (channels, mirroring into many accounts) and the
 // strategy marketplace.
@@ -37,12 +38,12 @@ async function scanner(view) {
   <form class="card" id="saveScan"><h2>Run it automatically</h2>
     <div class="row">
       <label>Name<input name="name" value="My scanner"></label>
-      <label>Check every<select name="everyMin">${[5, 15, 30, 60, 240, 1440].map(m => `<option value="${m}" ${m === 60 ? 'selected' : ''}>${m < 60 ? m + ' minutes' : m === 1440 ? 'day' : m / 60 + ' hours'}</option>`).join('')}</select></label>
+      <label>Check every<select name="everyMin">${[5, 15, 30, 60, 240, 1440].map(m => `<option value="${m}" ${m === 60 ? 'selected' : ''}>${m < 60 ? m + ' minutes' : m === 1440 ? 'day' : m / 60 + ' hours'}${m < 60 && !H.paid() ? ' · ' + unlockLabel('Sub-hourly scanners') : ''}</option>`).join('')}</select></label>
       <label>When it finds a match<select name="action"><option value="alert">Alert me</option><option value="buy">Buy</option></select></label>
-      <label class="buyOnly" hidden>Account<select name="account">${H.accountOptions(accts, 'paper')}</select></label>
+      <label class="buyOnly" hidden>Account<select name="account">${H.accountOptions(accts, 'paper', H.paid())}</select></label>
       <label class="buyOnly" hidden>Amount per buy ($)<input name="notional" type="number" value="100" min="1"></label>
     </div>
-    <button>Save scanner</button><div class="err"></div>
+    <button>Save scanner${saved.scanners.length >= 2 && !H.paid() ? ' · ' + unlockLabel('More scanners') : ''}</button><div class="err"></div>
     <p class="mu small-print">The free plan has 2 scanners checked hourly. Pro checks as often as every 5 minutes and can buy on real accounts. Each symbol triggers at most once a day per scanner. Risk limits from the Risk page apply to every buy.</p>
   </form>
   <div class="card"><h2>My scanners</h2><div class="tablewrap"><table><tr><th>Name</th><th>Universe</th><th>Rules</th><th>Every</th><th>Action</th><th>Last run</th><th></th></tr>
@@ -204,7 +205,7 @@ async function fleet(view) {
   <div class="card"><h2>Public channels</h2><div class="tablewrap"><table><tr><th>Channel</th><th>By</th><th>Followers</th><th>Signals</th><th></th></tr>
     ${d.public.map(c => `<tr data-pub="${c.id}"><td><b>${H.esc(c.name)}</b><div class="mu small-print">${H.esc(c.description || '')}</div></td><td>${H.esc(c.creator)}${c.creatorEmail ? ` <span data-no-tr dir="ltr">· ${H.esc(c.creatorEmail)}</span>` : ''}</td><td>${c.followers}</td><td>${c.signals}</td><td><button class="small">Follow</button></td></tr>`).join('') || '<tr><td colspan="5" class="mu">No public channels yet</td></tr>'}</table></div>
     <form class="card sub" id="subForm" hidden><h2>Follow <span id="subName"></span></h2>
-      <div class="mu small-print">Mirror into these accounts:</div><div class="chips">${accts.filter(a => a.connected).map(a => `<label class="chk"><input type="checkbox" name="acc" value="${a.id}" ${a.id === 'paper' ? 'checked' : ''}>${H.esc(H.acctLabel(a))}</label>`).join('')}</div>
+      <div class="mu small-print">Mirror into these accounts:</div><div class="chips">${accts.filter(a => a.connected).map(a => `<label class="chk"><input type="checkbox" name="acc" value="${a.id}" ${a.id === 'paper' ? 'checked' : ''}>${H.esc(H.acctLabel(a))}${accountPlanSuffix(a.id, H.paid())}</label>`).join('')}</div>
       <div class="row"><label>Size each buy by<select name="sizing"><option value="fixed">Fixed dollars</option><option value="pct">% of account cash</option></select></label><label>Amount<input name="amount" type="number" value="100" min="1"></label>
         <label>Mode<select name="mode"><option value="review">I approve each signal</option><option value="auto">Trade automatically</option></select></label></div>
       <button>Follow</button><div class="err"></div></form>

@@ -4,6 +4,16 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-26: Grok, one product pull request (REV-02 from Codex)
+
+- Took the unfinished paid-control labels from draft PR #60 (commits f7c7107 and 4231cf5) onto current main.
+- Free users see the required plan beside gated brokerage choices, scanner saves and alerts, bank linking and dividend reinvestment. Stock analysis, morning picks and intraday trading use the same plan label list. Paper choices keep their ordinary account names.
+- Not merged to main in this commit. Draft PR #60 is closed as superseded. Stale Dependabot pull requests were closed so the open list is this one product change.
+
+## 2026-11-26: Codex, paid control labels (REV-02)
+
+Free users see the required plan beside gated brokerage choices, scanner saves and alerts, bank linking and dividend reinvestment. Stock analysis, morning picks and intraday trading use the same plan label list. Paper choices keep their ordinary account names.
+
 ## 2026-11-26: Claude, the master plan (MP-01): documents and the feature registry
 
 - Saved the owner's master plan as docs/research/master-plan.md (exactly as given, with a note that its prices and revenue figures are proposals to test).
