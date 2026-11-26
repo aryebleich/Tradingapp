@@ -16,7 +16,9 @@ const exists = f => tracked.includes(f);
 
 // Files that are entry points or configuration on their own.
 // research/: offline projects (R) that the app links to or downloads but does not import.
-const KEEP = [/^docs\//, /^research\//, /^\.github\//, /^android\//, /^deploy\//, /^\.devcontainer\//, /^security\//, /^edge\//, /^i18n\//, /^README\.md$/, /^[^/]+$/, /^test\/(setup|mock-[\w-]+)\.js$/, /^test\/[\w-]+\.test\.js$/, /^test\/e2e\/run\.mjs$/,
+// ai/: shared board (status.json), web-chat prompts, and team-loop assets — used by humans and
+// workflows, not by a runtime import graph (same idea as docs/).
+const KEEP = [/^docs\//, /^research\//, /^ai\//, /^\.github\//, /^android\//, /^deploy\//, /^\.devcontainer\//, /^security\//, /^edge\//, /^i18n\//, /^README\.md$/, /^[^/]+$/, /^test\/(setup|mock-[\w-]+)\.js$/, /^test\/[\w-]+\.test\.js$/, /^test\/e2e\/run\.mjs$/,
   /^scripts\/yi_more\.json$/, /^ad\/brightolio-ad[\w-]*\.(mp4|jpg)$/];
 
 // Follow imports (static, dynamic, and import('./x' + ...) prefixes) from a set of starting files.
