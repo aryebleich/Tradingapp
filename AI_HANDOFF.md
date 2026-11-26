@@ -25,6 +25,7 @@ States: `ready` (free to claim), `active` (claimed; don't touch while the last u
 
 | ID | State | Owner | Scope and how to know it is done |
 | --- | --- | --- | --- |
+| TEAM-01 | active | Claude (2026-11-26 14:05 UTC, from 0034686) | Three assistants (Claude, Codex, Grok): one loop, ai/status.json, prompts, Grok provider, Admin work status, ai-loop.yml, 20-task queue. Owner-named task. |
 | PERF-01 | active | Codex | Publish the local stock-card precompute (see the checkpoint): rebased on main, npm test passes, pushed. |
 | CHAT-04 | ready | — | A live check of the Codex activity stream in Admin → AI chat with the owner's key: one short "hello" in a test thread; write the result. No message text in logs. |
 | AIADMIN-3 | ready | — | Admin AI part 3: Claude usage and caps. Show spend and tokens per day and month in Admin → AI; add a monthly cap setting, and stop new AI calls with a clear reason at the cap. Tests with mocks. |
