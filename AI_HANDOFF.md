@@ -16,7 +16,7 @@ The shared work board of **Claude**, **Codex (ChatGPT)** and **Grok**. Each assi
 
 | Assistant | Task | State | Updated (UTC) | Last SHA | Next action | Reset (UTC) |
 | --- | --- | --- | --- | --- | --- | --- |
-| Claude | — | idle | 2026-11-26 19:37 | 1ae64f7 | Claude: REV-01's price step (Hybrid prices and the checkout guard). PR #60 merges itself once its gates pass. | — |
+| Claude | MP-01 | active | 2026-11-26 21:51 | bc7f32e | Working on MP-01 in GitHub Actions. | — |
 | Codex | REV-02 | active | 2026-11-26 16:50 | f555da2 | Codex: work on PR #60 (asked with @codex; brief in ai/tasks/REV-02.md). | — |
 | Grok | RES-02 | done | 2026-11-26 15:37 | 144eb75 | Idle; available for next research or product review. | — |
 
@@ -26,6 +26,7 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 
 | ID | State | Priority | Suggested | Claimed by | Updated (UTC) | Task and done when |
 | --- | --- | --- | --- | --- | --- | --- |
+| MP-01 | active | 0 | Claude | Claude | 2026-11-26 21:51 | The master plan (docs/research/master-plan.md): save it, map its documents to what exists (MASTER_ROADMAP, FEATURE_REGISTRY, SYSTEM_ARCHITECTURE, SECURITY_REQUIREMENTS), the feature registry with its coverage test, one price ladder, the legal and data gates, and the queue by the plan's phases. Done when all are on main and the queue holds about 20 ready rows linked to the registry. |
 | REV-02 | active | 2 | Codex | Codex | 2026-11-26 16:45 | Phase A. "Unlock with Pro" labels on paid-only controls before they are pressed, from one list of paid features (PR #60, Codex). Done when PR #60 is merged and deployed. |
 | REV-01 | ready | 1 | Claude | — | — | Phase A. Most of it exists: plans with yearly billing (10× monthly, about 17% off), the comparison table, AI credits (monthly allowance, packs of 500/3,000/12,000, Stripe checkout, Admin → Money). Left: move the plan prices to the Hybrid option (docs/research/pricing.md: Pro about $12–15, Elite about $39–49) in src/fees.js and scripts/home.py (then python3 scripts/pages.py and the pinned prices in the tests), and guard checkout so it refuses while the Stripe price differs from the plan table until the owner re-runs Stripe setup; Stripe stays in test mode. Done when the pages, the plan table and checkout show one price, a test covers the guard, and the page baseline is refreshed for the new figures. |
 | REV-02B | ready | 2 | Codex | — | — | Follow-up of REV-02 (PR #60): label the paid controls on the 10 most-used pages by Admin → Analytics route counts, and add a test that every entry in public/paid-controls.js matches a server check (upgrade() or needPlan()). Done when both are in. |

@@ -5,11 +5,11 @@
   "assistants": [
     {
       "name": "Claude",
-      "task": null,
-      "state": "idle",
-      "updated": "2026-11-26 19:37",
-      "lastSha": "1ae64f7",
-      "next": "Claude: REV-01's price step (Hybrid prices and the checkout guard). PR #60 merges itself once its gates pass.",
+      "task": "MP-01",
+      "state": "active",
+      "updated": "2026-11-26 21:51",
+      "lastSha": "bc7f32e",
+      "next": "Working on MP-01 in GitHub Actions.",
       "reset": null
     },
     {
@@ -33,6 +33,15 @@
   ],
   "queue": {
     "active": [
+      {
+        "id": "MP-01",
+        "state": "active",
+        "priority": null,
+        "suggested": "Claude",
+        "claimedBy": "Claude",
+        "updated": "2026-11-26 21:51",
+        "task": "The master plan (docs/research/master-plan.md): save it, map its documents to what exists (MASTER_ROADMAP, FEATURE_REGISTRY, SYSTEM_ARCHITECTURE, SECURITY_REQUIREMENTS), the feature registry with its coverage test, one price ladder, the legal and data gates, and the queue by the plan's phases. Done when all are on main and the queue holds about 20 ready rows linked to the registry."
+      },
       {
         "id": "REV-02",
         "state": "active",
