@@ -12,7 +12,7 @@ export function registerOwner(routes, helpers) {
     'admin-upgrades': guard(upgrades),
     // Older links: business mode and Alpaca plans are now under Upgrades; the money levers under Money & fees.
     'admin-business': guard(() => (location.hash = '#/admin-upgrades?tab=mode')), 'admin-alpaca': guard(() => (location.hash = '#/admin-upgrades?tab=alpaca')),
-    'admin-money': guard(async view => { await H.adminPage(view, 'admin-money'); await moneyExtras(view); }), 'admin-phone': guard(phoneLine), 'admin-phoneaccts': guard(phoneAccounts), 'admin-ai': guard(aiPrivacy), 'admin-readme': guard(privateReadme), 'admin-admins': guard(admins), 'admin-keys': guard(keys) });
+    'admin-money': guard(async view => { await H.adminPage(view, 'admin-money'); await moneyExtras(view); }), 'admin-phone': guard(phoneLine), 'admin-phoneaccts': guard(phoneAccounts), 'admin-ai': guard(aiPrivacy), 'admin-readme': guard(privateReadme), 'admin-admins': guard(admins), 'admin-keys': guard(keys), 'admin-security': guard(security) });
 }
 
 const modeHtml = (mode, ria, doneSteps) => `<div class="card"><h2>Business mode</h2>
@@ -503,4 +503,34 @@ async function phoneAccounts(view) {
     b.disabled = true;
     try { await H.api(`/admin/phone-accounts/${id}/${act}`, { body }); H.render(); } catch (e) { b.disabled = false; err.textContent = e.message; }
   }));
+}
+
+// ---------- Admin → Security: "Require two-factor sign-in" (src/mfa-policy.js) ----------
+// Off by default. Changing it needs the password step-up (the page opens behind it) and is logged.
+async function security(view) {
+  const d = await H.adminUnlocked('/admin/security/mfa-policy');
+  const p = d.policy, when = t => (t ? new Date(t).toLocaleString() : '');
+  const noAdmin = !d.admins.withFactor;
+  view.innerHTML = `<div class="pagehead"><h1>Security</h1><p class="mu" style="margin:4px 0 0">Sign-in security for every account.</p></div>
+  <form class="card" id="mfaForm"><h2>Require two-factor sign-in</h2>
+    <p class="mu">While this is off, nothing changes: members can still turn on an authenticator app or add a passkey themselves in Settings → Security, and sign-in asks for a code only if they did. Passkeys always count as two-factor.</p>
+    <label class="chk"><input type="checkbox" name="required" ${p.required ? 'checked' : ''}> Require two-factor sign-in</label>
+    <div class="row">
+      <label>Who it applies to<select name="scope">${Object.entries(d.scopes).map(([k, v]) => `<option value="${k}" ${p.scope === k ? 'selected' : ''}>${H.esc(v)}</option>`).join('')}</select></label>
+      <label>Grace period (days)<input name="graceDays" type="number" min="0" max="90" value="${p.graceDays}"></label>
+    </div>
+    <p class="mu small-print">During the grace period, members it applies to see a banner with "Set up now". After it, they set it up at their next sign-in before using the app. The set-up pages always stay open, so nobody is locked out.</p>
+    ${noAdmin ? '<p class="err" role="alert">No admin has two-factor or a passkey yet. Set one up for your own account first (Settings → Security); until then it can\'t be turned on.</p>' : `<p class="mu small-print">${d.admins.withFactor} of ${d.admins.admins} admins have two-factor or a passkey.</p>`}
+    <button>Save</button> <span class="ok" role="status"></span><div class="err" role="alert"></div>
+    <p class="mu small-print">${p.changedAt ? `Last changed by ${H.esc(p.changedBy || 'an admin')} on ${H.esc(when(p.changedAt))}.` : 'Never changed: off by default.'}</p>
+  </form>
+  <div class="card"><h2>Changes</h2>${d.log.length ? `<ul class="plain">${d.log.map(l => { let x = {}; try { x = JSON.parse(l.detail || '{}'); } catch {} return `<li>${H.esc(when(l.at))} · ${H.esc(l.email || 'admin')} · ${x.required ? `on (${H.esc(d.scopes[x.scope] || x.scope)}, ${x.graceDays} days' grace)` : 'off'}</li>`; }).join('')}</ul>` : '<p class="mu">No changes yet.</p>'}</div>`;
+  const f = H.$('#mfaForm', view);
+  f.onsubmit = async e => {
+    e.preventDefault(); H.$('.err', f).textContent = ''; H.$('.ok', f).textContent = '';
+    try {
+      await H.api('/admin/security/mfa-policy', { method: 'PUT', body: { required: f.required.checked, scope: f.scope.value, graceDays: +f.graceDays.value } });
+      await security(view);
+    } catch (err) { H.$('.err', f).textContent = err.message; }
+  };
 }

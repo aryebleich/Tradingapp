@@ -768,6 +768,8 @@ api.use(async (req, res, next) => { const M = await import('./src/maintenance.js
 api.use(auth.csrfGuard);
 // Only API calls look up the session; static files and pages skip the database round trip.
 api.use(auth.sessionMiddleware);
+// Site-wide "Require two-factor sign-in" (Admin → Security, off by default; src/mfa-policy.js).
+api.use((req, res, next) => import('./src/mfa-policy.js').then(P => P.mfaGate()(req, res, next), next));
 // A session flagged by the behavior check confirms itself before trading or moving money.
 api.use(['/orders', '/alpaca/orders', '/alpaca/positions', '/alpaca/broker/transfers', '/fleet/inbox', '/ai/live-order', '/positions/close-all'], stepUpGuard);
 api.use('/auth', auth.router);
@@ -809,6 +811,22 @@ api.use('/public', trustPublicRouter);
 // added later can never be reached by a regular user. (The business books have their own gate:
 // only the currency converter there is for everyone.)
 api.use('/admin', auth.requireUser, auth.requireAdmin);
+// Admin → Security: "Require two-factor sign-in". Changing it needs the password step-up (Admin unlock)
+// and goes to the audit log; the page shows who changed it and when.
+api.get('/admin/security/mfa-policy', async (req, res) => {
+  const P = await import('./src/mfa-policy.js');
+  const log = await all("SELECT a.at, a.event, a.detail, u.email FROM audit_log a LEFT JOIN users u ON u.id = a.user_id WHERE a.event = 'mfa_policy_changed' ORDER BY a.id DESC LIMIT 20").catch(() => []);
+  res.json({ policy: P.mfaPolicy(), scopes: P.SCOPES, admins: await P.adminsWithFactor(), unlocked: (await import('./src/server-admin.js')).isUnlocked(req), log });
+});
+api.put('/admin/security/mfa-policy', async (req, res) => {
+  if (!(await import('./src/server-admin.js')).isUnlocked(req)) return res.status(403).json({ error: 'Confirm your password to change sign-in security.', adminUnlock: true });
+  const P = await import('./src/mfa-policy.js');
+  try {
+    const p = await P.setMfaPolicy(req.user, req.body || {});
+    await audit(req.user.id, 'mfa_policy_changed', { required: p.required, scope: p.scope, graceDays: p.graceDays }, req.ip);
+    res.json({ policy: p });
+  } catch (e) { res.status(e.status || 400).json({ error: e.message, lockout: !!e.lockout }); }
+});
 // Database read statistics (DB_READ_STATS=1): the top 30 statements by estimated rows read.
 api.get('/admin/dbstats', (req, res) => res.json(dbStats(Math.min(100, +req.query.limit || 30))));
 api.post('/admin/dbstats/reset', (req, res) => { resetDbStats(); res.json({ ok: true }); });
