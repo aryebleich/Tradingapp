@@ -98,11 +98,14 @@ test('Home drawn again and again keeps exactly one #homeClock and one running ti
   await page.waitForTimeout(1200);
   assert.equal(await page.locator('#homeClock').count(), 1);
   assert.equal(await page.evaluate(() => window.__clockTimers()), 1);
-  // The seconds move one at a time.
-  const secs = [];
-  for (let i = 0; i < 4; i++) { secs.push(await page.evaluate(() => new Date().getSeconds() + ':' + document.querySelector('#homeClock .hc-time').textContent)); await page.waitForTimeout(1000); }
-  const s = secs.map(x => +x.split(':')[0]);
-  for (let i = 1; i < s.length; i++) assert.ok([1, -59].includes(s[i] - s[i - 1]), secs.join(' '));
+  // The clock keeps time: at every look it shows this second (or the one just before, as it ticks
+  // once a second), and over the looks it moves on. The test's own looks may drift under load, so
+  // each one is compared with the time it was taken, not with the previous look.
+  const looks = [];
+  for (let i = 0; i < 4; i++) { looks.push(await page.evaluate(() => [new Date().getSeconds(), document.querySelector('#homeClock .hc-time').textContent])); await page.waitForTimeout(1000); }
+  const shown = looks.map(([, text]) => +(/:(\d{2})(?!.*:\d{2})/.exec(text) || [])[1]);
+  looks.forEach(([now], i) => assert.ok([0, 1].includes((now - shown[i] + 60) % 60), `look ${i + 1}: the clock shows second ${shown[i]} at second ${now} (${looks.map(l => l.join('=')).join(' ')})`));
+  assert.notEqual(shown[0], shown.at(-1), 'the clock moved on over the looks');
   await page.close();
 });
 
