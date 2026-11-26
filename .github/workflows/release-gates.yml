@@ -1,9 +1,13 @@
 name: Release gates
+run-name: ${{ inputs.reviewed && 'Release gates (reviewed)' || 'Release gates' }}
 # Every push to a short-lived branch (ai/*, chore/*, fix/*, feature/*) runs every gate. When all pass,
 # the branch is merged into main automatically (a merge commit, only when the branch already contains
 # main's latest commit, so the merged tree is exactly the tree that was tested), main is deployed, and
 # the branch is deleted. Gates never get skipped: a failing gate leaves main untouched and the branch open
 # for the author to fix. If main moved on, merge main into the branch and push again to rerun the gates.
+# Branches of the automatic AI loop (ai/claude-*, ai/codex-*; .github/workflows/ai-loop.yml) are merged
+# only after another assistant's cross-review passed: the review starts this workflow again on the
+# branch with reviewed=true. Grok's research notes (ai/grok-*) merge after the gates like any branch.
 #
 # Limits: (1) a branch whose changes touch .github/workflows cannot be merged by this workflow (GitHub
 # does not let the built-in token change workflow files); push such a merge to main by hand after the
@@ -13,6 +17,8 @@ on:
   push:
     branches: ['ai/**', 'chore/**', 'fix/**', 'feature/**']
   workflow_dispatch:
+    inputs:
+      reviewed: { description: 'The cross-review passed (ai-loop.yml sets this for ai/claude-* and ai/codex-* branches)', type: boolean, default: false }
 permissions:
   contents: read
 concurrency:
@@ -73,12 +79,16 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       BRANCH: ${{ github.ref_name }}
       SHA: ${{ github.sha }}
+      REVIEWED: ${{ github.event_name == 'workflow_dispatch' && inputs.reviewed }}
     steps:
       - uses: actions/checkout@v7
         with: { fetch-depth: 0 }
       - name: Merge into main, deploy, delete the branch
         run: |
           git config user.name "release-gates[bot]"; git config user.email "release-gates@users.noreply.github.com"
+          case "$BRANCH" in ai/claude-*|ai/codex-*)
+            if [ "$REVIEWED" != "true" ]; then echo "::notice::Gates passed. This AI loop branch merges after the cross-review (ai-loop.yml)."; exit 0; fi;;
+          esac
           git fetch origin main "$BRANCH"
           [ "$(git rev-parse origin/$BRANCH)" = "$SHA" ] || { echo "::warning::The branch moved after these gates started; the newer push runs its own gates."; exit 0; }
           if git diff --name-only origin/main "$SHA" | grep -q '^\.github/workflows/'; then

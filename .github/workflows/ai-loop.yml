@@ -1,0 +1,292 @@
+name: AI loop
+# Works the shared queue (AI_HANDOFF.md, AGENTS.md) without the owner, one task at a time:
+#   Claude  claude-code-action with CLAUDE_CODE_OAUTH_TOKEN (the owner's subscription) or ANTHROPIC_API_KEY
+#   Codex   openai/codex-action with OPENAI_API_KEY
+#   Grok    the xAI API with XAI_API_KEY (research and reviews: it writes notes, not app code)
+# Each assistant runs only when its key exists and its cap allows it. Caps are set in Admin → AI team →
+# Work status; anything billed per use is $0 by default, so nothing costs money until the owner raises
+# it. Without an answer from the site, only Claude through the subscription runs.
+# Every run claims its row on main, works on its own branch (ai/<assistant>-<task>-<run>), and opens a
+# pull request. release-gates.yml tests the branch. Claude's and Codex's branches merge only after the
+# other assistant's review passes (the review job below); Grok adds a market and product review when a
+# change touches trading, pricing or AI picks. At a usage limit the row is marked paused with its reset
+# time, so the next run (or another assistant) continues it.
+# Needs: CRON_SECRET (secret) and APP_URL (variable, default https://app.brightolio.com) for the caps.
+on:
+  schedule:
+    - cron: '23 */4 * * *'
+  workflow_dispatch:
+    inputs:
+      assistant: { description: 'Who works (auto picks by key, cap and queue)', type: choice, options: [auto, claude, codex, grok], default: auto }
+      task: { description: 'A ready row to work on (for example REV-01); empty takes the next one', required: false, type: string }
+  workflow_run:
+    workflows: ['Release gates']
+    types: [completed]
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: write
+  id-token: write
+concurrency:
+  group: ai-loop-${{ github.event_name == 'workflow_run' && 'review' || 'work' }}
+  cancel-in-progress: false
+env:
+  GH_TOKEN: ${{ github.token }}
+jobs:
+  pick:
+    if: github.event_name != 'workflow_run'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      assistant: ${{ steps.pick.outputs.assistant }}
+      task: ${{ steps.pick.outputs.task }}
+      billing: ${{ steps.pick.outputs.billing }}
+      sha: ${{ steps.claim.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with: { ref: main }
+      - uses: actions/setup-node@v7
+        with: { node-version-file: .node-version, check-latest: true }
+      - name: Keys and caps
+        env:
+          K_OAUTH: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+          K_ANTHROPIC: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+          K_OPENAI: ${{ secrets.OPENAI_API_KEY != '' }}
+          K_XAI: ${{ secrets.XAI_API_KEY != '' }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL_VAR: ${{ vars.APP_URL }}
+        run: |
+          keys=""; [ "$K_OAUTH" = true ] && keys="$keys,claude_oauth"; [ "$K_ANTHROPIC" = true ] && keys="$keys,anthropic"
+          [ "$K_OPENAI" = true ] && keys="$keys,openai"; [ "$K_XAI" = true ] && keys="$keys,xai"
+          echo "KEYS=${keys#,}" >> "$GITHUB_ENV"; echo "Keys present: ${keys#,}"
+          APP_URL="${APP_URL_VAR:-}"; case "$APP_URL" in https://*brightolio.com*) ;; *) APP_URL="https://app.brightolio.com";; esac
+          echo '{}' > "$RUNNER_TEMP/budget.json"
+          if [ -n "$CRON_SECRET" ]; then curl -fsS --max-time 20 -H "authorization: Bearer $CRON_SECRET" "$APP_URL/internal/ai-loop/budget" > "$RUNNER_TEMP/budget.json" || echo '{}' > "$RUNNER_TEMP/budget.json"; fi
+          jq -c '.allowed // "no answer: only Claude through the subscription may run"' "$RUNNER_TEMP/budget.json"
+      - name: Pick one task
+        id: pick
+        env:
+          WHO: ${{ inputs.assistant || 'auto' }}
+          TASK: ${{ inputs.task }}
+        run: |
+          case "$TASK" in ""|[A-Za-z][A-Za-z]*-[0-9]*) ;; *) echo "::error::A task ID looks like REV-01"; exit 1;; esac
+          node scripts/ai-loop.mjs pick --assistant "$WHO" ${TASK:+--task "$TASK"} --keys "$KEYS" --budget "$RUNNER_TEMP/budget.json" > pick.json
+          cat pick.json
+          { echo "assistant=$(jq -r '.assistant // empty' pick.json)"; echo "task=$(jq -r '.task // empty' pick.json)"; echo "billing=$(jq -r '.billing // empty' pick.json)"; } >> "$GITHUB_OUTPUT"
+      - name: Claim it on the board
+        id: claim
+        if: steps.pick.outputs.assistant != ''
+        env:
+          WHO: ${{ steps.pick.outputs.assistant }}
+          TASK: ${{ steps.pick.outputs.task }}
+        run: |
+          git config user.name "ai-loop[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for i in 1 2 3; do
+            git pull -q --rebase origin main
+            node scripts/ai-loop.mjs claim --assistant "$WHO" --task "$TASK" --sha "$(git rev-parse --short HEAD)" --run "$GITHUB_RUN_ID"
+            git add AI_HANDOFF.md ai/status.json && git commit -qm "handoff: claim $TASK ($WHO, ai-loop run $GITHUB_RUN_ID)"
+            if git push -q origin HEAD:main; then echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"; exit 0; fi
+            git reset -q --hard origin/main; sleep 5
+          done
+          echo "::error::could not claim $TASK (main kept moving)"; exit 1
+
+  work:
+    needs: pick
+    if: needs.pick.outputs.assistant != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      WHO: ${{ needs.pick.outputs.assistant }}
+      TASK: ${{ needs.pick.outputs.task }}
+      BILLING: ${{ needs.pick.outputs.billing }}
+      HANDOFF: ${{ github.workspace }}/../handoff.json
+    steps:
+      - uses: actions/checkout@v7
+        with: { ref: main, fetch-depth: 30 }
+      - uses: actions/setup-node@v7
+        with: { node-version-file: .node-version, check-latest: true, cache: npm }
+      - name: Install
+        run: npm ci
+      - name: Branch
+        run: |
+          b="ai/$WHO-$(echo "$TASK" | tr '[:upper:]' '[:lower:]')-$GITHUB_RUN_ID"; echo "BRANCH=$b" >> "$GITHUB_ENV"
+          git config user.name "ai-loop[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$b"
+      - name: Claude Code
+        id: claude
+        if: env.WHO == 'claude'
+        continue-on-error: true
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic_api_key: ${{ env.BILLING == 'per-use' && secrets.ANTHROPIC_API_KEY || '' }}
+          github_token: ${{ github.token }}
+          claude_args: --allowedTools "Bash,Read,Edit,Write,Glob,Grep" --max-turns 80
+          prompt: |
+            You are Claude in the Brightolio three-assistant loop. Read AGENTS.md and AI_HANDOFF.md first.
+            Your task is the row ${{ env.TASK }} on the board; it is already claimed for you. Work on the branch ${{ env.BRANCH }}.
+            - Make small commits on this branch; never push to main; do not edit AI_HANDOFF.md, ai/status.json or .github/workflows.
+            - npm test must pass: node --import ./test/setup.js --test --test-force-exit test/*.test.js
+            - Write a dated "Claude" section in CHANGELOG_AI.md, and decisions in DECISIONS.md.
+            - Follow every rule in AGENTS.md (no secrets, no money spent, no promised returns, no dark patterns, paper trading by default).
+            - At the end, write the hand-off as JSON to ${{ env.HANDOFF }}: {"changed": "...", "checks": "...", "blockers": "...", "next": "one concrete next action"}.
+      - name: Codex
+        id: codex
+        if: env.WHO == 'codex'
+        continue-on-error: true
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          sandbox: workspace-write
+          prompt: |
+            You are Codex in the Brightolio three-assistant loop. Read AGENTS.md and AI_HANDOFF.md first.
+            Your task is the row ${{ env.TASK }} on the board; it is already claimed for you. Edit the files in this checkout (the workflow commits them on its own branch).
+            - Do not edit AI_HANDOFF.md, ai/status.json or .github/workflows.
+            - npm test must pass: node --import ./test/setup.js --test --test-force-exit test/*.test.js
+            - Write a dated "Codex" section in CHANGELOG_AI.md, and decisions in DECISIONS.md.
+            - Follow every rule in AGENTS.md (no secrets, no money spent, no promised returns, no dark patterns, paper trading by default).
+            - At the end, write the hand-off as JSON to ${{ env.HANDOFF }}: {"changed": "...", "checks": "...", "blockers": "...", "next": "one concrete next action"}.
+      - name: Grok
+        id: grok
+        if: env.WHO == 'grok'
+        continue-on-error: true
+        env:
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          XAI_MODEL: ${{ vars.XAI_MODEL }}
+        run: |
+          node scripts/ai-grok.mjs work --task "$TASK" --out "$RUNNER_TEMP/grok.json"
+          p=$(jq -r .notePath "$RUNNER_TEMP/grok.json"); mkdir -p docs/research; jq -r .note "$RUNNER_TEMP/grok.json" > "$p"
+          jq '.handoff' "$RUNNER_TEMP/grok.json" > "$HANDOFF"
+      - name: Commit, push and open the pull request
+        id: pr
+        if: steps.claude.outcome == 'success' || steps.codex.outcome == 'success' || steps.grok.outcome == 'success'
+        run: |
+          git add -A -- . ':!AI_HANDOFF.md' ':!ai/status.json' ':!.github/workflows'
+          git diff --cached --quiet || git commit -qm "$TASK: work by $WHO (ai-loop run $GITHUB_RUN_ID)"
+          if [ -z "$(git log origin/main..HEAD --oneline)" ]; then echo "no commits"; exit 0; fi
+          [ "$WHO" = grok ] || node --import ./test/setup.js --test --test-force-exit test/*.test.js > test.log 2>&1 || { tail -40 test.log; echo "tests=failed" >> "$GITHUB_OUTPUT"; }
+          git push -q origin "$BRANCH"
+          # A push with the built-in token starts no workflow, so start the gates on the branch here.
+          gh workflow run release-gates.yml --ref "$BRANCH"
+          { echo "Task $TASK, worked by $WHO in ai-loop run $GITHUB_RUN_ID (AGENTS.md)."; echo; if [ -f "$HANDOFF" ]; then jq -r '"Changed: \(.changed // "-")\nChecks: \(.checks // "-")\nNext: \(.next // "-")"' "$HANDOFF"; fi; echo; echo "release-gates.yml tests this branch; Claude's and Codex's branches merge after the cross-review."; } > body.md
+          gh pr create --base main --head "$BRANCH" --title "$TASK ($WHO): ${TASK} from the AI loop" --body-file body.md > pr.txt
+          echo "number=$(grep -o '[0-9]*$' pr.txt)" >> "$GITHUB_OUTPUT"
+      - name: Hand off on the board
+        if: always()
+        env:
+          OUTCOME: ${{ steps.claude.outcome }}${{ steps.codex.outcome }}${{ steps.grok.outcome }}
+          PR: ${{ steps.pr.outputs.number }}
+          TESTS: ${{ steps.pr.outputs.tests }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL_VAR: ${{ vars.APP_URL }}
+          EXEC: ${{ steps.claude.outputs.execution_file }}
+        run: |
+          f() { [ -f "$HANDOFF" ] && jq -r ".$1 // empty" "$HANDOFF" 2>/dev/null || true; }
+          state=done; next="$(f next)"; blockers="$(f blockers)"
+          if [ "$OUTCOME" != success ]; then
+            # A usage limit pauses the row with its reset time; any other failure leaves it ready for the next run.
+            limit=$(cat "$EXEC" "$RUNNER_TEMP/grok.json" 2>/dev/null | grep -ciE 'usage limit|rate.?limit|quota|insufficient_quota|429' || true)
+            if [ "$limit" != 0 ]; then
+              hours=1; [ "$WHO" = claude ] && hours=5; reset=$(date -u -d "+$hours hours" '+%Y-%m-%d %H:%M')
+              state=paused; blockers="usage limit; resets about $reset UTC"; next="$WHO again after $reset UTC, or another assistant: continue $TASK"
+            else state=ready; blockers="the run failed (run $GITHUB_RUN_ID)"; next="Any assistant: take $TASK again"; fi
+          elif [ -z "$PR" ]; then state=ready; blockers="the run made no change"; next="Any assistant: take $TASK, or split it"
+          elif [ "$TESTS" = failed ]; then blockers="npm test fails on the branch; the gates will show it"; fi
+          [ -n "$PR" ] && [ "$state" = done ] && next="Cross-review PR #$PR, then ${next:-take the next ready row}"
+          git checkout -q main && git config user.name "ai-loop[bot]" && git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for i in 1 2 3; do
+            git pull -q --rebase origin main
+            node scripts/ai-loop.mjs release --assistant "$WHO" --task "$TASK" --state "$state" --sha "$(git rev-parse --short HEAD)" ${PR:+--pr "$PR"} --next "$next" --changed "$(f changed)" --checks "$(f checks)" --blockers "${blockers:-none}"
+            git add AI_HANDOFF.md ai/status.json && git commit -qm "handoff: $TASK $state ($WHO, ai-loop run $GITHUB_RUN_ID)" && git push -q origin HEAD:main && break
+            git reset -q --hard origin/main; sleep 5
+          done
+          APP_URL="${APP_URL_VAR:-}"; case "$APP_URL" in https://*brightolio.com*) ;; *) APP_URL="https://app.brightolio.com";; esac
+          if [ -n "$CRON_SECRET" ]; then curl -fsS --max-time 20 -X POST -H "authorization: Bearer $CRON_SECRET" -H 'content-type: application/json' \
+            -d "$(jq -nc --arg a "$WHO" --arg b "$BILLING" --arg t "$TASK" --arg o "$state" --arg r "$GITHUB_RUN_ID" '{assistant:$a,billing:$b,task:$t,outcome:$o,run:$r}')" "$APP_URL/internal/ai-loop/run" > /dev/null || true; fi
+
+  review:
+    # Cross-review once the gates pass on a loop branch: Codex reviews Claude's, Claude reviews Codex's.
+    # The gates' second run (reviewed=true, named "Release gates (reviewed)") never starts another review.
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && !contains(github.event.workflow_run.display_title, '(reviewed)') && (startsWith(github.event.workflow_run.head_branch, 'ai/claude-') || startsWith(github.event.workflow_run.head_branch, 'ai/codex-'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      BRANCH: ${{ github.event.workflow_run.head_branch }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with: { node-version-file: .node-version, check-latest: true }
+      - name: The pull request and who reviews it
+        env:
+          K_OAUTH: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+          K_OPENAI: ${{ secrets.OPENAI_API_KEY != '' }}
+          K_XAI: ${{ secrets.XAI_API_KEY != '' }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL_VAR: ${{ vars.APP_URL }}
+        run: |
+          pr=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty'); [ -n "$pr" ] || { echo "no open pull request"; exit 0; }
+          echo "PR=$pr" >> "$GITHUB_ENV"
+          task=$(echo "$BRANCH" | sed -E 's#^ai/[a-z]+-([a-z]+-[0-9]+)-[0-9]+$#\1#' | tr '[:lower:]' '[:upper:]'); echo "TASK=$task" >> "$GITHUB_ENV"
+          author=$(echo "$BRANCH" | cut -d/ -f2 | cut -d- -f1); echo "AUTHOR=$author" >> "$GITHUB_ENV"
+          APP_URL="${APP_URL_VAR:-}"; case "$APP_URL" in https://*brightolio.com*) ;; *) APP_URL="https://app.brightolio.com";; esac
+          b='{}'; [ -n "$CRON_SECRET" ] && b=$(curl -fsS --max-time 20 -H "authorization: Bearer $CRON_SECRET" "$APP_URL/internal/ai-loop/budget" || echo '{}')
+          codex_ok=$(echo "$b" | jq -r '.allowed.codex.ok // false'); grok_ok=$(echo "$b" | jq -r '.allowed.grok.ok // false')
+          reviewer=claude; if [ "$author" = claude ] && [ "$K_OPENAI" = true ] && [ "$codex_ok" = true ]; then reviewer=codex; fi
+          if [ "$reviewer" = claude ] && [ "$K_OAUTH" != true ]; then reviewer=none; fi
+          echo "REVIEWER=$reviewer" >> "$GITHUB_ENV"
+          grok=false; [ "$K_XAI" = true ] && [ "$grok_ok" = true ] && git diff --name-only origin/main...HEAD | grep -qE '^(src/(brokers|fees|stripe|billing|plans|aifunds|aibots|newspicks|execution|risk)|public/pages/(funding|pricing|trade))' && grok=true
+          echo "GROK=$grok" >> "$GITHUB_ENV"
+          git diff origin/main...HEAD > "$RUNNER_TEMP/pr.diff"
+          echo "PR #$pr ($TASK by $author): reviewer $reviewer, Grok review $grok"
+      - name: Review by Claude
+        if: env.PR != '' && env.REVIEWER == 'claude'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          claude_args: --allowedTools "Bash(git diff:*),Bash(git log:*),Read,Glob,Grep,Write" --max-turns 30
+          prompt: |
+            Review pull request #${{ env.PR }} (branch ${{ env.BRANCH }}, task ${{ env.TASK }}) against main for the Brightolio three-assistant loop. Read AGENTS.md.
+            Look for real problems only: bugs, security, broken features, missing tests, secrets, promised returns, dark patterns. Do not change code.
+            Write JSON to ${{ runner.temp }}/review.json: {"blocking": true|false, "summary": "two sentences", "findings": [{"where": "file:line", "problem": "...", "fix": "..."}]}.
+      - name: Review by Codex
+        if: env.PR != '' && env.REVIEWER == 'codex'
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          sandbox: read-only
+          output-file: ${{ runner.temp }}/review.json
+          prompt: |
+            Review the changes of this branch against origin/main (git diff origin/main...HEAD) for the Brightolio three-assistant loop. Read AGENTS.md.
+            Look for real problems only: bugs, security, broken features, missing tests, secrets, promised returns, dark patterns. Do not change code.
+            Answer with only this JSON: {"blocking": true|false, "summary": "two sentences", "findings": [{"where": "file:line", "problem": "...", "fix": "..."}]}.
+      - name: Market and product review by Grok
+        if: env.PR != '' && env.GROK == 'true'
+        continue-on-error: true
+        env:
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          XAI_MODEL: ${{ vars.XAI_MODEL }}
+        run: |
+          node scripts/ai-grok.mjs review --diff "$RUNNER_TEMP/pr.diff" --out "$RUNNER_TEMP/grok-review.json"
+          { echo "**Grok: market and product review**"; echo; jq -r '.summary' "$RUNNER_TEMP/grok-review.json"; jq -r '.findings[] | "- **\(.where)**: \(.problem) Fix: \(.fix)"' "$RUNNER_TEMP/grok-review.json"; } > grok.md
+          gh pr comment "$PR" --body-file grok.md
+      - name: Merge when the review passes, or send it back
+        if: env.PR != '' && env.REVIEWER != 'none'
+        run: |
+          r="$RUNNER_TEMP/review.json"; jq -e . "$r" > /dev/null 2>&1 || { echo '{"blocking": true, "summary": "The reviewer gave no readable answer.", "findings": []}' > "$r"; }
+          blocking=$(jq -r '.blocking' "$r")
+          { echo "**$REVIEWER: cross-review**"; echo; jq -r '.summary' "$r"; jq -r '.findings[]? | "- **\(.where)**: \(.problem) Fix: \(.fix)"' "$r"; } > review.md
+          gh pr comment "$PR" --body-file review.md
+          if [ "$blocking" = false ]; then
+            gh workflow run release-gates.yml --ref "$BRANCH" -f reviewed=true; echo "Review passed: the gates run again and merge."
+          else
+            git config user.name "ai-loop[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git fetch -q origin main && git checkout -q -B main origin/main
+            node scripts/ai-loop.mjs release --assistant "$AUTHOR" --task "$TASK" --state ready --sha "$(git rev-parse --short HEAD)" --pr "$PR" \
+              --next "$AUTHOR or anyone: fix the review findings on PR #$PR (branch $BRANCH), then push to that branch" --blockers "the cross-review found problems"
+            git add AI_HANDOFF.md ai/status.json && git commit -qm "handoff: $TASK back to ready (review of PR #$PR)" && git push -q origin HEAD:main || true
+          fi

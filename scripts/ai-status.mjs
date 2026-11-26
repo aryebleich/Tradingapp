@@ -68,11 +68,61 @@ export function sortedProblems(md) {
 }
 export const render = md => JSON.stringify(build(md), null, 2) + '\n';
 
+
+// ---------- editing the board (scripts/ai-loop.mjs and the assistants use these) ----------
+const cellsOf = l => l.trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim());
+const lineOf = cells => '| ' + cells.join(' | ') + ' |';
+function section(md, title) {
+  const i = md.indexOf(`\n## ${title}\n`); if (i < 0) throw new Error(`AI_HANDOFF.md has no "## ${title}" section`);
+  const end = md.indexOf('\n## ', i + 4);
+  return { start: i, end: end < 0 ? md.length : end };
+}
+// The queue sorted: active, paused, ready by priority, blocked, done (stable within a state).
+export function sortQueue(md) {
+  const { start, end } = section(md, 'Queue'), body = md.slice(start, end).split('\n');
+  const first = body.findIndex(l => l.trim().startsWith('|'));
+  if (first < 0) return md;
+  const rows = body.slice(first + 2).filter(l => l.trim().startsWith('|'));
+  const head = cellsOf(body[first]).map(h => h.toLowerCase());
+  const si = head.indexOf('state'), pi = head.indexOf('priority');
+  const rank = l => { const c = cellsOf(l); const st = STATES.indexOf(clean(c[si])); return [st < 0 ? 99 : st, clean(c[si]) === 'ready' ? Number(clean(c[pi])) || 999 : 0]; };
+  const sorted = rows.map((l, k) => ({ l, k, r: rank(l) })).sort((a, b) => a.r[0] - b.r[0] || a.r[1] - b.r[1] || a.k - b.k).map(x => x.l);
+  const lastRow = first + 2 + body.slice(first + 2).findIndex(l => !l.trim().startsWith('|'));
+  const stop = lastRow < first + 2 ? body.length : lastRow;
+  const out = [...body.slice(0, first + 2), ...sorted, ...body.slice(stop)];
+  return md.slice(0, start) + out.join('\n') + md.slice(end);
+}
+// Changes named cells of one table row (by its first cell); unknown columns are an error.
+export function setRow(md, title, key, changes) {
+  const { start, end } = section(md, title), body = md.slice(start, end).split('\n');
+  const first = body.findIndex(l => l.trim().startsWith('|'));
+  const head = cellsOf(body[first]).map(h => h.toLowerCase().replace(/\s*\(utc\)/, '').replace(/[^a-z]+/g, '_').replace(/^_|_$/g, ''));
+  const k = body.findIndex((l, n) => n > first + 1 && l.trim().startsWith('|') && clean(cellsOf(l)[0]) === key);
+  if (k < 0) throw new Error(`no row "${key}" in ${title}`);
+  const c = cellsOf(body[k]);
+  for (const [col, v] of Object.entries(changes)) { const n = head.indexOf(col); if (n < 0) throw new Error(`no column ${col} in ${title}`); c[n] = String(v ?? '—').replace(/\|/g, '/').replace(/\n/g, ' '); }
+  body[k] = lineOf(c);
+  return md.slice(0, start) + body.join('\n') + md.slice(end);
+}
+// A hand-off at the top of "## Hand-offs".
+export function addHandoff(md, { at, assistant, task, state, lastSha, changed, checks, blockers, next }) {
+  const { start, end } = section(md, 'Hand-offs'), body = md.slice(start, end);
+  const k = body.indexOf('\n### '), insertAt = k < 0 ? body.length : k;
+  const f = v => String(v || 'none').replace(/\n+/g, ' ').trim();
+  const block = `\n### ${at} UTC · ${assistant} · ${task} · ${state}\n- **Last SHA:** ${f(lastSha)}\n- **Changed:** ${f(changed)}\n- **Checks:** ${f(checks)}\n- **Blockers:** ${f(blockers)}\n- **Next action:** ${f(next)}\n`;
+  return md.slice(0, start) + body.slice(0, insertAt) + block + body.slice(insertAt) + md.slice(end);
+}
+export const utcNow = (t = new Date()) => t.toISOString().slice(0, 16).replace('T', ' ');
+
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const md = fs.readFileSync(path.join(ROOT, 'AI_HANDOFF.md'), 'utf8'), out = path.join(ROOT, 'ai/status.json'), json = render(md);
+  const board = path.join(ROOT, 'AI_HANDOFF.md'), out = path.join(ROOT, 'ai/status.json'), check = process.argv.includes('--check');
+  let md = fs.readFileSync(board, 'utf8');
+  // Writing also keeps the queue in order (active, paused, ready by priority, blocked, done).
+  if (!check) { const sorted = sortQueue(md); if (sorted !== md) { fs.writeFileSync(board, sorted); md = sorted; console.log('sorted the queue in AI_HANDOFF.md'); } }
   const bad = sortedProblems(md);
   if (bad.length) { console.error('AI_HANDOFF.md queue order:\n- ' + bad.join('\n- ')); process.exit(1); }
-  if (process.argv.includes('--check')) {
+  const json = render(md);
+  if (check) {
     const cur = fs.existsSync(out) ? fs.readFileSync(out, 'utf8') : '';
     if (cur !== json) { console.error('ai/status.json is out of date: run npm run ai:status'); process.exit(1); }
     console.log('ai/status.json is up to date');

@@ -61,3 +61,55 @@ test('the deployed board is readable for Admin → AI team → Work status', () 
   const s = L.workStatus();
   assert.ok(s); assert.deepEqual(s.assistants.map(a => a.name), ['Claude', 'Codex', 'Grok']);
 });
+
+// ---------- the workflow's picker (scripts/ai-loop.mjs) and Grok's notes (scripts/ai-grok.mjs) ----------
+const P = await import('../scripts/ai-loop.mjs');
+const G = await import('../scripts/ai-grok.mjs');
+const row = (id, state, suggested, claimedBy = null, updated = null, priority = 1) => ({ id, state, priority, suggested, claimedBy, updated, task: `${id}. Done when it works.` });
+const board = rows => ({ queue: Object.fromEntries(['active', 'paused', 'ready', 'blocked', 'done'].map(s => [s, rows.filter(r => r.state === s)])) });
+const NOW = Date.parse('2026-11-26T15:00:00Z');
+const OK = { allowed: { claudeSubscription: { ok: true }, claudePerUse: { ok: false }, codex: { ok: true }, grok: { ok: true } } };
+
+test('the picker runs only assistants with a key and room under the cap; without the site, only Claude on the subscription', () => {
+  assert.deepEqual(P.eligible(['claude_oauth', 'openai', 'xai'], null).map(x => x.assistant), ['claude']);
+  assert.deepEqual(P.eligible(['anthropic', 'openai', 'xai'], OK).map(x => x.assistant), ['codex', 'grok'], 'Claude on a per-use key needs its own cap');
+  assert.deepEqual(P.eligible(['claude_oauth', 'openai', 'xai'], OK).map(x => `${x.assistant}:${x.billing}`), ['claude:subscription', 'codex:per-use', 'grok:per-use']);
+});
+
+test('each assistant takes its own kind of row; Grok never takes a coding row; fresh claims are left alone', () => {
+  const st = board([row('A-01', 'active', 'Claude', 'Codex', '2026-11-26 14:00'), row('B-01', 'ready', 'Codex'), row('C-01', 'ready', 'Grok'), row('D-01', 'ready', 'Claude')]);
+  assert.equal(P.rowFor('codex', st, { now: NOW }).row.id, 'B-01');
+  assert.equal(P.rowFor('grok', st, { now: NOW }).row.id, 'C-01');
+  assert.equal(P.rowFor('claude', st, { now: NOW }).row.id, 'D-01');
+  assert.match(P.rowFor('claude', st, { task: 'A-01', now: NOW }).none, /belongs to Codex/);
+  assert.match(P.rowFor('grok', st, { task: 'B-01', now: NOW }).none, /coding task/);
+  const onlyCoding = board([row('B-01', 'ready', 'Codex')]);
+  assert.ok(P.rowFor('grok', onlyCoding, { now: NOW }).none);
+  assert.equal(P.rowFor('claude', onlyCoding, { now: NOW }).row.id, 'B-01', 'an idle coder takes any ready coding row');
+});
+
+test('a claim older than 3 hours may be taken over, and the takeover is reported', () => {
+  const st = board([row('A-01', 'active', 'Claude', 'Codex', '2026-11-26 11:00'), row('B-01', 'ready', 'Codex')]);
+  const p = P.pick({ assistant: 'claude', keys: ['claude_oauth'], budget: OK, status: st, now: NOW });
+  assert.equal(p.task, 'A-01'); assert.equal(p.takeover, 'Codex');
+  const mine = board([row('A-01', 'active', 'Claude', 'Claude', '2026-11-26 14:30'), row('B-01', 'ready', 'Claude')]);
+  assert.equal(P.rowFor('claude', mine, { now: NOW }).row.id, 'B-01', 'its own fresh claim may be an interactive session: left alone');
+  assert.ok(P.pick({ assistant: 'codex', keys: ['claude_oauth'], budget: OK, status: mine, now: NOW }).none);
+});
+
+test('Grok notes go only to docs/research/, and never hold an email, an address or a key', () => {
+  const long = 'Pricing of retail platforms, with sources and dates. '.repeat(8);
+  assert.equal(G.checkNote({ notePath: 'docs/research/pricing.md', note: long }).notePath, 'docs/research/pricing.md');
+  for (const p of ['src/llm.js', 'docs/research/../../server.js', 'docs/research/Pricing.md', 'AI_HANDOFF.md']) assert.throws(() => G.checkNote({ notePath: p, note: long }), /note path/, p);
+  assert.throws(() => G.checkNote({ notePath: 'docs/research/notes.md', note: long + ' write to someone@example.com' }), /email/);
+  assert.throws(() => G.checkNote({ notePath: 'docs/research/notes.md', note: 'short' }), /too short/);
+});
+
+test('ai-loop.yml: each assistant only with its key, caps asked first, one task at a time, reviews before merge', async () => {
+  const fs = await import('node:fs'), y = fs.readFileSync('.github/workflows/ai-loop.yml', 'utf8'), g = fs.readFileSync('.github/workflows/release-gates.yml', 'utf8');
+  for (const k of ['CLAUDE_CODE_OAUTH_TOKEN', 'OPENAI_API_KEY', 'XAI_API_KEY']) assert.match(y, new RegExp(`secrets\\.${k} != ''`), k);
+  assert.match(y, /\/internal\/ai-loop\/budget/); assert.match(y, /\/internal\/ai-loop\/run/);
+  assert.match(y, /cancel-in-progress: false/); assert.match(y, /openai\/codex-action@v1/); assert.match(y, /anthropics\/claude-code-action@v1/);
+  assert.match(y, /reviewed=true/); assert.match(g, /ai\/claude-\*\|ai\/codex-\*\)/); assert.match(g, /run-name: .*\(reviewed\)/);
+  assert.doesNotMatch(y, /git push[^\n]*--force/);
+});
