@@ -41,6 +41,7 @@ Grok normally doesn't push code. It writes its result as a research note or a re
 3. **Work in small steps.**
    - Make one commit per finished piece.
    - `npm test` must pass before every push: `node --import ./test/setup.js --test --test-force-exit test/*.test.js`.
+   - Also run `node scripts/clean-check.mjs` (CI runs it): a new file that nothing imports must be used, or listed in its KEEP list.
    - Push to main (it deploys automatically), or to your own `ai/<assistant>-<ID>` branch when you run in GitHub Actions, where release-gates.yml tests and merges it after the review.
    - Pushes are the heartbeat: push at least every hour, and before long runs or when a usage limit is near.
 4. **Hand off.**

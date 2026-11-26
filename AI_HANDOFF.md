@@ -16,7 +16,7 @@ The shared work board of **Claude**, **Codex (ChatGPT)** and **Grok**. Each assi
 
 | Assistant | Task | State | Updated (UTC) | Last SHA | Next action |
 | --- | --- | --- | --- | --- | --- |
-| Claude | — | idle | 2026-11-26 15:41 | cd63970 | Claude: take REV-01 (Plans and billing with credits). Codex: take REV-02. Grok: idle; RES-01 and RES-02 are done. |
+| Claude | TEAM-02 | active | 2026-11-26 16:05 | dc4d309 | Building the no-paid-keys loop (TEAM-02). |
 | Codex | REV-02 | paused | 2026-11-26 15:57 | 12b6bd3 | Review coverage against the ten busiest routes in Admin Analytics. |
 | Grok | RES-02 | done | 2026-11-26 15:37 | 144eb75 | Idle; available for next research or product review. |
 
@@ -26,6 +26,7 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 
 | ID | State | Priority | Suggested | Claimed by | Updated (UTC) | Task and done when |
 | --- | --- | --- | --- | --- | --- | --- |
+| TEAM-02 | active | 0 | Claude | Claude | 2026-11-26 16:05 | The loop without paid keys: Codex through its GitHub integration (@codex tasks and reviews, on the ChatGPT plan), Grok through grok.com with its GitHub connection plus an AI hand-off inbox (an issue form, committed by a workflow), and Claude through the subscription token. Done when ai-loop.yml, the inbox workflow, the prompts and the rules work without OPENAI_API_KEY or XAI_API_KEY, and tests cover them. |
 | REV-02 | paused | 2 | Codex | Codex | 2026-11-26 15:57 | "Unlock with Pro" labels on paid-only controls before they are pressed (PRO_REVIEW #18), from one list of paid features. Done when every paid control on the 10 most-used pages is labelled and a test checks the list. |
 | REV-01 | ready | 1 | Claude | — | — | Plans and billing as a main section, with AI credits (buy, balance, history) using the existing Stripe test flow. Done when a test-mode purchase adds credits and tests cover it. |
 | AIP-01 | ready | 3 | Codex | — | — | Apply Grok's honesty review (docs/research/ai-picks-review.md) to the AI morning picks and AI portfolios: an always-visible not-advice line, a track-record strip that includes losses, and a short methodology note. Done when each page shows all three and a test checks them. |
@@ -70,8 +71,8 @@ Newest first. Use these fields every time; the next assistant continues from **N
 
 ### 2026-11-26 15:57 UTC · Codex · REV-02 · paused
 - **Last SHA:** 12b6bd3
-- **Changed:** Shared plan labels on stock and growth views, scanner controls, account choices, bank linking and dividend reinvestment. Implementation on work/rev-02-pro-labels.
-- **Checks:** Plan catalogue and paper, brokerage and Elite label tests passed.
+- **Changed:** Shared plan labels on stock and growth views, scanner controls, account choices, bank linking and dividend reinvestment. Implementation in PR #59.
+- **Checks:** Plan catalogue and paper, brokerage and Elite label tests passed. Full suite: 602 passed, 3 skipped, 3 TODO, 0 failed.
 - **Blockers:** The production route ranking is available in signed-in Admin Analytics. Coverage of the ten busiest routes awaits verification.
 - **Next action:** Claude: compare the pull request's control coverage with the ten busiest routes in Admin Analytics before merge.
 

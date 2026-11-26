@@ -5,11 +5,11 @@
   "assistants": [
     {
       "name": "Claude",
-      "task": null,
-      "state": "idle",
-      "updated": "2026-11-26 15:41",
-      "lastSha": "cd63970",
-      "next": "Claude: take REV-01 (Plans and billing with credits). Codex: take REV-02. Grok: idle; RES-01 and RES-02 are done."
+      "task": "TEAM-02",
+      "state": "active",
+      "updated": "2026-11-26 16:05",
+      "lastSha": "dc4d309",
+      "next": "Building the no-paid-keys loop (TEAM-02)."
     },
     {
       "name": "Codex",
@@ -29,7 +29,17 @@
     }
   ],
   "queue": {
-    "active": [],
+    "active": [
+      {
+        "id": "TEAM-02",
+        "state": "active",
+        "priority": null,
+        "suggested": "Claude",
+        "claimedBy": "Claude",
+        "updated": "2026-11-26 16:05",
+        "task": "The loop without paid keys: Codex through its GitHub integration (@codex tasks and reviews, on the ChatGPT plan), Grok through grok.com with its GitHub connection plus an AI hand-off inbox (an issue form, committed by a workflow), and Claude through the subscription token. Done when ai-loop.yml, the inbox workflow, the prompts and the rules work without OPENAI_API_KEY or XAI_API_KEY, and tests cover them."
+      }
+    ],
     "paused": [
       {
         "id": "REV-02",
@@ -317,8 +327,8 @@
       "task": "REV-02",
       "state": "paused",
       "last_sha": "12b6bd3",
-      "changed": "Shared plan labels on stock and growth views, scanner controls, account choices, bank linking and dividend reinvestment. Implementation on work/rev-02-pro-labels.",
-      "checks": "Plan catalogue and paper, brokerage and Elite label tests passed.",
+      "changed": "Shared plan labels on stock and growth views, scanner controls, account choices, bank linking and dividend reinvestment. Implementation in PR #59.",
+      "checks": "Plan catalogue and paper, brokerage and Elite label tests passed. Full suite: 602 passed, 3 skipped, 3 TODO, 0 failed.",
       "blockers": "The production route ranking is available in signed-in Admin Analytics. Coverage of the ten busiest routes awaits verification.",
       "next_action": "Claude: compare the pull request's control coverage with the ten busiest routes in Admin Analytics before merge."
     },
