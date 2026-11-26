@@ -5,11 +5,11 @@
   "assistants": [
     {
       "name": "Claude",
-      "task": "TEAM-01",
-      "state": "active",
-      "updated": "2026-11-26 14:05",
-      "lastSha": "84a43b1",
-      "next": "Finish TEAM-01, then take REV-01 (Plans and billing with credits)."
+      "task": null,
+      "state": "idle",
+      "updated": "2026-11-26 15:41",
+      "lastSha": "cd63970",
+      "next": "Claude: take REV-01 (Plans and billing with credits). Codex: take REV-02. Grok: idle; RES-01 and RES-02 are done."
     },
     {
       "name": "Codex",
@@ -29,17 +29,7 @@
     }
   ],
   "queue": {
-    "active": [
-      {
-        "id": "TEAM-01",
-        "state": "active",
-        "priority": null,
-        "suggested": "Claude",
-        "claimedBy": "Claude",
-        "updated": "2026-11-26 14:05",
-        "task": "Three-assistant loop: rules, board, ai/status.json, prompts, Grok provider, Admin work status, ai-loop.yml. Done when all are on main and npm test passes."
-      }
-    ],
+    "active": [],
     "paused": [],
     "ready": [
       {
@@ -227,6 +217,15 @@
     ],
     "done": [
       {
+        "id": "TEAM-01",
+        "state": "done",
+        "priority": null,
+        "suggested": "Claude",
+        "claimedBy": "Claude",
+        "updated": "2026-11-26 15:41",
+        "task": "Three-assistant loop: rules, board, ai/status.json, prompts, Grok provider, Admin work status, ai-loop.yml. Done when all are on main and npm test passes."
+      },
+      {
         "id": "RES-02",
         "state": "done",
         "priority": 17,
@@ -302,6 +301,17 @@
     }
   ],
   "handoffs": [
+    {
+      "at": "2026-11-26 15:41 UTC",
+      "assistant": "Claude",
+      "task": "TEAM-01",
+      "state": "done",
+      "last_sha": "cd63970",
+      "changed": "AGENTS.md, CLAUDE.md, AI_HANDOFF.md, ai/status.json and ai/prompts/, scripts/ai-status.mjs, ai-loop.mjs and ai-grok.mjs, src/ai-loop.js, Grok in src/llm.js, Admin AI team Work status, ai-loop.yml, ai-status.yml, the review gate in release-gates.yml, tests",
+      "checks": "npm test 606 (3 known TODO); actionlint clean",
+      "blockers": "none; automatic runs need the owner's keys and caps (OWN-05)",
+      "next_action": "Claude: take REV-01 (Plans and billing with credits). Codex: take REV-02. Grok: idle; RES-01 and RES-02 are done."
+    },
     {
       "at": "2026-11-26 15:37 UTC",
       "assistant": "Grok",

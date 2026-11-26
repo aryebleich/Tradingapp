@@ -949,3 +949,22 @@ Automatic (above). By hand: redeploy the previous tag: `curl -X POST "<deploy ho
 - **AGENTS.md** (read by Codex; CLAUDE.md imports it): one loop for both assistants. Pull main, read AI_HANDOFF.md, claim one row with a pushed `handoff: claim` commit, work in small pushes that pass npm test, then leave a checkpoint with one concrete next action.
 - **Changed from Codex's first version:** work goes to `main` (the owner's standing instruction) instead of a separate `docs/ai-handoff` branch and task branches. A claim is stale after 3 hours without an update.
 - **AI_HANDOFF.md:** a new latest checkpoint, and a queue that holds every open item (Admin AI 3–5, Part A, Pages, CI, the font, the seven-phase phases 4–7, the tick engine, the owner's steps).
+
+## 2026-11-26: Three assistants on one board: Claude, Codex and Grok (Claude)
+- **One loop for three assistants** (AGENTS.md, CLAUDE.md): catch up, claim one row, small tested pushes, a hand-off with one next action, and a record of the details. A "Who does what best" table: Claude for big changes and reviews, Codex for focused coding and tests, Grok for research and second opinions. Claims last 3 hours after their last update.
+- **The board**:
+  - AI_HANDOFF.md is sorted (active, paused, ready by priority, blocked, done this week), with the raw links at the top; the history is in docs/archive/AI_HANDOFF-history.md.
+  - ai/status.json is generated from it by scripts/ai-status.mjs (`npm run ai:status`; it also sorts the queue), with the AI status workflow as a safety net.
+  - test/ai-status.test.js keeps keys, tokens, emails, IP addresses and the server's own address out of the board, the JSON, AGENTS.md and the prompts, and checks that the JSON is up to date.
+- **Paste-in prompts**: ai/prompts/chatgpt.md, grok.md and claude-web.md. Each reads the raw board, status and rules; works in the loop when it can push; and without push access ends with a patch and a hand-off block in the board's format.
+- **Grok (xAI) as a provider** in src/llm.js, the router catalog, Keys and the AI team priors. It is off until its cap is raised.
+- **Admin → AI team → Work status**:
+  - the three assistants (task, state, last push, next action), the queue, the owner-only items, recent hand-offs and automatic runs;
+  - monthly caps per assistant ($0 by default for per-use billing), Pause or Resume, and Run now (and Run for one row) through GitHub.
+- **The automatic loop**:
+  - ai-loop.yml (every 4 hours, or on demand) picks by key, cap and queue (scripts/ai-loop.mjs), claims, works on its own branch, opens a pull request and hands off;
+  - Codex and Claude cross-review before release-gates.yml merges, and Grok reviews billing, trading and AI-pick changes;
+  - at a usage limit the row is paused with its reset time;
+  - scripts/ai-grok.mjs runs Grok's research and reviews.
+- **Queue:** 22 ready rows ranked by revenue and trust against effort (PRO_REVIEW.md, the growth plan, the open briefs), each with a "Done when" line and a suggested assistant. The owner-only items are in their own table.
+- **Checks:** npm test passes (606 tests, 3 known TODO reviews); actionlint passes on every workflow (its shellcheck pass not run: shellcheck is not installed here).
