@@ -5,11 +5,11 @@
   "assistants": [
     {
       "name": "Claude",
-      "task": null,
-      "state": "idle",
-      "updated": "2026-11-26 19:37",
-      "lastSha": "1ae64f7",
-      "next": "Claude: REV-01's price step (Hybrid prices and the checkout guard). PR #60 merges itself once its gates pass.",
+      "task": "MP-01",
+      "state": "active",
+      "updated": "2026-11-26 21:51",
+      "lastSha": "bc7f32e",
+      "next": "Working on MP-01 in GitHub Actions.",
       "reset": null
     },
     {
@@ -23,16 +23,25 @@
     },
     {
       "name": "Grok",
-      "task": "RES-02",
+      "task": "RES-03",
       "state": "done",
-      "updated": "2026-11-26 15:37",
-      "lastSha": "144eb75",
-      "next": "Idle; available for next research or product review.",
+      "updated": "2026-11-26 22:13",
+      "lastSha": "a545db7",
+      "next": "Idle. FEAT-02 and FEAT-03 are ready from the research note.",
       "reset": null
     }
   ],
   "queue": {
     "active": [
+      {
+        "id": "MP-01",
+        "state": "active",
+        "priority": null,
+        "suggested": "Claude",
+        "claimedBy": "Claude",
+        "updated": "2026-11-26 21:51",
+        "task": "The master plan (docs/research/master-plan.md): save it, map its documents to what exists (MASTER_ROADMAP, FEATURE_REGISTRY, SYSTEM_ARCHITECTURE, SECURITY_REQUIREMENTS), the feature registry with its coverage test, one price ladder, the legal and data gates, and the queue by the plan's phases. Done when all are on main and the queue holds about 20 ready rows linked to the registry."
+      },
       {
         "id": "REV-02",
         "state": "active",
@@ -145,6 +154,15 @@
         "task": "Developer API as a paid tier: usage metering per key, per-plan limits, and an OpenAPI file. Done when limits are enforced in tests and the docs page shows them."
       },
       {
+        "id": "FEAT-02",
+        "state": "ready",
+        "priority": 10,
+        "suggested": "Claude",
+        "claimedBy": null,
+        "updated": "2026-11-26 22:13",
+        "task": "Insider Form 4 tracker (S-11 + I-04), from docs/research/insider-congressional.md: market buys list, cluster filter, per-symbol strip, EDGAR links, lag and not-advice copy, Plus alerts optional. Done when pages and tests are on main and registry rows are updated."
+      },
+      {
         "id": "FEAT-01",
         "state": "ready",
         "priority": 11,
@@ -152,6 +170,15 @@
         "claimedBy": null,
         "updated": null,
         "task": "Phase B. Dividend scanner: about 2,000 symbols, yield, safety, growth and scores, labelled not advice. Done when the scanner page and its tests are on main."
+      },
+      {
+        "id": "FEAT-03",
+        "state": "ready",
+        "priority": 11,
+        "suggested": "Codex",
+        "claimedBy": null,
+        "updated": "2026-11-26 22:13",
+        "task": "Congressional PTR tracker (I-03), from docs/research/insider-congressional.md: House + Senate table with amount ranges, 45-day lag label, official filing links, not-advice copy. Done when the page and tests are on main and the registry row is updated."
       },
       {
         "id": "ONB-01",
@@ -247,6 +274,15 @@
       }
     ],
     "done": [
+      {
+        "id": "RES-03",
+        "state": "done",
+        "priority": 10,
+        "suggested": "Grok",
+        "claimedBy": "Grok",
+        "updated": "2026-11-26 22:13",
+        "task": "Insider and congressional tracker research (S-11, I-04, I-03). Done when docs/research/insider-congressional.md lists sources, competitors, product recommendations and FEAT-02/FEAT-03 done-when rows."
+      },
       {
         "id": "QA-02",
         "state": "done",
@@ -378,6 +414,17 @@
   ],
   "handoffs": [
     {
+      "at": "2026-11-26 22:13 UTC",
+      "assistant": "Grok",
+      "task": "RES-03",
+      "state": "done",
+      "last_sha": "a545db7",
+      "changed": "docs/research/insider-congressional.md — Form 4 + STOCK Act sources, competitor snapshot (OpenInsider, Capitol Trades, Quiver, Unusual Whales), product recommendations, FEAT-02 and FEAT-03 queue rows. Board updated.",
+      "checks": "Research only; public sources (SEC EDGAR, House/Senate PTR paths, competitor pages Oct–Nov 2026). Pushed to main (docs/ only).",
+      "blockers": "none",
+      "next_action": "Claude: finish MP-01 then REV-01. Codex: finish REV-02 (PR #60) and AIP-01. Either may claim FEAT-02 (insider) or FEAT-03 (Congress) from the research note. Owner: merge PR #65 (mobile→desktop) when green."
+    },
+    {
       "at": "2026-11-26 19:37 UTC",
       "assistant": "Claude",
       "task": "QA-02",
@@ -475,17 +522,6 @@
       "checks": "npm test (to be run before the push).",
       "blockers": "none.",
       "next_action": "Claude: finish TEAM-01 (prompts, Grok provider, Admin work status, ai-loop.yml)."
-    },
-    {
-      "at": "2026-11-26 13:55 UTC",
-      "assistant": "Claude",
-      "task": "OPS-01",
-      "state": "done",
-      "last_sha": "a00ae2e",
-      "changed": "render.yaml and src/render-redirect.js deleted, with their tests, after dns-cutover.yml confirmed that app.brightolio.com answers straight from the Oracle server (issue #55 closed).",
-      "checks": "npm test 590 pass (3 known TODO reviews).",
-      "blockers": "none.",
-      "next_action": "Codex: push PERF-01."
     }
   ]
 }

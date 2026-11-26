@@ -9,6 +9,16 @@ These rules apply to all three assistants on this repo: **Claude** (Claude Code)
   - https://raw.githubusercontent.com/aryebleich/Tradingapp/main/ai/status.json
 - The paste-in prompts for the web chats are in [ai/prompts/](ai/prompts/). Update them whenever this loop changes.
 
+**The plan documents** (all assistants work from the same ones):
+- [docs/research/master-plan.md](docs/research/master-plan.md): the owner's master plan (its prices and revenue figures are proposals to test).
+- [docs/MASTER_ROADMAP.md](docs/MASTER_ROADMAP.md): the phases and the status of each.
+- [docs/FEATURE_REGISTRY.md](docs/FEATURE_REGISTRY.md): every feature, with its status, files, tier, product and legal or data flag. **Every pull request that adds or changes a feature updates its row**; `npm test` fails when a page or route isn't listed (`node scripts/registry.mjs` rebuilds the summary).
+- [docs/SYSTEM_ARCHITECTURE.md](docs/SYSTEM_ARCHITECTURE.md): how the parts fit (modules, data flow, hosting, brokers, AI, jobs).
+- [docs/SECURITY_REQUIREMENTS.md](docs/SECURITY_REQUIREMENTS.md): the security requirements and what is in place.
+- [docs/research/growth-plan.md](docs/research/growth-plan.md): the revenue strategy and the price ladder ("Revenue").
+- This file stays the development rules; AI_HANDOFF.md and ai/status.json stay the board and the current status.
+- Rows flagged `legal` in the registry are built only behind their Admin switch (Admin → Security → Legal gates), off until the owner signs off (LEGAL_REVIEW.md L-MP, OWN-04). Rows flagged `licensed` wait for a data license (OWN-05).
+
 **The goal:** grow Brightolio into a large, professional trading platform that earns money honestly: real value, clear prices, no promised returns and no dark patterns.
 
 ## Who does what best

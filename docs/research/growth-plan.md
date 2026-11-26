@@ -1,6 +1,6 @@
 # Brightolio growth plan
 
-Owner's plan, saved 2026-11-26. It builds on docs/research/pricing.md (Option C, Hybrid) and docs/research/ai-picks-review.md. The work is in the AI_HANDOFF.md queue (Phase A and B rows, plus the measurement row).
+Owner's plan, saved 2026-11-26; since MP-01 it is also Brightolio's revenue strategy (the master plan's revenue section is merged into "Revenue" below). It builds on docs/research/pricing.md (Option C, Hybrid), docs/research/master-plan.md and docs/research/ai-picks-review.md. The work is in the AI_HANDOFF.md queue (Phase A and B rows, plus the measurement row).
 
 ## Positioning
 
@@ -13,18 +13,40 @@ Brightolio is the professional software layer on top of the user's own broker. I
 
 Live trading is only ever an explicit, gated opt-in.
 
-## Revenue: from software, not from commissions or payment for order flow
+## Revenue
 
-| Plan | Price (about) | What it is for |
+This is Brightolio's one revenue strategy: the plan below plus the master plan's revenue section (docs/research/master-plan.md, "How Brightolio could make serious money"). Revenue comes from software, not from commissions or payment for order flow.
+
+### The price ladder (DECISIONS.md MP-3)
+
+| Plan | Monthly | Yearly | What it is for |
+| --- | --- | --- | --- |
+| Free | $0 | $0 | Acquisition and trust: paper trading, charts, watchlists, research basics, delayed data |
+| Plus | $14.99 | $149 | The main conversion tier: real-account automation, scanners every 5 minutes, alerts by text, more AI |
+| Pro | $39.99 | $399 | Active traders: options income bots, multi-leg orders, tax-loss harvesting, 4-chart layouts, more AI |
+| Elite | $89.99 | $899 | Power users: 100 strategies and webhooks, unlimited scanners and agents, the most AI, priority support |
+| Institutional | from $499 a month | annual contract | Teams: workspaces, APIs, SSO, reporting (sales-led; no self-serve checkout yet) |
+| AI credits | per pack | — | Usage beyond the plan's allowance (packs of 500, 3,000 and 12,000) |
+
+The yearly price is about 17% off (ten months for twelve). Both the master plan and the research call these prices a starting point to test. Revisit them every 6 months against TradingView, Robinhood Gold and new AI tools (docs/research/pricing.md).
+
+### Revenue streams
+
+| Stream (master plan) | Model | Status |
 | --- | --- | --- |
-| Starter | $0 | Acquisition and trust: research, paper trading, the basics |
-| Pro | $12–15 / month | The main conversion tier: automation, more AI, scanners |
-| Elite | $39–49 / month | Power users: several accounts, real automation, higher limits |
-| AI credits | per pack | Usage beyond the plan's quota |
-| Developer API | later | Builders and integrations |
-| Yearly | about 15–20% off | A discount for paying yearly |
+| Premium subscriptions | Monthly and yearly plans | Built, Stripe test mode |
+| AI financial tools | Plan allowances plus credit packs | Built, Stripe test mode |
+| Trading automation | Included per tier (limits by plan) | Built |
+| Marketplace | 15–30% commission on eligible sales | Later. Paid trade ideas wait for legal sign-off (LEGAL_REVIEW.md L-MP2); indicators and dashboards don't need it |
+| Financial data | Premium data packages | Later, only after data licenses (OWN-05) |
+| Developer APIs | Usage-based billing | Queue row DEV-01 |
+| Trading education | Paid courses | Later (Academy) |
+| Creator memberships | Revenue sharing | Waits for legal sign-off (L-MP2) |
+| Enterprise software | Annual contracts (Institutional) | Later (Phase 5) |
+| White-label platforms | Licensing fees | Later (Phase 5) |
+| Brokerage partnerships | Compliant commercial arrangements | Waits for legal sign-off (L-MP4) |
 
-This is the Hybrid option (Option C) in docs/research/pricing.md. We compete on automation, honesty and the AI workflow, not on being a "free platform".
+The master plan's revenue calculator is illustrative, not a forecast. It is never shown to members as a promise, and no figure here is a return to anyone.
 
 ## Five pillars
 
