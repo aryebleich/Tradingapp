@@ -66,7 +66,7 @@ Grok normally doesn't push code. It writes its result as a research note or a re
 - Claim nothing.
 - Read the board at the raw links (Grok: through its GitHub connection, when it has one) and do the work in the chat.
 - End with a ready hand-off block in the exact format above, plus any note or patch (a unified diff).
-- **A hand-off or a research note:** the owner pastes it into the AI hand-off form (https://github.com/aryebleich/Tradingapp/issues/new?template=ai-handoff.yml). The AI inbox workflow checks it and commits it to the board. Only the owner's issues count.
+- **A hand-off or a research note:** the owner pastes it into the AI hand-off form (https://github.com/aryebleich/Tradingapp/issues/new?template=ai-handoff.yml). The AI inbox workflow checks it and commits it to the board. Only issues from people with write access count.
 - **A patch:** the owner pastes it into Claude Code or Codex, which test it and commit it.
 
 ## Without paid keys

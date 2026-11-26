@@ -43,6 +43,15 @@
     "paused": [],
     "ready": [
       {
+        "id": "SMOKE-01",
+        "state": "ready",
+        "priority": null,
+        "suggested": "Claude",
+        "claimedBy": null,
+        "updated": null,
+        "task": "End-to-end test of the AI inbox (the path Grok's results take): a hand-off through the AI hand-off form is checked and committed to the board by ai-inbox.yml. Done when the test issue is closed with the hand-off on the board."
+      },
+      {
         "id": "REV-01",
         "state": "ready",
         "priority": 1,
@@ -50,6 +59,15 @@
         "claimedBy": null,
         "updated": null,
         "task": "Plans and billing as a main section, with AI credits (buy, balance, history) using the existing Stripe test flow. Done when a test-mode purchase adds credits and tests cover it."
+      },
+      {
+        "id": "REV-02B",
+        "state": "ready",
+        "priority": 2,
+        "suggested": "Codex",
+        "claimedBy": null,
+        "updated": null,
+        "task": "Follow-up of REV-02 (PR #60): label the paid controls on the 10 most-used pages by Admin → Analytics route counts, and add a test that every entry in public/paid-controls.js matches a server check (upgrade() or needPlan()). Done when both are in."
       },
       {
         "id": "AIP-01",

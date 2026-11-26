@@ -153,7 +153,8 @@ test('the AI inbox refuses a wrong task, a mismatched hand-off, a patch and anyt
 
 test('the inbox and the @codex steps: only the owner\'s issues count, and Codex\'s verdict merges or sends back', () => {
   const inbox = fsx.readFileSync('.github/workflows/ai-inbox.yml', 'utf8'), loop = fsx.readFileSync('.github/workflows/ai-loop.yml', 'utf8');
-  assert.match(inbox, /github\.event\.issue\.user\.login == github\.repository_owner/);
+  assert.match(inbox, /\["OWNER","MEMBER","COLLABORATOR"\][^\n]*github\.event\.issue\.author_association/, 'only people with write access');
+  assert.doesNotMatch(inbox, /CONTRIBUTOR|NONE|FIRST_TIME/);
   assert.match(inbox, /node --test test\/ai-status\.test\.js/, 'the public-safety test runs before the commit');
   assert.ok(fsx.existsSync('.github/ISSUE_TEMPLATE/ai-handoff.yml'));
   assert.match(loop, /CODEX_GITHUB == '1'/); assert.match(loop, /@codex review/); assert.match(loop, /codex-verdict:/);

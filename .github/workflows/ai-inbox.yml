@@ -4,7 +4,8 @@ name: AI inbox
 # them (scripts/ai-inbox.mjs: the task is on the board, the hand-off has its format, no patch, nothing
 # that looks private), commits the note to docs/research/ and the hand-off to AI_HANDOFF.md and
 # ai/status.json on main, then answers on the issue and closes it. No API key is needed.
-# Only issues the repository owner opens are committed: the repo is public, so anyone else's is ignored.
+# Only issues from people with write access (the owner, members, collaborators) are committed: the repo
+# is public, so anyone else's is ignored.
 on:
   issues:
     types: [opened, edited, labeled]
@@ -16,7 +17,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   inbox:
-    if: contains(github.event.issue.labels.*.name, 'ai-handoff') && github.event.issue.user.login == github.repository_owner && github.event.issue.state == 'open'
+    if: contains(github.event.issue.labels.*.name, 'ai-handoff') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association) && github.event.issue.state == 'open'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
