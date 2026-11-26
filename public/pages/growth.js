@@ -1,3 +1,4 @@
+import { unlockLabel } from '../paid-controls.js';
 // Growth pages (docs/archive/PLAN_GROWTH.md): Diversification (#/riskview/diversify), AI morning picks
 // (#/signals/newspicks), AI intraday (#/bots/intraday), Passive investing (#/wealth/passive),
 // Dividends & income (#/wealth/dividends) and the Active trading desk (#/active).
@@ -11,7 +12,7 @@ const stat = (k, v, sub = '') => `<div class="stat"><span>${k}</span><b>${v}</b>
 const card = (title, body, extra = '') => `<div class="card"><div class="dash-ch"><h2>${title}</h2>${extra}</div>${body}</div>`;
 const head = (t, p) => `<div class="pagehead"><h1>${t}</h1><p class="mu" style="margin:4px 0 0">${p}</p></div>`;
 const skel = '<div class="card"><div class="skel" role="status" aria-label="Loading"><div class="h1"></div><div></div><div></div><div class="w60"></div></div></div>';
-const lock = (what, feature, plan = 'Pro') => `<div class="empty lock"><b>${what}</b><button type="button" class="link" data-upgrade="${H.esc(feature)}">Unlock with ${plan}</button></div>`;
+const lock = (what, feature) => `<div class="empty lock"><b>${what}</b><button type="button" class="link" data-upgrade="${H.esc(feature)}">${unlockLabel(feature)}</button></div>`;
 const wireUpgrade = el => H.$$('[data-upgrade]', el).forEach(b => (b.onclick = () => H.upgrade?.(b.dataset.upgrade)));
 const acctSel = async (id, cur) => { const list = (await H.accounts()).filter(a => a.id === 'paper' || a.connected); return `<label class="acctpick">Account<select id="${id}">${list.map(a => `<option value="${H.esc(a.id)}" ${a.id === cur ? 'selected' : ''}>${H.esc(H.acctLabel(a))}</option>`).join('')}</select></label>`; };
 const bar = (label, v, cls = '') => `<div class="bar-row"><span>${H.esc(label)}</span><i style="width:${Math.max(0, Math.min(100, v))}%" class="${cls}"></i><b>${pct(v)}</b></div>`;
@@ -58,7 +59,7 @@ PAGES.newspicks = async view => {
         <label>How<select name="mode"><option value="approve" ${s.mode === 'approve' ? 'selected' : ''}>I approve each day</option><option value="auto" ${s.mode === 'auto' ? 'selected' : ''}>Place them automatically</option></select></label>
         <label>Account<select name="account">${accts.map(a => `<option value="${H.esc(a.id)}" ${a.id === s.account ? 'selected' : ''}>${H.esc(H.acctLabel(a))}</option>`).join('')}</select></label></div>
       <div class="row"><label>Daily budget $<input name="budget" type="number" min="10" value="${s.budget}"></label><label>Most per stock $<input name="perStock" type="number" min="5" value="${s.perStock}"></label><label>Picks a day<input name="maxPicks" type="number" min="1" max="5" value="${s.maxPicks}"></label><label>Stop loss %<input name="stopPct" type="number" min="0.5" max="20" step="0.5" value="${s.stopPct}"></label><label>Daily loss limit $<input name="dailyLoss" type="number" min="1" value="${s.dailyLoss}"></label></div>
-      <fieldset class="live"><legend>Real money</legend><label class="chk"><input type="checkbox" name="live" ${s.live ? 'checked' : ''} ${d.elite ? '' : 'disabled'}> Allow a real brokerage account ${d.elite ? '' : '(Elite plan)'}</label>
+      <fieldset class="live"><legend>Real money</legend><label class="chk"><input type="checkbox" name="live" ${s.live ? 'checked' : ''} ${d.elite ? '' : 'disabled'}> Allow a real brokerage account ${d.elite ? '' : unlockLabel('AI morning picks with real money')}</label>
         <label class="pw" hidden>Your password, to turn on real money<input name="password" type="password" autocomplete="current-password"></label>
         <p class="mu small-print">Off by default. With it on and a real account chosen, orders go to your brokerage within the limits above; the kill switch stops them at once. Day trades on a margin account under $25,000 are limited to 3 in 5 days.</p></fieldset>
       <button>Save</button><div class="err"></div></form>` : `<p>Choosing approve or automatic, your limits and the account is part of Pro. The picks and the record above are free to read.</p>${lock('Use AI morning picks with your own limits.', 'AI morning picks')}`)
@@ -97,7 +98,7 @@ PAGES.intraday = async view => {
       <fieldset class="live"><legend>Real money</legend><label class="chk"><input type="checkbox" name="live" ${s.live ? 'checked' : ''}> Allow a real brokerage account</label>
         <label class="pw" hidden>Your password, to turn on real money<input name="password" type="password" autocomplete="current-password"></label>
         <p class="mu small-print">Off by default. Try it on the practice account first. With real money on, orders go to your brokerage within the limits above; the kill switch stops new orders at once.</p></fieldset>
-      <button>Save</button><div class="err"></div></form>` : `<p>Turning the engine on, with your own limits, is part of the Elite plan. How it works, its limits and its log are free to read.</p>${lock('Run AI intraday trading on the practice account first.', 'AI intraday trading', 'Elite')}`)
+      <button>Save</button><div class="err"></div></form>` : `<p>Turning the engine on, with your own limits, is part of the Elite plan. How it works, its limits and its log are free to read.</p>${lock('Run AI intraday trading on the practice account first.', 'AI intraday trading')}`)
     + card('Trade log', d.log.length ? `<div class="tablewrap" tabindex="0" role="region" aria-label="Trade log"><table class="slim"><thead><tr><th>When</th><th>Account</th><th>Symbol</th><th>Side</th><th class="num">Qty</th><th class="num">Price</th><th class="num">Result</th><th>Why</th></tr></thead><tbody>${d.log.map(l => `<tr><td>${H.date(l.at)}</td><td>${H.esc(l.account)}</td><td data-no-tr>${H.esc(l.symbol)}</td><td>${l.side}</td><td class="num">${l.qty}</td><td class="num">${H.money(l.price)}</td><td class="num ${l.pl > 0 ? 'pos' : l.pl < 0 ? 'neg' : ''}">${l.pl == null ? '' : H.money(l.pl)}</td><td class="small-print">${H.esc(l.reason)}</td></tr>`).join('')}</tbody></table></div>`
       : '<div class="empty"><b>No orders yet.</b><span>Every order the engine places, and why, is listed here, losses included.</span></div>')
     + `<p class="mu small-print">${H.esc(d.note)}</p>`;

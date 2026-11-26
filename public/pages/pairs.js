@@ -1,3 +1,4 @@
+import { unlockLabel } from '../paid-controls.js';
 // Pairs trading page: analysis, z-score chart, walk-forward backtest, scanner and pair bots.
 let H; // helpers from app.js
 
@@ -187,7 +188,7 @@ async function statarb(view, q) {
     <label>Gap detection<select name="method"><option value="ols">Cointegration (Engle-Granger)</option><option value="kalman">Kalman filter (adaptive hedge)</option><option value="distance">Distance (normalized prices)</option><option value="ratio">Price ratio, Bollinger bands</option></select></label>
     <label>Common move<select name="factor"><option value="basket">Equal-weight basket</option><option value="pca">First principal component (PCA)</option></select></label></div>
     <button>Analyze basket</button>
-    <label class="chk" style="display:inline-flex;margin-inline-start:12px"><input type="checkbox" id="live" ${lim.refresh ? '' : 'disabled'}> Live: refresh ${lim.refresh ? `every ${lim.refresh} seconds` : '(Pro)'}</label>
+    <label class="chk" style="display:inline-flex;margin-inline-start:12px"><input type="checkbox" id="live" ${lim.refresh ? '' : 'disabled'}> Live: refresh ${lim.refresh ? `every ${lim.refresh} seconds` : unlockLabel('Live statistical arbitrage refresh')}</label>
     <p class="mu" style="font-size:12.5px;margin:8px 0 0">Your plan: up to ${lim.symbols} stocks${lim.refresh ? `, live every ${lim.refresh} s` : ', refresh by hand'}. ${Object.entries(info.plans).filter(([k]) => k !== 'free').map(([k, v]) => `${k[0].toUpperCase() + k.slice(1)}: ${v.symbols} stocks, every ${v.refresh} s`).join(' · ')}.</p>
     <div class="err"></div></form>
   <div id="sOut"></div>
@@ -291,7 +292,7 @@ async function livePairs(view, q) {
       <div class="grid">${svgLines([{ name: 'Beta', ys: ch.map(x => x.beta), cls: 's2' }], { label: 'Beta over time', h: 80 })}${svgLines([{ name: 'Volatility ratio', ys: ch.map(x => x.vr), cls: 's3' }], { label: 'Volatility ratio over time', h: 80 })}</div>
       <div class="tablewrap"><table class="slim"><thead><tr><th>Leg</th><th class="num">Shares</th><th class="num">Entry</th><th class="num">Now</th><th class="num">P&amp;L</th></tr></thead><tbody>${legs.map(([s, qn, e, now]) => `<tr><td data-no-tr>${H.esc(s)} ${qn > 0 ? '<span class="pill pos">long</span>' : qn < 0 ? '<span class="pill neg">short</span>' : ''}</td><td class="num">${qn || 0}</td><td class="num">${qn ? usd(e) : '-'}</td><td class="num">${usd(now)}</td><td class="num">${qn && now ? usd(qn * (now - e)) : '-'}</td></tr>`).join('')}</tbody></table></div>
       <div class="row lp-act" style="gap:8px">${b.status === 'running' ? '<button type="button" class="ghost small" data-do="pause">Pause</button>' : '<button type="button" class="small" data-do="start">Start</button>'}<button type="button" class="ghost small" data-do="stop">Stop and close</button><button type="button" class="ghost small" data-do="backtest">Intraday backtest</button>
-        ${b.account === 'paper' ? '<button type="button" class="ghost small" data-do="live">Use real money…</button>' : '<button type="button" class="ghost small" data-do="paper">Back to Paper</button>'}<button type="button" class="ghost small" data-do="delete">Delete</button></div>
+        ${b.account === 'paper' ? `<button type="button" class="ghost small" data-do="live">Use real money…${H.paid() ? '' : ' · ' + unlockLabel('Brokerage automation')}</button>` : '<button type="button" class="ghost small" data-do="paper">Back to Paper</button>'}<button type="button" class="ghost small" data-do="delete">Delete</button></div>
       <p class="ok" role="status"></p><div class="err" role="alert"></div><div class="lp-bt"></div>
       ${st.backtest ? `<p class="small-print">Last intraday backtest (${new Date(st.backtest.at).toLocaleDateString()}): ${pct2(st.backtest.total * 100)} over ${st.backtest.bars} bars, ${st.backtest.trades} trades, largest fall ${pct2(st.backtest.maxDrawdown * 100)}. Hypothetical.</p>` : ''}
       ${b.account === 'paper' ? `<p class="mu small-print">Days on Paper: ${(st.paperDays || []).length} of the ${b.minPaperDays} needed before real money.</p>` : ''}
