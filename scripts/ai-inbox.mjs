@@ -28,8 +28,10 @@ export function parseForm(body) {
 }
 
 // Checks a parsed form against the board, and returns the edits to make (pure; the tests use it).
-export function plan(form, md, now = new Date()) {
+export function plan(form, md, now = new Date(), issue = null) {
   const errors = [];
+  // One issue, one hand-off: an issue already committed is never committed again.
+  if (issue && md.includes(`(from issue #${issue})`)) return { errors: [`issue #${issue} is already on the board`], already: true };
   if (!ASSISTANTS.includes(form.assistant)) errors.push(`unknown assistant "${form.assistant}"`);
   if (!/^[A-Z]{2,8}-\d{1,3}$/.test(form.task)) errors.push(`"${form.task}" is not a task ID like RES-03`);
   const st = build(md), all = Object.values(st.queue).flat(), row = all.find(r => r.id === form.task);
@@ -60,7 +62,8 @@ export function apply(md, form, p, issue) {
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const [file, issue] = process.argv.slice(2);
   const form = parseForm(fs.readFileSync(file, 'utf8')), board = path.join(ROOT, 'AI_HANDOFF.md'), md = fs.readFileSync(board, 'utf8');
-  const p = plan(form, md);
+  const p = plan(form, md, new Date(), issue);
+  if (p.already) { console.log(JSON.stringify({ ok: true, already: true, task: form.task })); process.exit(3); }
   if (p.errors) { console.log(JSON.stringify({ ok: false, errors: p.errors })); process.exit(1); }
   const next = apply(md, form, p, issue);
   fs.writeFileSync(board, next); fs.writeFileSync(path.join(ROOT, 'ai/status.json'), render(next));

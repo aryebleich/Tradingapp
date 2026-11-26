@@ -7,17 +7,17 @@
       "name": "Claude",
       "task": null,
       "state": "idle",
-      "updated": "2026-11-26 16:08",
-      "lastSha": "980b657",
-      "next": "Codex: REV-02 on PR #60. Claude: review PR #60 when Codex pushes, then take REV-01. Grok: paste ai/prompts/grok.md into grok.com for the next research row."
+      "updated": "2026-11-26 16:32",
+      "lastSha": "9f8cad0",
+      "next": "Grok: paste ai/prompts/grok.md into grok.com and send the result through this form"
     },
     {
       "name": "Codex",
       "task": "REV-02",
-      "state": "paused",
-      "updated": "2026-11-26 16:11",
-      "lastSha": "4231cf5",
-      "next": "Verify the busiest routes in Admin Analytics for PR #60."
+      "state": "active",
+      "updated": "2026-11-26 16:50",
+      "lastSha": "f555da2",
+      "next": "Codex: work on PR #60 (asked with @codex; brief in ai/tasks/REV-02.md)."
     },
     {
       "name": "Grok",
@@ -29,18 +29,18 @@
     }
   ],
   "queue": {
-    "active": [],
-    "paused": [
+    "active": [
       {
         "id": "REV-02",
-        "state": "paused",
+        "state": "active",
         "priority": 2,
         "suggested": "Codex",
         "claimedBy": "Codex",
-        "updated": "2026-11-26 16:11",
+        "updated": "2026-11-26 16:45",
         "task": "\"Unlock with Pro\" labels on paid-only controls before they are pressed (PRO_REVIEW #18), from one list of paid features. Done when every paid control on the 10 most-used pages is labelled and a test checks the list."
       }
     ],
+    "paused": [],
     "ready": [
       {
         "id": "REV-01",
@@ -50,6 +50,15 @@
         "claimedBy": null,
         "updated": null,
         "task": "Plans and billing as a main section, with AI credits (buy, balance, history) using the existing Stripe test flow. Done when a test-mode purchase adds credits and tests cover it."
+      },
+      {
+        "id": "REV-02B",
+        "state": "ready",
+        "priority": 2,
+        "suggested": "Codex",
+        "claimedBy": null,
+        "updated": null,
+        "task": "Follow-up of REV-02 (PR #60): label the paid controls on the 10 most-used pages by Admin → Analytics route counts, and add a test that every entry in public/paid-controls.js matches a server check (upgrade() or needPlan()). Done when both are in."
       },
       {
         "id": "AIP-01",
@@ -227,6 +236,15 @@
     ],
     "done": [
       {
+        "id": "SMOKE-01",
+        "state": "done",
+        "priority": null,
+        "suggested": "Claude",
+        "claimedBy": "Claude",
+        "updated": "2026-11-26 16:32",
+        "task": "End-to-end test of the AI inbox (the path Grok's results take): a hand-off through the AI hand-off form is checked and committed to the board by ai-inbox.yml. Done when the test issue is closed with the hand-off on the board."
+      },
+      {
         "id": "TEAM-02",
         "state": "done",
         "priority": null,
@@ -321,15 +339,15 @@
   ],
   "handoffs": [
     {
-      "at": "2026-11-26 16:11 UTC",
-      "assistant": "Codex",
-      "task": "REV-02",
-      "state": "paused",
-      "last_sha": "4231cf5",
-      "changed": "PR #60 adds a shared plan label list and labels on paid controls.",
-      "checks": "Free, paid, paper and Elite label fixtures passed.",
-      "blockers": "Top-ten usage ranking requires signed-in Admin Analytics.",
-      "next_action": "Verify PR #60 against the ten busiest routes in Admin Analytics before merge."
+      "at": "2026-11-26 16:32 UTC",
+      "assistant": "Claude",
+      "task": "SMOKE-01",
+      "state": "done",
+      "last_sha": "9f8cad0",
+      "changed": "nothing in the app; an end-to-end test of the AI hand-off inbox, the path Grok's results take (form, ai-inbox.yml, the board) (from issue #61)",
+      "checks": "this issue is the test: the workflow checks it, commits it and closes the issue",
+      "blockers": "none",
+      "next_action": "Grok: paste ai/prompts/grok.md into grok.com and send the result through this form"
     },
     {
       "at": "2026-11-26 16:08 UTC",

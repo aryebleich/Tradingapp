@@ -45,3 +45,11 @@ test('every paste-in prompt reads the board and the rules at their raw links, an
     assert.match(p, /cannot push|can't push/i, `${f}: says what to do without push access`);
   }
 });
+
+test('sorting the queue keeps priority 0 first among the ready rows', async () => {
+  const { sortQueue, sortedProblems } = await import('../scripts/ai-status.mjs');
+  const md = '# x\n\n## Queue\n\n| ID | State | Priority | Suggested | Claimed by | Updated (UTC) | Task and done when |\n| --- | --- | --- | --- | --- | --- | --- |\n| B-01 | ready | 2 | Codex | — | — | B. Done when b. |\n| A-01 | ready | 0 | Claude | — | — | A. Done when a. |\n| D-01 | done | 0 | Claude | Claude | — | D. Done when d. |\n| C-01 | active | 1 | Codex | Codex | — | C. Done when c. |\n\n## Owner only\n';
+  const sorted = sortQueue(md);
+  assert.deepEqual([...sorted.matchAll(/^\| ([A-Z]-\d\d) \|/gm)].map(m => m[1]), ['C-01', 'A-01', 'B-01', 'D-01']);
+  assert.deepEqual(sortedProblems(sorted), []);
+});

@@ -153,10 +153,20 @@ test('the AI inbox refuses a wrong task, a mismatched hand-off, a patch and anyt
 
 test('the inbox and the @codex steps: only the owner\'s issues count, and Codex\'s verdict merges or sends back', () => {
   const inbox = fsx.readFileSync('.github/workflows/ai-inbox.yml', 'utf8'), loop = fsx.readFileSync('.github/workflows/ai-loop.yml', 'utf8');
-  assert.match(inbox, /github\.event\.issue\.user\.login == github\.repository_owner/);
+  assert.match(inbox, /\["OWNER","MEMBER","COLLABORATOR"\][^\n]*github\.event\.issue\.author_association/, 'only people with write access');
+  assert.doesNotMatch(inbox, /CONTRIBUTOR|NONE|FIRST_TIME/);
   assert.match(inbox, /node --test test\/ai-status\.test\.js/, 'the public-safety test runs before the commit');
   assert.ok(fsx.existsSync('.github/ISSUE_TEMPLATE/ai-handoff.yml'));
   assert.match(loop, /CODEX_GITHUB == '1'/); assert.match(loop, /@codex review/); assert.match(loop, /codex-verdict:/);
   assert.match(loop, /didn\.\?t find any major issues/); assert.match(loop, /CODEX_MENTION_TOKEN/);
   for (const f of ['chatgpt.md', 'grok.md', 'claude-web.md']) assert.match(fsx.readFileSync('ai/prompts/' + f, 'utf8'), /issues\/new\?template=ai-handoff\.yml/, f);
+});
+
+test('the AI inbox commits each issue once: a second event for the same issue is refused', () => {
+  const f = I.parseForm(form());
+  const p = I.plan(f, BOARD, new Date('2026-11-26T16:25:00Z'), 77);
+  const once = I.apply(BOARD, f, p, 77);
+  const again = I.plan(f, once, new Date('2026-11-26T16:26:00Z'), 77);
+  assert.equal(again.already, true); assert.match(again.errors.join(), /already on the board/);
+  assert.match(fsx.readFileSync('.github/workflows/ai-inbox.yml', 'utf8'), /types: \[opened, edited\]/);
 });

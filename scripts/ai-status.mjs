@@ -102,7 +102,7 @@ export function sortQueue(md) {
   const rows = body.slice(first + 2).filter(l => l.trim().startsWith('|'));
   const head = cellsOf(body[first]).map(h => h.toLowerCase());
   const si = head.indexOf('state'), pi = head.indexOf('priority');
-  const rank = l => { const c = cellsOf(l); const st = STATES.indexOf(clean(c[si])); return [st < 0 ? 99 : st, clean(c[si]) === 'ready' ? Number(clean(c[pi])) || 999 : 0]; };
+  const rank = l => { const c = cellsOf(l); const st = STATES.indexOf(clean(c[si])); return [st < 0 ? 99 : st, clean(c[si]) === 'ready' ? (clean(c[pi]) !== '' && Number.isFinite(Number(clean(c[pi]))) ? Number(clean(c[pi])) : 999) : 0]; }; // priority 0 is first, not missing
   const sorted = rows.map((l, k) => ({ l, k, r: rank(l) })).sort((a, b) => a.r[0] - b.r[0] || a.r[1] - b.r[1] || a.k - b.k).map(x => x.l);
   const lastRow = first + 2 + body.slice(first + 2).findIndex(l => !l.trim().startsWith('|'));
   const stop = lastRow < first + 2 ? body.length : lastRow;

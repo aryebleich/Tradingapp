@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Paste what the web chat ended with (AGENTS.md, "Without push access"). Only the repository owner's issues are committed.
+        Paste what the web chat ended with (AGENTS.md, "Without push access"). Only issues from people with write access to the repo are committed.
         The text becomes public: it must hold no keys, emails, server addresses or account details (it is checked, and refused if it does).
         Code patches don't go here: paste those into Claude Code or Codex, which test and commit them.
   - type: dropdown
