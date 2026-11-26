@@ -402,7 +402,10 @@ console.log('Settings → Language');
     await p.screenshot({ path: path.join(OUT, 'strategy-editor.png'), fullPage: true });
   });
   await step('AI assistant answers (basic mode)', async () => {
-    await go('#/ai', '#ask'); await p.fill('#ask textarea', 'How does AAPL look technically?'); await p.click('#send');
+    await go('#/ai', '#ask'); await p.$eval('#ask', f => (f.dataset.e2e = '1'));
+    await p.fill('#ask textarea', 'How does AAPL look technically?'); await p.click('#send');
+    // If the question never shows, say whether the page was drawn again under the typing (a lost message).
+    await p.waitForSelector('.msg.user', { timeout: 5000 }).catch(async () => { throw new Error(`the question was not sent; the form was ${await p.$('#ask[data-e2e]') ? 'not ' : ''}replaced after it appeared`); });
     await p.waitForSelector('.msg.assistant:not(.typing)', { timeout: 20000 });
   });
   await step('scanner runs', async () => { await go('#/scanner', '#scan'); await p.fill('#scan textarea[name=rules]', 'Close > 0'); await p.click('#runScan'); await p.waitForSelector('#scanOut table', { timeout: 30000 }); });

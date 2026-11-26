@@ -721,7 +721,8 @@ const SKELETON = '<div class="skel"><div class="h1"></div><div class="box"></div
 async function render(opts) {
   const quiet = opts?.quiet === true;
   swrOn = !quiet; // a normal draw may use remembered data (see api); a quiet redraw always fetches
-  if (!quiet) render.startedAt = Date.now();
+  const began = Date.now();
+  if (!quiet) render.startedAt = began;
   noticeBanners();
   while (cleanups.length) { try { cleanups.pop()(); } catch {} }
   const [route, q] = (location.hash.slice(2) || 'dashboard').split('?');
@@ -817,6 +818,9 @@ async function render(opts) {
     if (swap) {
       if (!view.isConnected) return; // the user moved to another page meanwhile
       if (render.seq !== mine) { view.remove(); return; } // a newer redraw is on its way
+      // A background redraw is dropped when the user typed or clicked while it loaded: swapping the page
+      // now would throw away what they typed (the check before it started is not enough).
+      if (quiet && userBusySince(began)) { view.remove(); return; }
       show();
     }
   }
