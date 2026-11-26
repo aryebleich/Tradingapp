@@ -8,6 +8,11 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 Free users see the required plan beside gated brokerage choices, scanner saves and alerts, bank linking and dividend reinvestment. Stock analysis, morning picks and intraday trading use the same plan label list. Paper choices keep their ordinary account names.
 
+## 2026-11-26: Claude, two end-to-end races fixed (PR #60 gates)
+
+- A message sent on the AI assistant could vanish: on load the app draws from the remembered user, then redraws when the server's fresh copy differs, and that redraw ignored a user who had already started typing. It now waits like the other background redraws (`userBusySince`, public/app.js), and the chat saves the sent message at once (public/pages/studio.js).
+- The symbol search step in test/e2e/run.mjs waits for the redrawn, empty search box before clicking it.
+
 ## 2026-11-26: Codex, stock-card precomputation (PERF-01)
 
 - Reused the database cache to share precomputed stock cards across request workers. The active leader starts with four symbols from the existing large-stock universe and pauses warmup during load shedding.

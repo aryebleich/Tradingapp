@@ -2598,7 +2598,8 @@ if (!PREFETCH) { pfFrameEarly(); setTimeout(() => prefetchAll(), 3000); }
       if (!fresh) return; // server still waking up: the next request retries
       if (!fresh.user) { keepClear(); ME = null; if (fresh.mfaPending) location.hash = '#/mfa'; render(); return; }
       try { localStorage.setItem('qp_me', JSON.stringify(fresh.user)); } catch {}
-      if (JSON.stringify(fresh.user) !== JSON.stringify(known)) { ME = fresh.user; render({ quiet: true }); }
+      // Never redrawn under a user who already started typing or clicking (a message just sent would vanish).
+      if (JSON.stringify(fresh.user) !== JSON.stringify(known)) { ME = fresh.user; if (!userBusySince(render.startedAt)) render({ quiet: true }); }
     });
   } else {
     // A server that is waking up (free hosting sleeps) answers late or with an error: keep trying
