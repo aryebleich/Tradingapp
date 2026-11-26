@@ -938,3 +938,8 @@ Automatic (above). By hand: redeploy the previous tag: `curl -X POST "<deploy ho
 - **test/no-render.test.js** now checks that the three Render files are gone; the UNTIL_CUTOVER allowance is removed.
 - **Owner, later:** in the Render dashboard, remove the custom domain and suspend the service. The service receives no traffic now.
 - **Tests:** npm test passes 590 (3 known TODO reviews).
+
+## 2026-11-26: Claude and Codex share one loop (Claude Code)
+- **AGENTS.md** (read by Codex; CLAUDE.md imports it): one loop for both assistants. Pull main, read AI_HANDOFF.md, claim one row with a pushed `handoff: claim` commit, work in small pushes that pass npm test, then leave a checkpoint with one concrete next action.
+- **Changed from Codex's first version:** work goes to `main` (the owner's standing instruction) instead of a separate `docs/ai-handoff` branch and task branches. A claim is stale after 3 hours without an update.
+- **AI_HANDOFF.md:** a new latest checkpoint, and a queue that holds every open item (Admin AI 3–5, Part A, Pages, CI, the font, the seven-phase phases 4–7, the tick engine, the owner's steps).
