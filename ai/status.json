@@ -14,10 +14,10 @@
     {
       "name": "Codex",
       "task": "REV-02",
-      "state": "active",
-      "updated": "2026-11-26 16:50",
-      "lastSha": "f555da2",
-      "next": "Codex: work on PR #60 (asked with @codex; brief in ai/tasks/REV-02.md)."
+      "state": "paused",
+      "updated": "2026-11-26 16:11",
+      "lastSha": "4231cf5",
+      "next": "Verify the busiest routes in Admin Analytics for PR #60."
     },
     {
       "name": "Grok",
@@ -29,18 +29,18 @@
     }
   ],
   "queue": {
-    "active": [
+    "active": [],
+    "paused": [
       {
         "id": "REV-02",
-        "state": "active",
+        "state": "paused",
         "priority": 2,
         "suggested": "Codex",
         "claimedBy": "Codex",
-        "updated": "2026-11-26 16:45",
+        "updated": "2026-11-26 16:11",
         "task": "\"Unlock with Pro\" labels on paid-only controls before they are pressed (PRO_REVIEW #18), from one list of paid features. Done when every paid control on the 10 most-used pages is labelled and a test checks the list."
       }
     ],
-    "paused": [],
     "ready": [
       {
         "id": "REV-01",
@@ -320,6 +320,17 @@
     }
   ],
   "handoffs": [
+    {
+      "at": "2026-11-26 16:11 UTC",
+      "assistant": "Codex",
+      "task": "REV-02",
+      "state": "paused",
+      "last_sha": "4231cf5",
+      "changed": "PR #60 adds a shared plan label list and labels on paid controls.",
+      "checks": "Free, paid, paper and Elite label fixtures passed.",
+      "blockers": "Top-ten usage ranking requires signed-in Admin Analytics.",
+      "next_action": "Verify PR #60 against the ten busiest routes in Admin Analytics before merge."
+    },
     {
       "at": "2026-11-26 16:08 UTC",
       "assistant": "Claude",

@@ -17,7 +17,7 @@ The shared work board of **Claude**, **Codex (ChatGPT)** and **Grok**. Each assi
 | Assistant | Task | State | Updated (UTC) | Last SHA | Next action |
 | --- | --- | --- | --- | --- | --- |
 | Claude | — | idle | 2026-11-26 16:08 | 980b657 | Codex: REV-02 on PR #60. Claude: review PR #60 when Codex pushes, then take REV-01. Grok: paste ai/prompts/grok.md into grok.com for the next research row. |
-| Codex | REV-02 | active | 2026-11-26 16:50 | f555da2 | Codex: work on PR #60 (asked with @codex; brief in ai/tasks/REV-02.md). |
+| Codex | REV-02 | paused | 2026-11-26 16:11 | 4231cf5 | Verify the busiest routes in Admin Analytics for PR #60. |
 | Grok | RES-02 | done | 2026-11-26 15:37 | 144eb75 | Idle; available for next research or product review. |
 
 ## Queue
@@ -26,7 +26,7 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 
 | ID | State | Priority | Suggested | Claimed by | Updated (UTC) | Task and done when |
 | --- | --- | --- | --- | --- | --- | --- |
-| REV-02 | active | 2 | Codex | Codex | 2026-11-26 16:45 | "Unlock with Pro" labels on paid-only controls before they are pressed (PRO_REVIEW #18), from one list of paid features. Done when every paid control on the 10 most-used pages is labelled and a test checks the list. |
+| REV-02 | paused | 2 | Codex | Codex | 2026-11-26 16:11 | "Unlock with Pro" labels on paid-only controls before they are pressed (PRO_REVIEW #18), from one list of paid features. Done when every paid control on the 10 most-used pages is labelled and a test checks the list. |
 | REV-01 | ready | 1 | Claude | — | — | Plans and billing as a main section, with AI credits (buy, balance, history) using the existing Stripe test flow. Done when a test-mode purchase adds credits and tests cover it. |
 | AIP-01 | ready | 3 | Codex | — | — | Apply Grok's honesty review (docs/research/ai-picks-review.md) to the AI morning picks and AI portfolios: an always-visible not-advice line, a track-record strip that includes losses, and a short methodology note. Done when each page shows all three and a test checks them. |
 | REV-03 | ready | 3 | Claude | — | — | Honest trial-end reminders: an in-app notice 3 days and 1 day before a trial ends, with the price and a one-tap cancel. No countdowns. Done when tests cover the timing, the copy and the opt-out, and real email sends only with the user's comms opt-in. |
@@ -68,6 +68,13 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 ## Hand-offs
 
 Newest first. Use these fields every time; the next assistant continues from **Next action**.
+
+### 2026-11-26 16:11 UTC · Codex · REV-02 · paused
+- **Last SHA:** 4231cf5
+- **Changed:** PR #60 adds a shared plan label list and labels on paid controls.
+- **Checks:** Free, paid, paper and Elite label fixtures passed.
+- **Blockers:** Top-ten usage ranking requires signed-in Admin Analytics.
+- **Next action:** Verify PR #60 against the ten busiest routes in Admin Analytics before merge.
 
 ### 2026-11-26 16:08 UTC · Claude · TEAM-02 · done
 - **Last SHA:** 980b657
