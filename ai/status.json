@@ -43,6 +43,15 @@
     "paused": [],
     "ready": [
       {
+        "id": "QA-02",
+        "state": "ready",
+        "priority": null,
+        "suggested": "Claude",
+        "claimedBy": null,
+        "updated": null,
+        "task": "The page gate (release-gates.yml: disclosures, figures, controls, accessibility at four widths) fails on main itself against its 2026-11-16 baseline (test/golden/layout-baseline.json), so no branch can merge automatically. A run of 4 pages on main: 22 disclosure, 16 figure and 52 control differences (for example the homepage webhook sentence, and the Orders note on Day orders after the 4 PM close). Review each difference: restore every disclosure that was lost by mistake; then regenerate the baseline (test/layout/run.mjs) for the intended changes only, with the list in DECISIONS.md. Done when the page gate passes on main and on PR #60."
+      },
+      {
         "id": "REV-01",
         "state": "ready",
         "priority": 1,
