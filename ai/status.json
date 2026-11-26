@@ -5,19 +5,19 @@
   "assistants": [
     {
       "name": "Claude",
-      "task": "TEAM-02",
-      "state": "active",
-      "updated": "2026-11-26 16:05",
-      "lastSha": "dc4d309",
-      "next": "Building the no-paid-keys loop (TEAM-02)."
+      "task": null,
+      "state": "idle",
+      "updated": "2026-11-26 16:08",
+      "lastSha": "980b657",
+      "next": "Codex: REV-02 on PR #60. Claude: review PR #60 when Codex pushes, then take REV-01. Grok: paste ai/prompts/grok.md into grok.com for the next research row."
     },
     {
       "name": "Codex",
       "task": "REV-02",
       "state": "active",
-      "updated": "2026-11-26 16:45",
-      "lastSha": null,
-      "next": "Codex: work on the REV-02 pull request (asked with @codex; brief in ai/tasks/REV-02.md)."
+      "updated": "2026-11-26 16:50",
+      "lastSha": "f555da2",
+      "next": "Codex: work on PR #60 (asked with @codex; brief in ai/tasks/REV-02.md)."
     },
     {
       "name": "Grok",
@@ -30,15 +30,6 @@
   ],
   "queue": {
     "active": [
-      {
-        "id": "TEAM-02",
-        "state": "active",
-        "priority": null,
-        "suggested": "Claude",
-        "claimedBy": "Claude",
-        "updated": "2026-11-26 16:05",
-        "task": "The loop without paid keys: Codex through its GitHub integration (@codex tasks and reviews, on the ChatGPT plan), Grok through grok.com with its GitHub connection plus an AI hand-off inbox (an issue form, committed by a workflow), and Claude through the subscription token. Done when ai-loop.yml, the inbox workflow, the prompts and the rules work without OPENAI_API_KEY or XAI_API_KEY, and tests cover them."
-      },
       {
         "id": "REV-02",
         "state": "active",
@@ -236,6 +227,15 @@
     ],
     "done": [
       {
+        "id": "TEAM-02",
+        "state": "done",
+        "priority": null,
+        "suggested": "Claude",
+        "claimedBy": "Claude",
+        "updated": "2026-11-26 16:08",
+        "task": "The loop without paid keys: Codex through its GitHub integration (@codex tasks and reviews, on the ChatGPT plan), Grok through grok.com with its GitHub connection plus an AI hand-off inbox (an issue form, committed by a workflow), and Claude through the subscription token. Done when ai-loop.yml, the inbox workflow, the prompts and the rules work without OPENAI_API_KEY or XAI_API_KEY, and tests cover them."
+      },
+      {
         "id": "TEAM-01",
         "state": "done",
         "priority": null,
@@ -320,6 +320,17 @@
     }
   ],
   "handoffs": [
+    {
+      "at": "2026-11-26 16:08 UTC",
+      "assistant": "Claude",
+      "task": "TEAM-02",
+      "state": "done",
+      "last_sha": "980b657",
+      "changed": "ai-loop.yml (Codex through @codex, codex-verdict), ai-inbox.yml with the ai-handoff issue form and scripts/ai-inbox.mjs, prompts and AGENTS.md (Without paid keys), the clean check keeps ai/, tests; REV-02 started for Codex on PR #60",
+      "checks": "npm test 610 (3 known TODO); clean check and actionlint pass",
+      "blockers": "Codex answers @codex only once it is connected to this repo (OWN-05); the comment on PR #60 was posted from the owner's account",
+      "next_action": "Codex: REV-02 on PR #60. Claude: review PR #60 when Codex pushes, then take REV-01. Grok: paste ai/prompts/grok.md into grok.com for the next research row."
+    },
     {
       "at": "2026-11-26 15:41 UTC",
       "assistant": "Claude",
