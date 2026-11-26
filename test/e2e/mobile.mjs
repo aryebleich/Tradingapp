@@ -185,6 +185,21 @@ if (!ONLY && !LIVE) {
     await p.fill('input[name=email]', user); await p.fill('input[name=password]', 'Str0ngPassword'); await p.check('input[name=agree]');
     await p.tap('form.auth button:not([type=button])'); await p.waitForSelector('#tabs a.on', { timeout: 15000 });
   });
+  await flow('switch between mobile and desktop layouts', async () => {
+    const mobileSize = p.viewportSize();
+    await p.tap('#moreTab');
+    await p.waitForSelector('#nav.open');
+    await p.setViewportSize({ width: 1280, height: 800 });
+    await p.waitForFunction(() => document.querySelector('#scrim').hidden && !document.body.classList.contains('noscroll'));
+    await p.setViewportSize(mobileSize);
+    await p.tap('#layoutSwitch');
+    await p.waitForFunction(() => innerWidth >= 1280);
+    await p.reload();
+    await p.waitForFunction(() => innerWidth >= 1280 && document.querySelector('#layoutSwitch').textContent === 'Use automatic layout');
+    await p.tap('#layoutSwitch');
+    await p.waitForFunction(() => matchMedia('(max-width: 900px)').matches);
+    await p.waitForSelector('#tabs a.on');
+  });
   await flow('add a passkey', async () => {
     await p.goto(B + '/app#/security'); await p.waitForSelector('#addPk', { timeout: 15000 }); await fits('security page');
     await p.tap('#addPk'); await p.waitForFunction(() => /My device/.test(document.querySelector('#view')?.textContent || '') && document.querySelectorAll('[data-rm]').length > 0, null, { timeout: 15000 });
@@ -237,7 +252,7 @@ if (!ONLY && !LIVE) {
     const box = await p.$eval('#eqPosF [name=wholeShares]', e => { const l = e.closest('label').getBoundingClientRect(); return l.height; });
     if (box < 24) throw new Error(`the "Whole shares only" checkbox row is ${box}px tall`);
     await p.tap('#eqPosF [name=wholeShares]'); await p.tap('#eqPosF button:not([type=button])');
-    await p.waitForFunction(() => document.querySelector('dialog[open]') || /\S/.test(document.querySelector('#eqPosOut')?.textContent || ''), null, { timeout: 15000 });
+    await p.waitForFunction(() => document.querySelector('dialog[open]') || document.querySelector('#eqPosOut .ok, #eqPosOut .err'), null, { timeout: 15000 });
     if (!(await p.$('dialog[open]'))) throw new Error('no confirmation: ' + (await p.textContent('#eqPosOut')).slice(0, 120));
     await dlgFits('equalize confirm');
     // The checkboxes: one per holding and "all"; each a finger-sized row, and leaving one out updates the plan.

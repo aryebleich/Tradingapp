@@ -217,7 +217,7 @@ async function fleet(view) {
       try {
         if (b.dataset.cAct === 'del') { if (!confirm('Delete this channel? Followers stop receiving signals.')) return; await H.api('/fleet/channels/' + id, { method: 'DELETE' }); return H.render(); }
         if (!confirm('The old webhook link stops working. Continue?')) return;
-        const r = await H.api(`/fleet/channels/${id}/token`, { body: {} }); H.$('.hook', c).innerHTML = hookBox(hookUrl(r.webhookPath));
+        const r = await H.api(`/fleet/channels/${id}/token`, { body: {} }); showHook(H.$('.hook', c), hookUrl(r.webhookPath));
       } catch (e) { err.textContent = e.message; }
     }));
   });
@@ -225,7 +225,7 @@ async function fleet(view) {
   H.act(H.$('button', nc), async () => { const r = await H.api('/fleet/channels', { body: H.form(nc) }); try { sessionStorage.setItem('qp_hook', r.webhookPath); } catch {} H.render(); });
   // A new channel's webhook link is shown once, right after it is created.
   let fresh = null; try { fresh = sessionStorage.getItem('qp_hook'); sessionStorage.removeItem('qp_hook'); } catch {}
-  if (fresh) H.$('#newHook', view).innerHTML = hookBox(hookUrl(fresh));
+  if (fresh) showHook(H.$('#newHook', view), hookUrl(fresh));
   H.$$('[data-unsub]', view).forEach(b => (b.onclick = async () => { await H.api('/fleet/subscriptions/' + b.dataset.unsub, { method: 'DELETE' }); H.render(); }));
   const sf = H.$('#subForm', view); let subId = null;
   H.$$('[data-pub] button', view).forEach(b => (b.onclick = () => { const tr = b.closest('tr'); subId = tr.dataset.pub; H.$('#subName', view).textContent = H.$('b', tr).textContent; sf.hidden = false; sf.scrollIntoView({ behavior: 'smooth', block: 'center' }); }));
@@ -235,8 +235,12 @@ async function fleet(view) {
     await H.api(`/fleet/channels/${subId}/subscribe`, { body: { accounts: acc, sizing: f.sizing, amount: f.amount, mode: f.mode } }); later(500); return 'Following';
   });
 }
-const hookBox = url => `<div class="banner"><b>Webhook link (shown once, keep it secret):</b><div class="refbox"><input readonly value="${H.esc(url)}" data-no-tr onclick="this.select()"></div>
+function showHook(box, url) {
+  box.innerHTML = `<div class="banner"><b>Webhook link (shown once, keep it secret):</b><div class="refbox"><input readonly value="${H.esc(url)}" data-no-tr></div>
   <p class="mu small-print">POST JSON like <code>{"symbol":"AAPL","side":"buy"}</code> to this link, e.g. from a TradingView alert, to send a signal to every follower.</p></div>`;
+  const input = box.querySelector('input');
+  input.addEventListener('click', () => input.select());
+}
 
 // ---------- marketplace ----------
 // One section for everything members share: an overview, Top traders (copy trading, its own page

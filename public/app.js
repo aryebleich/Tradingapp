@@ -1004,6 +1004,29 @@ function setMenu(open) {
   $('#nav').classList.toggle('open', open); $('#scrim').hidden = !open;
   $('#menuBtn').setAttribute('aria-expanded', open); document.body.classList.toggle('noscroll', open);
 }
+const narrowLayout = matchMedia('(max-width: 900px)');
+const viewport = document.querySelector('meta[name="viewport"]');
+const automaticViewport = viewport.content;
+const layoutSwitch = $('#layoutSwitch');
+let desktopLayout = false;
+try { desktopLayout = localStorage.getItem('brightolio.desktopLayout') === '1'; } catch {}
+function updateLayoutSwitch() {
+  layoutSwitch.hidden = !desktopLayout && !narrowLayout.matches;
+  layoutSwitch.textContent = desktopLayout ? 'Use automatic layout' : 'Desktop view';
+  if (!narrowLayout.matches) setMenu(false);
+}
+function applyLayoutPreference() {
+  setMenu(false);
+  viewport.content = desktopLayout ? 'width=1280, viewport-fit=cover' : automaticViewport;
+  updateLayoutSwitch();
+}
+layoutSwitch.onclick = () => {
+  desktopLayout = !desktopLayout;
+  try { localStorage.setItem('brightolio.desktopLayout', desktopLayout ? '1' : '0'); } catch {}
+  applyLayoutPreference();
+};
+narrowLayout.addEventListener('change', updateLayoutSwitch);
+applyLayoutPreference();
 $('#menuBtn').onclick = () => setMenu(!$('#nav').classList.contains('open'));
 $('#moreTab').onclick = e => { e.preventDefault(); setMenu(!$('#nav').classList.contains('open')); };
 $('#scrim').onclick = () => setMenu(false);
