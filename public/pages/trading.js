@@ -437,6 +437,8 @@ async function trade(view, q) {
   const mark = () => H.$$('li[data-i]', list).forEach((li, i) => { li.classList.toggle('on', i === sel); li.setAttribute('aria-selected', i === sel); if (i === sel) { li.scrollIntoView({ block: 'nearest' }); inp.setAttribute('aria-activedescendant', li.id); } });
   const start = () => show([['Recent', recent().map(x => ({ symbol: x, kind: 'Recent' }))], ['Popular', POPULAR.filter(([x]) => !recent().includes(x)).map(([symbol, name, kind]) => ({ symbol, name, kind }))]]);
   inp.onfocus = () => { if (!inp.value.trim()) start(); };
+  // A click on the box when it already has focus (after the page redraws) fires no focus event: open the list then too.
+  inp.onclick = () => { if (!inp.value.trim() && list.hidden) start(); };
   inp.onblur = () => setTimeout(hide, 120);
   const clear = H.$('#tsClear', sf);
   if (clear) clear.onclick = () => { inp.value = ''; clear.hidden = true; inp.focus(); start(); };
