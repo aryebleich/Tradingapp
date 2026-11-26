@@ -350,17 +350,6 @@
       "next_action": "Grok: paste ai/prompts/grok.md into grok.com and send the result through this form"
     },
     {
-      "at": "2026-11-26 16:31 UTC",
-      "assistant": "Claude",
-      "task": "SMOKE-01",
-      "state": "done",
-      "last_sha": "9f8cad0",
-      "changed": "nothing in the app; an end-to-end test of the AI hand-off inbox, the path Grok's results take (form, ai-inbox.yml, the board) (from issue #61)",
-      "checks": "this issue is the test: the workflow checks it, commits it and closes the issue",
-      "blockers": "none",
-      "next_action": "Grok: paste ai/prompts/grok.md into grok.com and send the result through this form"
-    },
-    {
       "at": "2026-11-26 16:08 UTC",
       "assistant": "Claude",
       "task": "TEAM-02",

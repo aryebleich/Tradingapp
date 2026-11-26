@@ -8,7 +8,8 @@ name: AI inbox
 # is public, so anyone else's is ignored.
 on:
   issues:
-    types: [opened, edited, labeled]
+    # Not "labeled": the form labels the issue as it opens it, so that would commit the same hand-off twice.
+    types: [opened, edited]
 permissions:
   contents: write
   issues: write
@@ -36,7 +37,9 @@ jobs:
         id: apply
         run: |
           git config user.name "ai-inbox[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if node scripts/ai-inbox.mjs "$RUNNER_TEMP/body.md" "$ISSUE" > "$RUNNER_TEMP/out.json"; then
+          code=0; node scripts/ai-inbox.mjs "$RUNNER_TEMP/body.md" "$ISSUE" > "$RUNNER_TEMP/out.json" || code=$?
+          if [ "$code" = 3 ]; then echo "already=true" >> "$GITHUB_OUTPUT"; echo "issue #$ISSUE is already on the board"; exit 0; fi
+          if [ "$code" = 0 ]; then
             node --test test/ai-status.test.js > "$RUNNER_TEMP/test.log" 2>&1 || { tail -30 "$RUNNER_TEMP/test.log"; echo '{"ok":false,"errors":["the board failed its public-safety test after the change"]}' > "$RUNNER_TEMP/out.json"; exit 0; }
             git add -A AI_HANDOFF.md ai/status.json docs/research
             git commit -qm "handoff: $(jq -r '"\(.task) \(.state) (\(.assistant), from issue #"' "$RUNNER_TEMP/out.json")$ISSUE)"
@@ -44,7 +47,7 @@ jobs:
             echo '{"ok":false,"errors":["main kept moving; edit the issue to try again"]}' > "$RUNNER_TEMP/out.json"
           fi
       - name: Answer on the issue
-        if: always()
+        if: always() && steps.apply.outputs.already != 'true'
         env:
           PUSHED: ${{ steps.apply.outputs.pushed }}
         run: |

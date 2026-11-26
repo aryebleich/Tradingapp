@@ -78,13 +78,6 @@ Newest first. Use these fields every time; the next assistant continues from **N
 - **Blockers:** none
 - **Next action:** Grok: paste ai/prompts/grok.md into grok.com and send the result through this form
 
-### 2026-11-26 16:31 UTC · Claude · SMOKE-01 · done
-- **Last SHA:** 9f8cad0
-- **Changed:** nothing in the app; an end-to-end test of the AI hand-off inbox, the path Grok's results take (form, ai-inbox.yml, the board) (from issue #61)
-- **Checks:** this issue is the test: the workflow checks it, commits it and closes the issue
-- **Blockers:** none
-- **Next action:** Grok: paste ai/prompts/grok.md into grok.com and send the result through this form
-
 ### 2026-11-26 16:08 UTC · Claude · TEAM-02 · done
 - **Last SHA:** 980b657
 - **Changed:** ai-loop.yml (Codex through @codex, codex-verdict), ai-inbox.yml with the ai-handoff issue form and scripts/ai-inbox.mjs, prompts and AGENTS.md (Without paid keys), the clean check keeps ai/, tests; REV-02 started for Codex on PR #60
