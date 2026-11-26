@@ -69,6 +69,23 @@ export function sortedProblems(md) {
 export const render = md => JSON.stringify(build(md), null, 2) + '\n';
 
 
+// ---------- public safety (test/ai-status.test.js, the AI hand-off inbox) ----------
+// What a secret or a private detail tends to look like.
+export const LOOKS_PRIVATE = [
+  ['an email address', /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+\.[A-Za-z]{2,}/],
+  ['an API key', /\b(sk-[A-Za-z0-9_-]{8,}|sk-ant-[A-Za-z0-9_-]{8,}|xai-[A-Za-z0-9]{8,}|gh[pousr]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{16,}|AKIA[0-9A-Z]{16}|whsec_[A-Za-z0-9]{8,}|[sr]k_(live|test)_[A-Za-z0-9]{8,}|AIza[0-9A-Za-z_-]{20,}|gsk_[A-Za-z0-9]{16,})/],
+  ['a JWT or bearer token', /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/],
+  ['a long random token', /\b(?=[A-Za-z0-9_-]*[0-9])(?=[A-Za-z0-9_-]*[A-Za-z])(?![0-9a-f]{40}\b)[A-Za-z0-9_-]{36,}\b/],
+  ['a private key', /-----BEGIN [A-Z ]*PRIVATE KEY-----/],
+  ['a server IP address', /\b(?:\d{1,3}\.){3}\d{1,3}\b/],
+  ['the server\'s own address', /sslip\.io/i],
+];
+export function findPrivate(text) {
+  const out = [];
+  text.split('\n').forEach((line, i) => { for (const [what, re] of LOOKS_PRIVATE) if (re.test(line)) out.push(`line ${i + 1}: ${what}`); });
+  return out;
+}
+
 // ---------- editing the board (scripts/ai-loop.mjs and the assistants use these) ----------
 const cellsOf = l => l.trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim());
 const lineOf = cells => '| ' + cells.join(' | ') + ' |';

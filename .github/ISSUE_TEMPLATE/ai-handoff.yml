@@ -1,0 +1,43 @@
+name: AI hand-off (from a web chat)
+description: Paste a Grok, ChatGPT or Claude web chat's result. The AI inbox workflow checks it and commits the note and the hand-off to the board.
+title: "AI hand-off: "
+labels: [ai-handoff]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Paste what the web chat ended with (AGENTS.md, "Without push access"). Only the repository owner's issues are committed.
+        The text becomes public: it must hold no keys, emails, server addresses or account details (it is checked, and refused if it does).
+        Code patches don't go here: paste those into Claude Code or Codex, which test and commit them.
+  - type: dropdown
+    id: assistant
+    attributes:
+      label: Assistant
+      options: [Grok, Codex, Claude]
+    validations: { required: true }
+  - type: input
+    id: task
+    attributes:
+      label: Task ID
+      description: The row on the board, for example RES-03
+      placeholder: RES-03
+    validations: { required: true }
+  - type: input
+    id: note_path
+    attributes:
+      label: Note path (optional)
+      description: For a research note, docs/research/<name>.md
+      placeholder: docs/research/pricing.md
+  - type: textarea
+    id: note
+    attributes:
+      label: Note (optional)
+      description: The full Markdown note
+      render: markdown
+  - type: textarea
+    id: handoff
+    attributes:
+      label: Hand-off
+      description: The block that starts with "### <UTC time> · <assistant> · <ID> · <state>"
+      render: markdown
+    validations: { required: true }

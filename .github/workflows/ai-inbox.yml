@@ -1,0 +1,56 @@
+name: AI inbox
+# A web chat that cannot push (Grok on grok.com, ChatGPT, the Claude web chat) ends with a note and a
+# hand-off (AGENTS.md). The owner pastes them into the "AI hand-off" issue form; this workflow checks
+# them (scripts/ai-inbox.mjs: the task is on the board, the hand-off has its format, no patch, nothing
+# that looks private), commits the note to docs/research/ and the hand-off to AI_HANDOFF.md and
+# ai/status.json on main, then answers on the issue and closes it. No API key is needed.
+# Only issues the repository owner opens are committed: the repo is public, so anyone else's is ignored.
+on:
+  issues:
+    types: [opened, edited, labeled]
+permissions:
+  contents: write
+  issues: write
+concurrency:
+  group: ai-inbox
+  cancel-in-progress: false
+jobs:
+  inbox:
+    if: contains(github.event.issue.labels.*.name, 'ai-handoff') && github.event.issue.user.login == github.repository_owner && github.event.issue.state == 'open'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ISSUE: ${{ github.event.issue.number }}
+    steps:
+      - uses: actions/checkout@v7
+        with: { ref: main }
+      - uses: actions/setup-node@v7
+        with: { node-version-file: .node-version, check-latest: true }
+      - name: Read the issue
+        env:
+          BODY: ${{ github.event.issue.body }}
+        run: printf '%s' "$BODY" > "$RUNNER_TEMP/body.md"
+      - name: Check it and put it on the board
+        id: apply
+        run: |
+          git config user.name "ai-inbox[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if node scripts/ai-inbox.mjs "$RUNNER_TEMP/body.md" "$ISSUE" > "$RUNNER_TEMP/out.json"; then
+            node --test test/ai-status.test.js > "$RUNNER_TEMP/test.log" 2>&1 || { tail -30 "$RUNNER_TEMP/test.log"; echo '{"ok":false,"errors":["the board failed its public-safety test after the change"]}' > "$RUNNER_TEMP/out.json"; exit 0; }
+            git add -A AI_HANDOFF.md ai/status.json docs/research
+            git commit -qm "handoff: $(jq -r '"\(.task) \(.state) (\(.assistant), from issue #"' "$RUNNER_TEMP/out.json")$ISSUE)"
+            for i in 1 2 3; do git pull -q --rebase origin main && git push -q origin HEAD:main && echo "pushed=true" >> "$GITHUB_OUTPUT" && exit 0; sleep 5; done
+            echo '{"ok":false,"errors":["main kept moving; edit the issue to try again"]}' > "$RUNNER_TEMP/out.json"
+          fi
+      - name: Answer on the issue
+        if: always()
+        env:
+          PUSHED: ${{ steps.apply.outputs.pushed }}
+        run: |
+          if [ "$PUSHED" = true ]; then
+            jq -r '"Committed to the board: \(.task) is now **\(.state)** (\(.assistant))" + (if .note then ", with the note `\(.note)`" else "" end) + ". The next assistant continues from its Next action."' "$RUNNER_TEMP/out.json" > reply.md
+            gh issue comment "$ISSUE" --body-file reply.md && gh issue close "$ISSUE" --reason completed
+          else
+            { echo "Not committed:"; jq -r '.errors[]? | "- \(.)"' "$RUNNER_TEMP/out.json" 2>/dev/null || echo "- the check did not run"; echo; echo "Edit this issue to try again."; } > reply.md
+            gh issue comment "$ISSUE" --body-file reply.md
+          fi
