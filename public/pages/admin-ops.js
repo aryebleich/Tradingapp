@@ -232,11 +232,49 @@ async function questionsCard(view) {
 async function agentsPage(view) {
   await codingAgentsPage(view);
   const at = H.$('.admintabs', view); if (!at) return;
-  at.insertAdjacentHTML('afterend', '<div id="aiTeam"></div>');
+  at.insertAdjacentHTML('afterend', '<div id="aiWork"></div><div id="aiTeam"></div>');
+  await workCard(H.$('#aiWork', view)).catch(() => {});
   await teamCard(H.$('#aiTeam', view));
   // The Chat job: shown only when the server says this admin may use it.
   const st = await fetch('/api/admin/aichat/status', { headers: { 'X-Requested-With': 'qp' } }).then(r => (r.ok ? r.json() : null)).catch(() => null);
   if (st) H.$('#aiTeam', view).insertAdjacentHTML('afterbegin', '<div class="card"><h2>Chat</h2><p class="mu" style="margin-top:0">A normal conversation with the AI team\'s model: replies stream as they are written, with the model\'s thinking shown separately.</p><a href="#/admin-aichat"><button type="button" tabindex="-1">Open chat</button></a></div>');
+}
+// ---------- Admin → AI team → Work status: Claude, Codex and Grok on the shared board ----------
+// Read from ai/status.json (generated from AI_HANDOFF.md, deployed with the code), plus the caps and
+// the automatic runs (src/ai-loop.js). Per-use billing has a $0 cap until the owner raises it here.
+const NAMES = { claude: 'Claude', codex: 'Codex (ChatGPT)', grok: 'Grok' };
+const statePill = s => `<span class="pill ${s === 'done' ? 'pos' : s === 'blocked' ? 'neg' : s === 'active' ? 'warn' : ''}">${H.esc(s || '-')}</span>`;
+async function workCard(el) {
+  const d = await H.api('/admin/aiteam/work'), st = d.status, b = d.budget;
+  const who = (st?.assistants || []).map(a => `<tr><td><b>${H.esc(a.name)}</b></td><td>${H.esc(a.task || '-')}</td><td>${statePill(a.state)}</td><td class="mu">${H.esc(a.updated || '-')}</td><td><code>${H.esc(a.lastSha || '-')}</code></td><td>${H.esc(a.next || '')}</td></tr>`).join('');
+  const allow = { claude: b.allowed.claudeSubscription, codex: b.allowed.codex, grok: b.allowed.grok };
+  const caps = Object.keys(NAMES).map(k => `<tr><td><b>${NAMES[k]}</b>${d.keys[k] ? '' : ' <span class="mu">(no API key on the server)</span>'}</td>
+    <td><input type="number" min="0" step="1" data-cap="${k}" value="${b.caps[k].monthlyUsd}" aria-label="${NAMES[k]} monthly cap in dollars" style="width:6em"></td>
+    <td class="num">$${b.spent[k].toFixed(2)}</td><td class="mu">${H.esc(allow[k].reason)}</td>
+    <td><button type="button" class="ghost" data-pause="${k}" data-on="${b.paused[k] ? '' : '1'}">${b.paused[k] ? 'Resume' : 'Pause'}</button>
+    ${d.canRun ? `<button type="button" data-run="${k}">Run now</button>` : ''}</td></tr>`).join('');
+  const q = st?.queue || {}, rows = [...(q.active || []), ...(q.paused || []), ...(q.ready || []).slice(0, 12), ...(q.blocked || [])];
+  const queue = rows.map(r => `<tr><td><code>${H.esc(r.id)}</code></td><td>${statePill(r.state)}</td><td class="num">${r.priority ?? ''}</td><td>${H.esc(r.claimedBy || r.suggested || '')}</td><td>${H.esc(r.task)}</td>
+    <td>${d.canRun && r.state === 'ready' ? `<button type="button" class="ghost" data-runtask="${H.esc(r.id)}">Run</button>` : ''}</td></tr>`).join('');
+  const hand = (st?.handoffs || []).slice(0, 5).map(h => `<li><b>${H.esc(h.assistant)}</b> · <code>${H.esc(h.task)}</code> · ${statePill(h.state)} <span class="mu">${H.esc(h.at)}</span><br>${H.esc(h.next_action || '')}</li>`).join('');
+  const runs = (d.runs || []).slice(0, 8).map(r => `<li>${H.esc(NAMES[r.assistant] || r.assistant)} · ${H.esc(r.task || '-')} · ${H.esc(r.outcome || '-')} · ${r.billed ? '$' + (+r.usd).toFixed(2) : 'subscription'} <span class="mu">${new Date(r.at).toLocaleString()}</span></li>`).join('');
+  el.innerHTML = `<div class="card"><h2>Work status</h2>
+    <p class="mu" style="margin-top:0">Claude, Codex and Grok share one board (<a href="https://github.com/aryebleich/Tradingapp/blob/main/AI_HANDOFF.md" target="_blank" rel="noopener">AI_HANDOFF.md</a>) and pick up where the last one stopped. This is the board as deployed with this version.</p>
+    ${st ? `<div class="tablewrap"><table><thead><tr><th>Assistant</th><th>Task</th><th>State</th><th>Updated (UTC)</th><th>Last push</th><th>Next action</th></tr></thead><tbody>${who}</tbody></table></div>` : '<p class="mu">No ai/status.json in this version yet.</p>'}
+    <h3>Spending caps (per month)</h3>
+    <p class="mu">Anything billed per use starts at $0, so nothing costs money until you raise it. Claude through your Claude subscription (CLAUDE_CODE_OAUTH_TOKEN in GitHub) is not billed per use. Each run counts at its per-run ceiling.</p>
+    <div class="tablewrap"><table><thead><tr><th>Assistant</th><th>Cap ($)</th><th>Used</th><th>Can run now?</th><th></th></tr></thead><tbody>${caps}</tbody></table></div>
+    <p><button type="button" id="wkSave">Save caps</button> <span class="ok" id="wkMsg"></span></p>
+    ${d.canRun ? '' : '<p class="mu">"Run now" needs GITHUB_TOKEN in <a href="#/admin-keys">Keys</a>; the automatic loop also runs on its own schedule.</p>'}
+    <h3>Queue</h3><div class="tablewrap"><table><thead><tr><th>ID</th><th>State</th><th>Priority</th><th>Who</th><th>Task and done when</th><th></th></tr></thead><tbody>${queue}</tbody></table></div>
+    ${(st?.owner || []).length ? `<h3>Only you can do</h3><ul>${st.owner.map(o => `<li><code>${H.esc(o.id)}</code> ${H.esc(o.task)}</li>`).join('')}</ul>` : ''}
+    <h3>Recent hand-offs and reviews</h3><ul>${hand || '<li class="mu">None yet</li>'}</ul>
+    <h3>Automatic runs</h3><ul>${runs || '<li class="mu">None yet</li>'}</ul></div>`;
+  const msg = H.$('#wkMsg', el);
+  H.$('#wkSave', el).onclick = async () => { const body = Object.fromEntries(H.$$('[data-cap]', el).map(i => [i.dataset.cap, { monthlyUsd: +i.value || 0 }])); await H.api('/admin/aiteam/work/caps', { method: 'PUT', body }); msg.textContent = 'Saved'; workCard(el); };
+  H.$$('[data-pause]', el).forEach(x => (x.onclick = async () => { await H.api('/admin/aiteam/work/pause', { body: { assistant: x.dataset.pause, paused: !!x.dataset.on } }); workCard(el); }));
+  H.$$('[data-run]', el).forEach(x => (x.onclick = async () => { await H.api('/admin/aiteam/work/run', { body: { assistant: x.dataset.run } }); msg.textContent = `Started a run for ${NAMES[x.dataset.run]}; it appears on the board when it claims a task.`; }));
+  H.$$('[data-runtask]', el).forEach(x => (x.onclick = async () => { await H.api('/admin/aiteam/work/run', { body: { assistant: 'auto', task: x.dataset.runtask } }); msg.textContent = `Started a run for ${x.dataset.runtask}.`; }));
 }
 const jobPill = s => `<span class="pill ${s === 'done' ? 'pos' : s === 'failed' ? 'neg' : 'warn'}">${H.esc(s)}</span>`;
 async function teamCard(el, openId) {

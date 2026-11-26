@@ -312,6 +312,12 @@ app.get('/internal/maintenance', async (req, res) => res.json((await import('./s
 //   GET  /internal/verify                  database, schema, row counts, credentials open, maintenance
 //   POST /internal/backup                  one backup now
 const internalAuth = (req, res, next) => { const secret = process.env.CRON_SECRET; if (!secret || !safeEqual(req.headers.authorization || '', `Bearer ${secret}`)) return res.status(401).json({ error: 'unauthorized' }); next(); };
+// The AI loop (.github/workflows/ai-loop.yml) asks before each automatic run whether that assistant may
+// run (its cap; $0 by default for per-use billing) and records the run afterwards (src/ai-loop.js).
+app.get('/internal/ai-loop/budget', internalAuth, async (req, res) => res.json((await import('./src/ai-loop.js')).budget()));
+app.post('/internal/ai-loop/run', express.json(), internalAuth, async (req, res) => {
+  try { res.json(await (await import('./src/ai-loop.js')).recordRun(req.body || {})); } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
+});
 app.post('/internal/standby', express.json(), internalAuth, async (req, res) => {
   const on = req.body?.on !== false;
   if (on) process.env.STANDBY = '1'; else delete process.env.STANDBY;

@@ -13,7 +13,7 @@ import { audit } from './db.js';
 const bad = (m, s = 400) => Object.assign(new Error(m), { status: s });
 const API = () => (process.env.GITHUB_API_URL || 'https://api.github.com').replace(/\/$/, '');
 const repo = () => process.env.GITHUB_REPO || 'aryebleich/Tradingapp';
-export const WORKFLOWS = { agent: 'ai-agent.yml', ci: 'web-ci.yml', e2e: 'e2e.yml' };
+export const WORKFLOWS = { agent: 'ai-agent.yml', ci: 'web-ci.yml', e2e: 'e2e.yml', loop: 'ai-loop.yml' };
 export const KINDS = { write: 'Write or change a feature', test: 'Add or improve tests', debug: 'Debug a failed run', review: 'Review code (findings only)' };
 
 // GitHub's refusals in plain words (instead of its raw JSON answer).
@@ -38,6 +38,12 @@ async function gh(method, p, body, { raw = false } = {}) {
 }
 const run = r => ({ id: r.id, name: r.name, title: r.display_title, status: r.status, conclusion: r.conclusion, event: r.event, branch: r.head_branch, sha: (r.head_sha || '').slice(0, 7), url: r.html_url, at: r.created_at, updated: r.updated_at });
 
+// Starts one of the WORKFLOWS on main (Admin → AI team → Work status: "Run now").
+export async function dispatch(which, inputs = {}) {
+  if (!WORKFLOWS[which]) throw bad('Unknown workflow');
+  await gh('POST', `/actions/workflows/${WORKFLOWS[which]}/dispatches`, { ref: 'main', inputs });
+  return { ok: true, workflow: WORKFLOWS[which] };
+}
 export async function overview() {
   if (!process.env.GITHUB_TOKEN) return { configured: false, repo: repo() };
   const [agent, ci, e2e, prs] = await Promise.all([
