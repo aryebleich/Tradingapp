@@ -540,3 +540,35 @@ Choices and assumptions made without asking, with the reason. Trading-tools work
 | AI3-14 | **The `@codex` comments come from the owner's token when one is set** (CODEX_MENTION_TOKEN). Codex answers mentions from people who use Codex, and a comment from the workflow's bot may be ignored. Without the token the loop still comments, and the board tells the owner to repeat the line if Codex stays silent. Codex through GitHub is preferred over its API key, because it isn't billed per use. |
 | AI3-15 | **Codex's review verdict is read from its own words.** "Didn't find any major issues" (in a review or a comment from the Codex bot, CODEX_BOT_LOGIN overrides the name) starts the gates again with reviewed=true. Anything else sends the row back to ready, naming the pull request. A Codex task row stays `active` while Codex works, and is marked done "in review" once its pushes pass the gates. |
 | AI3-16 | **The AI hand-off inbox accepts only issues from people with write access** (the owner, members and collaborators; the repo is public, so anyone can open an issue, and the owner works from more than one GitHub account). It takes a hand-off and a docs/research/ note, never a patch: patches go through Claude Code or Codex, which test them. The same public-safety check as the board (findPrivate, now shared from scripts/ai-status.mjs) and the board's test run before the commit. |
+
+## Two-factor sign-in policy (2026-11-26, Claude)
+
+| ID | Decision |
+| --- | --- |
+| SEC-1 | **"Require two-factor sign-in" is a site setting (`mfaPolicy`), off by default** (src/mfa-policy.js, Admin → Security). While it is off, nothing changes: members may still turn on an authenticator app or add a passkey, and sign-in asks for a code only if they did. |
+| SEC-2 | **The scope is one of three:** admins, live-trading accounts, or everyone. "Live" means an account with a connected real-money brokerage (accountsFor()), and it covers admins too, since they can turn live trading on for others. Passkeys always count as two-factor. |
+| SEC-3 | **Grace period** (0–90 days, 7 by default). It starts when the policy was turned on, or when the member joined if that was later. During it, members in scope see a banner with the date and "Set up now". After it, the API answers 403 `mfaSetupRequired` and the app opens Settings → Security. The sign-in, set-up, Security and sign-out routes always answer, so nobody is locked out. |
+| SEC-4 | **The switch needs admin plus the password step-up** (the Admin unlock already used for Keys and the server settings). It is written to the audit log (`mfa_policy_changed`), and the page shows who changed it and when. Turning it on is refused (409) while no admin has two-factor or a passkey, so the owner sets one up first. Every scope covers admins. |
+| SEC-5 | **Recovery codes:** ten one-time codes, made when someone first turns on the authenticator app or adds a passkey, if they don't have any yet. They are shown once and stored as hashes, and one works in place of the authenticator code at sign-in (audited). |
+
+## The page gate's baseline after the redesign (2026-11-26, Claude, QA-02)
+
+| ID | Decision |
+| --- | --- |
+| QA2-1 | **Reviewed before regenerating.** The gate on main against the 2026-11-16 baseline found 131 distinct differences. 32 were "missing", 1 "no longer visible" and 3 "moved below the fold"; the rest are disclosures that are still there but sit further down, because content was added above them. Each one was checked against the code and the decisions before the baseline was written. |
+| QA2-2 | **The "Good to know" lines are guide text, moved into the "i" panel on purpose** (H-1 and H-5, 2026-11-22). The baseline had counted them as disclosures. Every risk and legal disclosure stayed on the page (H-5); the footer disclaimer, the not-advice lines on scores and AI, and "The risks in plain words" are unchanged. |
+| QA2-3 | **The other differences were intended:** the admin menus (new tabs such as Routing, Database and Security); the new homepage hero; the privacy page naming Oracle Cloud instead of Render; and the plan comparison and AI credits on Plans & billing, which add figures. No plan price or fee changed. |
+| QA2-4 | **Real regressions were fixed, not written into the baseline:** on Retirement, two account dropdowns had no label and three scrolling tables couldn't be reached by keyboard (axe). |
+| QA2-5 | **The gate is stable from day to day.** The browser clock is fixed (FIXED_DAY, set on each context), and numbers inside a date (a last sign-in, a day picker) aren't counted as figures. A date is never a price, fee or balance, and the old baseline failed on every new day. test/layout/baseline.mjs writes a new baseline only from a run without failed pages, and its note asks for this review first. |
+
+## The chain and deploy-right-away (2026-11-26, Claude, TEAM-03)
+
+| ID | Decision |
+| --- | --- |
+| CH-1 | **One branch per task** (`ai/task-<id>`) with its brief and progress note (`ai/tasks/<ID>.md`). Whichever assistant continues reads it, so a task is never started over. |
+| CH-2 | **Chain order:** Claude, Grok, Codex (research rows: Grok first). The chain skips an assistant that has no key or plan, has no room under its cap, is waiting for its reset, or failed 3 tries on this task. When all three are at their limits the task waits for the first reset (hourly schedule). |
+| CH-3 | **Reset times live on the public board** (the Assistants table, "Reset (UTC)"). The estimate is 5 hours for Claude and Codex and 1 hour for Grok, unless the provider says otherwise. A wrong guess only costs one extra hourly check. |
+| CH-4 | **Grok codes behind its cap.** It reads the brief, the progress note and the files it asks for, writes a patch, and gets 3 tries to pass npm test and the clean check. Its patches may never touch workflows, the board, AGENTS.md, the legal and compliance reviews, `.env` files or the key store (scripts/ai-grok.mjs FORBIDDEN). |
+| CH-5 | **Deploy right away:** release-gates.yml merges the task pull request itself (squash) once every gate passes, then starts the deploy; post-deploy.yml rolls back if the live site fails. I used the gates' own merge rather than GitHub's auto-merge setting, which would need repository settings and branch protection. |
+| CH-6 | **The owner-approved label** holds a pull request that touches workflows, LEGAL_REVIEW.md, COMPLIANCE_REVIEW.md, secrets (key store, `.env`), billing going live (Stripe code or live-mode words) or live-money trading (brokers, execution, risk, broker connections). The gates label it `needs-owner-approval`. |
+| CH-7 | **The cross-review comes after the merge.** Codex reviews Claude's work (`@codex review` on the merged pull request); Claude reviews Codex's and Grok's (claude-code-action). Blocking findings become `FIX-nn` at the top of the queue, which replaces the old "review before merge" hold. |

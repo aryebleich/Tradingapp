@@ -14,11 +14,11 @@ The shared work board of **Claude**, **Codex (ChatGPT)** and **Grok**. Each assi
 
 ## Assistants
 
-| Assistant | Task | State | Updated (UTC) | Last SHA | Next action |
-| --- | --- | --- | --- | --- | --- |
-| Claude | — | idle | 2026-11-26 16:32 | 9f8cad0 | Grok: paste ai/prompts/grok.md into grok.com and send the result through this form |
-| Codex | REV-02 | active | 2026-11-26 16:50 | f555da2 | Codex: work on PR #60 (asked with @codex; brief in ai/tasks/REV-02.md). |
-| Grok | RES-02 | done | 2026-11-26 15:37 | 144eb75 | Idle; available for next research or product review. |
+| Assistant | Task | State | Updated (UTC) | Last SHA | Next action | Reset (UTC) |
+| --- | --- | --- | --- | --- | --- | --- |
+| Claude | QA-02 | active | 2026-11-26 18:53 | 17aa6f7 | QA-02: verify the new page baseline with a full gate run, then push it. | — |
+| Codex | REV-02 | active | 2026-11-26 16:50 | f555da2 | Codex: work on PR #60 (asked with @codex; brief in ai/tasks/REV-02.md). | — |
+| Grok | RES-02 | done | 2026-11-26 15:37 | 144eb75 | Idle; available for next research or product review. | — |
 
 ## Queue
 
@@ -26,28 +26,32 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 
 | ID | State | Priority | Suggested | Claimed by | Updated (UTC) | Task and done when |
 | --- | --- | --- | --- | --- | --- | --- |
-| REV-02 | active | 2 | Codex | Codex | 2026-11-26 16:45 | "Unlock with Pro" labels on paid-only controls before they are pressed (PRO_REVIEW #18), from one list of paid features. Done when every paid control on the 10 most-used pages is labelled and a test checks the list. |
-| REV-01 | ready | 1 | Claude | — | — | Plans and billing as a main section, with AI credits (buy, balance, history) using the existing Stripe test flow. Done when a test-mode purchase adds credits and tests cover it. |
+| REV-02 | active | 2 | Codex | Codex | 2026-11-26 16:45 | Phase A. "Unlock with Pro" labels on paid-only controls before they are pressed, from one list of paid features (PR #60, Codex). Done when PR #60 is merged and deployed. |
+| QA-02 | active | 0 | Claude | Claude | 2026-11-26 17:05 | The page gate (release-gates.yml: disclosures, figures, controls, accessibility at four widths) fails on main itself against its 2026-11-16 baseline (test/golden/layout-baseline.json), so no branch can merge automatically. A run of 4 pages on main: 22 disclosure, 16 figure and 52 control differences (for example the homepage webhook sentence, and the Orders note on Day orders after the 4 PM close). Review each difference: restore every disclosure that was lost by mistake; then regenerate the baseline (test/layout/run.mjs) for the intended changes only, with the list in DECISIONS.md. Done when the page gate passes on main and on PR #60. |
+| REV-01 | ready | 1 | Claude | — | — | Phase A. Most of it exists: plans with yearly billing (10× monthly, about 17% off), the comparison table, AI credits (monthly allowance, packs of 500/3,000/12,000, Stripe checkout, Admin → Money). Left: move the plan prices to the Hybrid option (docs/research/pricing.md: Pro about $12–15, Elite about $39–49) in src/fees.js and scripts/home.py (then python3 scripts/pages.py and the pinned prices in the tests), and guard checkout so it refuses while the Stripe price differs from the plan table until the owner re-runs Stripe setup; Stripe stays in test mode. Done when the pages, the plan table and checkout show one price, a test covers the guard, and the page baseline is refreshed for the new figures. |
 | REV-02B | ready | 2 | Codex | — | — | Follow-up of REV-02 (PR #60): label the paid controls on the 10 most-used pages by Admin → Analytics route counts, and add a test that every entry in public/paid-controls.js matches a server check (upgrade() or needPlan()). Done when both are in. |
-| AIP-01 | ready | 3 | Codex | — | — | Apply Grok's honesty review (docs/research/ai-picks-review.md) to the AI morning picks and AI portfolios: an always-visible not-advice line, a track-record strip that includes losses, and a short methodology note. Done when each page shows all three and a test checks them. |
-| REV-03 | ready | 3 | Claude | — | — | Honest trial-end reminders: an in-app notice 3 days and 1 day before a trial ends, with the price and a one-tap cancel. No countdowns. Done when tests cover the timing, the copy and the opt-out, and real email sends only with the user's comms opt-in. |
-| CI-01 | ready | 4 | Codex | — | — | Fix the Deep check (its issue-opening step). The private README check is fixed (Claude, 2026-11-26: the README page is now Admin → Overview). Done when the Deep check is green on main. |
-| TRUST-01 | ready | 5 | Codex | — | — | A public status page (/status): uptime from /healthz history, the last incidents, and data-provider health, without internal details. Done when it is linked in the footer and tested. |
-| AI-01 | ready | 7 | Claude | — | — | AI usage and caps (was AIADMIN-3): spend and tokens per day and month per provider, a monthly cap per provider ($0 default for per-use billing), and calls stop at the cap with a clear reason. Done when the tests with mocks pass. |
+| AIP-01 | ready | 3 | Codex | — | — | Phase A. The AI picks honesty UI (docs/research/ai-picks-review.md): on the AI morning picks and AI portfolios, an always-visible not-advice line, a track-record strip that includes losses, and a short methodology note. Done when each page shows all three and a test checks them. |
+| REV-03 | ready | 4 | Claude | — | — | Phase A. Honest trial-end notices: in-app 3 days and 1 day before a trial ends, with the price and a one-tap cancel; no countdowns. Done when tests cover the timing, the copy and the opt-out, and real email is sent only with the user's comms opt-in. |
+| CI-01 | ready | 5 | Codex | — | — | Fix the Deep check (its issue-opening step). The clean-check part is done: the ai/ allowlist is on main (dc4d309), the same rule as the prepared branch ai/grok-ci-01-clean-check, which is superseded. Done when the Deep check is green on main. |
+| TRUST-01 | ready | 6 | Codex | — | — | Phase B. A public status page (/status): uptime from /healthz history, the last incidents, and data-provider health, without internal details. Done when it is linked in the footer and tested. |
+| TRUST-02 | ready | 7 | Claude | — | — | Phase B. Passkeys (WebAuthn) as a sign-in option and two-factor sign-in, with the site-wide "Require two-factor sign-in" switch of SEC-01. Done when passkey sign-up and sign-in work in the e2e tests. |
+| AI-01 | ready | 8 | Claude | — | — | Phase B. AI usage and caps in Admin: spend and tokens per day and month per provider, a monthly cap per provider ($0 default for per-use billing), and calls stop at the cap with a clear reason. Done when the tests with mocks pass. |
 | PAGES-01 | ready | 8 | Codex | — | — | The GitHub Pages deploy fails with "No artifacts named github-pages". Done when a Pages run is green. |
+| MEAS-01 | ready | 9 | Claude | — | — | Measurement in Admin (docs/research/growth-plan.md): free-to-Pro conversion, the AI-credit attach rate, churn, and support tickets about surprise charges. Done when Admin shows the four numbers from the database, with tests on the math. |
 | DEV-01 | ready | 9 | Codex | — | — | Developer API as a paid tier: usage metering per key, per-plan limits, and an OpenAPI file. Done when limits are enforced in tests and the docs page shows them. |
-| TRUST-02 | ready | 10 | Claude | — | — | Passkeys (WebAuthn) as a sign-in option, and a 2FA prompt for accounts with live trading. Done when passkey sign-up and sign-in work in the e2e tests. |
-| FEAT-01 | ready | 11 | Claude | — | — | Dividend scanner (was SEVEN-5): about 2,000 symbols, yield, safety, growth and scores, labelled not advice. Done when the scanner page and its tests are on main. |
-| ONB-01 | ready | 12 | Claude | — | — | Onboarding (was PARTA-2): a language chooser at sign-up, and the setup assistant in the chat. Done when the e2e sign-up covers both. |
-| APP-01 | ready | 13 | Codex | — | — | A smaller app.js: Home and settings load as lazy files (PRO_REVIEW #20). Done when the first-load JS is at least 25% smaller and the e2e tests pass. |
+| FEAT-01 | ready | 11 | Claude | — | — | Phase B. Dividend scanner: about 2,000 symbols, yield, safety, growth and scores, labelled not advice. Done when the scanner page and its tests are on main. |
+| ONB-01 | ready | 12 | Claude | — | — | Phase B. Onboarding with the language choice at sign-up and the setup assistant in the chat. Done when the e2e sign-up covers both. |
+| APP-01 | ready | 13 | Codex | — | — | Phase B (performance). A smaller app.js: Home and settings load as lazy files (PRO_REVIEW #20). Done when the first-load JS is at least 25% smaller and the e2e tests pass. |
+| PERF-02 | ready | 13 | Codex | — | — | Phase B (performance). A smaller subset of the font (the only performance miss, 334 ms against 300 ms). Done when the subset is served, every supported language still renders, and the sizes are recorded in PERFORMANCE.md. |
 | AI-02 | ready | 14 | Claude | — | — | AI work queue (AIADMIN-4 and SEVEN-6, built once): ai-queue.yml and an Admin page to list, add, cancel and prioritise queued AI tasks. Done when the Work status buttons use it. |
 | AI-03 | ready | 15 | Codex | — | — | GitHub Actions in Admin (was AIADMIN-5): recent runs, start the read-only workflows, and status, logs and health tools in the chat. Done when tested with a mocked GitHub API. |
 | QA-01 | ready | 16 | Codex | — | — | Readability checks everywhere (was SEVEN-7): reading level and jargon on every page's copy, with fixes. Done when a test fails on new hard copy. |
-| PERF-02 | ready | 18 | Codex | — | — | A smaller subset of the font (the only performance miss, 334 ms against 300 ms). Done when the subset is served, every supported language still renders, and the sizes are recorded in PERFORMANCE.md. |
 | TICK-01 | ready | 19 | Claude | — | — | The tick engine (Part B): a design note in DECISIONS.md first, reviewed by Grok for market realism, then the build. Done when the design is agreed and the first slice is tested. |
 | CHAT-04 | ready | 20 | Codex | — | — | A live check of the Codex activity stream in Admin → AI chat, with one short test message. Done when the result is written here (no message text in logs). |
 | PARTA-1 | ready | 21 | Claude | — | — | Part A items A1, A3, A4, A7 and A8 (definitions in DECISIONS.md and CHANGELOG_AI.md). Done when each one is a commit. |
 | OPS-02 | blocked | 30 | Claude | — | — | The Turso recovery window, scheduled from 2026-12-01 00:30 UTC. Done when its report and checks are read and written up. |
+| TEAM-03 | done | 1 | Claude | Claude | 2026-11-26 18:53 | The Claude → Grok → Codex chain: an unfinished task moves on at a usage limit (paused with the reset time), Grok can code within its cap, Codex through GitHub, the chain waits for the first reset; task pull requests merge themselves when the required checks pass (owner-approved label for workflows, legal, secrets, live billing, live money); the chain in Admin → Work status. Done when the tests for each step pass. |
+| SEC-01 | done | 1 | Claude | Claude | 2026-11-26 18:53 | Site-wide "Require two-factor sign-in" in Admin → Security, off by default: scope (admins, live-trading accounts, everyone), a grace period with a "Set up now" banner, passkeys count, step-up and audit for the switch, an admin lock-out check, and recovery codes. Done when the tests for every rule pass. |
 | SMOKE-01 | done | 0 | Claude | Claude | 2026-11-26 16:32 | End-to-end test of the AI inbox (the path Grok's results take): a hand-off through the AI hand-off form is checked and committed to the board by ai-inbox.yml. Done when the test issue is closed with the hand-off on the board. |
 | TEAM-02 | done | 0 | Claude | Claude | 2026-11-26 16:08 | The loop without paid keys: Codex through its GitHub integration (@codex tasks and reviews, on the ChatGPT plan), Grok through grok.com with its GitHub connection plus an AI hand-off inbox (an issue form, committed by a workflow), and Claude through the subscription token. Done when ai-loop.yml, the inbox workflow, the prompts and the rules work without OPENAI_API_KEY or XAI_API_KEY, and tests cover them. |
 | TEAM-01 | done | 0 | Claude | Claude | 2026-11-26 15:41 | Three-assistant loop: rules, board, ai/status.json, prompts, Grok provider, Admin work status, ai-loop.yml. Done when all are on main and npm test passes. |
@@ -70,6 +74,20 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 ## Hand-offs
 
 Newest first. Use these fields every time; the next assistant continues from **Next action**.
+
+### 2026-11-26 18:53 UTC · Claude · TEAM-03 · done
+- **Last SHA:** 17aa6f7
+- **Changed:** the chain (scripts/ai-loop.mjs chain/owner/addrow), Grok code mode, ai-loop.yml rewritten, release-gates squash auto-merge with owner-approved paths, Admin chain view, AGENTS.md
+- **Checks:** npm test 627 pass; actionlint clean
+- **Blockers:** the automatic runs need CLAUDE_CODE_OAUTH_TOKEN, CODEX_GITHUB=1 and a Codex environment (OWN-05)
+- **Next action:** Claude: finish QA-02 (baseline verification), then REV-01's price step.
+
+### 2026-11-26 18:53 UTC · Claude · SEC-01 · done
+- **Last SHA:** 17aa6f7
+- **Changed:** src/mfa-policy.js, Admin → Security, the member banner and set-up redirect, recovery codes; test/mfa-policy.test.js
+- **Checks:** npm test 627 pass (3 known TODO); clean check
+- **Blockers:** none
+- **Next action:** Owner: try Admin → Security (off by default). Claude: TEAM-03 next.
 
 ### 2026-11-26 16:32 UTC · Claude · SMOKE-01 · done
 - **Last SHA:** 9f8cad0

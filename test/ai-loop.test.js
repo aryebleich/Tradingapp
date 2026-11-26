@@ -105,12 +105,12 @@ test('Grok notes go only to docs/research/, and never hold an email, an address 
   assert.throws(() => G.checkNote({ notePath: 'docs/research/notes.md', note: 'short' }), /too short/);
 });
 
-test('ai-loop.yml: each assistant only with its key, caps asked first, one task at a time, reviews before merge', async () => {
+test('ai-loop.yml: each assistant only with its key, caps asked first, one task at a time, reviewed right after the merge', async () => {
   const fs = await import('node:fs'), y = fs.readFileSync('.github/workflows/ai-loop.yml', 'utf8'), g = fs.readFileSync('.github/workflows/release-gates.yml', 'utf8');
   for (const k of ['CLAUDE_CODE_OAUTH_TOKEN', 'OPENAI_API_KEY', 'XAI_API_KEY']) assert.match(y, new RegExp(`secrets\\.${k} != ''`), k);
   assert.match(y, /\/internal\/ai-loop\/budget/); assert.match(y, /\/internal\/ai-loop\/run/);
   assert.match(y, /cancel-in-progress: false/); assert.match(y, /openai\/codex-action@v1/); assert.match(y, /anthropics\/claude-code-action@v1/);
-  assert.match(y, /reviewed=true/); assert.match(g, /ai\/claude-\*\|ai\/codex-\*\)/); assert.match(g, /run-name: .*\(reviewed\)/);
+  assert.match(y, /review_pr/); assert.match(g, /gh workflow run ai-loop\.yml -f review_pr/); assert.doesNotMatch(g, /reviewed=true|inputs\.reviewed/);
   assert.doesNotMatch(y, /git push[^\n]*--force/);
 });
 
@@ -169,4 +169,80 @@ test('the AI inbox commits each issue once: a second event for the same issue is
   const again = I.plan(f, once, new Date('2026-11-26T16:26:00Z'), 77);
   assert.equal(again.already, true); assert.match(again.errors.join(), /already on the board/);
   assert.match(fsx.readFileSync('.github/workflows/ai-inbox.yml', 'utf8'), /types: \[opened, edited\]/);
+});
+
+// ---------- the chain: Claude → Grok → Codex (TEAM-03) ----------
+const stamp = t => new Date(t).toISOString().slice(0, 16).replace('T', ' ');
+const chainBoard = ({ rows, resets = {}, handoffs = [] }) => ({
+  ...board(rows),
+  assistants: ['Claude', 'Codex', 'Grok'].map(n => ({ name: n, reset: resets[n] ? stamp(resets[n]) : null })),
+  handoffs,
+});
+const ALLOW = { allowed: { claudeSubscription: { ok: true }, claudePerUse: { ok: false }, codex: { ok: true }, grok: { ok: true } } };
+const NO_GROK = { allowed: { ...ALLOW.allowed, grok: { ok: false, reason: 'the monthly cap is $0' } } };
+const ALL_KEYS = ['claude_oauth', 'xai', 'codex_github'];
+
+test('the chain: Claude first, then Grok on the same task and branch when Claude is at its usage limit', () => {
+  const st = chainBoard({ rows: [row('REV-01', 'paused', 'Claude', 'Claude', '2026-11-26 13:00')], resets: { Claude: NOW + 3 * 3600e3 } });
+  const p = P.chainPick({ keys: ALL_KEYS, budget: ALLOW, status: st, now: NOW });
+  assert.equal(p.assistant, 'grok'); assert.equal(p.task, 'REV-01'); assert.equal(p.branch, 'ai/task-rev-01');
+  assert.equal(p.takeoverFrom, 'Claude'); assert.match(p.skipped[0].why, /usage limit until/);
+  // After Claude's reset, Claude is first again.
+  assert.equal(P.chainPick({ keys: ALL_KEYS, budget: ALLOW, status: st, now: NOW + 4 * 3600e3 }).assistant, 'claude');
+});
+
+test('no XAI key, or a $0 Grok cap: straight to Codex through GitHub, with the reason', () => {
+  const st = chainBoard({ rows: [row('REV-01', 'paused', 'Claude', 'Claude', '2026-11-26 13:00')], resets: { Claude: NOW + 3600e3 } });
+  const noKey = P.chainPick({ keys: ['claude_oauth', 'codex_github'], budget: ALLOW, status: st, now: NOW });
+  assert.equal(noKey.assistant, 'codex'); assert.equal(noKey.billing, 'plan'); assert.match(noKey.skipped.find(x => x.assistant === 'grok').why, /no XAI_API_KEY/);
+  const zeroCap = P.chainPick({ keys: ALL_KEYS, budget: NO_GROK, status: st, now: NOW });
+  assert.equal(zeroCap.assistant, 'codex'); assert.match(zeroCap.skipped.find(x => x.assistant === 'grok').why, /cap/);
+});
+
+test('Grok failing after 3 tries hands the task to Codex', () => {
+  const st = chainBoard({ rows: [row('REV-01', 'paused', 'Claude', 'Grok', '2026-11-26 13:00')], resets: { Claude: NOW + 3600e3 },
+    handoffs: [{ at: '2026-11-26 13:00 UTC', assistant: 'Grok', task: 'REV-01', state: 'paused', blockers: 'Grok failed after 3 tries: the checks failed' }] });
+  const p = P.chainPick({ keys: ALL_KEYS, budget: ALLOW, status: st, now: NOW });
+  assert.equal(p.assistant, 'codex'); assert.equal(p.takeoverFrom, 'Grok'); assert.match(p.skipped.find(x => x.assistant === 'grok').why, /failed after 3 tries/);
+});
+
+test('all three at their limits: the task waits for the first reset', () => {
+  const first = NOW + 2 * 3600e3;
+  const st = chainBoard({ rows: [row('REV-01', 'paused', 'Claude', 'Codex', '2026-11-26 13:00')], resets: { Claude: NOW + 5 * 3600e3, Grok: first, Codex: NOW + 4 * 3600e3 } });
+  const p = P.chainPick({ keys: ALL_KEYS, budget: ALLOW, status: st, now: NOW });
+  assert.equal(p.assistant, undefined); assert.equal(p.wait, new Date(Date.parse(stamp(first).replace(' ', 'T') + ':00Z')).toISOString()); assert.equal(p.task, 'REV-01');
+});
+
+test('no per-use key is used while its cap is $0', () => {
+  const st = chainBoard({ rows: [row('REV-01', 'ready', 'Claude')] });
+  const zero = { allowed: { claudeSubscription: { ok: true }, claudePerUse: { ok: false }, codex: { ok: false }, grok: { ok: false } } };
+  assert.ok(P.chainPick({ keys: ['anthropic', 'openai', 'xai'], budget: zero, status: st, now: NOW }).none, 'per-use Claude, Codex and Grok all wait for a cap');
+  assert.equal(P.access('codex', ['openai'], zero).billing, undefined);
+  assert.equal(P.access('claude', ['anthropic'], zero).billing, undefined);
+  assert.equal(P.access('codex', ['codex_github'], zero).billing, 'plan', 'the ChatGPT plan is not billed per use');
+});
+
+test('research rows go to Grok first; a fresh claim by another session is left alone', () => {
+  const research = chainBoard({ rows: [row('RES-03', 'ready', 'Grok')] });
+  assert.equal(P.chainPick({ keys: ALL_KEYS, budget: ALLOW, status: research, now: NOW }).assistant, 'grok');
+  const fresh = chainBoard({ rows: [row('REV-01', 'active', 'Claude', 'Claude', stamp(NOW - 3600e3))] });
+  assert.ok(P.chainPick({ keys: ALL_KEYS, budget: ALLOW, status: fresh, now: NOW }).none);
+});
+
+test('auto-merge on green gates; workflows, legal, secrets, live billing and live money wait for the owner-approved label', async () => {
+  assert.equal(P.needsOwner(['src/stock.js', 'public/pages/stock.js', 'test/x.test.js']).owner, false);
+  for (const f of ['.github/workflows/deploy.yml', 'LEGAL_REVIEW.md', 'COMPLIANCE_REVIEW.md', 'src/keystore.js', 'src/stripe.js', 'src/brokers.js', 'src/execution.js', 'src/ext/schwab.js', '.env.example'])
+    assert.equal(P.needsOwner([f]).owner, true, f);
+  assert.equal(P.needsOwner(['src/plans.js'], '+++ b/src/plans.js\n+const mode = STRIPE_LIVE;\n').owner, true, 'billing going live');
+  const fs2 = await import('node:fs'), g = fs2.readFileSync('.github/workflows/release-gates.yml', 'utf8');
+  assert.match(g, /gh pr merge "\$PR" --squash --delete-branch/);
+  assert.match(g, /owner-approved/); assert.match(g, /scripts\/ai-loop\.mjs owner/);
+  assert.match(g, /gh workflow run deploy\.yml --ref main/);
+});
+
+test('Grok as a coder never touches workflows, the board, the rules or secrets', () => {
+  assert.deepEqual(G.checkPatch('--- a/src/stock.js\n+++ b/src/stock.js\n@@ -1 +1 @@\n-a\n+b\n'), ['src/stock.js']);
+  for (const f of ['.github/workflows/ci.yml', 'AI_HANDOFF.md', 'ai/status.json', 'AGENTS.md', '.env', 'src/keystore.js', 'LEGAL_REVIEW.md'])
+    assert.throws(() => G.checkPatch(`--- a/${f}\n+++ b/${f}\n@@ -1 +1 @@\n-a\n+b\n`), /may not change/, f);
+  assert.throws(() => G.checkPatch('nothing here'), /no file/);
 });

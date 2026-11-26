@@ -145,7 +145,8 @@ export function securityRouter({ cancelAlpaca }) {
     const cr = v.registrationInfo.credential;
     await run('INSERT INTO passkeys (user_id, cred_id, public_key, counter, transports, name, created_at) VALUES (?,?,?,?,?,?,?)', req.user.id, cr.id, b64(cr.publicKey), cr.counter || 0, JSON.stringify(cr.transports || req.body.response?.response?.transports || []), String(req.body.name || 'Passkey').slice(0, 40), now());
     await audit(req.user.id, 'passkey_added', null, req.ip);
-    res.json({ ok: true });
+    const recoveryCodes = await (await import('./mfa-policy.js')).ensureRecoveryCodes(req.user.id);
+    res.json({ ok: true, ...(recoveryCodes ? { recoveryCodes } : {}) });
   });
   r.delete('/passkeys/:id', async (req, res) => {
     const n = (await one('SELECT COUNT(*) n FROM passkeys WHERE user_id = ?', req.user.id)).n;

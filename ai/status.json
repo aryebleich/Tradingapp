@@ -5,11 +5,12 @@
   "assistants": [
     {
       "name": "Claude",
-      "task": null,
-      "state": "idle",
-      "updated": "2026-11-26 16:32",
-      "lastSha": "9f8cad0",
-      "next": "Grok: paste ai/prompts/grok.md into grok.com and send the result through this form"
+      "task": "QA-02",
+      "state": "active",
+      "updated": "2026-11-26 18:53",
+      "lastSha": "17aa6f7",
+      "next": "QA-02: verify the new page baseline with a full gate run, then push it.",
+      "reset": null
     },
     {
       "name": "Codex",
@@ -17,7 +18,8 @@
       "state": "active",
       "updated": "2026-11-26 16:50",
       "lastSha": "f555da2",
-      "next": "Codex: work on PR #60 (asked with @codex; brief in ai/tasks/REV-02.md)."
+      "next": "Codex: work on PR #60 (asked with @codex; brief in ai/tasks/REV-02.md).",
+      "reset": null
     },
     {
       "name": "Grok",
@@ -25,7 +27,8 @@
       "state": "done",
       "updated": "2026-11-26 15:37",
       "lastSha": "144eb75",
-      "next": "Idle; available for next research or product review."
+      "next": "Idle; available for next research or product review.",
+      "reset": null
     }
   ],
   "queue": {
@@ -37,7 +40,16 @@
         "suggested": "Codex",
         "claimedBy": "Codex",
         "updated": "2026-11-26 16:45",
-        "task": "\"Unlock with Pro\" labels on paid-only controls before they are pressed (PRO_REVIEW #18), from one list of paid features. Done when every paid control on the 10 most-used pages is labelled and a test checks the list."
+        "task": "Phase A. \"Unlock with Pro\" labels on paid-only controls before they are pressed, from one list of paid features (PR #60, Codex). Done when PR #60 is merged and deployed."
+      },
+      {
+        "id": "QA-02",
+        "state": "active",
+        "priority": null,
+        "suggested": "Claude",
+        "claimedBy": "Claude",
+        "updated": "2026-11-26 17:05",
+        "task": "The page gate (release-gates.yml: disclosures, figures, controls, accessibility at four widths) fails on main itself against its 2026-11-16 baseline (test/golden/layout-baseline.json), so no branch can merge automatically. A run of 4 pages on main: 22 disclosure, 16 figure and 52 control differences (for example the homepage webhook sentence, and the Orders note on Day orders after the 4 PM close). Review each difference: restore every disclosure that was lost by mistake; then regenerate the baseline (test/layout/run.mjs) for the intended changes only, with the list in DECISIONS.md. Done when the page gate passes on main and on PR #60."
       }
     ],
     "paused": [],
@@ -49,7 +61,7 @@
         "suggested": "Claude",
         "claimedBy": null,
         "updated": null,
-        "task": "Plans and billing as a main section, with AI credits (buy, balance, history) using the existing Stripe test flow. Done when a test-mode purchase adds credits and tests cover it."
+        "task": "Phase A. Most of it exists: plans with yearly billing (10× monthly, about 17% off), the comparison table, AI credits (monthly allowance, packs of 500/3,000/12,000, Stripe checkout, Admin → Money). Left: move the plan prices to the Hybrid option (docs/research/pricing.md: Pro about $12–15, Elite about $39–49) in src/fees.js and scripts/home.py (then python3 scripts/pages.py and the pinned prices in the tests), and guard checkout so it refuses while the Stripe price differs from the plan table until the owner re-runs Stripe setup; Stripe stays in test mode. Done when the pages, the plan table and checkout show one price, a test covers the guard, and the page baseline is refreshed for the new figures."
       },
       {
         "id": "REV-02B",
@@ -67,43 +79,52 @@
         "suggested": "Codex",
         "claimedBy": null,
         "updated": null,
-        "task": "Apply Grok's honesty review (docs/research/ai-picks-review.md) to the AI morning picks and AI portfolios: an always-visible not-advice line, a track-record strip that includes losses, and a short methodology note. Done when each page shows all three and a test checks them."
+        "task": "Phase A. The AI picks honesty UI (docs/research/ai-picks-review.md): on the AI morning picks and AI portfolios, an always-visible not-advice line, a track-record strip that includes losses, and a short methodology note. Done when each page shows all three and a test checks them."
       },
       {
         "id": "REV-03",
         "state": "ready",
-        "priority": 3,
+        "priority": 4,
         "suggested": "Claude",
         "claimedBy": null,
         "updated": null,
-        "task": "Honest trial-end reminders: an in-app notice 3 days and 1 day before a trial ends, with the price and a one-tap cancel. No countdowns. Done when tests cover the timing, the copy and the opt-out, and real email sends only with the user's comms opt-in."
+        "task": "Phase A. Honest trial-end notices: in-app 3 days and 1 day before a trial ends, with the price and a one-tap cancel; no countdowns. Done when tests cover the timing, the copy and the opt-out, and real email is sent only with the user's comms opt-in."
       },
       {
         "id": "CI-01",
-        "state": "ready",
-        "priority": 4,
-        "suggested": "Codex",
-        "claimedBy": null,
-        "updated": null,
-        "task": "Fix the Deep check (its issue-opening step). The private README check is fixed (Claude, 2026-11-26: the README page is now Admin → Overview). Done when the Deep check is green on main."
-      },
-      {
-        "id": "TRUST-01",
         "state": "ready",
         "priority": 5,
         "suggested": "Codex",
         "claimedBy": null,
         "updated": null,
-        "task": "A public status page (/status): uptime from /healthz history, the last incidents, and data-provider health, without internal details. Done when it is linked in the footer and tested."
+        "task": "Fix the Deep check (its issue-opening step). The clean-check part is done: the ai/ allowlist is on main (dc4d309), the same rule as the prepared branch ai/grok-ci-01-clean-check, which is superseded. Done when the Deep check is green on main."
       },
       {
-        "id": "AI-01",
+        "id": "TRUST-01",
+        "state": "ready",
+        "priority": 6,
+        "suggested": "Codex",
+        "claimedBy": null,
+        "updated": null,
+        "task": "Phase B. A public status page (/status): uptime from /healthz history, the last incidents, and data-provider health, without internal details. Done when it is linked in the footer and tested."
+      },
+      {
+        "id": "TRUST-02",
         "state": "ready",
         "priority": 7,
         "suggested": "Claude",
         "claimedBy": null,
         "updated": null,
-        "task": "AI usage and caps (was AIADMIN-3): spend and tokens per day and month per provider, a monthly cap per provider ($0 default for per-use billing), and calls stop at the cap with a clear reason. Done when the tests with mocks pass."
+        "task": "Phase B. Passkeys (WebAuthn) as a sign-in option and two-factor sign-in, with the site-wide \"Require two-factor sign-in\" switch of SEC-01. Done when passkey sign-up and sign-in work in the e2e tests."
+      },
+      {
+        "id": "AI-01",
+        "state": "ready",
+        "priority": 8,
+        "suggested": "Claude",
+        "claimedBy": null,
+        "updated": null,
+        "task": "Phase B. AI usage and caps in Admin: spend and tokens per day and month per provider, a monthly cap per provider ($0 default for per-use billing), and calls stop at the cap with a clear reason. Done when the tests with mocks pass."
       },
       {
         "id": "PAGES-01",
@@ -115,6 +136,15 @@
         "task": "The GitHub Pages deploy fails with \"No artifacts named github-pages\". Done when a Pages run is green."
       },
       {
+        "id": "MEAS-01",
+        "state": "ready",
+        "priority": 9,
+        "suggested": "Claude",
+        "claimedBy": null,
+        "updated": null,
+        "task": "Measurement in Admin (docs/research/growth-plan.md): free-to-Pro conversion, the AI-credit attach rate, churn, and support tickets about surprise charges. Done when Admin shows the four numbers from the database, with tests on the math."
+      },
+      {
         "id": "DEV-01",
         "state": "ready",
         "priority": 9,
@@ -124,22 +154,13 @@
         "task": "Developer API as a paid tier: usage metering per key, per-plan limits, and an OpenAPI file. Done when limits are enforced in tests and the docs page shows them."
       },
       {
-        "id": "TRUST-02",
-        "state": "ready",
-        "priority": 10,
-        "suggested": "Claude",
-        "claimedBy": null,
-        "updated": null,
-        "task": "Passkeys (WebAuthn) as a sign-in option, and a 2FA prompt for accounts with live trading. Done when passkey sign-up and sign-in work in the e2e tests."
-      },
-      {
         "id": "FEAT-01",
         "state": "ready",
         "priority": 11,
         "suggested": "Claude",
         "claimedBy": null,
         "updated": null,
-        "task": "Dividend scanner (was SEVEN-5): about 2,000 symbols, yield, safety, growth and scores, labelled not advice. Done when the scanner page and its tests are on main."
+        "task": "Phase B. Dividend scanner: about 2,000 symbols, yield, safety, growth and scores, labelled not advice. Done when the scanner page and its tests are on main."
       },
       {
         "id": "ONB-01",
@@ -148,7 +169,7 @@
         "suggested": "Claude",
         "claimedBy": null,
         "updated": null,
-        "task": "Onboarding (was PARTA-2): a language chooser at sign-up, and the setup assistant in the chat. Done when the e2e sign-up covers both."
+        "task": "Phase B. Onboarding with the language choice at sign-up and the setup assistant in the chat. Done when the e2e sign-up covers both."
       },
       {
         "id": "APP-01",
@@ -157,7 +178,16 @@
         "suggested": "Codex",
         "claimedBy": null,
         "updated": null,
-        "task": "A smaller app.js: Home and settings load as lazy files (PRO_REVIEW #20). Done when the first-load JS is at least 25% smaller and the e2e tests pass."
+        "task": "Phase B (performance). A smaller app.js: Home and settings load as lazy files (PRO_REVIEW #20). Done when the first-load JS is at least 25% smaller and the e2e tests pass."
+      },
+      {
+        "id": "PERF-02",
+        "state": "ready",
+        "priority": 13,
+        "suggested": "Codex",
+        "claimedBy": null,
+        "updated": null,
+        "task": "Phase B (performance). A smaller subset of the font (the only performance miss, 334 ms against 300 ms). Done when the subset is served, every supported language still renders, and the sizes are recorded in PERFORMANCE.md."
       },
       {
         "id": "AI-02",
@@ -185,15 +215,6 @@
         "claimedBy": null,
         "updated": null,
         "task": "Readability checks everywhere (was SEVEN-7): reading level and jargon on every page's copy, with fixes. Done when a test fails on new hard copy."
-      },
-      {
-        "id": "PERF-02",
-        "state": "ready",
-        "priority": 18,
-        "suggested": "Codex",
-        "claimedBy": null,
-        "updated": null,
-        "task": "A smaller subset of the font (the only performance miss, 334 ms against 300 ms). Done when the subset is served, every supported language still renders, and the sizes are recorded in PERFORMANCE.md."
       },
       {
         "id": "TICK-01",
@@ -235,6 +256,24 @@
       }
     ],
     "done": [
+      {
+        "id": "TEAM-03",
+        "state": "done",
+        "priority": 1,
+        "suggested": "Claude",
+        "claimedBy": "Claude",
+        "updated": "2026-11-26 18:53",
+        "task": "The Claude → Grok → Codex chain: an unfinished task moves on at a usage limit (paused with the reset time), Grok can code within its cap, Codex through GitHub, the chain waits for the first reset; task pull requests merge themselves when the required checks pass (owner-approved label for workflows, legal, secrets, live billing, live money); the chain in Admin → Work status. Done when the tests for each step pass."
+      },
+      {
+        "id": "SEC-01",
+        "state": "done",
+        "priority": 1,
+        "suggested": "Claude",
+        "claimedBy": "Claude",
+        "updated": "2026-11-26 18:53",
+        "task": "Site-wide \"Require two-factor sign-in\" in Admin → Security, off by default: scope (admins, live-trading accounts, everyone), a grace period with a \"Set up now\" banner, passkeys count, step-up and audit for the switch, an admin lock-out check, and recovery codes. Done when the tests for every rule pass."
+      },
       {
         "id": "SMOKE-01",
         "state": "done",
@@ -338,6 +377,28 @@
     }
   ],
   "handoffs": [
+    {
+      "at": "2026-11-26 18:53 UTC",
+      "assistant": "Claude",
+      "task": "TEAM-03",
+      "state": "done",
+      "last_sha": "17aa6f7",
+      "changed": "the chain (scripts/ai-loop.mjs chain/owner/addrow), Grok code mode, ai-loop.yml rewritten, release-gates squash auto-merge with owner-approved paths, Admin chain view, AGENTS.md",
+      "checks": "npm test 627 pass; actionlint clean",
+      "blockers": "the automatic runs need CLAUDE_CODE_OAUTH_TOKEN, CODEX_GITHUB=1 and a Codex environment (OWN-05)",
+      "next_action": "Claude: finish QA-02 (baseline verification), then REV-01's price step."
+    },
+    {
+      "at": "2026-11-26 18:53 UTC",
+      "assistant": "Claude",
+      "task": "SEC-01",
+      "state": "done",
+      "last_sha": "17aa6f7",
+      "changed": "src/mfa-policy.js, Admin → Security, the member banner and set-up redirect, recovery codes; test/mfa-policy.test.js",
+      "checks": "npm test 627 pass (3 known TODO); clean check",
+      "blockers": "none",
+      "next_action": "Owner: try Admin → Security (off by default). Claude: TEAM-03 next."
+    },
     {
       "at": "2026-11-26 16:32 UTC",
       "assistant": "Claude",

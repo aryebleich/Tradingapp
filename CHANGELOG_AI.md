@@ -987,3 +987,46 @@ Automatic (above). By hand: redeploy the previous tag: `curl -X POST "<deploy ho
   - the workflow ai-inbox.yml (only the owner's issues) runs scripts/ai-inbox.mjs, which checks the task, the hand-off format, no patch and nothing private, then commits the note to docs/research/ and the hand-off to the board, and closes the issue.
 - **Prompts and rules:** ai/prompts/ (all three link the form; Codex's covers being woken by `@codex`; Grok's covers its GitHub connection). AGENTS.md has a "Without paid keys" table. OWN-05 lists the one-time setup.
 - **Tests:** test/ai-loop.test.js covers Codex on the plan, the inbox parse, plan and apply, its refusals, and the workflow rules. npm test passes 610 (3 known TODO reviews); clean check and actionlint pass.
+
+## 2026-11-26: Two-factor sign-in policy, off by default (Claude, SEC-01)
+- **Admin → Security** (new tab under Owner: technical): "Require two-factor sign-in", with the scope (admins, live-trading accounts, everyone) and a grace period. The page shows how many admins have two-factor or a passkey, and the history of changes (who, when).
+- **src/mfa-policy.js:**
+  - the policy and each member's status (none, grace, set-up required);
+  - the API gate (403 `mfaSetupRequired` after the grace; the sign-in, set-up and sign-out routes stay open);
+  - the admin lock-out check;
+  - recovery codes.
+- **Members:** a "Set up now" banner during the grace period, and the app opens Settings → Security when set-up is required. Recovery codes are shown once when the authenticator app or a first passkey is set up, and a recovery code works at the sign-in code step.
+- **Unchanged while it's off:** sign-in, the existing authenticator and passkey set-up, and the step-up for live orders.
+- **Tests:** test/mfa-policy.test.js (7): off by default, sign-in unchanged while off, the grace period then required set-up, the gate's open routes, the three scopes and passkeys, step-up, audit and the lock-out refusal, and recovery codes.
+
+## 2026-11-26: The page gate unblocked (Claude, QA-02)
+- **Reviewed:** the page gate on main against its pre-redesign baseline; findings and verdicts are in DECISIONS.md QA2-1 to QA2-5.
+- **Fixed:** Retirement accessibility (labelled account dropdowns, keyboard-reachable tables).
+- **New baseline:** test/golden/layout-baseline.json, 89 pages × 4 widths, from test/layout/baseline.mjs.
+- **Stable from day to day:** the gate fixes the browser date and ignores dates as figures (test/layout/run.mjs).
+- **CI-01:** the prepared clean-check fix (ai/grok-ci-01-clean-check) is the same rule already on main (dc4d309); nothing more to merge there. The Deep check stays on CI-01.
+
+## 2026-11-26: Claude → Grok → Codex, and deploy right away (Claude, TEAM-03)
+- **scripts/ai-loop.mjs:**
+  - `chain` (chainPick: order, access, resets, failed tries, waiting for the first reset);
+  - `owner` (needsOwner: the owner-approved paths and words);
+  - `addrow` (FIX-nn from a review);
+  - `release --reset/--from` (the reset time, "taken over from").
+- **scripts/ai-grok.mjs:** `code` (Grok as a coder: patch, apply, checks, up to 3 tries, forbidden paths).
+- **.github/workflows/ai-loop.yml:** rewritten.
+  - Hourly; one branch per task, continued and never restarted.
+  - Claude, Grok (research or code) or Codex (API, or GitHub `@codex`).
+  - At a limit or after Grok's 3 failed tries, the next run starts at once on the same task.
+  - A post-merge review job; codex-verdict reads Codex's limit or review.
+- **release-gates.yml:** squash-merges the task pull request when the gates pass, except owner-approved paths; then the deploy and the post-merge review. The old "reviewed=true" hold is gone.
+- **Admin → AI team → Work status:** each assistant's reset time, and per task the chain (who had it, why it moved).
+- **AGENTS.md:** "Reviews" (after the merge) and "When an assistant hits its limit". The ChatGPT prompt is updated to match.
+- **Tests** (test/ai-loop.test.js):
+  - Claude at its limit → Grok on the same branch;
+  - no XAI key or a $0 cap → Codex;
+  - Grok failing 3 times → Codex;
+  - all three at their limits → wait for the first reset;
+  - no per-use key at a $0 cap;
+  - research rows to Grok first;
+  - the auto-merge and owner-approved paths;
+  - Grok's forbidden paths.

@@ -183,7 +183,11 @@ router.post('/mfa', async (req, res) => {
   const u = req.pending;
   if (!u) return res.status(401).json({ error: 'Sign in first' });
   if (!rateLimit('mfa:' + u.id, 6, 5 * 60e3)) return res.status(429).json({ error: 'Too many codes' });
-  if (!verifyTotp(u.totp_secret, req.body.code)) { await audit(u.id, 'mfa_failed', null, req.ip); return res.status(401).json({ error: 'Invalid code' }); }
+  // A one-time recovery code (src/mfa-policy.js) works when the authenticator app is lost.
+  const P = await import('./mfa-policy.js');
+  const byRecovery = !verifyTotp(u.totp_secret, req.body.code) && await P.useRecoveryCode(u.id, req.body.code);
+  if (!byRecovery && !verifyTotp(u.totp_secret, req.body.code)) { await audit(u.id, 'mfa_failed', null, req.ip); return res.status(401).json({ error: 'Invalid code' }); }
+  if (byRecovery) await audit(u.id, 'mfa_recovery_used', { left: await P.recoveryCodesLeft(u.id) }, req.ip);
   await run('DELETE FROM sessions WHERE token_hash = ?', req.sessionHash);
   await createSession(res, req, u.id, false);
   await audit(u.id, 'login', { mfa: true }, req.ip);
@@ -278,7 +282,7 @@ async function noticesFor(u) {
   if (n?.text) out.push({ id: 'notice', text: String(n.text).slice(0, 300), at: n.at || null });
   return out;
 }
-router.get('/me', async (req, res) => res.json({ user: req.user ? { ...publicUser(req.user), addons: await (await import('./addons.js')).addonsFor(req.user.id), notices: await noticesFor(req.user) } : null, mfaPending: !!req.pending }));
+router.get('/me', async (req, res) => res.json({ user: req.user ? { ...publicUser(req.user), addons: await (await import('./addons.js')).addonsFor(req.user.id), notices: await noticesFor(req.user), mfa: await (await import('./mfa-policy.js')).mfaStatus(req.user) } : null, mfaPending: !!req.pending }));
 router.delete('/notice', requireUser, async (req, res) => {
   const { setSetting } = await import('./settings.js');
   await setSetting(req.user.id, 'notice', null);
@@ -295,7 +299,9 @@ router.post('/totp/enable', requireUser, async (req, res) => {
   if (!verifyTotp(req.user.totp_secret, req.body.code)) return res.status(400).json({ error: 'Code does not match' });
   await run('UPDATE users SET totp_enabled = 1 WHERE id = ?', req.user.id);
   await audit(req.user.id, 'totp_enabled', null, req.ip);
-  res.json({ ok: true });
+  // Ten one-time recovery codes, shown once, when the member has none yet.
+  const recoveryCodes = await (await import('./mfa-policy.js')).ensureRecoveryCodes(req.user.id);
+  res.json({ ok: true, ...(recoveryCodes ? { recoveryCodes } : {}) });
 });
 router.post('/totp/disable', requireUser, async (req, res) => {
   if (!confirmsIdentity(req.user, req.body)) return res.status(401).json({ error: req.user.password_set === 0 ? 'Type your email address to confirm' : 'Wrong password' });

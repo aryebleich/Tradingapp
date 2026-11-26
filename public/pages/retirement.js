@@ -10,7 +10,7 @@ async function page(view) {
   view.innerHTML = `<div class="pagehead"><h1>Retirement &amp; IRAs</h1><p class="mu">Save for retirement with tax breaks: what Traditional and Roth IRAs are, how much you can put in this year, and what your savings could grow to.</p></div>
   <div class="grid">
     <div class="card"><h2>Traditional or Roth?</h2>
-      <div class="tablewrap"><table class="slim"><tr><th></th><th>Traditional IRA</th><th>Roth IRA</th></tr>
+      <div class="tablewrap" tabindex="0" role="region" aria-label="Traditional and Roth IRA compared"><table class="slim"><tr><th></th><th>Traditional IRA</th><th>Roth IRA</th></tr>
         <tr><td>Tax break</td><td>Now: contributions can lower this year's taxable income</td><td>Later: withdrawals in retirement are tax-free</td></tr>
         <tr><td>Withdrawals</td><td>Taxed as income</td><td>Tax-free after age 59½ and 5 years</td></tr>
         <tr><td>Who can put money in</td><td>Anyone with earned income (the tax deduction depends on income and workplace plans)</td><td>Only below an income limit</td></tr>
@@ -20,7 +20,7 @@ async function page(view) {
     <div class="card"><h2>${L.year} limits</h2>
       <div class="stats"><div class="stat"><span>IRA (all IRAs together)</span><b>${$$m(L.ira)}</b><span class="mu">+${$$m(L.iraCatchUp)} at 50+</span></div>
       <div class="stat"><span>401(k), 403(b), TSP</span><b>${$$m(L.k401)}</b><span class="mu">+${$$m(L.k401CatchUp)} at 50+, +${$$m(L.k401CatchUp6063)} at 60-63</span></div></div>
-      <div class="tablewrap"><table class="slim"><tr><th>Roth IRA income limit (modified AGI)</th><th class="num">Full amount below</th><th class="num">Nothing above</th></tr>
+      <div class="tablewrap" tabindex="0" role="region" aria-label="Roth IRA income limits"><table class="slim"><tr><th>Roth IRA income limit (modified AGI)</th><th class="num">Full amount below</th><th class="num">Nothing above</th></tr>
         <tr><td>Single</td><td class="num">${$$m(L.roth.single[0])}</td><td class="num">${$$m(L.roth.single[1])}</td></tr>
         <tr><td>Married filing jointly</td><td class="num">${$$m(L.roth.married[0])}</td><td class="num">${$$m(L.roth.married[1])}</td></tr></table></div>
       <p class="mu small-print">Source: ${H.esc(L.source)}. Check the IRS site for your situation.</p></div>
@@ -40,7 +40,7 @@ async function page(view) {
       <label>Tax rate now %<input name="taxNowPct" type="number" value="22" min="0" max="60"></label><label>Tax rate in retirement %<input name="taxLaterPct" type="number" value="15" min="0" max="60"></label></div>
     <div id="pOut"></div></form>
   <form class="card" id="acc"><h2>Account types</h2><p class="mu">Mark an IRA so the Taxes page treats it as tax-sheltered (no capital-gains tax on its trades) and planning counts it as retirement money. A business account (LLC, partnership, family office) records the entity that owns it. The broker opens the account itself; this only tells Brightolio what it is. Only the types the connected broker supports in Brightolio are offered.</p>
-    <div class="tablewrap"><table class="slim">${accts.filter(a => a.connected !== false).map(a => { const sup = d.support[a.id === 'paper' ? 'paper' : /^alpaca/.test(a.id) ? 'alpaca' : 'other'] || { types: Object.keys(d.types) }; const all = { ...d.types, ...(d.businessTypes || {}) }; const cur = d.accounts[a.id] || 'taxable', ent = (d.entities || {})[a.id] || {}; return `<tr data-acct="${H.esc(a.id)}"><td>${H.esc(H.acctLabel ? H.acctLabel(a) : a.name || a.id)}${sup.note ? `<br><span class="mu small">${H.esc(sup.note)}</span>` : ''}</td><td><select name="${H.esc(a.id)}">${sup.types.map(k => `<option value="${k}" ${cur === k ? 'selected' : ''}>${H.esc(all[k] || k)}</option>`).join('')}</select>
+    <div class="tablewrap" tabindex="0" role="region" aria-label="Account types"><table class="slim">${accts.filter(a => a.connected !== false).map(a => { const sup = d.support[a.id === 'paper' ? 'paper' : /^alpaca/.test(a.id) ? 'alpaca' : 'other'] || { types: Object.keys(d.types) }; const all = { ...d.types, ...(d.businessTypes || {}) }; const cur = d.accounts[a.id] || 'taxable', ent = (d.entities || {})[a.id] || {}; return `<tr data-acct="${H.esc(a.id)}"><td>${H.esc(H.acctLabel ? H.acctLabel(a) : a.name || a.id)}${sup.note ? `<br><span class="mu small">${H.esc(sup.note)}</span>` : ''}</td><td><select name="${H.esc(a.id)}" aria-label="Account type for ${H.esc(H.acctLabel ? H.acctLabel(a) : a.name || a.id)}">${sup.types.map(k => `<option value="${k}" ${cur === k ? 'selected' : ''}>${H.esc(all[k] || k)}</option>`).join('')}</select>
       <div class="ent row" ${d.businessTypes?.[cur] ? '' : 'hidden'}><label>Entity name<input data-ent="name" value="${H.esc(ent.name || '')}" maxlength="120"></label><label>Entity type<input data-ent="entityType" value="${H.esc(ent.entityType || '')}" maxlength="60" placeholder="e.g. Delaware LLC"></label></div></td></tr>`; }).join('')}</table></div>
     <div class="row"><button>Save</button></div><div class="err"></div></form>
   <p class="mu small-print">Estimates for planning, not tax or investment advice. Returns are not guaranteed and can be negative. Social Security estimates: <a href="https://www.ssa.gov/myaccount/" target="_blank" rel="noopener">ssa.gov/myaccount</a>.</p>`;

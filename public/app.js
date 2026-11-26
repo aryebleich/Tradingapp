@@ -112,6 +112,24 @@ function noticeBanners() {
     x.onclick = () => { b.remove(); if (n.id === 'moved') { try { localStorage.setItem('qp_notice_moved', '1'); } catch {} } else api('/auth/notice', { method: 'DELETE' }).catch(() => {}); ME.notices = (ME.notices || []).filter(y => y.id !== n.id); };
     b.append(t, x); document.body.prepend(b);
   }
+  mfaBanner();
+}
+// Recovery codes, shown once when two-factor or a first passkey is set up (src/mfa-policy.js).
+function showRecoveryCodes(codes) {
+  const d = document.createElement('dialog'); d.className = 'modal';
+  d.innerHTML = `<div class="top"><h2>Your recovery codes</h2></div><div class="body"><p>Each code signs you in once if you lose your authenticator app. Keep them somewhere safe; they are shown only now.</p><pre data-no-tr>${codes.map(esc).join('\n')}</pre><button type="button">I saved them</button></div>`;
+  document.body.append(d); d.querySelector('button').onclick = () => { d.close(); d.remove(); }; d.showModal?.();
+}
+// "Require two-factor sign-in" (Admin → Security): during the grace period, a banner with the date and
+// "Set up now"; after it, the server answers 403 mfaSetupRequired and the app opens Settings → Security.
+function mfaBanner() {
+  const m = ME?.mfa, old = document.getElementById('mfa-banner');
+  if (!m?.required || m.done || !m.grace) { old?.remove(); return; }
+  if (old) return;
+  const b = document.createElement('div'); b.id = 'mfa-banner'; b.className = 'maint-banner notice-banner'; b.setAttribute('role', 'status');
+  const t = document.createElement('span'); t.textContent = `Two-factor sign-in (an authenticator app or a passkey) is required for your account from ${new Date(m.deadline).toLocaleDateString()}.`;
+  const go = document.createElement('a'); go.href = '#/security'; go.className = 'small'; go.textContent = 'Set up now';
+  b.append(t, ' ', go); document.body.prepend(b);
 }
 async function apiCall(path, opts = {}, retried) {
   // A call the overloaded server refused (503, shed) is tried again quietly (public/shed-retry.js).
@@ -127,6 +145,7 @@ async function apiCall(path, opts = {}, retried) {
   // Session expired (or signed out in another tab): go back to sign-in instead of showing errors.
   if (r.status === 401 && ME && !path.startsWith('/auth/')) { keepClear(); ME = null; location.hash = '#/login'; }
   if (r.status === 402 && d.upgrade) showUpgrade(d.feature);
+  if (r.status === 403 && d.mfaSetupRequired && location.hash !== '#/security') location.hash = '#/security';
   // Speed bump: read the risk notice (a 10-second wait), then the order is sent again once.
   if (d.needsAck && !retried && await riskNotice(d.needsAck)) { await api('/learn/ack/' + d.needsAck, { body: {} }); return apiCall(path, opts, true); }
   if (d.needsLesson && confirm(d.error + ' Open the lesson now?')) location.hash = '#/learn';
@@ -619,7 +638,7 @@ const ICONS = {
   'admin-setup': '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
   admin: '<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"/>',
   wealth: '<path d="M3 20h18M5 20V10M10 20V6M15 20v-8M20 20V4"/>', 'alpaca-tools': '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
-  'admin-alpaca': '<path d="M4 19V5l8 7 8-7v14"/>', 'admin-upgrades': '<path d="M12 19V5M5 12l7-7 7 7"/><path d="M5 21h14"/>', 'admin-sponsored': '<path d="M4 11v2a1 1 0 0 0 1 1h2l5 4V6L7 10H5a1 1 0 0 0-1 1z"/><path d="M16 8a5 5 0 0 1 0 8M19 5a9 9 0 0 1 0 14"/>', 'admin-business': '<path d="M3 7h18v13H3zM8 7V4h8v3"/>', 'admin-admins': '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>', 'admin-keys': '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/>', 'admin-database': '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+  'admin-alpaca': '<path d="M4 19V5l8 7 8-7v14"/>', 'admin-upgrades': '<path d="M12 19V5M5 12l7-7 7 7"/><path d="M5 21h14"/>', 'admin-sponsored': '<path d="M4 11v2a1 1 0 0 0 1 1h2l5 4V6L7 10H5a1 1 0 0 0-1 1z"/><path d="M16 8a5 5 0 0 1 0 8M19 5a9 9 0 0 1 0 14"/>', 'admin-business': '<path d="M3 7h18v13H3zM8 7V4h8v3"/>', 'admin-admins': '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>', 'admin-keys': '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/>', 'admin-security': '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>', 'admin-database': '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
   chart: '<path d="M7 4v16M17 6v12M4 8h6v8H4zM14 9h6v6h-6z"/>', ai: '<path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
   agents: '<path d="M3 17l6-6 4 4 8-8"/><circle cx="21" cy="7" r="1"/><path d="M3 21h18"/>', news: '<path d="M4 5h13v14H6a2 2 0 0 1-2-2zM17 9h3v8a2 2 0 0 1-2 2"/><path d="M8 9h5M8 13h5"/>',
   scanner: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5M8 11h6M11 8v6"/>', optionslab: '<path d="M3 18c4 0 5-12 9-12s5 12 9 12"/><path d="M3 21h18"/>',
@@ -1300,7 +1319,7 @@ function homeClock(view) {
   if (!view) return;
   // One clock in the whole document: drop any earlier one (another render, a wrapper) and its timer.
   stopClock(); document.querySelectorAll('#homeClock').forEach(x => x.remove());
-  const el = document.createElement('div'); el.id = 'homeClock'; el.className = 'homeclock'; el.setAttribute('role', 'timer'); el.setAttribute('aria-label', 'Current time');
+  const el = document.createElement('div'); el.id = 'homeClock'; el.className = 'homeclock'; el.setAttribute('role', 'timer'); el.setAttribute('aria-label', 'Current time'); el.dataset.noFig = ''; // a live clock and the market status for today, not a figure (page gate)
   el.innerHTML = '<b class="hc-time" dir="ltr"></b><span class="hc-date"></span><span class="hc-ny" dir="auto"></span>';
   // In the title row, right after the title (part of the Home layout).
   const h1 = $('h1', view); h1 ? h1.after(el) : view.prepend(el);
@@ -2225,7 +2244,7 @@ routes.settings = async view => {
     const r = await api('/auth/totp/setup', { body: {} });
     $('#mfabox', view).innerHTML = `<p>Add this key to your authenticator app (or open the link on your phone):</p><pre>${esc(r.secret)}</pre><p><a href="${esc(r.uri)}">${esc(r.uri.slice(0, 40))}…</a></p>
       <label>Code from the app<input id="mfacode" inputmode="numeric" maxlength="6"></label><button id="mfaon">Turn on 2FA</button><div class="err"></div>`;
-    act($('#mfaon', view), async () => { await api('/auth/totp/enable', { body: { code: $('#mfacode', view).value } }); await refreshMe(); render(); });
+    act($('#mfaon', view), async () => { const r = await api('/auth/totp/enable', { body: { code: $('#mfacode', view).value } }); if (r.recoveryCodes) showRecoveryCodes(r.recoveryCodes); await refreshMe(); render(); });
   });
   if ($('#mfaoff', view)) act($('#mfaoff', view), async () => { const v = $('#mfapw', view).value; await api('/auth/totp/disable', { body: { password: v, confirm: v } }); await refreshMe(); render(); });
   const ph = $('#ph', view);
@@ -2265,7 +2284,7 @@ const ADMIN_GROUPS = [
   ['Owner: people', [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-admins', 'Admins'], ['admin-support', 'Support inbox'], ['admin-comms', 'Calls, texts & email'], ['admin-phone', 'Phone line'], ['admin-phoneaccts', 'Phone & text accounts']]],
   ['Owner: money', [['admin-money', 'Money & fees'], ['admin-sponsored', 'Sponsored news'], ['admin-upgrades', 'Upgrades']]],
   ['Owner: site & content', [['admin-readme', 'Overview'], ['admin-seo', 'SEO'], ['admin-strategies', 'Original strategies'], ['admin-trust', 'Trust']]],
-  ['Owner: technical', [['admin-agents', 'AI team'], ['admin-ai', 'AI & privacy'], ['admin-routing', 'Routing'], ['admin-keys', 'Keys'], ['admin-data', 'Market data'], ['admin-hosting', 'Hosting'], ['admin-database', 'Database'], ['admin-analytics', 'Analytics'], ['admin-setup', 'Setup']]],
+  ['Owner: technical', [['admin-agents', 'AI team'], ['admin-ai', 'AI & privacy'], ['admin-routing', 'Routing'], ['admin-keys', 'Keys'], ['admin-security', 'Security'], ['admin-data', 'Market data'], ['admin-hosting', 'Hosting'], ['admin-database', 'Database'], ['admin-analytics', 'Analytics'], ['admin-setup', 'Setup']]],
 ];
 const ADMIN_TABS = ADMIN_GROUPS.flatMap(([, t]) => t);
 // The menu shows all of the owner's pages in one Admin section (only for admins), with a small
@@ -2410,7 +2429,7 @@ for (const k of ['trade', 'positions', 'orders']) {
 }
 // The tabs on top of every Marketplace page.
 const marketTabs = on => hubTabs(on); // the Marketplace tabs are a merged page's tabs (HUBS.marketplace)
-const shared = { adminUnlocked, safeUrl, preBuyCard, upgrade: feature => showUpgrade(feature), related: (items, here) => relatedHtml(items, here || ''), extras: () => EXTRAS, setExtras: on => { EXTRAS = on; render.navKey = null; }, marketTabs, $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, refreshMe, accounts, accountOptions, acctLabel, state, adminTabs, adminPage, secureConfirm, me: () => ME, paid: () => isPaid(ME) };
+const shared = { adminUnlocked, safeUrl, preBuyCard, upgrade: feature => showUpgrade(feature), related: (items, here) => relatedHtml(items, here || ''), extras: () => EXTRAS, setExtras: on => { EXTRAS = on; render.navKey = null; }, marketTabs, $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, refreshMe, accounts, accountOptions, acctLabel, state, adminTabs, adminPage, secureConfirm, me: () => ME, paid: () => isPaid(ME), showRecoveryCodes };
 lazyRoutes(() => import('./pages/studio.js'), 'registerStudio', shared, ["ai", "agents", "code"]);
 lazyRoutes(() => import('./pages/aichat.js'), 'registerAiChat', shared, ["admin-aichat"]);
 lazyRoutes(() => import('./pages/tradetools.js'), 'registerTradeTools', shared, ["tradetools"]);
@@ -2421,7 +2440,7 @@ lazyRoutes(() => import('./pages/optionslab.js'), 'registerOptionsLab', shared, 
 lazyRoutes(() => import('./pages/optionsdesk.js'), 'registerOptionsDesk', shared, ["options"]);
 lazyRoutes(() => import('./pages/aitools.js'), 'registerAiTools', shared, ["aitools"]);
 registerProtect(routes, shared);
-lazyRoutes(() => import('./pages/owner.js'), 'registerOwner', shared, ["admin-upgrades", "admin-business", "admin-alpaca", "admin-money", "admin-phone", "admin-phoneaccts", "admin-ai", "admin-readme", "admin-admins", "admin-keys"]);
+lazyRoutes(() => import('./pages/owner.js'), 'registerOwner', shared, ["admin-upgrades", "admin-business", "admin-alpaca", "admin-money", "admin-phone", "admin-phoneaccts", "admin-ai", "admin-readme", "admin-admins", "admin-keys", "admin-security"]);
 lazyRoutes(() => import('./pages/alts.js'), 'registerAlts', shared, ["private"]);
 lazyRoutes(() => import('./pages/money.js'), 'registerMoney', shared, ["money"]);
 lazyRoutes(() => import('./pages/rules.js'), 'registerRules', shared, ["rules"]);

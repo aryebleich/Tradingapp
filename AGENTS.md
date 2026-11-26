@@ -42,7 +42,7 @@ Grok normally doesn't push code. It writes its result as a research note or a re
    - Make one commit per finished piece.
    - `npm test` must pass before every push: `node --import ./test/setup.js --test --test-force-exit test/*.test.js`.
    - Also run `node scripts/clean-check.mjs` (CI runs it): a new file that nothing imports must be used, or listed in its KEEP list.
-   - Push to main (it deploys automatically), or to your own `ai/<assistant>-<ID>` branch when you run in GitHub Actions, where release-gates.yml tests and merges it after the review.
+   - Push to main (it deploys automatically), or, in GitHub Actions, to the task's branch `ai/task-<id>`. There release-gates.yml tests each push, and the pull request merges itself (squash) as soon as the gates pass, then deploys.
    - Pushes are the heartbeat: push at least every hour, and before long runs or when a usage limit is near.
 4. **Hand off.**
    - When you stop (done, paused, blocked or at a usage limit):
@@ -58,8 +58,20 @@ Grok normally doesn't push code. It writes its result as a research note or a re
 
 ## Reviews
 
-- When one assistant finishes a pull request, another reviews it before it merges: Codex reviews Claude's, Claude reviews Codex's, and Grok adds a market or product review when the change touches trading, pricing or AI picks.
-- Real problems are fixed before the merge. Style preferences are notes, not blockers.
+- Reviews never hold up a deploy. Right after a task pull request merges, another assistant reviews it: Codex reviews Claude's work, and Claude reviews Codex's and Grok's. Grok adds a market or product review when the change touches trading, pricing or AI picks.
+- A real problem becomes the next task at the top of the queue (`FIX-nn`). Style preferences are notes, not tasks.
+- **The exception:** pull requests that change `.github/workflows/`, LEGAL_REVIEW.md, COMPLIANCE_REVIEW.md, or anything about secrets, billing going live or live-money trading wait for the owner's `owner-approved` label (scripts/ai-loop.mjs `OWNER_PATHS`).
+
+## When an assistant hits its limit: Claude → Grok → Codex
+
+An unfinished task never waits (scripts/ai-loop.mjs `chainPick`, .github/workflows/ai-loop.yml):
+1. Claude works the task.
+2. At Claude's usage limit, the row is paused with the reset time (the Assistants table, "Reset (UTC)"). The branch and the progress note (`ai/tasks/<ID>.md`) are pushed, and the next run starts at once with Grok on the same branch.
+3. Grok codes only with XAI_API_KEY and a Grok cap above $0. It gets 3 tries to pass npm test and the clean check.
+4. When Grok can't run, or fails 3 times, Codex continues through GitHub (`@codex` on the task pull request, on the owner's ChatGPT plan).
+5. When all three are at their limits, the task waits for the first reset, and the hourly schedule continues it there. After Claude's reset, Claude is first again.
+
+Research rows go to Grok first. Whoever continues reads the branch and the progress note, never starts over, and writes "taken over from <assistant>" in the hand-off.
 
 ## Without push access (a plain web chat)
 
@@ -76,7 +88,7 @@ The whole loop runs on plans the owner already has. No per-use API key is needed
 | Assistant | How it runs | What the owner sets up once |
 | --- | --- | --- |
 | Claude | Claude Code (interactive), and the AI loop through `CLAUDE_CODE_OAUTH_TOKEN`: the owner's Claude subscription, not billed per use | `claude setup-token`, then the repository secret CLAUDE_CODE_OAUTH_TOKEN |
-| Codex | Codex in ChatGPT with GitHub access, and the Codex GitHub integration. The AI loop opens a task pull request with a brief and comments `@codex …`. On Claude's pull requests it comments `@codex review`, and Codex's verdict ("Didn't find any major issues", or findings) merges the pull request or sends it back | Connect Codex to this repo and turn on code review in Codex's settings; set the repository variable CODEX_GITHUB=1. Optionally add CODEX_MENTION_TOKEN (a token of the owner's, Pull requests: write), so the `@codex` comments come from the owner, which Codex answers |
+| Codex | Codex in ChatGPT with GitHub access, and the Codex GitHub integration. The AI loop opens a task pull request with a brief and comments `@codex …`. After Claude's pull requests merge, it comments `@codex review`. Findings become the next task; "Didn't find any major issues" means none | Connect Codex to this repo and turn on code review in Codex's settings; set the repository variable CODEX_GITHUB=1. Optionally add CODEX_MENTION_TOKEN (a token of the owner's, Pull requests: write), so the `@codex` comments come from the owner, which Codex answers |
 | Grok | grok.com with its GitHub connection, using the prompt in ai/prompts/grok.md. Results come back through the AI hand-off form, which the AI inbox workflow commits | Connect GitHub in Grok's settings |
 
 The per-use keys (OPENAI_API_KEY, XAI_API_KEY, ANTHROPIC_API_KEY) are optional extras behind the $0 caps in Admin → AI team → Work status.

@@ -58,6 +58,8 @@ const PAGES = [
   ...['dashboard', ...routes.filter(r => r !== 'dashboard')].map(r => ({ id: 'app/' + r, url: '/app#/' + r, auth: true })),
 ].filter(pg => !ONLY || ONLY.some(o => pg.id.includes(o)));
 
+// The browser's date during the gate (a Monday during market hours in New York).
+const FIXED_DAY = process.env.LAYOUT_FIXED_DAY || '2026-11-16T16:00:00Z';
 // Disclosure wording: legal text, risk warnings and regulatory notices.
 const DISC = String.raw`risk|loss|not (a |an )?(broker|adviser|advisor|investment advice|financial advice|advice|an offer|a recommendation)|hypothetical|past performance|no guarantee|not guarantee|simulated|illustrative|disclos|FINRA|SIPC|SEC\b|regulat|terms|privacy|educational|for information|paper trading|delayed|not live|fees? (may|apply)|capital|consult|license`;
 
@@ -89,6 +91,9 @@ async function measure(p, width) {
         // Relative times and countdowns tick between two loads a second apart: "1 min ago", "next in 14 min", "in 3h".
         if (/^\s?-?(mins?|minutes?|hours?|hrs?|h|seconds?|secs?|days?)\b/i.test(after) || /\bago\b|\bnext in\b|\bcloses in\b|\bopens in\b/i.test(wide)) continue;
         if (/\b\d{1,2}:\d{2}\b|\bago\b|\bsec\b|\d\s?ms\b|\b\d+s\b|\d+h\s?\d+m\b/.test(around)) continue; // clock times (4:05), countdowns (4h 53m) and live latency (8 ms), not figures
+        // Dates (11/26/2026, 2026-11-26, Nov 26, Monday): the server stamps real times (a last sign-in), and a
+        // date is never a price, fee or balance.
+        if (/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b|\b\d{4}-\d{2}-\d{2}\b|\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s\d{1,2}\b|\b\d{1,2}\s(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b|\b(Mon|Tues?|Wed|Thu|Fri|Sat|Sun)[a-z]*day\b/.test(wide)) continue;
         figs.push(m[0].replace(/\s/g, '').replace('−', '-') + '\t' + n.textContent.replace(/\s+/g, ' ').trim().slice(0, 60));
       }
     }
@@ -117,6 +122,10 @@ const results = {}, started = Date.now();
 const ctxs = {};
 for (const auth of [false, true]) {
   const c = await browser.newContext({ reducedMotion: 'reduce', bypassCSP: true });
+  // One fixed date in the browser for every page of this context, so dates the page draws (calendars, day
+  // pickers, "Monday, November 16") are the same on every run: the gate compares runs on different days
+  // against one baseline. (Set on the context: on each page it failed now and then.)
+  await c.clock.setFixedTime(new Date(FIXED_DAY));
   if (auth) await c.addCookies(session);
   ctxs[auth] = c;
 }
