@@ -63,7 +63,7 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 | OWN-02 | GitHub: delete the secret RENDER_DEPLOY_HOOK_URL, and set the variable APP_URL to https://app.brightolio.com. |
 | OWN-03 | Off-site backups: create an Oracle Object Storage pre-authenticated write URL and save it as OCI_BACKUP_PAR_URL in Admin → Keys. Backups are only on the server until then. |
 | OWN-04 | Legal sign-off on the open LEGAL_REVIEW.md items, including the regulatory status line in the footer (L6). |
-| OWN-05 | To let the assistants run automatically: add XAI_API_KEY for Grok, and raise the caps in Admin → AI team → Work status (default $0 for per-use billing). |
+| OWN-05 | To run the loop without paid keys: (1) Claude: run `claude setup-token` and add the repository secret CLAUDE_CODE_OAUTH_TOKEN; (2) Codex: connect Codex (chatgpt.com/codex) to this repo, turn on code review, set the repository variable CODEX_GITHUB=1, and optionally add CODEX_MENTION_TOKEN (your token, Pull requests: write) so @codex comments come from you; (3) Grok: connect GitHub in Grok's settings and paste ai/prompts/grok.md. Per-use keys (XAI_API_KEY, OPENAI_API_KEY) stay optional, behind the $0 caps. |
 
 ## Hand-offs
 

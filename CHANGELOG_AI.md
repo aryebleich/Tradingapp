@@ -968,3 +968,18 @@ Automatic (above). By hand: redeploy the previous tag: `curl -X POST "<deploy ho
   - scripts/ai-grok.mjs runs Grok's research and reviews.
 - **Queue:** 22 ready rows ranked by revenue and trust against effort (PRO_REVIEW.md, the growth plan, the open briefs), each with a "Done when" line and a suggested assistant. The owner-only items are in their own table.
 - **Checks:** npm test passes (606 tests, 3 known TODO reviews); actionlint passes on every workflow (its shellcheck pass not run: shellcheck is not installed here).
+
+## 2026-11-26: The loop without paid keys (Claude)
+- **Checked first:**
+  - no pull request or issue had used `@codex` yet, and the Codex bot had never commented;
+  - Grok has no GitHub bot that answers mentions; it reads repos on grok.com through its GitHub connection;
+  - CI on main had been failing since the three-assistant push (issues #57 and #58): the clean check didn't know ai/. Fixed: `ai/` is in its KEEP list, and AGENTS.md now says to run the clean check before pushing.
+- **Codex through GitHub (ChatGPT plan, no key):**
+  - ai-loop.yml takes Codex rows when the variable CODEX_GITHUB=1. It opens a draft task pull request with ai/tasks/<ID>.md and comments `@codex …` (from CODEX_MENTION_TOKEN when set).
+  - On Claude's pull requests it asks `@codex review`; the new codex-verdict job merges after "Didn't find any major issues", or sends the row back.
+  - The picker (scripts/ai-loop.mjs) prefers it over the per-use API, with no cap. src/ai-loop.js and Admin → Work status show it as not billed per use.
+- **Grok, and any web chat, through the AI hand-off inbox:**
+  - the issue form .github/ISSUE_TEMPLATE/ai-handoff.yml;
+  - the workflow ai-inbox.yml (only the owner's issues) runs scripts/ai-inbox.mjs, which checks the task, the hand-off format, no patch and nothing private, then commits the note to docs/research/ and the hand-off to the board, and closes the issue.
+- **Prompts and rules:** ai/prompts/ (all three link the form; Codex's covers being woken by `@codex`; Grok's covers its GitHub connection). AGENTS.md has a "Without paid keys" table. OWN-05 lists the one-time setup.
+- **Tests:** test/ai-loop.test.js covers Codex on the plan, the inbox parse, plan and apply, its refusals, and the workflow rules. npm test passes 610 (3 known TODO reviews); clean check and actionlint pass.

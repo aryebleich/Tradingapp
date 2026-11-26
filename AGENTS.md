@@ -64,8 +64,22 @@ Grok normally doesn't push code. It writes its result as a research note or a re
 ## Without push access (a plain web chat)
 
 - Claim nothing.
-- Read the board at the raw links and do the work in the chat.
-- End with a ready hand-off block in the exact format above, plus any patch (a unified diff). The owner pastes it into Claude Code or Codex, which commits it.
+- Read the board at the raw links (Grok: through its GitHub connection, when it has one) and do the work in the chat.
+- End with a ready hand-off block in the exact format above, plus any note or patch (a unified diff).
+- **A hand-off or a research note:** the owner pastes it into the AI hand-off form (https://github.com/aryebleich/Tradingapp/issues/new?template=ai-handoff.yml). The AI inbox workflow checks it and commits it to the board. Only the owner's issues count.
+- **A patch:** the owner pastes it into Claude Code or Codex, which test it and commit it.
+
+## Without paid keys
+
+The whole loop runs on plans the owner already has. No per-use API key is needed:
+
+| Assistant | How it runs | What the owner sets up once |
+| --- | --- | --- |
+| Claude | Claude Code (interactive), and the AI loop through `CLAUDE_CODE_OAUTH_TOKEN`: the owner's Claude subscription, not billed per use | `claude setup-token`, then the repository secret CLAUDE_CODE_OAUTH_TOKEN |
+| Codex | Codex in ChatGPT with GitHub access, and the Codex GitHub integration. The AI loop opens a task pull request with a brief and comments `@codex …`. On Claude's pull requests it comments `@codex review`, and Codex's verdict ("Didn't find any major issues", or findings) merges the pull request or sends it back | Connect Codex to this repo and turn on code review in Codex's settings; set the repository variable CODEX_GITHUB=1. Optionally add CODEX_MENTION_TOKEN (a token of the owner's, Pull requests: write), so the `@codex` comments come from the owner, which Codex answers |
+| Grok | grok.com with its GitHub connection, using the prompt in ai/prompts/grok.md. Results come back through the AI hand-off form, which the AI inbox workflow commits | Connect GitHub in Grok's settings |
+
+The per-use keys (OPENAI_API_KEY, XAI_API_KEY, ANTHROPIC_API_KEY) are optional extras behind the $0 caps in Admin → AI team → Work status.
 
 ## Never
 

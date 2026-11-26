@@ -22,7 +22,7 @@ Read the newest hand-off's **Next action**. If it is addressed to Claude, that i
 - Read the files you need from their raw links, for example https://raw.githubusercontent.com/aryebleich/Tradingapp/main/server.js. If you can't open a link, ask me to paste the file.
 - Do the work in the chat.
 
-End with exactly two blocks, for me to paste into Claude Code or Codex, which commits them:
+End with exactly two blocks. A patch goes into Claude Code or Codex, which test and commit it. A hand-off without a patch (and any research note) goes into the AI hand-off form, https://github.com/aryebleich/Tradingapp/issues/new?template=ai-handoff.yml, which the AI inbox workflow commits to the board:
 1. **Patch:** a unified diff (`git apply`-ready), or "no code change".
 2. **Hand-off:** in this exact format:
 

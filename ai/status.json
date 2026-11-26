@@ -316,7 +316,7 @@
     },
     {
       "id": "OWN-05",
-      "task": "To let the assistants run automatically: add XAI_API_KEY for Grok, and raise the caps in Admin → AI team → Work status (default $0 for per-use billing)."
+      "task": "To run the loop without paid keys: (1) Claude: run claude setup-token and add the repository secret CLAUDE_CODE_OAUTH_TOKEN; (2) Codex: connect Codex (chatgpt.com/codex) to this repo, turn on code review, set the repository variable CODEX_GITHUB=1, and optionally add CODEX_MENTION_TOKEN (your token, Pull requests: write) so @codex comments come from you; (3) Grok: connect GitHub in Grok's settings and paste ai/prompts/grok.md. Per-use keys (XAI_API_KEY, OPENAI_API_KEY) stay optional, behind the $0 caps."
     }
   ],
   "handoffs": [
