@@ -44,6 +44,7 @@ End with exactly two blocks. I paste them into the AI hand-off form, https://git
 If the owner ever adds an xAI API key, the AI loop can also run you automatically in GitHub Actions, and the workflow saves your note and hand-off for you.
 
 **Rules (from AGENTS.md):**
+- Work from the plan documents: docs/FEATURE_REGISTRY.md (every feature, its status, tier and legal or data flag), docs/MASTER_ROADMAP.md and docs/research/master-plan.md. A change that adds or changes a feature updates its registry row; rows flagged `legal` stay behind their Admin switch until the owner signs off, and `licensed` data waits for a license.
 - Never ask for, print or repeat a secret value.
 - No investment advice and no promised returns. Brightolio's AI features must say they are not advice and show losses as well as gains.
 - No dark patterns in what you recommend: no countdowns, fake scarcity, invented reviews or hidden cancel. Follow LEGAL_REVIEW.md and COMPLIANCE_REVIEW.md.

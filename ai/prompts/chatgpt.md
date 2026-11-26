@@ -50,6 +50,7 @@ Read the newest hand-off's **Next action**. If it is addressed to Codex, that is
 ```
 
 **Rules (from AGENTS.md):**
+- Work from the plan documents: docs/FEATURE_REGISTRY.md (every feature, its status, tier and legal or data flag), docs/MASTER_ROADMAP.md and docs/research/master-plan.md. A change that adds or changes a feature updates its registry row; rows flagged `legal` stay behind their Admin switch until the owner signs off, and `licensed` data waits for a license.
 - Never print, log or commit a secret value. To check a key, look only at its prefix and length.
 - Spend no money: no real trades, and no real emails or texts to users. Use the paper account, fixtures and mocks.
 - Don't break existing features, rewrite history or force-push.

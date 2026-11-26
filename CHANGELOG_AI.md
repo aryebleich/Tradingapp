@@ -4,6 +4,14 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-26: Claude, the master plan (MP-01): documents and the feature registry
+
+- Saved the owner's master plan as docs/research/master-plan.md (exactly as given, with a note that its prices and revenue figures are proposals to test).
+- New: docs/MASTER_ROADMAP.md (the phases and their status), docs/FEATURE_REGISTRY.md (287 features, each checked in the code), docs/SYSTEM_ARCHITECTURE.md and docs/SECURITY_REQUIREMENTS.md (section 19 mapped to what is in place). docs/research/growth-plan.md now carries the one revenue strategy ("Revenue"). Linked from AGENTS.md, the README overview and the paste-in prompts.
+- scripts/registry.mjs rebuilds the registry summary; test/feature-registry.test.js keeps every page and route listed and the summary current.
+- LEGAL_REVIEW.md: the L-MP section lists the four legal gates (copy trading with real money, paid trade ideas, personalized advice and a cut of trades, per-trade broker pay) and the data that needs a license.
+- Checks: npm test (628 pass), node scripts/clean-check.mjs, node scripts/readme-check.mjs.
+
 ## 2026-11-26: Claude, two end-to-end races fixed (PR #60 gates)
 
 - A message sent on the AI assistant could vanish: on load the app draws from the remembered user, then redraws when the server's fresh copy differs, and that redraw ignored a user who had already started typing. It now waits like the other background redraws (`userBusySince`, public/app.js), and the chat saves the sent message at once (public/pages/studio.js).
