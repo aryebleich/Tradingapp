@@ -18,7 +18,7 @@ The shared work board of **Claude**, **Codex (ChatGPT)** and **Grok**. Each assi
 | --- | --- | --- | --- | --- | --- |
 | Claude | TEAM-01 | active | 2026-11-26 14:05 | 84a43b1 | Finish TEAM-01, then take REV-01 (Plans and billing with credits). |
 | Codex | — | idle | 2026-11-26 14:10 | 5c80fec | Take REV-02 (Unlock with Pro labels). |
-| Grok | RES-01 | done | 2026-11-26 15:33 | 3c8ebaf | Take RES-02 (AI picks / portfolios disclosure review) when ready. |
+| Grok | RES-02 | done | 2026-11-26 15:37 | 144eb75 | Idle; available for next research or product review. |
 
 ## Queue
 
@@ -42,12 +42,12 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 | AI-02 | ready | 14 | Claude | — | — | AI work queue (AIADMIN-4 and SEVEN-6, built once): ai-queue.yml and an Admin page to list, add, cancel and prioritise queued AI tasks. Done when the Work status buttons use it. |
 | AI-03 | ready | 15 | Codex | — | — | GitHub Actions in Admin (was AIADMIN-5): recent runs, start the read-only workflows, and status, logs and health tools in the chat. Done when tested with a mocked GitHub API. |
 | QA-01 | ready | 16 | Codex | — | — | Readability checks everywhere (was SEVEN-7): reading level and jargon on every page's copy, with fixes. Done when a test fails on new hard copy. |
-| RES-02 | ready | 17 | Grok | — | — | A second opinion on the AI morning picks and AI portfolios: are the disclosures, sources and loss records clear and honest? Done when docs/research/ai-picks-review.md lists the findings, for Claude or Codex to fix. |
 | PERF-02 | ready | 18 | Codex | — | — | A smaller subset of the font (the only performance miss, 334 ms against 300 ms). Done when the subset is served, every supported language still renders, and the sizes are recorded in PERFORMANCE.md. |
 | TICK-01 | ready | 19 | Claude | — | — | The tick engine (Part B): a design note in DECISIONS.md first, reviewed by Grok for market realism, then the build. Done when the design is agreed and the first slice is tested. |
 | CHAT-04 | ready | 20 | Codex | — | — | A live check of the Codex activity stream in Admin → AI chat, with one short test message. Done when the result is written here (no message text in logs). |
 | PARTA-1 | ready | 21 | Claude | — | — | Part A items A1, A3, A4, A7 and A8 (definitions in DECISIONS.md and CHANGELOG_AI.md). Done when each one is a commit. |
 | OPS-02 | blocked | 30 | Claude | — | — | The Turso recovery window, scheduled from 2026-12-01 00:30 UTC. Done when its report and checks are read and written up. |
+| RES-02 | done | 17 | Grok | Grok | 2026-11-26 15:37 | A second opinion on the AI morning picks and AI portfolios: are the disclosures, sources and loss records clear and honest? Done when docs/research/ai-picks-review.md lists the findings, for Claude or Codex to fix. |
 | RES-01 | done | 6 | Grok | Grok | 2026-11-26 15:33 | Pricing and competitor research: plans and prices of the top retail platforms (public sources, with dates and links). Done when docs/research/pricing.md lists each one and gives 3 pricing options for Brightolio, with their trade-offs. |
 | PERF-01 | done | 0 | Codex | Codex | 2026-11-26 14:10 | Stock cards precomputed for the starter symbols and shared across workers (5c80fec). |
 | OPS-01 | done | 0 | Claude | Claude | 2026-11-26 13:55 | The Render files are removed after the DNS cutover. |
@@ -66,6 +66,13 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 ## Hand-offs
 
 Newest first. Use these fields every time; the next assistant continues from **Next action**.
+
+### 2026-11-26 15:37 UTC · Grok · RES-02 · done
+- **Last SHA:** 144eb75 (research) / 3b3cf0a (.env.example)
+- **Changed:** docs/research/ai-picks-review.md — honesty review of AI morning picks (NOT_ADVICE, loss-inclusive record, paper-first, real-money gates). Recommendations: always-visible not-advice, track-record strip, methodology blurb. Also documented XAI_API_KEY / AI providers in .env.example.
+- **Checks:** Research + docs only. Grok provider already present in src/llm.js.
+- **Blockers:** none. Owner still needs OWN-05 (XAI_API_KEY + raise Grok monthly cap) for live Grok use.
+- **Next action:** Claude: finish TEAM-01, then use RES-01 pricing note for REV-01 and RES-02 findings for any AI-picks UI polish. Codex: take REV-02.
 
 ### 2026-11-26 15:33 UTC · Grok · RES-01 · done
 - **Last SHA:** 3c8ebaf
