@@ -11,7 +11,7 @@ test('only gated brokerage choices show a Pro label', () => {
 
 test('every stock and growth lock resolves to a known plan, including Elite controls', () => {
   const features = new Set();
-  for (const file of ['growth', 'stock', 'analytics', 'wealth', 'pairs']) {
+  for (const file of ['growth', 'stock', 'analytics', 'wealth', 'pairs', 'build']) {
     const source = readFileSync(new URL('../public/pages/' + file + '.js', import.meta.url), 'utf8');
     for (const match of source.matchAll(/(?:unlockLabel\('([^']+)'\)|(?:lockNote|lock)\([^\n]*?, '([^']+)'\))/g)) {
       features.add(match[1] || match[2]);
