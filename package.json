@@ -19,7 +19,8 @@
     "comms:ui": "node test/comms-ui.mjs",
     "comms:sim": "node scripts/comms-webhook-sim.mjs",
     "tools:ui": "node test/tradetools-ui.mjs",
-    "layout:gate": "bash test/layout/gate.sh"
+    "layout:gate": "bash test/layout/gate.sh",
+    "ai:status": "node scripts/ai-status.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.99.0",

@@ -1,0 +1,32 @@
+name: AI status
+# Keeps ai/status.json in step with AI_HANDOFF.md, the shared board of Claude, Codex and Grok
+# (AGENTS.md). The assistants run `npm run ai:status` before they push; this is the safety net for a
+# push that forgot it. The JSON is public (any web chat reads it at its raw link), and
+# test/ai-status.test.js keeps secrets, emails and server addresses out of both files.
+on:
+  push:
+    branches: [main]
+    paths: ['AI_HANDOFF.md', 'scripts/ai-status.mjs']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: ai-status
+  cancel-in-progress: false
+jobs:
+  status:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with: { ref: main }
+      - uses: actions/setup-node@v7
+        with: { node-version-file: .node-version, check-latest: true }
+      - name: Generate ai/status.json
+        run: node scripts/ai-status.mjs
+      - name: Commit it when it changed
+        run: |
+          if git diff --quiet -- ai/status.json; then echo "ai/status.json is up to date"; exit 0; fi
+          git -c user.name="ai-status" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -qm "handoff: regenerate ai/status.json" -- ai/status.json
+          for i in 1 2 3; do git pull -q --rebase origin main && node scripts/ai-status.mjs --check && git push -q origin HEAD:main && exit 0; sleep 5; done
+          echo "::warning::could not push ai/status.json (main moved); the next push regenerates it"

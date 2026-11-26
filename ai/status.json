@@ -1,0 +1,339 @@
+{
+  "board": "https://raw.githubusercontent.com/aryebleich/Tradingapp/main/AI_HANDOFF.md",
+  "rules": "https://raw.githubusercontent.com/aryebleich/Tradingapp/main/AGENTS.md",
+  "about": "Generated from AI_HANDOFF.md by scripts/ai-status.mjs. Public: holds no secrets or private details.",
+  "assistants": [
+    {
+      "name": "Claude",
+      "task": "TEAM-01",
+      "state": "active",
+      "updated": "2026-11-26 14:05",
+      "lastSha": "84a43b1",
+      "next": "Finish TEAM-01, then take REV-01 (Plans and billing with credits)."
+    },
+    {
+      "name": "Codex",
+      "task": "PERF-01",
+      "state": "active",
+      "updated": "2026-11-25 17:30",
+      "lastSha": "e318623",
+      "next": "Push the local stock-card precompute (branch work/perf-01-stock-card, e8fe589) onto main, then take REV-02."
+    },
+    {
+      "name": "Grok",
+      "task": null,
+      "state": "idle",
+      "updated": null,
+      "lastSha": null,
+      "next": "Take RES-01 (pricing and competitor research)."
+    }
+  ],
+  "queue": {
+    "active": [
+      {
+        "id": "TEAM-01",
+        "state": "active",
+        "priority": null,
+        "suggested": "Claude",
+        "claimedBy": "Claude",
+        "updated": "2026-11-26 14:05",
+        "task": "Three-assistant loop: rules, board, ai/status.json, prompts, Grok provider, Admin work status, ai-loop.yml. Done when all are on main and npm test passes."
+      },
+      {
+        "id": "PERF-01",
+        "state": "active",
+        "priority": null,
+        "suggested": "Codex",
+        "claimedBy": "Codex",
+        "updated": "2026-11-25 17:30",
+        "task": "Stock cards precomputed for the starter symbols. Done when the local commit is rebased on main, npm test passes and it is pushed."
+      }
+    ],
+    "paused": [],
+    "ready": [
+      {
+        "id": "REV-01",
+        "state": "ready",
+        "priority": 1,
+        "suggested": "Claude",
+        "claimedBy": null,
+        "updated": null,
+        "task": "Plans and billing as a main section, with AI credits (buy, balance, history) using the existing Stripe test flow. Done when a test-mode purchase adds credits and tests cover it."
+      },
+      {
+        "id": "REV-02",
+        "state": "ready",
+        "priority": 2,
+        "suggested": "Codex",
+        "claimedBy": null,
+        "updated": null,
+        "task": "\"Unlock with Pro\" labels on paid-only controls before they are pressed (PRO_REVIEW #18), from one list of paid features. Done when every paid control on the 10 most-used pages is labelled and a test checks the list."
+      },
+      {
+        "id": "REV-03",
+        "state": "ready",
+        "priority": 3,
+        "suggested": "Claude",
+        "claimedBy": null,
+        "updated": null,
+        "task": "Honest trial-end reminders: an in-app notice 3 days and 1 day before a trial ends, with the price and a one-tap cancel. No countdowns. Done when tests cover the timing, the copy and the opt-out, and real email sends only with the user's comms opt-in."
+      },
+      {
+        "id": "CI-01",
+        "state": "ready",
+        "priority": 4,
+        "suggested": "Codex",
+        "claimedBy": null,
+        "updated": null,
+        "task": "Fix the failing Clean code and README run (the private README check) and the Deep check (its issue-opening step). Done when both are green on main."
+      },
+      {
+        "id": "TRUST-01",
+        "state": "ready",
+        "priority": 5,
+        "suggested": "Codex",
+        "claimedBy": null,
+        "updated": null,
+        "task": "A public status page (/status): uptime from /healthz history, the last incidents, and data-provider health, without internal details. Done when it is linked in the footer and tested."
+      },
+      {
+        "id": "RES-01",
+        "state": "ready",
+        "priority": 6,
+        "suggested": "Grok",
+        "claimedBy": null,
+        "updated": null,
+        "task": "Pricing and competitor research: plans and prices of the top retail platforms (public sources, with dates and links). Done when docs/research/pricing.md lists each one and gives 3 pricing options for Brightolio, with their trade-offs."
+      },
+      {
+        "id": "AI-01",
+        "state": "ready",
+        "priority": 7,
+        "suggested": "Claude",
+        "claimedBy": null,
+        "updated": null,
+        "task": "AI usage and caps (was AIADMIN-3): spend and tokens per day and month per provider, a monthly cap per provider ($0 default for per-use billing), and calls stop at the cap with a clear reason. Done when the tests with mocks pass."
+      },
+      {
+        "id": "PAGES-01",
+        "state": "ready",
+        "priority": 8,
+        "suggested": "Codex",
+        "claimedBy": null,
+        "updated": null,
+        "task": "The GitHub Pages deploy fails with \"No artifacts named github-pages\". Done when a Pages run is green."
+      },
+      {
+        "id": "DEV-01",
+        "state": "ready",
+        "priority": 9,
+        "suggested": "Codex",
+        "claimedBy": null,
+        "updated": null,
+        "task": "Developer API as a paid tier: usage metering per key, per-plan limits, and an OpenAPI file. Done when limits are enforced in tests and the docs page shows them."
+      },
+      {
+        "id": "TRUST-02",
+        "state": "ready",
+        "priority": 10,
+        "suggested": "Claude",
+        "claimedBy": null,
+        "updated": null,
+        "task": "Passkeys (WebAuthn) as a sign-in option, and a 2FA prompt for accounts with live trading. Done when passkey sign-up and sign-in work in the e2e tests."
+      },
+      {
+        "id": "FEAT-01",
+        "state": "ready",
+        "priority": 11,
+        "suggested": "Claude",
+        "claimedBy": null,
+        "updated": null,
+        "task": "Dividend scanner (was SEVEN-5): about 2,000 symbols, yield, safety, growth and scores, labelled not advice. Done when the scanner page and its tests are on main."
+      },
+      {
+        "id": "ONB-01",
+        "state": "ready",
+        "priority": 12,
+        "suggested": "Claude",
+        "claimedBy": null,
+        "updated": null,
+        "task": "Onboarding (was PARTA-2): a language chooser at sign-up, and the setup assistant in the chat. Done when the e2e sign-up covers both."
+      },
+      {
+        "id": "APP-01",
+        "state": "ready",
+        "priority": 13,
+        "suggested": "Codex",
+        "claimedBy": null,
+        "updated": null,
+        "task": "A smaller app.js: Home and settings load as lazy files (PRO_REVIEW #20). Done when the first-load JS is at least 25% smaller and the e2e tests pass."
+      },
+      {
+        "id": "AI-02",
+        "state": "ready",
+        "priority": 14,
+        "suggested": "Claude",
+        "claimedBy": null,
+        "updated": null,
+        "task": "AI work queue (AIADMIN-4 and SEVEN-6, built once): ai-queue.yml and an Admin page to list, add, cancel and prioritise queued AI tasks. Done when the Work status buttons use it."
+      },
+      {
+        "id": "AI-03",
+        "state": "ready",
+        "priority": 15,
+        "suggested": "Codex",
+        "claimedBy": null,
+        "updated": null,
+        "task": "GitHub Actions in Admin (was AIADMIN-5): recent runs, start the read-only workflows, and status, logs and health tools in the chat. Done when tested with a mocked GitHub API."
+      },
+      {
+        "id": "QA-01",
+        "state": "ready",
+        "priority": 16,
+        "suggested": "Codex",
+        "claimedBy": null,
+        "updated": null,
+        "task": "Readability checks everywhere (was SEVEN-7): reading level and jargon on every page's copy, with fixes. Done when a test fails on new hard copy."
+      },
+      {
+        "id": "RES-02",
+        "state": "ready",
+        "priority": 17,
+        "suggested": "Grok",
+        "claimedBy": null,
+        "updated": null,
+        "task": "A second opinion on the AI morning picks and AI portfolios: are the disclosures, sources and loss records clear and honest? Done when docs/research/ai-picks-review.md lists the findings, for Claude or Codex to fix."
+      },
+      {
+        "id": "PERF-02",
+        "state": "ready",
+        "priority": 18,
+        "suggested": "Codex",
+        "claimedBy": null,
+        "updated": null,
+        "task": "A smaller subset of the font (the only performance miss, 334 ms against 300 ms). Done when the subset is served, every supported language still renders, and the sizes are recorded in PERFORMANCE.md."
+      },
+      {
+        "id": "TICK-01",
+        "state": "ready",
+        "priority": 19,
+        "suggested": "Claude",
+        "claimedBy": null,
+        "updated": null,
+        "task": "The tick engine (Part B): a design note in DECISIONS.md first, reviewed by Grok for market realism, then the build. Done when the design is agreed and the first slice is tested."
+      },
+      {
+        "id": "CHAT-04",
+        "state": "ready",
+        "priority": 20,
+        "suggested": "Codex",
+        "claimedBy": null,
+        "updated": null,
+        "task": "A live check of the Codex activity stream in Admin → AI chat, with one short test message. Done when the result is written here (no message text in logs)."
+      },
+      {
+        "id": "PARTA-1",
+        "state": "ready",
+        "priority": 21,
+        "suggested": "Claude",
+        "claimedBy": null,
+        "updated": null,
+        "task": "Part A items A1, A3, A4, A7 and A8 (definitions in DECISIONS.md and CHANGELOG_AI.md). Done when each one is a commit."
+      }
+    ],
+    "blocked": [
+      {
+        "id": "OPS-02",
+        "state": "blocked",
+        "priority": 30,
+        "suggested": "Claude",
+        "claimedBy": null,
+        "updated": null,
+        "task": "The Turso recovery window, scheduled from 2026-12-01 00:30 UTC. Done when its report and checks are read and written up."
+      }
+    ],
+    "done": [
+      {
+        "id": "OPS-01",
+        "state": "done",
+        "priority": null,
+        "suggested": "Claude",
+        "claimedBy": "Claude",
+        "updated": "2026-11-26 13:55",
+        "task": "The Render files are removed after the DNS cutover."
+      },
+      {
+        "id": "PERF-00",
+        "state": "done",
+        "priority": null,
+        "suggested": "Claude",
+        "claimedBy": "Claude",
+        "updated": "2026-11-25 16:33",
+        "task": "Performance phase 2: CPU pool, shared caches, load test passing (PERFORMANCE.md)."
+      }
+    ]
+  },
+  "blockers": [
+    {
+      "id": "OPS-02",
+      "task": "The Turso recovery window, scheduled from 2026-12-01 00:30 UTC. Done when its report and checks are read and written up."
+    }
+  ],
+  "owner": [
+    {
+      "id": "OWN-01",
+      "task": "In the Render dashboard, remove the custom domain app.brightolio.com, then suspend the service."
+    },
+    {
+      "id": "OWN-02",
+      "task": "GitHub: delete the secret RENDER_DEPLOY_HOOK_URL, and set the variable APP_URL to https://app.brightolio.com."
+    },
+    {
+      "id": "OWN-03",
+      "task": "Off-site backups: create an Oracle Object Storage pre-authenticated write URL and save it as OCI_BACKUP_PAR_URL in Admin → Keys. Backups are only on the server until then."
+    },
+    {
+      "id": "OWN-04",
+      "task": "Legal sign-off on the open LEGAL_REVIEW.md items, including the regulatory status line in the footer (L6)."
+    },
+    {
+      "id": "OWN-05",
+      "task": "To let the assistants run automatically: add XAI_API_KEY for Grok, and raise the caps in Admin → AI team → Work status (default $0 for per-use billing)."
+    }
+  ],
+  "handoffs": [
+    {
+      "at": "2026-11-26 14:05 UTC",
+      "assistant": "Claude",
+      "task": "TEAM-01",
+      "state": "active",
+      "last_sha": "84a43b1",
+      "changed": "the three-assistant board (this file), scripts/ai-status.mjs, ai/status.json.",
+      "checks": "npm test (to be run before the push).",
+      "blockers": "none.",
+      "next_action": "Claude: finish TEAM-01 (prompts, Grok provider, Admin work status, ai-loop.yml)."
+    },
+    {
+      "at": "2026-11-26 13:55 UTC",
+      "assistant": "Claude",
+      "task": "OPS-01",
+      "state": "done",
+      "last_sha": "a00ae2e",
+      "changed": "render.yaml and src/render-redirect.js deleted, with their tests, after dns-cutover.yml confirmed that app.brightolio.com answers straight from the Oracle server (issue #55 closed).",
+      "checks": "npm test 590 pass (3 known TODO reviews).",
+      "blockers": "none.",
+      "next_action": "Codex: push PERF-01."
+    },
+    {
+      "at": "2026-11-25 17:30 UTC",
+      "assistant": "Codex",
+      "task": "PERF-01",
+      "state": "active",
+      "last_sha": "e318623",
+      "changed": "stock cards precomputed for four starter symbols and shared across workers (server.js, src/stock.js, src/memo.js, test/stock-routes.test.js). Local only, on work/perf-01-stock-card at e8fe589.",
+      "checks": "589 tests passed locally.",
+      "blockers": "not pushed yet.",
+      "next_action": "Codex: rebase onto main, run npm test and push."
+    }
+  ]
+}
