@@ -16,7 +16,7 @@ The shared work board of **Claude**, **Codex (ChatGPT)** and **Grok**. Each assi
 
 | Assistant | Task | State | Updated (UTC) | Last SHA | Next action |
 | --- | --- | --- | --- | --- | --- |
-| Claude | — | idle | 2026-11-26 16:31 | 9f8cad0 | Grok: paste ai/prompts/grok.md into grok.com and send the result through this form |
+| Claude | — | idle | 2026-11-26 16:32 | 9f8cad0 | Grok: paste ai/prompts/grok.md into grok.com and send the result through this form |
 | Codex | REV-02 | active | 2026-11-26 16:50 | f555da2 | Codex: work on PR #60 (asked with @codex; brief in ai/tasks/REV-02.md). |
 | Grok | RES-02 | done | 2026-11-26 15:37 | 144eb75 | Idle; available for next research or product review. |
 
@@ -48,7 +48,7 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 | CHAT-04 | ready | 20 | Codex | — | — | A live check of the Codex activity stream in Admin → AI chat, with one short test message. Done when the result is written here (no message text in logs). |
 | PARTA-1 | ready | 21 | Claude | — | — | Part A items A1, A3, A4, A7 and A8 (definitions in DECISIONS.md and CHANGELOG_AI.md). Done when each one is a commit. |
 | OPS-02 | blocked | 30 | Claude | — | — | The Turso recovery window, scheduled from 2026-12-01 00:30 UTC. Done when its report and checks are read and written up. |
-| SMOKE-01 | done | 0 | Claude | Claude | 2026-11-26 16:31 | End-to-end test of the AI inbox (the path Grok's results take): a hand-off through the AI hand-off form is checked and committed to the board by ai-inbox.yml. Done when the test issue is closed with the hand-off on the board. |
+| SMOKE-01 | done | 0 | Claude | Claude | 2026-11-26 16:32 | End-to-end test of the AI inbox (the path Grok's results take): a hand-off through the AI hand-off form is checked and committed to the board by ai-inbox.yml. Done when the test issue is closed with the hand-off on the board. |
 | TEAM-02 | done | 0 | Claude | Claude | 2026-11-26 16:08 | The loop without paid keys: Codex through its GitHub integration (@codex tasks and reviews, on the ChatGPT plan), Grok through grok.com with its GitHub connection plus an AI hand-off inbox (an issue form, committed by a workflow), and Claude through the subscription token. Done when ai-loop.yml, the inbox workflow, the prompts and the rules work without OPENAI_API_KEY or XAI_API_KEY, and tests cover them. |
 | TEAM-01 | done | 0 | Claude | Claude | 2026-11-26 15:41 | Three-assistant loop: rules, board, ai/status.json, prompts, Grok provider, Admin work status, ai-loop.yml. Done when all are on main and npm test passes. |
 | RES-02 | done | 17 | Grok | Grok | 2026-11-26 15:37 | A second opinion on the AI morning picks and AI portfolios: are the disclosures, sources and loss records clear and honest? Done when docs/research/ai-picks-review.md lists the findings, for Claude or Codex to fix. |
@@ -70,6 +70,13 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 ## Hand-offs
 
 Newest first. Use these fields every time; the next assistant continues from **Next action**.
+
+### 2026-11-26 16:32 UTC · Claude · SMOKE-01 · done
+- **Last SHA:** 9f8cad0
+- **Changed:** nothing in the app; an end-to-end test of the AI hand-off inbox, the path Grok's results take (form, ai-inbox.yml, the board) (from issue #61)
+- **Checks:** this issue is the test: the workflow checks it, commits it and closes the issue
+- **Blockers:** none
+- **Next action:** Grok: paste ai/prompts/grok.md into grok.com and send the result through this form
 
 ### 2026-11-26 16:31 UTC · Claude · SMOKE-01 · done
 - **Last SHA:** 9f8cad0

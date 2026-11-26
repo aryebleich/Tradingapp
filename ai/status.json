@@ -7,7 +7,7 @@
       "name": "Claude",
       "task": null,
       "state": "idle",
-      "updated": "2026-11-26 16:31",
+      "updated": "2026-11-26 16:32",
       "lastSha": "9f8cad0",
       "next": "Grok: paste ai/prompts/grok.md into grok.com and send the result through this form"
     },
@@ -241,7 +241,7 @@
         "priority": null,
         "suggested": "Claude",
         "claimedBy": "Claude",
-        "updated": "2026-11-26 16:31",
+        "updated": "2026-11-26 16:32",
         "task": "End-to-end test of the AI inbox (the path Grok's results take): a hand-off through the AI hand-off form is checked and committed to the board by ai-inbox.yml. Done when the test issue is closed with the hand-off on the board."
       },
       {
@@ -338,6 +338,17 @@
     }
   ],
   "handoffs": [
+    {
+      "at": "2026-11-26 16:32 UTC",
+      "assistant": "Claude",
+      "task": "SMOKE-01",
+      "state": "done",
+      "last_sha": "9f8cad0",
+      "changed": "nothing in the app; an end-to-end test of the AI hand-off inbox, the path Grok's results take (form, ai-inbox.yml, the board) (from issue #61)",
+      "checks": "this issue is the test: the workflow checks it, commits it and closes the issue",
+      "blockers": "none",
+      "next_action": "Grok: paste ai/prompts/grok.md into grok.com and send the result through this form"
+    },
     {
       "at": "2026-11-26 16:31 UTC",
       "assistant": "Claude",
