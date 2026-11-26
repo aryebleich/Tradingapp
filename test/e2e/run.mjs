@@ -172,7 +172,9 @@ console.log('Desktop (1360x900)');
     await p.screenshot({ path: path.join(OUT, 'trade-search.png') });
     await p.keyboard.press('ArrowDown'); await p.keyboard.press('ArrowUp'); await p.keyboard.press('Enter');
     await p.waitForFunction(() => /symbol=SPY/.test(location.hash), null, { timeout: 10000 });
-    await p.waitForSelector('#search input[name=q]'); await p.click('#search input[name=q]'); await p.waitForSelector('#symList li:has-text("Recent")');
+    // Wait for the redrawn page: the old search box still says "SPY", the new one is empty.
+    await p.waitForFunction(() => document.querySelector('#search input[name=q]')?.value === '', null, { timeout: 15000 });
+    await p.click('#search input[name=q]'); await p.waitForSelector('#symList li:has-text("Recent")', { timeout: 15000 });
   });
   await step('live: sell all matches the Alpaca account, and a sell of shares not held is refused', async () => {
     mock.autoFill = true;
