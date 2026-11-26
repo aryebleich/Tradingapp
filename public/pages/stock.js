@@ -1,3 +1,4 @@
+import { unlockLabel } from '../paid-controls.js';
 // The stock page sections (Research → Stock & fund analyzer, #/analyze?symbol=X&view=…), the
 // comparison (#/analyze/compare) and the growth-at-a-price scanner (#/scanner/valuescan).
 // Data: /api/stock (src/stock.js). Every figure says where it comes from; estimates and indicative
@@ -28,7 +29,7 @@ const big = v => (v == null || !isFinite(v) ? '-' : Math.abs(v) >= 1e12 ? `$${n(
 const pct = (v, d = 1) => (v == null ? '-' : `${(+v).toFixed(d)}%`);
 const stat = (k, v, sub = '') => `<div class="stat"><span>${k}</span><b>${v}</b>${sub ? `<small class="mu">${sub}</small>` : ''}</div>`;
 const card = (title, body, extra = '') => `<div class="card"><div class="dash-ch"><h2>${title}</h2>${extra}</div>${body}</div>`;
-const lockNote = (what, feature) => `<div class="empty lock"><b>${what}</b><button type="button" class="link" data-upgrade="${H.esc(feature)}">Unlock with Pro</button></div>`;
+const lockNote = (what, feature) => `<div class="empty lock"><b>${what}</b><button type="button" class="link" data-upgrade="${H.esc(feature)}">${unlockLabel(feature)}</button></div>`;
 const LABEL = { cheap: ['Cheap vs its history', 'pos'], fair: ['Fair vs its history', ''], expensive: ['Expensive vs its history', 'neg'], na: ['No comparison', ''] };
 
 // ---------- small SVG charts (theme colours, readable in dark mode, labelled for screen readers) ----------
@@ -169,7 +170,7 @@ async function valuescanPage(view, q) {
     <div class="chips" role="group" aria-label="Presets">${Object.entries(presets).map(([k, p]) => `<button type="button" data-preset="${k}" class="${k === pick ? 'on' : ''}" title="${H.esc(p.about)}">${H.esc(p.name)}</button>`).join('')}<button type="button" data-preset="custom" class="${pick === 'custom' ? 'on' : ''}">Your own filters</button></div>
     <form class="card" id="vf"><div class="row">${Object.entries(FLABEL).map(([k, t]) => `<label>${t}<input name="${k}" type="number" step="any"></label>`).join('')}</div>
       <div class="row"><label class="chk"><input type="checkbox" name="fcfPositive"> Positive free cash flow</label><label class="chk"><input type="checkbox" name="weakening"> Earnings falling or revenue slowing</label></div>
-      <div class="row" style="gap:8px"><button>Run</button><input name="name" placeholder="Name, to save these filters" style="max-width:240px"><label class="chk"><input type="checkbox" name="alert"> Tell me about new matches</label><button type="button" class="ghost" id="vsave">Save</button></div><div class="err"></div></form>
+      <div class="row" style="gap:8px"><button>Run</button><input name="name" placeholder="Name, to save these filters" style="max-width:240px"><label class="chk"><input type="checkbox" name="alert"> Tell me about new matches${saved.paid ? '' : ' · ' + unlockLabel('Saved scanner filters and alerts')}</label><button type="button" class="ghost" id="vsave">Save${saved.paid ? '' : ' · ' + unlockLabel('Saved scanner filters and alerts')}</button></div><div class="err"></div></form>
     ${saved.saved.length ? card('Your saved filters', `<ul class="plain">${saved.saved.map(s => `<li><a href="#" data-load="${H.esc(s.name)}">${H.esc(s.name)}</a>${s.alert ? ' <span class="pill">alerts on</span>' : ''} <button type="button" class="link small" data-del="${H.esc(s.name)}">Remove</button></li>`).join('')}</ul>`) : ''}
     <div id="vo"></div>`;
   const f = H.$('#vf', view), out = H.$('#vo', view);

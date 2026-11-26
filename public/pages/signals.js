@@ -1,3 +1,4 @@
+import { accountPlanSuffix } from '../paid-controls.js';
 // Webhooks page: private URLs that turn TradingView / TrendSpider / Zapier alerts into orders,
 // with sizing and risk rules per webhook, a test sender and the signal log.
 let H; // helpers from app.js
@@ -33,7 +34,7 @@ function hookForm(h, paid) {
     </div>
     <div class="lbl">Send orders to</div>
     <div class="chips" id="accts">
-      ${ACCTS.filter(a => a.connected || a.id === 'alpaca' || acc.includes(a.id)).map(a => `<label class="chk"><input type="checkbox" name="acct" value="${a.id}" ${acc.includes(a.id) ? 'checked' : ''}> ${H.esc(H.acctLabel(a))} ${a.id !== 'paper' && !paid ? '<span class="pill">Pro</span>' : ''}</label>`).join('')}
+      ${ACCTS.filter(a => a.connected || a.id === 'alpaca' || acc.includes(a.id)).map(a => `<label class="chk"><input type="checkbox" name="acct" value="${a.id}" ${acc.includes(a.id) ? 'checked' : ''}> ${H.esc(H.acctLabel(a))} ${accountPlanSuffix(a.id, paid)}</label>`).join('')}
     </div>
     <div class="grid2">
       <label>Order size<select name="sizeMode">
