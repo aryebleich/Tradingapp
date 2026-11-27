@@ -5,11 +5,11 @@
   "assistants": [
     {
       "name": "Claude",
-      "task": null,
-      "state": "idle",
-      "updated": "2026-11-27 18:47",
-      "lastSha": "8cb96bf",
-      "next": "Claude: FEAT-02 (insider Form 4 tracker, from docs/research/insider-congressional.md). Codex: FIX-01.",
+      "task": "FEAT-02",
+      "state": "active",
+      "updated": "2026-11-27 23:38",
+      "lastSha": "c9ba05d",
+      "next": "Working on FEAT-02 in Claude Code.",
       "reset": null
     },
     {
@@ -32,7 +32,17 @@
     }
   ],
   "queue": {
-    "active": [],
+    "active": [
+      {
+        "id": "FEAT-02",
+        "state": "active",
+        "priority": 10,
+        "suggested": "Claude",
+        "claimedBy": "Claude",
+        "updated": "2026-11-27 23:38",
+        "task": "Insider Form 4 tracker (S-11 + I-04), from docs/research/insider-congressional.md: market buys list, cluster filter, per-symbol strip, EDGAR links, lag and not-advice copy, Plus alerts optional. Done when pages and tests are on main and registry rows are updated."
+      }
+    ],
     "paused": [],
     "ready": [
       {
@@ -187,15 +197,6 @@
         "claimedBy": null,
         "updated": null,
         "task": "Phase 2, fundamentals (registry F-08, F-10, F-07). A DCF with the member's own inputs (defaults from filings, labelled an illustration), and Piotroski and Altman scores from SEC data, explained. Done when the stock page shows them with tests. See docs/FEATURE_REGISTRY.md."
-      },
-      {
-        "id": "FEAT-02",
-        "state": "ready",
-        "priority": 10,
-        "suggested": "Claude",
-        "claimedBy": null,
-        "updated": "2026-11-26 22:13",
-        "task": "Insider Form 4 tracker (S-11 + I-04), from docs/research/insider-congressional.md: market buys list, cluster filter, per-symbol strip, EDGAR links, lag and not-advice copy, Plus alerts optional. Done when pages and tests are on main and registry rows are updated."
       },
       {
         "id": "FEAT-01",

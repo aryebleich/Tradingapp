@@ -19,6 +19,8 @@ Rebuilt by `npm run ai:status`. Start every session by continuing the first row:
 
 | Task | Owner | State | Branch | Last update (UTC) | Next action |
 | --- | --- | --- | --- | --- | --- |
+| FEAT-02 | Claude | active | main | 2026-11-27 23:38 | — |
+| FIX-01 | Codex | ready | ai/task-fix-01 | 2026-11-27 19:59 UTC | Any assistant: take FIX-01 again from ai/task-fix-01 |
 | OPS-02 | Claude | blocked | main | — | — |
 <!-- open:end -->
 
@@ -26,7 +28,7 @@ Rebuilt by `npm run ai:status`. Start every session by continuing the first row:
 
 | Assistant | Task | State | Updated (UTC) | Last SHA | Next action | Reset (UTC) |
 | --- | --- | --- | --- | --- | --- | --- |
-| Claude | — | idle | 2026-11-27 18:47 | 8cb96bf | Claude: FEAT-02 (insider Form 4 tracker, from docs/research/insider-congressional.md). Codex: FIX-01. | — |
+| Claude | FEAT-02 | active | 2026-11-27 23:38 | c9ba05d | Working on FEAT-02 in Claude Code. | — |
 | Codex | FIX-01 | ready | 2026-11-27 19:59 | 91632b6 | Any assistant: take FIX-01 again from ai/task-fix-01 | — |
 | Grok | RES-03 | done | 2026-11-26 22:13 | a545db7 | Idle. FEAT-02 and FEAT-03 are ready from the research note. | — |
 
@@ -36,6 +38,7 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 
 | ID | State | Priority | Suggested | Claimed by | Updated (UTC) | Task and done when |
 | --- | --- | --- | --- | --- | --- | --- |
+| FEAT-02 | active | 10 | Claude | Claude | 2026-11-27 23:38 | Insider Form 4 tracker (S-11 + I-04), from docs/research/insider-congressional.md: market buys list, cluster filter, per-symbol strip, EDGAR links, lag and not-advice copy, Plus alerts optional. Done when pages and tests are on main and registry rows are updated. |
 | FIX-01 | ready | 1 | Codex | — | 2026-11-27 19:59 | The page gate's homepage FAQ answers at 1440 px are sometimes read as "no longer visible" (seen twice, passes on rerun). Done when the gate waits for the FAQ to settle and three runs in a row pass. See docs/FEATURE_REGISTRY.md. |
 | REV-02B | ready | 2 | Codex | — | — | Follow-up of REV-02 (PR #60): label the paid controls on the 10 most-used pages by Admin → Analytics route counts, and add a test that every entry in public/paid-controls.js matches a server check (upgrade() or needPlan()). Done when both are in. |
 | DATA-01 | ready | 3 | Codex | — | — | Phase 1, data (registry SEC-16, T-01). Label every delayed or end-of-day figure "Delayed" or "End of day" with its source, from one helper. Done when a test finds no unlabelled delayed quote on the trade, chart, scanner and stock pages. See docs/FEATURE_REGISTRY.md. |
@@ -53,7 +56,6 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 | RES-05 | ready | 9 | Grok | — | — | Data licensing scan for OWN-06 (registry flag licensed): what consolidated real-time quotes, Level II, OPRA options and options-flow or dark-pool vendor data cost to show to paying users, and the terms. Done when docs/research/data-licensing.md lists each option with dated sources. See docs/FEATURE_REGISTRY.md. |
 | MEAS-01 | ready | 9 | Claude | — | — | Measurement in Admin (docs/research/growth-plan.md): free-to-Pro conversion, the AI-credit attach rate, churn, and support tickets about surprise charges. Done when Admin shows the four numbers from the database, with tests on the math. |
 | FUND-01 | ready | 10 | Codex | — | — | Phase 2, fundamentals (registry F-08, F-10, F-07). A DCF with the member's own inputs (defaults from filings, labelled an illustration), and Piotroski and Altman scores from SEC data, explained. Done when the stock page shows them with tests. See docs/FEATURE_REGISTRY.md. |
-| FEAT-02 | ready | 10 | Claude | — | 2026-11-26 22:13 | Insider Form 4 tracker (S-11 + I-04), from docs/research/insider-congressional.md: market buys list, cluster filter, per-symbol strip, EDGAR links, lag and not-advice copy, Plus alerts optional. Done when pages and tests are on main and registry rows are updated. |
 | FEAT-01 | ready | 11 | Claude | — | — | Phase B. Dividend scanner: about 2,000 symbols, yield, safety, growth and scores, labelled not advice. Done when the scanner page and its tests are on main. |
 | FEAT-03 | ready | 11 | Codex | — | 2026-11-26 22:13 | Congressional PTR tracker (I-03), from docs/research/insider-congressional.md: House + Senate table with amount ranges, 45-day lag label, official filing links, not-advice copy. Done when the page and tests are on main and the registry row is updated. |
 | ONB-01 | ready | 12 | Claude | — | — | Phase B. Onboarding with the language choice at sign-up and the setup assistant in the chat. Done when the e2e sign-up covers both. |
