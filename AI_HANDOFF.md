@@ -16,7 +16,7 @@ The shared work board of **Claude**, **Codex (ChatGPT)** and **Grok**. Each assi
 
 | Assistant | Task | State | Updated (UTC) | Last SHA | Next action | Reset (UTC) |
 | --- | --- | --- | --- | --- | --- | --- |
-| Claude | — | idle | 2026-11-27 00:31 | 447c3c1 | Codex: AI-04B (the evidence line on picks, signals and the options strategist); Claude: DATA-01 or CHART-01 next. | — |
+| Claude | REV-03 | active | 2026-11-27 13:42 | 5129ce3 | Working on REV-03 in Claude Code. | — |
 | Codex | AI-04B | ready | 2026-11-27 10:56 | acaa5f6 | Any assistant: take AI-04B again from ai/task-ai-04b | — |
 | Grok | RES-03 | done | 2026-11-26 22:13 | a545db7 | Idle. FEAT-02 and FEAT-03 are ready from the research note. | — |
 
@@ -26,13 +26,13 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 
 | ID | State | Priority | Suggested | Claimed by | Updated (UTC) | Task and done when |
 | --- | --- | --- | --- | --- | --- | --- |
+| REV-03 | active | 4 | Claude | Claude | 2026-11-27 13:42 | Phase A. Honest trial-end notices: in-app 3 days and 1 day before a trial ends, with the price and a one-tap cancel; no countdowns. Done when tests cover the timing, the copy and the opt-out, and real email is sent only with the user's comms opt-in. |
 | AI-04B | ready | 2 | Codex | — | 2026-11-27 10:56 | Follow-up of AI-04 (registry A-19): add the evidence line (src/ai-evidence.js evidence(), shown with H.evidenceHtml) to the AI morning picks, AI signals and the options desk's AI strategist and contract explainer. Done when test/ai-evidence.test.js also checks those routes and A-19 is done. See docs/FEATURE_REGISTRY.md. The loop runs so far failed only because GitHub refused to open the pull request (OWN-08). |
 | REV-02B | ready | 2 | Codex | — | — | Follow-up of REV-02 (PR #60): label the paid controls on the 10 most-used pages by Admin → Analytics route counts, and add a test that every entry in public/paid-controls.js matches a server check (upgrade() or needPlan()). Done when both are in. |
 | DATA-01 | ready | 3 | Codex | — | — | Phase 1, data (registry SEC-16, T-01). Label every delayed or end-of-day figure "Delayed" or "End of day" with its source, from one helper. Done when a test finds no unlabelled delayed quote on the trade, chart, scanner and stock pages. See docs/FEATURE_REGISTRY.md. |
 | CHART-01 | ready | 3 | Codex | — | — | Phase 1, charting (registry T-05, T-04). Linked symbol, timeframe and crosshair across the 2- and 4-chart layouts, and drawings saved to the account instead of the device. Done when the e2e chart flow covers both and the rows are updated. See docs/FEATURE_REGISTRY.md. |
 | AIP-01 | ready | 3 | Codex | — | — | Phase A. The AI picks honesty UI (docs/research/ai-picks-review.md): on the AI morning picks and AI portfolios, an always-visible not-advice line, a track-record strip that includes losses, and a short methodology note. Done when each page shows all three and a test checks them. |
 | HOTKEY-01 | ready | 4 | Codex | — | — | Phase 1, terminal (registry T-16). Configurable trading hotkeys (buy, sell, cancel all, flatten), off by default, paper first, and the usual step-up before any real-money order. Done when unit and e2e tests cover paper and the live step-up. See docs/FEATURE_REGISTRY.md. |
-| REV-03 | ready | 4 | Claude | — | — | Phase A. Honest trial-end notices: in-app 3 days and 1 day before a trial ends, with the price and a one-tap cancel; no countdowns. Done when tests cover the timing, the copy and the opt-out, and real email is sent only with the user's comms opt-in. |
 | SCAN-01 | ready | 5 | Claude | — | — | Phase 2, scanners (registry S-02, S-03). Premarket and after-hours scanners: gappers and volume from 4:00 New York time and after the close, each figure labelled real time or delayed. Done when both scanners are on #/scanner with tests and the rows are updated. See docs/FEATURE_REGISTRY.md. |
 | RES-04 | ready | 5 | Grok | — | — | Market-realism review of the price ladder (DECISIONS.md MP-3: Pro $14.99, Elite $39.99, Ultimate $89.99, Institutional from $499) against TradingView, Robinhood Gold and AI trading tools today. Done when docs/research/pricing-ladder-review.md lists what to keep or change, with dated sources. See docs/FEATURE_REGISTRY.md. |
 | CI-01 | ready | 5 | Codex | — | — | Fix the Deep check (its issue-opening step). The clean-check part is done: the ai/ allowlist is on main (dc4d309), the same rule as the prepared branch ai/grok-ci-01-clean-check, which is superseded. Done when the Deep check is green on main. |

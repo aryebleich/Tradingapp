@@ -5,11 +5,11 @@
   "assistants": [
     {
       "name": "Claude",
-      "task": null,
-      "state": "idle",
-      "updated": "2026-11-27 00:31",
-      "lastSha": "447c3c1",
-      "next": "Codex: AI-04B (the evidence line on picks, signals and the options strategist); Claude: DATA-01 or CHART-01 next.",
+      "task": "REV-03",
+      "state": "active",
+      "updated": "2026-11-27 13:42",
+      "lastSha": "5129ce3",
+      "next": "Working on REV-03 in Claude Code.",
       "reset": null
     },
     {
@@ -32,7 +32,17 @@
     }
   ],
   "queue": {
-    "active": [],
+    "active": [
+      {
+        "id": "REV-03",
+        "state": "active",
+        "priority": 4,
+        "suggested": "Claude",
+        "claimedBy": "Claude",
+        "updated": "2026-11-27 13:42",
+        "task": "Phase A. Honest trial-end notices: in-app 3 days and 1 day before a trial ends, with the price and a one-tap cancel; no countdowns. Done when tests cover the timing, the copy and the opt-out, and real email is sent only with the user's comms opt-in."
+      }
+    ],
     "paused": [],
     "ready": [
       {
@@ -88,15 +98,6 @@
         "claimedBy": null,
         "updated": null,
         "task": "Phase 1, terminal (registry T-16). Configurable trading hotkeys (buy, sell, cancel all, flatten), off by default, paper first, and the usual step-up before any real-money order. Done when unit and e2e tests cover paper and the live step-up. See docs/FEATURE_REGISTRY.md."
-      },
-      {
-        "id": "REV-03",
-        "state": "ready",
-        "priority": 4,
-        "suggested": "Claude",
-        "claimedBy": null,
-        "updated": null,
-        "task": "Phase A. Honest trial-end notices: in-app 3 days and 1 day before a trial ends, with the price and a one-tap cancel; no countdowns. Done when tests cover the timing, the copy and the opt-out, and real email is sent only with the user's comms opt-in."
       },
       {
         "id": "SCAN-01",
