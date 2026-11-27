@@ -141,6 +141,15 @@ export const scannerRouter = (() => {
   const r = express.Router();
   r.use(requireUser);
   r.get('/meta', (req, res) => res.json({ universes: Object.fromEntries(Object.entries(UNIVERSES).map(([k, v]) => [k, { name: v.name, count: v.symbols.length }])), patterns: PATTERNS, timeframes: Object.keys(TF), intraday: D.dataEnabled() }));
+  // Premarket and after-hours movers (src/extscan.js). Free shows the top 5; paid plans the full list.
+  r.get('/extended', async (req, res) => {
+    const { extendedScan } = await import('./extscan.js'), { isPaid } = await import('./fees.js');
+    try {
+      const d = await extendedScan(req.query.session === 'after' ? 'after' : 'pre');
+      const paid = isPaid(req.user);
+      res.json({ ...d, rows: paid ? d.rows : d.rows.slice(0, 5), more: paid ? 0 : Math.max(0, d.rows.length - 5), paid });
+    } catch (e) { res.status(503).json({ error: 'Premarket and after-hours prices are not available right now.', available: false }); }
+  });
   r.post('/run', async (req, res) => {
     if (!rateLimit('scan:' + req.user.id, 30, 3600e3)) throw bad('Too many scans this hour', 429);
     res.json(await scanOnce(req.user.id, req.body || {}));

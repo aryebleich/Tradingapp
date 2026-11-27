@@ -18,7 +18,7 @@ Rebuilt by `node scripts/registry.mjs` from the rows below: 287 features.
 | --- | --- | --- | --- |
 | 1. Professional trading terminal | 7 | 8 | 3 |
 | 2. Brightolio AI | 13 | 6 | 0 |
-| 3. Advanced market scanners | 3 | 11 | 5 |
+| 3. Advanced market scanners | 5 | 11 | 3 |
 | 4. Automated trading ecosystem | 15 | 3 | 0 |
 | 5. Institutional financial intelligence | 4 | 6 | 6 |
 | 6. Complete portfolio management | 15 | 1 | 0 |
@@ -35,7 +35,7 @@ Rebuilt by `node scripts/registry.mjs` from the rows below: 287 features.
 | 17. Brightolio Developer Cloud | 1 | 6 | 5 |
 | 18. Mobile and desktop ecosystem | 6 | 5 | 1 |
 | 19. Security and infrastructure | 10 | 7 | 1 |
-| **All** | **114** | **115** | **58** |
+| **All** | **116** | **115** | **56** |
 
 ### The 20 biggest gaps
 
@@ -47,22 +47,22 @@ Missing or partial rows with the highest value for the effort (V/E), legal and l
 | 2 | S-11 | Insider buying tracker | missing | 5/2 |
 | 3 | I-04 | Insider transactions | missing | 5/2 |
 | 4 | T-16 | Trading hotkeys | missing | 4/2 |
-| 5 | S-02 | Premarket scanner | missing | 4/2 |
-| 6 | S-03 | After-hours scanner | missing | 4/2 |
-| 7 | I-03 | Congressional stock trading tracker | missing | 4/2 |
-| 8 | N-13 | Real-time news alerts | missing | 4/2 |
-| 9 | F-08 | Discounted cash flow models | missing | 4/2 |
-| 10 | J-08 | Time-of-day performance | missing | 4/2 |
-| 11 | AL-05 | News alerts | missing | 4/2 |
-| 12 | T-05 | Multiple synchronized charts | partial | 4/2 |
-| 13 | S-04 | Unusual volume scanner | partial | 4/2 |
-| 14 | S-05 | Breakout scanner | partial | 4/2 |
-| 15 | S-13 | Dividend scanner | partial | 4/2 |
-| 16 | S-19 | Financial market heatmaps | partial | 4/2 |
-| 17 | I-05 | SEC filings monitor | partial | 4/2 |
-| 18 | I-16 | Economic intelligence dashboard | partial | 4/2 |
-| 19 | N-03 | Economic calendars | partial | 4/2 |
-| 20 | F-02 | Balance sheets | partial | 4/2 |
+| 5 | I-03 | Congressional stock trading tracker | missing | 4/2 |
+| 6 | N-13 | Real-time news alerts | missing | 4/2 |
+| 7 | F-08 | Discounted cash flow models | missing | 4/2 |
+| 8 | J-08 | Time-of-day performance | missing | 4/2 |
+| 9 | AL-05 | News alerts | missing | 4/2 |
+| 10 | T-05 | Multiple synchronized charts | partial | 4/2 |
+| 11 | S-04 | Unusual volume scanner | partial | 4/2 |
+| 12 | S-05 | Breakout scanner | partial | 4/2 |
+| 13 | S-13 | Dividend scanner | partial | 4/2 |
+| 14 | S-19 | Financial market heatmaps | partial | 4/2 |
+| 15 | I-05 | SEC filings monitor | partial | 4/2 |
+| 16 | I-16 | Economic intelligence dashboard | partial | 4/2 |
+| 17 | N-03 | Economic calendars | partial | 4/2 |
+| 18 | F-02 | Balance sheets | partial | 4/2 |
+| 19 | F-03 | Income statements | partial | 4/2 |
+| 20 | F-04 | Cash flow statements | partial | 4/2 |
 <!-- summary:end -->
 
 ## 1. Professional trading terminal
@@ -117,8 +117,8 @@ Missing or partial rows with the highest value for the effort (V/E), legal and l
 | ID | Feature | Status | Where | Missing to be professional | Product | Tier | Flag | V/E |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | S-01 | Real-time stock scanner | partial | src/scanner.js (every 5 minutes on paid plans), #/scanner | Streaming scans on live ticks (needs T-01's real-time data) | Scanner | Elite | licensed | 4/4 |
-| S-02 | Premarket scanner | missing | — (src/scanner.js runs in the session) | Premarket gappers and volume from 4:00 New York time, labelled delayed or real time | Scanner | Pro | member | 4/2 |
-| S-03 | After-hours scanner | missing | — | After-hours movers on earnings, same as S-02 | Scanner | Pro | member | 4/2 |
+| S-02 | Premarket scanner | done | src/extscan.js, /api/scanners/extended, the premarket card on #/scanner (public/pages/build.js) | Volume for the session itself needs minute bars; consolidated (SIP) prices need the data subscription | Scanner | Pro | member | 4/2 |
+| S-03 | After-hours scanner | done | src/extscan.js, /api/scanners/extended, the after-hours card on #/scanner (public/pages/build.js) | Volume for the session itself needs minute bars; consolidated (SIP) prices need the data subscription | Scanner | Pro | member | 4/2 |
 | S-04 | Unusual volume scanner | partial | src/scanner.js volume rules, src/overview.js most actives | A preset with relative volume against the 20-day average | Scanner | Pro | — | 4/2 |
 | S-05 | Breakout scanner | partial | src/scanner.js rules and candlestick patterns | Presets: 52-week high, range breakout, with the chart | Scanner | Pro | — | 4/2 |
 | S-06 | Momentum scanner | partial | #/leaders (New leaders) | Rate-of-change and relative-strength presets | Scanner | Pro | — | 3/2 |

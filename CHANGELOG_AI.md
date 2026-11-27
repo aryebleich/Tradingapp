@@ -4,6 +4,13 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-27: Claude, SCAN-01: premarket and after-hours movers
+
+- src/extscan.js: the biggest movers from 4:00 New York time to the open (against yesterday's close) and from the close to 8:00 PM (against today's close), over the most active stocks plus a fixed set of liquid names, from market-data snapshots, shared for a minute. Only trades from that session today count, and prices under $1 are left out. Every answer names its data source: real time from IEX (one exchange, partial volume), consolidated, or 15-minute delayed.
+- GET /api/scanners/extended?session=pre|after (src/scanner.js): free members see the top 5 with "Unlock with Pro" for the rest (public/paid-controls.js), paid plans the full list. A card with Premarket and After hours tabs sits at the top of #/scanner, with a note that such moves can reverse and that it is information, not advice. Yiddish added.
+- test/extscan.test.js: session windows, the base prices, the $1 floor, the source labels, and the note outside the session.
+- Registry S-02 and S-03 done.
+
 ## 2026-11-27: Claude, AI-04B (taken over from Codex): the evidence line everywhere the AI answers
 
 - AI morning picks (src/newspicks.js), AI signals (src/aisignals.js) and the options desk's AI strategist, contract explainer and position review (src/optionsdesk.js) carry the evidence block, and their pages show it (growth.js, aitrade.js, optionsdesk.js).

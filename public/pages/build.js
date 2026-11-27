@@ -15,9 +15,32 @@ const tabsHtml = (list, on) => `<div class="seg pagetabs">${list.map(([k, t]) =>
 const wireTabs = (view, route) => H.$$('[data-tab]', view).forEach(b => (b.onclick = () => (location.hash = `#/${route}?tab=${b.dataset.tab}`)));
 const ago = t => { const m = Math.round((Date.now() - t) / 60e3); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : H.date(t); };
 
+// ---------- premarket and after-hours movers (src/extscan.js, SCAN-01) ----------
+async function extendedCard(view, session) {
+  // Wait for the scanner page itself to be drawn (it replaces the view's content once its data is in).
+  for (let i = 0; i < 100 && !H.$('.pagehead', view); i++) await new Promise(r => setTimeout(r, 100));
+  if (!view.isConnected || !H.$('.pagehead', view)) return;
+  // At the end of the page, so nothing above it moves when it loads.
+  let el = H.$('#extScan', view);
+  if (!el) { el = document.createElement('div'); el.className = 'card'; el.id = 'extScan'; view.append(el); }
+  const st = (await import('../market-calendar.js')).marketStatus();
+  const ses = session || (st.status === 'after-hours' || (st.status === 'closed' && st.minutes >= 960) ? 'after' : 'pre');
+  el.innerHTML = '<p class="mu">Loading premarket and after-hours movers…</p>';
+  const d = await H.api('/scanners/extended?session=' + ses).catch(e => ({ error: e.message }));
+  const pct = x => `${x > 0 ? '+' : ''}${x.toFixed(2)}%`, time = t => new Date(t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' });
+  el.innerHTML = `<div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">Premarket and after-hours movers</h2>
+    <div class="seg" role="group" aria-label="Session"><button type="button" data-ses="pre" class="${ses === 'pre' ? 'on' : ''}">Premarket</button><button type="button" data-ses="after" class="${ses === 'after' ? 'on' : ''}">After hours</button></div></div>
+    ${d.error || d.available === false ? `<p class="mu">${H.esc(d.reason || d.error)}</p>` : `
+    <p class="mu small-print" data-no-fig>${H.esc(d.status || '')}. Prices: ${H.esc(d.data?.label || '')}.${d.note ? ' ' + H.esc(d.note) : ''}</p>
+    ${d.rows.length ? `<div class="tablewrap" tabindex="0" role="region" aria-label="Movers"><table class="slim"><thead><tr><th>Symbol</th><th class="num">Last</th><th class="num">${ses === 'pre' ? 'vs yesterday\'s close' : 'vs today\'s close'}</th><th class="num">Last trade (New York)</th></tr></thead><tbody data-no-fig>${d.rows.map(r => `<tr><td><a href="#/chart?symbol=${encodeURIComponent(r.symbol)}" data-no-tr><b>${H.esc(r.symbol)}</b></a></td><td class="num">${H.money(r.last)}</td><td class="num ${r.gapPct >= 0 ? 'pos' : 'neg'}">${pct(r.gapPct)}</td><td class="num">${time(r.lastTradeAt)}</td></tr>`).join('')}</tbody></table></div>` : `<p class="mu">No ${ses === 'pre' ? 'premarket' : 'after-hours'} trades yet today in the list.</p>`}
+    ${d.more ? `<p class="small-print">${d.more} more on the full list. <a href="#/funding">${H.esc(unlockLabel('Full premarket and after-hours lists'))}</a></p>` : ''}
+    <p class="mu small-print">A move outside the regular session can reverse at the open, and thin trading makes prices jump. Information, not advice.</p>`}`;
+  H.$$('[data-ses]', el).forEach(b => (b.onclick = () => extendedCard(view, b.dataset.ses)));
+}
 // ---------- scanner ----------
 async function scanner(view) {
   const [meta, saved, accts] = await Promise.all([H.api('/scanners/meta'), H.api('/scanners'), H.accounts()]);
+  setTimeout(() => extendedCard(view).catch(() => {}), 0);
   view.innerHTML = `<div class="pagehead"><h1>Scanner</h1><p class="mu">Check a list of stocks or crypto against your rules and candlestick patterns. Saved scanners run around the clock: stocks during market hours, crypto any time, and alert you or buy.</p></div>
     <div class="banner">New: <a href="#/leaders"><b>New leaders</b></a>: stocks whose relative strength just jumped into the top fifth, at or near a 52-week high.</div>
   <div class="card" id="gv"><div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">Growth and value stocks</h2><div class="seg" id="gvTab"><button type="button" data-g="growth" class="on">Growth</button><button type="button" data-g="value">Value</button></div></div>

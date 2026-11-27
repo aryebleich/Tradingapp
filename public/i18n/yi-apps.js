@@ -11,5 +11,7 @@ export const strings = {
   'iPhone and iPad': 'iPhone און iPad', 'This device': 'דער מכשיר',
   "You're offline. Watchlists show what was saved on your last visit; trading needs a connection.": 'איר זענט נישט פארבונדן. וואטשליסטס ווייזן וואס איז געהיטן געווארן ביים לעצטן באזוך; טרעידן דארף א פארבינדונג.',
   'Manage or cancel': 'פארוואלט אדער קענסלט', 'Email me 3 days and 1 day before my trial ends': 'שיקט מיר אן אימעיל 3 טעג און 1 טאג איידער מיין פרובע ענדיגט זיך',
+  'Premarket and after-hours movers': 'פרי-מארקעט און נאך-שעה באוועגונגען', 'Premarket': 'פרי-מארקעט', 'After hours': 'נאך די שעה', 'Last trade (New York)': 'לעצטער טרעיד (ניו יארק)',
+  'A move outside the regular session can reverse at the open, and thin trading makes prices jump. Information, not advice.': 'א באוועגונג אויסער די רעגולערע שעה קען זיך אומדרייען ביים עפענען, און ווייניג טרעידן מאכט פרייזן שפרינגען. אינפארמאציע, נישט קיין עצה.',
   'For teams and firms': 'פאר גרופעס און פירמעס', 'On an annual contract; no card is taken here.': 'אויף א יערליכן קאנטראקט; קיין קארטל ווערט דא נישט גענומען.', 'Talk to us': 'רעדט מיט אונז',
 };

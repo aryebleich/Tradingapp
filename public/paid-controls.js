@@ -16,6 +16,7 @@ export const requiredPlan = Object.freeze({
   'AI intraday trading': 'Elite',
   'Dividend safety scores': 'Pro',
   'Live statistical arbitrage refresh': 'Pro',
+  'Full premarket and after-hours lists': 'Pro',
 });
 
 export function unlockLabel(feature) {
