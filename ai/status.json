@@ -5,11 +5,11 @@
   "assistants": [
     {
       "name": "Claude",
-      "task": "AI-04B",
-      "state": "active",
-      "updated": "2026-11-27 15:31",
-      "lastSha": "24d1579",
-      "next": "Working on AI-04B in Claude Code (taken over from Codex).",
+      "task": null,
+      "state": "idle",
+      "updated": "2026-11-27 15:37",
+      "lastSha": "2952f95",
+      "next": "Claude: SCAN-01 (premarket and after-hours scanners). Codex: FIX-01, or batch the open task branches (AGENTS.md).",
       "reset": null
     },
     {
@@ -32,17 +32,7 @@
     }
   ],
   "queue": {
-    "active": [
-      {
-        "id": "AI-04B",
-        "state": "active",
-        "priority": 2,
-        "suggested": "Codex",
-        "claimedBy": "Claude",
-        "updated": "2026-11-27 15:31",
-        "task": "Follow-up of AI-04 (registry A-19): add the evidence line (src/ai-evidence.js evidence(), shown with H.evidenceHtml) to the AI morning picks, AI signals and the options desk's AI strategist and contract explainer. Done when test/ai-evidence.test.js also checks those routes and A-19 is done. See docs/FEATURE_REGISTRY.md. The loop runs so far failed only because GitHub refused to open the pull request (OWN-08)."
-      }
-    ],
+    "active": [],
     "paused": [],
     "ready": [
       {
@@ -412,6 +402,15 @@
     ],
     "done": [
       {
+        "id": "AI-04B",
+        "state": "done",
+        "priority": 2,
+        "suggested": "Codex",
+        "claimedBy": "Claude",
+        "updated": "2026-11-27 15:37",
+        "task": "Follow-up of AI-04 (registry A-19): add the evidence line (src/ai-evidence.js evidence(), shown with H.evidenceHtml) to the AI morning picks, AI signals and the options desk's AI strategist and contract explainer. Done when test/ai-evidence.test.js also checks those routes and A-19 is done. See docs/FEATURE_REGISTRY.md. The loop runs so far failed only because GitHub refused to open the pull request (OWN-08)."
+      },
+      {
         "id": "LOOP-01",
         "state": "done",
         "priority": null,
@@ -644,6 +643,17 @@
   ],
   "handoffs": [
     {
+      "at": "2026-11-27 15:37 UTC",
+      "assistant": "Claude",
+      "task": "AI-04B",
+      "state": "done",
+      "last_sha": "2952f95",
+      "changed": "LOOP-01 (no owner gate, Owner later, Unfinished tasks overview, batch pull requests, the loop merges without a pull request when GitHub refuses one), PRICE-01 (Admin → Prices with currency and effective date, Stripe live switch off, no price in the code), AI-04B (evidence on picks, signals, options AI). Choices: the app's plan names stay; the live-trading and email/text guards are the existing member opt-in and provider keys; tests enter prices through setPrice (taken over from Codex)",
+      "checks": "npm test 656 pass; clean check; actionlint on ai-loop, release-gates, batch-close; page gate re-measured on the six pages with prices",
+      "blockers": "single blocker: GitHub → Settings → Actions → General → Workflow permissions ('Read and write' and 'Allow GitHub Actions to create and approve pull requests'). The proxy refuses that API path and the workflows' token can never get the administration permission. Until then the loop merges task branches without a pull request, and Codex via @codex can't be asked. Also by GitHub's rule the built-in token can't push workflow files.",
+      "next_action": "Claude: SCAN-01 (premarket and after-hours scanners). Codex: FIX-01, or batch the open task branches (AGENTS.md)."
+    },
+    {
       "at": "2026-11-27 13:46 UTC",
       "assistant": "Claude",
       "task": "REV-03",
@@ -741,17 +751,6 @@
       "checks": "npm test 627 pass (3 known TODO); clean check",
       "blockers": "none",
       "next_action": "Owner: try Admin → Security (off by default). Claude: TEAM-03 next."
-    },
-    {
-      "at": "2026-11-26 16:32 UTC",
-      "assistant": "Claude",
-      "task": "SMOKE-01",
-      "state": "done",
-      "last_sha": "9f8cad0",
-      "changed": "nothing in the app; an end-to-end test of the AI hand-off inbox, the path Grok's results take (form, ai-inbox.yml, the board) (from issue #61)",
-      "checks": "this issue is the test: the workflow checks it, commits it and closes the issue",
-      "blockers": "none",
-      "next_action": "Grok: paste ai/prompts/grok.md into grok.com and send the result through this form"
     }
   ]
 }

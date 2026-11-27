@@ -19,7 +19,6 @@ Rebuilt by `npm run ai:status`. Start every session by continuing the first row:
 
 | Task | Owner | State | Branch | Last update (UTC) | Next action |
 | --- | --- | --- | --- | --- | --- |
-| AI-04B | Codex | active | ai/task-ai-04b | 2026-11-27 10:56 UTC | Any assistant: take AI-04B again from ai/task-ai-04b |
 | OPS-02 | Claude | blocked | main | — | — |
 <!-- open:end -->
 
@@ -27,7 +26,7 @@ Rebuilt by `npm run ai:status`. Start every session by continuing the first row:
 
 | Assistant | Task | State | Updated (UTC) | Last SHA | Next action | Reset (UTC) |
 | --- | --- | --- | --- | --- | --- | --- |
-| Claude | AI-04B | active | 2026-11-27 15:31 | 24d1579 | Working on AI-04B in Claude Code (taken over from Codex). | — |
+| Claude | — | idle | 2026-11-27 15:37 | 2952f95 | Claude: SCAN-01 (premarket and after-hours scanners). Codex: FIX-01, or batch the open task branches (AGENTS.md). | — |
 | Codex | AI-04B | ready | 2026-11-27 10:56 | acaa5f6 | Any assistant: take AI-04B again from ai/task-ai-04b | — |
 | Grok | RES-03 | done | 2026-11-26 22:13 | a545db7 | Idle. FEAT-02 and FEAT-03 are ready from the research note. | — |
 
@@ -37,7 +36,6 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 
 | ID | State | Priority | Suggested | Claimed by | Updated (UTC) | Task and done when |
 | --- | --- | --- | --- | --- | --- | --- |
-| AI-04B | active | 2 | Codex | Claude | 2026-11-27 15:31 | Follow-up of AI-04 (registry A-19): add the evidence line (src/ai-evidence.js evidence(), shown with H.evidenceHtml) to the AI morning picks, AI signals and the options desk's AI strategist and contract explainer. Done when test/ai-evidence.test.js also checks those routes and A-19 is done. See docs/FEATURE_REGISTRY.md. The loop runs so far failed only because GitHub refused to open the pull request (OWN-08). |
 | FIX-01 | ready | 1 | Codex | — | — | The page gate's homepage FAQ answers at 1440 px are sometimes read as "no longer visible" (seen twice, passes on rerun). Done when the gate waits for the FAQ to settle and three runs in a row pass. See docs/FEATURE_REGISTRY.md. |
 | REV-02B | ready | 2 | Codex | — | — | Follow-up of REV-02 (PR #60): label the paid controls on the 10 most-used pages by Admin → Analytics route counts, and add a test that every entry in public/paid-controls.js matches a server check (upgrade() or needPlan()). Done when both are in. |
 | DATA-01 | ready | 3 | Codex | — | — | Phase 1, data (registry SEC-16, T-01). Label every delayed or end-of-day figure "Delayed" or "End of day" with its source, from one helper. Done when a test finds no unlabelled delayed quote on the trade, chart, scanner and stock pages. See docs/FEATURE_REGISTRY.md. |
@@ -78,6 +76,7 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 | TICK-01 | later | 19 | Claude | — | — | The tick engine (Part B): a design note in DECISIONS.md first, reviewed by Grok for market realism, then the build. Done when the design is agreed and the first slice is tested. |
 | CHAT-04 | later | 20 | Codex | — | — | A live check of the Codex activity stream in Admin → AI chat, with one short test message. Done when the result is written here (no message text in logs). |
 | PARTA-1 | later | 21 | Claude | — | — | Part A items A1, A3, A4, A7 and A8 (definitions in DECISIONS.md and CHANGELOG_AI.md). Done when each one is a commit. |
+| AI-04B | done | 2 | Codex | Claude | 2026-11-27 15:37 | Follow-up of AI-04 (registry A-19): add the evidence line (src/ai-evidence.js evidence(), shown with H.evidenceHtml) to the AI morning picks, AI signals and the options desk's AI strategist and contract explainer. Done when test/ai-evidence.test.js also checks those routes and A-19 is done. See docs/FEATURE_REGISTRY.md. The loop runs so far failed only because GitHub refused to open the pull request (OWN-08). |
 | LOOP-01 | done | 0 | Claude | Claude | 2026-11-27 15:28 | The loop without the owner: GitHub settings checked, the owner-approved gate removed, Owner later, the Unfinished tasks overview, batch pull requests. Done in 5271077. |
 | PRICE-01 | done | 0 | Claude | Claude | 2026-11-27 15:28 | Prices only from Admin → Prices (currency, effective date, history) and the Stripe live switch; no price in the code. |
 | REV-03 | done | 4 | Claude | Claude | 2026-11-27 13:46 | Phase A. Honest trial-end notices: in-app 3 days and 1 day before a trial ends, with the price and a one-tap cancel; no countdowns. Done when tests cover the timing, the copy and the opt-out, and real email is sent only with the user's comms opt-in. |
@@ -118,6 +117,13 @@ Things only the owner can do, whenever it suits. **None of them blocks a task:**
 ## Hand-offs
 
 Newest first. Use these fields every time; the next assistant continues from **Next action**.
+
+### 2026-11-27 15:37 UTC · Claude · AI-04B · done
+- **Last SHA:** 2952f95
+- **Changed:** LOOP-01 (no owner gate, Owner later, Unfinished tasks overview, batch pull requests, the loop merges without a pull request when GitHub refuses one), PRICE-01 (Admin → Prices with currency and effective date, Stripe live switch off, no price in the code), AI-04B (evidence on picks, signals, options AI). Choices: the app's plan names stay; the live-trading and email/text guards are the existing member opt-in and provider keys; tests enter prices through setPrice (taken over from Codex)
+- **Checks:** npm test 656 pass; clean check; actionlint on ai-loop, release-gates, batch-close; page gate re-measured on the six pages with prices
+- **Blockers:** single blocker: GitHub → Settings → Actions → General → Workflow permissions ('Read and write' and 'Allow GitHub Actions to create and approve pull requests'). The proxy refuses that API path and the workflows' token can never get the administration permission. Until then the loop merges task branches without a pull request, and Codex via @codex can't be asked. Also by GitHub's rule the built-in token can't push workflow files.
+- **Next action:** Claude: SCAN-01 (premarket and after-hours scanners). Codex: FIX-01, or batch the open task branches (AGENTS.md).
 
 ### 2026-11-27 13:46 UTC · Claude · REV-03 · done
 - **Last SHA:** 0d0c595
