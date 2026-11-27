@@ -5,11 +5,11 @@
   "assistants": [
     {
       "name": "Claude",
-      "task": "FEAT-02",
-      "state": "active",
-      "updated": "2026-11-27 23:38",
-      "lastSha": "c9ba05d",
-      "next": "Working on FEAT-02 in Claude Code.",
+      "task": null,
+      "state": "idle",
+      "updated": "2026-11-27 23:48",
+      "lastSha": "53a385b",
+      "next": "Claude: FEAT-03 (congressional trades, I-03) or ALERT-01; Codex: FIX-01. Follow-up: insider alerts on watched symbols (AL-07).",
       "reset": null
     },
     {
@@ -32,17 +32,7 @@
     }
   ],
   "queue": {
-    "active": [
-      {
-        "id": "FEAT-02",
-        "state": "active",
-        "priority": 10,
-        "suggested": "Claude",
-        "claimedBy": "Claude",
-        "updated": "2026-11-27 23:38",
-        "task": "Insider Form 4 tracker (S-11 + I-04), from docs/research/insider-congressional.md: market buys list, cluster filter, per-symbol strip, EDGAR links, lag and not-advice copy, Plus alerts optional. Done when pages and tests are on main and registry rows are updated."
-      }
-    ],
+    "active": [],
     "paused": [],
     "ready": [
       {
@@ -394,6 +384,15 @@
     ],
     "done": [
       {
+        "id": "FEAT-02",
+        "state": "done",
+        "priority": 10,
+        "suggested": "Claude",
+        "claimedBy": "Claude",
+        "updated": "2026-11-27 23:48",
+        "task": "Insider Form 4 tracker (S-11 + I-04), from docs/research/insider-congressional.md: market buys list, cluster filter, per-symbol strip, EDGAR links, lag and not-advice copy, Plus alerts optional. Done when pages and tests are on main and registry rows are updated."
+      },
+      {
         "id": "SCAN-01",
         "state": "done",
         "priority": 5,
@@ -644,6 +643,17 @@
   ],
   "handoffs": [
     {
+      "at": "2026-11-27 23:48 UTC",
+      "assistant": "Claude",
+      "task": "FEAT-02",
+      "state": "done",
+      "last_sha": "53a385b",
+      "changed": "src/insiders.js (Form 4 parsing, per-stock view, 30-minute EDGAR job into insider_tx, cluster filter), /api/insiders, #/insiders page, guide text, a link from the stock page, Yiddish; registry S-11 and I-04 done",
+      "checks": "npm test 662 pass; clean check; README check; page gate on Research and the stock analyzer",
+      "blockers": "none for code; OWN-08 still limits the AI loop",
+      "next_action": "Claude: FEAT-03 (congressional trades, I-03) or ALERT-01; Codex: FIX-01. Follow-up: insider alerts on watched symbols (AL-07)."
+    },
+    {
       "at": "2026-11-27 19:59 UTC",
       "assistant": "Codex",
       "task": "FIX-01",
@@ -741,17 +751,6 @@
       "checks": "Research only; public sources (SEC EDGAR, House/Senate PTR paths, competitor pages Oct–Nov 2026). Pushed to main (docs/ only).",
       "blockers": "none",
       "next_action": "Claude: finish MP-01 then REV-01. Codex: finish REV-02 (PR #60) and AIP-01. Either may claim FEAT-02 (insider) or FEAT-03 (Congress) from the research note. Owner: merge PR #65 (mobile→desktop) when green."
-    },
-    {
-      "at": "2026-11-26 19:37 UTC",
-      "assistant": "Claude",
-      "task": "QA-02",
-      "state": "done",
-      "last_sha": "1ae64f7",
-      "changed": "the page gate's baseline after review (DECISIONS.md QA2-1 to QA2-5), the gate stable from day to day, Retirement accessibility, reduced motion on the homepage tabs, live numbers excluded",
-      "checks": "the full page gate passes on main (89 pages × 4 widths); npm test; the clean check",
-      "blockers": "none",
-      "next_action": "Claude: REV-01's price step (Hybrid prices and the checkout guard). PR #60 merges itself once its gates pass."
     }
   ]
 }
