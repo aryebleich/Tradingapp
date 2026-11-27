@@ -1,0 +1,35 @@
+name: Close pull requests replaced by a batch
+# AGENTS.md "Batch pull requests": when a "BATCH-<date>: open tasks" pull request is merged, each
+# sub-pull-request it lists ("- <ID> #<number>" lines, scripts/ai-batch.mjs) is closed with a comment
+# linking to the batch, and its branch is deleted. A pull request that isn't listed is never closed.
+on:
+  pull_request:
+    types: [closed]
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  close:
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.title, 'BATCH-')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version-file: .node-version, check-latest: true }
+      - name: Close the listed sub-pull-requests
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BATCH: ${{ github.event.pull_request.number }}
+          TITLE: ${{ github.event.pull_request.title }}
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          echo "$TITLE" | grep -Eq '^BATCH-[0-9]{4}-[0-9]{2}-[0-9]{2}: open tasks$' || { echo "Not a batch title: nothing to close."; exit 0; }
+          printf '%s' "$BODY" | node scripts/ai-batch.mjs included > included.json
+          for pr in $(jq -r '.[].pr' included.json); do
+            [ "$pr" = "$BATCH" ] && continue
+            state=$(gh pr view "$pr" --json state --jq .state 2>/dev/null || echo missing)
+            [ "$state" = OPEN ] || { echo "#$pr is $state: left as it is."; continue; }
+            branch=$(gh pr view "$pr" --json headRefName --jq .headRefName)
+            gh pr close "$pr" --comment "Included in #$BATCH, which is merged. Closing this one (pull requests can't be deleted)." --delete-branch || echo "::warning::Could not close #$pr"
+            echo "Closed #$pr ($branch)."
+          done

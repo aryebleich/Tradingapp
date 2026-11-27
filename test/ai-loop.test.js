@@ -229,15 +229,14 @@ test('research rows go to Grok first; a fresh claim by another session is left a
   assert.ok(P.chainPick({ keys: ALL_KEYS, budget: ALLOW, status: fresh, now: NOW }).none);
 });
 
-test('auto-merge on green gates; workflows, legal, secrets, live billing and live money wait for the owner-approved label', async () => {
-  assert.equal(P.needsOwner(['src/stock.js', 'public/pages/stock.js', 'test/x.test.js']).owner, false);
-  for (const f of ['.github/workflows/deploy.yml', 'LEGAL_REVIEW.md', 'COMPLIANCE_REVIEW.md', 'src/keystore.js', 'src/stripe.js', 'src/brokers.js', 'src/execution.js', 'src/ext/schwab.js', '.env.example'])
-    assert.equal(P.needsOwner([f]).owner, true, f);
-  assert.equal(P.needsOwner(['src/plans.js'], '+++ b/src/plans.js\n+const mode = STRIPE_LIVE;\n').owner, true, 'billing going live');
+test('auto-merge on green gates for every change; no owner-approved label', async () => {
+  assert.equal(P.needsOwner, undefined, 'the owner gate is gone');
   const fs2 = await import('node:fs'), g = fs2.readFileSync('.github/workflows/release-gates.yml', 'utf8');
   assert.match(g, /gh pr merge "\$PR" --squash --delete-branch/);
-  assert.match(g, /owner-approved/); assert.match(g, /scripts\/ai-loop\.mjs owner/);
+  assert.doesNotMatch(g, /owner-approved|ai-loop\.mjs owner/);
   assert.match(g, /gh workflow run deploy\.yml --ref main/);
+  const loop = fs2.readFileSync('.github/workflows/ai-loop.yml', 'utf8');
+  assert.match(loop, /merge it into main without a pull request/, 'a refused pull request does not stop the run');
 });
 
 test('Grok as a coder never touches workflows, the board, the rules or secrets', () => {

@@ -4,6 +4,14 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-27: Claude, LOOP-01: the loop runs without the owner (steps 1, 4 and 5)
+
+- GitHub settings checked: auto-merge on, squash on, no branch rules on main. The Actions workflow permissions can't be changed with the available tokens (DECISIONS.md LA-1, OWN-08). The loop now carries on without a pull request when GitHub refuses one (.github/workflows/ai-loop.yml).
+- The owner-approved gate is removed (scripts/ai-loop.mjs, release-gates.yml, AGENTS.md, test/ai-loop.test.js).
+- AI_HANDOFF.md: "Owner later" replaces "Owner only" and blocks nothing. The "Unfinished tasks" overview at the top is rebuilt by `npm run ai:status` (scripts/ai-status.mjs openOverview), and AGENTS.md step 2 starts from it.
+- Batch pull requests: scripts/ai-batch.mjs and .github/workflows/batch-close.yml; AGENTS.md "Batch pull requests" and the prompts.
+- Checks: npm test (653 pass), clean check, actionlint on ai-loop, release-gates and batch-close.
+
 ## 2026-11-27: Claude, REV-03, honest trial-end notices
 
 - src/trial-notice.js: 3 days and 1 day before a free trial ends, the app shows the plan, the end date and the price that will be charged, with "Manage or cancel" (one tap to the billing portal). It shows a date, never a countdown, and can be closed for the session. Email reminders go at the same two moments only to members who tick "Email me 3 days and 1 day before my trial ends" on Plans & billing (off by default), once per stage, from a twice-daily job (src/jobs.js trialremind).

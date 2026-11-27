@@ -52,7 +52,7 @@ export function build(md) {
     assistants,
     queue: { active: by('active'), paused: by('paused'), ready: by('ready'), blocked: by('blocked'), later: by('later'), done: by('done') },
     blockers: rows.filter(r => r.state === 'blocked').map(r => ({ id: r.id, task: r.task })),
-    owner: table(md, 'Owner only').map(r => ({ id: clean(r.id), task: clean(r.what_only_the_owner_can_do) })),
+    owner: (table(md, 'Owner later').length ? table(md, 'Owner later') : table(md, 'Owner only')).map(r => ({ id: clean(r.id), task: clean(r.what_only_the_owner_can_do) })),
     handoffs: handoffs(md).slice(0, 10),
   };
 }
@@ -96,6 +96,30 @@ function section(md, title) {
   return { start: i, end: end < 0 ? md.length : end };
 }
 // The queue sorted: active, paused, ready by priority, blocked, done (stable within a state).
+// "Unfinished tasks" at the top of AI_HANDOFF.md, rebuilt by npm run ai:status (AGENTS.md step 1): every
+// row that is active, paused or blocked, and every ready row the loop already started (its newest hand-off
+// is not done), with its owner, branch, last update and next action. An assistant continues the first one.
+export function openOverview(md) {
+  const rows = table(md, 'Queue').map(r => ({ id: clean(r.id), state: clean(r.state), who: dash(r.claimed_by) || dash(r.suggested), updated: dash(r.updated) }));
+  const hs = handoffs(md), last = id => hs.find(h => h.task === id);
+  const open = rows.filter(r => ['active', 'paused', 'blocked'].includes(r.state) || (r.state === 'ready' && last(r.id) && last(r.id).state !== 'done'));
+  const branch = r => { const h = last(r.id); return h && /ai-loop run|ai\/task-/.test(Object.values(h).join(' ')) ? `ai/task-${r.id.toLowerCase()}` : 'main'; };
+  const cell = x => String(x || '—').replace(/\|/g, '/').replace(/\s+/g, ' ').slice(0, 220);
+  const lines = ['<!-- open:start -->', '## Unfinished tasks', '',
+    'Rebuilt by `npm run ai:status`. Start every session by continuing the first row: its branch and its note `ai/tasks/<ID>.md`, never from scratch, and write "taken over from <assistant>" in the hand-off.', ''];
+  if (!open.length) lines.push('None: take the first ready row in the queue.');
+  else {
+    lines.push('| Task | Owner | State | Branch | Last update (UTC) | Next action |', '| --- | --- | --- | --- | --- | --- |');
+    for (const r of open) { const h = last(r.id); lines.push(`| ${r.id} | ${cell(h?.assistant || r.who)} | ${r.state} | ${branch(r)} | ${cell(h?.at || r.updated)} | ${cell(h?.next_action)} |`); }
+  }
+  lines.push('<!-- open:end -->');
+  return lines.join('\n');
+}
+export function withOverview(md) {
+  const block = openOverview(md), a = md.indexOf('<!-- open:start -->'), b = md.indexOf('<!-- open:end -->');
+  if (a >= 0 && b > a) return md.slice(0, a) + block + md.slice(b + '<!-- open:end -->'.length);
+  const i = md.indexOf('\n## Assistants'); return md.slice(0, i) + '\n' + block + '\n' + md.slice(i);
+}
 export function sortQueue(md) {
   const { start, end } = section(md, 'Queue'), body = md.slice(start, end).split('\n');
   const first = body.findIndex(l => l.trim().startsWith('|'));
@@ -136,7 +160,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const board = path.join(ROOT, 'AI_HANDOFF.md'), out = path.join(ROOT, 'ai/status.json'), check = process.argv.includes('--check');
   let md = fs.readFileSync(board, 'utf8');
   // Writing also keeps the queue in order (active, paused, ready by priority, blocked, done).
-  if (!check) { const sorted = sortQueue(md); if (sorted !== md) { fs.writeFileSync(board, sorted); md = sorted; console.log('sorted the queue in AI_HANDOFF.md'); } }
+  if (!check) { const sorted = withOverview(sortQueue(md)); if (sorted !== md) { fs.writeFileSync(board, sorted); md = sorted; console.log('updated the queue order and the unfinished-tasks overview in AI_HANDOFF.md'); } }
+  else if (withOverview(md) !== md) { console.error('AI_HANDOFF.md: the "Unfinished tasks" overview is out of date: run npm run ai:status'); process.exit(1); }
   const bad = sortedProblems(md);
   if (bad.length) { console.error('AI_HANDOFF.md queue order:\n- ' + bad.join('\n- ')); process.exit(1); }
   const json = render(md);

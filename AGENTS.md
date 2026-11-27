@@ -2,7 +2,7 @@
 
 These rules apply to all three assistants on this repo: **Claude** (Claude Code), **Codex** (ChatGPT) and **Grok**. They take turns, and each one picks up exactly where the last one stopped.
 
-- [AI_HANDOFF.md](AI_HANDOFF.md) is the shared board: who is on what, the queue, the hand-offs and the owner-only items.
+- [AI_HANDOFF.md](AI_HANDOFF.md) is the shared board: who is on what, the queue, the hand-offs and the "Owner later" items (none of them blocks a task).
 - `ai/status.json` is the same board in JSON, generated from AI_HANDOFF.md by `npm run ai:status`.
 - For web chats, both are public at:
   - https://raw.githubusercontent.com/aryebleich/Tradingapp/main/AI_HANDOFF.md
@@ -41,7 +41,8 @@ Grok normally doesn't push code. It writes its result as a research note or a re
    - Read the other assistants' latest commits before starting, so nothing is done twice.
    - If the board and the commits disagree, trust the commits and fix the board first.
 2. **Claim one task.**
-   - Continue your own `active` or `paused` row, or take the first `ready` row by priority. Prefer rows suggested for you, unless the owner named one.
+   - **Unfinished work comes first.** The "Unfinished tasks" table at the top of AI_HANDOFF.md (rebuilt by `npm run ai:status`) lists every active, paused or blocked task and every task the loop already started, with its owner, branch, last update and next action. Continue its first row from its branch `ai/task-<id>` and its note `ai/tasks/<ID>.md`; never start over, and write "taken over from <assistant>" in the hand-off.
+   - Otherwise continue your own `active` or `paused` row, or take the first `ready` row by priority. Prefer rows suggested for you, unless the owner named one.
    - An `active` row belongs to its assistant for **3 hours after its last update**. After that, anyone may take it over; write "taken over from <assistant>" in the hand-off.
    - To claim a row:
      - set it to `active` with your name and the UTC time, and set your line in the Assistants table;
@@ -70,7 +71,15 @@ Grok normally doesn't push code. It writes its result as a research note or a re
 
 - Reviews never hold up a deploy. Right after a task pull request merges, another assistant reviews it: Codex reviews Claude's work, and Claude reviews Codex's and Grok's. Grok adds a market or product review when the change touches trading, pricing or AI picks.
 - A real problem becomes the next task at the top of the queue (`FIX-nn`). Style preferences are notes, not tasks.
-- **The exception:** pull requests that change `.github/workflows/`, LEGAL_REVIEW.md, COMPLIANCE_REVIEW.md, or anything about secrets, billing going live or live-money trading wait for the owner's `owner-approved` label (scripts/ai-loop.mjs `OWNER_PATHS`).
+- Every pull request merges and deploys once release-gates.yml passes, workflow and billing changes included; there is no owner-approved label. What protects real money is in the product: Stripe stays in test mode, live-money trading and real emails or texts stay off until the owner turns them on in Admin, and prices come only from Admin → Prices.
+- One GitHub rule remains: the workflows' built-in token can never push changes to `.github/workflows/`, so a branch that edits a workflow is merged by a run with workflow rights (Claude Code, Codex or the owner) after its gates pass.
+
+## Batch pull requests (Grok and Codex)
+
+When several task branches are open, Grok or Codex collects them into one fresh pull request:
+1. Branch `batch/<YYYY-MM-DD>` from main, and merge into it every open task branch (`ai/task-*`) that merges cleanly and passes `npm test` and `node scripts/clean-check.mjs`. Leave out a branch that doesn't, and say why.
+2. Open one pull request titled `BATCH-<YYYY-MM-DD>: open tasks`. Its description lists every included task on its own line as `- <ID> #<pull request number>` (`node scripts/ai-batch.mjs list` prints the open task branches and their pull requests).
+3. When the batch pull request is merged, .github/workflows/batch-close.yml closes each sub-pull-request listed in it, with a comment linking to the batch, and deletes its branch. GitHub doesn't allow deleting pull requests, so they are closed. A sub-pull-request that isn't listed in a merged batch is never closed.
 
 ## When an assistant hits its limit: Claude → Grok → Codex
 
@@ -109,7 +118,7 @@ The per-use keys (OPENAI_API_KEY, XAI_API_KEY, ANTHROPIC_API_KEY) are optional e
 - Spend money, place real-money trades, or send real emails or texts to users. Use the paper account, fixtures and mocks. Per-use AI billing has a $0 cap until the owner raises it in Admin.
 - Promise returns, use dark patterns (countdowns, fake scarcity, invented reviews, hidden cancel), or make live trading the default. Follow [LEGAL_REVIEW.md](LEGAL_REVIEW.md) and [COMPLIANCE_REVIEW.md](COMPLIANCE_REVIEW.md).
 - Remove or break an existing feature, rewrite history on main, or force-push.
-- Take an owner-only action (the "Owner only" table): DNS, dashboards, secrets, billing, legal sign-off. Write it in the hand-off instead.
+- Take an owner-only action (the "Owner later" table): DNS, dashboards, secrets, switching billing live, legal sign-off. Write it there instead; none of them blocks a task.
 - Put anything private in the repo; it is public. That includes the board and ai/status.json: no emails, server addresses, account details or private plans.
 
 ## Production

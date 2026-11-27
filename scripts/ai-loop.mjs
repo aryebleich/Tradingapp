@@ -138,15 +138,6 @@ export function chainPick({ task = null, keys = [], budget = null, status, now =
   return { none: 'no assistant can run (keys, plans or caps)', task: row.id, skipped };
 }
 
-// Pull requests that wait for the owner-approved label instead of merging themselves: workflows, the
-// legal and compliance reviews, anything about secrets, billing going live, or live-money trading.
-export const OWNER_PATHS = [/^\.github\/workflows\//, /^LEGAL_REVIEW\.md$/, /^COMPLIANCE_REVIEW\.md$/, /(^|\/)\.env/, /^src\/(keystore|keys-catalog|crypto|secrets?)\.js$/, /^src\/(stripe|stripesetup|billing)\.js$/, /^src\/(brokers|execution|risk)\.js$/, /^src\/alpaca\/(broker|connections|http)\.js$/, /^src\/ext\//];
-export const OWNER_WORDS = /\b(live[_ -]?mode|sk_live|STRIPE_LIVE|LIVE_TRADING|liveTrading\s*=\s*true|ALLOW_LIVE)\b/;
-export function needsOwner(files = [], patch = '') {
-  const paths = files.filter(f => OWNER_PATHS.some(r => r.test(f)));
-  const words = OWNER_WORDS.test(String(patch).split('\n').filter(l => l.startsWith('+') && !l.startsWith('+++')).join('\n'));
-  return { owner: paths.length > 0 || words, paths, words };
-}
 
 const arg = (k, d = null) => { const i = process.argv.indexOf('--' + k); return i > 0 ? process.argv[i + 1] : d; };
 function writeBoard(md) {
@@ -168,10 +159,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     try { budget = bfile ? JSON.parse(fs.readFileSync(bfile, 'utf8')) : null; } catch { budget = null; }
     if (budget && !budget.allowed) budget = null;
     console.log(JSON.stringify(chainPick({ task: id || null, keys: String(arg('keys', '')).split(',').filter(Boolean), budget, status: build(md) })));
-  } else if (cmd === 'owner') {
-    // Reads a diff on stdin (git diff origin/main...HEAD) and its file list from --files.
-    const files = String(arg('files', '')).split(',').filter(Boolean), patch = fs.existsSync(arg('diff', '')) ? fs.readFileSync(arg('diff'), 'utf8') : '';
-    console.log(JSON.stringify(needsOwner(files, patch)));
   } else if (cmd === 'addrow') {
     // A real problem from a post-merge review becomes the next task at the top of the queue.
     const st = build(md), nums = Object.values(st.queue).flat().map(r => /^FIX-(\d+)$/.exec(r.id)?.[1]).filter(Boolean).map(Number);

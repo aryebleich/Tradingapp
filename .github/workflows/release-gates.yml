@@ -7,8 +7,8 @@ name: Release gates
 # Task branches of the AI loop (ai/task-*, .github/workflows/ai-loop.yml) deploy right away: their pull
 # request merges itself as soon as every gate passes (squash), then the deploy and the post-deploy checks
 # (rollback if the live site fails) run, and the cross-review follows the merge (ai-loop.yml "review").
-# The exception: a change to workflows, the legal or compliance reviews, secrets, billing going live or
-# live-money trading (scripts/ai-loop.mjs OWNER_PATHS) waits for the owner-approved label.
+# Every change merges once the gates pass, workflow and billing changes included (no approval label).
+# Live billing, live-money trading and real emails or texts stay behind their own Admin switches, off by default.
 #
 # Limits: (1) a branch whose changes touch .github/workflows cannot be merged by this workflow (GitHub
 # does not let the built-in token change workflow files); push such a merge to main by hand after the
@@ -84,22 +84,11 @@ jobs:
         with: { fetch-depth: 0 }
       - uses: actions/setup-node@v7
         with: { node-version-file: .node-version, check-latest: true }
-      - name: Owner approval for sensitive changes
+      - name: Find the branch's pull request
         id: owner
         run: |
-          git fetch -q origin main "$BRANCH"
           pr=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty'); echo "pr=$pr" >> "$GITHUB_OUTPUT"
-          git diff "origin/main...origin/$BRANCH" > "$RUNNER_TEMP/branch.diff"
-          files=$(git diff --name-only "origin/main...origin/$BRANCH" | paste -sd, -)
-          need=$(node scripts/ai-loop.mjs owner --files "$files" --diff "$RUNNER_TEMP/branch.diff" | jq -r .owner)
-          approved=false; if [ -n "$pr" ] && gh pr view "$pr" --json labels --jq '.labels[].name' | grep -qx owner-approved; then approved=true; fi
-          if [ "$need" = true ] && [ "$approved" != true ]; then
-            echo "::notice::Gates passed. This change touches workflows, legal or compliance, secrets, live billing or live-money trading: it waits for the owner-approved label${pr:+ on PR #$pr}."
-            if [ -n "$pr" ]; then gh pr edit "$pr" --add-label needs-owner-approval > /dev/null 2>&1 || true; fi
-            echo "wait=true" >> "$GITHUB_OUTPUT"
-          fi
       - name: Merge into main, deploy, delete the branch
-        if: steps.owner.outputs.wait != 'true'
         env:
           PR: ${{ steps.owner.outputs.pr }}
         run: |
@@ -107,7 +96,7 @@ jobs:
           git fetch origin main "$BRANCH"
           [ "$(git rev-parse origin/$BRANCH)" = "$SHA" ] || { echo "::warning::The branch moved after these gates started; the newer push runs its own gates."; exit 0; }
           if git diff --name-only origin/main "$SHA" | grep -q '^\.github/workflows/'; then
-            echo "::warning::This branch changes workflow files, which this workflow cannot merge. Gates passed: merge it into main by hand."; exit 0
+            echo "::warning::Gates passed, but GitHub never lets the built-in token push workflow files: a run with workflow rights (Claude Code, Codex or the owner) merges this branch."; exit 0
           fi
           if git merge-base --is-ancestor "$SHA" origin/main; then echo "Already in main."; git push origin --delete "$BRANCH" || true; exit 0; fi
           if ! git merge-base --is-ancestor origin/main "$SHA"; then

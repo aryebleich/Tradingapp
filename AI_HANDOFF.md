@@ -12,6 +12,17 @@ The shared work board of **Claude**, **Codex (ChatGPT)** and **Grok**. Each assi
 - Both files are public: no secrets, emails, server addresses, account details or private plans. test/ai-status.test.js checks this.
 - Keep the queue sorted: active, paused, ready by priority (1 is first), blocked, done this week. Older done rows and hand-offs go to [docs/archive/AI_HANDOFF-history.md](docs/archive/AI_HANDOFF-history.md).
 
+<!-- open:start -->
+## Unfinished tasks
+
+Rebuilt by `npm run ai:status`. Start every session by continuing the first row: its branch and its note `ai/tasks/<ID>.md`, never from scratch, and write "taken over from <assistant>" in the hand-off.
+
+| Task | Owner | State | Branch | Last update (UTC) | Next action |
+| --- | --- | --- | --- | --- | --- |
+| AI-04B | Codex | ready | ai/task-ai-04b | 2026-11-27 10:56 UTC | Any assistant: take AI-04B again from ai/task-ai-04b |
+| OPS-02 | Claude | blocked | main | — | — |
+<!-- open:end -->
+
 ## Assistants
 
 | Assistant | Task | State | Updated (UTC) | Last SHA | Next action | Reset (UTC) |
@@ -86,7 +97,9 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 | OPS-01 | done | 0 | Claude | Claude | 2026-11-26 13:55 | The Render files are removed after the DNS cutover. |
 | PERF-00 | done | 0 | Claude | Claude | 2026-11-25 16:33 | Performance phase 2: CPU pool, shared caches, load test passing (PERFORMANCE.md). |
 
-## Owner only
+## Owner later
+
+Things only the owner can do, whenever it suits. **None of them blocks a task:** the work goes on around them, and each one only turns on something that stays off until then.
 
 | ID | What only the owner can do |
 | --- | --- |
@@ -96,8 +109,8 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 | OWN-04 | Legal sign-off on the open LEGAL_REVIEW.md items, including the regulatory status line in the footer (L6). |
 | OWN-05 | To run the loop without paid keys: (1) Claude: run `claude setup-token` and add the repository secret CLAUDE_CODE_OAUTH_TOKEN; (2) Codex: connect Codex (chatgpt.com/codex) to this repo, turn on code review, set the repository variable CODEX_GITHUB=1, and optionally add CODEX_MENTION_TOKEN (your token, Pull requests: write) so @codex comments come from you; (3) Grok: connect GitHub in Grok's settings and paste ai/prompts/grok.md. Per-use keys (XAI_API_KEY, OPENAI_API_KEY) stay optional, behind the $0 caps. |
 | OWN-06 | Market data licenses before paying customers see licensed data (registry flag `licensed`, LEGAL_REVIEW.md L-MP): real-time consolidated quotes, Level II, OPRA options, options-flow and dark-pool vendor data, live transcripts and estimates. Until then only free and allowed sources are shown, labelled delayed. |
-| OWN-07 | Before billing goes live: approve the price ladder (DECISIONS.md MP-3: Pro $14.99, Elite $39.99, Ultimate $89.99 a month, Institutional from $499), then run Admin → Money & fees → Stripe → Finish setup with the live key. Until then Stripe stays in test mode. |
-| OWN-08 | GitHub → Settings → Actions → General → Workflow permissions: tick "Allow GitHub Actions to create and approve pull requests" (or add the secret CODEX_MENTION_TOKEN). Until then every AI-loop task run fails when it opens its pull request (AI-04B failed twice this way). |
+| OWN-07 | Prices: enter each plan and credit price, its currency and the date it takes effect in Admin → Prices (no AI sets prices), then switch Stripe to live in Admin when ready. Until then the plans page shows no price for a plan without one, and Stripe stays in test mode. |
+| OWN-08 | GitHub → Settings → Actions → General → Workflow permissions: choose "Read and write permissions" and tick "Allow GitHub Actions to create and approve pull requests". Until then the AI loop pushes task branches and the gates merge them without a pull request (Codex through @codex needs the pull request). |
 
 ## Hand-offs
 
