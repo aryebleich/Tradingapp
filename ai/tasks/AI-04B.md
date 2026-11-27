@@ -5,3 +5,5 @@ Follow-up of AI-04 (registry A-19): add the evidence line (src/ai-evidence.js ev
 Rules: AGENTS.md. One branch for this task: ai/task-ai-04b. Every assistant continues from here and adds to Progress.
 
 ## Progress
+
+### 2026-11-27 02:13 UTC · codex starts (run 45926986309)
