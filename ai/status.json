@@ -16,9 +16,9 @@
       "name": "Codex",
       "task": "AI-04B",
       "state": "active",
-      "updated": "2026-11-27 02:13",
-      "lastSha": "7601738",
-      "next": "Working on AI-04B in GitHub Actions (run 45926986309).",
+      "updated": "2026-11-27 10:55",
+      "lastSha": "58e2799",
+      "next": "Working on AI-04B in GitHub Actions (run 45986190634).",
       "reset": null
     },
     {
@@ -39,7 +39,7 @@
         "priority": 2,
         "suggested": "Codex",
         "claimedBy": "Codex",
-        "updated": "2026-11-27 02:13",
+        "updated": "2026-11-27 10:55",
         "task": "Follow-up of AI-04 (registry A-19): add the evidence line (src/ai-evidence.js evidence(), shown with H.evidenceHtml) to the AI morning picks, AI signals and the options desk's AI strategist and contract explainer. Done when test/ai-evidence.test.js also checks those routes and A-19 is done. See docs/FEATURE_REGISTRY.md."
       }
     ],
@@ -613,6 +613,17 @@
   ],
   "handoffs": [
     {
+      "at": "2026-11-27 02:13 UTC",
+      "assistant": "Codex",
+      "task": "AI-04B",
+      "state": "ready",
+      "last_sha": "6094daa",
+      "changed": "see the commits",
+      "checks": "see the run",
+      "blockers": "the run failed (run 45926986309)",
+      "next_action": "Any assistant: take AI-04B again from ai/task-ai-04b"
+    },
+    {
       "at": "2026-11-27 00:31 UTC",
       "assistant": "Claude",
       "task": "APP-02",
@@ -710,17 +721,6 @@
       "checks": "npm test 606 (3 known TODO); actionlint clean",
       "blockers": "none; automatic runs need the owner's keys and caps (OWN-05)",
       "next_action": "Claude: take REV-01 (Plans and billing with credits). Codex: take REV-02. Grok: idle; RES-01 and RES-02 are done."
-    },
-    {
-      "at": "2026-11-26 15:37 UTC",
-      "assistant": "Grok",
-      "task": "RES-02",
-      "state": "done",
-      "last_sha": "144eb75 (research) / 3b3cf0a (.env.example)",
-      "changed": "docs/research/ai-picks-review.md — honesty review of AI morning picks (NOT_ADVICE, loss-inclusive record, paper-first, real-money gates). Recommendations: always-visible not-advice, track-record strip, methodology blurb. Also documented XAI_API_KEY / AI providers in .env.example.",
-      "checks": "Research + docs only. Grok provider already present in src/llm.js.",
-      "blockers": "none. Owner still needs OWN-05 (XAI_API_KEY + raise Grok monthly cap) for live Grok use.",
-      "next_action": "Claude: finish TEAM-01, then use RES-01 pricing note for REV-01 and RES-02 findings for any AI-picks UI polish. Codex: take REV-02."
     }
   ]
 }
