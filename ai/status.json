@@ -416,7 +416,7 @@
         "priority": 2,
         "suggested": "Claude",
         "claimedBy": "Claude",
-        "updated": "2026-11-27 00:55",
+        "updated": "2026-11-27 00:31",
         "task": "Phase 1, AI (registry A-19). Every AI answer shows the data and sources it used and a plain confidence line, and never promises profit; one shared helper for chat, stock summaries, picks and tools. Done when a test fails on an AI answer without sources or confidence, and A-19 is done in the registry. See docs/FEATURE_REGISTRY.md. Done in 447c3c1 for chat, stock summaries, Why your P/L moved and AI tools; the rest is AI-04B."
       },
       {
