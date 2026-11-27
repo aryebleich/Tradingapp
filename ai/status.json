@@ -15,10 +15,10 @@
     {
       "name": "Codex",
       "task": "AI-04B",
-      "state": "active",
-      "updated": "2026-11-27 10:55",
-      "lastSha": "58e2799",
-      "next": "Working on AI-04B in GitHub Actions (run 45986190634).",
+      "state": "ready",
+      "updated": "2026-11-27 10:56",
+      "lastSha": "acaa5f6",
+      "next": "Any assistant: take AI-04B again from ai/task-ai-04b",
       "reset": null
     },
     {
@@ -32,19 +32,18 @@
     }
   ],
   "queue": {
-    "active": [
-      {
-        "id": "AI-04B",
-        "state": "active",
-        "priority": 2,
-        "suggested": "Codex",
-        "claimedBy": "Codex",
-        "updated": "2026-11-27 10:55",
-        "task": "Follow-up of AI-04 (registry A-19): add the evidence line (src/ai-evidence.js evidence(), shown with H.evidenceHtml) to the AI morning picks, AI signals and the options desk's AI strategist and contract explainer. Done when test/ai-evidence.test.js also checks those routes and A-19 is done. See docs/FEATURE_REGISTRY.md."
-      }
-    ],
+    "active": [],
     "paused": [],
     "ready": [
+      {
+        "id": "AI-04B",
+        "state": "ready",
+        "priority": 2,
+        "suggested": "Codex",
+        "claimedBy": null,
+        "updated": "2026-11-27 10:56",
+        "task": "Follow-up of AI-04 (registry A-19): add the evidence line (src/ai-evidence.js evidence(), shown with H.evidenceHtml) to the AI morning picks, AI signals and the options desk's AI strategist and contract explainer. Done when test/ai-evidence.test.js also checks those routes and A-19 is done. See docs/FEATURE_REGISTRY.md."
+      },
       {
         "id": "REV-02B",
         "state": "ready",
@@ -613,6 +612,17 @@
   ],
   "handoffs": [
     {
+      "at": "2026-11-27 10:56 UTC",
+      "assistant": "Codex",
+      "task": "AI-04B",
+      "state": "ready",
+      "last_sha": "acaa5f6",
+      "changed": "see the commits",
+      "checks": "see the run",
+      "blockers": "the run failed (run 45986190634)",
+      "next_action": "Any assistant: take AI-04B again from ai/task-ai-04b"
+    },
+    {
       "at": "2026-11-27 02:13 UTC",
       "assistant": "Codex",
       "task": "AI-04B",
@@ -710,17 +720,6 @@
       "checks": "npm test 610 (3 known TODO); clean check and actionlint pass",
       "blockers": "Codex answers @codex only once it is connected to this repo (OWN-05); the comment on PR #60 was posted from the owner's account",
       "next_action": "Codex: REV-02 on PR #60. Claude: review PR #60 when Codex pushes, then take REV-01. Grok: paste ai/prompts/grok.md into grok.com for the next research row."
-    },
-    {
-      "at": "2026-11-26 15:41 UTC",
-      "assistant": "Claude",
-      "task": "TEAM-01",
-      "state": "done",
-      "last_sha": "cd63970",
-      "changed": "AGENTS.md, CLAUDE.md, AI_HANDOFF.md, ai/status.json and ai/prompts/, scripts/ai-status.mjs, ai-loop.mjs and ai-grok.mjs, src/ai-loop.js, Grok in src/llm.js, Admin AI team Work status, ai-loop.yml, ai-status.yml, the review gate in release-gates.yml, tests",
-      "checks": "npm test 606 (3 known TODO); actionlint clean",
-      "blockers": "none; automatic runs need the owner's keys and caps (OWN-05)",
-      "next_action": "Claude: take REV-01 (Plans and billing with credits). Codex: take REV-02. Grok: idle; RES-01 and RES-02 are done."
     }
   ]
 }
