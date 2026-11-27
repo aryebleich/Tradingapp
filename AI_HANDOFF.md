@@ -16,7 +16,7 @@ The shared work board of **Claude**, **Codex (ChatGPT)** and **Grok**. Each assi
 
 | Assistant | Task | State | Updated (UTC) | Last SHA | Next action | Reset (UTC) |
 | --- | --- | --- | --- | --- | --- | --- |
-| Claude | MP-01 | active | 2026-11-26 21:51 | bc7f32e | Working on MP-01 in GitHub Actions. | — |
+| Claude | APP-02 | active | 2026-11-27 00:06 | 87d4ea8 | Working on APP-02 in Claude Code. | — |
 | Codex | REV-02 | active | 2026-11-26 16:50 | f555da2 | Codex: work on PR #60 (asked with @codex; brief in ai/tasks/REV-02.md). | — |
 | Grok | RES-03 | done | 2026-11-26 22:13 | a545db7 | Idle. FEAT-02 and FEAT-03 are ready from the research note. | — |
 
@@ -26,8 +26,7 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 
 | ID | State | Priority | Suggested | Claimed by | Updated (UTC) | Task and done when |
 | --- | --- | --- | --- | --- | --- | --- |
-| MP-01 | active | 0 | Claude | Claude | 2026-11-26 21:51 | The master plan (docs/research/master-plan.md): save it, map its documents to what exists (MASTER_ROADMAP, FEATURE_REGISTRY, SYSTEM_ARCHITECTURE, SECURITY_REQUIREMENTS), the feature registry with its coverage test, one price ladder, the legal and data gates, and the queue by the plan's phases. Done when all are on main and the queue holds about 20 ready rows linked to the registry. |
-| APP-02 | ready | 1 | Claude | — | — | Phase 1 (master plan section 18). The installable web app for iPhone, Windows and Mac (registry AP-02, AP-03, AP-04, AL-12, AP-06): an install guide per device, Web Push for alerts (opt-in per alert, keys in Admin → Keys), and watchlists that open offline. A native app or desktop wrapper stays a later row (DECISIONS.md MP-6). Done when push and the offline watchlist are tested and the registry rows are updated. See docs/FEATURE_REGISTRY.md. |
+| APP-02 | active | 1 | Claude | Claude | 2026-11-27 00:06 | Phase 1 (master plan section 18). The installable web app for iPhone, Windows and Mac (registry AP-02, AP-03, AP-04, AL-12, AP-06): an install guide per device, Web Push for alerts (opt-in per alert, keys in Admin → Keys), and watchlists that open offline. A native app or desktop wrapper stays a later row (DECISIONS.md MP-6). Done when push and the offline watchlist are tested and the registry rows are updated. See docs/FEATURE_REGISTRY.md. |
 | AI-04 | ready | 2 | Claude | — | — | Phase 1, AI (registry A-19). Every AI answer shows the data and sources it used and a plain confidence line, and never promises profit; one shared helper for chat, stock summaries, picks and tools. Done when a test fails on an AI answer without sources or confidence, and A-19 is done in the registry. See docs/FEATURE_REGISTRY.md. |
 | REV-02B | ready | 2 | Codex | — | — | Follow-up of REV-02 (PR #60): label the paid controls on the 10 most-used pages by Admin → Analytics route counts, and add a test that every entry in public/paid-controls.js matches a server check (upgrade() or needPlan()). Done when both are in. |
 | DATA-01 | ready | 3 | Codex | — | — | Phase 1, data (registry SEC-16, T-01). Label every delayed or end-of-day figure "Delayed" or "End of day" with its source, from one helper. Done when a test finds no unlabelled delayed quote on the trade, chart, scanner and stock pages. See docs/FEATURE_REGISTRY.md. |
@@ -69,6 +68,7 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 | TICK-01 | later | 19 | Claude | — | — | The tick engine (Part B): a design note in DECISIONS.md first, reviewed by Grok for market realism, then the build. Done when the design is agreed and the first slice is tested. |
 | CHAT-04 | later | 20 | Codex | — | — | A live check of the Codex activity stream in Admin → AI chat, with one short test message. Done when the result is written here (no message text in logs). |
 | PARTA-1 | later | 21 | Claude | — | — | Part A items A1, A3, A4, A7 and A8 (definitions in DECISIONS.md and CHANGELOG_AI.md). Done when each one is a commit. |
+| MP-01 | done | 0 | Claude | Claude | 2026-11-27 00:06 | The master plan (docs/research/master-plan.md): save it, map its documents to what exists (MASTER_ROADMAP, FEATURE_REGISTRY, SYSTEM_ARCHITECTURE, SECURITY_REQUIREMENTS), the feature registry with its coverage test, one price ladder, the legal and data gates, and the queue by the plan's phases. Done when all are on main and the queue holds about 20 ready rows linked to the registry. |
 | REV-02 | done | 2 | Codex | Codex | 2026-11-27 00:02 | Phase A. "Unlock with Pro" labels on paid-only controls before they are pressed, from one list of paid features (PR #60, Codex). Done when PR #60 is merged and deployed. Merged as PR #66 (4384872). |
 | REV-01 | done | 1 | Claude | Claude | 2026-11-27 00:02 | Phase A. Most of it exists: plans with yearly billing (10× monthly, about 17% off), the comparison table, AI credits (monthly allowance, packs of 500/3,000/12,000, Stripe checkout, Admin → Money). Left: move the plan prices to the Hybrid option (docs/research/pricing.md: Pro about $12–15, Elite about $39–49) in src/fees.js and scripts/home.py (then python3 scripts/pages.py and the pinned prices in the tests), and guard checkout so it refuses while the Stripe price differs from the plan table until the owner re-runs Stripe setup; Stripe stays in test mode. Done when the pages, the plan table and checkout show one price, a test covers the guard, and the page baseline is refreshed for the new figures. Done in MP-01: the price ladder (DECISIONS.md MP-3) and the checkout price guard (04f9fa6). |
 | TRUST-01 | done | 6 | Codex | Claude | 2026-11-27 00:02 | Phase B. A public status page (/status): uptime from /healthz history, the last incidents, and data-provider health, without internal details. Done when it is linked in the footer and tested. Already built: src/trust.js and /status (registry SEC-10). |
@@ -100,6 +100,13 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 ## Hand-offs
 
 Newest first. Use these fields every time; the next assistant continues from **Next action**.
+
+### 2026-11-27 00:06 UTC · Claude · MP-01 · done
+- **Last SHA:** 87d4ea8
+- **Changed:** docs/research/master-plan.md; docs/MASTER_ROADMAP.md, FEATURE_REGISTRY.md (287 rows, coverage test), SYSTEM_ARCHITECTURE.md, SECURITY_REQUIREMENTS.md; growth-plan.md Revenue; price ladder (Pro 14.99, Elite 39.99, Ultimate 89.99, Institutional from 499) with the checkout price guard; legal gates in Admin → Security (all off); the queue by phases with a later state
+- **Checks:** npm test 638 pass; clean check; secrets scan; readme check; registry --check; page gate on the changed pages
+- **Blockers:** OWN-04 legal sign-off, OWN-06 data licenses, OWN-07 approve the prices before Stripe goes live
+- **Next action:** Claude: APP-02, the installable app with push and offline watchlists (registry AP-02..04, AL-12).
 
 ### 2026-11-26 22:13 UTC · Grok · RES-03 · done
 - **Last SHA:** a545db7

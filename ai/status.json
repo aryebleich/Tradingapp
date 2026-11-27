@@ -5,11 +5,11 @@
   "assistants": [
     {
       "name": "Claude",
-      "task": "MP-01",
+      "task": "APP-02",
       "state": "active",
-      "updated": "2026-11-26 21:51",
-      "lastSha": "bc7f32e",
-      "next": "Working on MP-01 in GitHub Actions.",
+      "updated": "2026-11-27 00:06",
+      "lastSha": "87d4ea8",
+      "next": "Working on APP-02 in Claude Code.",
       "reset": null
     },
     {
@@ -34,26 +34,17 @@
   "queue": {
     "active": [
       {
-        "id": "MP-01",
+        "id": "APP-02",
         "state": "active",
-        "priority": null,
+        "priority": 1,
         "suggested": "Claude",
         "claimedBy": "Claude",
-        "updated": "2026-11-26 21:51",
-        "task": "The master plan (docs/research/master-plan.md): save it, map its documents to what exists (MASTER_ROADMAP, FEATURE_REGISTRY, SYSTEM_ARCHITECTURE, SECURITY_REQUIREMENTS), the feature registry with its coverage test, one price ladder, the legal and data gates, and the queue by the plan's phases. Done when all are on main and the queue holds about 20 ready rows linked to the registry."
+        "updated": "2026-11-27 00:06",
+        "task": "Phase 1 (master plan section 18). The installable web app for iPhone, Windows and Mac (registry AP-02, AP-03, AP-04, AL-12, AP-06): an install guide per device, Web Push for alerts (opt-in per alert, keys in Admin → Keys), and watchlists that open offline. A native app or desktop wrapper stays a later row (DECISIONS.md MP-6). Done when push and the offline watchlist are tested and the registry rows are updated. See docs/FEATURE_REGISTRY.md."
       }
     ],
     "paused": [],
     "ready": [
-      {
-        "id": "APP-02",
-        "state": "ready",
-        "priority": 1,
-        "suggested": "Claude",
-        "claimedBy": null,
-        "updated": null,
-        "task": "Phase 1 (master plan section 18). The installable web app for iPhone, Windows and Mac (registry AP-02, AP-03, AP-04, AL-12, AP-06): an install guide per device, Web Push for alerts (opt-in per alert, keys in Admin → Keys), and watchlists that open offline. A native app or desktop wrapper stays a later row (DECISIONS.md MP-6). Done when push and the offline watchlist are tested and the registry rows are updated. See docs/FEATURE_REGISTRY.md."
-      },
       {
         "id": "AI-04",
         "state": "ready",
@@ -430,6 +421,15 @@
     ],
     "done": [
       {
+        "id": "MP-01",
+        "state": "done",
+        "priority": null,
+        "suggested": "Claude",
+        "claimedBy": "Claude",
+        "updated": "2026-11-27 00:06",
+        "task": "The master plan (docs/research/master-plan.md): save it, map its documents to what exists (MASTER_ROADMAP, FEATURE_REGISTRY, SYSTEM_ARCHITECTURE, SECURITY_REQUIREMENTS), the feature registry with its coverage test, one price ladder, the legal and data gates, and the queue by the plan's phases. Done when all are on main and the queue holds about 20 ready rows linked to the registry."
+      },
+      {
         "id": "REV-02",
         "state": "done",
         "priority": 2,
@@ -604,6 +604,17 @@
   ],
   "handoffs": [
     {
+      "at": "2026-11-27 00:06 UTC",
+      "assistant": "Claude",
+      "task": "MP-01",
+      "state": "done",
+      "last_sha": "87d4ea8",
+      "changed": "docs/research/master-plan.md; docs/MASTER_ROADMAP.md, FEATURE_REGISTRY.md (287 rows, coverage test), SYSTEM_ARCHITECTURE.md, SECURITY_REQUIREMENTS.md; growth-plan.md Revenue; price ladder (Pro 14.99, Elite 39.99, Ultimate 89.99, Institutional from 499) with the checkout price guard; legal gates in Admin → Security (all off); the queue by phases with a later state",
+      "checks": "npm test 638 pass; clean check; secrets scan; readme check; registry --check; page gate on the changed pages",
+      "blockers": "OWN-04 legal sign-off, OWN-06 data licenses, OWN-07 approve the prices before Stripe goes live",
+      "next_action": "Claude: APP-02, the installable app with push and offline watchlists (registry AP-02..04, AL-12)."
+    },
+    {
       "at": "2026-11-26 22:13 UTC",
       "assistant": "Grok",
       "task": "RES-03",
@@ -701,17 +712,6 @@
       "checks": "Research only; no code. Public sources only.",
       "blockers": "none.",
       "next_action": "Claude: finish TEAM-01, then use the pricing note when implementing REV-01 (plans + AI credits). Codex: take REV-02. Grok next: RES-02 when free."
-    },
-    {
-      "at": "2026-11-26 14:05 UTC",
-      "assistant": "Claude",
-      "task": "TEAM-01",
-      "state": "active",
-      "last_sha": "84a43b1",
-      "changed": "the three-assistant board (this file), scripts/ai-status.mjs, ai/status.json.",
-      "checks": "npm test (to be run before the push).",
-      "blockers": "none.",
-      "next_action": "Claude: finish TEAM-01 (prompts, Grok provider, Admin work status, ai-loop.yml)."
     }
   ]
 }
