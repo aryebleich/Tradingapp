@@ -449,7 +449,7 @@ Missing or partial rows with the highest value for the effort (V/E), legal and l
 
 ## Data sources and their terms
 
-Free and allowed sources first; a licensed source is used only with the member's own subscription, or after the owner signs a license (OWN-05). Delayed data is labelled delayed.
+Free and allowed sources first; a licensed source is used only with the member's own subscription, or after the owner signs a license (OWN-06). Delayed data is labelled delayed.
 
 | Source | What | Terms (summary, checked 2026-11-26) | Flag |
 | --- | --- | --- | --- |

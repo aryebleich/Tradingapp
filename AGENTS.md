@@ -17,7 +17,7 @@ These rules apply to all three assistants on this repo: **Claude** (Claude Code)
 - [docs/SECURITY_REQUIREMENTS.md](docs/SECURITY_REQUIREMENTS.md): the security requirements and what is in place.
 - [docs/research/growth-plan.md](docs/research/growth-plan.md): the revenue strategy and the price ladder ("Revenue").
 - This file stays the development rules; AI_HANDOFF.md and ai/status.json stay the board and the current status.
-- Rows flagged `legal` in the registry are built only behind their Admin switch (Admin → Security → Legal gates), off until the owner signs off (LEGAL_REVIEW.md L-MP, OWN-04). Rows flagged `licensed` wait for a data license (OWN-05).
+- Rows flagged `legal` in the registry are built only behind their Admin switch (Admin → Security → Legal gates), off until the owner signs off (LEGAL_REVIEW.md L-MP, OWN-04). Rows flagged `licensed` wait for a data license (OWN-06).
 
 **The goal:** grow Brightolio into a large, professional trading platform that earns money honestly: real value, clear prices, no promised returns and no dark patterns.
 
@@ -60,7 +60,7 @@ Grok normally doesn't push code. It writes its result as a research note or a re
      - update the row and your Assistants line;
      - at a usage limit, set the row to `paused` and write the reset time.
    - Then run `npm run ai:status`, commit `handoff: <ID> <state>` and push.
-   - Keep the queue sorted (active, paused, ready by priority, blocked, done this week). Move done rows older than a week, and old hand-offs, to docs/archive/AI_HANDOFF-history.md.
+   - Keep the queue sorted (active, paused, ready by priority, blocked, later, done this week). A `later` row belongs to a later phase of the master plan (docs/MASTER_ROADMAP.md) and is never picked until someone sets it to `ready`; keep about 20 rows `ready`. Move done rows older than a week, and old hand-offs, to docs/archive/AI_HANDOFF-history.md.
 5. **Record the details.**
    - Write what you did in a dated CHANGELOG_AI.md section that names you.
    - Decisions go in [DECISIONS.md](DECISIONS.md), assumptions in [ASSUMPTIONS.md](ASSUMPTIONS.md).

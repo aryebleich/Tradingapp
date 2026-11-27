@@ -19,7 +19,7 @@ The master plan's section 19 (docs/research/master-plan.md), mapped to what is i
 | Automated security testing | SEC-13 | release-gates.yml: npm audit, the secrets scan, the full test suite on every push; security.yml | — |
 | User permission management | SEC-14 | Admin and member roles; owner-only pages refused by the server | Custom roles per team (E-13) |
 | Regulatory reporting infrastructure | SEC-15 | Not needed while Brightolio is software only | Only with registration (Phase 6, L-MP3) |
-| Market data licensing and access controls | SEC-16 | Data delay by plan (end of day, 15-minute delay, real time) in src/aiplans.js; the data-source table in the registry | "Delayed" on every delayed figure; licenses before paying customers see licensed data (OWN-05) |
+| Market data licensing and access controls | SEC-16 | Data delay by plan (end of day, 15-minute delay, real time) in src/aiplans.js; the data-source table in the registry | "Delayed" on every delayed figure; licenses before paying customers see licensed data (OWN-06) |
 | Subscription and billing management | SEC-17 | Plans, yearly billing, credits, Stripe Checkout and the billing portal, webhook safety (src/stripe-events.js), all in test mode | Live billing waits for the owner |
 | Customer support administration | SEC-18 | The support inbox and calls, texts and email in Admin | — |
 

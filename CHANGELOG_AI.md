@@ -4,6 +4,13 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-27: Claude, the queue by the master plan's phases (MP-01, step 5)
+
+- AI_HANDOFF.md: 12 new ready rows by phase (APP-02, AI-04, DATA-01, CHART-01, HOTKEY-01, SCAN-01, SCAN-02, ALERT-01, JRN-01, FUND-01, and RES-04 and RES-05 for Grok), 8 `later` rows, and older low-value rows moved to `later`; REV-01, REV-02 and TRUST-01 done; OWN-06 and OWN-07 added. 24 rows are ready.
+- The board knows the `later` state (scripts/ai-status.mjs STATES, scripts/ai-loop.mjs release); AGENTS.md and docs/MASTER_ROADMAP.md describe it.
+- Page gate: the page footer may move down (DECISIONS.md MP-5b).
+- Checks: npm test (638 pass), clean check, the page gate on Admin → AI agents, the homepage and Plans & billing.
+
 ## 2026-11-26: Claude, one price ladder and the legal gates (MP-01, steps 3 and 4)
 
 - Prices (DECISIONS.md MP-3): Pro $14.99, Elite $39.99, Ultimate $89.99 a month (yearly $149, $399, $899), Starter free, and Institutional from $499 a month on a contract (a "Talk to us" card on Plans & billing, no checkout). Updated in src/fees.js, the homepage (scripts/home.py, public/index.html, public/yi.html), the owner overview and the plan documents. The plan names stay.

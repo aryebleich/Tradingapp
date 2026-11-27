@@ -38,7 +38,7 @@ Free is the Starter plan. The names are the app's (Pro, Elite, Ultimate), which 
 | AI financial tools | Plan allowances plus credit packs | Built, Stripe test mode |
 | Trading automation | Included per tier (limits by plan) | Built |
 | Marketplace | 15–30% commission on eligible sales | Later. Paid trade ideas wait for legal sign-off (LEGAL_REVIEW.md L-MP2); indicators and dashboards don't need it |
-| Financial data | Premium data packages | Later, only after data licenses (OWN-05) |
+| Financial data | Premium data packages | Later, only after data licenses (OWN-06) |
 | Developer APIs | Usage-based billing | Queue row DEV-01 |
 | Trading education | Paid courses | Later (Academy) |
 | Creator memberships | Revenue sharing | Waits for legal sign-off (L-MP2) |

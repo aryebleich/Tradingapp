@@ -14,7 +14,8 @@ export const RAW = {
   rules: 'https://raw.githubusercontent.com/aryebleich/Tradingapp/main/AGENTS.md',
 };
 export const ASSISTANTS = ['Claude', 'Codex', 'Grok'];
-export const STATES = ['active', 'paused', 'ready', 'blocked', 'done'];
+// 'later': a row for a later phase of the master plan (docs/MASTER_ROADMAP.md); never picked until it is set to ready.
+export const STATES = ['active', 'paused', 'ready', 'blocked', 'later', 'done'];
 const clean = s => String(s || '').replace(/`/g, '').replace(/\*\*/g, '').trim();
 const dash = s => (/^[-—–]?$/.test(clean(s)) ? null : clean(s));
 
@@ -49,7 +50,7 @@ export function build(md) {
   return {
     board: RAW.board, rules: RAW.rules, about: 'Generated from AI_HANDOFF.md by scripts/ai-status.mjs. Public: holds no secrets or private details.',
     assistants,
-    queue: { active: by('active'), paused: by('paused'), ready: by('ready'), blocked: by('blocked'), done: by('done') },
+    queue: { active: by('active'), paused: by('paused'), ready: by('ready'), blocked: by('blocked'), later: by('later'), done: by('done') },
     blockers: rows.filter(r => r.state === 'blocked').map(r => ({ id: r.id, task: r.task })),
     owner: table(md, 'Owner only').map(r => ({ id: clean(r.id), task: clean(r.what_only_the_owner_can_do) })),
     handoffs: handoffs(md).slice(0, 10),

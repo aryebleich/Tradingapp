@@ -37,7 +37,9 @@ for (const pg of pages) for (const w of widths) {
     if (d.visible && !x.visible) fail.disclosure.push(`${at}: no longer visible "${d.text.slice(0, 90)}"`);
     if (d.aboveFold && !x.aboveFold) fail.disclosure.push(`${at}: moved below the fold "${d.text.slice(0, 90)}"`);
     // Further down the page too: a disclosure may not move more than 100 px lower than it was.
-    if (d.visible && x.visible && x.top - d.top > 100) fail.disclosure.push(`${at}: moved ${x.top - d.top}px further down "${d.text.slice(0, 80)}"`);
+    // The page footer always sits at the end: it moves down whenever the content above grows (a longer
+    // list, a new card), so only its presence, visibility and readability are checked.
+    if (d.visible && x.visible && !x.footer && x.top - d.top > 100) fail.disclosure.push(`${at}: moved ${x.top - d.top}px further down "${d.text.slice(0, 80)}"`);
     if (x.visible && x.fontPx < Math.min(12, d.fontPx)) fail.disclosure.push(`${at}: text smaller than 12 px (${x.fontPx}) "${d.text.slice(0, 60)}"`);
     if (x.visible && x.contrast < Math.min(4.5, d.contrast) - 0.05) fail.disclosure.push(`${at}: contrast ${x.contrast} < ${Math.min(4.5, d.contrast)} "${d.text.slice(0, 60)}"`);
     if (x.clipped && !d.clipped) fail.disclosure.push(`${at}: clipped "${d.text.slice(0, 60)}"`);

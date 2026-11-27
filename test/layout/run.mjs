@@ -80,7 +80,7 @@ async function measure(p, width) {
       if (own.length < 25 || !re.test(own)) continue;
       if ([...el.children].some(c => /^(DIV|P|LI|SECTION|TABLE|UL|OL)$/.test(c.nodeName) && re.test(c.textContent))) continue;
       const vis = shown(el), r = el.getBoundingClientRect(), cs = getComputedStyle(el);
-      disclosures.push({ text: own.slice(0, 160), visible: vis, top: Math.round(r.top + scrollY), aboveFold: vis && r.top < H, fontPx: parseFloat(cs.fontSize), contrast: +ratio(cs.color, bgOf(el)).toFixed(2), clipped: vis && el.scrollWidth > el.clientWidth + 2 && cs.overflow === 'hidden' });
+      disclosures.push({ text: own.slice(0, 160), visible: vis, top: Math.round(r.top + scrollY), aboveFold: vis && r.top < H, fontPx: parseFloat(cs.fontSize), contrast: +ratio(cs.color, bgOf(el)).toFixed(2), clipped: vis && el.scrollWidth > el.clientWidth + 2 && cs.overflow === 'hidden', footer: !!el.closest('body > footer') });
     }
     // Figures: every number-like token in text (prices, fees, balances, P&L, %), clock and relative times removed.
     const figs = [], walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);

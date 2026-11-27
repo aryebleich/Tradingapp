@@ -188,7 +188,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     writeBoard(b); console.log(JSON.stringify({ claimed: id, by: name, at }));
   } else if (cmd === 'release') {
     const name = NAME[who], state = arg('state', 'done'); if (!name || !id) throw new Error('release needs --assistant and --task');
-    if (!['done', 'active', 'paused', 'blocked', 'ready'].includes(state)) throw new Error('state must be done, active, paused, blocked or ready');
+    if (!['done', 'active', 'paused', 'blocked', 'ready', 'later'].includes(state)) throw new Error('state must be done, active, paused, blocked, ready or later');
     const pr = arg('pr'), next = arg('next') || (state === 'done' ? (pr ? `Review PR #${pr} (cross-review), then take the next ready row.` : 'Take the next ready row.') : `Continue ${id}.`);
     let b = setRow(md, 'Queue', id, { state, claimed_by: state === 'ready' ? '—' : name, updated: at });
     b = setRow(b, 'Assistants', name, { task: state === 'done' ? '—' : id, state: state === 'done' ? 'idle' : state, updated: at, last_sha: arg('sha', '—'), next_action: next, reset: arg('reset') || '—' });

@@ -43,7 +43,16 @@ The AI_HANDOFF.md queue follows this order:
 3. Phase 3.
 4. Later phases, as "later" rows (state `ready`, low priority).
 
-Within a phase, the five capabilities above come first, then the best value for the effort (V/E in the registry). The queue keeps about 20 ready rows. Legal rows (flag `legal`) and licensed data (flag `licensed`) are not queued for building until the owner signs off (OWN-04) or arranges the license (OWN-05).
+Within a phase, the five capabilities above come first, then the best value for the effort (V/E in the registry). The queue keeps about 20 ready rows. Legal rows (flag `legal`) and licensed data (flag `licensed`) are not queued for building until the owner signs off (OWN-04) or arranges the license (OWN-06).
+
+## The queue now (2026-11-27)
+
+| Phase | Rows (AI_HANDOFF.md) |
+| --- | --- |
+| 1. Foundation | APP-02 installable app with push and offline watchlists, AI-04 sources and confidence on every AI answer, DATA-01 delayed labels, CHART-01 synchronized charts and saved drawings, HOTKEY-01 trading hotkeys |
+| 2. Revenue | SCAN-01 premarket and after-hours scanners, SCAN-02 scanner presets, FEAT-02 insider Form 4 tracker, FEAT-03 congressional trades, FEAT-01 dividend scanner, ALERT-01 news and volume alerts, JRN-01 journal by hour and notes, FUND-01 DCF and health scores, MEAS-01 measurement; plus the Phase A rows (AIP-01, REV-03, REV-02B) |
+| Research (Grok) | RES-04 market-realism review of the price ladder, RES-05 data licensing scan |
+| Later (state `later`) | OPT-01, TAPE-01, REPLAY-01, SOC-01, ACAD-01, ENT-01, MKT-01, NATIVE-01, DEV-01 and older internal rows |
 
 ## Apps (section 18)
 
