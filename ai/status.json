@@ -15,10 +15,10 @@
     {
       "name": "Codex",
       "task": "FIX-01",
-      "state": "active",
-      "updated": "2026-11-27 19:58",
-      "lastSha": "0b4fb68",
-      "next": "Working on FIX-01 in GitHub Actions (run 46060401500).",
+      "state": "ready",
+      "updated": "2026-11-27 19:59",
+      "lastSha": "91632b6",
+      "next": "Any assistant: take FIX-01 again from ai/task-fix-01",
       "reset": null
     },
     {
@@ -32,19 +32,18 @@
     }
   ],
   "queue": {
-    "active": [
-      {
-        "id": "FIX-01",
-        "state": "active",
-        "priority": 1,
-        "suggested": "Codex",
-        "claimedBy": "Codex",
-        "updated": "2026-11-27 19:58",
-        "task": "The page gate's homepage FAQ answers at 1440 px are sometimes read as \"no longer visible\" (seen twice, passes on rerun). Done when the gate waits for the FAQ to settle and three runs in a row pass. See docs/FEATURE_REGISTRY.md."
-      }
-    ],
+    "active": [],
     "paused": [],
     "ready": [
+      {
+        "id": "FIX-01",
+        "state": "ready",
+        "priority": 1,
+        "suggested": "Codex",
+        "claimedBy": null,
+        "updated": "2026-11-27 19:59",
+        "task": "The page gate's homepage FAQ answers at 1440 px are sometimes read as \"no longer visible\" (seen twice, passes on rerun). Done when the gate waits for the FAQ to settle and three runs in a row pass. See docs/FEATURE_REGISTRY.md."
+      },
       {
         "id": "REV-02B",
         "state": "ready",
@@ -644,6 +643,17 @@
   ],
   "handoffs": [
     {
+      "at": "2026-11-27 19:59 UTC",
+      "assistant": "Codex",
+      "task": "FIX-01",
+      "state": "ready",
+      "last_sha": "91632b6",
+      "changed": "see the commits",
+      "checks": "see the run",
+      "blockers": "the run failed (run 46060401500)",
+      "next_action": "Any assistant: take FIX-01 again from ai/task-fix-01"
+    },
+    {
       "at": "2026-11-27 18:47 UTC",
       "assistant": "Claude",
       "task": "SCAN-01",
@@ -741,17 +751,6 @@
       "checks": "the full page gate passes on main (89 pages × 4 widths); npm test; the clean check",
       "blockers": "none",
       "next_action": "Claude: REV-01's price step (Hybrid prices and the checkout guard). PR #60 merges itself once its gates pass."
-    },
-    {
-      "at": "2026-11-26 18:53 UTC",
-      "assistant": "Claude",
-      "task": "TEAM-03",
-      "state": "done",
-      "last_sha": "17aa6f7",
-      "changed": "the chain (scripts/ai-loop.mjs chain/owner/addrow), Grok code mode, ai-loop.yml rewritten, release-gates squash auto-merge with owner-approved paths, Admin chain view, AGENTS.md",
-      "checks": "npm test 627 pass; actionlint clean",
-      "blockers": "the automatic runs need CLAUDE_CODE_OAUTH_TOKEN, CODEX_GITHUB=1 and a Codex environment (OWN-05)",
-      "next_action": "Claude: finish QA-02 (baseline verification), then REV-01's price step."
     }
   ]
 }
