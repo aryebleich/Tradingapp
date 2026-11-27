@@ -9,3 +9,6 @@ Rules: AGENTS.md. One branch for this task: ai/task-ai-04b. Every assistant cont
 ### 2026-11-27 02:13 UTC · codex starts (run 45926986309)
 
 ### 2026-11-27 10:56 UTC · codex starts (run 45986190634)
+
+### 2026-11-27 15:35 UTC · Claude: taken over from Codex, done on main
+- The evidence line on picks, signals and the options desk AI; tests in test/ai-evidence.test.js; registry A-19 done.
