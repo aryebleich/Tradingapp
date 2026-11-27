@@ -200,14 +200,20 @@ jobs:
       - name: Commit and push the task branch, and its pull request
         id: pr
         if: always()
+        env:
+          # The built-in token may not open pull requests unless the owner allows it (Settings → Actions →
+          # General → "Allow GitHub Actions to create and approve pull requests", OWN-08). The owner's own
+          # token (CODEX_MENTION_TOKEN), when it is set, opens it instead.
+          MENTION_TOKEN: ${{ secrets.CODEX_MENTION_TOKEN }}
         run: |
           git add -A -- . ':!AI_HANDOFF.md' ':!ai/status.json' ':!.github/workflows'
           git diff --cached --quiet || git commit -qm "$TASK: $WHO (ai-loop run $GITHUB_RUN_ID)"
           git push -q origin "$BRANCH"
           pr=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
           if [ -z "$pr" ]; then
-            gh pr create --base main --head "$BRANCH" --title "$TASK: $(jq -r --arg t "$TASK" '[.queue[][] | select(.id == $t)][0].task' ai/status.json | cut -c1-80)" \
-              --body "Task $TASK from the AI loop (AGENTS.md). The brief and the progress note: ai/tasks/$TASK.md. It merges itself when the release gates pass (owner-approved paths wait for the label), and the cross-review follows right after the merge." > pr.txt
+            GH_TOKEN="${MENTION_TOKEN:-$GH_TOKEN}" gh pr create --base main --head "$BRANCH" --title "$TASK: $(jq -r --arg t "$TASK" '[.queue[][] | select(.id == $t)][0].task' ai/status.json | cut -c1-80)" \
+              --body "Task $TASK from the AI loop (AGENTS.md). The brief and the progress note: ai/tasks/$TASK.md. It merges itself when the release gates pass (owner-approved paths wait for the label), and the cross-review follows right after the merge." > pr.txt \
+              || { echo "::error::The task branch $BRANCH is pushed, but GitHub refused to open its pull request: allow it in Settings → Actions → General (\"Allow GitHub Actions to create and approve pull requests\") or add CODEX_MENTION_TOKEN (OWN-08)."; exit 1; }
             pr=$(grep -o '[0-9]*$' pr.txt)
           fi
           gh pr edit "$pr" --add-label "by:$WHO" > /dev/null 2>&1 || true

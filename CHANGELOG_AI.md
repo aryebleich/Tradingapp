@@ -4,6 +4,11 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-27: Claude, why the AI loop's task runs failed
+
+- Both AI-04B runs (45926986309, 45986190634) failed at "Commit and push the task branch, and its pull request": GitHub answered "GitHub Actions is not permitted to create or approve pull requests". That is a repository setting only the owner can change (OWN-08).
+- .github/workflows/ai-loop.yml: the pull request is opened with the owner's CODEX_MENTION_TOKEN when it is set, and a refused pull request now ends with an error that names the fix. Checked with actionlint.
+
 ## 2026-11-27: Claude, AI-04, sources and confidence on AI answers
 
 - src/ai-evidence.js: evidence() and withEvidence(). The AI chat (src/chat.js), stock summaries (src/stock.js), "Why your P/L moved" (src/pnlwhy.js) and the AI tools (src/aitools.js) return it, and the pages show one line under each answer (evidenceHtml in public/app.js, used by studio.js, stock.js, pnlwhy.js and aitools.js). DECISIONS.md MP-7.
