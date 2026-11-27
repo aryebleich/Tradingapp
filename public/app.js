@@ -495,7 +495,7 @@ const NAV = [
 // every feature, setting and saved item stays exactly where it was.
 const HUBS = {
   analyze: ['Stock & fund analyzer', [['analyze', 'Stock & fund analyzer'], ['earnings', 'Earnings vs expectations'], ['compare', 'Compare stocks']]],
-  research: ['Research & news', [['research', 'Plain-language research'], ['news', 'News & sentiment'], ['intel', 'Market intelligence'], ['institutions', 'Institutional portfolios'], ['rates', 'Rates vs stocks']]],
+  research: ['Research & news', [['research', 'Plain-language research'], ['news', 'News & sentiment'], ['intel', 'Market intelligence'], ['institutions', 'Institutional portfolios'], ['insiders', 'Insider trades'], ['rates', 'Rates vs stocks']]],
   scanner: ['Scanners', [['scanner', 'Scanner'], ['leaders', 'New leaders'], ['valuescan', 'Growth at a price']]],
   ai: ['AI assistant', [['ai', 'AI assistant'], ['aitools', 'AI tools']]],
   options: ['Options', [['options', 'Options desk'], ['optionslab', 'Options lab']]],
@@ -2636,6 +2636,7 @@ lazyRoutes(() => import('./pages/playbooks.js'), 'registerPlaybooks', shared, ["
 { const note = () => { let n = document.getElementById('offlineNote'); if (navigator.onLine) { n?.remove(); return; }
     if (!n) { n = document.createElement('div'); n.id = 'offlineNote'; n.className = 'banner'; n.setAttribute('role', 'status'); n.textContent = "You're offline. Watchlists show what was saved on your last visit; trading needs a connection."; document.body.prepend(n); } };
   addEventListener('offline', note); addEventListener('online', note); }
+lazyRoutes(() => import('./pages/insiders.js'), 'registerInsiders', shared, ["insiders"]);
 lazyRoutes(() => import('./pages/combined.js'), 'registerCombined', shared, ["accounts"]);
 lazyRoutes(() => import('./pages/business.js'), 'registerBusiness', shared, ["currencies", "business", "invoices", "books", "bank", "inventory", "payroll", "bizreports"]);
 lazyRoutes(() => import('./pages/social.js'), 'registerSocial', shared, ["traders", "robo"]);

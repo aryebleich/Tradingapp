@@ -18,9 +18,9 @@ Rebuilt by `node scripts/registry.mjs` from the rows below: 287 features.
 | --- | --- | --- | --- |
 | 1. Professional trading terminal | 7 | 8 | 3 |
 | 2. Brightolio AI | 13 | 6 | 0 |
-| 3. Advanced market scanners | 5 | 11 | 3 |
+| 3. Advanced market scanners | 6 | 11 | 2 |
 | 4. Automated trading ecosystem | 15 | 3 | 0 |
-| 5. Institutional financial intelligence | 4 | 6 | 6 |
+| 5. Institutional financial intelligence | 5 | 6 | 5 |
 | 6. Complete portfolio management | 15 | 1 | 0 |
 | 7. Financial news and intelligence center | 6 | 5 | 4 |
 | 8. Advanced options trading | 9 | 3 | 2 |
@@ -35,7 +35,7 @@ Rebuilt by `node scripts/registry.mjs` from the rows below: 287 features.
 | 17. Brightolio Developer Cloud | 1 | 6 | 5 |
 | 18. Mobile and desktop ecosystem | 6 | 5 | 1 |
 | 19. Security and infrastructure | 10 | 7 | 1 |
-| **All** | **116** | **115** | **56** |
+| **All** | **118** | **115** | **54** |
 
 ### The 20 biggest gaps
 
@@ -44,25 +44,25 @@ Missing or partial rows with the highest value for the effort (V/E), legal and l
 | # | ID | Feature | Status | V/E |
 | --- | --- | --- | --- | --- |
 | 1 | S-07 | Penny stock scanner | missing | 3/1 |
-| 2 | S-11 | Insider buying tracker | missing | 5/2 |
-| 3 | I-04 | Insider transactions | missing | 5/2 |
-| 4 | T-16 | Trading hotkeys | missing | 4/2 |
-| 5 | I-03 | Congressional stock trading tracker | missing | 4/2 |
-| 6 | N-13 | Real-time news alerts | missing | 4/2 |
-| 7 | F-08 | Discounted cash flow models | missing | 4/2 |
-| 8 | J-08 | Time-of-day performance | missing | 4/2 |
-| 9 | AL-05 | News alerts | missing | 4/2 |
-| 10 | T-05 | Multiple synchronized charts | partial | 4/2 |
-| 11 | S-04 | Unusual volume scanner | partial | 4/2 |
-| 12 | S-05 | Breakout scanner | partial | 4/2 |
-| 13 | S-13 | Dividend scanner | partial | 4/2 |
-| 14 | S-19 | Financial market heatmaps | partial | 4/2 |
-| 15 | I-05 | SEC filings monitor | partial | 4/2 |
-| 16 | I-16 | Economic intelligence dashboard | partial | 4/2 |
-| 17 | N-03 | Economic calendars | partial | 4/2 |
-| 18 | F-02 | Balance sheets | partial | 4/2 |
-| 19 | F-03 | Income statements | partial | 4/2 |
-| 20 | F-04 | Cash flow statements | partial | 4/2 |
+| 2 | T-16 | Trading hotkeys | missing | 4/2 |
+| 3 | I-03 | Congressional stock trading tracker | missing | 4/2 |
+| 4 | N-13 | Real-time news alerts | missing | 4/2 |
+| 5 | F-08 | Discounted cash flow models | missing | 4/2 |
+| 6 | J-08 | Time-of-day performance | missing | 4/2 |
+| 7 | AL-05 | News alerts | missing | 4/2 |
+| 8 | T-05 | Multiple synchronized charts | partial | 4/2 |
+| 9 | S-04 | Unusual volume scanner | partial | 4/2 |
+| 10 | S-05 | Breakout scanner | partial | 4/2 |
+| 11 | S-13 | Dividend scanner | partial | 4/2 |
+| 12 | S-19 | Financial market heatmaps | partial | 4/2 |
+| 13 | I-05 | SEC filings monitor | partial | 4/2 |
+| 14 | I-16 | Economic intelligence dashboard | partial | 4/2 |
+| 15 | N-03 | Economic calendars | partial | 4/2 |
+| 16 | F-02 | Balance sheets | partial | 4/2 |
+| 17 | F-03 | Income statements | partial | 4/2 |
+| 18 | F-04 | Cash flow statements | partial | 4/2 |
+| 19 | F-07 | Valuation calculators | partial | 4/2 |
+| 20 | F-10 | Company financial health scores | partial | 4/2 |
 <!-- summary:end -->
 
 ## 1. Professional trading terminal
@@ -126,7 +126,7 @@ Missing or partial rows with the highest value for the effort (V/E), legal and l
 | S-08 | Options flow scanner | partial | src/intel.js unusual flow from the chain (delay by plan) | Market-wide flow from a paid vendor needs a license; today it is per symbol from the chain | Scanner | Elite | licensed | 4/4 |
 | S-09 | Unusual options activity | partial | src/intel.js | A market-wide list (S-08's license) | Scanner | Elite | licensed | 4/3 |
 | S-10 | Short squeeze indicators | partial | src/shortdesk.js, src/intel.js (FINRA short volume) | Short interest (FINRA, twice a month) and days to cover in one score, labelled delayed | Scanner | Pro | delayed | 3/2 |
-| S-11 | Insider buying tracker | missing | — | Form 4 purchases from SEC EDGAR (free), cluster buys, delayed by the filing lag | Scanner | Pro | delayed | 5/2 |
+| S-11 | Insider buying tracker | done | src/insiders.js (EDGAR Form 4, a job every 30 minutes), /api/insiders, #/insiders (Research → Insider trades), a link from the stock page | Alerts on a watched symbol (AL-07); saved cluster presets | Scanner | Pro | delayed | 5/2 |
 | S-12 | Institutional ownership tracker | partial | src/institutions.js (13F by manager), #/institutions | Per-stock ownership: which funds hold it and what changed | Intelligence | Pro | delayed | 4/3 |
 | S-13 | Dividend scanner | partial | src/income.js (holdings), #/dividends | A market-wide scanner: yield, safety, growth (queue row FEAT-01) | Scanner | Pro | — | 4/2 |
 | S-14 | Undervalued stock scanner | done | src/stock.js growth-at-a-price, src/plainresearch.js, #/valuescan | — | Scanner | Free | — | 4/2 |
@@ -166,7 +166,7 @@ Missing or partial rows with the highest value for the effort (V/E), legal and l
 | I-01 | Hedge fund holdings tracker | done | src/institutions.js, #/institutions | — | Intelligence | Pro | delayed | 4/2 |
 | I-02 | 13F filing analysis | done | src/institutions.js (changes since last quarter) | — | Intelligence | Pro | delayed | 4/2 |
 | I-03 | Congressional stock trading tracker | missing | — | Periodic transaction reports from the House Clerk and Senate disclosure sites (public), with the filing lag shown | Intelligence | Pro | delayed | 4/2 |
-| I-04 | Insider transactions | missing | — | SEC Form 4 feed per stock and market-wide (EDGAR, free) | Intelligence | Free | delayed | 5/2 |
+| I-04 | Insider transactions | done | src/insiders.js (EDGAR Form 4, a job every 30 minutes), /api/insiders, #/insiders (Research → Insider trades), a link from the stock page | Alerts on a watched symbol (AL-07); saved cluster presets | Intelligence | Free | delayed | 5/2 |
 | I-05 | SEC filings monitor | partial | src/research.js (summaries on request) | A feed of new 8-K, 10-Q, 10-K, S-1 for watched symbols with alerts | Intelligence | Pro | delayed | 4/2 |
 | I-06 | Institutional ownership changes | partial | src/institutions.js | Per stock, quarter over quarter (with S-12) | Intelligence | Pro | delayed | 3/2 |
 | I-07 | Dark pool data analytics | done | src/intel.js (FINRA daily Reg SHO files, free) | Weekly ATS volume per venue (FINRA, free, 2–4 weeks late) | Intelligence | Elite | delayed | 3/2 |
@@ -486,6 +486,7 @@ Every page and route of the app, with the registry rows it serves (the test fail
 | #/news | N-01, N-09 |
 | #/intel | I-07, S-08 |
 | #/institutions | I-01, I-02 |
+| #/insiders | I-04, S-11 |
 | #/rates | I-16, N-06 |
 | #/scanner | S-18, S-17 |
 | #/leaders | S-06 |
@@ -631,6 +632,7 @@ Every page and route of the app, with the registry rows it serves (the test fail
 | growth.js | S-14 |
 | guides-more.js | AC-02 |
 | guides.js | AC-01 |
+| insiders.js | I-04, S-11 |
 | instruments.js | M-04 |
 | invest.js | M-04 |
 | luach.js | N-03 |

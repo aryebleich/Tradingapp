@@ -115,6 +115,8 @@ export const JOBS = [
   ['rebalremind', 1440, t => rebalanceReminders(t)],
   // Last month's books by email (opt-in), on the 1st.
   ['books', 1440, t => monthlyBooksEmail(t)],
+  // Insider Form 4 filings from SEC EDGAR's latest-filings feed (src/insiders.js), every 30 minutes.
+  ['insiders', 30, async () => (process.env.FREE_DATA === 'off' ? 0 : (await import('./insiders.js')).ingest())],
   // Trial-end reminders by email, 3 days and 1 day before (opt-in; src/trial-notice.js), twice a day.
   ['trialremind', 720, t => import('./trial-notice.js').then(T => T.trialEmails(t))],
 ];

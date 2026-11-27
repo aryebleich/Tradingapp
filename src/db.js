@@ -784,6 +784,27 @@ CREATE TABLE IF NOT EXISTS exec_audit (
   hash TEXT NOT NULL UNIQUE,
   at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS insider_tx (
+  accession TEXT NOT NULL,
+  line INTEGER NOT NULL,
+  symbol TEXT NOT NULL,
+  issuer TEXT,
+  insider TEXT,
+  role TEXT,
+  code TEXT,
+  trade_date TEXT,
+  filed TEXT,
+  shares REAL,
+  price REAL,
+  value REAL,
+  plan10b51 INTEGER NOT NULL DEFAULT 0,
+  amended INTEGER NOT NULL DEFAULT 0,
+  url TEXT,
+  at INTEGER NOT NULL,
+  PRIMARY KEY (accession, line)
+);
+CREATE INDEX IF NOT EXISTS insider_tx_filed ON insider_tx(code, filed);
+CREATE INDEX IF NOT EXISTS insider_tx_symbol ON insider_tx(symbol, filed);
 CREATE TABLE IF NOT EXISTS prices (
   id INTEGER PRIMARY KEY,
   item TEXT NOT NULL,

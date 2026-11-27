@@ -4,6 +4,16 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-27: Claude, FEAT-02: insider trades from SEC Form 4
+
+- src/insiders.js reads Form 4 XML (buys, sales and other codes, the insider's role, the 10b5-1 flag, shares, price and value). Two views:
+  - one stock's latest filings from EDGAR, cached for an hour;
+  - the market, filled every 30 minutes by a job from EDGAR's latest-filings feed into insider_tx (one row per transaction, each filing kept once; an amendment replaces the original's rows).
+- The market list shows open-market buys by default, or sales. Filters: minimum value, role, filed in the last 7, 30 or 90 days, and clusters (2 or more insiders buying the same stock within 14 days).
+- Every row shows the trade date, the filing date, the days between, the 10b5-1 flag and a link to the filing, under the note from Grok's research ("insiders can and do lose money"; not advice).
+- #/insiders is a new tab in Research & news (public/pages/insiders.js), and the stock page's fundamentals link to it. Yiddish added.
+- test/insiders.test.js runs against a local stand-in for EDGAR. Registry S-11 and I-04 done.
+
 ## 2026-11-27: Claude, SCAN-01: premarket and after-hours movers
 
 - src/extscan.js: the biggest movers from 4:00 New York time to the open (against yesterday's close) and from the close to 8:00 PM (against today's close), over the most active stocks plus a fixed set of liquid names, from market-data snapshots, shared for a minute. Only trades from that session today count, and prices under $1 are left out. Every answer names its data source: real time from IEX (one exchange, partial volume), consolidated, or 15-minute delayed.
