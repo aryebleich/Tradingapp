@@ -14,11 +14,11 @@
     },
     {
       "name": "Codex",
-      "task": null,
-      "state": "idle",
-      "updated": "2026-11-27 15:37",
-      "lastSha": "81cbd74",
-      "next": "Codex: FIX-01, or batch the open task branches (AGENTS.md). AI-04B was taken over and finished by Claude.",
+      "task": "FIX-01",
+      "state": "active",
+      "updated": "2026-11-27 19:58",
+      "lastSha": "0b4fb68",
+      "next": "Working on FIX-01 in GitHub Actions (run 46060401500).",
       "reset": null
     },
     {
@@ -32,18 +32,19 @@
     }
   ],
   "queue": {
-    "active": [],
-    "paused": [],
-    "ready": [
+    "active": [
       {
         "id": "FIX-01",
-        "state": "ready",
+        "state": "active",
         "priority": 1,
         "suggested": "Codex",
-        "claimedBy": null,
-        "updated": null,
+        "claimedBy": "Codex",
+        "updated": "2026-11-27 19:58",
         "task": "The page gate's homepage FAQ answers at 1440 px are sometimes read as \"no longer visible\" (seen twice, passes on rerun). Done when the gate waits for the FAQ to settle and three runs in a row pass. See docs/FEATURE_REGISTRY.md."
-      },
+      }
+    ],
+    "paused": [],
+    "ready": [
       {
         "id": "REV-02B",
         "state": "ready",
