@@ -5,20 +5,20 @@
   "assistants": [
     {
       "name": "Claude",
-      "task": null,
-      "state": "idle",
-      "updated": "2026-11-27 15:37",
-      "lastSha": "2952f95",
-      "next": "Claude: SCAN-01 (premarket and after-hours scanners). Codex: FIX-01, or batch the open task branches (AGENTS.md).",
+      "task": "SCAN-01",
+      "state": "active",
+      "updated": "2026-11-27 18:38",
+      "lastSha": "81cbd74",
+      "next": "Working on SCAN-01 in Claude Code.",
       "reset": null
     },
     {
       "name": "Codex",
-      "task": "AI-04B",
-      "state": "ready",
-      "updated": "2026-11-27 10:56",
-      "lastSha": "acaa5f6",
-      "next": "Any assistant: take AI-04B again from ai/task-ai-04b",
+      "task": null,
+      "state": "idle",
+      "updated": "2026-11-27 15:37",
+      "lastSha": "81cbd74",
+      "next": "Codex: FIX-01, or batch the open task branches (AGENTS.md). AI-04B was taken over and finished by Claude.",
       "reset": null
     },
     {
@@ -32,7 +32,17 @@
     }
   ],
   "queue": {
-    "active": [],
+    "active": [
+      {
+        "id": "SCAN-01",
+        "state": "active",
+        "priority": 5,
+        "suggested": "Claude",
+        "claimedBy": "Claude",
+        "updated": "2026-11-27 18:38",
+        "task": "Phase 2, scanners (registry S-02, S-03). Premarket and after-hours scanners: gappers and volume from 4:00 New York time and after the close, each figure labelled real time or delayed. Done when both scanners are on #/scanner with tests and the rows are updated. See docs/FEATURE_REGISTRY.md."
+      }
+    ],
     "paused": [],
     "ready": [
       {
@@ -88,15 +98,6 @@
         "claimedBy": null,
         "updated": null,
         "task": "Phase 1, terminal (registry T-16). Configurable trading hotkeys (buy, sell, cancel all, flatten), off by default, paper first, and the usual step-up before any real-money order. Done when unit and e2e tests cover paper and the live step-up. See docs/FEATURE_REGISTRY.md."
-      },
-      {
-        "id": "SCAN-01",
-        "state": "ready",
-        "priority": 5,
-        "suggested": "Claude",
-        "claimedBy": null,
-        "updated": null,
-        "task": "Phase 2, scanners (registry S-02, S-03). Premarket and after-hours scanners: gappers and volume from 4:00 New York time and after the close, each figure labelled real time or delayed. Done when both scanners are on #/scanner with tests and the rows are updated. See docs/FEATURE_REGISTRY.md."
       },
       {
         "id": "RES-04",

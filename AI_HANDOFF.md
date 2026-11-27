@@ -19,6 +19,7 @@ Rebuilt by `npm run ai:status`. Start every session by continuing the first row:
 
 | Task | Owner | State | Branch | Last update (UTC) | Next action |
 | --- | --- | --- | --- | --- | --- |
+| SCAN-01 | Claude | active | main | 2026-11-27 18:38 | — |
 | OPS-02 | Claude | blocked | main | — | — |
 <!-- open:end -->
 
@@ -26,8 +27,8 @@ Rebuilt by `npm run ai:status`. Start every session by continuing the first row:
 
 | Assistant | Task | State | Updated (UTC) | Last SHA | Next action | Reset (UTC) |
 | --- | --- | --- | --- | --- | --- | --- |
-| Claude | — | idle | 2026-11-27 15:37 | 2952f95 | Claude: SCAN-01 (premarket and after-hours scanners). Codex: FIX-01, or batch the open task branches (AGENTS.md). | — |
-| Codex | AI-04B | ready | 2026-11-27 10:56 | acaa5f6 | Any assistant: take AI-04B again from ai/task-ai-04b | — |
+| Claude | SCAN-01 | active | 2026-11-27 18:38 | 81cbd74 | Working on SCAN-01 in Claude Code. | — |
+| Codex | — | idle | 2026-11-27 15:37 | 81cbd74 | Codex: FIX-01, or batch the open task branches (AGENTS.md). AI-04B was taken over and finished by Claude. | — |
 | Grok | RES-03 | done | 2026-11-26 22:13 | a545db7 | Idle. FEAT-02 and FEAT-03 are ready from the research note. | — |
 
 ## Queue
@@ -36,13 +37,13 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 
 | ID | State | Priority | Suggested | Claimed by | Updated (UTC) | Task and done when |
 | --- | --- | --- | --- | --- | --- | --- |
+| SCAN-01 | active | 5 | Claude | Claude | 2026-11-27 18:38 | Phase 2, scanners (registry S-02, S-03). Premarket and after-hours scanners: gappers and volume from 4:00 New York time and after the close, each figure labelled real time or delayed. Done when both scanners are on #/scanner with tests and the rows are updated. See docs/FEATURE_REGISTRY.md. |
 | FIX-01 | ready | 1 | Codex | — | — | The page gate's homepage FAQ answers at 1440 px are sometimes read as "no longer visible" (seen twice, passes on rerun). Done when the gate waits for the FAQ to settle and three runs in a row pass. See docs/FEATURE_REGISTRY.md. |
 | REV-02B | ready | 2 | Codex | — | — | Follow-up of REV-02 (PR #60): label the paid controls on the 10 most-used pages by Admin → Analytics route counts, and add a test that every entry in public/paid-controls.js matches a server check (upgrade() or needPlan()). Done when both are in. |
 | DATA-01 | ready | 3 | Codex | — | — | Phase 1, data (registry SEC-16, T-01). Label every delayed or end-of-day figure "Delayed" or "End of day" with its source, from one helper. Done when a test finds no unlabelled delayed quote on the trade, chart, scanner and stock pages. See docs/FEATURE_REGISTRY.md. |
 | CHART-01 | ready | 3 | Codex | — | — | Phase 1, charting (registry T-05, T-04). Linked symbol, timeframe and crosshair across the 2- and 4-chart layouts, and drawings saved to the account instead of the device. Done when the e2e chart flow covers both and the rows are updated. See docs/FEATURE_REGISTRY.md. |
 | AIP-01 | ready | 3 | Codex | — | — | Phase A. The AI picks honesty UI (docs/research/ai-picks-review.md): on the AI morning picks and AI portfolios, an always-visible not-advice line, a track-record strip that includes losses, and a short methodology note. Done when each page shows all three and a test checks them. |
 | HOTKEY-01 | ready | 4 | Codex | — | — | Phase 1, terminal (registry T-16). Configurable trading hotkeys (buy, sell, cancel all, flatten), off by default, paper first, and the usual step-up before any real-money order. Done when unit and e2e tests cover paper and the live step-up. See docs/FEATURE_REGISTRY.md. |
-| SCAN-01 | ready | 5 | Claude | — | — | Phase 2, scanners (registry S-02, S-03). Premarket and after-hours scanners: gappers and volume from 4:00 New York time and after the close, each figure labelled real time or delayed. Done when both scanners are on #/scanner with tests and the rows are updated. See docs/FEATURE_REGISTRY.md. |
 | RES-04 | ready | 5 | Grok | — | — | Market-realism review of the price ladder (DECISIONS.md MP-3: Pro $14.99, Elite $39.99, Ultimate $89.99, Institutional from $499) against TradingView, Robinhood Gold and AI trading tools today. Done when docs/research/pricing-ladder-review.md lists what to keep or change, with dated sources. See docs/FEATURE_REGISTRY.md. |
 | CI-01 | ready | 5 | Codex | — | — | Fix the Deep check (its issue-opening step). The clean-check part is done: the ai/ allowlist is on main (dc4d309), the same rule as the prepared branch ai/grok-ci-01-clean-check, which is superseded. Done when the Deep check is green on main. |
 | SCAN-02 | ready | 6 | Codex | — | — | Phase 2, scanners (registry S-04, S-05, S-06, S-07). One-tap presets: unusual volume (relative to the 20-day average), breakout (52-week high, range), momentum and penny stocks (with liquidity and risk notes). Done when each preset runs on #/scanner with a test. See docs/FEATURE_REGISTRY.md. |
