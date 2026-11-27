@@ -19,7 +19,6 @@ Rebuilt by `npm run ai:status`. Start every session by continuing the first row:
 
 | Task | Owner | State | Branch | Last update (UTC) | Next action |
 | --- | --- | --- | --- | --- | --- |
-| SCAN-01 | Claude | active | main | 2026-11-27 18:38 | — |
 | OPS-02 | Claude | blocked | main | — | — |
 <!-- open:end -->
 
@@ -27,7 +26,7 @@ Rebuilt by `npm run ai:status`. Start every session by continuing the first row:
 
 | Assistant | Task | State | Updated (UTC) | Last SHA | Next action | Reset (UTC) |
 | --- | --- | --- | --- | --- | --- | --- |
-| Claude | SCAN-01 | active | 2026-11-27 18:38 | 81cbd74 | Working on SCAN-01 in Claude Code. | — |
+| Claude | — | idle | 2026-11-27 18:47 | 8cb96bf | Claude: FEAT-02 (insider Form 4 tracker, from docs/research/insider-congressional.md). Codex: FIX-01. | — |
 | Codex | — | idle | 2026-11-27 15:37 | 81cbd74 | Codex: FIX-01, or batch the open task branches (AGENTS.md). AI-04B was taken over and finished by Claude. | — |
 | Grok | RES-03 | done | 2026-11-26 22:13 | a545db7 | Idle. FEAT-02 and FEAT-03 are ready from the research note. | — |
 
@@ -37,7 +36,6 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 
 | ID | State | Priority | Suggested | Claimed by | Updated (UTC) | Task and done when |
 | --- | --- | --- | --- | --- | --- | --- |
-| SCAN-01 | active | 5 | Claude | Claude | 2026-11-27 18:38 | Phase 2, scanners (registry S-02, S-03). Premarket and after-hours scanners: gappers and volume from 4:00 New York time and after the close, each figure labelled real time or delayed. Done when both scanners are on #/scanner with tests and the rows are updated. See docs/FEATURE_REGISTRY.md. |
 | FIX-01 | ready | 1 | Codex | — | — | The page gate's homepage FAQ answers at 1440 px are sometimes read as "no longer visible" (seen twice, passes on rerun). Done when the gate waits for the FAQ to settle and three runs in a row pass. See docs/FEATURE_REGISTRY.md. |
 | REV-02B | ready | 2 | Codex | — | — | Follow-up of REV-02 (PR #60): label the paid controls on the 10 most-used pages by Admin → Analytics route counts, and add a test that every entry in public/paid-controls.js matches a server check (upgrade() or needPlan()). Done when both are in. |
 | DATA-01 | ready | 3 | Codex | — | — | Phase 1, data (registry SEC-16, T-01). Label every delayed or end-of-day figure "Delayed" or "End of day" with its source, from one helper. Done when a test finds no unlabelled delayed quote on the trade, chart, scanner and stock pages. See docs/FEATURE_REGISTRY.md. |
@@ -77,6 +75,7 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 | TICK-01 | later | 19 | Claude | — | — | The tick engine (Part B): a design note in DECISIONS.md first, reviewed by Grok for market realism, then the build. Done when the design is agreed and the first slice is tested. |
 | CHAT-04 | later | 20 | Codex | — | — | A live check of the Codex activity stream in Admin → AI chat, with one short test message. Done when the result is written here (no message text in logs). |
 | PARTA-1 | later | 21 | Claude | — | — | Part A items A1, A3, A4, A7 and A8 (definitions in DECISIONS.md and CHANGELOG_AI.md). Done when each one is a commit. |
+| SCAN-01 | done | 5 | Claude | Claude | 2026-11-27 18:47 | Phase 2, scanners (registry S-02, S-03). Premarket and after-hours scanners: gappers and volume from 4:00 New York time and after the close, each figure labelled real time or delayed. Done when both scanners are on #/scanner with tests and the rows are updated. See docs/FEATURE_REGISTRY.md. |
 | AI-04B | done | 2 | Codex | Claude | 2026-11-27 15:37 | Follow-up of AI-04 (registry A-19): add the evidence line (src/ai-evidence.js evidence(), shown with H.evidenceHtml) to the AI morning picks, AI signals and the options desk's AI strategist and contract explainer. Done when test/ai-evidence.test.js also checks those routes and A-19 is done. See docs/FEATURE_REGISTRY.md. The loop runs so far failed only because GitHub refused to open the pull request (OWN-08). |
 | LOOP-01 | done | 0 | Claude | Claude | 2026-11-27 15:28 | The loop without the owner: GitHub settings checked, the owner-approved gate removed, Owner later, the Unfinished tasks overview, batch pull requests. Done in 5271077. |
 | PRICE-01 | done | 0 | Claude | Claude | 2026-11-27 15:28 | Prices only from Admin → Prices (currency, effective date, history) and the Stripe live switch; no price in the code. |
@@ -118,6 +117,13 @@ Things only the owner can do, whenever it suits. **None of them blocks a task:**
 ## Hand-offs
 
 Newest first. Use these fields every time; the next assistant continues from **Next action**.
+
+### 2026-11-27 18:47 UTC · Claude · SCAN-01 · done
+- **Last SHA:** 8cb96bf
+- **Changed:** src/extscan.js, GET /api/scanners/extended, the premarket and after-hours card at the end of #/scanner, Yiddish, registry S-02 and S-03 done
+- **Checks:** npm test 659 pass; clean check; page gate on #/scanner passes and its screenshot shows the card
+- **Blockers:** none for code; OWN-08 (Actions may not open pull requests) still limits the AI loop
+- **Next action:** Claude: FEAT-02 (insider Form 4 tracker, from docs/research/insider-congressional.md). Codex: FIX-01.
 
 ### 2026-11-27 15:37 UTC · Claude · AI-04B · done
 - **Last SHA:** 2952f95

@@ -5,11 +5,11 @@
   "assistants": [
     {
       "name": "Claude",
-      "task": "SCAN-01",
-      "state": "active",
-      "updated": "2026-11-27 18:38",
-      "lastSha": "81cbd74",
-      "next": "Working on SCAN-01 in Claude Code.",
+      "task": null,
+      "state": "idle",
+      "updated": "2026-11-27 18:47",
+      "lastSha": "8cb96bf",
+      "next": "Claude: FEAT-02 (insider Form 4 tracker, from docs/research/insider-congressional.md). Codex: FIX-01.",
       "reset": null
     },
     {
@@ -32,17 +32,7 @@
     }
   ],
   "queue": {
-    "active": [
-      {
-        "id": "SCAN-01",
-        "state": "active",
-        "priority": 5,
-        "suggested": "Claude",
-        "claimedBy": "Claude",
-        "updated": "2026-11-27 18:38",
-        "task": "Phase 2, scanners (registry S-02, S-03). Premarket and after-hours scanners: gappers and volume from 4:00 New York time and after the close, each figure labelled real time or delayed. Done when both scanners are on #/scanner with tests and the rows are updated. See docs/FEATURE_REGISTRY.md."
-      }
-    ],
+    "active": [],
     "paused": [],
     "ready": [
       {
@@ -403,6 +393,15 @@
     ],
     "done": [
       {
+        "id": "SCAN-01",
+        "state": "done",
+        "priority": 5,
+        "suggested": "Claude",
+        "claimedBy": "Claude",
+        "updated": "2026-11-27 18:47",
+        "task": "Phase 2, scanners (registry S-02, S-03). Premarket and after-hours scanners: gappers and volume from 4:00 New York time and after the close, each figure labelled real time or delayed. Done when both scanners are on #/scanner with tests and the rows are updated. See docs/FEATURE_REGISTRY.md."
+      },
+      {
         "id": "AI-04B",
         "state": "done",
         "priority": 2,
@@ -644,6 +643,17 @@
   ],
   "handoffs": [
     {
+      "at": "2026-11-27 18:47 UTC",
+      "assistant": "Claude",
+      "task": "SCAN-01",
+      "state": "done",
+      "last_sha": "8cb96bf",
+      "changed": "src/extscan.js, GET /api/scanners/extended, the premarket and after-hours card at the end of #/scanner, Yiddish, registry S-02 and S-03 done",
+      "checks": "npm test 659 pass; clean check; page gate on #/scanner passes and its screenshot shows the card",
+      "blockers": "none for code; OWN-08 (Actions may not open pull requests) still limits the AI loop",
+      "next_action": "Claude: FEAT-02 (insider Form 4 tracker, from docs/research/insider-congressional.md). Codex: FIX-01."
+    },
+    {
       "at": "2026-11-27 15:37 UTC",
       "assistant": "Claude",
       "task": "AI-04B",
@@ -741,17 +751,6 @@
       "checks": "npm test 627 pass; actionlint clean",
       "blockers": "the automatic runs need CLAUDE_CODE_OAUTH_TOKEN, CODEX_GITHUB=1 and a Codex environment (OWN-05)",
       "next_action": "Claude: finish QA-02 (baseline verification), then REV-01's price step."
-    },
-    {
-      "at": "2026-11-26 18:53 UTC",
-      "assistant": "Claude",
-      "task": "SEC-01",
-      "state": "done",
-      "last_sha": "17aa6f7",
-      "changed": "src/mfa-policy.js, Admin → Security, the member banner and set-up redirect, recovery codes; test/mfa-policy.test.js",
-      "checks": "npm test 627 pass (3 known TODO); clean check",
-      "blockers": "none",
-      "next_action": "Owner: try Admin → Security (off by default). Claude: TEAM-03 next."
     }
   ]
 }
