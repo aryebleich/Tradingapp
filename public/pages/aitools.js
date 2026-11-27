@@ -3,7 +3,7 @@ let H;
 export function registerAiTools(routes, helpers) { H = helpers; routes.aitools = page; }
 const pct = v => (v == null ? '-' : `${v > 0 ? '+' : ''}${(+v).toFixed(2)}%`);
 const ARROW = { up: '▲', down: '▼', mixed: '◆' };
-const note = r => `<p class="mu small-print">${r.engine ? `By ${H.esc(r.engine)}. ` : 'Plain rules (no AI set up). '}Education, not advice.</p>`;
+const note = r => `<p class="mu small-print">${r.engine ? `By ${H.esc(r.engine)}. ` : 'Plain rules (no AI set up). '}Education, not advice.</p>${H.evidenceHtml(r.evidence)}`;
 
 async function page(view, q) {
   const tab = q.get('tab') || 'scenario';

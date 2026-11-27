@@ -19,6 +19,7 @@ function draw(el, d) {
       <div class="pw-bar"><i class="${f.impact >= 0 ? 'up' : 'down'}" style="width:${Math.max(3, Math.abs(f.impact) / max * 100).toFixed(0)}%"></i></div>
       <p>${H.esc(f.text)}</p>${(f.symbols || []).flatMap(s => (d.news?.[s] || []).slice(0, 1).map(n => `<a class="pw-news" href="${H.esc(H.safeUrl(n.url))}" target="_blank" rel="noopener">${H.esc(n.source || 'News')}: ${H.esc(n.headline)} ↗</a>`)).join('')}</li>`).join('')}</ol>` : ''}
     ${(d.watch || []).length ? `<p class="mu small-print"><b>Keep an eye on:</b> ${d.watch.map(H.esc).join(' · ')}</p>` : ''}
+    ${H.evidenceHtml ? H.evidenceHtml(d.evidence) : ''}
     <div class="pw-foot"><span class="mu small-print">Updated ${ago(d.at)}${d.engine ? ` by ${H.esc(d.engine)}` : ' (plain summary; no AI answer)'} · refreshes ${every(d.everyMin)} on your plan${early ? `, next in ${left(d.nextAt)}` : ''}</span>
       <button type="button" class="ghost small" id="pwRefresh">${early && d.cost ? `Refresh now (${d.cost} credit${d.cost === 1 ? '' : 's'})` : 'Refresh now'}</button></div>
     <p class="mu small-print pw-note">Worked out from today's prices, your positions and recent headlines. Not advice to buy or sell.</p><div class="err"></div>`;

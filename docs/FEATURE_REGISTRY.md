@@ -30,12 +30,12 @@ Rebuilt by `node scripts/registry.mjs` from the rows below: 287 features.
 | 12. Brightolio Marketplace | 0 | 5 | 8 |
 | 13. Brightolio Academy | 1 | 9 | 2 |
 | 14. Professional trade journal | 5 | 3 | 4 |
-| 15. Advanced alerts and monitoring | 6 | 4 | 4 |
+| 15. Advanced alerts and monitoring | 7 | 4 | 3 |
 | 16. Brightolio Enterprise | 0 | 13 | 5 |
 | 17. Brightolio Developer Cloud | 1 | 6 | 5 |
-| 18. Mobile and desktop ecosystem | 5 | 3 | 4 |
+| 18. Mobile and desktop ecosystem | 6 | 5 | 1 |
 | 19. Security and infrastructure | 10 | 7 | 1 |
-| **All** | **111** | **114** | **62** |
+| **All** | **113** | **116** | **58** |
 
 ### The 20 biggest gaps
 
@@ -46,23 +46,23 @@ Missing or partial rows with the highest value for the effort (V/E), legal and l
 | 1 | S-07 | Penny stock scanner | missing | 3/1 |
 | 2 | S-11 | Insider buying tracker | missing | 5/2 |
 | 3 | I-04 | Insider transactions | missing | 5/2 |
-| 4 | AL-12 | Mobile push notifications | missing | 5/2 |
-| 5 | T-16 | Trading hotkeys | missing | 4/2 |
-| 6 | S-02 | Premarket scanner | missing | 4/2 |
-| 7 | S-03 | After-hours scanner | missing | 4/2 |
-| 8 | I-03 | Congressional stock trading tracker | missing | 4/2 |
-| 9 | N-13 | Real-time news alerts | missing | 4/2 |
-| 10 | F-08 | Discounted cash flow models | missing | 4/2 |
-| 11 | J-08 | Time-of-day performance | missing | 4/2 |
-| 12 | AL-05 | News alerts | missing | 4/2 |
-| 13 | AP-02 | iPhone application | missing | 4/2 |
-| 14 | AP-03 | Windows application | missing | 4/2 |
-| 15 | AP-04 | Mac application | missing | 4/2 |
-| 16 | T-05 | Multiple synchronized charts | partial | 4/2 |
-| 17 | S-04 | Unusual volume scanner | partial | 4/2 |
-| 18 | S-05 | Breakout scanner | partial | 4/2 |
-| 19 | S-13 | Dividend scanner | partial | 4/2 |
-| 20 | S-19 | Financial market heatmaps | partial | 4/2 |
+| 4 | T-16 | Trading hotkeys | missing | 4/2 |
+| 5 | S-02 | Premarket scanner | missing | 4/2 |
+| 6 | S-03 | After-hours scanner | missing | 4/2 |
+| 7 | I-03 | Congressional stock trading tracker | missing | 4/2 |
+| 8 | N-13 | Real-time news alerts | missing | 4/2 |
+| 9 | F-08 | Discounted cash flow models | missing | 4/2 |
+| 10 | J-08 | Time-of-day performance | missing | 4/2 |
+| 11 | AL-05 | News alerts | missing | 4/2 |
+| 12 | T-05 | Multiple synchronized charts | partial | 4/2 |
+| 13 | S-04 | Unusual volume scanner | partial | 4/2 |
+| 14 | S-05 | Breakout scanner | partial | 4/2 |
+| 15 | S-13 | Dividend scanner | partial | 4/2 |
+| 16 | S-19 | Financial market heatmaps | partial | 4/2 |
+| 17 | I-05 | SEC filings monitor | partial | 4/2 |
+| 18 | I-16 | Economic intelligence dashboard | partial | 4/2 |
+| 19 | N-03 | Economic calendars | partial | 4/2 |
+| 20 | F-02 | Balance sheets | partial | 4/2 |
 <!-- summary:end -->
 
 ## 1. Professional trading terminal
@@ -110,7 +110,7 @@ Missing or partial rows with the highest value for the effort (V/E), legal and l
 | A-16 | Voice-controlled financial assistant | done | public/pages/studio.js (browser voice), src/hotline.js, #/hotline | — | AI | Free | — | 3/2 |
 | A-17 | Personalized market intelligence | partial | src/newspicks.js, src/brief.js | A feed built from the member's holdings, watchlists and interests | AI | Elite | — | 4/3 |
 | A-18 | AI agents that continuously monitor investments | partial | src/ml.js, src/agentic.js, #/agents, #/agenthub | Agents that watch chosen symbols and alert with their reasons, within the plan's AI caps | AI | Elite | — | 4/3 |
-| A-19 | Reasoning, sources and confidence on every AI answer | partial | src/chat.js (sources), src/aiplans.js | A confidence line and the data used on every AI answer; never a promise of profit | AI | Free | — | 5/3 |
+| A-19 | Reasoning, sources and confidence on every AI answer | partial | src/ai-evidence.js on the chat (src/chat.js), stock summaries (src/stock.js), why your P/L moved (src/pnlwhy.js) and AI tools (src/aitools.js); shown by evidenceHtml in public/app.js | The same line on the AI morning picks, AI signals and the options strategist (queue row AI-04B) | AI | Free | — | 5/3 |
 
 ## 3. Advanced market scanners
 
@@ -363,7 +363,7 @@ Missing or partial rows with the highest value for the effort (V/E), legal and l
 | AL-09 | AI-generated event alerts | partial | src/aisignals.js | Alerts with the AI's reason and confidence (A-18) | AI | Elite | — | 3/3 |
 | AL-10 | Email notifications | done | src/notify-user.js | — | Scanner | Free | — | 4/1 |
 | AL-11 | SMS notifications | done | src/notify-user.js (paid plans with a verified phone) | — | Scanner | Pro | — | 3/1 |
-| AL-12 | Mobile push notifications | missing | — (public/sw.js has no push) | Web Push from the installable app (AP-02..04), opt-in per alert | Apps | Free | — | 5/2 |
+| AL-12 | Mobile push notifications | done | src/webpush.js (VAPID, RFC 8291), public/sw.js, Settings → Notifications (public/pages/push.js), src/notify-user.js | — | Apps | Free | — | 5/2 |
 | AL-13 | Webhook integrations | done | src/signals.js | — | Developer Cloud | Free | — | 4/2 |
 | AL-14 | Automated daily reports | partial | src/brief.js weekly | A daily report option (J-10) | Portfolio | Pro | — | 3/2 |
 
@@ -412,16 +412,16 @@ Missing or partial rows with the highest value for the effort (V/E), legal and l
 | ID | Feature | Status | Where | Missing to be professional | Product | Tier | Flag | V/E |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | AP-01 | Android application | done | android/, #/android | — | Apps | Free | — | 4/1 |
-| AP-02 | iPhone application | missing | — (public/manifest.webmanifest, public/sw.js make the site installable) | Installable web app with an iPhone install guide, push and offline watchlists (DECISIONS.md MP-6); a native app later | Apps | Free | — | 4/2 |
-| AP-03 | Windows application | missing | — | The same installable web app (Edge and Chrome install it); a desktop wrapper later | Apps | Free | — | 4/2 |
-| AP-04 | Mac application | missing | — | The same installable web app (Safari and Chrome install it); a wrapper later | Apps | Free | — | 4/2 |
+| AP-02 | iPhone application | partial | public/manifest.webmanifest, public/sw.js, public/pages/push.js install guide on #/android | Installable from Safari with push and offline watchlists (APP-02); a native iPhone app is the later row NATIVE-01 | Apps | Free | — | 4/2 |
+| AP-03 | Windows application | partial | public/manifest.webmanifest, public/sw.js, public/pages/push.js install guide on #/android | Installable from Edge and Chrome (APP-02); a desktop wrapper is the later row NATIVE-01 | Apps | Free | — | 4/2 |
+| AP-04 | Mac application | partial | public/manifest.webmanifest, public/sw.js, public/pages/push.js install guide on #/android | Installable from Safari, Chrome and Edge (APP-02); a desktop wrapper is the later row NATIVE-01 | Apps | Free | — | 4/2 |
 | AP-05 | Tablet-optimized interface | partial | public/site.css responsive layout | A two-pane layout at tablet widths | Apps | Free | — | 3/2 |
-| AP-06 | Synchronized watchlists | done | watchlists on the server, #/watchlists | Offline copy in the installable app | Apps | Free | — | 4/1 |
+| AP-06 | Synchronized watchlists | done | watchlists on the server, #/watchlists; offline copy in public/sw.js | — | Apps | Free | — | 4/1 |
 | AP-07 | Cloud-saved workspaces | partial | #/workspace | Layouts and drawings saved to the account | Apps | Pro | — | 3/2 |
 | AP-08 | Mobile trading widgets | missing | — | Home-screen widgets (Android first) | Apps | Pro | — | 2/3 |
 | AP-09 | Biometric authentication | done | passkeys (src/security.js, WebAuthn) | — | Apps | Free | — | 4/1 |
 | AP-10 | Multi-monitor desktop support | done | public/chart.js pop-out windows | — | Apps | Elite | — | 3/1 |
-| AP-11 | Cross-device notifications | partial | email and SMS (src/notify-user.js) | Push on every installed device (AL-12) | Apps | Free | — | 4/2 |
+| AP-11 | Cross-device notifications | done | push on every device that turned it on (src/webpush.js), email and SMS (src/notify-user.js) | — | Apps | Free | — | 4/2 |
 | AP-12 | Custom themes and layouts | done | public/app.js themes (light, dark, system) | — | Apps | Free | — | 2/1 |
 
 ## 19. Security and infrastructure
@@ -643,6 +643,7 @@ Every page and route of the app, with the registry rows it serves (the test fail
 | playbooks.js | AT-01 |
 | pnlwhy.js | A-03 |
 | profile.js | SO-01 |
+| push.js | AL-12, AP-02 |
 | protect.js | SEC-01 |
 | retirement.js | P-12 |
 | riskpages.js | P-07 |

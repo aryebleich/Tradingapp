@@ -18,6 +18,7 @@ import { researchTools } from './research.js';
 import { isPaid, AI_LIMITS } from './fees.js';
 import * as D from './alpaca/data.js';
 import { tradingTools, aiTradingRouter } from './aitrading.js';
+import { withEvidence } from './ai-evidence.js';
 
 export const chatEnabled = llmEnabled;
 const DSL = `Strategy rules use one condition per line: <operand> <op> <operand>. Ops: > < >= <= crosses_above crosses_below.
@@ -84,12 +85,12 @@ export async function fallbackChat(user, history) {
   if (/strategy|bot|buy when|sell when|rule|system/.test(lower)) {
     const h = heuristic(text);
     await defs.propose_strategy.run({ name: h.name, symbol: h.symbol, entry: h.entry, exit: h.exit, stopLoss: h.stopLoss, takeProfit: h.takeProfit, trailingStop: h.trailingStop, explanation: h.explanation || 'Built from the keywords in your message.' });
-    return { reply: `Here is a draft: **${h.name}** on ${h.symbol}. Entry: \`${h.entry.replace(/\n/g, ' AND ')}\`, exit: \`${h.exit.replace(/\n/g, ' OR ')}\`. Backtest it below, then save or deploy. (The full AI assistant needs a free AI key on the server: GROQ_API_KEY or GEMINI_API_KEY.)`, ...out(ctx) };
+    return { tools: ['propose_strategy'], reply: `Here is a draft: **${h.name}** on ${h.symbol}. Entry: \`${h.entry.replace(/\n/g, ' AND ')}\`, exit: \`${h.exit.replace(/\n/g, ' OR ')}\`. Backtest it below, then save or deploy. (The full AI assistant needs a free AI key on the server: GROQ_API_KEY or GEMINI_API_KEY.)`, ...out(ctx) };
   }
   if (ticker) {
     const s = await defs.technical_snapshot.run({ symbol: ticker });
     const trend = s.aboveSma200 ? 'above' : 'below';
-    return { reply: `**${s.symbol}** ${s.price}. RSI(14) ${s.rsi14}, ${trend} its 200-day average (${s.sma200}). Momentum: 1 month ${s.roc1m}%, 6 months ${s.roc6m}%, 1 year ${s.roc1y}%. Volatility ${s.vol20}% a year; ${s.fromHighPct}% from the 52-week high.${s.dataSource === 'synthetic' ? ' (Simulated data: no market data source is configured.)' : ''}`, ...out(ctx) };
+    return { tools: ['technical_snapshot'], reply: `**${s.symbol}** ${s.price}. RSI(14) ${s.rsi14}, ${trend} its 200-day average (${s.sma200}). Momentum: 1 month ${s.roc1m}%, 6 months ${s.roc6m}%, 1 year ${s.roc1y}%. Volatility ${s.vol20}% a year; ${s.fromHighPct}% from the 52-week high.${s.dataSource === 'synthetic' ? ' (Simulated data: no market data source is configured.)' : ''}`, ...out(ctx) };
   }
   return { reply: 'Ask me about a ticker (for example "How does AAPL look?") or describe a strategy ("buy SPY when RSI is below 30, sell above 60"). The full AI assistant needs a free AI key on the server: GROQ_API_KEY or GEMINI_API_KEY.', ...out(ctx) };
 }
@@ -106,7 +107,9 @@ export function chatRouter({ extraTools } = {}) {
     const history = (Array.isArray(req.body?.messages) ? req.body.messages : []).filter(m => m && m.content).slice(-20);
     if (!history.length || history.at(-1).role === 'assistant') throw Object.assign(new Error('Send a message'), { status: 400 });
     const extra = typeof extraTools === 'function' ? extraTools(req.user) : undefined;
-    res.json(chatEnabled() ? await chat(req.user, history, { extraTools: extra }) : await fallbackChat(req.user, history));
+    // Every answer says what it was built on and how sure it is (src/ai-evidence.js, registry A-19).
+    const on = chatEnabled();
+    res.json(withEvidence(on ? await chat(req.user, history, { extraTools: extra }) : await fallbackChat(req.user, history), { by: on ? 'ai' : 'rules' }));
   });
   return r;
 }

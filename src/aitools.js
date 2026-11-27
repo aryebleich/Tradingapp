@@ -12,6 +12,7 @@
 import express from 'express';
 import { requireUser } from './auth.js';
 import { aiLimits, useQuota } from './aiplans.js';
+import { evidence } from './ai-evidence.js';
 
 const r2 = x => Math.round((+x || 0) * 100) / 100;
 const bad = (m, s = 400) => Object.assign(new Error(m), { status: s });
@@ -156,17 +157,19 @@ export async function compare(user, a, b) {
 
 // ---------- routes ----------
 const okAccount = a => (a === 'all' || a === 'paper' || a === 'alpaca' || /^alpaca:\d{1,3}$/.test(a) || ['tradier', 'tastytrade', 'schwab', 'tradestation'].includes(a) ? a : 'paper');
+// Each answer says what it was built on and how sure it is (src/ai-evidence.js, registry A-19).
+const ev = (data, a) => ({ ...a, evidence: evidence({ by: a?.engine ? 'ai' : 'rules', data }) });
 export const aiToolsRouter = (() => {
   const r = express.Router();
   r.use(requireUser);
   const wrap = fn => (req, res, next) => fn(req, res).catch(next);
-  r.post('/scenario', wrap(async (req, res) => res.json(await scenario(req.user, String(req.body?.text || '').trim() || bad('Describe an event'), okAccount(String(req.body?.account || 'paper'))))));
-  r.post('/news', wrap(async (req, res) => res.json(await newsImpact(req.user, req.body?.text))));
-  r.post('/theme', wrap(async (req, res) => res.json(await theme(req.user, req.body?.text))));
+  r.post('/scenario', wrap(async (req, res) => res.json(ev(['Your account holdings', 'Past market moves'], await scenario(req.user, String(req.body?.text || '').trim() || bad('Describe an event'), okAccount(String(req.body?.account || 'paper')))))));
+  r.post('/news', wrap(async (req, res) => res.json(ev(['The news you gave'], await newsImpact(req.user, req.body?.text)))));
+  r.post('/theme', wrap(async (req, res) => res.json(ev(['Company data'], await theme(req.user, req.body?.text)))));
   r.post('/compare', wrap(async (req, res) => {
     const a = String(req.body?.a || '').toUpperCase().trim(), b = String(req.body?.b || '').toUpperCase().trim();
     if (!SYM.test(a) || !SYM.test(b) || a === b) throw bad('Enter two different symbols');
-    res.json(await compare(req.user, a, b));
+    res.json(ev(['SEC financial statements', 'Daily prices'], await compare(req.user, a, b)));
   }));
   return r;
 })();

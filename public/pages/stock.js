@@ -95,6 +95,7 @@ function drawFundamentals(el, d) {
   const rr = R.byYear.slice(-rows.length);
   el.innerHTML = card('Strengths and risks', `${s.summary ? `<p>${H.esc(s.summary)}</p>` : ''}<div class="grid2"><div><h3>Strengths</h3><ul class="ticks">${(s.strengths || []).map(x => `<li>${H.esc(x)}</li>`).join('') || '<li class="mu">Nothing stands out.</li>'}</ul></div>
       <div><h3>Risks</h3><ul class="plain risks">${(s.risks || []).map(x => `<li>${H.esc(x)}</li>`).join('') || '<li class="mu">Nothing stands out.</li>'}</ul></div></div><p class="mu small-print">${s.by === 'ai' ? 'Written by AI from the figures below; it can be wrong.' : 'From fixed rules on the figures below.'} Not investment advice.</p>
+      ${H.evidenceHtml(s.evidence)}
       ${!d.paid ? lockNote('The AI summary is part of Pro; these points come from fixed rules.', 'AI company summary') : ''}`)
     + card('Financial statements', `${tbl('Income', line('Revenue', 'revenue') + line('Gross profit', 'grossProfit') + line('Operating income', 'operatingIncome') + line('Net income', 'netIncome') + line('EPS (diluted)', 'eps', v => (v == null ? '-' : '$' + n(v, 2))))}
       ${tbl('Balance sheet', line('Assets', 'assets') + line('Liabilities', 'liabilities') + line('Equity', 'equity') + line('Cash', 'cash') + line('Long-term debt', 'debt'))}

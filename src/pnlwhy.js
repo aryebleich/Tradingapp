@@ -11,6 +11,7 @@ import { one, run } from './db.js';
 import { requireUser } from './auth.js';
 import { siteGet, siteSet } from './site.js';
 import { aiPlanKey } from './aiplans.js';
+import { evidence } from './ai-evidence.js';
 
 export const DEFAULTS = { on: true, every: { free: 1440, pro: 240, elite: 60, ultimate: 15 } };
 // The credits for an early refresh are set with the other credit prices (Admin → Money & fees → Credits).
@@ -154,7 +155,9 @@ export const pnlWhyRouter = (() => {
   const r = express.Router();
   r.use(requireUser);
   const wrap = fn => (req, res, next) => fn(req, res).catch(next);
-  r.get('/', wrap(async (req, res) => res.json(await getAnalysis(req.user, okAccount(String(req.query.account || 'paper'))))));
-  r.post('/refresh', wrap(async (req, res) => res.json(await getAnalysis(req.user, okAccount(String(req.body?.account || 'paper')), { refresh: true }))));
+  // Each answer says what it was built on and how sure it is (src/ai-evidence.js, registry A-19).
+  const ev = a => (a?.summary ? { ...a, evidence: evidence({ by: a.engine ? 'ai' : 'rules', data: ['Your account holdings', "Today's prices", a.engine ? 'News headlines' : null].filter(Boolean) }) } : a);
+  r.get('/', wrap(async (req, res) => res.json(ev(await getAnalysis(req.user, okAccount(String(req.query.account || 'paper')))))));
+  r.post('/refresh', wrap(async (req, res) => res.json(ev(await getAnalysis(req.user, okAccount(String(req.body?.account || 'paper')), { refresh: true })))));
   return r;
 })();

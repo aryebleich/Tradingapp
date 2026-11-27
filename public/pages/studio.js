@@ -50,7 +50,7 @@ async function assistant(view) {
   const log = H.$('#log', view), box = H.$('#draftBox', view), ta = H.$('textarea', view);
   const save = () => { try { sessionStorage.setItem('qp_chat', JSON.stringify(msgs.slice(-30))); } catch {} };
   const draw = () => {
-    log.innerHTML = msgs.length ? msgs.map(m => `<div class="msg ${m.role}">${m.role === 'user' ? H.esc(m.content) : md(m.content)}${m.sources?.length ? `<div class="mu srcs">Sources: ${m.sources.map(s => `<a href="${H.esc(H.safeUrl(s.url))}" target="_blank" rel="noopener">${H.esc(s.title || new URL(s.url).hostname)}</a>`).join(' · ')}</div>` : ''}</div>`).join('')
+    log.innerHTML = msgs.length ? msgs.map(m => `<div class="msg ${m.role}">${m.role === 'user' ? H.esc(m.content) : md(m.content)}${m.sources?.length ? `<div class="mu srcs">Sources: ${m.sources.map(s => `<a href="${H.esc(H.safeUrl(s.url))}" target="_blank" rel="noopener">${H.esc(s.title || new URL(s.url).hostname)}</a>`).join(' · ')}</div>` : ''}${m.role === 'assistant' ? H.evidenceHtml(m.evidence) : ''}</div>`).join('')
       : '<div class="mu" style="padding:12px">Start with a question, or tap a suggestion.</div>';
     log.scrollTop = log.scrollHeight;
   };
@@ -138,7 +138,7 @@ async function assistant(view) {
     log.insertAdjacentHTML('beforeend', '<div class="msg assistant typing"><span></span><span></span><span></span></div>'); log.scrollTop = log.scrollHeight;
     try {
       const r = await H.api('/ai/chat', { body: { messages: msgs.map(({ role, content }) => ({ role, content })) } });
-      msgs.push({ role: 'assistant', content: r.reply || '(no answer)', sources: r.sources });
+      msgs.push({ role: 'assistant', content: r.reply || '(no answer)', sources: r.sources, evidence: r.evidence });
       if (r.draft) { draft = r.draft; showDraft(); }
       if (r.order) showOrder(r.order);
       say(r.reply || '');

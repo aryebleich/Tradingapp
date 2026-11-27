@@ -51,7 +51,7 @@ let swrOn = false, swrRedraw = null, keepTimer = null;
 const LIGHT = /^\/(prefs|learn\/ack|sponsored)\//;
 const keepLoad = uid => { try { const k = JSON.parse(sessionStorage.getItem(KEEP_KEY) || 'null'); if (!k || k.uid !== uid || Date.now() - k.at > 864e5) return; for (const [p, d] of k.e) SWR.set(p, { at: k.at, data: d, json: JSON.stringify(d), ok: true, p: Promise.resolve(d), kept: true }); } catch {} };
 const keepSave = () => { clearTimeout(keepTimer); keepTimer = setTimeout(() => { if (!ME) return; try { const e = [...SWR].filter(([, v]) => v.ok && !v.kept && v.json.length < 60000).slice(-60).map(([k, v]) => [k, v.data]); sessionStorage.setItem(KEEP_KEY, JSON.stringify({ uid: ME.email || ME.phone, at: Date.now(), e })); } catch {} }, 1500); };
-const keepClear = () => { SWR.clear(); commsFor = null; document.dispatchEvent(new Event('qp:signout')); try { sessionStorage.removeItem(KEEP_KEY); localStorage.removeItem('qp_me'); } catch {} };
+const keepClear = () => { SWR.clear(); commsFor = null; document.dispatchEvent(new Event('qp:signout')); try { navigator.serviceWorker?.controller?.postMessage('qp-clear-user'); } catch {} try { sessionStorage.removeItem(KEEP_KEY); localStorage.removeItem('qp_me'); } catch {} };
 async function api(path, opts = {}, retried) {
   const get = !opts.method && !opts.body;
   if (PREFETCH && !get) throw new Error('Read-only while loading in the background');
@@ -2460,7 +2460,10 @@ for (const k of ['trade', 'positions', 'orders']) {
 }
 // The tabs on top of every Marketplace page.
 const marketTabs = on => hubTabs(on); // the Marketplace tabs are a merged page's tabs (HUBS.marketplace)
-const shared = { adminUnlocked, safeUrl, preBuyCard, upgrade: feature => showUpgrade(feature), related: (items, here) => relatedHtml(items, here || ''), extras: () => EXTRAS, setExtras: on => { EXTRAS = on; render.navKey = null; }, marketTabs, $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, refreshMe, accounts, accountOptions, acctLabel, state, adminTabs, adminPage, secureConfirm, me: () => ME, paid: () => isPaid(ME), showRecoveryCodes };
+// The line under every AI answer: how sure it is, what it was built on, and that it promises nothing
+// (src/ai-evidence.js, registry A-19).
+const evidenceHtml = ev => (ev ? `<p class="mu small-print evidence">${esc(ev.confidenceText)}${ev.basis?.length ? ` Based on: ${esc(ev.basis.join(', '))}.` : ''} ${esc(ev.notAdvice)}</p>` : '');
+const shared = { evidenceHtml, adminUnlocked, safeUrl, preBuyCard, upgrade: feature => showUpgrade(feature), related: (items, here) => relatedHtml(items, here || ''), extras: () => EXTRAS, setExtras: on => { EXTRAS = on; render.navKey = null; }, marketTabs, $, $$, esc, money, pct, num, cls, date, api, form, act, drawChart, onLeave, render, refreshMe, accounts, accountOptions, acctLabel, state, adminTabs, adminPage, secureConfirm, me: () => ME, paid: () => isPaid(ME), showRecoveryCodes };
 lazyRoutes(() => import('./pages/studio.js'), 'registerStudio', shared, ["ai", "agents", "code"]);
 lazyRoutes(() => import('./pages/aichat.js'), 'registerAiChat', shared, ["admin-aichat"]);
 lazyRoutes(() => import('./pages/tradetools.js'), 'registerTradeTools', shared, ["tradetools"]);
@@ -2594,6 +2597,21 @@ lazyRoutes(() => import('./pages/playbooks.js'), 'registerPlaybooks', shared, ["
   const m = await import('./pages/playbooks.js'); m.registerPlaybooks({}, shared);
   await m.keysCard(el).catch(e => { el.innerHTML = `<p class="err">${esc(e.message)}</p>`; });
 }; }
+// This device: push notifications in Settings and the install guide on the Apps page (pages/push.js, APP-02).
+{ const base = routes.settings; routes.settings = async (view, q) => {
+  await base(view, q);
+  const el = document.createElement('div'); el.className = 'card'; el.id = 'pushCard'; view.append(el);
+  (await import('./pages/push.js')).notificationsCard(el, shared).catch(e => { el.innerHTML = `<p class="err">${esc(e.message)}</p>`; });
+}; }
+{ const base = routes.android; routes.android = async (view, q) => {
+  await base(view, q);
+  const el = document.createElement('div'); el.className = 'card'; el.id = 'installGuide'; view.append(el);
+  (await import('./pages/push.js')).installGuide(el, shared);
+}; }
+// Offline: say so once, and that watchlists show what was saved on the last visit (public/sw.js).
+{ const note = () => { let n = document.getElementById('offlineNote'); if (navigator.onLine) { n?.remove(); return; }
+    if (!n) { n = document.createElement('div'); n.id = 'offlineNote'; n.className = 'banner'; n.setAttribute('role', 'status'); n.textContent = "You're offline. Watchlists show what was saved on your last visit; trading needs a connection."; document.body.prepend(n); } };
+  addEventListener('offline', note); addEventListener('online', note); }
 lazyRoutes(() => import('./pages/combined.js'), 'registerCombined', shared, ["accounts"]);
 lazyRoutes(() => import('./pages/business.js'), 'registerBusiness', shared, ["currencies", "business", "invoices", "books", "bank", "inventory", "payroll", "bizreports"]);
 lazyRoutes(() => import('./pages/social.js'), 'registerSocial', shared, ["traders", "robo"]);

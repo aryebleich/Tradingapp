@@ -46,6 +46,15 @@
     "paused": [],
     "ready": [
       {
+        "id": "AI-04B",
+        "state": "ready",
+        "priority": 2,
+        "suggested": "Codex",
+        "claimedBy": null,
+        "updated": null,
+        "task": "Follow-up of AI-04 (registry A-19): add the evidence line (src/ai-evidence.js evidence(), shown with H.evidenceHtml) to the AI morning picks, AI signals and the options desk's AI strategist and contract explainer. Done when test/ai-evidence.test.js also checks those routes and A-19 is done. See docs/FEATURE_REGISTRY.md."
+      },
+      {
         "id": "AI-04",
         "state": "ready",
         "priority": 2,

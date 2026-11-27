@@ -20,6 +20,7 @@ import { getSetting, setSetting } from './settings.js';
 import { isPaid } from './fees.js';
 import { dbCached, readDbCache } from './memo.js';
 import { jobAllowed } from './reliability.js';
+import { evidence } from './ai-evidence.js';
 
 const DAY = 864e5;
 const r2 = (x, d = 2) => (x == null || !Number.isFinite(+x) ? null : +(+x).toFixed(d));
@@ -507,7 +508,9 @@ export const stockRouter = (() => {
     const s = String(req.params.symbol).toUpperCase(), paid = isPaid(req.user);
     const d = await stockData(s, req.user.id);
     const summary = d.kind === 'stock' ? (paid ? await cached(`ai:${s}`, DAY, () => aiSummary(d)) : { ...strengthsRisks({ ratios: d.ratios, val: d.valuation, div: d.dividends }), by: 'rules' }) : null;
-    res.json({ ...trimFree(d, paid), summary, paid, note: NOT_ADVICE });
+    // The summary says what it was built on and how sure it is (src/ai-evidence.js, registry A-19).
+    const ev = summary ? evidence({ by: summary.by === 'ai' ? 'ai' : 'rules', data: ['SEC financial statements', d.valuation ? 'Valuation history' : null, d.dividends ? 'Dividend history' : null].filter(Boolean) }) : null;
+    res.json({ ...trimFree(d, paid), summary: summary && { ...summary, evidence: ev }, paid, note: NOT_ADVICE });
   }));
   return r;
 })();
