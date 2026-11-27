@@ -525,6 +525,23 @@ async function security(view) {
     <p class="mu small-print">${p.changedAt ? `Last changed by ${H.esc(p.changedBy || 'an admin')} on ${H.esc(when(p.changedAt))}.` : 'Never changed: off by default.'}</p>
   </form>
   <div class="card"><h2>Changes</h2>${d.log.length ? `<ul class="plain">${d.log.map(l => { let x = {}; try { x = JSON.parse(l.detail || '{}'); } catch {} return `<li>${H.esc(when(l.at))} · ${H.esc(l.email || 'admin')} · ${x.required ? `on (${H.esc(d.scopes[x.scope] || x.scope)}, ${x.graceDays} days' grace)` : 'off'}</li>`; }).join('')}</ul>` : '<p class="mu">No changes yet.</p>'}</div>`;
+  // Legal gates: parts of the master plan that wait for the owner's legal sign-off (LEGAL_REVIEW.md L-MP).
+  const lg = await H.api('/admin/security/legal-gates').catch(() => null);
+  if (lg) {
+    view.insertAdjacentHTML('beforeend', `<div class="card" id="legalGates"><h2>Legal gates</h2>
+      <p class="mu" style="margin-top:0">Each of these can make Brightolio a broker, an adviser or a seller of trade ideas. They stay <b>off</b> until you have a legal sign-off for it (LEGAL_REVIEW.md, L-MP1 to L-MP4). With a gate off, paper trading, paper copies, trade-by-trade approval and free sharing keep working.</p>
+      <ul class="plain">${lg.gates.map(g => `<li style="margin-bottom:10px"><label class="chk"><input type="checkbox" data-gate="${H.esc(g.id)}" ${g.on ? 'checked' : ''}> <b>${H.esc(g.title)}</b> <span class="pill ${g.on ? 'warn' : ''}">${g.on ? 'On' : 'Off'}</span></label>
+        <div class="mu small-print" data-no-fig>${H.esc(g.what)} Review item ${H.esc(g.review)}${g.rows.length ? `; registry rows ${H.esc(g.rows.join(', '))}` : ''}.${g.changedAt ? ` Last changed ${H.esc(when(g.changedAt))}.` : ''}</div></li>`).join('')}</ul>
+      ${lg.adviser ? '' : '<p class="mu small-print">Copy trading and the performance fee also need registered-adviser mode (Admin → Upgrades → Business mode), which is off.</p>'}
+      <div class="err" role="alert"></div></div>`);
+    const box = H.$('#legalGates', view);
+    H.$$('[data-gate]', box).forEach(c => (c.onchange = async () => {
+      H.$('.err', box).textContent = '';
+      if (c.checked && !confirm('Turn this on only with a signed legal review for it. Continue?')) { c.checked = false; return; }
+      try { await H.api('/admin/security/legal-gates/' + c.dataset.gate, { method: 'PUT', body: { on: c.checked } }); await security(view); }
+      catch (err) { c.checked = !c.checked; H.$('.err', box).textContent = err.message; }
+    }));
+  }
   const f = H.$('#mfaForm', view);
   f.onsubmit = async e => {
     e.preventDefault(); H.$('.err', f).textContent = ''; H.$('.ok', f).textContent = '';

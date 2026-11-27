@@ -827,6 +827,22 @@ api.put('/admin/security/mfa-policy', async (req, res) => {
     res.json({ policy: p });
   } catch (e) { res.status(e.status || 400).json({ error: e.message, lockout: !!e.lockout }); }
 });
+// Admin → Security → Legal gates (src/legal-gates.js, LEGAL_REVIEW.md L-MP): off until the owner signs off.
+// Turning one on or off needs the password step-up and is written to the audit log.
+api.get('/admin/security/legal-gates', async (req, res) => {
+  const G = await import('./src/legal-gates.js');
+  const log = await all("SELECT a.at, a.detail, u.email FROM audit_log a LEFT JOIN users u ON u.id = a.user_id WHERE a.event = 'legal_gate_changed' ORDER BY a.id DESC LIMIT 20").catch(() => []);
+  res.json({ gates: G.legalGates(), adviser: (await import('./src/site.js')).adviserMode(), unlocked: (await import('./src/server-admin.js')).isUnlocked(req), log });
+});
+api.put('/admin/security/legal-gates/:id', async (req, res) => {
+  if (!(await import('./src/server-admin.js')).isUnlocked(req)) return res.status(403).json({ error: 'Confirm your password to change a legal gate.', adminUnlock: true });
+  const G = await import('./src/legal-gates.js');
+  try {
+    const g = await G.setLegalGate(req.user, req.params.id, req.body?.on);
+    await audit(req.user.id, 'legal_gate_changed', { gate: g.id, review: g.review, on: g.on }, req.ip);
+    res.json({ gate: g });
+  } catch (e) { res.status(e.status || 400).json({ error: e.message }); }
+});
 // Database read statistics (DB_READ_STATS=1): the top 30 statements by estimated rows read.
 api.get('/admin/dbstats', (req, res) => res.json(dbStats(Math.min(100, +req.query.limit || 30))));
 api.post('/admin/dbstats/reset', (req, res) => { resetDbStats(); res.json({ ok: true }); });
