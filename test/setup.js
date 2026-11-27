@@ -1,7 +1,11 @@
 // Each test process gets its own throwaway database and no outbound market-data calls.
+import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 process.env.DB_FILE = path.join(os.tmpdir(), `qp-test-${process.pid}-${Date.now()}.db`);
+// The database and its journal files are removed when the process ends (they used to pile up in the
+// temp folder, gigabytes over many runs).
+{ const db = process.env.DB_FILE; process.on('exit', () => { for (const f of [db, db + '-wal', db + '-shm', db + '-journal']) { try { fs.unlinkSync(f); } catch {} } }); }
 process.env.FREE_DATA = 'off';
 // Live price streams never reach Alpaca's real servers from tests (an open connection would keep
 // the test process running after its tests end). A file can still point it at its own fake.

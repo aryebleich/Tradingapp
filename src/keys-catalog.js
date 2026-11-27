@@ -60,6 +60,7 @@ const K = [
   ['STRIPE_SECRET_KEY', 'Payments', 'Stripe: plans, credit packs and card deposits.', 'recommended', 'https://dashboard.stripe.com/apikeys', v => ({ url: 'https://api.stripe.com/v1/balance', headers: bearer(v) })],
   ['STRIPE_WEBHOOK_SECRET', 'Payments', 'Stripe webhook signing secret: payments are only counted after Stripe confirms them here.', 'recommended', 'https://dashboard.stripe.com/webhooks'],
   ['STRIPE_PORTAL_CONFIG', 'Payments', 'Stripe customer portal configuration.', 'optional', null],
+  ['VAPID_PUBLIC_KEY', 'Email and SMS', 'Web Push public key (made by the app the first time a member turns on notifications).', 'optional', null], ['VAPID_PRIVATE_KEY', 'Email and SMS', 'Web Push private key (made by the app; never shown).', 'optional', null],
   ['STRIPE_PRICE_PRO', 'Payments', 'Stripe price for Pro (monthly).', 'optional', null], ['STRIPE_PRICE_PRO_YEARLY', 'Payments', 'Stripe price for Pro (yearly).', 'optional', null],
   ['STRIPE_PRICE_ELITE', 'Payments', 'Stripe price for Elite (monthly).', 'optional', null], ['STRIPE_PRICE_ELITE_YEARLY', 'Payments', 'Stripe price for Elite (yearly).', 'optional', null],
   ['STRIPE_PRICE_ULTIMATE', 'Payments', 'Stripe price for Ultimate (monthly).', 'optional', null], ['STRIPE_PRICE_ULTIMATE_YEARLY', 'Payments', 'Stripe price for Ultimate (yearly).', 'optional', null],

@@ -4,6 +4,8 @@ import { one } from './db.js';
 import { sendSms, sendEmail } from './notify.js';
 import { trySpend } from './credits.js';
 export async function notifyUser(userId, msg) {
+  // Devices that turned on push notifications get it there too (free, no credits; src/webpush.js).
+  await import('./webpush.js').then(W => W.pushToUser(userId, { body: msg, url: '/app', kind: 'alerts' })).catch(() => {});
   const u = await one('SELECT email, phone, phone_verified, role, plan, plan_status FROM users WHERE id = ?', userId);
   // Text-message alerts are a paid feature; the free plan gets them by email.
   // Each text costs a credit; without credits the alert goes by email instead.

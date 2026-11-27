@@ -24,6 +24,7 @@ import * as pro from './yi-pro.js';
 import * as growth from './yi-growth.js';
 import * as clock from './yi-clock.js';
 import * as help from './yi-help.js';
+import * as apps from './yi-apps.js';
 
 export const credit = '';
 
@@ -360,7 +361,7 @@ export const strings = {
   'Admin user update': 'אדמין האט געטוישט א באניצער',
 };
 
-Object.assign(strings, features.strings, protect.strings, wealth.strings, batch5.strings, batch6.strings, { ...help.strings, ...growth.strings, ...pro.strings, ...equalize.strings, ...structure.strings, ...playbooks.strings, ...schedule.strings, ...batch17.strings, ...batch16.strings, ...batch15.strings, ...batch14.strings, ...batch13.strings, ...batch12.strings, ...batch11.strings, ...batch9.strings, ...batch8.strings, ...strings }, more, heimish.strings);
+Object.assign(strings, features.strings, protect.strings, wealth.strings, batch5.strings, batch6.strings, { ...help.strings, ...apps.strings, ...growth.strings, ...pro.strings, ...equalize.strings, ...structure.strings, ...playbooks.strings, ...schedule.strings, ...batch17.strings, ...batch16.strings, ...batch15.strings, ...batch14.strings, ...batch13.strings, ...batch12.strings, ...batch11.strings, ...batch9.strings, ...batch8.strings, ...strings }, more, heimish.strings);
 
 // Sentences that contain numbers or names.
 export const patterns = [

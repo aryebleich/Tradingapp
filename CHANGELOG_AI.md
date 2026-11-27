@@ -4,6 +4,21 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-27: Claude, AI-04, sources and confidence on AI answers
+
+- src/ai-evidence.js: evidence() and withEvidence(). The AI chat (src/chat.js), stock summaries (src/stock.js), "Why your P/L moved" (src/pnlwhy.js) and the AI tools (src/aitools.js) return it, and the pages show one line under each answer (evidenceHtml in public/app.js, used by studio.js, stock.js, pnlwhy.js and aitools.js). DECISIONS.md MP-7.
+- test/ai-evidence.test.js: confidence from the data used, rule-based answers never "high", only web links, no promise wording, and the routes return it.
+- Registry A-19 partial; the follow-up AI-04B (picks, signals, options strategist) is in the queue for Codex.
+
+## 2026-11-27: Claude, APP-02, the installable app with push and offline watchlists
+
+- Web Push (src/webpush.js): VAPID signing and RFC 8291 encryption on node:crypto, keys made once and kept in the key store (VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY). Subscriptions are per device and per kind (push_subs), and alerts reach push next to email and text (src/notify-user.js). Routes are /api/push, /api/push/subscribe, /api/push/unsubscribe and /api/push/test.
+- public/sw.js: the app page and watchlists open offline (X-QP-Offline), signing out empties that copy, and push and notification clicks are handled. An offline notice is shown in the app.
+- Settings → Notifications on this device, and an install guide for iPhone, Windows, Mac and Android on the Apps page (public/pages/push.js). Yiddish in public/i18n/yi-apps.js.
+- Tests: test/webpush.test.js (decrypted as a browser would, VAPID signature verified, opt-in kinds, a gone subscription removed, no outside links) and test/sw.test.js (offline page and watchlists, nothing else kept, cleared on sign-out, push to a notification). test/setup.js now removes each test database when its process ends; about 27 GB of them had piled up in the temp folder.
+- Registry: AL-12, AP-06 and AP-11 done; AP-02 to AP-04 partial (native apps are the later row NATIVE-01). DECISIONS.md MP-6.
+- Checks: npm test (641 pass), clean check, the page gate on Settings, the Apps page and Plans & billing.
+
 ## 2026-11-27: Claude, the queue by the master plan's phases (MP-01, step 5)
 
 - AI_HANDOFF.md: 12 new ready rows by phase (APP-02, AI-04, DATA-01, CHART-01, HOTKEY-01, SCAN-01, SCAN-02, ALERT-01, JRN-01, FUND-01, and RES-04 and RES-05 for Grok), 8 `later` rows, and older low-value rows moved to `later`; REV-01, REV-02 and TRUST-01 done; OWN-06 and OWN-07 added. 24 rows are ready.

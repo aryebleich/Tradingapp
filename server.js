@@ -1320,6 +1320,23 @@ api.post('/pin', U, needPlan('Trading by text and phone'), wrap(async (req, res)
 api.post('/command', U, wrap(async (req, res) => res.json({ reply: await smsReply(req.user, String(req.body.text || '')) })));
 api.get('/command/help', U, async (req, res) => res.json({ help: HELP }));
 
+// Push notifications on this device (src/webpush.js; Settings → Notifications). Opt-in, free, per device.
+api.get('/push', U, wrap(async (req, res) => {
+  const W = await import('./src/webpush.js');
+  res.json({ publicKey: (await W.vapidKeys()).publicKey, kinds: W.KINDS, devices: await W.devices(req.user.id) });
+}));
+api.post('/push/subscribe', U, wrap(async (req, res) => {
+  const W = await import('./src/webpush.js');
+  res.json({ devices: await W.subscribe(req.user.id, req.body?.subscription, req.body?.kinds, req.get('user-agent')?.replace(/\(.*?\)/g, '').trim()) });
+}));
+api.post('/push/unsubscribe', U, wrap(async (req, res) => {
+  const W = await import('./src/webpush.js');
+  await W.unsubscribe(req.user.id, req.body?.endpoint); res.json({ devices: await W.devices(req.user.id) });
+}));
+api.post('/push/test', U, wrap(async (req, res) => {
+  const W = await import('./src/webpush.js');
+  res.json(await W.pushToUser(req.user.id, { title: 'Brightolio', body: 'Notifications work on this device.', url: '/app#/settings', kind: 'alerts' }));
+}));
 // --- billing, funding, fees ---
 api.post('/billing/checkout', U, wrap(async (req, res) => {
   if (!Object.hasOwn(PLANS, req.body.plan) || req.body.plan === 'free') throw new Error('Pick a paid plan');
