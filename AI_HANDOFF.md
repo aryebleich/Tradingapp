@@ -16,7 +16,7 @@ The shared work board of **Claude**, **Codex (ChatGPT)** and **Grok**. Each assi
 
 | Assistant | Task | State | Updated (UTC) | Last SHA | Next action | Reset (UTC) |
 | --- | --- | --- | --- | --- | --- | --- |
-| Claude | REV-03 | active | 2026-11-27 13:42 | 5129ce3 | Working on REV-03 in Claude Code. | — |
+| Claude | — | idle | 2026-11-27 13:46 | 0d0c595 | Claude: SCAN-01 (premarket and after-hours scanners). Codex: AI-04B once OWN-08 is done. | — |
 | Codex | AI-04B | ready | 2026-11-27 10:56 | acaa5f6 | Any assistant: take AI-04B again from ai/task-ai-04b | — |
 | Grok | RES-03 | done | 2026-11-26 22:13 | a545db7 | Idle. FEAT-02 and FEAT-03 are ready from the research note. | — |
 
@@ -26,7 +26,6 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 
 | ID | State | Priority | Suggested | Claimed by | Updated (UTC) | Task and done when |
 | --- | --- | --- | --- | --- | --- | --- |
-| REV-03 | active | 4 | Claude | Claude | 2026-11-27 13:42 | Phase A. Honest trial-end notices: in-app 3 days and 1 day before a trial ends, with the price and a one-tap cancel; no countdowns. Done when tests cover the timing, the copy and the opt-out, and real email is sent only with the user's comms opt-in. |
 | AI-04B | ready | 2 | Codex | — | 2026-11-27 10:56 | Follow-up of AI-04 (registry A-19): add the evidence line (src/ai-evidence.js evidence(), shown with H.evidenceHtml) to the AI morning picks, AI signals and the options desk's AI strategist and contract explainer. Done when test/ai-evidence.test.js also checks those routes and A-19 is done. See docs/FEATURE_REGISTRY.md. The loop runs so far failed only because GitHub refused to open the pull request (OWN-08). |
 | REV-02B | ready | 2 | Codex | — | — | Follow-up of REV-02 (PR #60): label the paid controls on the 10 most-used pages by Admin → Analytics route counts, and add a test that every entry in public/paid-controls.js matches a server check (upgrade() or needPlan()). Done when both are in. |
 | DATA-01 | ready | 3 | Codex | — | — | Phase 1, data (registry SEC-16, T-01). Label every delayed or end-of-day figure "Delayed" or "End of day" with its source, from one helper. Done when a test finds no unlabelled delayed quote on the trade, chart, scanner and stock pages. See docs/FEATURE_REGISTRY.md. |
@@ -67,6 +66,7 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 | TICK-01 | later | 19 | Claude | — | — | The tick engine (Part B): a design note in DECISIONS.md first, reviewed by Grok for market realism, then the build. Done when the design is agreed and the first slice is tested. |
 | CHAT-04 | later | 20 | Codex | — | — | A live check of the Codex activity stream in Admin → AI chat, with one short test message. Done when the result is written here (no message text in logs). |
 | PARTA-1 | later | 21 | Claude | — | — | Part A items A1, A3, A4, A7 and A8 (definitions in DECISIONS.md and CHANGELOG_AI.md). Done when each one is a commit. |
+| REV-03 | done | 4 | Claude | Claude | 2026-11-27 13:46 | Phase A. Honest trial-end notices: in-app 3 days and 1 day before a trial ends, with the price and a one-tap cancel; no countdowns. Done when tests cover the timing, the copy and the opt-out, and real email is sent only with the user's comms opt-in. |
 | AI-04 | done | 2 | Claude | Claude | 2026-11-27 00:31 | Phase 1, AI (registry A-19). Every AI answer shows the data and sources it used and a plain confidence line, and never promises profit; one shared helper for chat, stock summaries, picks and tools. Done when a test fails on an AI answer without sources or confidence, and A-19 is done in the registry. See docs/FEATURE_REGISTRY.md. Done in 447c3c1 for chat, stock summaries, Why your P/L moved and AI tools; the rest is AI-04B. |
 | APP-02 | done | 1 | Claude | Claude | 2026-11-27 00:31 | Phase 1 (master plan section 18). The installable web app for iPhone, Windows and Mac (registry AP-02, AP-03, AP-04, AL-12, AP-06): an install guide per device, Web Push for alerts (opt-in per alert, keys in Admin → Keys), and watchlists that open offline. A native app or desktop wrapper stays a later row (DECISIONS.md MP-6). Done when push and the offline watchlist are tested and the registry rows are updated. See docs/FEATURE_REGISTRY.md. |
 | MP-01 | done | 0 | Claude | Claude | 2026-11-27 00:06 | The master plan (docs/research/master-plan.md): save it, map its documents to what exists (MASTER_ROADMAP, FEATURE_REGISTRY, SYSTEM_ARCHITECTURE, SECURITY_REQUIREMENTS), the feature registry with its coverage test, one price ladder, the legal and data gates, and the queue by the plan's phases. Done when all are on main and the queue holds about 20 ready rows linked to the registry. |
@@ -102,6 +102,13 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 ## Hand-offs
 
 Newest first. Use these fields every time; the next assistant continues from **Next action**.
+
+### 2026-11-27 13:46 UTC · Claude · REV-03 · done
+- **Last SHA:** 0d0c595
+- **Changed:** src/trial-notice.js (in-app notice 3 days and 1 day before, opt-in emails once per stage), /me fields, Plans & billing opt-in, the trial banner; also the AI loop PR fix (5129ce3)
+- **Checks:** npm test 649 pass; clean check; page gate on Plans & billing and Home
+- **Blockers:** OWN-08 (Actions may not open pull requests) blocks the AI loop's task runs
+- **Next action:** Claude: SCAN-01 (premarket and after-hours scanners). Codex: AI-04B once OWN-08 is done.
 
 ### 2026-11-27 10:56 UTC · Codex · AI-04B · ready
 - **Last SHA:** acaa5f6

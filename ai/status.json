@@ -5,11 +5,11 @@
   "assistants": [
     {
       "name": "Claude",
-      "task": "REV-03",
-      "state": "active",
-      "updated": "2026-11-27 13:42",
-      "lastSha": "5129ce3",
-      "next": "Working on REV-03 in Claude Code.",
+      "task": null,
+      "state": "idle",
+      "updated": "2026-11-27 13:46",
+      "lastSha": "0d0c595",
+      "next": "Claude: SCAN-01 (premarket and after-hours scanners). Codex: AI-04B once OWN-08 is done.",
       "reset": null
     },
     {
@@ -32,17 +32,7 @@
     }
   ],
   "queue": {
-    "active": [
-      {
-        "id": "REV-03",
-        "state": "active",
-        "priority": 4,
-        "suggested": "Claude",
-        "claimedBy": "Claude",
-        "updated": "2026-11-27 13:42",
-        "task": "Phase A. Honest trial-end notices: in-app 3 days and 1 day before a trial ends, with the price and a one-tap cancel; no countdowns. Done when tests cover the timing, the copy and the opt-out, and real email is sent only with the user's comms opt-in."
-      }
-    ],
+    "active": [],
     "paused": [],
     "ready": [
       {
@@ -412,6 +402,15 @@
     ],
     "done": [
       {
+        "id": "REV-03",
+        "state": "done",
+        "priority": 4,
+        "suggested": "Claude",
+        "claimedBy": "Claude",
+        "updated": "2026-11-27 13:46",
+        "task": "Phase A. Honest trial-end notices: in-app 3 days and 1 day before a trial ends, with the price and a one-tap cancel; no countdowns. Done when tests cover the timing, the copy and the opt-out, and real email is sent only with the user's comms opt-in."
+      },
+      {
         "id": "AI-04",
         "state": "done",
         "priority": 2,
@@ -617,6 +616,17 @@
   ],
   "handoffs": [
     {
+      "at": "2026-11-27 13:46 UTC",
+      "assistant": "Claude",
+      "task": "REV-03",
+      "state": "done",
+      "last_sha": "0d0c595",
+      "changed": "src/trial-notice.js (in-app notice 3 days and 1 day before, opt-in emails once per stage), /me fields, Plans & billing opt-in, the trial banner; also the AI loop PR fix (5129ce3)",
+      "checks": "npm test 649 pass; clean check; page gate on Plans & billing and Home",
+      "blockers": "OWN-08 (Actions may not open pull requests) blocks the AI loop's task runs",
+      "next_action": "Claude: SCAN-01 (premarket and after-hours scanners). Codex: AI-04B once OWN-08 is done."
+    },
+    {
       "at": "2026-11-27 10:56 UTC",
       "assistant": "Codex",
       "task": "AI-04B",
@@ -714,17 +724,6 @@
       "checks": "this issue is the test: the workflow checks it, commits it and closes the issue",
       "blockers": "none",
       "next_action": "Grok: paste ai/prompts/grok.md into grok.com and send the result through this form"
-    },
-    {
-      "at": "2026-11-26 16:08 UTC",
-      "assistant": "Claude",
-      "task": "TEAM-02",
-      "state": "done",
-      "last_sha": "980b657",
-      "changed": "ai-loop.yml (Codex through @codex, codex-verdict), ai-inbox.yml with the ai-handoff issue form and scripts/ai-inbox.mjs, prompts and AGENTS.md (Without paid keys), the clean check keeps ai/, tests; REV-02 started for Codex on PR #60",
-      "checks": "npm test 610 (3 known TODO); clean check and actionlint pass",
-      "blockers": "Codex answers @codex only once it is connected to this repo (OWN-05); the comment on PR #60 was posted from the owner's account",
-      "next_action": "Codex: REV-02 on PR #60. Claude: review PR #60 when Codex pushes, then take REV-01. Grok: paste ai/prompts/grok.md into grok.com for the next research row."
     }
   ]
 }
