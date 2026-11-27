@@ -199,6 +199,8 @@ jobs:
             - Follow every rule in AGENTS.md. At the end, write the hand-off as JSON to ${{ env.HANDOFF }}: {"changed": "...", "checks": "...", "blockers": "...", "next": "..."}.
       - name: Commit and push the task branch, and its pull request
         id: pr
+        env:
+          PR_TOKEN: ${{ secrets.CODEX_MENTION_TOKEN || github.token }}
         if: always()
         run: |
           git add -A -- . ':!AI_HANDOFF.md' ':!ai/status.json' ':!.github/workflows'
@@ -206,7 +208,7 @@ jobs:
           git push -q origin "$BRANCH"
           pr=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
           if [ -z "$pr" ]; then
-            gh pr create --base main --head "$BRANCH" --title "$TASK: $(jq -r --arg t "$TASK" '[.queue[][] | select(.id == $t)][0].task' ai/status.json | cut -c1-80)" \
+            GH_TOKEN="$PR_TOKEN" gh pr create --base main --head "$BRANCH" --title "$TASK: $(jq -r --arg t "$TASK" '[.queue[][] | select(.id == $t)][0].task' ai/status.json | cut -c1-80)" \
               --body "Task $TASK from the AI loop (AGENTS.md). The brief and the progress note: ai/tasks/$TASK.md. It merges itself when the release gates pass (owner-approved paths wait for the label), and the cross-review follows right after the merge." > pr.txt
             pr=$(grep -o '[0-9]*$' pr.txt)
           fi
@@ -227,7 +229,8 @@ jobs:
       - name: Hand off on the board, and move the chain on when needed
         if: always()
         env:
-          OUTCOME: ${{ steps.claude.outcome }}${{ steps.grokwork.outcome }}${{ steps.grokcode.outcome }}${{ steps.codex.outcome }}${{ steps.codexgh.outcome }}
+          OUTCOME: ${{ env.WHO == 'claude' && steps.claude.outcome || env.WHO == 'grok' && (env.RESEARCH == 'true' && steps.grokwork.outcome || steps.grokcode.outcome) || (env.BILLING == 'plan' && steps.codexgh.outcome || steps.codex.outcome) }}
+          PUBLISHED: ${{ steps.pr.outcome }}
           PR: ${{ steps.pr.outputs.number }}
           MENTION_BOT: ${{ steps.codexgh.outputs.bot }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
@@ -236,7 +239,9 @@ jobs:
         run: |
           f() { [ -f "$HANDOFF" ] && jq -r ".$1 // empty" "$HANDOFF" 2>/dev/null || true; }
           state=done; next="$(f next)"; blockers="$(f blockers)"; reset=""; continue_chain=false
-          if [ "$OUTCOME" != success ]; then
+          if [ "$PUBLISHED" != success ]; then
+            state=blocked; blockers="Could not publish the task branch and pull request (run $GITHUB_RUN_ID)"; next="Inspect the publish step and resume $TASK on $BRANCH"
+          elif [ "$OUTCOME" != success ]; then
             limit=$(cat "$EXEC" "$RUNNER_TEMP/grok.json" 2>/dev/null | grep -ciE 'usage limit|rate.?limit|quota|insufficient_quota|429|limit reached' || true)
             grokfail=$(jq -r '.failed // false' "$RUNNER_TEMP/grok.json" 2>/dev/null || echo false)
             if [ "$limit" != 0 ]; then
@@ -246,18 +251,20 @@ jobs:
               state=paused; blockers="Grok failed after 3 tries: $(jq -r '.error // ""' "$RUNNER_TEMP/grok.json" | cut -c1-200)"; next="Codex continues $TASK on $BRANCH"; continue_chain=true
             else state=ready; blockers="the run failed (run $GITHUB_RUN_ID)"; next="Any assistant: take $TASK again from $BRANCH"; fi
           fi
-          if [ "$BILLING" = plan ] && [ "$WHO" = codex ] && [ "$OUTCOME" = success ]; then
+          if [ "$PUBLISHED" = success ] && [ "$BILLING" = plan ] && [ "$WHO" = codex ] && [ "$OUTCOME" = success ]; then
             state=active; next="Codex: continue $TASK on PR #$PR (asked with @codex). Each push runs the release gates; it merges itself when they pass."
             [ "$MENTION_BOT" = true ] && blockers="the @codex comment came from the workflow's bot; if Codex doesn't answer within an hour, the owner writes the same @codex line on PR #$PR (or adds CODEX_MENTION_TOKEN)"
           elif [ "$state" = done ] && [ -n "$PR" ]; then next="PR #$PR merges itself when the release gates pass; the cross-review follows the merge. Then: ${next:-take the next ready row}"; fi
           git checkout -q main && git config user.name "ai-loop[bot]" && git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          recorded=false
           for i in 1 2 3; do
             git pull -q --rebase origin main
             node scripts/ai-loop.mjs release --assistant "$WHO" --task "$TASK" --state "$state" --sha "$(git rev-parse --short HEAD)" ${PR:+--pr "$PR"} ${FROM:+--from "$FROM"} ${reset:+--reset "$reset"} \
               --next "$next" --changed "$(f changed)" --checks "$(f checks)" --blockers "${blockers:-none}"
-            git add AI_HANDOFF.md ai/status.json && git commit -qm "handoff: $TASK $state ($WHO, ai-loop run $GITHUB_RUN_ID)" && git push -q origin HEAD:main && break
+            git add AI_HANDOFF.md ai/status.json && git commit -qm "handoff: $TASK $state ($WHO, ai-loop run $GITHUB_RUN_ID)" && git push -q origin HEAD:main && recorded=true && break
             git reset -q --hard origin/main; sleep 5
           done
+          [ "$recorded" = true ] || { echo "::error::Could not persist the handoff"; exit 1; }
           # The chain moves on at once: the next run picks the next assistant for the same task and branch.
           if [ "$continue_chain" = true ]; then gh workflow run ai-loop.yml -f task="$TASK"; echo "Started the next run for $TASK (the chain continues)."; fi
           APP_URL="${APP_URL_VAR:-}"; case "$APP_URL" in https://*brightolio.com*) ;; *) APP_URL="https://app.brightolio.com";; esac
