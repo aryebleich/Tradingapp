@@ -10,5 +10,6 @@ export const strings = {
   'Brightolio installs as an app from the browser: its own window and icon, notifications, and your watchlists open even without a connection (as saved on your last visit).': 'Brightolio ווערט אינסטאלירט ווי אן אפ פונעם בראוזער: אן אייגענער פענצטער און אייקאן, מעלדונגען, און אייערע וואטשליסטס עפענען זיך אפילו אן א פארבינדונג (ווי געהיטן ביים לעצטן באזוך).',
   'iPhone and iPad': 'iPhone און iPad', 'This device': 'דער מכשיר',
   "You're offline. Watchlists show what was saved on your last visit; trading needs a connection.": 'איר זענט נישט פארבונדן. וואטשליסטס ווייזן וואס איז געהיטן געווארן ביים לעצטן באזוך; טרעידן דארף א פארבינדונג.',
+  'Manage or cancel': 'פארוואלט אדער קענסלט', 'Email me 3 days and 1 day before my trial ends': 'שיקט מיר אן אימעיל 3 טעג און 1 טאג איידער מיין פרובע ענדיגט זיך',
   'For teams and firms': 'פאר גרופעס און פירמעס', 'On an annual contract; no card is taken here.': 'אויף א יערליכן קאנטראקט; קיין קארטל ווערט דא נישט גענומען.', 'Talk to us': 'רעדט מיט אונז',
 };

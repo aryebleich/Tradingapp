@@ -1356,6 +1356,11 @@ api.post('/billing/checkout', U, wrap(async (req, res) => {
   res.json({ url: s.url });
 }));
 // Self-service: change card, switch or cancel plan, download invoices (Stripe Billing Portal).
+// Trial-end reminders by email (src/trial-notice.js): off unless the member turns them on.
+api.put('/billing/trial-emails', U, wrap(async (req, res) => {
+  await (await import('./src/trial-notice.js')).setTrialEmails(req.user.id, req.body?.on === true);
+  res.json({ on: req.body?.on === true });
+}));
 api.post('/billing/portal', U, wrap(async (req, res) => {
   if (!req.user.stripe_customer) throw new Error('No billing account yet - choose a plan first');
   res.json({ url: (await N.billingPortal({ customer: req.user.stripe_customer, baseUrl: PUBLIC_URL })).url });

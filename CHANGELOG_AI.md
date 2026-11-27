@@ -4,6 +4,13 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-27: Claude, REV-03, honest trial-end notices
+
+- src/trial-notice.js: 3 days and 1 day before a free trial ends, the app shows the plan, the end date and the price that will be charged, with "Manage or cancel" (one tap to the billing portal). It shows a date, never a countdown, and can be closed for the session. Email reminders go at the same two moments only to members who tick "Email me 3 days and 1 day before my trial ends" on Plans & billing (off by default), once per stage, from a twice-daily job (src/jobs.js trialremind).
+- /api/auth/me carries trialNotice and trialEmails; PUT /api/billing/trial-emails saves the choice. Yiddish added.
+- test/trial-notice.test.js: the timing, the copy (real price, no countdown wording), the opt-in, once per stage, and the opt-out.
+- Checks: npm test (649 pass), clean check, the page gate on Plans & billing and Home.
+
 ## 2026-11-27: Claude, why the AI loop's task runs failed
 
 - Both AI-04B runs (45926986309, 45986190634) failed at "Commit and push the task branch, and its pull request": GitHub answered "GitHub Actions is not permitted to create or approve pull requests". That is a repository setting only the owner can change (OWN-08).

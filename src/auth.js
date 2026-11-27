@@ -282,7 +282,7 @@ async function noticesFor(u) {
   if (n?.text) out.push({ id: 'notice', text: String(n.text).slice(0, 300), at: n.at || null });
   return out;
 }
-router.get('/me', async (req, res) => res.json({ user: req.user ? { ...publicUser(req.user), addons: await (await import('./addons.js')).addonsFor(req.user.id), notices: await noticesFor(req.user), mfa: await (await import('./mfa-policy.js')).mfaStatus(req.user) } : null, mfaPending: !!req.pending }));
+router.get('/me', async (req, res) => res.json({ user: req.user ? { ...publicUser(req.user), addons: await (await import('./addons.js')).addonsFor(req.user.id), notices: await noticesFor(req.user), trialNotice: (await import('./trial-notice.js')).trialNotice(req.user), trialEmails: (await (await import('./settings.js')).getSetting(req.user.id, 'trialEmails', false)) === true, mfa: await (await import('./mfa-policy.js')).mfaStatus(req.user) } : null, mfaPending: !!req.pending }));
 router.delete('/notice', requireUser, async (req, res) => {
   const { setSetting } = await import('./settings.js');
   await setSetting(req.user.id, 'notice', null);

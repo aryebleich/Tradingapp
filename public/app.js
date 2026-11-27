@@ -113,6 +113,22 @@ function noticeBanners() {
     b.append(t, x); document.body.prepend(b);
   }
   mfaBanner();
+  trialBanner();
+}
+// The free trial ends in 3 days or less (src/trial-notice.js): the date and the price, and one tap to
+// the billing portal to keep or cancel it. No countdown.
+function trialBanner() {
+  const n = ME?.trialNotice, old = document.getElementById('trial-banner');
+  let hidden = false; try { hidden = n && sessionStorage.getItem('qp_trial_hidden') === n.stage; } catch {}
+  if (!n || hidden) { old?.remove(); return; }
+  if (old?.dataset.stage === n.stage) return; old?.remove();
+  const b = document.createElement('div'); b.id = 'trial-banner'; b.dataset.stage = n.stage; b.className = 'maint-banner notice-banner'; b.setAttribute('role', 'status');
+  const t = document.createElement('span'); t.textContent = n.text;
+  const go = document.createElement('button'); go.type = 'button'; go.className = 'small'; go.textContent = 'Manage or cancel';
+  go.onclick = async () => { try { location.href = (await api('/billing/portal', { body: {} })).url; } catch (e) { alert(e.message); } };
+  const x = document.createElement('button'); x.type = 'button'; x.className = 'small ghost'; x.textContent = '×'; x.setAttribute('aria-label', 'Close');
+  x.onclick = () => { b.remove(); try { sessionStorage.setItem('qp_trial_hidden', n.stage); } catch {} };
+  b.append(t, ' ', go, ' ', x); document.body.prepend(b);
 }
 // Recovery codes, shown once when two-factor or a first passkey is set up (src/mfa-policy.js).
 function showRecoveryCodes(codes) {
@@ -2113,6 +2129,7 @@ routes.funding = routes.billing = async (view, q) => {
     ${q.get('ok') ? '<div class="banner">Thank you! Your plan is being activated. It can take a few seconds to show here.</div>' : ''}
     ${q.get('credits') ? '<div class="banner">Thank you! Your credits are being added. It can take a few seconds to show here.</div>' : ''}
     ${ME.plan !== 'free' ? `<div class="banner">You are on <b>${esc(CFG.plans[ME.plan]?.name || ME.plan)}</b>${ME.planInterval === 'year' ? ' (yearly)' : ''}. ${esc(status)}</div>` : trial ? `<div class="banner">Every paid plan starts with a <b>${days}-day free trial</b>. You won't be charged until it ends, and you can cancel anytime.</div>` : ''}
+    ${ME.planStatus === 'trialing' ? `<label class="chk"><input type="checkbox" id="trialEmails" ${ME.trialEmails ? 'checked' : ''}> Email me 3 days and 1 day before my trial ends</label>` : ''}
     <div class="billing-toggle"><div class="seg" id="interval"><button data-i="month" class="${yearly ? '' : 'on'}">Monthly</button><button data-i="year" class="${yearly ? 'on' : ''}">Yearly <span class="save">2 months free</span></button></div></div>
     <div class="plans">${Object.entries(CFG.plans).map(([k, p]) => {
       const price = yearly ? p.yearly : p.monthly, cur = ME.plan === k;
@@ -2160,6 +2177,7 @@ routes.funding = routes.billing = async (view, q) => {
     $$('#interval button', view).forEach(b => (b.onclick = () => { yearly = b.dataset.i === 'year'; draw(); }));
     // Members who already pay switch in the billing portal (one subscription, prorated), never a second checkout.
     const ic = $('#instContact', view); if (ic) ic.onclick = () => { location.href = '/contact'; };
+    const te = $('#trialEmails', view); if (te) te.onchange = async () => { await api('/billing/trial-emails', { method: 'PUT', body: { on: te.checked } }).catch(() => { te.checked = !te.checked; }); ME.trialEmails = te.checked; };
     $$('[data-plan]', view).forEach(b => act(b, async () => { location.href = subscribed() ? (await api('/billing/portal', { body: {} })).url : (await api('/billing/checkout', { body: { plan: b.dataset.plan, interval: yearly ? 'year' : 'month' } })).url; }, $('#planErr', view)));
     $$('[data-pack]', view).forEach(b => act(b, async () => { location.href = (await api('/credits/buy', { body: { pack: b.dataset.pack } })).url; }, $('#credErr', view)));
     if ($('#portal', view)) act($('#portal', view), async () => { location.href = (await api('/billing/portal', { body: {} })).url; }, $('#planErr', view));

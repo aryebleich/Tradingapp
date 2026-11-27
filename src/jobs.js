@@ -115,6 +115,8 @@ export const JOBS = [
   ['rebalremind', 1440, t => rebalanceReminders(t)],
   // Last month's books by email (opt-in), on the 1st.
   ['books', 1440, t => monthlyBooksEmail(t)],
+  // Trial-end reminders by email, 3 days and 1 day before (opt-in; src/trial-notice.js), twice a day.
+  ['trialremind', 720, t => import('./trial-notice.js').then(T => T.trialEmails(t))],
 ];
 export async function runExtraJobs(t, claimOnce) {
   const out = {};
