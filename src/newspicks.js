@@ -20,6 +20,7 @@ import { isPaid } from './fees.js';
 import { stepUpGuard } from './security.js';
 import { notifyUser } from './notify-user.js';
 import { pdtAllowed } from './pdt.js';
+import { evidence } from './ai-evidence.js';
 
 const r2 = (x, d = 2) => (x == null || !Number.isFinite(+x) ? null : +(+x).toFixed(d));
 const bad = (msg, status = 400) => Object.assign(new Error(msg), { status });
@@ -157,7 +158,7 @@ export const newspicksRouter = (() => {
     const day = nyTime().day, s = cleanSettings((await getSetting(req.user.id, 'newspicks', {})) || {});
     const picks = await todays(day), hist = await all('SELECT * FROM newspicks_log ORDER BY day DESC, rank LIMIT 300');
     const mine = await all('SELECT * FROM newspicks_trades WHERE user_id = ? ORDER BY id DESC LIMIT 60', req.user.id);
-    res.json({ day, picks, settings: s, record: record(hist), history: hist.slice(0, 40), mine, dataEnabled: D.dataEnabled(), elite: ELITE(req.user), paid: isPaid(req.user), placedToday: mine.some(m => m.day === day), note: NOT_ADVICE });
+    res.json({ day, picks, evidence: evidence({ forecast: true, data: ['News headlines', 'Prices before the open', 'The record of past picks, losses included'] }), settings: s, record: record(hist), history: hist.slice(0, 40), mine, dataEnabled: D.dataEnabled(), elite: ELITE(req.user), paid: isPaid(req.user), placedToday: mine.some(m => m.day === day), note: NOT_ADVICE });
   }));
   // Saving settings. Turning on a real account needs the Elite plan, the password and the step-up check.
   r.put('/settings', (req, res, next) => (req.body?.live || (req.body?.account && req.body.account !== 'paper') ? stepUpGuard(req, res, next) : next()), wrap(async (req, res) => {

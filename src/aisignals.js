@@ -20,6 +20,7 @@ import { rsiSeries, smaSeries } from './rotation/indicators.js';
 import { emaSeries } from './aibots.js';
 import { session, orderDay } from './desk.js';
 import { nyTime } from './time.js';
+import { evidence } from './ai-evidence.js';
 
 const bad = (msg, status = 400) => Object.assign(new Error(msg), { status });
 export const UNIVERSE = [...new Set('AAPL MSFT NVDA AMZN GOOGL META AVGO TSLA JPM LLY V UNH XOM MA COST HD PG JNJ NFLX ABBV WMT BAC CRM ORCL AMD ADBE QCOM TXN INTU AMAT CSCO PEP KO MCD DIS NKE CAT BA GS IBM HON AMGN MRK CVX TMUS ISRG BKNG PLTR SPY QQQ IWM DIA XLE XLF XLK XLV XLY XLI XLP XLU SMH GLD TLT'.split(' '))];
@@ -178,7 +179,7 @@ export const aiSignalsRouter = (() => {
   r.use(requireUser);
   r.get('/', async (req, res) => {
     const lim = aiLimits(req.user), { siteGet } = await import('./site.js');
-    res.json({ ...(await signalsFor(req.user)), limits: lim, auto: await autoSettings(req.user.id), lastRun: siteGet('aiSignalsRun', null), setups: Object.fromEntries(Object.entries(SETUPS).map(([k, s]) => [k, { name: s.name, horizon: s.horizon }])),
+    res.json({ ...(await signalsFor(req.user)), evidence: evidence({ forecast: true, by: 'rules', data: ['Daily prices and indicators', 'Past results of each setup'] }), limits: lim, auto: await autoSettings(req.user.id), lastRun: siteGet('aiSignalsRun', null), setups: Object.fromEntries(Object.entries(SETUPS).map(([k, s]) => [k, { name: s.name, horizon: s.horizon }])),
       trades: await all('SELECT * FROM signal_trades WHERE user_id = ? ORDER BY id DESC LIMIT 50', req.user.id) });
   });
   r.put('/auto', async (req, res) => {

@@ -15,17 +15,19 @@ const DATA = {
 };
 const label = t => DATA[t] || String(t || '').replace(/_/g, ' ');
 
-export function evidence({ tools = [], sources = [], data = [], by = 'ai', asOf = null } = {}) {
+export function evidence({ tools = [], sources = [], data = [], by = 'ai', asOf = null, forecast = false } = {}) {
   const basis = [...new Set([...tools.map(label), ...data].filter(Boolean))].slice(0, 6);
   const cited = (Array.isArray(sources) ? sources : []).filter(s => s && (s.url || s.title)).slice(0, 6).map(s => ({ title: String(s.title || s.url).slice(0, 120), url: /^https?:\/\//.test(s.url || '') ? s.url : null }));
   const reads = basis.length + cited.length;
-  const level = by === 'rules' ? (basis.length ? 'medium' : 'low') : reads >= 2 ? 'high' : reads === 1 ? 'medium' : 'low';
+  let level = by === 'rules' ? (basis.length ? 'medium' : 'low') : reads >= 2 ? 'high' : reads === 1 ? 'medium' : 'low';
+  if (forecast && level === 'high') level = 'medium';
   const why = {
     high: `Built on ${basis.length ? basis.join(', ').toLowerCase() : 'the sources below'}. Still check the figures before you act.`,
-    medium: `Built on ${basis.length ? basis[0].toLowerCase() : 'one source'} only, so parts of the picture may be missing.`,
+    medium: reads > 1 ? `Built on ${(basis.length ? basis : cited.map(c => c.title)).join(', ').toLowerCase()}.` : `Built on ${basis.length ? basis[0].toLowerCase() : 'one source'} only, so parts of the picture may be missing.`,
     low: by === 'rules' ? 'Plain rules without an AI model; a general answer, not checked against current data.' : 'A general explanation, not based on current data for this question.',
   }[level];
-  return { confidence: level, confidenceText: `How sure: ${level}. ${why}`, basis, sources: cited, by, asOf, notAdvice: NOT_ADVICE };
+  const note = forecast ? ' It is a forecast: prices can move the other way, and past results don\'t predict future ones.' : '';
+  return { confidence: level, confidenceText: `How sure: ${level}. ${why}${note}`, basis, sources: cited, by, asOf, notAdvice: NOT_ADVICE };
 }
 
 // Adds the evidence to an AI answer object (keeps everything else as it was).

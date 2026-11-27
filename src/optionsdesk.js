@@ -14,6 +14,7 @@ import express from 'express';
 import { requireUser } from './auth.js';
 import { aiLimits, useQuota } from './aiplans.js';
 import * as D from './alpaca/data.js';
+import { evidence } from './ai-evidence.js';
 
 const r2 = x => Math.round((+x || 0) * 100) / 100;
 const bad = (m, s = 400) => Object.assign(new Error(m), { status: s });
@@ -193,6 +194,8 @@ export async function review(user, pos) {
 // ---------- routes ----------
 const OCC = /^[A-Z]{1,6}\d{6}[CP]\d{8}$/;
 const okAccount = a => (a === 'paper' || a === 'alpaca' || /^alpaca:\d{1,3}$/.test(a) ? a : 'paper');
+// Each AI answer says what it was built on and how sure it is (src/ai-evidence.js, registry A-19).
+const ev = (data, a) => ({ ...a, evidence: evidence({ by: a?.engine ? 'ai' : 'rules', data }) });
 export const optionsDeskRouter = (() => {
   const r = express.Router();
   r.use(requireUser);
@@ -217,14 +220,12 @@ export const optionsDeskRouter = (() => {
   }));
   r.post('/ai/strategy', wrap(async (req, res) => {
     const b = req.body || {};
-    res.json(await strategist(req.user, { underlying: und(b.underlying), outlook: Object.keys(OUTLOOKS).includes(b.outlook) ? b.outlook : 'bullish', budget: Math.min(1e7, Math.max(50, +b.budget || 1000)), expiration: /^\d{4}-\d{2}-\d{2}$/.test(b.expiration || '') ? b.expiration : undefined }));
-  }));
+    res.json(ev(['The options chain', 'The underlying price'], await strategist(req.user, { underlying: und(b.underlying), outlook: Object.keys(OUTLOOKS).includes(b.outlook) ? b.outlook : 'bullish', budget: Math.min(1e7, Math.max(50, +b.budget || 1000)), expiration: /^\d{4}-\d{2}-\d{2}$/.test(b.expiration || '') ? b.expiration : undefined })));  }));
   r.post('/ai/explain', wrap(async (req, res) => {
     const sym = String(req.body?.symbol || '').toUpperCase(); if (!OCC.test(sym)) throw bad('Not an option symbol');
     const p = D.parseOcc(sym), ch = await chain(p.root, p.expiration), c = ch.contracts.find(x => x.symbol === sym);
     if (!c) throw bad('That contract is not trading now', 404);
-    res.json(await explain(req.user, c, analyzeContract(c, ch.spot, { side: req.body?.side === 'sell' ? 'sell' : 'buy' }), ch.spot));
-  }));
-  r.post('/ai/review', wrap(async (req, res) => res.json(await review(req.user, await positions(req.user.id, okAccount(String(req.body?.account || 'paper')))))));
+    res.json(ev(['The options chain', 'The underlying price'], await explain(req.user, c, analyzeContract(c, ch.spot, { side: req.body?.side === 'sell' ? 'sell' : 'buy' }), ch.spot)));  }));
+  r.post('/ai/review', wrap(async (req, res) => res.json(ev(['Your option positions', 'The options chain'], await review(req.user, await positions(req.user.id, okAccount(String(req.body?.account || 'paper'))))))));
   return r;
 })();

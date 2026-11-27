@@ -29,6 +29,23 @@ test('evidence: confidence comes from what the answer was built on, never from t
   assert.equal(evidence({ sources: [{ url: 'javascript:alert(1)', title: 'x' }] }).sources[0].url, null, 'only web links');
 });
 
+test('evidence: forecasts (picks, signals) are never "high" and say they are forecasts', () => {
+  const f = evidence({ forecast: true, data: ['News headlines', 'Prices before the open', 'The record of past picks, losses included'] });
+  assert.equal(f.confidence, 'medium');
+  assert.match(f.confidenceText, /It is a forecast: prices can move the other way/);
+  assert.match(f.confidenceText, /Built on news headlines, prices before the open, the record of past picks/);
+});
+
+test('evidence: AI morning picks, AI signals and the options desk review carry it', async () => {
+  const c = srv.client(); await c.signup('evidence-2@example.com');
+  for (const [path, body] of [['/newspicks'], ['/aisignals'], ['/optdesk/ai/review', { account: 'paper' }]]) {
+    const r = await c(path, body);
+    assert.equal(r.status, 200, `${path}: ${JSON.stringify(r.body).slice(0, 200)}`);
+    wellFormed(r.body.evidence, path);
+  }
+  assert.equal((await c('/newspicks')).body.evidence.confidence !== 'high', true);
+});
+
 test('evidence: the AI routes return it (chat, AI tools, why your P/L moved)', async () => {
   const c = srv.client(); await c.signup('evidence@example.com');
   const chat = await c('/ai/chat', { messages: [{ role: 'user', content: 'How does AAPL look technically?' }] });

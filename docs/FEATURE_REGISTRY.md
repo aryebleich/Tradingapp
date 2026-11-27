@@ -17,7 +17,7 @@ Rebuilt by `node scripts/registry.mjs` from the rows below: 287 features.
 | Section | Done | Partial | Missing |
 | --- | --- | --- | --- |
 | 1. Professional trading terminal | 7 | 8 | 3 |
-| 2. Brightolio AI | 12 | 7 | 0 |
+| 2. Brightolio AI | 13 | 6 | 0 |
 | 3. Advanced market scanners | 3 | 11 | 5 |
 | 4. Automated trading ecosystem | 15 | 3 | 0 |
 | 5. Institutional financial intelligence | 4 | 6 | 6 |
@@ -35,7 +35,7 @@ Rebuilt by `node scripts/registry.mjs` from the rows below: 287 features.
 | 17. Brightolio Developer Cloud | 1 | 6 | 5 |
 | 18. Mobile and desktop ecosystem | 6 | 5 | 1 |
 | 19. Security and infrastructure | 10 | 7 | 1 |
-| **All** | **113** | **116** | **58** |
+| **All** | **114** | **115** | **58** |
 
 ### The 20 biggest gaps
 
@@ -110,7 +110,7 @@ Missing or partial rows with the highest value for the effort (V/E), legal and l
 | A-16 | Voice-controlled financial assistant | done | public/pages/studio.js (browser voice), src/hotline.js, #/hotline | — | AI | Free | — | 3/2 |
 | A-17 | Personalized market intelligence | partial | src/newspicks.js, src/brief.js | A feed built from the member's holdings, watchlists and interests | AI | Elite | — | 4/3 |
 | A-18 | AI agents that continuously monitor investments | partial | src/ml.js, src/agentic.js, #/agents, #/agenthub | Agents that watch chosen symbols and alert with their reasons, within the plan's AI caps | AI | Elite | — | 4/3 |
-| A-19 | Reasoning, sources and confidence on every AI answer | partial | src/ai-evidence.js on the chat (src/chat.js), stock summaries (src/stock.js), why your P/L moved (src/pnlwhy.js) and AI tools (src/aitools.js); shown by evidenceHtml in public/app.js | The same line on the AI morning picks, AI signals and the options strategist (queue row AI-04B) | AI | Free | — | 5/3 |
+| A-19 | Reasoning, sources and confidence on every AI answer | done | src/ai-evidence.js on the chat, stock summaries, Why your P/L moved, AI tools, AI morning picks and AI signals (as forecasts, never "high"), and the options desk strategist, explainer and review; shown by evidenceHtml in public/app.js | — | AI | Free | — | 5/3 |
 
 ## 3. Advanced market scanners
 

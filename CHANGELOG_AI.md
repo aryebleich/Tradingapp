@@ -4,6 +4,13 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-27: Claude, AI-04B (taken over from Codex): the evidence line everywhere the AI answers
+
+- AI morning picks (src/newspicks.js), AI signals (src/aisignals.js) and the options desk's AI strategist, contract explainer and position review (src/optionsdesk.js) carry the evidence block, and their pages show it (growth.js, aitrade.js, optionsdesk.js).
+- src/ai-evidence.js: picks and signals are forecasts. They are never "high" and say that prices can move the other way, and the medium line lists everything the answer was built on.
+- test/ai-evidence.test.js covers the new routes and the forecast cap. Registry A-19 done.
+- Codex's two loop runs on ai/task-ai-04b had written only the brief (the pull request step failed, OWN-08), so the work started from that brief.
+
 ## 2026-11-27: Claude, PRICE-01: prices only from Admin → Prices (step 2)
 
 - New Admin → Prices (#/admin-prices): each plan and credit price with its currency and effective date, the history, upcoming changes, and the "Stripe live" switch (off). src/prices.js, the prices table, /api/admin/prices and /api/public/prices.
