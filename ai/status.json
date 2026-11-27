@@ -5,11 +5,11 @@
   "assistants": [
     {
       "name": "Claude",
-      "task": "APP-02",
-      "state": "active",
-      "updated": "2026-11-27 00:06",
-      "lastSha": "87d4ea8",
-      "next": "Working on APP-02 in Claude Code.",
+      "task": null,
+      "state": "idle",
+      "updated": "2026-11-27 00:31",
+      "lastSha": "447c3c1",
+      "next": "Codex: AI-04B (the evidence line on picks, signals and the options strategist); Claude: DATA-01 or CHART-01 next.",
       "reset": null
     },
     {
@@ -32,17 +32,7 @@
     }
   ],
   "queue": {
-    "active": [
-      {
-        "id": "APP-02",
-        "state": "active",
-        "priority": 1,
-        "suggested": "Claude",
-        "claimedBy": "Claude",
-        "updated": "2026-11-27 00:06",
-        "task": "Phase 1 (master plan section 18). The installable web app for iPhone, Windows and Mac (registry AP-02, AP-03, AP-04, AL-12, AP-06): an install guide per device, Web Push for alerts (opt-in per alert, keys in Admin → Keys), and watchlists that open offline. A native app or desktop wrapper stays a later row (DECISIONS.md MP-6). Done when push and the offline watchlist are tested and the registry rows are updated. See docs/FEATURE_REGISTRY.md."
-      }
-    ],
+    "active": [],
     "paused": [],
     "ready": [
       {
@@ -53,15 +43,6 @@
         "claimedBy": null,
         "updated": null,
         "task": "Follow-up of AI-04 (registry A-19): add the evidence line (src/ai-evidence.js evidence(), shown with H.evidenceHtml) to the AI morning picks, AI signals and the options desk's AI strategist and contract explainer. Done when test/ai-evidence.test.js also checks those routes and A-19 is done. See docs/FEATURE_REGISTRY.md."
-      },
-      {
-        "id": "AI-04",
-        "state": "ready",
-        "priority": 2,
-        "suggested": "Claude",
-        "claimedBy": null,
-        "updated": null,
-        "task": "Phase 1, AI (registry A-19). Every AI answer shows the data and sources it used and a plain confidence line, and never promises profit; one shared helper for chat, stock summaries, picks and tools. Done when a test fails on an AI answer without sources or confidence, and A-19 is done in the registry. See docs/FEATURE_REGISTRY.md."
       },
       {
         "id": "REV-02B",
@@ -430,6 +411,24 @@
     ],
     "done": [
       {
+        "id": "AI-04",
+        "state": "done",
+        "priority": 2,
+        "suggested": "Claude",
+        "claimedBy": "Claude",
+        "updated": "2026-11-27 00:55",
+        "task": "Phase 1, AI (registry A-19). Every AI answer shows the data and sources it used and a plain confidence line, and never promises profit; one shared helper for chat, stock summaries, picks and tools. Done when a test fails on an AI answer without sources or confidence, and A-19 is done in the registry. See docs/FEATURE_REGISTRY.md. Done in 447c3c1 for chat, stock summaries, Why your P/L moved and AI tools; the rest is AI-04B."
+      },
+      {
+        "id": "APP-02",
+        "state": "done",
+        "priority": 1,
+        "suggested": "Claude",
+        "claimedBy": "Claude",
+        "updated": "2026-11-27 00:31",
+        "task": "Phase 1 (master plan section 18). The installable web app for iPhone, Windows and Mac (registry AP-02, AP-03, AP-04, AL-12, AP-06): an install guide per device, Web Push for alerts (opt-in per alert, keys in Admin → Keys), and watchlists that open offline. A native app or desktop wrapper stays a later row (DECISIONS.md MP-6). Done when push and the offline watchlist are tested and the registry rows are updated. See docs/FEATURE_REGISTRY.md."
+      },
+      {
         "id": "MP-01",
         "state": "done",
         "priority": null,
@@ -613,6 +612,17 @@
   ],
   "handoffs": [
     {
+      "at": "2026-11-27 00:31 UTC",
+      "assistant": "Claude",
+      "task": "APP-02",
+      "state": "done",
+      "last_sha": "447c3c1",
+      "changed": "Web Push (src/webpush.js), Settings → Notifications, offline app page and watchlists (public/sw.js), install guide for iPhone, Windows and Mac; also AI-04: the evidence line on AI answers (src/ai-evidence.js); test databases now deleted after each run",
+      "checks": "npm test 646 pass; clean check; registry and status checks; page gate on Settings, the Apps page and Plans & billing; the full e2e run was still going at hand-off",
+      "blockers": "none for code; owner items OWN-04, OWN-06, OWN-07",
+      "next_action": "Codex: AI-04B (the evidence line on picks, signals and the options strategist); Claude: DATA-01 or CHART-01 next."
+    },
+    {
       "at": "2026-11-27 00:06 UTC",
       "assistant": "Claude",
       "task": "MP-01",
@@ -710,17 +720,6 @@
       "checks": "Research + docs only. Grok provider already present in src/llm.js.",
       "blockers": "none. Owner still needs OWN-05 (XAI_API_KEY + raise Grok monthly cap) for live Grok use.",
       "next_action": "Claude: finish TEAM-01, then use RES-01 pricing note for REV-01 and RES-02 findings for any AI-picks UI polish. Codex: take REV-02."
-    },
-    {
-      "at": "2026-11-26 15:33 UTC",
-      "assistant": "Grok",
-      "task": "RES-01",
-      "state": "done",
-      "last_sha": "3c8ebaf",
-      "changed": "Added docs/research/pricing.md — competitor prices (TradingView, Schwab/thinkorswim, IBKR, eToro, Robinhood Gold) with dates/links + three Brightolio pricing options (Accessible premium, Software ladder, Hybrid recommended) and trade-offs.",
-      "checks": "Research only; no code. Public sources only.",
-      "blockers": "none.",
-      "next_action": "Claude: finish TEAM-01, then use the pricing note when implementing REV-01 (plans + AI credits). Codex: take REV-02. Grok next: RES-02 when free."
     }
   ]
 }
