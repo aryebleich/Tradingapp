@@ -12,20 +12,22 @@ import { one, all, run, now } from './db.js';
 import { requireUser } from './auth.js';
 import { PAID } from './fees.js';
 import { siteGet, siteSet } from './site.js';
+import { priceOf } from './prices.js';
 
 export const DEFAULTS = {
   monthly: { free: 100, pro: 1000, elite: 3000, ultimate: 10000 },
   costs: { ai: 1, sms: 1, call: 3, filing: 5, agent: 10, optimize: 3, pnlwhy: 2 },
-  packs: [{ id: 'c500', credits: 500, price: 5 }, { id: 'c3000', credits: 3000, price: 25 }, { id: 'c12000', credits: 12000, price: 80 }],
+  // Pack sizes only: each pack's price is entered by the owner in Admin → Prices (src/prices.js, item credits:<id>).
+  packs: [{ id: 'c500', credits: 500 }, { id: 'c3000', credits: 3000 }, { id: 'c12000', credits: 12000 }],
 };
 export const LABELS = { ai: 'AI message beyond the daily allowance', sms: 'Text message sent to you', call: 'Call to the phone line', filing: 'AI summary of a 10-K or 10-Q', agent: 'Training an AI agent', optimize: 'Strategy optimizer run', pnlwhy: 'AI P/L analysis refreshed before its time' };
-export const config = () => { const s = siteGet('credits', {}) || {}; return { monthly: { ...DEFAULTS.monthly, ...(s.monthly || {}) }, costs: { ...DEFAULTS.costs, ...(s.costs || {}) }, packs: s.packs?.length ? s.packs : DEFAULTS.packs }; };
+export const config = () => { const s = siteGet('credits', {}) || {}; const c = { monthly: { ...DEFAULTS.monthly, ...(s.monthly || {}) }, costs: { ...DEFAULTS.costs, ...(s.costs || {}) }, packs: s.packs?.length ? s.packs : DEFAULTS.packs }; c.packs = c.packs.map(p => { const pr = priceOf(`credits:${p.id}`); return { id: p.id, credits: p.credits, price: pr?.amount ?? null, currency: pr?.currency || null }; }); return c; };
 export async function saveConfig(b = {}) {
   const cur = config(), int = (v, lo, hi) => { const n = Math.round(+v); if (!(n >= lo && n <= hi)) throw Object.assign(new Error(`Use a whole number from ${lo} to ${hi}`), { status: 400 }); return n; };
   const out = { monthly: { ...cur.monthly }, costs: { ...cur.costs }, packs: cur.packs };
   for (const k of Object.keys(DEFAULTS.monthly)) if (b.monthly?.[k] !== undefined) out.monthly[k] = int(b.monthly[k], 0, 1e6);
   for (const k of Object.keys(DEFAULTS.costs)) if (b.costs?.[k] !== undefined) out.costs[k] = int(b.costs[k], 0, 1000);
-  if (Array.isArray(b.packs)) out.packs = b.packs.slice(0, 6).map((p, i) => ({ id: String(p.id || `p${i}`).replace(/[^\w-]/g, '').slice(0, 20) || `p${i}`, credits: int(p.credits, 1, 1e7), price: Math.round(+p.price * 100) / 100 })).filter(p => p.price >= 1);
+  if (Array.isArray(b.packs)) out.packs = b.packs.slice(0, 6).map((p, i) => ({ id: String(p.id || `p${i}`).replace(/[^\w-]/g, '').slice(0, 20) || `p${i}`, credits: int(p.credits, 1, 1e7) })); // prices: Admin → Prices
   await siteSet('credits', out);
   return out;
 }
@@ -78,6 +80,7 @@ export function creditsRouter({ checkout }) {
   // A credit pack through Stripe Checkout; the webhook adds the credits once the payment succeeds.
   r.post('/buy', async (req, res) => {
     const pack = config().packs.find(p => p.id === req.body?.pack);
+    if (pack && !(pack.price > 0)) throw Object.assign(new Error('This credit pack has no price yet.'), { status: 400 });
     if (!pack) throw Object.assign(new Error('Pick a credit pack'), { status: 400 });
     res.json(await checkout(req.user, pack));
   });

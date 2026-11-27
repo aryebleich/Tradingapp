@@ -784,6 +784,16 @@ CREATE TABLE IF NOT EXISTS exec_audit (
   hash TEXT NOT NULL UNIQUE,
   at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS prices (
+  id INTEGER PRIMARY KEY,
+  item TEXT NOT NULL,
+  amount REAL NOT NULL,
+  currency TEXT NOT NULL,
+  effective_at INTEGER NOT NULL,
+  created_by TEXT,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS prices_item ON prices(item, effective_at);
 CREATE TABLE IF NOT EXISTS push_subs (
   id INTEGER PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

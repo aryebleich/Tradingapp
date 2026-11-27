@@ -66,7 +66,8 @@ export function jsonLd(page, html, s = settings(), b = base()) {
   const graph = [org, { '@type': 'WebSite', '@id': `${b}/#site`, url: `${b}/`, name: s.orgName, inLanguage: ['en', 'yi'], publisher: { '@id': `${b}/#org` } }];
   if (page.key === 'index' || page.key === 'yi') {
     graph.push({ '@type': 'SoftwareApplication', name: s.orgName, applicationCategory: 'FinanceApplication', operatingSystem: 'Web, Android', url: `${b}/`, publisher: { '@id': `${b}/#org` },
-      offers: Object.entries(PLANS).map(([, p]) => ({ '@type': 'Offer', name: p.name, price: String(p.monthly), priceCurrency: 'USD', ...(p.monthly ? { priceSpecification: { '@type': 'UnitPriceSpecification', price: String(p.monthly), priceCurrency: 'USD', billingDuration: 'P1M' } } : {}) })) });
+      // Only prices the owner entered in Admin → Prices (and the free plan).
+      offers: Object.entries(PLANS).filter(([k, p]) => k === 'free' || p.monthly > 0).map(([k, p]) => ({ '@type': 'Offer', name: p.name, price: String(k === 'free' ? 0 : p.monthly), priceCurrency: p.currency || 'USD', ...(k !== 'free' ? { priceSpecification: { '@type': 'UnitPriceSpecification', price: String(p.monthly), priceCurrency: p.currency, billingDuration: 'P1M' } } : {}) })) });
     const faq = s.faq ? faqFrom(html) : [];
     if (faq.length) graph.push({ '@type': 'FAQPage', mainEntity: faq.map(f => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) });
   } else graph.push({ '@type': 'WebPage', url: `${b}${page.path}`, name: titleOf(html), isPartOf: { '@id': `${b}/#site` } });

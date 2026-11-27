@@ -9,7 +9,7 @@ const { run } = await import('../src/db.js');
 const { PLANS } = await import('../src/fees.js');
 const DAY = 864e5, NOW = Date.UTC(2026, 10, 27, 15);
 let srv;
-before(async () => { srv = await serve(); });
+before(async () => { srv = await serve(); await (await import('./prices-fixture.js')).seedPrices(); });
 after(() => srv?.close());
 const trial = (o = {}) => ({ id: 1, plan: 'pro', plan_status: 'trialing', plan_renews: NOW + 3 * DAY, plan_interval: 'month', ...o });
 
@@ -24,8 +24,9 @@ test('trial notice: timing — nothing before 3 days, the 3-day notice, the 1-da
 
 test('trial notice: the copy names the plan, the date and the real price, and promises nothing hidden', () => {
   const m = T.trialNotice(trial(), NOW), y = T.trialNotice(trial({ plan: 'elite', plan_interval: 'year' }), NOW);
-  assert.match(m.text, new RegExp(`free Pro trial ends on \\w+day, November 30\\..*\\$${PLANS.pro.monthly} a month`));
-  assert.match(y.text, new RegExp(`\\$${PLANS.elite.yearly} a year`));
+  const usd = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n).replace('$', '\\$');
+  assert.match(m.text, new RegExp(`free Pro trial ends on \\w+day, November 30\\..*${usd(PLANS.pro.monthly)} a month`));
+  assert.match(y.text, new RegExp(`${usd(PLANS.elite.yearly)} a year`));
   assert.match(m.text, /cancel in one step/);
   assert.doesNotMatch(m.text, /hurry|only \d+ left|last chance|\d+:\d+|hours left/i, 'no countdown or pressure');
 });

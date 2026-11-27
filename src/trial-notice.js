@@ -9,19 +9,19 @@ import { PLANS } from './fees.js';
 import { getSetting, setSetting } from './settings.js';
 
 const DAY = 864e5;
-const money = n => '$' + (Number.isInteger(n) ? n : n.toFixed(2));
 const dateOf = t => new Date(t).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/New_York' });
 
 // The notice for this member right now, or null. stage: '3day' (2 or 3 days left) or '1day' (1 day or less).
 export function trialNotice(u, t = Date.now()) {
   if (!u || u.plan_status !== 'trialing' || !u.plan_renews || !PLANS[u.plan]) return null;
+  const fmt = (n, c) => new Intl.NumberFormat('en-US', { style: 'currency', currency: c || 'USD' }).format(n);
   const left = u.plan_renews - t;
   if (left <= 0 || left > 3 * DAY) return null;
   const p = PLANS[u.plan], yearly = u.plan_interval === 'year', price = yearly ? p.yearly : p.monthly;
   const stage = left <= DAY ? '1day' : '3day';
   return {
     stage, endsAt: u.plan_renews, plan: p.name, price, interval: yearly ? 'year' : 'month',
-    text: `Your free ${p.name} trial ends on ${dateOf(u.plan_renews)}. After that, ${money(price)} a ${yearly ? 'year' : 'month'} is charged unless you cancel. You can cancel in one step, and nothing is charged before that date.`,
+    text: `Your free ${p.name} trial ends on ${dateOf(u.plan_renews)}. After that, ${price > 0 ? `${fmt(price, p.currency)} a ${yearly ? 'year' : 'month'}` : 'the plan price'} is charged unless you cancel. You can cancel in one step, and nothing is charged before that date.`,
   };
 }
 

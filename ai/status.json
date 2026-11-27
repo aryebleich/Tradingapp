@@ -36,6 +36,15 @@
     "paused": [],
     "ready": [
       {
+        "id": "FIX-01",
+        "state": "ready",
+        "priority": 1,
+        "suggested": "Codex",
+        "claimedBy": null,
+        "updated": null,
+        "task": "The page gate's homepage FAQ answers at 1440 px are sometimes read as \"no longer visible\" (seen twice, passes on rerun). Done when the gate waits for the FAQ to settle and three runs in a row pass. See docs/FEATURE_REGISTRY.md."
+      },
+      {
         "id": "AI-04B",
         "state": "ready",
         "priority": 2,
@@ -401,6 +410,24 @@
       }
     ],
     "done": [
+      {
+        "id": "LOOP-01",
+        "state": "done",
+        "priority": null,
+        "suggested": "Claude",
+        "claimedBy": "Claude",
+        "updated": "2026-11-27 15:28",
+        "task": "The loop without the owner: GitHub settings checked, the owner-approved gate removed, Owner later, the Unfinished tasks overview, batch pull requests. Done in 5271077."
+      },
+      {
+        "id": "PRICE-01",
+        "state": "done",
+        "priority": null,
+        "suggested": "Claude",
+        "claimedBy": "Claude",
+        "updated": "2026-11-27 15:28",
+        "task": "Prices only from Admin → Prices (currency, effective date, history) and the Stripe live switch; no price in the code."
+      },
       {
         "id": "REV-03",
         "state": "done",

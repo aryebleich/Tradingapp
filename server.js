@@ -161,6 +161,8 @@ await loadSite().catch(e => console.warn('site settings', e.message));
 await applySavedEnv();
 // The key store (Admin → Keys): encrypted in the database, read first by secret(), live in every worker.
 await (await import('./src/keystore.js')).initKeystore().catch(e => console.warn('key store:', e.message));
+// Prices the owner entered in Admin → Prices (src/prices.js); nothing is priced until then.
+await (await import('./src/prices.js')).loadPrices(true).catch(e => console.warn('prices:', e.message));
 export const app = express();
 app.set('trust proxy', 1);
 // Behind the Cloudflare edge (edge/worker.js) every request comes from Cloudflare: the edge passes
@@ -752,6 +754,12 @@ const api = express.Router();
 api.use(filterErrors);
 // The landing page copy on GitHub Pages calls the public demo endpoints cross-origin (no cookies).
 const PUBLIC_ORIGINS = (process.env.PUBLIC_ORIGINS || 'https://aryebleich.github.io').split(',').map(o => o.trim());
+api.get('/public/prices', async (req, res) => {
+  const P = await import('./src/prices.js'); await P.loadPrices();
+  const C = (await import('./src/credits.js')).config();
+  res.set('Cache-Control', 'public, max-age=60');
+  res.json({ plans: Object.fromEntries(['pro', 'elite', 'ultimate'].map(k => [k, { month: P.priceOf(`plan:${k}:month`), year: P.priceOf(`plan:${k}:year`) }])), institutional: P.priceOf('plan:institutional:month'), packs: C.packs.map(p => ({ id: p.id, credits: p.credits, price: P.priceOf(`credits:${p.id}`) })) });
+});
 api.use('/public', (req, res, next) => {
   if (PUBLIC_ORIGINS.includes(req.headers.origin)) {
     res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
@@ -829,6 +837,30 @@ api.put('/admin/security/mfa-policy', async (req, res) => {
 });
 // Admin → Security → Legal gates (src/legal-gates.js, LEGAL_REVIEW.md L-MP): off until the owner signs off.
 // Turning one on or off needs the password step-up and is written to the audit log.
+// Admin → Prices (src/prices.js): every plan and credit price, its currency and effective date, entered
+// by the owner. A change needs the password step-up and goes to the audit log.
+const packIds = async () => (await import('./src/credits.js')).config().packs.map(p => p.id);
+api.get('/admin/prices', async (req, res) => {
+  const P = await import('./src/prices.js');
+  res.json({ prices: await P.priceBoard(await packIds()), currencies: P.CURRENCIES, stripeLive: (await import('./src/stripe-client.js')).stripeLiveOn(), unlocked: (await import('./src/server-admin.js')).isUnlocked(req) });
+});
+api.put('/admin/prices/stripe-live', async (req, res) => {
+  if (!(await import('./src/server-admin.js')).isUnlocked(req)) return res.status(403).json({ error: 'Confirm your password to change Stripe live mode.', adminUnlock: true });
+  const on = req.body?.on === true;
+  await (await import('./src/site.js')).siteSet('stripeLive', on);
+  await audit(req.user.id, 'stripe_live_changed', { on }, req.ip);
+  res.json({ stripeLive: on });
+});
+api.post('/admin/prices', async (req, res) => {
+  if (!(await import('./src/server-admin.js')).isUnlocked(req)) return res.status(403).json({ error: 'Confirm your password to change a price.', adminUnlock: true });
+  const P = await import('./src/prices.js');
+  try {
+    if (String(req.body?.item || '').startsWith('credits:') && !(await packIds()).includes(String(req.body.item).slice(8))) throw Object.assign(new Error('Unknown credit pack'), { status: 400 });
+    const r = await P.setPrice(req.user, req.body || {});
+    await audit(req.user.id, 'price_set', r, req.ip);
+    res.json({ price: r, prices: await P.priceBoard(await packIds()) });
+  } catch (e) { res.status(e.status || 400).json({ error: e.message }); }
+});
 api.get('/admin/security/legal-gates', async (req, res) => {
   const G = await import('./src/legal-gates.js');
   const log = await all("SELECT a.at, a.detail, u.email FROM audit_log a LEFT JOIN users u ON u.id = a.user_id WHERE a.event = 'legal_gate_changed' ORDER BY a.id DESC LIMIT 20").catch(() => []);

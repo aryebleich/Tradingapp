@@ -1,20 +1,26 @@
 // Revenue: monthly plans; a performance fee on new profits above a high-water mark only in
 // registered-adviser mode (Admin → Business mode).
 import { one, all, run, now } from './db.js';
+import { amountOf, priceOf } from './prices.js';
 
-// The price ladder (DECISIONS.md MP-3, docs/research/growth-plan.md "Revenue"): Pro $14.99 next to
-// TradingView Essential, Elite $39.99 next to TradingView Plus, Ultimate $89.99 below TradingView Premium
-// plus automation. Yearly billing is about 10x the monthly price (two months free). Stripe stays in test
-// mode: Admin → Money & fees → Stripe re-creates the test prices from these numbers (src/stripesetup.js),
-// and checkout refuses a Stripe price that no longer matches them (checkPlanPrice).
+// Prices are not in the code (DECISIONS.md PR-1): the owner enters them in Admin → Prices (src/prices.js),
+// each with its currency and effective date. monthly, yearly and currency below read the price in force;
+// they are null for a plan without a price, which then shows "Price not set yet" and can't be bought.
+// Stripe stays in test mode until the owner switches it live in Admin; checkout refuses a Stripe price
+// that no longer matches the price in force (checkPlanPrice in src/stripesetup.js).
 export const PLANS = {
   free: { name: 'Starter', monthly: 0, yearly: 0, perfFee: 0.20, tagline: 'Learn and practice', features: ['$100,000 paper account', 'Live trading on your own brokerage (your own orders)', '1 chart per layout, every indicator', 'Strategy library by hand + 1 automatic strategy on paper', 'Unlimited backtests', '1 alert webhook (paper)', '2 scanners, checked hourly', 'AI assistant: 30 messages a day', '100 credits every month'] },
-  pro: { name: 'Pro', monthly: 14.99, yearly: 149, perfFee: 0.10, popular: true, tagline: 'Automate your real accounts', features: ['Everything in Starter', 'Automated trading on Alpaca, Schwab, tastytrade, Tradier & TradeStation', '2-chart layouts', '5 automatic strategies with Reality Check auto-throttle', '10 alert webhooks', 'Scanners every 5 minutes, portfolios & signal mirroring', 'AI assistant: 300 messages a day', 'Optimizer, walk-forward testing & code lab', 'Trading and alerts by text and phone, QuantConnect and bank-card linking', '1,000 credits every month'] },
-  elite: { name: 'Elite', monthly: 39.99, yearly: 399, perfFee: 0.05, tagline: 'For active traders', features: ['Everything in Pro', '4-chart layouts and pop-out windows', '25 automatic strategies & 25 webhooks', 'Option income bots & multi-leg orders', 'Market-neutral pairs (long + short)', 'Tax-loss harvesting & Schedule D', 'AI assistant: 1,000 messages a day', '3,000 credits every month'] },
-  ultimate: { name: 'Ultimate', monthly: 89.99, yearly: 899, perfFee: 0.025, tagline: 'For serious capital', features: ['Everything in Elite', '100 automatic strategies & 100 webhooks', 'Unlimited scanners and AI agents', 'AI assistant: 3,000 messages a day', 'Priority support', '10,000 credits every month'] },
+  pro: { name: 'Pro', perfFee: 0.10, popular: true, tagline: 'Automate your real accounts', features: ['Everything in Starter', 'Automated trading on Alpaca, Schwab, tastytrade, Tradier & TradeStation', '2-chart layouts', '5 automatic strategies with Reality Check auto-throttle', '10 alert webhooks', 'Scanners every 5 minutes, portfolios & signal mirroring', 'AI assistant: 300 messages a day', 'Optimizer, walk-forward testing & code lab', 'Trading and alerts by text and phone, QuantConnect and bank-card linking', '1,000 credits every month'] },
+  elite: { name: 'Elite', perfFee: 0.05, tagline: 'For active traders', features: ['Everything in Pro', '4-chart layouts and pop-out windows', '25 automatic strategies & 25 webhooks', 'Option income bots & multi-leg orders', 'Market-neutral pairs (long + short)', 'Tax-loss harvesting & Schedule D', 'AI assistant: 1,000 messages a day', '3,000 credits every month'] },
+  ultimate: { name: 'Ultimate', perfFee: 0.025, tagline: 'For serious capital', features: ['Everything in Elite', '100 automatic strategies & 100 webhooks', 'Unlimited scanners and AI agents', 'AI assistant: 3,000 messages a day', 'Priority support', '10,000 credits every month'] },
 };
+for (const k of ['pro', 'elite', 'ultimate']) Object.defineProperties(PLANS[k], {
+  monthly: { enumerable: true, get: () => amountOf(`plan:${k}:month`) },
+  yearly: { enumerable: true, get: () => amountOf(`plan:${k}:year`) },
+  currency: { enumerable: true, get: () => priceOf(`plan:${k}:month`)?.currency || priceOf(`plan:${k}:year`)?.currency || null },
+});
 // Teams and firms: sales-led, no self-serve checkout (DECISIONS.md MP-3). Shown on Plans & billing.
-export const INSTITUTIONAL = { name: 'Institutional', from: 499, tagline: 'For teams and firms', features: ['Everything in Ultimate', 'Team workspaces and roles (as they are built)', 'Higher API limits', 'Single sign-on and audit exports (as they are built)', 'An annual contract and a named contact'] };
+export const INSTITUTIONAL = { name: 'Institutional', get from() { return amountOf('plan:institutional:month'); }, get currency() { return priceOf('plan:institutional:month')?.currency || null; }, tagline: 'For teams and firms', features: ['Everything in Ultimate', 'Team workspaces and roles (as they are built)', 'Higher API limits', 'Single sign-on and audit exports (as they are built)', 'An annual contract and a named contact'] };
 // The plan comparison table (Starter, Pro, Elite, Ultimate): true / false for a tick or a dash, or the
 // limit as text. The homepage shows the same rows (scripts/home.py MATRIX); a test keeps them equal.
 export const COMPARE = [

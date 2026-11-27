@@ -429,6 +429,8 @@ $('#themeBtn').onclick = () => { theme = THEMES[(THEMES.indexOf(theme) + 1) % 3]
 // own), shows that plan's real prices with a Monthly/Yearly choice, says what stays free, and offers
 // the free trial only to members who have not used it. Members who already pay change plan in the
 // billing portal (never a second checkout). Nothing that costs money is pre-selected.
+// A price in its own currency (prices come from Admin → Prices).
+const money0 = (n, currency) => new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(n);
 const PLAN_ORDER = ['free', 'pro', 'elite', 'ultimate'];
 const subscribed = () => !!ME && ME.plan !== 'free' && ['active', 'trialing', 'past_due'].includes(ME.planStatus);
 async function showUpgrade(feature) {
@@ -447,7 +449,7 @@ async function showUpgrade(feature) {
     const trial = !ME?.trialUsed && !subscribed(), days = CFG?.trialDays || 14;
     let yearly = false;
     const draw = () => {
-      const price = yearly ? `$${(p.yearly / 12).toFixed(2)}/month, billed $${p.yearly.toLocaleString('en-US')} yearly` : `$${p.monthly}/month`;
+      const price = !(p.monthly > 0) ? 'Price not set yet' : yearly ? `${money0(p.yearly / 12, p.currency)}/month, billed ${money0(p.yearly, p.currency)} yearly` : `${money0(p.monthly, p.currency)}/month`;
       d.innerHTML = `<div class="top"><h2>${esc(feature || 'This feature')} needs ${esc(p.name)}</h2><div>${esc(p.tagline || '')}</div></div>
       <div class="body"><ul class="ticks">${p.features.filter(f => !/^Everything in/.test(f)).slice(0, 5).map(f => `<li>${esc(f)}</li>`).join('')}</ul>
         <div class="seg up-int" role="group" aria-label="Billing"><button type="button" data-i="month" class="${yearly ? '' : 'on'}" aria-pressed="${!yearly}">Monthly</button><button type="button" data-i="year" class="${yearly ? 'on' : ''}" aria-pressed="${yearly}">Yearly <span class="save">2 months free</span></button></div>
@@ -649,6 +651,7 @@ const ICONS = {
   'admin-ai': '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/>',
   'admin-readme': '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>',
   'admin-users': '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 14.8c1.7.8 2.7 2.6 3 5.2"/>',
+  'admin-prices': '<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
   'admin-money': '<rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/>',
   'admin-support': '<path d="M4 5h16v11H8l-4 4z"/><path d="M8 9h8M8 12.5h5"/>',
   'admin-setup': '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
@@ -2132,17 +2135,20 @@ routes.funding = routes.billing = async (view, q) => {
     ${ME.planStatus === 'trialing' ? `<label class="chk"><input type="checkbox" id="trialEmails" ${ME.trialEmails ? 'checked' : ''}> Email me 3 days and 1 day before my trial ends</label>` : ''}
     <div class="billing-toggle"><div class="seg" id="interval"><button data-i="month" class="${yearly ? '' : 'on'}">Monthly</button><button data-i="year" class="${yearly ? 'on' : ''}">Yearly <span class="save">2 months free</span></button></div></div>
     <div class="plans">${Object.entries(CFG.plans).map(([k, p]) => {
-      const price = yearly ? p.yearly : p.monthly, cur = ME.plan === k;
+      // Prices come only from Admin → Prices (src/prices.js), in their own currency. Free is Starter; a paid
+      // plan without a price shows that and can't be chosen.
+      const cur = ME.plan === k, free = k === 'free', priced = free || (p.monthly > 0 && p.yearly > 0);
+      const m = n => money0(n, p.currency);
       // Yearly: the monthly amount large (what people compare), the yearly charge right under it.
       return `<div class="card plan ${p.popular ? 'best' : ''}">${p.popular ? '<div class="ribbon">Recommended</div>' : ''}
         <h2 style="margin:0">${esc(p.name)}${CFG.tiers?.[k] && CFG.tiers[k] !== p.name ? ` <small class="tier">${esc(CFG.tiers[k])}</small>` : ""} ${cur ? '<span class="pill">Current</span>' : ''}</h2><div class="mu" style="font-size:14px">${esc(p.tagline || '')}</div>
-        <div class="price">${price ? '$' + (yearly ? (p.yearly / 12).toFixed(2) : price) : '$0'}<small>${price ? '/month' : ' forever'}</small></div>
-        ${yearly && p.yearly ? `<div class="mu" style="font-size:13px">$${(p.yearly / 12).toFixed(2)}/month, billed $${p.yearly.toLocaleString('en-US')} yearly</div>` : p.monthly ? `<div class="mu" style="font-size:13px">or $${(p.yearly / 12).toFixed(2)}/month billed yearly</div>` : '<div style="height:19px"></div>'}
+        ${free ? '<div class="price">Free<small> forever</small></div><div style="height:19px"></div>' : !priced ? '<div class="price mu" style="font-size:18px">Price not set yet</div><div style="height:19px"></div>'
+          : `<div class="price">${m(yearly ? p.yearly / 12 : p.monthly)}<small>/month</small></div>${yearly ? `<div class="mu" style="font-size:13px">${m(p.yearly / 12)}/month, billed ${m(p.yearly)} yearly</div>` : `<div class="mu" style="font-size:13px">or ${m(p.yearly / 12)}/month billed yearly</div>`}`}
         <ul>${p.features.map(f => `<li>${esc(f)}</li>`).join('')}</ul>
-        ${p.monthly && !cur ? `<button data-plan="${k}" class="${p.popular ? '' : 'ghost'}">${trial && !subscribed() ? `Start ${days}-day free trial` : subscribed() ? `Switch to ${esc(p.name)}` : `Choose ${esc(p.name)}`}</button>` : cur ? '<button class="ghost" disabled>Your plan</button>' : ''}</div>`;
+        ${!free && priced && !cur ? `<button data-plan="${k}" class="${p.popular ? '' : 'ghost'}">${trial && !subscribed() ? `Start ${days}-day free trial` : subscribed() ? `Switch to ${esc(p.name)}` : `Choose ${esc(p.name)}`}</button>` : cur ? '<button class="ghost" disabled>Your plan</button>' : ''}</div>`;
     }).join('')}</div>
     ${CFG.institutional ? `<div class="card plan inst"><h2 style="margin:0">${esc(CFG.institutional.name)}</h2><div class="mu" style="font-size:14px">${esc(CFG.institutional.tagline)}</div>
-      <div class="price">From $${CFG.institutional.from}<small>/month</small></div><div class="mu" style="font-size:13px">On an annual contract; no card is taken here.</div>
+      <div class="price">${CFG.institutional.from > 0 ? `From ${money0(CFG.institutional.from, CFG.institutional.currency)}<small>/month</small>` : '<span class="mu" style="font-size:18px">Price on request</span>'}</div><div class="mu" style="font-size:13px">On an annual contract; no card is taken here.</div>
       <ul>${CFG.institutional.features.map(f => `<li>${esc(f)}</li>`).join('')}</ul><button type="button" class="ghost" id="instContact">Talk to us</button></div>` : ''}
     <div class="err" id="planErr"></div><p class="mu small-print">Payment is on Stripe's secure page. On a phone, if the card numbers you type don't show, turn off your browser's dark theme for websites (Chrome: Settings → Theme; Samsung Internet: dark mode off) or open the page in another browser.</p>
     <p class="mu" style="text-align:center;font-size:13px">Secure checkout by Stripe. Cancel anytime from "Manage billing". Prices in USD.</p>
@@ -2155,7 +2161,7 @@ routes.funding = routes.billing = async (view, q) => {
       <div class="credbar" title="Monthly credits left"><i style="width:${cr.balance.allowance ? Math.min(100, cr.balance.monthly / cr.balance.allowance * 100) : 0}%"></i></div>
       <p class="mu" style="margin:6px 0 14px;font-size:13px">${cr.balance.monthly.toLocaleString()} of ${cr.balance.allowance.toLocaleString()} monthly credits left (they refill on the 1st)${cr.balance.bought ? ` · ${cr.balance.bought.toLocaleString()} bought credits (never expire)` : ''}.</p>
       <div class="grid2"><div><h3 style="margin:0 0 6px">What credits pay for</h3><table class="slim">${Object.entries(cr.costs).filter(([, c]) => c > 0).map(([k, c]) => `<tr><td>${esc(cr.labels[k] || k)}</td><td style="text-align:end"><b>${c}</b></td></tr>`).join('')}</table></div>
-        <div><h3 style="margin:0 0 6px">Buy credits</h3><div class="packs">${cr.packs.map(p => `<button type="button" class="pack ghost" data-pack="${esc(p.id)}"><b>${p.credits.toLocaleString()}</b><span>credits</span><em>$${p.price}</em></button>`).join('')}</div>
+        <div><h3 style="margin:0 0 6px">Buy credits</h3><div class="packs">${cr.packs.filter(p => p.price > 0).map(p => `<button type="button" class="pack ghost" data-pack="${esc(p.id)}"><b>${p.credits.toLocaleString()}</b><span>credits</span><em>${money0(p.price, p.currency)}</em></button>`).join('') || '<p class="mu">Credit packs have no price yet.</p>'}</div>
           <p class="mu" style="font-size:12.5px">Bought credits never expire and are used after your monthly ones.</p><div class="err" id="credErr"></div></div></div>
       ${cr.history.length ? `<details style="margin-top:10px"><summary class="mu">Recent credit use</summary><table class="slim">${cr.history.map(h => `<tr><td>${date(h.at)}</td><td>${esc(cr.labels[h.kind] || (h.kind === 'purchase' ? 'Credits bought' : h.kind))}${h.memo ? ` <span class="mu" data-no-tr>${esc(h.memo)}</span>` : ''}</td><td style="text-align:end" class="${h.delta > 0 ? 'pos' : ''}">${h.delta > 0 ? '+' : ''}${h.delta}</td></tr>`).join('')}</table></details>` : ''}</div>` : ''}
     <div class="grid">
@@ -2331,7 +2337,7 @@ routes.settings = async view => {
 // The owner's pages, in four groups (each its own menu section; the tab row shows its group).
 const ADMIN_GROUPS = [
   ['Owner: people', [['admin', 'Overview'], ['admin-users', 'Users'], ['admin-admins', 'Admins'], ['admin-support', 'Support inbox'], ['admin-comms', 'Calls, texts & email'], ['admin-phone', 'Phone line'], ['admin-phoneaccts', 'Phone & text accounts']]],
-  ['Owner: money', [['admin-money', 'Money & fees'], ['admin-sponsored', 'Sponsored news'], ['admin-upgrades', 'Upgrades']]],
+  ['Owner: money', [['admin-money', 'Money & fees'], ['admin-prices', 'Prices'], ['admin-sponsored', 'Sponsored news'], ['admin-upgrades', 'Upgrades']]],
   ['Owner: site & content', [['admin-readme', 'Overview'], ['admin-seo', 'SEO'], ['admin-strategies', 'Original strategies'], ['admin-trust', 'Trust']]],
   ['Owner: technical', [['admin-agents', 'AI team'], ['admin-ai', 'AI & privacy'], ['admin-routing', 'Routing'], ['admin-keys', 'Keys'], ['admin-security', 'Security'], ['admin-data', 'Market data'], ['admin-hosting', 'Hosting'], ['admin-database', 'Database'], ['admin-analytics', 'Analytics'], ['admin-setup', 'Setup']]],
 ];
@@ -2492,7 +2498,7 @@ lazyRoutes(() => import('./pages/optionslab.js'), 'registerOptionsLab', shared, 
 lazyRoutes(() => import('./pages/optionsdesk.js'), 'registerOptionsDesk', shared, ["options"]);
 lazyRoutes(() => import('./pages/aitools.js'), 'registerAiTools', shared, ["aitools"]);
 registerProtect(routes, shared);
-lazyRoutes(() => import('./pages/owner.js'), 'registerOwner', shared, ["admin-upgrades", "admin-business", "admin-alpaca", "admin-money", "admin-phone", "admin-phoneaccts", "admin-ai", "admin-readme", "admin-admins", "admin-keys", "admin-security"]);
+lazyRoutes(() => import('./pages/owner.js'), 'registerOwner', shared, ["admin-upgrades", "admin-prices", "admin-business", "admin-alpaca", "admin-money", "admin-phone", "admin-phoneaccts", "admin-ai", "admin-readme", "admin-admins", "admin-keys", "admin-security"]);
 lazyRoutes(() => import('./pages/alts.js'), 'registerAlts', shared, ["private"]);
 lazyRoutes(() => import('./pages/money.js'), 'registerMoney', shared, ["money"]);
 lazyRoutes(() => import('./pages/rules.js'), 'registerRules', shared, ["rules"]);

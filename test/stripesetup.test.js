@@ -53,6 +53,7 @@ const client = () => {
 };
 const owner = client(), user = client();
 before(async () => {
+  await (await import('./prices-fixture.js')).seedPrices(); // prices come from Admin → Prices
   await new Promise(r => { server = app.listen(0, () => { base = `http://127.0.0.1:${server.address().port}`; r(); }); });
   await owner('/auth/register', { email: 'owner@example.com', password: 'Str0ngPassword1', agree: true });
   await user('/auth/register', { email: 'payer@example.com', password: 'Str0ngPassword1', agree: true });
@@ -89,13 +90,14 @@ test('setup creates prices, webhook and portal once; a second run changes nothin
 
 test('a changed plan price makes a new Stripe price and retires the old one', async () => {
   const { PLANS } = await import('../src/fees.js');
-  const old = PLANS.pro.monthly; PLANS.pro.monthly = 59;
+  const Pr = await import('../src/prices.js'), old = PLANS.pro.monthly;
+  await Pr.setPrice({ email: 't@example.com' }, { item: 'plan:pro:month', amount: 59, currency: 'USD', effectiveAt: Date.now() - 1000 });
   try {
     await owner('/admin/site/stripe/setup', {});
     const live = db.prices.filter(p => p.active && p.recurring.interval === 'month' && p.unit_amount === 5900);
     assert.equal(live.length, 1); assert.equal(process.env.STRIPE_PRICE_PRO, live[0].id);
     assert.equal(db.prices.find(p => p.unit_amount === 1499).active, false);
-  } finally { PLANS.pro.monthly = old; await owner('/admin/site/stripe/setup', {}); }
+  } finally { await Pr.setPrice({ email: 't@example.com' }, { item: 'plan:pro:month', amount: old, currency: 'USD', effectiveAt: Date.now() - 500 }); await owner('/admin/site/stripe/setup', {}); }
 });
 
 test('customers can pay: checkout, then the signed webhook switches the plan on', async () => {
@@ -155,10 +157,11 @@ test('checkout refuses a saved Stripe price that no longer matches the price sho
   const before = db.sessions.length;
   const ok = await buyer('/billing/checkout', { plan: 'elite', interval: 'month' });
   assert.equal(ok.status, 200, JSON.stringify(ok.body)); assert.equal(db.sessions.length, before + 1);
-  const old = PLANS.elite.monthly; PLANS.elite.monthly = 44.99; S._resetPriceCheck();
+  const Pr = await import('../src/prices.js'), old = PLANS.elite.monthly;
+  await Pr.setPrice({ email: 't@example.com' }, { item: 'plan:elite:month', amount: 44.99, currency: 'USD', effectiveAt: Date.now() - 1000 }); S._resetPriceCheck();
   try {
     const r = await buyer('/billing/checkout', { plan: 'elite', interval: 'month' });
     assert.equal(r.status, 409); assert.match(r.body.error, /Nothing was charged/);
     assert.equal(db.sessions.length, before + 1, 'no checkout session was made');
-  } finally { PLANS.elite.monthly = old; S._resetPriceCheck(); }
+  } finally { await Pr.setPrice({ email: 't@example.com' }, { item: 'plan:elite:month', amount: old, currency: 'USD', effectiveAt: Date.now() - 500 }); S._resetPriceCheck(); }
 });

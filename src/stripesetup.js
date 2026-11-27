@@ -56,18 +56,21 @@ async function ensurePrices() {
     if (!prod) { prod = await stripeApi('POST', '/products', { name: `Brightolio ${p.name}`, description: p.tagline, metadata: { brightfolio_plan: plan } }); report.push(`Created the product "Brightolio ${p.name}"`); }
     else if (prod.name !== `Brightolio ${p.name}`) await stripeApi('POST', `/products/${prod.id}`, { name: `Brightolio ${p.name}` });
     for (const [interval, amount] of [['month', p.monthly], ['year', p.yearly]]) {
+      // A price the owner hasn't entered in Admin → Prices yet: nothing to create.
+      if (!(amount > 0)) { report.push(`${p.name} ${interval === 'year' ? 'yearly' : 'monthly'}: no price in Admin → Prices yet`); continue; }
+      const cur = String(p.currency || 'USD').toLowerCase();
       const lk = lookupKey(plan, interval), cents = Math.round(amount * 100);
       const found = ((await stripeApi('GET', '/prices', { lookup_keys: [lk], active: true, limit: 1 })).data || [])[0];
       let price = found;
-      if (!found || found.unit_amount !== cents || found.currency !== 'usd' || found.product !== prod.id) {
-        price = await stripeApi('POST', '/prices', { product: prod.id, currency: 'usd', unit_amount: cents, recurring: { interval }, lookup_key: lk, transfer_lookup_key: true, nickname: `${p.name} ${interval === 'year' ? 'yearly' : 'monthly'}`, metadata: { brightfolio_plan: plan } });
+      if (!found || found.unit_amount !== cents || found.currency !== cur || found.product !== prod.id) {
+        price = await stripeApi('POST', '/prices', { product: prod.id, currency: cur, unit_amount: cents, recurring: { interval }, lookup_key: lk, transfer_lookup_key: true, nickname: `${p.name} ${interval === 'year' ? 'yearly' : 'monthly'}`, metadata: { brightfolio_plan: plan } });
         if (found) await stripeApi('POST', `/prices/${found.id}`, { active: false });
-        report.push(`${found ? 'Updated' : 'Created'} the ${p.name} ${interval === 'year' ? 'yearly' : 'monthly'} price: $${amount}`);
+        report.push(`${found ? 'Updated' : 'Created'} the ${p.name} ${interval === 'year' ? 'yearly' : 'monthly'} price: ${amount} ${cur.toUpperCase()}`);
       }
       if (process.env[priceEnv(plan, interval)] !== price.id) changes[priceEnv(plan, interval)] = price.id;
     }
   }
-  if (!report.length) report.push('Plan prices already match the site');
+  if (!report.some(r => /^(Created|Updated)/.test(r))) report.push('Plan prices already match the site');
   return { changes, report };
 }
 
@@ -145,15 +148,17 @@ export async function stripeStatus({ siteUrl, lastEvent, savedWebhookId }) {
 // change, checkout waits until the owner runs Admin → Money & fees → Stripe → Finish setup again.
 const priceSeen = new Map();
 export async function checkPlanPrice(plan, interval, plans = PLANS) {
+  const amount = interval === 'year' ? plans[plan]?.yearly : plans[plan]?.monthly;
+  if (!(amount > 0)) throw Object.assign(new Error('This plan has no price yet. Nothing was charged.'), { status: 409, priceMismatch: true });
+  const want = Math.round(amount * 100), cur = String(plans[plan]?.currency || 'USD').toLowerCase();
   const id = process.env[priceEnv(plan, interval)]; if (!id) return { ok: true, unchecked: true };
-  const want = Math.round((interval === 'year' ? plans[plan]?.yearly : plans[plan]?.monthly) * 100);
   let hit = priceSeen.get(id);
   if (!hit || Date.now() - hit.at > 600e3) {
     // Stripe unreachable: checkout itself reports that in plain words; the check runs again next time.
     let p; try { p = await stripeApi('GET', `/prices/${encodeURIComponent(id)}`); } catch { return { ok: true, unchecked: true }; }
     hit = { at: Date.now(), cents: p.unit_amount, currency: p.currency }; priceSeen.set(id, hit);
   }
-  if (hit.cents !== want || hit.currency !== 'usd') throw Object.assign(new Error('This plan\'s price was just updated and checkout is paused until the new price is set up. Nothing was charged; please try again later.'), { status: 409, priceMismatch: true });
+  if (hit.cents !== want || hit.currency !== cur) throw Object.assign(new Error('This plan\'s price was just updated and checkout is paused until the new price is set up. Nothing was charged; please try again later.'), { status: 409, priceMismatch: true });
   return { ok: true };
 }
 export const _resetPriceCheck = () => priceSeen.clear();

@@ -46,6 +46,7 @@ const client = () => {
   };
 };
 before(async () => {
+  await (await import('./prices-fixture.js')).seedPrices(); // prices come from Admin → Prices
   await new Promise(r => { server = app.listen(0, () => { base = `http://127.0.0.1:${server.address().port}`; r(); }); });
   await client()('/auth/register', { email: 'h-owner@example.com', password: 'Str0ngPassword1', agree: true });
 });
@@ -101,9 +102,13 @@ test('client: a live key is refused outside production (and with STRIPE_TEST_ONL
     await assert.rejects(N.refund('pi_live'), e => e.status === 503);
     assert.equal(reqs.length, 0, 'nothing was sent to Stripe');
     delete process.env.STRIPE_TEST_ONLY;
-    await N.refund('pi_live'); // production with STRIPE_TEST_ONLY off may use a live key
+    // In production a live key still waits for the owner's "Stripe live" switch in Admin → Prices.
+    await assert.rejects(N.refund('pi_live'), e => e.status === 503 && /Stripe live is off/.test(e.detail));
+    assert.equal(reqs.length, 0);
+    const { siteSet } = await import('../src/site.js'); await siteSet('stripeLive', true);
+    await N.refund('pi_live'); // production, STRIPE_TEST_ONLY off and the switch on: a live key may be used
     assert.equal(reqs.length, 1);
-  } finally { process.env.STRIPE_SECRET_KEY = key; delete process.env.STRIPE_TEST_ONLY; process.env.NODE_ENV = 'test'; }
+  } finally { process.env.STRIPE_SECRET_KEY = key; delete process.env.STRIPE_TEST_ONLY; process.env.NODE_ENV = 'test'; await (await import('../src/site.js')).siteSet('stripeLive', false); }
 });
 
 test('client: card errors become plain language; other errors never show Stripe text; request id is kept', async () => {

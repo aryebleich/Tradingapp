@@ -15,6 +15,7 @@
 //   https://docs.stripe.com/api/versioning       https://docs.stripe.com/api/idempotent_requests
 //   https://docs.stripe.com/error-codes          https://docs.stripe.com/declines/codes
 import crypto from 'node:crypto';
+import { siteGet } from './site.js';
 
 export const DEFAULT_STRIPE_VERSION = '2024-06-20';
 export const stripeVersion = () => process.env.STRIPE_API_VERSION || DEFAULT_STRIPE_VERSION;
@@ -74,10 +75,17 @@ export function logStripe(level, event, meta = {}) {
 export const idemKey = (...parts) => 'qp-' + crypto.createHash('sha256').update(parts.map(String).join('|')).digest('hex').slice(0, 40);
 export const idemWindow = (ms = 60e3) => Math.floor(Date.now() / ms);
 
+// Stripe live mode (Admin → Prices, "Stripe live"): off by default, so a live key is refused until the
+// owner switches it on; test keys always work.
+export const stripeLiveOn = () => siteGet('stripeLive', false) === true;
 export function assertKeyAllowed(key = process.env.STRIPE_SECRET_KEY || '') {
   if (keyMode(key) === 'live' && (process.env.NODE_ENV !== 'production' || process.env.STRIPE_TEST_ONLY === '1')) {
     logStripe('error', 'live_key_refused', { reason: process.env.STRIPE_TEST_ONLY === '1' ? 'STRIPE_TEST_ONLY' : 'not production' });
     throw Object.assign(new Error('Payments are not available right now.'), { status: 503, detail: 'A live Stripe key is set where only test keys are allowed (NODE_ENV is not production, or STRIPE_TEST_ONLY=1). Use an sk_test_ key.' });
+  }
+  if (keyMode(key) === 'live' && !stripeLiveOn()) {
+    logStripe('warn', 'live_key_refused', { reason: 'Stripe live is off in Admin' });
+    throw Object.assign(new Error('Payments are not available right now.'), { status: 503, detail: 'A live Stripe key is set, but Stripe live is off in Admin → Prices. Switch it on there when you are ready to charge real money.' });
   }
 }
 

@@ -50,7 +50,7 @@ const stripe = (path, params, idempotencyKey) => stripePost(path, params, { idem
 export const checkoutCredits = ({ pack, email, userId, baseUrl }) => stripe('/checkout/sessions', {
   mode: 'payment', customer_email: email, client_reference_id: String(userId),
   'metadata[kind]': 'credits', 'metadata[credits]': String(pack.credits), 'metadata[pack]': pack.id,
-  'line_items[0][price_data][currency]': 'usd', 'line_items[0][price_data][product_data][name]': `${pack.credits.toLocaleString('en-US')} Brightolio credits`,
+  'line_items[0][price_data][currency]': String(pack.currency || 'USD').toLowerCase(), 'line_items[0][price_data][product_data][name]': `${pack.credits.toLocaleString('en-US')} Brightolio credits`,
   'line_items[0][price_data][unit_amount]': String(Math.round(pack.price * 100)), 'line_items[0][quantity]': '1',
   success_url: `${baseUrl}/app#/funding?credits=1`, cancel_url: `${baseUrl}/app#/funding`,
 }, idemKey('credits', userId, pack.id, pack.credits, pack.price, idemWindow()));

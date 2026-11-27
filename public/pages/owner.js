@@ -9,7 +9,7 @@ export function registerOwner(routes, helpers) {
   H = helpers;
   const guard = fn => (view, q) => (H.me()?.role === 'admin' ? fn(view, q) : (location.hash = '#/dashboard'));
   Object.assign(routes, {
-    'admin-upgrades': guard(upgrades),
+    'admin-upgrades': guard(upgrades), 'admin-prices': guard(prices),
     // Older links: business mode and Alpaca plans are now under Upgrades; the money levers under Money & fees.
     'admin-business': guard(() => (location.hash = '#/admin-upgrades?tab=mode')), 'admin-alpaca': guard(() => (location.hash = '#/admin-upgrades?tab=alpaca')),
     'admin-money': guard(async view => { await H.adminPage(view, 'admin-money'); await moneyExtras(view); }), 'admin-phone': guard(phoneLine), 'admin-phoneaccts': guard(phoneAccounts), 'admin-ai': guard(aiPrivacy), 'admin-readme': guard(privateReadme), 'admin-admins': guard(admins), 'admin-keys': guard(keys), 'admin-security': guard(security) });
@@ -98,7 +98,7 @@ async function moneyExtras(view) {
     <div class="stat"><span>Paying users</span><b>${f.paying}</b></div>
     <div class="stat"><span>Signup → paying</span><b>${f.conversion}%</b></div></div>
     <div class="levers">${[
-      ['Plans', `Starter free, Pro $14.99, Elite $39.99, Ultimate $89.99 a month; yearly = about 2 months free; Institutional from $499 a month on a contract (DECISIONS.md MP-3).`, true],
+      ['Plans', 'Starter is free; every paid plan and credit pack is priced by you in Admin → Prices, with its currency and effective date; yearly is usually about 2 months free.', true],
       ['Free trial', 'Every paid plan starts with a free trial; invited friends get extra days, so they convert more often.', true],
       ['Live trading on every plan', 'Free users trade their own real accounts, so they connect a brokerage early. Automation (bots, webhooks, strategies on real money) is what they upgrade for.', true],
       ['Deposit service fee', `${m.depositFeePercent}%${m.depositFeeFixed ? ' + ' + H.money(m.depositFeeFixed) : ''}${m.depositFeeCap ? `, at most ${H.money(m.depositFeeCap)}` : ''} on card and bank deposits.`, m.depositFeePercent > 0 || m.depositFeeFixed > 0],
@@ -462,14 +462,14 @@ async function creditsCard(view) {
     <p class="mu" style="margin-top:0">Every plan gets credits each month (unused ones do not roll over); users buy packs for more. Bought credits never expire. Last 30 days: ${d.used.map(u => `${H.esc(d.labels[u.kind] || u.kind)} ${u.n}`).join(' · ') || 'no use yet'} · sold ${Number(d.sold30).toLocaleString()} credits.</p>
     <h3>Monthly credits by plan</h3><div class="row">${Object.entries(c.monthly).map(([k, v]) => `<label>${({ free: 'Starter', pro: 'Pro', elite: 'Elite', ultimate: 'Ultimate' })[k] || k}<input name="m_${k}" type="number" min="0" value="${v}"></label>`).join('')}</div>
     <h3>Cost in credits</h3><div class="row">${Object.entries(c.costs).map(([k, v]) => `<label>${H.esc(d.labels[k] || k)}<input name="c_${k}" type="number" min="0" value="${v}"></label>`).join('')}</div>
-    <h3>Packs for sale</h3>${c.packs.map((p, i) => `<div class="row"><label>Credits<input name="p${i}_credits" type="number" min="1" value="${p.credits}"></label><label>Price ($)<input name="p${i}_price" type="number" min="1" step="0.01" value="${p.price}"></label><input type="hidden" name="p${i}_id" value="${H.esc(p.id)}"></div>`).join('')}
+    <h3>Packs for sale</h3>${c.packs.map((p, i) => `<div class="row"><label>Credits<input name="p${i}_credits" type="number" min="1" value="${p.credits}"></label><span class="mu small-print">Price: ${p.price > 0 ? H.esc(new Intl.NumberFormat('en-US', { style: 'currency', currency: p.currency || 'USD' }).format(p.price)) : 'not set'} (<a href="#/admin-prices">Admin → Prices</a>)</span><input type="hidden" name="p${i}_id" value="${H.esc(p.id)}"></div>`).join('')}
     <button>Save credits</button><div class="err"></div></form>
   <form class="card" id="crg"><h2>Give credits</h2><div class="row"><label>User email<input name="email" type="email" required></label><label>Credits<input name="credits" type="number" min="1" value="500"></label><label>Note<input name="memo" value="Thank you!"></label></div><button>Give credits</button><div class="err"></div></form>`;
   view.append(...el.children);
   const f = H.$('#crf', view), g = H.$('#crg', view);
   H.act(H.$('button', f), async () => {
     const v = H.form(f);
-    await H.api('/admin/site/credits', { method: 'PUT', body: { monthly: Object.fromEntries(Object.keys(c.monthly).map(k => [k, v['m_' + k]])), costs: Object.fromEntries(Object.keys(c.costs).map(k => [k, v['c_' + k]])), packs: c.packs.map((p, i) => ({ id: v[`p${i}_id`], credits: v[`p${i}_credits`], price: v[`p${i}_price`] })) } });
+    await H.api('/admin/site/credits', { method: 'PUT', body: { monthly: Object.fromEntries(Object.keys(c.monthly).map(k => [k, v['m_' + k]])), costs: Object.fromEntries(Object.keys(c.costs).map(k => [k, v['c_' + k]])), packs: c.packs.map((p, i) => ({ id: v[`p${i}_id`], credits: v[`p${i}_credits`] })) } });
     return 'Saved';
   });
   H.act(H.$('button', g), async () => { await H.api('/admin/site/credits/grant', { body: H.form(g) }); return 'Credits given'; });
@@ -507,6 +507,38 @@ async function phoneAccounts(view) {
 
 // ---------- Admin → Security: "Require two-factor sign-in" (src/mfa-policy.js) ----------
 // Off by default. Changing it needs the password step-up (the page opens behind it) and is logged.
+// Admin → Prices: the owner enters every plan and credit price, its currency and the date it takes effect.
+// Nothing is priced until then (src/prices.js); a change needs the password step-up and is audited.
+const PRICE_LABELS = { 'plan:pro:month': 'Pro, monthly', 'plan:pro:year': 'Pro, yearly', 'plan:elite:month': 'Elite, monthly', 'plan:elite:year': 'Elite, yearly', 'plan:ultimate:month': 'Ultimate, monthly', 'plan:ultimate:year': 'Ultimate, yearly', 'plan:institutional:month': 'Institutional, from (a month)' };
+async function prices(view) {
+  const d = await H.adminUnlocked('/admin/prices');
+  const fmt = p => (p ? new Intl.NumberFormat('en-US', { style: 'currency', currency: p.currency }).format(p.amount) : '—');
+  const day = t => new Date(t).toLocaleDateString(), label = i => PRICE_LABELS[i] || (i.startsWith('credits:') ? `Credit pack ${i.slice(8)}` : i);
+  view.innerHTML = `<h1>Admin</h1>${H.adminTabs('admin-prices')}
+  <div class="card"><h2>Prices</h2><p class="mu" style="margin-top:0">You set every price here, in its currency, with the date it takes effect. A plan or credit pack without a price shows "Price not set yet" and can't be bought. Stripe stays in test mode until you switch it live; after a change, run Money & fees → Stripe → Finish setup so test checkout uses the new price.</p>
+    <div class="tablewrap" tabindex="0" role="region" aria-label="Prices"><table><thead><tr><th>What</th><th>Price now</th><th>Since</th><th>Next change</th></tr></thead><tbody>${d.prices.map(p => `<tr><td>${H.esc(label(p.item))}</td><td data-no-fig>${H.esc(fmt(p.current))}</td><td data-no-fig>${p.current ? H.esc(day(p.current.effectiveAt)) : '—'}</td><td data-no-fig>${p.upcoming.length ? H.esc(`${fmt(p.upcoming[0])} from ${day(p.upcoming[0].effectiveAt)}`) : '—'}</td></tr>`).join('')}</tbody></table></div></div>
+  <form class="card" id="priceForm"><h2>Set a price</h2>
+    <div class="row"><label>What<select name="item">${d.prices.map(p => `<option value="${H.esc(p.item)}">${H.esc(label(p.item))}</option>`).join('')}</select></label>
+      <label>Price<input name="amount" type="number" min="0.01" step="0.01" required></label>
+      <label>Currency<select name="currency">${d.currencies.map(c => `<option>${c}</option>`).join('')}</select></label>
+      <label>Takes effect<input name="effective" type="date" value="${new Date().toISOString().slice(0, 10)}" required></label></div>
+    <p class="mu small-print">A price takes effect at the start of that day (UTC). Members on a plan keep the price Stripe charges them until their subscription changes.</p>
+    <button>Save price</button> <span class="ok" role="status"></span><div class="err" role="alert"></div></form>
+  <div class="card" id="stripeLive"><h2>Stripe live</h2><p class="mu" style="margin-top:0">${d.stripeLive ? '<b>On:</b> with a live Stripe key, checkout charges real money.' : '<b>Off:</b> only Stripe test keys work, so nothing is charged. A live key is refused until you switch this on.'}</p>
+    <label class="chk"><input type="checkbox" id="stripeLiveOn" ${d.stripeLive ? 'checked' : ''}> Charge real money through Stripe</label><div class="err" role="alert"></div></div>`;
+  const sl = H.$('#stripeLiveOn', view);
+  sl.onchange = async () => {
+    if (sl.checked && !confirm('Switch Stripe to live? With a live key, checkout will charge real money at the prices above.')) { sl.checked = false; return; }
+    try { await H.api('/admin/prices/stripe-live', { method: 'PUT', body: { on: sl.checked } }); await prices(view); } catch (err) { sl.checked = !sl.checked; H.$('#stripeLive .err', view).textContent = err.message; }
+  };
+  const f = H.$('#priceForm', view);
+  f.onsubmit = async e => {
+    e.preventDefault(); H.$('.err', f).textContent = '';
+    const v = H.form(f);
+    try { await H.api('/admin/prices', { body: { item: v.item, amount: +v.amount, currency: v.currency, effectiveAt: Date.parse(v.effective + 'T00:00:00Z') } }); await prices(view); H.$('#priceForm .ok', view).textContent = 'Saved.'; }
+    catch (err) { H.$('.err', f).textContent = err.message; }
+  };
+}
 async function security(view) {
   const d = await H.adminUnlocked('/admin/security/mfa-policy');
   const p = d.policy, when = t => (t ? new Date(t).toLocaleString() : '');

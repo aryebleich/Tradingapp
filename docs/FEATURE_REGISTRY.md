@@ -444,7 +444,7 @@ Missing or partial rows with the highest value for the effort (V/E), legal and l
 | SEC-14 | User permission management | partial | admin and member roles | Roles per team (E-13) | Security | Free | — | 3/3 |
 | SEC-15 | Regulatory reporting infrastructure | missing | — | Only if Brightolio registers (Phase 6); the owner decides | Security | Institutional | legal | 1/5 |
 | SEC-16 | Market data licensing and access controls | partial | data delay by plan (src/aiplans.js: end of day, 15-minute delay, real time) | A source-by-source license table and "delayed" labels everywhere (see Data sources) | Security | Free | licensed | 4/2 |
-| SEC-17 | Subscription and billing management | done | src/fees.js, src/stripe-client.js, #/funding (Stripe test mode) | Live billing waits for the owner | Security | Free | — | 5/2 |
+| SEC-17 | Subscription and billing management | done | src/fees.js, src/prices.js (Admin → Prices, #/admin-prices), src/stripe-client.js, #/funding (Stripe test mode) | Live billing waits for the owner; every price is entered by the owner | Security | Free | — | 5/2 |
 | SEC-18 | Customer support administration | done | Admin → Support inbox (#/admin-support) | — | Security | Free | — | 4/1 |
 
 ## Data sources and their terms
@@ -586,6 +586,7 @@ Every page and route of the app, with the registry rows it serves (the test fail
 | #/admin-phone | A-16 |
 | #/admin-phoneaccts | A-16 |
 | #/admin-money | SEC-17 |
+| #/admin-prices | SEC-17 |
 | #/admin-sponsored | N-01 |
 | #/admin-upgrades | E-02 |
 | #/admin-readme | D-06 |

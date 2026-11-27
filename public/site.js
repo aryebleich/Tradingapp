@@ -104,6 +104,19 @@ if (cf) cf.addEventListener('submit', async e => {
   btn.disabled = false;
 });
 
+// Prices: only what the owner entered in Admin → Prices (/api/public/prices). Without a price a card says so.
+const priceText = p => new Intl.NumberFormat('en-US', { style: 'currency', currency: p.currency }).format(p.amount);
+if (document.querySelector('.plan .price[data-plan], .cpacks [data-pack]')) fetch(API + '/api/public/prices').then(r => (r.ok ? r.json() : null)).then(d => {
+  const yearlyOn = () => document.querySelector('#billing button.on')?.dataset.i === 'y';
+  document.querySelectorAll('.plan .price[data-plan]').forEach(el => {
+    const p = d?.plans?.[el.dataset.plan], m = p?.month, y = p?.year;
+    el.dataset.m = m ? priceText(m) : '—'; el.dataset.y = y ? priceText(y) : '—';
+    el.firstChild.textContent = yearlyOn() ? el.dataset.y : el.dataset.m;
+    if (!m && !y) el.title = 'Price not set yet';
+  });
+  document.querySelectorAll('.cpacks [data-pack]').forEach(li => { const p = d?.packs?.find(x => x.id === li.dataset.pack)?.price; li.querySelector('em').textContent = p ? priceText(p) : '—'; });
+}).catch(() => {});
+
 // Pricing: monthly / yearly switch.
 const billing = $('#billing');
 if (billing) billing.addEventListener('click', e => {

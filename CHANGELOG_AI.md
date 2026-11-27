@@ -4,6 +4,14 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-27: Claude, PRICE-01: prices only from Admin → Prices (step 2)
+
+- New Admin → Prices (#/admin-prices): each plan and credit price with its currency and effective date, the history, upcoming changes, and the "Stripe live" switch (off). src/prices.js, the prices table, /api/admin/prices and /api/public/prices.
+- No price in the code: src/fees.js PLANS, INSTITUTIONAL and the credit packs read the store; scripts/home.py and public/site.js fill homepage prices from it; Plans & billing, the upgrade window, structured data, the README overview, trial notices and Stripe setup use it. An unpriced plan or pack can't be bought.
+- src/stripe-client.js refuses a live key until "Stripe live" is on.
+- Tests: test/price-ladder.test.js (no price in the code, effective dates, currencies, step-up and audit, unpriced plans not for sale), test/prices-fixture.js for tests that need prices, and the Stripe live switch in test/stripe-hardening.test.js.
+- Checks: npm test (654 pass), clean check, page gate on the six pages with prices (re-measured after review).
+
 ## 2026-11-27: Claude, LOOP-01: the loop runs without the owner (steps 1, 4 and 5)
 
 - GitHub settings checked: auto-merge on, squash on, no branch rules on main. The Actions workflow permissions can't be changed with the available tokens (DECISIONS.md LA-1, OWN-08). The loop now carries on without a pull request when GitHub refuses one (.github/workflows/ai-loop.yml).

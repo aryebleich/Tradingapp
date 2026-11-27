@@ -23,6 +23,7 @@ const client = () => {
 };
 const owner = client(), user = client();
 before(async () => {
+  await (await import('./prices-fixture.js')).seedPrices(); // prices come from Admin → Prices
   await new Promise(r => { server = app.listen(0, () => { base = `http://127.0.0.1:${server.address().port}`; r(); }); });
   await owner('/auth/register', { email: 'seo-owner@example.com', password: 'Str0ngPassword1', agree: true });
   await user('/auth/register', { email: 'seo-user@example.com', password: 'Str0ngPassword1', agree: true });

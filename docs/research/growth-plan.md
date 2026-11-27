@@ -17,7 +17,10 @@ Live trading is only ever an explicit, gated opt-in.
 
 This is Brightolio's one revenue strategy: the plan below plus the master plan's revenue section (docs/research/master-plan.md, "How Brightolio could make serious money"). Revenue comes from software, not from commissions or payment for order flow.
 
-### The price ladder (DECISIONS.md MP-3)
+### The price ladder (a proposal; the owner sets the real prices in Admin → Prices)
+
+No AI sets or changes prices (DECISIONS.md PR-1). The owner enters each plan and credit price, its currency and its effective date in Admin → Prices, and the app shows only those. The table below is the proposal from MP-3, for the owner to use or change.
+
 
 | Plan | Monthly | Yearly | What it is for |
 | --- | --- | --- | --- |

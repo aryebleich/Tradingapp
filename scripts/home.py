@@ -183,11 +183,11 @@ FEATURES = [
 PLANS = [
  ('Starter', 'Learn and practice', '$0', None, '/forever', None, None,
   ['$100,000 paper account', 'Live trading on your own brokerage (your own orders)', '1 chart per layout, every indicator', 'Strategy library by hand + 1 automatic strategy on paper', 'Unlimited backtests', '1 alert webhook (paper)', '2 scanners, checked hourly', 'AI assistant: 30 messages a day', '100 credits every month'], 'Start free', False),
- ('Pro', 'Automate your real accounts', '$14.99', '$149', '/month', '/year', None,
+ ('Pro', 'Automate your real accounts', '—', '—', '/month', '/year', None,
   ['Everything in Starter', 'Automated trading on Alpaca, Schwab, tastytrade, Tradier &amp; TradeStation', '2-chart layouts', '5 automatic strategies with Reality Check auto-throttle', '10 alert webhooks', 'Scanners every 5 minutes, portfolios &amp; signal mirroring', 'AI assistant: 300 messages a day', 'Optimizer, walk-forward testing &amp; code lab', 'Trading and alerts by text and phone, QuantConnect and bank-card linking', '1,000 credits every month'], 'Start 14-day free trial', True),
- ('Elite', 'For active traders', '$39.99', '$399', '/month', '/year', None,
+ ('Elite', 'For active traders', '—', '—', '/month', '/year', None,
   ['Everything in Pro', '4-chart layouts and pop-out windows', '25 automatic strategies &amp; 25 webhooks', 'Option income bots &amp; multi-leg orders', 'Market-neutral pairs (long + short)', 'Tax-loss harvesting &amp; Schedule D', 'AI assistant: 1,000 messages a day', '3,000 credits every month'], 'Start 14-day free trial', False),
- ('Ultimate', 'For serious capital', '$89.99', '$899', '/month', '/year', None,
+ ('Ultimate', 'For serious capital', '—', '—', '/month', '/year', None,
   ['Everything in Elite', '100 automatic strategies &amp; 100 webhooks', 'Unlimited scanners and AI agents', 'AI assistant: 3,000 messages a day', '10,000 credits every month', 'Priority support'], 'Start 14-day free trial', False),
 ]
 
@@ -298,7 +298,7 @@ def index(lang='en'):
         '@context': 'https://schema.org', '@type': 'FAQPage', 'inLanguage': lang,
         'mainEntity': [{'@type': 'Question', 'name': _strip(T(q)), 'acceptedAnswer': {'@type': 'Answer', 'text': _strip(T(a))}} for q, a in FAQ_AUTO + FAQ_ACCOUNT]})
     plans = ''.join(f'''<div class="plan{' best' if best else ''}">{'<div class="ribbon">' + T('Recommended') + '</div>' if best else ''}<h3>{T(n)}</h3><p class="tag">{T(tg)}</p>
-      <div class="price"{f' data-m="{pm}" data-y="{py}"' if py else ''}>{pm}<small{f' data-m="{T(sm)}" data-y="{T(sy)}"' if sy else ''}>{T(sm)}</small></div>
+      <div class="price"{f' data-plan="{n.lower()}" data-m="{pm}" data-y="{py}"' if py else ''}>{pm}<small{f' data-m="{T(sm)}" data-y="{T(sy)}"' if sy else ''}>{T(sm)}</small></div>
       <ul>{''.join(f'<li>{T(x)}</li>' for x in feats_)}</ul><a class="btn{'' if best else ' ghost'}" data-app="#/register" href="app">{T(cta)}</a></div>''' for n, tg, pm, py, sm, sy, fee, feats_, cta, best in PLANS)
     body = f'''
 <section class="hero"><div class="wrap hero-grid">
@@ -486,7 +486,7 @@ def index(lang='en'):
   <div class="credits">
     <div><span class="kicker">{T('Credits')}</span><h3>{T('Every plan comes with monthly credits.')}</h3>
       <p>{T('Credits pay for the extras that cost us to run: AI messages beyond your daily allowance, text alerts, phone calls, AI summaries of company filings, AI agent training and optimizer runs. Monthly credits refill on the 1st; packs you buy never expire.')}</p></div>
-    <ul class="cpacks" dir="ltr"><li><b>500</b><span>{T('credits')}</span><em>$5</em></li><li class="hi"><b>3,000</b><span>{T('credits')}</span><em>$25</em></li><li><b>12,000</b><span>{T('credits')}</span><em>$80</em></li></ul>
+    <ul class="cpacks" dir="ltr"><li data-pack="c500"><b>500</b><span>{T('credits')}</span><em>—</em></li><li class="hi" data-pack="c3000"><b>3,000</b><span>{T('credits')}</span><em>—</em></li><li data-pack="c12000"><b>12,000</b><span>{T('credits')}</span><em>—</em></li></ul>
   </div>
   <p class="fine">{T('Secure checkout by Stripe. Cancel anytime. Trading involves risk; see the')} <a href="risk.html">{T('Risk Disclosure')}</a>.</p>
 </div></section>
