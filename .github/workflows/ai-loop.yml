@@ -200,6 +200,7 @@ jobs:
       - name: Commit and push the task branch, and its pull request
         id: pr
         env:
+          WORK_COMPLETE: ${{ steps.claude.outcome == 'success' || steps.grokwork.outcome == 'success' || steps.grokcode.outcome == 'success' || steps.codex.outcome == 'success' }}
           PR_TOKEN: ${{ secrets.CODEX_MENTION_TOKEN || github.token }}
         if: always()
         run: |
@@ -215,7 +216,7 @@ jobs:
           gh pr edit "$pr" --add-label "by:$WHO" > /dev/null 2>&1 || true
           echo "number=$pr" >> "$GITHUB_OUTPUT"
           # A push with the built-in token starts no workflow, so start the gates on the branch here.
-          [ "$WHO" = codex ] && [ "$BILLING" = plan ] || gh workflow run release-gates.yml --ref "$BRANCH"
+          if [ "$WORK_COMPLETE" = true ]; then gh workflow run release-gates.yml --ref "$BRANCH"; fi
       - name: Codex through GitHub (@codex, on the ChatGPT plan)
         id: codexgh
         if: env.WHO == 'codex' && env.BILLING == 'plan'
