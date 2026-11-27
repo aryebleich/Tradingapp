@@ -19,7 +19,7 @@ Rebuilt by `npm run ai:status`. Start every session by continuing the first row:
 
 | Task | Owner | State | Branch | Last update (UTC) | Next action |
 | --- | --- | --- | --- | --- | --- |
-| AI-04B | Codex | ready | ai/task-ai-04b | 2026-11-27 10:56 UTC | Any assistant: take AI-04B again from ai/task-ai-04b |
+| AI-04B | Codex | active | ai/task-ai-04b | 2026-11-27 10:56 UTC | Any assistant: take AI-04B again from ai/task-ai-04b |
 | OPS-02 | Claude | blocked | main | — | — |
 <!-- open:end -->
 
@@ -27,7 +27,7 @@ Rebuilt by `npm run ai:status`. Start every session by continuing the first row:
 
 | Assistant | Task | State | Updated (UTC) | Last SHA | Next action | Reset (UTC) |
 | --- | --- | --- | --- | --- | --- | --- |
-| Claude | — | idle | 2026-11-27 13:46 | 0d0c595 | Claude: SCAN-01 (premarket and after-hours scanners). Codex: AI-04B once OWN-08 is done. | — |
+| Claude | AI-04B | active | 2026-11-27 15:31 | 24d1579 | Working on AI-04B in Claude Code (taken over from Codex). | — |
 | Codex | AI-04B | ready | 2026-11-27 10:56 | acaa5f6 | Any assistant: take AI-04B again from ai/task-ai-04b | — |
 | Grok | RES-03 | done | 2026-11-26 22:13 | a545db7 | Idle. FEAT-02 and FEAT-03 are ready from the research note. | — |
 
@@ -37,8 +37,8 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 
 | ID | State | Priority | Suggested | Claimed by | Updated (UTC) | Task and done when |
 | --- | --- | --- | --- | --- | --- | --- |
+| AI-04B | active | 2 | Codex | Claude | 2026-11-27 15:31 | Follow-up of AI-04 (registry A-19): add the evidence line (src/ai-evidence.js evidence(), shown with H.evidenceHtml) to the AI morning picks, AI signals and the options desk's AI strategist and contract explainer. Done when test/ai-evidence.test.js also checks those routes and A-19 is done. See docs/FEATURE_REGISTRY.md. The loop runs so far failed only because GitHub refused to open the pull request (OWN-08). |
 | FIX-01 | ready | 1 | Codex | — | — | The page gate's homepage FAQ answers at 1440 px are sometimes read as "no longer visible" (seen twice, passes on rerun). Done when the gate waits for the FAQ to settle and three runs in a row pass. See docs/FEATURE_REGISTRY.md. |
-| AI-04B | ready | 2 | Codex | — | 2026-11-27 10:56 | Follow-up of AI-04 (registry A-19): add the evidence line (src/ai-evidence.js evidence(), shown with H.evidenceHtml) to the AI morning picks, AI signals and the options desk's AI strategist and contract explainer. Done when test/ai-evidence.test.js also checks those routes and A-19 is done. See docs/FEATURE_REGISTRY.md. The loop runs so far failed only because GitHub refused to open the pull request (OWN-08). |
 | REV-02B | ready | 2 | Codex | — | — | Follow-up of REV-02 (PR #60): label the paid controls on the 10 most-used pages by Admin → Analytics route counts, and add a test that every entry in public/paid-controls.js matches a server check (upgrade() or needPlan()). Done when both are in. |
 | DATA-01 | ready | 3 | Codex | — | — | Phase 1, data (registry SEC-16, T-01). Label every delayed or end-of-day figure "Delayed" or "End of day" with its source, from one helper. Done when a test finds no unlabelled delayed quote on the trade, chart, scanner and stock pages. See docs/FEATURE_REGISTRY.md. |
 | CHART-01 | ready | 3 | Codex | — | — | Phase 1, charting (registry T-05, T-04). Linked symbol, timeframe and crosshair across the 2- and 4-chart layouts, and drawings saved to the account instead of the device. Done when the e2e chart flow covers both and the rows are updated. See docs/FEATURE_REGISTRY.md. |
