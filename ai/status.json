@@ -15,10 +15,10 @@
     {
       "name": "Codex",
       "task": "FIX-01",
-      "state": "active",
-      "updated": "2026-11-28 02:42",
-      "lastSha": "22eeecc",
-      "next": "Working on FIX-01 in GitHub Actions (run 46099404941).",
+      "state": "ready",
+      "updated": "2026-11-28 02:43",
+      "lastSha": "babd1da",
+      "next": "Any assistant: take FIX-01 again from ai/task-fix-01",
       "reset": null
     },
     {
@@ -32,19 +32,18 @@
     }
   ],
   "queue": {
-    "active": [
-      {
-        "id": "FIX-01",
-        "state": "active",
-        "priority": 1,
-        "suggested": "Codex",
-        "claimedBy": "Codex",
-        "updated": "2026-11-28 02:42",
-        "task": "The page gate's homepage FAQ answers at 1440 px are sometimes read as \"no longer visible\" (seen twice, passes on rerun). Done when the gate waits for the FAQ to settle and three runs in a row pass. See docs/FEATURE_REGISTRY.md."
-      }
-    ],
+    "active": [],
     "paused": [],
     "ready": [
+      {
+        "id": "FIX-01",
+        "state": "ready",
+        "priority": 1,
+        "suggested": "Codex",
+        "claimedBy": null,
+        "updated": "2026-11-28 02:43",
+        "task": "The page gate's homepage FAQ answers at 1440 px are sometimes read as \"no longer visible\" (seen twice, passes on rerun). Done when the gate waits for the FAQ to settle and three runs in a row pass. See docs/FEATURE_REGISTRY.md."
+      },
       {
         "id": "REV-02B",
         "state": "ready",
@@ -644,6 +643,17 @@
   ],
   "handoffs": [
     {
+      "at": "2026-11-28 02:43 UTC",
+      "assistant": "Codex",
+      "task": "FIX-01",
+      "state": "ready",
+      "last_sha": "babd1da",
+      "changed": "see the commits",
+      "checks": "see the run",
+      "blockers": "the run failed (run 46099404941)",
+      "next_action": "Any assistant: take FIX-01 again from ai/task-fix-01"
+    },
+    {
       "at": "2026-11-27 23:48 UTC",
       "assistant": "Claude",
       "task": "FEAT-02",
@@ -741,17 +751,6 @@
       "checks": "npm test 638 pass; clean check; secrets scan; readme check; registry --check; page gate on the changed pages",
       "blockers": "OWN-04 legal sign-off, OWN-06 data licenses, OWN-07 approve the prices before Stripe goes live",
       "next_action": "Claude: APP-02, the installable app with push and offline watchlists (registry AP-02..04, AL-12)."
-    },
-    {
-      "at": "2026-11-26 22:13 UTC",
-      "assistant": "Grok",
-      "task": "RES-03",
-      "state": "done",
-      "last_sha": "a545db7",
-      "changed": "docs/research/insider-congressional.md — Form 4 + STOCK Act sources, competitor snapshot (OpenInsider, Capitol Trades, Quiver, Unusual Whales), product recommendations, FEAT-02 and FEAT-03 queue rows. Board updated.",
-      "checks": "Research only; public sources (SEC EDGAR, House/Senate PTR paths, competitor pages Oct–Nov 2026). Pushed to main (docs/ only).",
-      "blockers": "none",
-      "next_action": "Claude: finish MP-01 then REV-01. Codex: finish REV-02 (PR #60) and AIP-01. Either may claim FEAT-02 (insider) or FEAT-03 (Congress) from the research note. Owner: merge PR #65 (mobile→desktop) when green."
     }
   ]
 }
