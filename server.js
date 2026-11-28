@@ -1369,6 +1369,12 @@ api.post('/push/test', U, wrap(async (req, res) => {
   const W = await import('./src/webpush.js');
   res.json(await W.pushToUser(req.user.id, { title: 'Brightolio', body: 'Notifications work on this device.', url: '/app#/settings', kind: 'alerts' }));
 }));
+// Insider trades from SEC Form 4 (src/insiders.js): the market list and one stock's filings. Public, delayed data.
+api.get('/insiders', U, wrap(async (req, res) => {
+  const I = await import('./src/insiders.js'), q = req.query;
+  res.json(await I.marketList({ code: q.code || 'P', minValue: +q.minValue || 0, role: String(q.role || '').slice(0, 30), cluster: q.cluster === '1', days: Math.min(90, Math.max(1, +q.days || 30)) }));
+}));
+api.get('/insiders/:symbol', U, wrap(async (req, res) => res.json(await (await import('./src/insiders.js')).forSymbol(req.params.symbol))));
 // --- billing, funding, fees ---
 api.post('/billing/checkout', U, wrap(async (req, res) => {
   if (!Object.hasOwn(PLANS, req.body.plan) || req.body.plan === 'free') throw new Error('Pick a paid plan');

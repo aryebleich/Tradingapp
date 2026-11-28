@@ -68,7 +68,7 @@ export async function stockSection(helpers, el, sym, view) {
 function related(el, sym, view) {
   const q = encodeURIComponent(sym), REL = {
     valuation: [['scanner/valuescan', 'Growth-at-a-price scanner'], ['research/rates', 'Rates vs stocks'], [`analyze/compare?symbols=${q}`, 'Compare with others']],
-    fundamentals: [[`analyze/compare?symbols=${q}`, 'Compare with others'], ['scanner/valuescan', 'Stock scanner']],
+    fundamentals: [[`analyze/compare?symbols=${q}`, 'Compare with others'], [`research/insiders?symbol=${q}`, 'Insider trades'], ['scanner/valuescan', 'Stock scanner']],
     earnings: [['calendar', 'Earnings calendar'], ['analyze/earnings', 'Earnings vs expectations']],
     dividends: [['wealth/dividends', 'Your dividend income'], ['wealth?tab=drip', 'Reinvest dividends']],
     technicals: [[`chart?symbol=${q}`, 'Full chart'], ['bots/intraday', 'AI intraday']], supply: [[`chart?symbol=${q}`, 'Full chart'], ['active', 'Active trading desk']],
