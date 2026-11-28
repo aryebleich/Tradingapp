@@ -14,11 +14,11 @@
     },
     {
       "name": "Codex",
-      "task": "FIX-01",
-      "state": "ready",
-      "updated": "2026-11-28 11:50",
-      "lastSha": "7b79368",
-      "next": "Any assistant: take FIX-01 again from ai/task-fix-01",
+      "task": null,
+      "state": "idle",
+      "updated": "2026-11-28 13:55",
+      "lastSha": "d0e2842",
+      "next": "FIX-01 was finished by Claude. Codex loop runs only leave the brief until OWN-08 (pull requests from Actions); in ChatGPT, take the next Codex row (REV-02B).",
       "reset": null
     },
     {

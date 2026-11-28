@@ -27,7 +27,7 @@ Rebuilt by `npm run ai:status`. Start every session by continuing the first row:
 | Assistant | Task | State | Updated (UTC) | Last SHA | Next action | Reset (UTC) |
 | --- | --- | --- | --- | --- | --- | --- |
 | Claude | — | idle | 2026-11-28 13:43 | fa4f6d1 | Claude: FEAT-03 (congressional trades) or ALERT-01. Grok: RES-04 (price ladder review) or RES-05 (data licensing). | — |
-| Codex | FIX-01 | ready | 2026-11-28 11:50 | 7b79368 | Any assistant: take FIX-01 again from ai/task-fix-01 | — |
+| Codex | — | idle | 2026-11-28 13:55 | d0e2842 | FIX-01 was finished by Claude. Codex loop runs only leave the brief until OWN-08 (pull requests from Actions); in ChatGPT, take the next Codex row (REV-02B). | — |
 | Grok | RES-03 | done | 2026-11-26 22:13 | a545db7 | Idle. FEAT-02 and FEAT-03 are ready from the research note. | — |
 
 ## Queue
