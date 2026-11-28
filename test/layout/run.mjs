@@ -70,7 +70,9 @@ async function measure(p, width) {
     const lum = c => { const m = c.match(/[\d.]+/g)?.map(Number) || [0, 0, 0, 1]; const f = v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }; return [.2126 * f(m[0]) + .7152 * f(m[1]) + .0722 * f(m[2]), m[3] ?? 1]; };
     const bgOf = el => { for (let e = el; e; e = e.parentElement) { const c = getComputedStyle(e).backgroundColor; const a = +(c.match(/[\d.]+/g)?.[3] ?? 1); if (a > .5 && c !== 'transparent') return c; } return getComputedStyle(document.body).backgroundColor || 'rgb(255,255,255)'; };
     const ratio = (a, b) => { const [x] = lum(a), [y] = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
-    const shown = el => { for (let e = el; e && e !== document.documentElement; e = e.parentElement) { const s = getComputedStyle(e); if (s.display === 'none' || s.visibility === 'hidden' || +s.opacity < .1 || e.hidden) return false; } const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+    const shown = el => { for (let e = el; e && e !== document.documentElement; e = e.parentElement) { const s = getComputedStyle(e); if (s.display === 'none' || s.visibility === 'hidden' || +s.opacity < .1 || e.hidden) return false; } if (el.closest('details:not([open])') && !el.closest('summary')) return true; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+    // Text inside a closed <details> (an FAQ answer) is one tap away: it counts as shown. Chromium lays out a
+    // closed details' content on some runs and not on others, so measuring it made the gate flaky (FIX-01).
     // Blocks whose own text is a disclosure (the smallest element holding the sentence).
     const disclosures = [];
     for (const el of document.querySelectorAll('body p, body small, body li, body footer, body div, body span, body label, body td, body figcaption, body aside, body em, body .disc, body [role=note]')) {

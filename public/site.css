@@ -247,7 +247,7 @@ code { font: 0.9em ui-monospace, SFMono-Regular, Menlo, monospace; background: c
 
 /* FAQ topics */
 .faq .toggle { margin-bottom: 18px; }
-.faq .qs { animation: rise .25s ease-out; }
+@media (prefers-reduced-motion: no-preference) { .faq .qs { animation: rise .25s ease-out; } }
 
 /* final call to action */
 .band.final { align-items: center; }

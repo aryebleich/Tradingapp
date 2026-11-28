@@ -4,6 +4,13 @@ One entry per task: what changed, why, test results, release tag, rollback. Newe
 
 ---
 
+## 2026-11-28: Claude, FIX-01 (taken over from Codex): the homepage FAQ no longer flakes in the page gate
+
+- The page gate read the homepage FAQ answers (inside closed <details>) as visible on some runs and hidden on others: Chromium sometimes lays out a closed details' content. test/layout/run.mjs now counts text inside a closed <details> as shown (one tap away), as the reviewed baseline recorded it; text in a hidden tab panel still counts as hidden.
+- public/site.css: the FAQ panel's fade-in only runs when the device allows motion, like the other animations; public/*.html rebuilt.
+- Checks: the gate on the homepage and the Yiddish homepage passed three runs in a row; npm test; clean check.
+- Codex's three loop runs on ai/task-fix-01 had only the brief: without a pull request (OWN-08) Codex is not asked, so the loop keeps handing the row back.
+
 ## 2026-11-27: Claude, FEAT-02: insider trades from SEC Form 4
 
 - src/insiders.js reads Form 4 XML (buys, sales and other codes, the insider's role, the 10b5-1 flag, shares, price and value). Two views:
