@@ -15,10 +15,10 @@
     {
       "name": "Codex",
       "task": "FIX-01",
-      "state": "active",
-      "updated": "2026-11-28 11:49",
-      "lastSha": "30a4410",
-      "next": "Working on FIX-01 in GitHub Actions (run 46141697304).",
+      "state": "ready",
+      "updated": "2026-11-28 11:50",
+      "lastSha": "7b79368",
+      "next": "Any assistant: take FIX-01 again from ai/task-fix-01",
       "reset": null
     },
     {
@@ -32,19 +32,18 @@
     }
   ],
   "queue": {
-    "active": [
-      {
-        "id": "FIX-01",
-        "state": "active",
-        "priority": 1,
-        "suggested": "Codex",
-        "claimedBy": "Codex",
-        "updated": "2026-11-28 11:49",
-        "task": "The page gate's homepage FAQ answers at 1440 px are sometimes read as \"no longer visible\" (seen twice, passes on rerun). Done when the gate waits for the FAQ to settle and three runs in a row pass. See docs/FEATURE_REGISTRY.md."
-      }
-    ],
+    "active": [],
     "paused": [],
     "ready": [
+      {
+        "id": "FIX-01",
+        "state": "ready",
+        "priority": 1,
+        "suggested": "Codex",
+        "claimedBy": null,
+        "updated": "2026-11-28 11:50",
+        "task": "The page gate's homepage FAQ answers at 1440 px are sometimes read as \"no longer visible\" (seen twice, passes on rerun). Done when the gate waits for the FAQ to settle and three runs in a row pass. See docs/FEATURE_REGISTRY.md."
+      },
       {
         "id": "REV-02B",
         "state": "ready",
@@ -644,6 +643,17 @@
   ],
   "handoffs": [
     {
+      "at": "2026-11-28 11:50 UTC",
+      "assistant": "Codex",
+      "task": "FIX-01",
+      "state": "ready",
+      "last_sha": "7b79368",
+      "changed": "see the commits",
+      "checks": "see the run",
+      "blockers": "the run failed (run 46141697304)",
+      "next_action": "Any assistant: take FIX-01 again from ai/task-fix-01"
+    },
+    {
       "at": "2026-11-28 02:43 UTC",
       "assistant": "Codex",
       "task": "FIX-01",
@@ -741,17 +751,6 @@
       "checks": "npm test 646 pass; clean check; registry and status checks; page gate on Settings, the Apps page and Plans & billing; the full e2e run was still going at hand-off",
       "blockers": "none for code; owner items OWN-04, OWN-06, OWN-07",
       "next_action": "Codex: AI-04B (the evidence line on picks, signals and the options strategist); Claude: DATA-01 or CHART-01 next."
-    },
-    {
-      "at": "2026-11-27 00:06 UTC",
-      "assistant": "Claude",
-      "task": "MP-01",
-      "state": "done",
-      "last_sha": "87d4ea8",
-      "changed": "docs/research/master-plan.md; docs/MASTER_ROADMAP.md, FEATURE_REGISTRY.md (287 rows, coverage test), SYSTEM_ARCHITECTURE.md, SECURITY_REQUIREMENTS.md; growth-plan.md Revenue; price ladder (Pro 14.99, Elite 39.99, Ultimate 89.99, Institutional from 499) with the checkout price guard; legal gates in Admin → Security (all off); the queue by phases with a later state",
-      "checks": "npm test 638 pass; clean check; secrets scan; readme check; registry --check; page gate on the changed pages",
-      "blockers": "OWN-04 legal sign-off, OWN-06 data licenses, OWN-07 approve the prices before Stripe goes live",
-      "next_action": "Claude: APP-02, the installable app with push and offline watchlists (registry AP-02..04, AL-12)."
     }
   ]
 }
