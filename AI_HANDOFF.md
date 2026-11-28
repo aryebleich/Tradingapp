@@ -19,7 +19,7 @@ Rebuilt by `npm run ai:status`. Start every session by continuing the first row:
 
 | Task | Owner | State | Branch | Last update (UTC) | Next action |
 | --- | --- | --- | --- | --- | --- |
-| FIX-01 | Codex | ready | ai/task-fix-01 | 2026-11-27 19:59 UTC | Any assistant: take FIX-01 again from ai/task-fix-01 |
+| FIX-01 | Codex | active | ai/task-fix-01 | 2026-11-28 11:50 UTC | Any assistant: take FIX-01 again from ai/task-fix-01 |
 | OPS-02 | Claude | blocked | main | — | — |
 <!-- open:end -->
 
@@ -27,7 +27,7 @@ Rebuilt by `npm run ai:status`. Start every session by continuing the first row:
 
 | Assistant | Task | State | Updated (UTC) | Last SHA | Next action | Reset (UTC) |
 | --- | --- | --- | --- | --- | --- | --- |
-| Claude | — | idle | 2026-11-27 23:48 | 53a385b | Claude: FEAT-03 (congressional trades, I-03) or ALERT-01; Codex: FIX-01. Follow-up: insider alerts on watched symbols (AL-07). | — |
+| Claude | FIX-01 | active | 2026-11-28 13:39 | ee18a9a | Working on FIX-01 in Claude Code (taken over from Codex). | — |
 | Codex | FIX-01 | ready | 2026-11-28 11:50 | 7b79368 | Any assistant: take FIX-01 again from ai/task-fix-01 | — |
 | Grok | RES-03 | done | 2026-11-26 22:13 | a545db7 | Idle. FEAT-02 and FEAT-03 are ready from the research note. | — |
 
@@ -37,7 +37,7 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 
 | ID | State | Priority | Suggested | Claimed by | Updated (UTC) | Task and done when |
 | --- | --- | --- | --- | --- | --- | --- |
-| FIX-01 | ready | 1 | Codex | — | 2026-11-28 11:50 | The page gate's homepage FAQ answers at 1440 px are sometimes read as "no longer visible" (seen twice, passes on rerun). Done when the gate waits for the FAQ to settle and three runs in a row pass. See docs/FEATURE_REGISTRY.md. |
+| FIX-01 | active | 1 | Codex | Claude | 2026-11-28 13:39 | The page gate's homepage FAQ answers at 1440 px are sometimes read as "no longer visible" (seen twice, passes on rerun). Done when the gate waits for the FAQ to settle and three runs in a row pass. See docs/FEATURE_REGISTRY.md. |
 | REV-02B | ready | 2 | Codex | — | — | Follow-up of REV-02 (PR #60): label the paid controls on the 10 most-used pages by Admin → Analytics route counts, and add a test that every entry in public/paid-controls.js matches a server check (upgrade() or needPlan()). Done when both are in. |
 | DATA-01 | ready | 3 | Codex | — | — | Phase 1, data (registry SEC-16, T-01). Label every delayed or end-of-day figure "Delayed" or "End of day" with its source, from one helper. Done when a test finds no unlabelled delayed quote on the trade, chart, scanner and stock pages. See docs/FEATURE_REGISTRY.md. |
 | CHART-01 | ready | 3 | Codex | — | — | Phase 1, charting (registry T-05, T-04). Linked symbol, timeframe and crosshair across the 2- and 4-chart layouts, and drawings saved to the account instead of the device. Done when the e2e chart flow covers both and the rows are updated. See docs/FEATURE_REGISTRY.md. |

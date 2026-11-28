@@ -5,11 +5,11 @@
   "assistants": [
     {
       "name": "Claude",
-      "task": null,
-      "state": "idle",
-      "updated": "2026-11-27 23:48",
-      "lastSha": "53a385b",
-      "next": "Claude: FEAT-03 (congressional trades, I-03) or ALERT-01; Codex: FIX-01. Follow-up: insider alerts on watched symbols (AL-07).",
+      "task": "FIX-01",
+      "state": "active",
+      "updated": "2026-11-28 13:39",
+      "lastSha": "ee18a9a",
+      "next": "Working on FIX-01 in Claude Code (taken over from Codex).",
       "reset": null
     },
     {
@@ -32,18 +32,19 @@
     }
   ],
   "queue": {
-    "active": [],
-    "paused": [],
-    "ready": [
+    "active": [
       {
         "id": "FIX-01",
-        "state": "ready",
+        "state": "active",
         "priority": 1,
         "suggested": "Codex",
-        "claimedBy": null,
-        "updated": "2026-11-28 11:50",
+        "claimedBy": "Claude",
+        "updated": "2026-11-28 13:39",
         "task": "The page gate's homepage FAQ answers at 1440 px are sometimes read as \"no longer visible\" (seen twice, passes on rerun). Done when the gate waits for the FAQ to settle and three runs in a row pass. See docs/FEATURE_REGISTRY.md."
-      },
+      }
+    ],
+    "paused": [],
+    "ready": [
       {
         "id": "REV-02B",
         "state": "ready",
