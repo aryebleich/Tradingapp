@@ -15,10 +15,10 @@
     {
       "name": "Codex",
       "task": "FIX-01",
-      "state": "ready",
-      "updated": "2026-11-28 02:43",
-      "lastSha": "babd1da",
-      "next": "Any assistant: take FIX-01 again from ai/task-fix-01",
+      "state": "active",
+      "updated": "2026-11-28 11:49",
+      "lastSha": "30a4410",
+      "next": "Working on FIX-01 in GitHub Actions (run 46141697304).",
       "reset": null
     },
     {
@@ -32,18 +32,19 @@
     }
   ],
   "queue": {
-    "active": [],
-    "paused": [],
-    "ready": [
+    "active": [
       {
         "id": "FIX-01",
-        "state": "ready",
+        "state": "active",
         "priority": 1,
         "suggested": "Codex",
-        "claimedBy": null,
-        "updated": "2026-11-28 02:43",
+        "claimedBy": "Codex",
+        "updated": "2026-11-28 11:49",
         "task": "The page gate's homepage FAQ answers at 1440 px are sometimes read as \"no longer visible\" (seen twice, passes on rerun). Done when the gate waits for the FAQ to settle and three runs in a row pass. See docs/FEATURE_REGISTRY.md."
-      },
+      }
+    ],
+    "paused": [],
+    "ready": [
       {
         "id": "REV-02B",
         "state": "ready",
