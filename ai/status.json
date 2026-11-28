@@ -5,11 +5,11 @@
   "assistants": [
     {
       "name": "Claude",
-      "task": "FIX-01",
-      "state": "active",
-      "updated": "2026-11-28 13:39",
-      "lastSha": "ee18a9a",
-      "next": "Working on FIX-01 in Claude Code (taken over from Codex).",
+      "task": null,
+      "state": "idle",
+      "updated": "2026-11-28 13:43",
+      "lastSha": "fa4f6d1",
+      "next": "Claude: FEAT-03 (congressional trades) or ALERT-01. Grok: RES-04 (price ladder review) or RES-05 (data licensing).",
       "reset": null
     },
     {
@@ -32,17 +32,7 @@
     }
   ],
   "queue": {
-    "active": [
-      {
-        "id": "FIX-01",
-        "state": "active",
-        "priority": 1,
-        "suggested": "Codex",
-        "claimedBy": "Claude",
-        "updated": "2026-11-28 13:39",
-        "task": "The page gate's homepage FAQ answers at 1440 px are sometimes read as \"no longer visible\" (seen twice, passes on rerun). Done when the gate waits for the FAQ to settle and three runs in a row pass. See docs/FEATURE_REGISTRY.md."
-      }
-    ],
+    "active": [],
     "paused": [],
     "ready": [
       {
@@ -385,6 +375,15 @@
     ],
     "done": [
       {
+        "id": "FIX-01",
+        "state": "done",
+        "priority": 1,
+        "suggested": "Codex",
+        "claimedBy": "Claude",
+        "updated": "2026-11-28 13:43",
+        "task": "The page gate's homepage FAQ answers at 1440 px are sometimes read as \"no longer visible\" (seen twice, passes on rerun). Done when the gate waits for the FAQ to settle and three runs in a row pass. See docs/FEATURE_REGISTRY.md."
+      },
+      {
         "id": "FEAT-02",
         "state": "done",
         "priority": 10,
@@ -644,6 +643,17 @@
   ],
   "handoffs": [
     {
+      "at": "2026-11-28 13:43 UTC",
+      "assistant": "Claude",
+      "task": "FIX-01",
+      "state": "done",
+      "last_sha": "fa4f6d1",
+      "changed": "test/layout/run.mjs (closed details count as shown), public/site.css (FAQ fade-in respects reduced motion), pages rebuilt (taken over from Codex)",
+      "checks": "homepage gate 3 passes in a row; npm test; clean check",
+      "blockers": "Codex can't work loop tasks until OWN-08: its runs leave only the brief and hand the row back",
+      "next_action": "Claude: FEAT-03 (congressional trades) or ALERT-01. Grok: RES-04 (price ladder review) or RES-05 (data licensing)."
+    },
+    {
       "at": "2026-11-28 11:50 UTC",
       "assistant": "Codex",
       "task": "FIX-01",
@@ -741,17 +751,6 @@
       "checks": "see the run",
       "blockers": "the run failed (run 45926986309)",
       "next_action": "Any assistant: take AI-04B again from ai/task-ai-04b"
-    },
-    {
-      "at": "2026-11-27 00:31 UTC",
-      "assistant": "Claude",
-      "task": "APP-02",
-      "state": "done",
-      "last_sha": "447c3c1",
-      "changed": "Web Push (src/webpush.js), Settings → Notifications, offline app page and watchlists (public/sw.js), install guide for iPhone, Windows and Mac; also AI-04: the evidence line on AI answers (src/ai-evidence.js); test databases now deleted after each run",
-      "checks": "npm test 646 pass; clean check; registry and status checks; page gate on Settings, the Apps page and Plans & billing; the full e2e run was still going at hand-off",
-      "blockers": "none for code; owner items OWN-04, OWN-06, OWN-07",
-      "next_action": "Codex: AI-04B (the evidence line on picks, signals and the options strategist); Claude: DATA-01 or CHART-01 next."
     }
   ]
 }

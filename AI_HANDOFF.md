@@ -19,7 +19,6 @@ Rebuilt by `npm run ai:status`. Start every session by continuing the first row:
 
 | Task | Owner | State | Branch | Last update (UTC) | Next action |
 | --- | --- | --- | --- | --- | --- |
-| FIX-01 | Codex | active | ai/task-fix-01 | 2026-11-28 11:50 UTC | Any assistant: take FIX-01 again from ai/task-fix-01 |
 | OPS-02 | Claude | blocked | main | — | — |
 <!-- open:end -->
 
@@ -27,7 +26,7 @@ Rebuilt by `npm run ai:status`. Start every session by continuing the first row:
 
 | Assistant | Task | State | Updated (UTC) | Last SHA | Next action | Reset (UTC) |
 | --- | --- | --- | --- | --- | --- | --- |
-| Claude | FIX-01 | active | 2026-11-28 13:39 | ee18a9a | Working on FIX-01 in Claude Code (taken over from Codex). | — |
+| Claude | — | idle | 2026-11-28 13:43 | fa4f6d1 | Claude: FEAT-03 (congressional trades) or ALERT-01. Grok: RES-04 (price ladder review) or RES-05 (data licensing). | — |
 | Codex | FIX-01 | ready | 2026-11-28 11:50 | 7b79368 | Any assistant: take FIX-01 again from ai/task-fix-01 | — |
 | Grok | RES-03 | done | 2026-11-26 22:13 | a545db7 | Idle. FEAT-02 and FEAT-03 are ready from the research note. | — |
 
@@ -37,7 +36,6 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 
 | ID | State | Priority | Suggested | Claimed by | Updated (UTC) | Task and done when |
 | --- | --- | --- | --- | --- | --- | --- |
-| FIX-01 | active | 1 | Codex | Claude | 2026-11-28 13:39 | The page gate's homepage FAQ answers at 1440 px are sometimes read as "no longer visible" (seen twice, passes on rerun). Done when the gate waits for the FAQ to settle and three runs in a row pass. See docs/FEATURE_REGISTRY.md. |
 | REV-02B | ready | 2 | Codex | — | — | Follow-up of REV-02 (PR #60): label the paid controls on the 10 most-used pages by Admin → Analytics route counts, and add a test that every entry in public/paid-controls.js matches a server check (upgrade() or needPlan()). Done when both are in. |
 | DATA-01 | ready | 3 | Codex | — | — | Phase 1, data (registry SEC-16, T-01). Label every delayed or end-of-day figure "Delayed" or "End of day" with its source, from one helper. Done when a test finds no unlabelled delayed quote on the trade, chart, scanner and stock pages. See docs/FEATURE_REGISTRY.md. |
 | CHART-01 | ready | 3 | Codex | — | — | Phase 1, charting (registry T-05, T-04). Linked symbol, timeframe and crosshair across the 2- and 4-chart layouts, and drawings saved to the account instead of the device. Done when the e2e chart flow covers both and the rows are updated. See docs/FEATURE_REGISTRY.md. |
@@ -75,6 +73,7 @@ Suggested assistant: Claude for big multi-file changes and careful reviews, Code
 | TICK-01 | later | 19 | Claude | — | — | The tick engine (Part B): a design note in DECISIONS.md first, reviewed by Grok for market realism, then the build. Done when the design is agreed and the first slice is tested. |
 | CHAT-04 | later | 20 | Codex | — | — | A live check of the Codex activity stream in Admin → AI chat, with one short test message. Done when the result is written here (no message text in logs). |
 | PARTA-1 | later | 21 | Claude | — | — | Part A items A1, A3, A4, A7 and A8 (definitions in DECISIONS.md and CHANGELOG_AI.md). Done when each one is a commit. |
+| FIX-01 | done | 1 | Codex | Claude | 2026-11-28 13:43 | The page gate's homepage FAQ answers at 1440 px are sometimes read as "no longer visible" (seen twice, passes on rerun). Done when the gate waits for the FAQ to settle and three runs in a row pass. See docs/FEATURE_REGISTRY.md. |
 | FEAT-02 | done | 10 | Claude | Claude | 2026-11-27 23:48 | Insider Form 4 tracker (S-11 + I-04), from docs/research/insider-congressional.md: market buys list, cluster filter, per-symbol strip, EDGAR links, lag and not-advice copy, Plus alerts optional. Done when pages and tests are on main and registry rows are updated. |
 | SCAN-01 | done | 5 | Claude | Claude | 2026-11-27 18:47 | Phase 2, scanners (registry S-02, S-03). Premarket and after-hours scanners: gappers and volume from 4:00 New York time and after the close, each figure labelled real time or delayed. Done when both scanners are on #/scanner with tests and the rows are updated. See docs/FEATURE_REGISTRY.md. |
 | AI-04B | done | 2 | Codex | Claude | 2026-11-27 15:37 | Follow-up of AI-04 (registry A-19): add the evidence line (src/ai-evidence.js evidence(), shown with H.evidenceHtml) to the AI morning picks, AI signals and the options desk's AI strategist and contract explainer. Done when test/ai-evidence.test.js also checks those routes and A-19 is done. See docs/FEATURE_REGISTRY.md. The loop runs so far failed only because GitHub refused to open the pull request (OWN-08). |
@@ -118,6 +117,13 @@ Things only the owner can do, whenever it suits. **None of them blocks a task:**
 ## Hand-offs
 
 Newest first. Use these fields every time; the next assistant continues from **Next action**.
+
+### 2026-11-28 13:43 UTC · Claude · FIX-01 · done
+- **Last SHA:** fa4f6d1
+- **Changed:** test/layout/run.mjs (closed details count as shown), public/site.css (FAQ fade-in respects reduced motion), pages rebuilt (taken over from Codex)
+- **Checks:** homepage gate 3 passes in a row; npm test; clean check
+- **Blockers:** Codex can't work loop tasks until OWN-08: its runs leave only the brief and hand the row back
+- **Next action:** Claude: FEAT-03 (congressional trades) or ALERT-01. Grok: RES-04 (price ladder review) or RES-05 (data licensing).
 
 ### 2026-11-28 11:50 UTC · Codex · FIX-01 · ready
 - **Last SHA:** 7b79368
